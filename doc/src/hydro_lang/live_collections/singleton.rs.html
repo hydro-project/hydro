@@ -337,11 +337,11 @@
 <a href=#337 id=337 data-nosnippet>337</a>    /// # });
 <a href=#338 id=338 data-nosnippet>338</a>    /// # }
 <a href=#339 id=339 data-nosnippet>339</a>    /// ```
-<a href=#340 id=340 data-nosnippet>340</a>    </span><span class="kw">pub fn </span>by_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">crate</span>::singleton_ref::SingletonRef&lt;<span class="lifetime">'a</span>, <span class="lifetime">'_</span>, T, L&gt;
+<a href=#340 id=340 data-nosnippet>340</a>    </span><span class="kw">pub fn </span>by_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">crate</span>::handoff_ref::SingletonRef&lt;<span class="lifetime">'a</span>, <span class="lifetime">'_</span>, T, L&gt;
 <a href=#341 id=341 data-nosnippet>341</a>    <span class="kw">where
 <a href=#342 id=342 data-nosnippet>342</a>        </span>B: IsBounded,
 <a href=#343 id=343 data-nosnippet>343</a>    {
-<a href=#344 id=344 data-nosnippet>344</a>        <span class="kw">crate</span>::singleton_ref::SingletonRef::new(<span class="kw-2">&amp;</span><span class="self">self</span>.ir_node)
+<a href=#344 id=344 data-nosnippet>344</a>        <span class="kw">crate</span>::handoff_ref::SingletonRef::new(<span class="kw-2">&amp;</span><span class="self">self</span>.ir_node)
 <a href=#345 id=345 data-nosnippet>345</a>    }
 <a href=#346 id=346 data-nosnippet>346</a>
 <a href=#347 id=347 data-nosnippet>347</a>    <span class="doccomment">/// Returns a mutable reference handle to this singleton that can be captured inside `q!()`
@@ -386,11 +386,11 @@
 <a href=#386 id=386 data-nosnippet>386</a>    /// # });
 <a href=#387 id=387 data-nosnippet>387</a>    /// # }
 <a href=#388 id=388 data-nosnippet>388</a>    /// ```
-<a href=#389 id=389 data-nosnippet>389</a>    </span><span class="kw">pub fn </span>by_mut(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">crate</span>::singleton_ref::SingletonMut&lt;<span class="lifetime">'a</span>, <span class="lifetime">'_</span>, T, L&gt;
+<a href=#389 id=389 data-nosnippet>389</a>    </span><span class="kw">pub fn </span>by_mut(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">crate</span>::handoff_ref::SingletonMut&lt;<span class="lifetime">'a</span>, <span class="lifetime">'_</span>, T, L&gt;
 <a href=#390 id=390 data-nosnippet>390</a>    <span class="kw">where
 <a href=#391 id=391 data-nosnippet>391</a>        </span>B: IsBounded,
 <a href=#392 id=392 data-nosnippet>392</a>    {
-<a href=#393 id=393 data-nosnippet>393</a>        <span class="kw">crate</span>::singleton_ref::SingletonMut::new(<span class="kw-2">&amp;</span><span class="self">self</span>.ir_node)
+<a href=#393 id=393 data-nosnippet>393</a>        <span class="kw">crate</span>::handoff_ref::SingletonMut::new(<span class="kw-2">&amp;</span><span class="self">self</span>.ir_node)
 <a href=#394 id=394 data-nosnippet>394</a>    }
 <a href=#395 id=395 data-nosnippet>395</a>
 <a href=#396 id=396 data-nosnippet>396</a>    <span class="doccomment">/// Weakens the consistency of this live collection to not guarantee any consistency across

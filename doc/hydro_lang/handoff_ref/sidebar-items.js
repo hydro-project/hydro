@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["HandoffRefKind"],"fn":["with_ref_capture"],"struct":["OptionalMut","OptionalRef","SingletonMut","SingletonRef","StreamMut","StreamRef"]};

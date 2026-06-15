@@ -2103,10 +2103,10 @@
 <a href=#2103 id=2103 data-nosnippet>2103</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::builder::{CycleId, ExternalPortId};
 <a href=#2104 id=2104 data-nosnippet>2104</a>        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 <a href=#2105 id=2105 data-nosnippet>2105</a>        </span><span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::deploy_provider::{Deploy, Node, RegisterPort};
-<a href=#2106 id=2106 data-nosnippet>2106</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::location::dynamic::{ClusterConsistency, LocationId};
-<a href=#2107 id=2107 data-nosnippet>2107</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::location::{LocationKey, NetworkHint};
-<a href=#2108 id=2108 data-nosnippet>2108</a>        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-<a href=#2109 id=2109 data-nosnippet>2109</a>        </span><span class="kw">pub use </span><span class="kw">crate</span>::__staged::singleton_ref::singleton_ref_ident;
+<a href=#2106 id=2106 data-nosnippet>2106</a>        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+<a href=#2107 id=2107 data-nosnippet>2107</a>        </span><span class="kw">pub use </span><span class="kw">crate</span>::__staged::handoff_ref::handoff_ref_ident;
+<a href=#2108 id=2108 data-nosnippet>2108</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::location::dynamic::{ClusterConsistency, LocationId};
+<a href=#2109 id=2109 data-nosnippet>2109</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::location::{LocationKey, NetworkHint};
 <a href=#2110 id=2110 data-nosnippet>2110</a>        <span class="kw">pub mod </span>backtrace {
 <a href=#2111 id=2111 data-nosnippet>2111</a>            <span class="doccomment">//! Platform-independent interface for collecting backtraces, used in the Hydro IR to
 <a href=#2112 id=2112 data-nosnippet>2112</a>            //! trace the origin of each node.
@@ -2739,92 +2739,191 @@
 <a href=#2739 id=2739 data-nosnippet>2739</a>    #[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"build"</span>)))]
 <a href=#2740 id=2740 data-nosnippet>2740</a>    </span><span class="kw">pub const </span>DFIR_IDENT: <span class="kw-2">&amp;</span>str = <span class="string">"flow"</span>;
 <a href=#2741 id=2741 data-nosnippet>2741</a>}
-<a href=#2742 id=2742 data-nosnippet>2742</a><span class="kw">pub mod </span>singleton_ref {
-<a href=#2743 id=2743 data-nosnippet>2743</a>    <span class="doccomment">//! Singleton reference handle for capturing singletons in `q!()` closures.
-<a href=#2744 id=2744 data-nosnippet>2744</a>    </span><span class="kw">pub use </span>std::cell::RefCell;
-<a href=#2745 id=2745 data-nosnippet>2745</a>    <span class="kw">pub use </span>std::marker::PhantomData;
-<a href=#2746 id=2746 data-nosnippet>2746</a>    <span class="kw">pub use </span>std::rc::Rc;
-<a href=#2747 id=2747 data-nosnippet>2747</a>    <span class="kw">pub use </span>proc_macro2::Span;
-<a href=#2748 id=2748 data-nosnippet>2748</a>    <span class="kw">pub use </span>quote::quote;
-<a href=#2749 id=2749 data-nosnippet>2749</a>    <span class="kw">pub use </span>stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
-<a href=#2750 id=2750 data-nosnippet>2750</a>    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::ir::{HydroNode, SharedNode};
-<a href=#2751 id=2751 data-nosnippet>2751</a>    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::location::Location;
-<a href=#2752 id=2752 data-nosnippet>2752</a>    <span class="kw">pub use </span><span class="kw">crate</span>::singleton_ref::SingletonRef;
-<a href=#2753 id=2753 data-nosnippet>2753</a>    <span class="kw">pub use </span><span class="kw">crate</span>::singleton_ref::SingletonMut;
-<a href=#2754 id=2754 data-nosnippet>2754</a>
-<a href=#2755 id=2755 data-nosnippet>2755</a>
-<a href=#2756 id=2756 data-nosnippet>2756</a>
-<a href=#2757 id=2757 data-nosnippet>2757</a>    <span class="macro">thread_local!</span> {
-<a href=#2758 id=2758 data-nosnippet>2758</a>        <span class="kw">static </span>SINGLETON_REFS: RefCell&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;(HydroNode, bool)&gt;&gt;&gt; = <span class="kw">const </span>{
-<a href=#2759 id=2759 data-nosnippet>2759</a>            RefCell::new(<span class="prelude-val">None</span>)
-<a href=#2760 id=2760 data-nosnippet>2760</a>        };
-<a href=#2761 id=2761 data-nosnippet>2761</a>    }
-<a href=#2762 id=2762 data-nosnippet>2762</a>    <span class="doccomment">/// Returns the canonical ident for a singleton ref at the given index within a closure.
-<a href=#2763 id=2763 data-nosnippet>2763</a>    </span><span class="kw">pub fn </span>singleton_ref_ident(index: usize) -&gt; syn::Ident {
-<a href=#2764 id=2764 data-nosnippet>2764</a>        syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_singleton_ref_{}"</span>, index), Span::call_site())
-<a href=#2765 id=2765 data-nosnippet>2765</a>    }
-<a href=#2766 id=2766 data-nosnippet>2766</a>    <span class="kw">pub use </span><span class="kw">crate</span>::singleton_ref::with_singleton_capture;
-<a href=#2767 id=2767 data-nosnippet>2767</a>
-<a href=#2768 id=2768 data-nosnippet>2768</a>
-<a href=#2769 id=2769 data-nosnippet>2769</a>
-<a href=#2770 id=2770 data-nosnippet>2770</a>
-<a href=#2771 id=2771 data-nosnippet>2771</a>}
-<a href=#2772 id=2772 data-nosnippet>2772</a><span class="kw">pub mod </span>manual_expr {
-<a href=#2773 id=2773 data-nosnippet>2773</a>    <span class="kw">pub use </span>std::marker::PhantomData;
-<a href=#2774 id=2774 data-nosnippet>2774</a>    <span class="kw">pub use </span>quote::quote;
-<a href=#2775 id=2775 data-nosnippet>2775</a>    <span class="kw">pub use </span>stageleft::QuotedWithContextWithProps;
-<a href=#2776 id=2776 data-nosnippet>2776</a>    <span class="kw">pub use </span>stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
-<a href=#2777 id=2777 data-nosnippet>2777</a>    <span class="doccomment">/// Utility for wrapping a quoted expression with a custom transformation, such as explicitly
-<a href=#2778 id=2778 data-nosnippet>2778</a>    /// splicing it with a type hint.
-<a href=#2779 id=2779 data-nosnippet>2779</a>    </span><span class="kw">pub struct </span>ManualExpr&lt;T, F&gt; {
-<a href=#2780 id=2780 data-nosnippet>2780</a>        <span class="kw">pub </span>fun: F,
-<a href=#2781 id=2781 data-nosnippet>2781</a>        <span class="kw">pub </span>_phantom: PhantomData&lt;T&gt;,
-<a href=#2782 id=2782 data-nosnippet>2782</a>    }
-<a href=#2783 id=2783 data-nosnippet>2783</a>
-<a href=#2784 id=2784 data-nosnippet>2784</a>
-<a href=#2785 id=2785 data-nosnippet>2785</a>
-<a href=#2786 id=2786 data-nosnippet>2786</a>
-<a href=#2787 id=2787 data-nosnippet>2787</a>
-<a href=#2788 id=2788 data-nosnippet>2788</a>}
-<a href=#2789 id=2789 data-nosnippet>2789</a>
-<a href=#2790 id=2790 data-nosnippet>2790</a><span class="attr">#[cfg_attr(
-<a href=#2791 id=2791 data-nosnippet>2791</a>    feature = <span class="string">"stageleft_macro_entrypoint"</span>,
-<a href=#2792 id=2792 data-nosnippet>2792</a>    expect(missing_docs, reason = <span class="string">"staging internals"</span>)
-<a href=#2793 id=2793 data-nosnippet>2793</a>)]
-<a href=#2794 id=2794 data-nosnippet>2794</a></span><span class="kw">pub mod </span>staging_util {
-<a href=#2795 id=2795 data-nosnippet>2795</a>    <span class="kw">pub use </span>std::marker::PhantomData;
-<a href=#2796 id=2796 data-nosnippet>2796</a>    <span class="kw">pub use </span>proc_macro2::{Span, TokenStream};
-<a href=#2797 id=2797 data-nosnippet>2797</a>    <span class="kw">pub use </span>quote::quote;
-<a href=#2798 id=2798 data-nosnippet>2798</a>    <span class="kw">pub use </span><span class="kw">crate</span>::staging_util::Invariant;
-<a href=#2799 id=2799 data-nosnippet>2799</a>    <span class="kw">pub use </span><span class="kw">crate</span>::staging_util::get_this_crate;
-<a href=#2800 id=2800 data-nosnippet>2800</a>}
-<a href=#2801 id=2801 data-nosnippet>2801</a><span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
-<a href=#2802 id=2802 data-nosnippet>2802</a>#[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"deploy"</span>)))]
-<a href=#2803 id=2803 data-nosnippet>2803</a></span><span class="kw">pub mod </span>test_util {
-<a href=#2804 id=2804 data-nosnippet>2804</a>    <span class="doccomment">//! Various utilities for testing short Hydro programs, especially in doctests.
-<a href=#2805 id=2805 data-nosnippet>2805</a>    </span><span class="kw">pub use </span>std::future::Future;
-<a href=#2806 id=2806 data-nosnippet>2806</a>    <span class="kw">pub use </span>std::panic::{AssertUnwindSafe, catch_unwind};
-<a href=#2807 id=2807 data-nosnippet>2807</a>    <span class="kw">pub use </span>std::pin::Pin;
-<a href=#2808 id=2808 data-nosnippet>2808</a>    <span class="kw">pub use </span>serde::Serialize;
-<a href=#2809 id=2809 data-nosnippet>2809</a>    <span class="kw">pub use </span>serde::de::DeserializeOwned;
-<a href=#2810 id=2810 data-nosnippet>2810</a>    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::builder::FlowBuilder;
-<a href=#2811 id=2811 data-nosnippet>2811</a>    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::live_collections::boundedness::{Boundedness, Unbounded};
-<a href=#2812 id=2812 data-nosnippet>2812</a>    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::live_collections::stream::{Ordering, Retries, Stream};
-<a href=#2813 id=2813 data-nosnippet>2813</a>    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::location::Process;
-<a href=#2814 id=2814 data-nosnippet>2814</a>    <span class="kw">pub use </span><span class="kw">crate</span>::test_util::multi_location_test;
-<a href=#2815 id=2815 data-nosnippet>2815</a>    <span class="kw">pub use </span><span class="kw">crate</span>::test_util::stream_transform_test;
-<a href=#2816 id=2816 data-nosnippet>2816</a>    <span class="kw">pub use </span><span class="kw">crate</span>::test_util::assert_panics_with_message;
-<a href=#2817 id=2817 data-nosnippet>2817</a>}
-<a href=#2818 id=2818 data-nosnippet>2818</a>
-<a href=#2819 id=2819 data-nosnippet>2819</a><span class="attr">#[cfg(all(test, feature = <span class="string">"trybuild"</span>))]
-<a href=#2820 id=2820 data-nosnippet>2820</a></span><span class="kw">pub mod </span>test_init {
-<a href=#2821 id=2821 data-nosnippet>2821</a>
-<a href=#2822 id=2822 data-nosnippet>2822</a>}
-<a href=#2823 id=2823 data-nosnippet>2823</a>
-<a href=#2824 id=2824 data-nosnippet>2824</a><span class="kw">pub use </span><span class="kw">crate</span>::setup;
-<a href=#2825 id=2825 data-nosnippet>2825</a><span class="kw">pub use </span><span class="kw">crate</span>::__nondet__;
-<a href=#2826 id=2826 data-nosnippet>2826</a><span class="kw">pub use </span><span class="kw">crate</span>::__sliced_parse_uses__;
-<a href=#2827 id=2827 data-nosnippet>2827</a><span class="kw">pub use </span><span class="kw">crate</span>::__sliced__;
-<a href=#2828 id=2828 data-nosnippet>2828</a><span class="kw">pub use </span><span class="kw">crate</span>::__manual_proof__;
-<a href=#2829 id=2829 data-nosnippet>2829</a><span class="kw">pub use </span><span class="kw">crate</span>::newtype_counter;
+<a href=#2742 id=2742 data-nosnippet>2742</a><span class="kw">pub mod </span>handoff_ref {
+<a href=#2743 id=2743 data-nosnippet>2743</a>    <span class="doccomment">//! Reference handles for capturing singletons, optionals, and streams in `q!()` closures.
+<a href=#2744 id=2744 data-nosnippet>2744</a>    //!
+<a href=#2745 id=2745 data-nosnippet>2745</a>    //! Each handle type wraps a `&amp;RefCell&lt;HydroNode&gt;` and, when captured inside a `q!()` closure,
+<a href=#2746 id=2746 data-nosnippet>2746</a>    //! registers itself with the current capture scope. At codegen time, the IR node is lowered
+<a href=#2747 id=2747 data-nosnippet>2747</a>    //! to the corresponding DFIR pseudo-operator (`singleton()`, `optional()`, or `handoff()`),
+<a href=#2748 id=2748 data-nosnippet>2748</a>    //! and the reference resolves to the appropriate borrow type.
+<a href=#2749 id=2749 data-nosnippet>2749</a>    </span><span class="kw">pub use </span>std::cell::RefCell;
+<a href=#2750 id=2750 data-nosnippet>2750</a>    <span class="kw">pub use </span>std::marker::PhantomData;
+<a href=#2751 id=2751 data-nosnippet>2751</a>    <span class="kw">pub use </span>std::rc::Rc;
+<a href=#2752 id=2752 data-nosnippet>2752</a>    <span class="kw">pub use </span>proc_macro2::Span;
+<a href=#2753 id=2753 data-nosnippet>2753</a>    <span class="kw">pub use </span>quote::quote;
+<a href=#2754 id=2754 data-nosnippet>2754</a>    <span class="kw">pub use </span>stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
+<a href=#2755 id=2755 data-nosnippet>2755</a>    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::ir::{HydroNode, SharedNode};
+<a href=#2756 id=2756 data-nosnippet>2756</a>    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::location::Location;
+<a href=#2757 id=2757 data-nosnippet>2757</a>    <span class="kw">pub use </span><span class="kw">crate</span>::handoff_ref::HandoffRefKind;
+<a href=#2758 id=2758 data-nosnippet>2758</a>    <span class="macro">thread_local!</span> {
+<a href=#2759 id=2759 data-nosnippet>2759</a>        <span class="kw">static </span>CAPTURED_REFS: RefCell&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;(HydroNode, bool)&gt;&gt;&gt; = <span class="kw">const </span>{
+<a href=#2760 id=2760 data-nosnippet>2760</a>            RefCell::new(<span class="prelude-val">None</span>)
+<a href=#2761 id=2761 data-nosnippet>2761</a>        };
+<a href=#2762 id=2762 data-nosnippet>2762</a>    }
+<a href=#2763 id=2763 data-nosnippet>2763</a>    <span class="doccomment">/// Returns the canonical ident for a captured ref at the given index within a closure.
+<a href=#2764 id=2764 data-nosnippet>2764</a>    </span><span class="kw">pub fn </span>handoff_ref_ident(index: usize) -&gt; syn::Ident {
+<a href=#2765 id=2765 data-nosnippet>2765</a>        syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_singleton_ref_{}"</span>, index), Span::call_site())
+<a href=#2766 id=2766 data-nosnippet>2766</a>    }
+<a href=#2767 id=2767 data-nosnippet>2767</a>    <span class="kw">pub use </span><span class="kw">crate</span>::handoff_ref::with_ref_capture;
+<a href=#2768 id=2768 data-nosnippet>2768</a>    <span class="doccomment">/// Shared registration logic: wraps the IR node in `HydroNode::Reference` if needed,
+<a href=#2769 id=2769 data-nosnippet>2769</a>    /// pushes it to the capture list, and returns the ident to use in the closure body.
+<a href=#2770 id=2770 data-nosnippet>2770</a>    </span><span class="kw">pub fn </span>register_handoff_ref(
+<a href=#2771 id=2771 data-nosnippet>2771</a>        ir_node: <span class="kw-2">&amp;</span>RefCell&lt;HydroNode&gt;,
+<a href=#2772 id=2772 data-nosnippet>2772</a>        is_mut: bool,
+<a href=#2773 id=2773 data-nosnippet>2773</a>        kind: HandoffRefKind,
+<a href=#2774 id=2774 data-nosnippet>2774</a>    ) -&gt; syn::Ident {
+<a href=#2775 id=2775 data-nosnippet>2775</a>        CAPTURED_REFS
+<a href=#2776 id=2776 data-nosnippet>2776</a>            .with(|cell| {
+<a href=#2777 id=2777 data-nosnippet>2777</a>                <span class="kw">let </span><span class="kw-2">mut </span>guard = cell.borrow_mut();
+<a href=#2778 id=2778 data-nosnippet>2778</a>                <span class="kw">let </span>refs = guard
+<a href=#2779 id=2779 data-nosnippet>2779</a>                    .as_mut()
+<a href=#2780 id=2780 data-nosnippet>2780</a>                    .expect(
+<a href=#2781 id=2781 data-nosnippet>2781</a>                        <span class="string">"HandoffRef used inside q!() but no reference capture scope is active. \
+<a href=#2782 id=2782 data-nosnippet>2782</a>             This is a bug — reference capture should be set up by the operator that uses q!()."</span>,
+<a href=#2783 id=2783 data-nosnippet>2783</a>                    );
+<a href=#2784 id=2784 data-nosnippet>2784</a>                <span class="kw">let </span>index = refs.len();
+<a href=#2785 id=2785 data-nosnippet>2785</a>                <span class="kw">let </span>ident = handoff_ref_ident(index);
+<a href=#2786 id=2786 data-nosnippet>2786</a>                <span class="kw">let </span>metadata = ir_node.borrow().metadata().clone();
+<a href=#2787 id=2787 data-nosnippet>2787</a>                <span class="kw">if </span>!<span class="macro">matches!</span>(<span class="kw-2">&amp;*</span>ir_node.borrow(), HydroNode::Reference { .. }) {
+<a href=#2788 id=2788 data-nosnippet>2788</a>                    <span class="kw">let </span>orig = ir_node.replace(HydroNode::Placeholder);
+<a href=#2789 id=2789 data-nosnippet>2789</a>                    <span class="kw-2">*</span>ir_node.borrow_mut() = HydroNode::Reference {
+<a href=#2790 id=2790 data-nosnippet>2790</a>                        inner: SharedNode(Rc::new(RefCell::new(orig))),
+<a href=#2791 id=2791 data-nosnippet>2791</a>                        kind,
+<a href=#2792 id=2792 data-nosnippet>2792</a>                        metadata: metadata.clone(),
+<a href=#2793 id=2793 data-nosnippet>2793</a>                    };
+<a href=#2794 id=2794 data-nosnippet>2794</a>                }
+<a href=#2795 id=2795 data-nosnippet>2795</a>                <span class="kw">let </span>borrow: std::cell::Ref&lt;<span class="lifetime">'_</span>, HydroNode&gt; = ir_node.borrow();
+<a href=#2796 id=2796 data-nosnippet>2796</a>                <span class="kw">let </span>HydroNode::Reference { inner, .. } = <span class="kw-2">&amp;*</span>borrow <span class="kw">else </span>{
+<a href=#2797 id=2797 data-nosnippet>2797</a>                    <span class="macro">unreachable!</span>()
+<a href=#2798 id=2798 data-nosnippet>2798</a>                };
+<a href=#2799 id=2799 data-nosnippet>2799</a>                refs.push((
+<a href=#2800 id=2800 data-nosnippet>2800</a>                    HydroNode::Reference {
+<a href=#2801 id=2801 data-nosnippet>2801</a>                        inner: SharedNode(Rc::clone(<span class="kw-2">&amp;</span>inner.<span class="number">0</span>)),
+<a href=#2802 id=2802 data-nosnippet>2802</a>                        kind,
+<a href=#2803 id=2803 data-nosnippet>2803</a>                        metadata,
+<a href=#2804 id=2804 data-nosnippet>2804</a>                    },
+<a href=#2805 id=2805 data-nosnippet>2805</a>                    is_mut,
+<a href=#2806 id=2806 data-nosnippet>2806</a>                ));
+<a href=#2807 id=2807 data-nosnippet>2807</a>                ident
+<a href=#2808 id=2808 data-nosnippet>2808</a>            })
+<a href=#2809 id=2809 data-nosnippet>2809</a>    }
+<a href=#2810 id=2810 data-nosnippet>2810</a>    <span class="doccomment">/// Macro to define a handoff reference struct with all necessary trait impls.
+<a href=#2811 id=2811 data-nosnippet>2811</a>    </span><span class="macro">macro_rules!</span> define_handoff_ref {
+<a href=#2812 id=2812 data-nosnippet>2812</a>        ($(<span class="attr">#[<span class="macro-nonterminal">$meta</span>:meta]</span>)* <span class="macro-nonterminal">$name</span>:ident, <span class="macro-nonterminal">$is_mut</span>:expr, <span class="macro-nonterminal">$kind</span>:expr, <span class="macro-nonterminal">$output</span>:ty) =&gt; {
+<a href=#2813 id=2813 data-nosnippet>2813</a>            $(<span class="attr">#[<span class="macro-nonterminal">$meta</span>]</span>)* <span class="kw">pub struct </span><span class="macro-nonterminal">$name </span>&lt;<span class="lifetime">'a</span>, <span class="lifetime">'slf</span>, T, L &gt; { <span class="kw">pub </span>(<span class="kw">crate</span>) ir_node : <span class="kw-2">&amp;</span><span class="lifetime">'slf
+<a href=#2814 id=2814 data-nosnippet>2814</a>            </span>RefCell &lt; HydroNode &gt;, _phantom : PhantomData &lt; (<span class="kw-2">&amp;</span><span class="lifetime">'a </span>T, L) &gt;, } <span class="kw">impl </span>&lt;<span class="lifetime">'slf</span>,
+<a href=#2815 id=2815 data-nosnippet>2815</a>            T, L &gt; <span class="macro-nonterminal">$name </span>&lt;<span class="lifetime">'_</span>, <span class="lifetime">'slf</span>, T, L &gt; { <span class="attr">#[doc =
+<a href=#2816 id=2816 data-nosnippet>2816</a>            <span class="string">" Creates a new reference handle from an IR node cell."</span>] </span><span class="kw">pub </span>(<span class="kw">crate</span>) <span class="kw">fn
+<a href=#2817 id=2817 data-nosnippet>2817</a>            </span>new(ir_node : <span class="kw-2">&amp;</span><span class="lifetime">'slf </span>RefCell &lt; HydroNode &gt;) -&gt; <span class="self">Self </span>{ <span class="self">Self </span>{ ir_node, _phantom
+<a href=#2818 id=2818 data-nosnippet>2818</a>            : PhantomData, } } } <span class="kw">impl </span>&lt; T, L &gt; Copy <span class="kw">for </span><span class="macro-nonterminal">$name </span>&lt;<span class="lifetime">'_</span>, <span class="lifetime">'_</span>, T, L &gt; {} <span class="kw">impl </span>&lt;
+<a href=#2819 id=2819 data-nosnippet>2819</a>            T, L &gt; Clone <span class="kw">for </span><span class="macro-nonterminal">$name </span>&lt;<span class="lifetime">'_</span>, <span class="lifetime">'_</span>, T, L &gt; { <span class="kw">fn </span>clone(&amp; <span class="self">self</span>) -&gt; <span class="self">Self </span>{ * <span class="self">self </span>}
+<a href=#2820 id=2820 data-nosnippet>2820</a>            } <span class="kw">impl </span>&lt;<span class="lifetime">'a</span>, <span class="lifetime">'slf</span>, T : <span class="lifetime">'a</span>, L &gt; FreeVariableWithContextWithProps &lt; L, () &gt; <span class="kw">for
+<a href=#2821 id=2821 data-nosnippet>2821</a>            </span><span class="macro-nonterminal">$name </span>&lt;<span class="lifetime">'a</span>, <span class="lifetime">'slf</span>, T, L &gt; <span class="kw">where </span>L : Location &lt;<span class="lifetime">'a </span>&gt;, { <span class="kw">type </span>O = <span class="macro-nonterminal">$output</span>; <span class="kw">fn
+<a href=#2822 id=2822 data-nosnippet>2822</a>            </span>to_tokens(<span class="self">self</span>, _ctx : &amp; L) -&gt; (QuoteTokens, ()) { <span class="kw">let </span>ident =
+<a href=#2823 id=2823 data-nosnippet>2823</a>            register_handoff_ref(<span class="self">self</span>.ir_node, <span class="macro-nonterminal">$is_mut</span>, <span class="macro-nonterminal">$kind</span>); (QuoteTokens { prelude :
+<a href=#2824 id=2824 data-nosnippet>2824</a>            <span class="prelude-val">None</span>, expr : <span class="prelude-val">Some</span>(<span class="macro">quote!</span>(# ident)), }, (),) } }
+<a href=#2825 id=2825 data-nosnippet>2825</a>        };
+<a href=#2826 id=2826 data-nosnippet>2826</a>    }
+<a href=#2827 id=2827 data-nosnippet>2827</a>    <span class="macro">define_handoff_ref!</span>(
+<a href=#2828 id=2828 data-nosnippet>2828</a>        <span class="attr">#[doc =
+<a href=#2829 id=2829 data-nosnippet>2829</a>        <span class="string">" A shared reference handle to a singleton, resolves to `&amp;T` at runtime."</span>] #[doc
+<a href=#2830 id=2830 data-nosnippet>2830</a>        = <span class="string">""</span>] #[doc =
+<a href=#2831 id=2831 data-nosnippet>2831</a>        <span class="string">" Created via [`Singleton::by_ref()`](crate::live_collections::Singleton::by_ref)."</span>]
+<a href=#2832 id=2832 data-nosnippet>2832</a>        </span>SingletonRef, <span class="bool-val">false</span>, HandoffRefKind::Singleton, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>T
+<a href=#2833 id=2833 data-nosnippet>2833</a>    );
+<a href=#2834 id=2834 data-nosnippet>2834</a>    <span class="macro">define_handoff_ref!</span>(
+<a href=#2835 id=2835 data-nosnippet>2835</a>        <span class="attr">#[doc =
+<a href=#2836 id=2836 data-nosnippet>2836</a>        <span class="string">" A mutable reference handle to a singleton, resolves to `&amp;mut T` at runtime."</span>]
+<a href=#2837 id=2837 data-nosnippet>2837</a>        #[doc = <span class="string">""</span>] #[doc =
+<a href=#2838 id=2838 data-nosnippet>2838</a>        <span class="string">" Created via [`Singleton::by_mut()`](crate::live_collections::Singleton::by_mut)."</span>]
+<a href=#2839 id=2839 data-nosnippet>2839</a>        </span>SingletonMut, <span class="bool-val">true</span>, HandoffRefKind::Singleton, <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>T
+<a href=#2840 id=2840 data-nosnippet>2840</a>    );
+<a href=#2841 id=2841 data-nosnippet>2841</a>    <span class="macro">define_handoff_ref!</span>(
+<a href=#2842 id=2842 data-nosnippet>2842</a>        <span class="attr">#[doc =
+<a href=#2843 id=2843 data-nosnippet>2843</a>        <span class="string">" A shared reference handle to an optional, resolves to `&amp;Option&lt;T&gt;` at runtime."</span>]
+<a href=#2844 id=2844 data-nosnippet>2844</a>        #[doc = <span class="string">""</span>] #[doc =
+<a href=#2845 id=2845 data-nosnippet>2845</a>        <span class="string">" Created via [`Optional::by_ref()`](crate::live_collections::Optional::by_ref)."</span>]
+<a href=#2846 id=2846 data-nosnippet>2846</a>        </span>OptionalRef, <span class="bool-val">false</span>, HandoffRefKind::Optional, <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="prelude-ty">Option </span>&lt; T &gt;
+<a href=#2847 id=2847 data-nosnippet>2847</a>    );
+<a href=#2848 id=2848 data-nosnippet>2848</a>    <span class="macro">define_handoff_ref!</span>(
+<a href=#2849 id=2849 data-nosnippet>2849</a>        <span class="attr">#[doc =
+<a href=#2850 id=2850 data-nosnippet>2850</a>        <span class="string">" A mutable reference handle to an optional, resolves to `&amp;mut Option&lt;T&gt;` at runtime."</span>]
+<a href=#2851 id=2851 data-nosnippet>2851</a>        #[doc = <span class="string">""</span>] #[doc =
+<a href=#2852 id=2852 data-nosnippet>2852</a>        <span class="string">" Created via [`Optional::by_mut()`](crate::live_collections::Optional::by_mut)."</span>]
+<a href=#2853 id=2853 data-nosnippet>2853</a>        </span>OptionalMut, <span class="bool-val">true</span>, HandoffRefKind::Optional, <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span><span class="prelude-ty">Option </span>&lt; T &gt;
+<a href=#2854 id=2854 data-nosnippet>2854</a>    );
+<a href=#2855 id=2855 data-nosnippet>2855</a>    <span class="macro">define_handoff_ref!</span>(
+<a href=#2856 id=2856 data-nosnippet>2856</a>        <span class="attr">#[doc =
+<a href=#2857 id=2857 data-nosnippet>2857</a>        <span class="string">" A shared reference handle to a stream's handoff buffer, resolves to `&amp;Vec&lt;T&gt;` at runtime."</span>]
+<a href=#2858 id=2858 data-nosnippet>2858</a>        #[doc = <span class="string">""</span>] #[doc =
+<a href=#2859 id=2859 data-nosnippet>2859</a>        <span class="string">" Created via [`Stream::by_ref()`](crate::live_collections::Stream::by_ref)."</span>]
+<a href=#2860 id=2860 data-nosnippet>2860</a>        </span>StreamRef, <span class="bool-val">false</span>, HandoffRefKind::Vec, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec &lt; T &gt;
+<a href=#2861 id=2861 data-nosnippet>2861</a>    );
+<a href=#2862 id=2862 data-nosnippet>2862</a>    <span class="macro">define_handoff_ref!</span>(
+<a href=#2863 id=2863 data-nosnippet>2863</a>        <span class="attr">#[doc =
+<a href=#2864 id=2864 data-nosnippet>2864</a>        <span class="string">" A mutable reference handle to a stream's handoff buffer, resolves to `&amp;mut Vec&lt;T&gt;` at runtime."</span>]
+<a href=#2865 id=2865 data-nosnippet>2865</a>        #[doc = <span class="string">""</span>] #[doc =
+<a href=#2866 id=2866 data-nosnippet>2866</a>        <span class="string">" Created via [`Stream::by_mut()`](crate::live_collections::Stream::by_mut)."</span>]
+<a href=#2867 id=2867 data-nosnippet>2867</a>        </span>StreamMut, <span class="bool-val">true</span>, HandoffRefKind::Vec, <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>Vec &lt; T &gt;
+<a href=#2868 id=2868 data-nosnippet>2868</a>    );
+<a href=#2869 id=2869 data-nosnippet>2869</a>
+<a href=#2870 id=2870 data-nosnippet>2870</a>}
+<a href=#2871 id=2871 data-nosnippet>2871</a><span class="kw">pub mod </span>manual_expr {
+<a href=#2872 id=2872 data-nosnippet>2872</a>    <span class="kw">pub use </span>std::marker::PhantomData;
+<a href=#2873 id=2873 data-nosnippet>2873</a>    <span class="kw">pub use </span>quote::quote;
+<a href=#2874 id=2874 data-nosnippet>2874</a>    <span class="kw">pub use </span>stageleft::QuotedWithContextWithProps;
+<a href=#2875 id=2875 data-nosnippet>2875</a>    <span class="kw">pub use </span>stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
+<a href=#2876 id=2876 data-nosnippet>2876</a>    <span class="doccomment">/// Utility for wrapping a quoted expression with a custom transformation, such as explicitly
+<a href=#2877 id=2877 data-nosnippet>2877</a>    /// splicing it with a type hint.
+<a href=#2878 id=2878 data-nosnippet>2878</a>    </span><span class="kw">pub struct </span>ManualExpr&lt;T, F&gt; {
+<a href=#2879 id=2879 data-nosnippet>2879</a>        <span class="kw">pub </span>fun: F,
+<a href=#2880 id=2880 data-nosnippet>2880</a>        <span class="kw">pub </span>_phantom: PhantomData&lt;T&gt;,
+<a href=#2881 id=2881 data-nosnippet>2881</a>    }
+<a href=#2882 id=2882 data-nosnippet>2882</a>
+<a href=#2883 id=2883 data-nosnippet>2883</a>
+<a href=#2884 id=2884 data-nosnippet>2884</a>
+<a href=#2885 id=2885 data-nosnippet>2885</a>
+<a href=#2886 id=2886 data-nosnippet>2886</a>
+<a href=#2887 id=2887 data-nosnippet>2887</a>}
+<a href=#2888 id=2888 data-nosnippet>2888</a>
+<a href=#2889 id=2889 data-nosnippet>2889</a><span class="attr">#[cfg_attr(
+<a href=#2890 id=2890 data-nosnippet>2890</a>    feature = <span class="string">"stageleft_macro_entrypoint"</span>,
+<a href=#2891 id=2891 data-nosnippet>2891</a>    expect(missing_docs, reason = <span class="string">"staging internals"</span>)
+<a href=#2892 id=2892 data-nosnippet>2892</a>)]
+<a href=#2893 id=2893 data-nosnippet>2893</a></span><span class="kw">pub mod </span>staging_util {
+<a href=#2894 id=2894 data-nosnippet>2894</a>    <span class="kw">pub use </span>std::marker::PhantomData;
+<a href=#2895 id=2895 data-nosnippet>2895</a>    <span class="kw">pub use </span>proc_macro2::{Span, TokenStream};
+<a href=#2896 id=2896 data-nosnippet>2896</a>    <span class="kw">pub use </span>quote::quote;
+<a href=#2897 id=2897 data-nosnippet>2897</a>    <span class="kw">pub use </span><span class="kw">crate</span>::staging_util::Invariant;
+<a href=#2898 id=2898 data-nosnippet>2898</a>    <span class="kw">pub use </span><span class="kw">crate</span>::staging_util::get_this_crate;
+<a href=#2899 id=2899 data-nosnippet>2899</a>}
+<a href=#2900 id=2900 data-nosnippet>2900</a><span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
+<a href=#2901 id=2901 data-nosnippet>2901</a>#[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"deploy"</span>)))]
+<a href=#2902 id=2902 data-nosnippet>2902</a></span><span class="kw">pub mod </span>test_util {
+<a href=#2903 id=2903 data-nosnippet>2903</a>    <span class="doccomment">//! Various utilities for testing short Hydro programs, especially in doctests.
+<a href=#2904 id=2904 data-nosnippet>2904</a>    </span><span class="kw">pub use </span>std::future::Future;
+<a href=#2905 id=2905 data-nosnippet>2905</a>    <span class="kw">pub use </span>std::panic::{AssertUnwindSafe, catch_unwind};
+<a href=#2906 id=2906 data-nosnippet>2906</a>    <span class="kw">pub use </span>std::pin::Pin;
+<a href=#2907 id=2907 data-nosnippet>2907</a>    <span class="kw">pub use </span>serde::Serialize;
+<a href=#2908 id=2908 data-nosnippet>2908</a>    <span class="kw">pub use </span>serde::de::DeserializeOwned;
+<a href=#2909 id=2909 data-nosnippet>2909</a>    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::builder::FlowBuilder;
+<a href=#2910 id=2910 data-nosnippet>2910</a>    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::live_collections::boundedness::{Boundedness, Unbounded};
+<a href=#2911 id=2911 data-nosnippet>2911</a>    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::live_collections::stream::{Ordering, Retries, Stream};
+<a href=#2912 id=2912 data-nosnippet>2912</a>    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::location::Process;
+<a href=#2913 id=2913 data-nosnippet>2913</a>    <span class="kw">pub use </span><span class="kw">crate</span>::test_util::multi_location_test;
+<a href=#2914 id=2914 data-nosnippet>2914</a>    <span class="kw">pub use </span><span class="kw">crate</span>::test_util::stream_transform_test;
+<a href=#2915 id=2915 data-nosnippet>2915</a>    <span class="kw">pub use </span><span class="kw">crate</span>::test_util::assert_panics_with_message;
+<a href=#2916 id=2916 data-nosnippet>2916</a>}
+<a href=#2917 id=2917 data-nosnippet>2917</a>
+<a href=#2918 id=2918 data-nosnippet>2918</a><span class="attr">#[cfg(all(test, feature = <span class="string">"trybuild"</span>))]
+<a href=#2919 id=2919 data-nosnippet>2919</a></span><span class="kw">pub mod </span>test_init {
+<a href=#2920 id=2920 data-nosnippet>2920</a>
+<a href=#2921 id=2921 data-nosnippet>2921</a>}
+<a href=#2922 id=2922 data-nosnippet>2922</a>
+<a href=#2923 id=2923 data-nosnippet>2923</a><span class="kw">pub use </span><span class="kw">crate</span>::setup;
+<a href=#2924 id=2924 data-nosnippet>2924</a><span class="kw">pub use </span><span class="kw">crate</span>::__nondet__;
+<a href=#2925 id=2925 data-nosnippet>2925</a><span class="kw">pub use </span><span class="kw">crate</span>::__sliced_parse_uses__;
+<a href=#2926 id=2926 data-nosnippet>2926</a><span class="kw">pub use </span><span class="kw">crate</span>::__sliced__;
+<a href=#2927 id=2927 data-nosnippet>2927</a><span class="kw">pub use </span><span class="kw">crate</span>::__manual_proof__;
+<a href=#2928 id=2928 data-nosnippet>2928</a><span class="kw">pub use </span><span class="kw">crate</span>::newtype_counter;
 </code></pre></div></section></main></body></html>
