@@ -5,9 +5,7 @@ use aws_sdk_sqs::operation::receive_message::ReceiveMessageError;
 use aws_sdk_sqs::types::{DeleteMessageBatchRequestEntry, Message};
 use futures_util::stream::StreamExt as _;
 use hydro_lang::live_collections::boundedness::Boundedness;
-use hydro_lang::live_collections::stream::{
-    AtLeastOnce, ExactlyOnce, NoOrder, Ordering,
-};
+use hydro_lang::live_collections::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Ordering};
 use hydro_lang::location::Location;
 use hydro_lang::prelude::*;
 

@@ -1,9 +1,10 @@
-use aws_config;
-use hydro_lang::location::tick::NoAtomic;
-use hydro_lang::location::{Location, NoTick};
+#[cfg(stageleft_runtime)]
+hydro_lang::setup!();
+
+use hydro_lang::location::Location;
 use hydro_lang::prelude::*;
 
-#[cfg(feature = "aws_sqs")]
+#[cfg(feature = "sqs")]
 pub mod sqs;
 
 #[ctor::ctor]
@@ -27,9 +28,11 @@ fn init_rewrites() {
 }
 
 /// Singleton of the default AWS SDK config.
-pub fn source_sdk_config<'a, Loc>(location: &Loc) -> Singleton<aws_config::SdkConfig, Loc, Bounded>
+pub fn source_sdk_config<'a, Loc>(
+    location: &Loc,
+) -> Singleton<aws_config::SdkConfig, Loc::DropConsistency, Bounded>
 where
-    Loc: Location<'a> + NoTick + NoAtomic,
+    Loc: Location<'a>,
 {
     location
         .singleton(q!(aws_config::load_from_env()))

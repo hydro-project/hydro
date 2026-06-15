@@ -1,20 +1,20 @@
 use std::sync::Arc;
 
 use clap::{ArgAction, Parser};
+use hydro_aws::source_sdk_config;
+use hydro_aws::sqs::{dest_sqs, source_sqs_standard, sqs_client};
 use hydro_deploy::{AwsNetwork, Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::live_collections::stream::{ExactlyOnce, TotalOrder};
 use hydro_lang::location::Location;
 use hydro_lang::nondet::nondet;
 use hydro_lang::viz::config::GraphConfig;
-use hydro_test::aws::source_sdk_config;
-use hydro_test::aws::sqs::{dest_sqs, source_sqs_standard, sqs_client};
 use stageleft::q;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
 // aws sqs send-message --queue-url 'https://sqs.<REGION>.amazonaws.com/<ACCOUNT_ID>/<QUEUE_NAME>' --message-body 'foobar'
-// AWS_PROFILE='<AWS_PROFILE>' cargo run -p hydro_test --example aws_sqs --all-features -- --queue-url 'https://sqs.<REGION>.amazonaws.com/<ACCOUNT_ID>/<QUEUE_NAME>'
+// AWS_PROFILE='<AWS_PROFILE>' cargo run -p hydro_aws --example aws_sqs --all-features -- --queue-url 'https://sqs.<REGION>.amazonaws.com/<ACCOUNT_ID>/<QUEUE_NAME>'
 #[derive(Parser, Debug)]
 struct Args {
     #[clap(flatten)]
@@ -74,9 +74,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let sdk_config = source_sdk_config(&process_send);
         let sqs_client = sqs_client(sdk_config);
-        let input_messages = process_send
-            .source_iter(q!(["hello", "world"].repeat(10).into_iter()))
-            .map(q!(str::to_owned));
+        let input_messages = process_send.source_iter(q!(["hello", "world"]
+            .repeat(10)
+            .into_iter()
+            .map(str::to_owned)));
         dest_sqs(sqs_client, input_messages, &args.queue_url);
     }
 
@@ -84,10 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let built = flow.finalize();
 
     // Generate graph visualizations based on command line arguments
-    built.generate_graph_with_config(&args.graph, None)?;
-
-    // If we're just generating a graph file, exit early
-    if args.graph.should_exit_after_graph_generation() {
+    if built.generate_graph(&args.graph)?.is_some() {
         return Ok(());
     }
 
@@ -96,13 +94,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_default_optimize()
         .with_process(
             &process_send,
-            TrybuildHost::new(create_host(&mut deployment))
-                .features(vec!["aws_sqs".to_owned(), "aws".to_owned()]),
+            TrybuildHost::new(create_host(&mut deployment)).features(vec!["sqs".to_owned()]),
         )
         .with_process(
             &process_recv,
-            TrybuildHost::new(create_host(&mut deployment))
-                .features(vec!["aws_sqs".to_owned(), "aws".to_owned()]),
+            TrybuildHost::new(create_host(&mut deployment)).features(vec!["sqs".to_owned()]),
         )
         .deploy(&mut deployment);
 

@@ -1748,6 +1748,16 @@ dependencies = [
 
 [[package]]
 name = "ctor"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32a2785755761f3ddc1492979ce1e48d2c00d09311c39e4466429188f3dd6501"
+dependencies = [
+ "quote",
+ "syn 2.0.111",
+]
+
+[[package]]
+name = "ctor"
 version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb22e947478ccf9dc44d8922042c677a63fbb88f2cb468521d1145816e5087cb"
@@ -2195,7 +2205,7 @@ dependencies = [
 name = "example_test"
 version = "0.0.1"
 dependencies = [
- "ctor",
+ "ctor 1.0.8",
  "log",
  "regex",
 ]
@@ -2734,6 +2744,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
+name = "hydro_aws"
+version = "0.1.0"
+dependencies = [
+ "aws-config",
+ "aws-sdk-sqs",
+ "clap",
+ "ctor 0.2.9",
+ "futures-util",
+ "hydro_build_utils",
+ "hydro_deploy",
+ "hydro_lang",
+ "stageleft",
+ "stageleft_tool",
+ "tokio",
+]
+
+[[package]]
 name = "hydro_build_utils"
 version = "0.1.1-alpha.0"
 dependencies = [
@@ -2822,7 +2849,7 @@ dependencies = [
  "clap",
  "colored 3.1.1",
  "copy_span",
- "ctor",
+ "ctor 1.0.8",
  "dfir_lang",
  "dfir_rs",
  "futures",
@@ -2881,8 +2908,6 @@ dependencies = [
 name = "hydro_test"
 version = "0.0.0"
 dependencies = [
- "aws-config",
- "aws-sdk-sqs",
  "bytes",
  "clap",
  "colored 3.1.1",
@@ -2890,7 +2915,6 @@ dependencies = [
  "dfir_rs",
  "example_test",
  "futures",
- "futures-util",
  "hydro_build_utils",
  "hydro_deploy",
  "hydro_lang",
@@ -5663,7 +5687,7 @@ version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19d1e313737e051a78f7dd3bc9d0cec17fe9bde4aaae37718016cdf002f97493"
 dependencies = [
- "ctor",
+ "ctor 1.0.8",
  "parking_lot",
  "proc-macro-crate 3.4.0",
  "proc-macro2",
