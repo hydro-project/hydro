@@ -138,11 +138,31 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::push::fold(
-                    &mut #singleton_output_ident,
-                    |#accumulator_ident: &mut _, #item_ident| { #foreach_body },
-                    #output,
-                );
+                let #ident = {
+                    #[inline(always)]
+                    fn __push_fold<'a, Acc, Item, CombFn, Next>(
+                        acc_ref: &'a mut Acc,
+                        comb_fn: CombFn,
+                        next: Next,
+                    ) -> #root::dfir_pipes::push::Accumulate<
+                        #root::dfir_pipes::push::FoldState<&'a mut Acc, CombFn, Acc, Item>,
+                        Next,
+                    >
+                    where
+                        CombFn: ::std::ops::FnMut(&mut Acc, Item),
+                        Next: #root::dfir_pipes::push::Push<&'a mut Acc, ()>,
+                    {
+                        #root::dfir_pipes::push::fold(acc_ref, comb_fn, next)
+                    }
+                    __push_fold(
+                        &mut #singleton_output_ident,
+                        |#accumulator_ident: &mut _, #item_ident| { #foreach_body },
+                        #root::dfir_pipes::push::map(
+                            |__val: &mut _| ::std::clone::Clone::clone(&*__val),
+                            #output,
+                        ),
+                    )
+                };
             }
         };
 
