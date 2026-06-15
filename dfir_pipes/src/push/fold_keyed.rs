@@ -11,20 +11,25 @@ use alloc::vec::Vec;
 
 pin_project! {
     /// Push combinator that folds items by key into a hashmap, then emits all
-    /// (key, value) pairs downstream on flush.
+    /// (key, accumulator) pairs downstream on flush.
+    ///
+    /// Input items are `(K, V)`, accumulated into `HashMap<K, Acc>` via
+    /// `InitFn: FnMut() -> Acc` and `CombFn: FnMut(&mut Acc, V)`, then
+    /// emits `(K, Acc)` downstream.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
-    pub struct FoldKeyed<MapRef, InitFn, CombFn, Next, K, V> {
+    pub struct FoldKeyed<MapRef, InitFn, CombFn, Next, K, V, Acc> {
         #[pin]
         next: Next,
         map: MapRef,
         init_fn: InitFn,
         comb_fn: CombFn,
-        flush_items: Vec<(K, V)>,
+        flush_items: Vec<(K, Acc)>,
         flush_idx: usize,
+        _phantom: core::marker::PhantomData<fn(V)>,
     }
 }
 
-impl<MapRef, InitFn, CombFn, Next, K, V> FoldKeyed<MapRef, InitFn, CombFn, Next, K, V> {
+impl<MapRef, InitFn, CombFn, Next, K, V, Acc> FoldKeyed<MapRef, InitFn, CombFn, Next, K, V, Acc> {
     /// Creates a new `FoldKeyed` push combinator.
     pub const fn new(map: MapRef, init_fn: InitFn, comb_fn: CombFn, next: Next) -> Self {
         Self {
@@ -34,21 +39,22 @@ impl<MapRef, InitFn, CombFn, Next, K, V> FoldKeyed<MapRef, InitFn, CombFn, Next,
             comb_fn,
             flush_items: Vec::new(),
             flush_idx: 0,
+            _phantom: core::marker::PhantomData,
         }
     }
 }
 
-// Impl for `&mut HashMap<K, V, S>` (works with any hasher including FxHashMap).
+// Impl for `&mut HashMap<K, Acc, S>` (works with any hasher including FxHashMap).
 // TODO(mingwei): support arbitrary metadata.
-impl<K, V, S, InitFn, CombFn, Next> Push<(K, V), ()>
-    for FoldKeyed<&mut std::collections::HashMap<K, V, S>, InitFn, CombFn, Next, K, V>
+impl<K, V, Acc, S, InitFn, CombFn, Next> Push<(K, V), ()>
+    for FoldKeyed<&mut std::collections::HashMap<K, Acc, S>, InitFn, CombFn, Next, K, V, Acc>
 where
     K: Eq + Hash + Clone,
-    V: Clone,
+    Acc: Clone,
     S: BuildHasher,
-    InitFn: FnMut() -> V,
-    CombFn: FnMut(&mut V, V),
-    Next: Push<(K, V), ()>,
+    InitFn: FnMut() -> Acc,
+    CombFn: FnMut(&mut Acc, V),
+    Next: Push<(K, Acc), ()>,
 {
     type Ctx<'ctx> = Next::Ctx<'ctx>;
 
@@ -94,6 +100,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use alloc::string::String;
     use alloc::vec;
     use std::collections::HashMap;
     use std::pin::Pin;
@@ -119,6 +126,24 @@ mod tests {
         let mut items = tp.items();
         items.sort();
         assert_eq!(items, vec![(1, 30), (2, 30)]);
+    }
+
+    #[test]
+    fn fold_keyed_different_acc_type() {
+        // Input (K, V) = (i32, &str), Acc = String
+        let mut map: HashMap<i32, String> = HashMap::new();
+        let mut tp = TestPush::no_pend();
+        let mut fk = FoldKeyed::new(
+            &mut map,
+            || String::new(),
+            |acc: &mut String, v: &str| acc.push_str(v),
+            &mut tp,
+        );
+        let mut fk = Pin::new(&mut fk);
+        fk.as_mut().start_send((1, "hello"), ());
+        fk.as_mut().start_send((1, " world"), ());
+        fk.as_mut().poll_finalize(&mut ());
+        assert_eq!(tp.items(), vec![(1, String::from("hello world"))]);
     }
 
     #[test]
