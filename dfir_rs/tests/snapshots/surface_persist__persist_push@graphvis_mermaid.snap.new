@@ -1,5 +1,6 @@
 ---
 source: dfir_rs/tests/surface_persist.rs
+assertion_line: 69
 expression: hf.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
