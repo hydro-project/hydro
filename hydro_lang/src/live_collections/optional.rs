@@ -23,6 +23,7 @@ use crate::location::tick::{Atomic, DeferTick};
 use crate::location::{Location, Tick, TopLevel, check_matching_location};
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::KeyedSingleton;
+use crate::properties::{StreamMapFuncAlgebra, ValidMutCommutativityFor, ValidMutIdempotenceFor};
 
 /// A *nullable* Rust value that can asynchronously change over time.
 ///
@@ -439,14 +440,16 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn flat_map_ordered<U, I, F>(
+    pub fn flat_map_ordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L>,
+        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Stream<U, L, Bounded, TotalOrder, ExactlyOnce>
     where
         B: IsBounded,
         I: IntoIterator<Item = U>,
-        F: Fn(T) -> I + 'a,
+        F: FnMut(T) -> I + 'a,
+        C: ValidMutCommutativityFor<F, T, I, TotalOrder, WAS_MUT>,
+        Idemp: ValidMutIdempotenceFor<F, T, I, ExactlyOnce, WAS_MUT>,
     {
         self.into_stream().flat_map_ordered(f)
     }
@@ -480,14 +483,16 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn flat_map_unordered<U, I, F>(
+    pub fn flat_map_unordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L>,
+        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Stream<U, L, Bounded, NoOrder, ExactlyOnce>
     where
         B: IsBounded,
         I: IntoIterator<Item = U>,
-        F: Fn(T) -> I + 'a,
+        F: FnMut(T) -> I + 'a,
+        C: ValidMutCommutativityFor<F, T, I, TotalOrder, WAS_MUT>,
+        Idemp: ValidMutIdempotenceFor<F, T, I, ExactlyOnce, WAS_MUT>,
     {
         self.into_stream().flat_map_unordered(f)
     }

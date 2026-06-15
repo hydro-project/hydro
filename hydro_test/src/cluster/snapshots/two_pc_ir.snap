@@ -34,7 +34,7 @@ expression: built.ir()
                             },
                         },
                         second: Map {
-                            f: stageleft :: runtime_support :: fn1_type_hint :: < ((u32 , core :: option :: Option < i32 >) , bool) , (u32 , core :: option :: Option < i32 >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_1098_51 ! ([] [| (d , _) | d]) }),
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < ((u32 , core :: option :: Option < i32 >) , bool) , (u32 , core :: option :: Option < i32 >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_1103_51 ! ([] [| (d , _) | d]) }),
                             input: CrossSingleton {
                                 left: Cast {
                                     inner: SingletonSource {
@@ -57,17 +57,17 @@ expression: built.ir()
                                     },
                                 },
                                 right: Filter {
-                                    f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_1098_34 ! ([] [| b | * b]) }),
+                                    f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_1103_34 ! ([] [| b | * b]) }),
                                     input: Map {
-                                        f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_901_20 ! ([] [| o | o . is_some ()]) }),
+                                        f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_906_20 ! ([] [| o | o . is_some ()]) }),
                                         input: Cast {
                                             inner: ChainFirst {
                                                 first: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_872_20 ! ([] [| v | Some (v)]) }),
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_877_20 ! ([] [| v | Some (v)]) }),
                                                     input: Map {
-                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_899_20 ! ([] [| _ | ()]) }),
+                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_904_20 ! ([] [| _ | ()]) }),
                                                         input: SingletonSource {
-                                                            value: { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_120_80 ! ([] [()]) },
+                                                            value: { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_121_80 ! ([] [()]) },
                                                             first_tick_only: true,
                                                             metadata: HydroIrMetadata {
                                                                 location_id: Tick(0, Cluster(loc3v1)),
@@ -722,7 +722,7 @@ expression: built.ir()
             },
             neg: Tee {
                 inner: <shared 4>: FilterMap {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , (usize , usize)) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; hydro_std :: __stageleft_quote_src_quorum_rs_124_27 ! ([min__free = 3usize ,] [move | (key , (success , _error)) | if success >= min__free { Some (key) } else { None }]) }),
+                    f: stageleft :: runtime_support :: fnmut1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , (usize , usize)) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; hydro_std :: __stageleft_quote_src_quorum_rs_124_27 ! ([min__free = 3usize ,] [move | (key , (success , _error)) | if success >= min__free { Some (key) } else { None }]) }),
                     input: Cast {
                         inner: Cast {
                             inner: Tee {
@@ -857,7 +857,7 @@ expression: built.ir()
     },
     Null {
         input: FilterMap {
-            f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , core :: result :: Result < () , () >) , core :: option :: Option < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , ()) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; hydro_std :: __stageleft_quote_src_quorum_rs_153_32 ! ([] [move | (key , res) | match res { Ok (_) => None , Err (e) => Some ((key , e)) , }]) }),
+            f: stageleft :: runtime_support :: fnmut1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , core :: result :: Result < () , () >) , core :: option :: Option < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , ()) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; hydro_std :: __stageleft_quote_src_quorum_rs_153_32 ! ([] [move | (key , res) | match res { Ok (_) => None , Err (e) => Some ((key , e)) , }]) }),
             input: Tee {
                 inner: <shared 2>,
                 metadata: HydroIrMetadata {
@@ -1237,7 +1237,7 @@ expression: built.ir()
             },
             neg: Tee {
                 inner: <shared 8>: FilterMap {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , (usize , usize)) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; hydro_std :: __stageleft_quote_src_quorum_rs_124_27 ! ([min__free = 3usize ,] [move | (key , (success , _error)) | if success >= min__free { Some (key) } else { None }]) }),
+                    f: stageleft :: runtime_support :: fnmut1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , (usize , usize)) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; hydro_std :: __stageleft_quote_src_quorum_rs_124_27 ! ([min__free = 3usize ,] [move | (key , (success , _error)) | if success >= min__free { Some (key) } else { None }]) }),
                     input: Cast {
                         inner: Cast {
                             inner: Tee {
@@ -1372,7 +1372,7 @@ expression: built.ir()
     },
     Null {
         input: FilterMap {
-            f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , core :: result :: Result < () , () >) , core :: option :: Option < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , ()) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; hydro_std :: __stageleft_quote_src_quorum_rs_153_32 ! ([] [move | (key , res) | match res { Ok (_) => None , Err (e) => Some ((key , e)) , }]) }),
+            f: stageleft :: runtime_support :: fnmut1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , core :: result :: Result < () , () >) , core :: option :: Option < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , ()) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; hydro_std :: __stageleft_quote_src_quorum_rs_153_32 ! ([] [move | (key , res) | match res { Ok (_) => None , Err (e) => Some ((key , e)) , }]) }),
             input: Tee {
                 inner: <shared 7>,
                 metadata: HydroIrMetadata {
@@ -1791,7 +1791,7 @@ expression: built.ir()
                         },
                         right: Tee {
                             inner: <shared 13>: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_51 ! ([] [| (d , _) | d]) }),
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_51 ! ([] [| (d , _) | d]) }),
                                 input: CrossSingleton {
                                     left: Tee {
                                         inner: <shared 14>: Cast {
@@ -1862,23 +1862,23 @@ expression: built.ir()
                                         },
                                     },
                                     right: Filter {
-                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_34 ! ([] [| b | * b]) }),
+                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_34 ! ([] [| b | * b]) }),
                                         input: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_930_20 ! ([] [| o | o . is_none ()]) }),
+                                            f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_935_20 ! ([] [| o | o . is_none ()]) }),
                                             input: Cast {
                                                 inner: ChainFirst {
                                                     first: Map {
-                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_872_20 ! ([] [| v | Some (v)]) }),
+                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_877_20 ! ([] [| v | Some (v)]) }),
                                                         input: Map {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_928_20 ! ([] [| _ | ()]) }),
+                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_933_20 ! ([] [| _ | ()]) }),
                                                             input: Tee {
                                                                 inner: <shared 15>: Reduce {
-                                                                    f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1542_23 ! ([] [| _ , _ | { }]) }),
+                                                                    f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1596_23 ! ([] [| _ , _ | { }]) }),
                                                                     input: FlatMap {
-                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1908_27 ! ([] [| d | d]) }),
+                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1962_27 ! ([] [| d | d]) }),
                                                                         input: Scan {
-                                                                            init: stageleft :: runtime_support :: fn0_type_hint :: < core :: option :: Option < core :: option :: Option < () > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1868_27 ! ([] [| | None]) }),
-                                                                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < core :: option :: Option < core :: option :: Option < () > > , () , core :: option :: Option < core :: option :: Option < () > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1871_24 ! ([f__free = stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , hydro_test :: __staged :: __deps :: hydro_lang :: live_collections :: keyed_stream :: Generate < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1541_37 ! ([] [| _ , item | Generate :: Return (item)]) }) , init__free = stageleft :: runtime_support :: fn0_type_hint :: < () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1541_26 ! ([] [| | ()]) }) ,] [move | state : & mut Option < Option < _ > > , v | { if state . is_none () { * state = Some (Some (init__free ())) ; } match state { Some (Some (state_value)) => match f__free (state_value , v) { Generate :: Yield (out) => Some (Some (out)) , Generate :: Return (out) => { * state = Some (None) ; Some (Some (out)) } Generate :: Break => None , Generate :: Continue => Some (None) , } , _ => None , } }]) }),
+                                                                            init: stageleft :: runtime_support :: fn0_type_hint :: < core :: option :: Option < core :: option :: Option < () > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1922_27 ! ([] [| | None]) }),
+                                                                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < core :: option :: Option < core :: option :: Option < () > > , () , core :: option :: Option < core :: option :: Option < () > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1925_24 ! ([f__free = stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , hydro_test :: __staged :: __deps :: hydro_lang :: live_collections :: keyed_stream :: Generate < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1595_37 ! ([] [| _ , item | Generate :: Return (item)]) }) , init__free = stageleft :: runtime_support :: fn0_type_hint :: < () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1595_26 ! ([] [| | ()]) }) ,] [move | state : & mut Option < Option < _ > > , v | { if state . is_none () { * state = Some (Some (init__free ())) ; } match state { Some (Some (state_value)) => match f__free (state_value , v) { Generate :: Yield (out) => Some (Some (out)) , Generate :: Return (out) => { * state = Some (None) ; Some (Some (out)) } Generate :: Break => None , Generate :: Continue => Some (None) , } , _ => None , } }]) }),
                                                                             input: Batch {
                                                                                 inner: Source {
                                                                                     source: Stream(
@@ -2106,8 +2106,8 @@ expression: built.ir()
                     input: CrossSingleton {
                         left: Tee {
                             inner: <shared 16>: Fold {
-                                init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_2378_15 ! ([] [| | 0usize]) }),
-                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , core :: time :: Duration , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_2380_16 ! ([] [| count , _ | * count += 1]) }),
+                                init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_2432_15 ! ([] [| | 0usize]) }),
+                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , core :: time :: Duration , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_2434_16 ! ([] [| count , _ | * count += 1]) }),
                                 input: ObserveNonDet {
                                     inner: Tee {
                                         inner: <shared 12>,
@@ -2150,7 +2150,7 @@ expression: built.ir()
                         },
                         right: Tee {
                             inner: <shared 17>: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_51 ! ([] [| (d , _) | d]) }),
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_51 ! ([] [| (d , _) | d]) }),
                                 input: CrossSingleton {
                                     left: Tee {
                                         inner: <shared 18>: Cast {
@@ -2221,15 +2221,15 @@ expression: built.ir()
                                         },
                                     },
                                     right: Filter {
-                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_34 ! ([] [| b | * b]) }),
+                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_34 ! ([] [| b | * b]) }),
                                         input: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_930_20 ! ([] [| o | o . is_none ()]) }),
+                                            f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_935_20 ! ([] [| o | o . is_none ()]) }),
                                             input: Cast {
                                                 inner: ChainFirst {
                                                     first: Map {
-                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_872_20 ! ([] [| v | Some (v)]) }),
+                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_877_20 ! ([] [| v | Some (v)]) }),
                                                         input: Map {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_928_20 ! ([] [| _ | ()]) }),
+                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_933_20 ! ([] [| _ | ()]) }),
                                                             input: Tee {
                                                                 inner: <shared 15>,
                                                                 metadata: HydroIrMetadata {
@@ -2466,7 +2466,7 @@ expression: built.ir()
                             right: Cast {
                                 inner: ChainFirst {
                                     first: Map {
-                                        f: stageleft :: runtime_support :: fn1_type_hint :: < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , core :: option :: Option < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_872_20 ! ([] [| v | Some (v)]) }),
+                                        f: stageleft :: runtime_support :: fn1_type_hint :: < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , core :: option :: Option < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_877_20 ! ([] [| v | Some (v)]) }),
                                         input: Reduce {
                                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; hydro_std :: __stageleft_quote_src_bench_client_mod_rs_252_19 ! ([] [| curr , new | { curr . borrow_mut () . add (& * new . borrow_mut ()) . expect ("Error adding value to histogram") ; }]) }),
                                             input: ObserveNonDet {
@@ -2494,7 +2494,7 @@ expression: built.ir()
                                                                             input: YieldConcat {
                                                                                 inner: Cast {
                                                                                     inner: Map {
-                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_51 ! ([] [| (d , _) | d]) }),
+                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_51 ! ([] [| (d , _) | d]) }),
                                                                                         input: CrossSingleton {
                                                                                             left: Tee {
                                                                                                 inner: <shared 14>,
@@ -2507,15 +2507,15 @@ expression: built.ir()
                                                                                                 },
                                                                                             },
                                                                                             right: Filter {
-                                                                                                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_34 ! ([] [| b | * b]) }),
+                                                                                                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_34 ! ([] [| b | * b]) }),
                                                                                                 input: Map {
-                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_901_20 ! ([] [| o | o . is_some ()]) }),
+                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_906_20 ! ([] [| o | o . is_some ()]) }),
                                                                                                     input: Cast {
                                                                                                         inner: ChainFirst {
                                                                                                             first: Map {
-                                                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_872_20 ! ([] [| v | Some (v)]) }),
+                                                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_877_20 ! ([] [| v | Some (v)]) }),
                                                                                                                 input: Map {
-                                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_899_20 ! ([] [| _ | ()]) }),
+                                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_904_20 ! ([] [| _ | ()]) }),
                                                                                                                     input: Tee {
                                                                                                                         inner: <shared 15>,
                                                                                                                         metadata: HydroIrMetadata {
@@ -2783,16 +2783,16 @@ expression: built.ir()
                     right: Cast {
                         inner: ChainFirst {
                             first: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_872_20 ! ([] [| v | Some (v)]) }),
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_877_20 ! ([] [| v | Some (v)]) }),
                                 input: DeferTick {
                                     input: Tee {
                                         inner: <shared 20>: Reduce {
-                                            f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1542_23 ! ([] [| _ , _ | { }]) }),
+                                            f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1596_23 ! ([] [| _ , _ | { }]) }),
                                             input: FlatMap {
-                                                f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1908_27 ! ([] [| d | d]) }),
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1962_27 ! ([] [| d | d]) }),
                                                 input: Scan {
-                                                    init: stageleft :: runtime_support :: fn0_type_hint :: < core :: option :: Option < core :: option :: Option < () > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1868_27 ! ([] [| | None]) }),
-                                                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < core :: option :: Option < core :: option :: Option < () > > , () , core :: option :: Option < core :: option :: Option < () > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1871_24 ! ([f__free = stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , hydro_test :: __staged :: __deps :: hydro_lang :: live_collections :: keyed_stream :: Generate < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1541_37 ! ([] [| _ , item | Generate :: Return (item)]) }) , init__free = stageleft :: runtime_support :: fn0_type_hint :: < () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1541_26 ! ([] [| | ()]) }) ,] [move | state : & mut Option < Option < _ > > , v | { if state . is_none () { * state = Some (Some (init__free ())) ; } match state { Some (Some (state_value)) => match f__free (state_value , v) { Generate :: Yield (out) => Some (Some (out)) , Generate :: Return (out) => { * state = Some (None) ; Some (Some (out)) } Generate :: Break => None , Generate :: Continue => Some (None) , } , _ => None , } }]) }),
+                                                    init: stageleft :: runtime_support :: fn0_type_hint :: < core :: option :: Option < core :: option :: Option < () > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1922_27 ! ([] [| | None]) }),
+                                                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < core :: option :: Option < core :: option :: Option < () > > , () , core :: option :: Option < core :: option :: Option < () > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1925_24 ! ([f__free = stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , hydro_test :: __staged :: __deps :: hydro_lang :: live_collections :: keyed_stream :: Generate < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1595_37 ! ([] [| _ , item | Generate :: Return (item)]) }) , init__free = stageleft :: runtime_support :: fn0_type_hint :: < () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_1595_26 ! ([] [| | ()]) }) ,] [move | state : & mut Option < Option < _ > > , v | { if state . is_none () { * state = Some (Some (init__free ())) ; } match state { Some (Some (state_value)) => match f__free (state_value , v) { Generate :: Yield (out) => Some (Some (out)) , Generate :: Return (out) => { * state = Some (None) ; Some (Some (out)) } Generate :: Break => None , Generate :: Continue => Some (None) , } , _ => None , } }]) }),
                                                     input: Batch {
                                                         inner: Source {
                                                             source: Stream(
@@ -2960,7 +2960,7 @@ expression: built.ir()
                                     input: YieldConcat {
                                         inner: Cast {
                                             inner: Map {
-                                                f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_51 ! ([] [| (d , _) | d]) }),
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_51 ! ([] [| (d , _) | d]) }),
                                                 input: CrossSingleton {
                                                     left: Tee {
                                                         inner: <shared 18>,
@@ -2973,15 +2973,15 @@ expression: built.ir()
                                                         },
                                                     },
                                                     right: Filter {
-                                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_34 ! ([] [| b | * b]) }),
+                                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_34 ! ([] [| b | * b]) }),
                                                         input: Map {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_901_20 ! ([] [| o | o . is_some ()]) }),
+                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_906_20 ! ([] [| o | o . is_some ()]) }),
                                                             input: Cast {
                                                                 inner: ChainFirst {
                                                                     first: Map {
-                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_872_20 ! ([] [| v | Some (v)]) }),
+                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_877_20 ! ([] [| v | Some (v)]) }),
                                                                         input: Map {
-                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_899_20 ! ([] [| _ | ()]) }),
+                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_904_20 ! ([] [| _ | ()]) }),
                                                                             input: Tee {
                                                                                 inner: <shared 15>,
                                                                                 metadata: HydroIrMetadata {
@@ -3149,7 +3149,7 @@ expression: built.ir()
                 },
                 second: Cast {
                     inner: Map {
-                        f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_51 ! ([] [| (d , _) | d]) }),
+                        f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_51 ! ([] [| (d , _) | d]) }),
                         input: CrossSingleton {
                             left: Tee {
                                 inner: <shared 21>: Cast {
@@ -3220,15 +3220,15 @@ expression: built.ir()
                                 },
                             },
                             right: Filter {
-                                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_34 ! ([] [| b | * b]) }),
+                                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_34 ! ([] [| b | * b]) }),
                                 input: Map {
-                                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_930_20 ! ([] [| o | o . is_none ()]) }),
+                                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_935_20 ! ([] [| o | o . is_none ()]) }),
                                     input: Cast {
                                         inner: ChainFirst {
                                             first: Map {
-                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_872_20 ! ([] [| v | Some (v)]) }),
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_877_20 ! ([] [| v | Some (v)]) }),
                                                 input: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_928_20 ! ([] [| _ | ()]) }),
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_933_20 ! ([] [| _ | ()]) }),
                                                     input: Tee {
                                                         inner: <shared 20>,
                                                         metadata: HydroIrMetadata {
@@ -3354,11 +3354,11 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; hydro_std :: __stageleft_quote_src_bench_client_mod_rs_287_45 ! ([] [| throughput | { println ! ("Throughput: {:.2} requests/s" , throughput) ; }]) }),
+        f: stageleft :: runtime_support :: fnmut1_type_hint :: < usize , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; hydro_std :: __stageleft_quote_src_bench_client_mod_rs_287_45 ! ([] [| throughput | { println ! ("Throughput: {:.2} requests/s" , throughput) ; }]) }),
         input: YieldConcat {
             inner: Cast {
                 inner: Map {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_51 ! ([] [| (d , _) | d]) }),
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_51 ! ([] [| (d , _) | d]) }),
                     input: CrossSingleton {
                         left: Tee {
                             inner: <shared 21>,
@@ -3371,15 +3371,15 @@ expression: built.ir()
                             },
                         },
                         right: Filter {
-                            f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_34 ! ([] [| b | * b]) }),
+                            f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_34 ! ([] [| b | * b]) }),
                             input: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_901_20 ! ([] [| o | o . is_some ()]) }),
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_906_20 ! ([] [| o | o . is_some ()]) }),
                                 input: Cast {
                                     inner: ChainFirst {
                                         first: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_872_20 ! ([] [| v | Some (v)]) }),
+                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_877_20 ! ([] [| v | Some (v)]) }),
                                             input: Map {
-                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_899_20 ! ([] [| _ | ()]) }),
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_904_20 ! ([] [| _ | ()]) }),
                                                 input: Tee {
                                                     inner: <shared 20>,
                                                     metadata: HydroIrMetadata {
@@ -3497,13 +3497,13 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < (f64 , f64 , f64 , u64) , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; hydro_std :: __stageleft_quote_src_bench_client_mod_rs_302_21 ! ([] [move | (p50 , p99 , p999 , num_samples) | { println ! ("Latency p50: {:.3} | p99 {:.3} | p999 {:.3} ms ({:} samples)" , p50 , p99 , p999 , num_samples) ; }]) }),
+        f: stageleft :: runtime_support :: fnmut1_type_hint :: < (f64 , f64 , f64 , u64) , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; hydro_std :: __stageleft_quote_src_bench_client_mod_rs_302_21 ! ([] [move | (p50 , p99 , p999 , num_samples) | { println ! ("Latency p50: {:.3} | p99 {:.3} | p999 {:.3} ms ({:} samples)" , p50 , p99 , p999 , num_samples) ; }]) }),
         input: Map {
             f: stageleft :: runtime_support :: fnmut1_type_hint :: < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , (f64 , f64 , f64 , u64) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; hydro_std :: __stageleft_quote_src_bench_client_mod_rs_292_16 ! ([] [move | latencies | (Duration :: from_nanos (latencies . borrow () . value_at_quantile (0.5)) . as_micros () as f64 / 1000.0 , Duration :: from_nanos (latencies . borrow () . value_at_quantile (0.99)) . as_micros () as f64 / 1000.0 , Duration :: from_nanos (latencies . borrow () . value_at_quantile (0.999)) . as_micros () as f64 / 1000.0 , latencies . borrow () . len () ,)]) }),
             input: YieldConcat {
                 inner: Cast {
                     inner: Map {
-                        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_51 ! ([] [| (d , _) | d]) }),
+                        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_51 ! ([] [| (d , _) | d]) }),
                         input: CrossSingleton {
                             left: Tee {
                                 inner: <shared 19>,
@@ -3516,15 +3516,15 @@ expression: built.ir()
                                 },
                             },
                             right: Filter {
-                                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_868_34 ! ([] [| b | * b]) }),
+                                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_873_34 ! ([] [| b | * b]) }),
                                 input: Map {
-                                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_901_20 ! ([] [| o | o . is_some ()]) }),
+                                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_906_20 ! ([] [| o | o . is_some ()]) }),
                                     input: Cast {
                                         inner: ChainFirst {
                                             first: Map {
-                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_872_20 ! ([] [| v | Some (v)]) }),
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_877_20 ! ([] [| v | Some (v)]) }),
                                                 input: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_899_20 ! ([] [| _ | ()]) }),
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_904_20 ! ([] [| _ | ()]) }),
                                                     input: Tee {
                                                         inner: <shared 20>,
                                                         metadata: HydroIrMetadata {

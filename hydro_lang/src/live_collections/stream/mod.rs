@@ -33,7 +33,8 @@ use crate::nondet::{NonDet, nondet};
 use crate::prelude::manual_proof;
 use crate::properties::{
     AggFuncAlgebra, ApplyMonotoneStream, StreamMapFuncAlgebra, ValidCommutativityFor,
-    ValidIdempotenceFor, ValidMutCommutativityFor, ValidMutIdempotenceFor,
+    ValidIdempotenceFor, ValidMutBorrowCommutativityFor, ValidMutBorrowIdempotenceFor,
+    ValidMutCommutativityFor, ValidMutIdempotenceFor,
 };
 
 pub mod networking;
@@ -620,12 +621,21 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn flat_map_ordered<U, I, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B, O, R>
+    pub fn flat_map_ordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+    ) -> Stream<U, L, B, O, R>
     where
         I: IntoIterator<Item = U>,
-        F: Fn(T) -> I + 'a,
+        F: FnMut(T) -> I + 'a,
+        C: ValidMutCommutativityFor<F, T, I, O, WAS_MUT>,
+        Idemp: ValidMutIdempotenceFor<F, T, I, R, WAS_MUT>,
     {
-        let f = crate::handoff_ref::with_ref_capture(|| f.splice_fn1_ctx(&self.location).into());
+        let f = crate::handoff_ref::with_ref_capture(|| {
+            let (expr, proof) = f.splice_fnmut1_ctx_props(&self.location);
+            proof.register_proof(&expr);
+            expr.into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::FlatMap {
@@ -664,15 +674,21 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn flat_map_unordered<U, I, F>(
+    pub fn flat_map_unordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L>,
+        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Stream<U, L, B, NoOrder, R>
     where
         I: IntoIterator<Item = U>,
-        F: Fn(T) -> I + 'a,
+        F: FnMut(T) -> I + 'a,
+        C: ValidMutCommutativityFor<F, T, I, O, WAS_MUT>,
+        Idemp: ValidMutIdempotenceFor<F, T, I, R, WAS_MUT>,
     {
-        let f = crate::handoff_ref::with_ref_capture(|| f.splice_fn1_ctx(&self.location).into());
+        let f = crate::handoff_ref::with_ref_capture(|| {
+            let (expr, proof) = f.splice_fnmut1_ctx_props(&self.location);
+            proof.register_proof(&expr);
+            expr.into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::FlatMap {
@@ -750,15 +766,21 @@ where
     /// For each item in the input stream, apply `f` to produce a [`futures::stream::Stream`],
     /// then emit the elements of that stream one by one. When the inner stream yields
     /// `Pending`, this operator yields as well.
-    pub fn flat_map_stream_blocking<U, S, F>(
+    pub fn flat_map_stream_blocking<U, S, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L>,
+        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Stream<U, L, B, O, R>
     where
         S: futures::Stream<Item = U>,
-        F: Fn(T) -> S + 'a,
+        F: FnMut(T) -> S + 'a,
+        C: ValidMutCommutativityFor<F, T, S, O, WAS_MUT>,
+        Idemp: ValidMutIdempotenceFor<F, T, S, R, WAS_MUT>,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let f = crate::handoff_ref::with_ref_capture(|| {
+            let (expr, proof) = f.splice_fnmut1_ctx_props(&self.location);
+            proof.register_proof(&expr);
+            expr.into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::FlatMapStreamBlocking {
@@ -805,12 +827,20 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Self
+    pub fn filter<F, C, Idemp, const WAS_MUT: bool>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+    ) -> Self
     where
-        F: Fn(&T) -> bool + 'a,
+        F: FnMut(&T) -> bool + 'a,
+        C: ValidMutBorrowCommutativityFor<F, T, bool, O, WAS_MUT>,
+        Idemp: ValidMutBorrowIdempotenceFor<F, T, bool, R, WAS_MUT>,
     {
-        let f =
-            crate::handoff_ref::with_ref_capture(|| f.splice_fn1_borrow_ctx(&self.location).into());
+        let f = crate::handoff_ref::with_ref_capture(|| {
+            let (expr, proof) = f.splice_fnmut1_borrow_ctx_props(&self.location);
+            proof.register_proof(&expr);
+            expr.into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::Filter {
@@ -859,15 +889,20 @@ where
         clippy::type_complexity,
         reason = "return type mirrors the input stream type"
     )]
-    pub fn partition<F>(
+    pub fn partition<F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L>,
+        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> (Stream<T, L, B, O, R>, Stream<T, L, B, O, R>)
     where
-        F: Fn(&T) -> bool + 'a,
+        F: FnMut(&T) -> bool + 'a,
+        C: ValidMutBorrowCommutativityFor<F, T, bool, O, WAS_MUT>,
+        Idemp: ValidMutBorrowIdempotenceFor<F, T, bool, R, WAS_MUT>,
     {
-        let f =
-            crate::handoff_ref::with_ref_capture(|| f.splice_fn1_borrow_ctx(&self.location).into());
+        let f = crate::handoff_ref::with_ref_capture(|| {
+            let (expr, proof) = f.splice_fnmut1_borrow_ctx_props(&self.location);
+            proof.register_proof(&expr);
+            expr.into()
+        });
         let shared = SharedNode(Rc::new(RefCell::new(
             self.ir_node.replace(HydroNode::Placeholder),
         )));
@@ -914,11 +949,20 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B, O, R>
+    pub fn filter_map<U, F, C, Idemp, const WAS_MUT: bool>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+    ) -> Stream<U, L, B, O, R>
     where
-        F: Fn(T) -> Option<U> + 'a,
+        F: FnMut(T) -> Option<U> + 'a,
+        C: ValidMutCommutativityFor<F, T, Option<U>, O, WAS_MUT>,
+        Idemp: ValidMutIdempotenceFor<F, T, Option<U>, R, WAS_MUT>,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let f = crate::handoff_ref::with_ref_capture(|| {
+            let (expr, proof) = f.splice_fnmut1_ctx_props(&self.location);
+            proof.register_proof(&expr);
+            expr.into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::FilterMap {
@@ -1230,13 +1274,19 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L::DropConsistency>) -> Self
+    pub fn inspect<F, C, Idemp, const WAS_MUT: bool>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L::DropConsistency, StreamMapFuncAlgebra<C, Idemp>>,
+    ) -> Self
     where
-        F: Fn(&T) + 'a,
+        F: FnMut(&T) + 'a,
+        C: ValidMutBorrowCommutativityFor<F, T, (), O, WAS_MUT>,
+        Idemp: ValidMutBorrowIdempotenceFor<F, T, (), R, WAS_MUT>,
     {
         let f = crate::handoff_ref::with_ref_capture(|| {
-            f.splice_fn1_borrow_ctx(&self.location.drop_consistency())
-                .into()
+            let (expr, proof) = f.splice_fnmut1_borrow_ctx_props(&self.location.drop_consistency());
+            proof.register_proof(&expr);
+            expr.into()
         });
 
         Stream::new(
@@ -1255,12 +1305,16 @@ where
     /// ([`TotalOrder`]) and no retries ([`ExactlyOnce`]). If the side effects can tolerate
     /// out-of-order or duplicate execution, use [`Stream::assume_ordering`] and
     /// [`Stream::assume_retries`] with an explanation for why this is the case.
-    pub fn for_each<F: Fn(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>)
+    ///
+    /// The closure may capture singletons via `by_ref()` or `by_mut()`. No commutativity
+    /// or idempotence proofs are needed because the `TotalOrder + ExactlyOnce` requirements
+    /// already guarantee deterministic execution.
+    pub fn for_each<F: FnMut(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>)
     where
         O: IsOrdered,
         R: IsExactlyOnce,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let f = crate::handoff_ref::with_ref_capture(|| f.splice_fnmut1_ctx(&self.location).into());
         self.location
             .flow_state()
             .borrow_mut()

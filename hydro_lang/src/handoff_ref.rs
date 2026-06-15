@@ -402,4 +402,128 @@ mod tests {
         my_stream.for_each(q!(|_| {}));
         let _built = flow.finalize();
     }
+
+    /// Compile-only test: singleton by_mut in filter (TotalOrder).
+    #[test]
+    fn singleton_by_mut_filter() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let my_count = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let count_mut = my_count.by_mut();
+
+        node.source_iter(q!(1..=3i32))
+            .filter(q!(|x| {
+                *count_mut += *x;
+                *count_mut > 0
+            }))
+            .for_each(q!(|_| {}));
+
+        my_count.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
+
+    /// Compile-only test: singleton by_mut in flat_map_ordered (TotalOrder).
+    #[test]
+    fn singleton_by_mut_flat_map() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let my_count = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let count_mut = my_count.by_mut();
+
+        node.source_iter(q!(1..=3i32))
+            .flat_map_ordered(q!(|x| {
+                *count_mut += x;
+                vec![*count_mut]
+            }))
+            .for_each(q!(|_| {}));
+
+        my_count.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
+
+    /// Compile-only test: singleton by_mut in filter_map (TotalOrder).
+    #[test]
+    fn singleton_by_mut_filter_map() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let my_count = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let count_mut = my_count.by_mut();
+
+        node.source_iter(q!(1..=3i32))
+            .filter_map(q!(|x| {
+                *count_mut += x;
+                Some(*count_mut)
+            }))
+            .for_each(q!(|_| {}));
+
+        my_count.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
+
+    /// Compile-only test: singleton by_mut in inspect (TotalOrder).
+    #[test]
+    fn singleton_by_mut_inspect() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let my_count = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let count_mut = my_count.by_mut();
+
+        node.source_iter(q!(1..=3i32))
+            .inspect(q!(|x| {
+                *count_mut += *x;
+            }))
+            .for_each(q!(|_| {}));
+
+        my_count.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
+
+    /// Compile-only test: singleton by_ref in for_each.
+    #[test]
+    fn singleton_by_ref_for_each() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let my_count = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let count_ref = my_count.by_ref();
+
+        node.source_iter(q!(1..=3i32))
+            .for_each(q!(|x| println!("{}", x + *count_ref)));
+
+        my_count.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
+
+    /// Compile-only test: singleton by_mut in for_each.
+    #[test]
+    fn singleton_by_mut_for_each() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let my_count = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let count_mut = my_count.by_mut();
+
+        node.source_iter(q!(1..=3i32)).for_each(q!(|x| {
+            *count_mut += x;
+        }));
+
+        my_count.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
 }
