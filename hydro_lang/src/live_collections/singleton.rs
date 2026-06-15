@@ -1651,6 +1651,8 @@ where
 mod tests {
     #[cfg(feature = "deploy")]
     use futures::{SinkExt, StreamExt};
+    #[cfg(feature = "sim")]
+    use hydro_build_utils::insta;
     #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
     #[cfg(any(feature = "deploy", feature = "sim"))]
