@@ -25,8 +25,6 @@ use crate::parse::{Operator, PortIndex};
 pub enum DelayType {
     /// Input must be collected over the preceding stratum.
     Stratum,
-    /// Monotone accumulation: can delay to reduce flow rate, but also correct to emit "early"
-    MonotoneAccum,
     /// Input must be collected over the previous tick.
     Tick,
     /// Input must be collected over the previous tick but also not cause a new tick to occur.
