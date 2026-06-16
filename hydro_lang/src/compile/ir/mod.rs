@@ -2041,17 +2041,16 @@ impl Hash for SharedNode {
     }
 }
 
-/// A shared counter for tracking singleton access groups on a `HydroNode::Reference`.
+/// A counter for tracking singleton access groups on a `HydroNode::Reference`.
 ///
-/// Multiple clones of the same Reference share the same counter via `Rc<Cell<u32>>`.
 /// Each mutable access increments the counter (before and after) to isolate itself in its own group;
 /// immutable accesses share the current group.
 #[derive(Clone)]
-pub struct AccessCounter(pub Rc<Cell<u32>>);
+pub struct AccessCounter(pub Cell<u32>);
 
 impl AccessCounter {
     pub fn new() -> Self {
-        Self(Rc::new(Cell::new(0)))
+        Self(Cell::new(0))
     }
 
     /// Assign the next access group for this reference.
