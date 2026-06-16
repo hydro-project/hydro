@@ -1,5 +1,5 @@
 use core::panic;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 #[cfg(feature = "build")]
 use std::collections::HashSet;
@@ -60,6 +60,7 @@ impl Clone for ClosureExpr {
                     let HydroNode::Reference {
                         inner,
                         kind,
+                        access_counter,
                         metadata,
                     } = node
                     else {
@@ -69,6 +70,7 @@ impl Clone for ClosureExpr {
                         HydroNode::Reference {
                             inner: SharedNode(Rc::clone(&inner.0)),
                             kind: *kind,
+                            access_counter: access_counter.clone(),
                             metadata: metadata.clone(),
                         },
                         *is_mut,
@@ -2039,6 +2041,57 @@ impl Hash for SharedNode {
     }
 }
 
+/// A shared counter for tracking singleton access groups on a `HydroNode::Reference`.
+///
+/// Multiple clones of the same Reference share the same counter via `Rc<Cell<u32>>`.
+/// Each mutable access increments the counter (before and after) to isolate itself in its own group;
+/// immutable accesses share the current group.
+#[derive(Clone)]
+pub struct AccessCounter(pub Rc<Cell<u32>>);
+
+impl AccessCounter {
+    pub fn new() -> Self {
+        Self(Rc::new(Cell::new(0)))
+    }
+
+    /// Assign the next access group for this reference.
+    /// Mutable accesses get an isolated group (counter increments before and after).
+    /// Immutable accesses share the current group.
+    pub fn next_group(&self, is_mut: bool) -> u32 {
+        if is_mut {
+            let c = self.0.get() + 1;
+            self.0.set(c + 1);
+            c
+        } else {
+            self.0.get()
+        }
+    }
+}
+
+impl Default for AccessCounter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Debug for AccessCounter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "AccessCounter({})", self.0.get())
+    }
+}
+
+impl Hash for AccessCounter {
+    fn hash<H: Hasher>(&self, _state: &mut H) {
+        // Access counter does not participate in hashing — it is runtime bookkeeping.
+    }
+}
+
+impl serde::Serialize for AccessCounter {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.0.get().serialize(serializer)
+    }
+}
+
 #[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
 pub enum BoundKind {
     Unbounded,
@@ -2259,6 +2312,7 @@ pub enum HydroNode {
     Reference {
         inner: SharedNode,
         kind: crate::handoff_ref::HandoffRefKind,
+        access_counter: AccessCounter,
         metadata: HydroIrMetadata,
     },
 
@@ -2727,10 +2781,16 @@ impl HydroNode {
                     *new_rc.borrow_mut() = cloned;
                     SharedNode(new_rc)
                 };
-                if let HydroNode::Reference { kind, .. } = self {
+                if let HydroNode::Reference {
+                    kind,
+                    access_counter,
+                    ..
+                } = self
+                {
                     HydroNode::Reference {
                         inner: cloned_inner,
                         kind: *kind,
+                        access_counter: access_counter.clone(),
                         metadata: metadata.clone(),
                     }
                 } else {

@@ -6,7 +6,6 @@
 //! and the reference resolves to the appropriate borrow type.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::rc::Rc;
 
@@ -67,7 +66,6 @@ fn register_handoff_ref(
     ir_node: &RefCell<HydroNode>,
     is_mut: bool,
     kind: HandoffRefKind,
-    singleton_access_counters: &mut HashMap<*const RefCell<HydroNode>, u32>,
 ) -> syn::Ident {
     CAPTURED_REFS.with(|cell| {
         let mut guard = cell.borrow_mut();
@@ -88,35 +86,29 @@ fn register_handoff_ref(
             *ir_node.borrow_mut() = HydroNode::Reference {
                 inner: SharedNode(Rc::new(RefCell::new(orig))),
                 kind,
+                access_counter: crate::compile::ir::AccessCounter::new(),
                 metadata: metadata.clone(),
             };
         }
 
         let borrow: std::cell::Ref<'_, HydroNode> = ir_node.borrow();
-        let HydroNode::Reference { inner, .. } = &*borrow else {
+        let HydroNode::Reference {
+            inner,
+            access_counter,
+            ..
+        } = &*borrow
+        else {
             unreachable!()
         };
 
         // Compute access group at staging time (code order).
-        // Key on the heap-stable inner Rc pointer so the counter is consistent
-        // even if the outer RefCell moves (e.g. after cloning a Singleton).
-        let ptr = inner.0.as_ref() as *const RefCell<HydroNode>;
-        let group = {
-            let counter = singleton_access_counters.entry(ptr).or_insert(0);
-            if is_mut {
-                *counter += 1;
-                let g = *counter;
-                *counter += 1;
-                g
-            } else {
-                *counter
-            }
-        };
+        let group = access_counter.next_group(is_mut);
 
         refs.push((
             HydroNode::Reference {
                 inner: SharedNode(Rc::clone(&inner.0)),
                 kind,
+                access_counter: access_counter.clone(),
                 metadata,
             },
             is_mut,
@@ -165,12 +157,11 @@ macro_rules! define_handoff_ref {
             {
                 type O = $output;
 
-                fn to_tokens(self, ctx: &L) -> (QuoteTokens, ()) {
+                fn to_tokens(self, _ctx: &L) -> (QuoteTokens, ()) {
                     let ident = register_handoff_ref(
                         self.ir_node,
                         $is_mut,
                         $kind,
-                        &mut ctx.flow_state().borrow_mut().singleton_access_counters,
                     );
                     (
                         QuoteTokens {
