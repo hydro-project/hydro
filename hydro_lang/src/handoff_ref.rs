@@ -13,7 +13,7 @@ use proc_macro2::Span;
 use quote::quote;
 use stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
 
-use crate::compile::ir::{HydroNode, SharedNode};
+use crate::compile::ir::{AccessCounter, HydroNode, SharedNode};
 use crate::location::Location;
 
 /// Determines which DFIR pseudo-operator a reference node lowers to.
@@ -28,10 +28,10 @@ pub enum HandoffRefKind {
 }
 
 // Thread-local storage for handoff references captured during `q!()` expansion.
-// Stores the HydroNode `(node, is_mut, access_group)` for each reference captured in the current closure.
+// Stores the `HydroNode::Reference` and `is_mut: bool` for each reference captured in the current closure.
 // The index determines the ident name via `handoff_ref_ident`.
 thread_local! {
-    static CAPTURED_REFS: RefCell<Option<Vec<(HydroNode, bool, u32)>>> = const { RefCell::new(None) };
+    static CAPTURED_REFS: RefCell<Option<Vec<(HydroNode, bool)>>> = const { RefCell::new(None) };
 }
 
 /// Returns the canonical ident for a captured ref at the given index within a closure.
@@ -86,7 +86,7 @@ fn register_handoff_ref(
             *ir_node.borrow_mut() = HydroNode::Reference {
                 inner: SharedNode(Rc::new(RefCell::new(orig))),
                 kind,
-                access_counter: crate::compile::ir::AccessCounter::new(),
+                access_counter: AccessCounter::new(),
                 metadata: metadata.clone(),
             };
         }
@@ -108,11 +108,10 @@ fn register_handoff_ref(
             HydroNode::Reference {
                 inner: SharedNode(Rc::clone(&inner.0)),
                 kind,
-                access_counter: access_counter.clone(),
+                access_counter: group,
                 metadata,
             },
             is_mut,
-            group,
         ));
 
         ident

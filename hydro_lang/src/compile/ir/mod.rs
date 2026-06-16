@@ -43,10 +43,10 @@ use backtrace::Backtrace;
 /// captures, which is important for nodes with multiple closures (e.g. Fold has `init` and `acc`).
 pub struct ClosureExpr {
     pub(crate) expr: DebugExpr,
-    /// Each entry is `(reference_node, is_mut, access_group)`.
+    /// Each entry is `(HydroNode::Reference, is_mut: bool)`.
     /// The index in the Vec determines the ident name via [`handoff_ref_ident`].
-    /// The `access_group` is assigned at staging time in code order.
-    pub(crate) singleton_refs: Vec<(HydroNode, bool, u32)>,
+    /// The `access_counter` was assigned at staging time in code order.
+    pub(crate) singleton_refs: Vec<(HydroNode, bool)>,
 }
 
 impl Clone for ClosureExpr {
@@ -56,7 +56,7 @@ impl Clone for ClosureExpr {
             singleton_refs: self
                 .singleton_refs
                 .iter()
-                .map(|(node, is_mut, group)| {
+                .map(|(node, is_mut)| {
                     let HydroNode::Reference {
                         inner,
                         kind,
@@ -70,11 +70,10 @@ impl Clone for ClosureExpr {
                         HydroNode::Reference {
                             inner: SharedNode(Rc::clone(&inner.0)),
                             kind: *kind,
-                            access_counter: access_counter.clone(),
+                            access_counter: access_counter.freeze(),
                             metadata: metadata.clone(),
                         },
                         *is_mut,
-                        *group,
                     )
                 })
                 .collect(),
@@ -104,14 +103,14 @@ impl serde::Serialize for ClosureExpr {
     }
 }
 
-struct SerializableSingletonRefs<'a>(&'a [(HydroNode, bool, u32)]);
+struct SerializableSingletonRefs<'a>(&'a [(HydroNode, bool)]);
 
 impl serde::Serialize for SerializableSingletonRefs<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeSeq;
         let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
-        for (node, is_mut, group) in self.0.iter() {
-            seq.serialize_element(&(node, is_mut, group))?;
+        for (node, is_mut) in self.0.iter() {
+            seq.serialize_element(&(node, is_mut))?;
         }
         seq.end()
     }
@@ -148,7 +147,7 @@ impl From<DebugExpr> for ClosureExpr {
 }
 
 impl ClosureExpr {
-    pub fn new(expr: DebugExpr, singleton_refs: Vec<(HydroNode, bool, u32)>) -> Self {
+    pub fn new(expr: DebugExpr, singleton_refs: Vec<(HydroNode, bool)>) -> Self {
         Self {
             expr,
             singleton_refs,
@@ -161,7 +160,7 @@ impl ClosureExpr {
             singleton_refs: self
                 .singleton_refs
                 .iter()
-                .map(|(node, is_mut, group)| (node.deep_clone(seen_tees), *is_mut, *group))
+                .map(|(node, is_mut)| (node.deep_clone(seen_tees), *is_mut))
                 .collect(),
         }
     }
@@ -171,7 +170,7 @@ impl ClosureExpr {
         transform: &mut impl FnMut(&mut HydroNode, &mut SeenSharedNodes),
         seen_tees: &mut SeenSharedNodes,
     ) {
-        for (ref_node, _is_mut, _group) in self.singleton_refs.iter_mut() {
+        for (ref_node, _is_mut) in self.singleton_refs.iter_mut() {
             transform(ref_node, seen_tees);
         }
     }
@@ -192,13 +191,17 @@ impl ClosureExpr {
             let ref_idents = ident_stack.drain(ident_stack.len() - self.singleton_refs.len()..);
 
             let mut let_bindings = Vec::new();
-            for ((i, (_node, is_mut, group)), ref_ident) in
+            for ((i, (ref_node, is_mut)), ref_ident) in
                 self.singleton_refs.iter().enumerate().zip(ref_idents)
             {
+                let HydroNode::Reference { access_counter, .. } = ref_node else {
+                    panic!("ClosureExpression expected references to `HydroNode::Reference`");
+                };
+                let group = access_counter.frozen_group();
                 // TODO(mingwei): proper spanning?
                 let local_ident = handoff_ref_ident(i);
                 let hash = proc_macro2::Punct::new('#', proc_macro2::Spacing::Alone);
-                let group_lit = proc_macro2::Literal::u32_unsuffixed(*group);
+                let group_lit = proc_macro2::Literal::u32_unsuffixed(group);
                 let mut_token = is_mut.then(|| quote!(mut));
                 let binding = quote! {
                     let #local_ident = #hash {#group_lit} #mut_token #ref_ident;
@@ -1444,7 +1447,7 @@ impl HydroRoot {
                         let mut ident_stack: Vec<syn::Ident> = Vec::new();
 
                         // Look up each captured ref's ident from built_tees
-                        for (ref_node, _is_mut, _group) in f.singleton_refs.iter() {
+                        for (ref_node, _is_mut) in f.singleton_refs.iter() {
                             let HydroNode::Reference { inner, .. } = ref_node else {
                                 panic!("singleton_refs should only contain HydroNode::Reference");
                             };
@@ -2045,37 +2048,53 @@ impl Hash for SharedNode {
 ///
 /// Each mutable access increments the counter (before and after) to isolate itself in its own group;
 /// immutable accesses share the current group.
-#[derive(Clone)]
-pub struct AccessCounter(pub Cell<u32>);
+#[derive(Debug)]
+pub enum AccessCounter {
+    Counting(Cell<u32>),
+    Frozen(u32),
+}
 
 impl AccessCounter {
     pub fn new() -> Self {
-        Self(Cell::new(0))
+        Self::Counting(Cell::new(0))
     }
 
     /// Assign the next access group for this reference.
     /// Mutable accesses get an isolated group (counter increments before and after).
     /// Immutable accesses share the current group.
-    pub fn next_group(&self, is_mut: bool) -> u32 {
-        if is_mut {
-            let c = self.0.get() + 1;
-            self.0.set(c + 1);
+    pub fn next_group(&self, is_mut: bool) -> Self {
+        let AccessCounter::Counting(count) = self else {
+            panic!("Cannot count on `AccessCounter::Frozen`");
+        };
+        let c = if is_mut {
+            let c = count.get() + 1;
+            count.set(c + 1);
             c
         } else {
-            self.0.get()
-        }
+            count.get()
+        };
+        Self::Frozen(c)
+    }
+
+    /// Creates a frozen counter to prevent further counting.
+    pub fn freeze(&self) -> Self {
+        Self::Frozen(match self {
+            Self::Counting(count) => count.get(),
+            Self::Frozen(count) => *count,
+        })
+    }
+
+    pub fn frozen_group(&self) -> u32 {
+        let Self::Frozen(count) = self else {
+            panic!("`AccessCounter` not frozen");
+        };
+        *count
     }
 }
 
 impl Default for AccessCounter {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Debug for AccessCounter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "AccessCounter({})", self.0.get())
     }
 }
 
@@ -2087,7 +2106,11 @@ impl Hash for AccessCounter {
 
 impl serde::Serialize for AccessCounter {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.0.get().serialize(serializer)
+        let count = match self {
+            AccessCounter::Counting(count) => count.get(),
+            AccessCounter::Frozen(count) => *count,
+        };
+        count.serialize(serializer)
     }
 }
 
@@ -2789,7 +2812,7 @@ impl HydroNode {
                     HydroNode::Reference {
                         inner: cloned_inner,
                         kind: *kind,
-                        access_counter: access_counter.clone(),
+                        access_counter: access_counter.freeze(),
                         metadata: metadata.clone(),
                     }
                 } else {
