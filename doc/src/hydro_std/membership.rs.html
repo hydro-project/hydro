@@ -6,7 +6,7 @@
 <a href=#6 id=6 data-nosnippet>6</a>
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">pub fn </span>track_membership&lt;<span class="lifetime">'a</span>, K: Hash + Eq, L: Location&lt;<span class="lifetime">'a</span>&gt;&gt;(
 <a href=#8 id=8 data-nosnippet>8</a>    membership: KeyedStream&lt;K, MembershipEvent, L, Unbounded&gt;,
-<a href=#9 id=9 data-nosnippet>9</a>) -&gt; KeyedSingleton&lt;K, bool, L, Unbounded&gt; {
+<a href=#9 id=9 data-nosnippet>9</a>) -&gt; KeyedSingleton&lt;K, bool, L, MonotonicKeys&gt; {
 <a href=#10 id=10 data-nosnippet>10</a>    membership.fold(
 <a href=#11 id=11 data-nosnippet>11</a>        <span class="macro">q!</span>(|| <span class="bool-val">false</span>),
 <a href=#12 id=12 data-nosnippet>12</a>        <span class="macro">q!</span>(|present, event| {
