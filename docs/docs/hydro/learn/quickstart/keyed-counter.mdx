@@ -54,7 +54,7 @@ Just like in the single counter, you'll establish consistency guarantees between
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
-} showLineNumbers={15}>{getLines(keyedCounterSrc, 15, 15, `
+} showLineNumbers={14}>{getLines(keyedCounterSrc, 14, 14, `
 let increment_request_processing = increment_requests.atomic();
 `)}</CodeBlock>
 
@@ -62,7 +62,7 @@ To track counts for multiple keys, you need to regroup the increment requests. C
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
-} showLineNumbers={16}>{getLines(keyedCounterSrc, 16, 21, `
+} showLineNumbers={15}>{getLines(keyedCounterSrc, 15, 20, `
 let current_count = increment_request_processing
     .clone()
     .entries()
@@ -83,7 +83,7 @@ Finally, you acknowledge the increments by ending the atomic block:
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
-} showLineNumbers={22}>{getLines(keyedCounterSrc, 22, 22, `
+} showLineNumbers={21}>{getLines(keyedCounterSrc, 21, 21, `
 let increment_ack = increment_request_processing.end_atomic();
 `)}</CodeBlock>
 
@@ -96,7 +96,7 @@ Get requests arrive keyed by client ID, but you need to look them up by key name
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
-} showLineNumbers={24}>{getLines(keyedCounterSrc, 24, 28, `
+} showLineNumbers={23}>{getLines(keyedCounterSrc, 23, 27, `
 let requests_regrouped = get_requests
     .entries()
     .map(q!(|(cid, key)| (key, cid)))
@@ -107,7 +107,7 @@ This swaps the key and value: `(client_id, key_name)` becomes `(key_name, client
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
-} showLineNumbers={29}>{getLines(keyedCounterSrc, 29, 35, `
+} showLineNumbers={28}>{getLines(keyedCounterSrc, 28, 34, `
 let get_lookup = sliced! {
     let request_batch = use(requests_regrouped, nondet!(/** we never observe batch boundaries */));
     let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
@@ -127,7 +127,7 @@ Finally, you need to regroup the responses by client ID so each client receives 
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
-} showLineNumbers={36}>{getLines(keyedCounterSrc, 36, 40, `
+} showLineNumbers={35}>{getLines(keyedCounterSrc, 35, 39, `
 let get_response = get_lookup
     .entries()
     .map(q!(|(key, (client, count))| (client, (key, count))))
@@ -189,7 +189,7 @@ The test follows the same pattern as the single counter. Because the simulator c
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
-} showLineNumbers={50}>{getLines(keyedCounterSrc, 50, 76, `
+} showLineNumbers={49}>{getLines(keyedCounterSrc, 49, 75, `
 #[test]
 fn test_counter_read_after_write() {
     let mut flow = FlowBuilder::new();

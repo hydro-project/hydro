@@ -103,7 +103,6 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[expect(clippy::type_complexity, reason = "DropConsistency type")]
     pub fn demux<N: NetworkFor<T>>(
         self,
         to: &Cluster<'a, L2>,
@@ -233,7 +232,6 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
     pub fn demux<N: NetworkFor<(K, T)>>(
         self,
         to: &Cluster<'a, L2>,
@@ -397,7 +395,6 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
     pub fn demux<N: NetworkFor<T>>(
         self,
         to: &Cluster<'a, L2>,
@@ -450,7 +447,6 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
 impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     KeyedStream<K, V, Cluster<'a, L, C>, B, O, R>
 {
-    #[expect(clippy::type_complexity, reason = "compound key types with ordering")]
     #[deprecated = "use KeyedStream::send(..., TCP.fail_stop().bincode()) instead"]
     /// "Moves" elements of this keyed stream from a cluster to a process by sending them over the
     /// network, using [`bincode`] to serialize/deserialize messages. The resulting [`KeyedStream`]
@@ -517,7 +513,6 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         self.send(other, TCP.fail_stop().bincode())
     }
 
-    #[expect(clippy::type_complexity, reason = "compound key types with ordering")]
     /// "Moves" elements of this keyed stream from a cluster to a process by sending them over the
     /// network, using the configuration in `via` to set up the message transport. The resulting
     /// [`KeyedStream`] has a compound key where the first element is the sender's [`MemberId`] and

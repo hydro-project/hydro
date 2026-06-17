@@ -43,7 +43,6 @@ impl<K: KvKey, V: KvValue> PartialOrd for SequencedKv<K, V> {
 }
 
 // Replicas. All relations for replicas will be prefixed with r. Expects ReplicaPayload on p_to_replicas, outputs a stream of (client address, ReplicaPayload) after processing.
-#[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
 pub fn kv_replica<'a, K: KvKey, V: KvValue>(
     replicas: &Cluster<'a, Replica>,
     p_to_replicas: impl Into<

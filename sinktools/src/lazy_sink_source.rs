@@ -76,10 +76,6 @@ impl<Fut, St, Si, Item, Error> LazySinkSource<Fut, St, Si, Item, Error> {
         }
     }
 
-    #[expect(
-        clippy::type_complexity,
-        reason = "this type is actually fine and not too complex."
-    )]
     /// Splits into a sink and stream that share the same underlying connection.
     pub fn split(
         self,

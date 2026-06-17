@@ -1,5 +1,6 @@
 upper-case-acronyms-aggressive = true
 avoid-breaking-exported-api = false
+type-complexity-threshold = 500
 disallowed-methods = [
     { path = "slotmap::SparseSecondaryMap::drain", reason = "nondeterministic iteration order" },
     { path = "slotmap::SparseSecondaryMap::iter_mut", reason = "nondeterministic iteration order" },

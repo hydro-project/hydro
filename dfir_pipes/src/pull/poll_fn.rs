@@ -10,7 +10,6 @@ use crate::pull::{Pull, PullStep};
 #[derive(Clone, Debug)]
 pub struct PollFn<F, Item, Meta, CanPend, CanEnd> {
     func: F,
-    #[expect(clippy::type_complexity, reason = "phantom data")]
     _marker: core::marker::PhantomData<fn() -> (Item, Meta, CanPend, CanEnd)>,
 }
 

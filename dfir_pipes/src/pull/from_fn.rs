@@ -10,7 +10,6 @@ use crate::{No, Toggle};
 #[derive(Clone, Debug)]
 pub struct FromFn<F, Item, Meta, CanEnd> {
     func: F,
-    #[expect(clippy::type_complexity, reason = "phantom data")]
     _marker: core::marker::PhantomData<fn() -> (Item, Meta, CanEnd)>,
 }
 

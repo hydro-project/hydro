@@ -39,7 +39,6 @@ use hydro_lang::prelude::*;
 
 pub struct CounterServer;
 
-#[expect(clippy::type_complexity, reason = "output types with orderings")]
 pub fn keyed_counter_service<'a, L: Location<'a>>(
     increment_requests: KeyedStream<u32, String, L, Unbounded>,
     get_requests: KeyedStream<u32, String, L, Unbounded>,

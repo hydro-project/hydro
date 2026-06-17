@@ -34,7 +34,7 @@ Hydro provides [`KeyedStream`](../../reference/live-collections/keyed-streams.md
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={6}>{getLines(concurrentClientsSrc, 6, 12, `
+} showLineNumbers={5}>{getLines(concurrentClientsSrc, 5, 11, `
 pub fn concurrent_counter_service<'a>(
     increment_requests: KeyedStream<u32, (), Process<'a, CounterServer>>,
     get_requests: KeyedStream<u32, (), Process<'a, CounterServer>>,
@@ -52,7 +52,7 @@ The counter still maintains a single global count across all clients. Since the 
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={13}>{getLines(concurrentClientsSrc, 13, 14, `
+} showLineNumbers={12}>{getLines(concurrentClientsSrc, 12, 13, `
 let increment_request_processing = increment_requests.atomic();
 let current_count = increment_request_processing.clone().values().count();
 `)}</CodeBlock>
@@ -71,7 +71,7 @@ The rest of the implementation follows the same pattern as the single client cou
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={15}>{getLines(concurrentClientsSrc, 15, 15, `
+} showLineNumbers={14}>{getLines(concurrentClientsSrc, 14, 14, `
 let increment_ack = increment_request_processing.end_atomic();
 `)}</CodeBlock>
 
@@ -79,7 +79,7 @@ And get responses use `cross_singleton` which pairs the count with each client's
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={17}>{getLines(concurrentClientsSrc, 17, 22, `
+} showLineNumbers={16}>{getLines(concurrentClientsSrc, 16, 21, `
 let get_response = sliced! {
     let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
     let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
@@ -93,7 +93,7 @@ Let's write a test where two different clients increment the counter and both re
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={33}>{getLines(concurrentClientsSrc, 33, 66, `
+} showLineNumbers={32}>{getLines(concurrentClientsSrc, 32, 65, `
 #[test]
 fn test_concurrent_clients() {
     let mut flow = FlowBuilder::new();

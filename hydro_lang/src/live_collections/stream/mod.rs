@@ -885,10 +885,6 @@ where
     /// # }));
     /// # }
     /// ```
-    #[expect(
-        clippy::type_complexity,
-        reason = "return type mirrors the input stream type"
-    )]
     pub fn partition<F, C, Idemp, const WAS_MUT: bool>(
         self,
         f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
@@ -1159,10 +1155,6 @@ where
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
     /// # }
-    #[expect(
-        clippy::type_complexity,
-        reason = "MinRetries projection in return type"
-    )]
     pub fn cross_product<T2, B2: Boundedness, O2: Ordering, R2: Retries>(
         self,
         other: Stream<T2, L, B2, O2, R2>,
@@ -2655,10 +2647,6 @@ where
     /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams.
     /// Unlike [`Stream::cross_product`], the output order is totally ordered when the inputs are
     /// because this is compiled into a nested loop.
-    #[expect(
-        clippy::type_complexity,
-        reason = "MinRetries projection in return type"
-    )]
     pub fn cross_product_nested_loop<T2, O2: Ordering + MinOrder<O>, R2: Retries>(
         self,
         other: Stream<T2, L, Bounded, O2, R2>,
@@ -2830,7 +2818,6 @@ impl<'a, K, V1, L, B: Boundedness, O: Ordering, R: Retries> Stream<(K, V1), L, B
 where
     L: Location<'a>,
 {
-    #[expect(clippy::type_complexity, reason = "ordering / retries propagation")]
     /// Given two streams of pairs `(K, V1)` and `(K, V2)`, produces a new stream of nested pairs `(K, (V1, V2))`
     /// by equi-joining the two streams on the key attribute `K`.
     ///

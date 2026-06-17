@@ -132,7 +132,6 @@ impl<'a> PaxosLike<'a> for CorePaxos<'a> {
 /// in deterministic order. However, when the leader is changing, payloads may be
 /// non-deterministically dropped. The stream of ballots is also non-deterministic because
 /// leaders are elected in a non-deterministic process.
-#[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
 pub fn paxos_core<'a, P: PaxosPayload>(
     proposers: &Cluster<'a, Proposer>,
     acceptors: &Cluster<'a, Acceptor>,
@@ -349,7 +348,6 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
 }
 
 // Proposer logic to calculate the next ballot number. Expects p_received_max_ballot, the largest ballot received so far. Outputs streams: ballot_num, and has_largest_ballot, which only contains a value if we have the largest ballot.
-#[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
 fn p_ballot_calc<'a>(
     p_received_max_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
 ) -> (
@@ -403,7 +401,6 @@ fn p_ballot_calc<'a>(
     )
 }
 
-#[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
 fn p_leader_heartbeat<'a>(
     proposers: &Cluster<'a, Proposer>,
     proposer_tick: &Tick<Cluster<'a, Proposer>>,

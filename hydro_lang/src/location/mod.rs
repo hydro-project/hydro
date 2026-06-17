@@ -566,7 +566,6 @@ pub trait Location<'a>: DynLocation {
     /// of received values.
     ///
     /// For bidirectional communication, see [`Location::bind_single_client_bincode`].
-    #[expect(clippy::type_complexity, reason = "stream markers")]
     fn source_external_bincode<L, T, O: Ordering, R: Retries>(
         &self,
         from: &External<L>,
@@ -596,7 +595,6 @@ pub trait Location<'a>: DynLocation {
     /// Returns a handle to send messages to the location as well as a stream
     /// of received messages. This is only available when the `sim` feature is enabled.
     #[cfg(feature = "sim")]
-    #[expect(clippy::type_complexity, reason = "stream markers")]
     fn sim_input<T, O: Ordering, R: Retries>(
         &self,
     ) -> (
@@ -1240,7 +1238,6 @@ pub trait Location<'a>: DynLocation {
     /// # }));
     /// # }
     /// ```
-    #[expect(clippy::type_complexity, reason = "stream markers")]
     fn sidecar_bidi<InT: 'static, OutT: 'static, F>(
         &self,
         sidecar: impl QuotedWithContext<'a, F, Self>,
