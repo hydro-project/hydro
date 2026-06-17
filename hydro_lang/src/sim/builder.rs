@@ -1677,6 +1677,20 @@ impl DfirBuilder for SimBuilder {
             );
         }
     }
+
+    fn observe_for_mut(
+        &mut self,
+        location: &LocationId,
+        in_ident: syn::Ident,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        op_meta: &HydroIrOpMetadata,
+    ) {
+        let out_kind = in_kind.strict_kind();
+        self.observe_nondet(
+            false, location, in_ident, in_kind, out_ident, &out_kind, op_meta,
+        );
+    }
 }
 
 /// Extract a location string, line, and caret indent from an op's metadata backtrace.

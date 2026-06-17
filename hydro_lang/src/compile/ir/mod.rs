@@ -154,6 +154,10 @@ impl ClosureExpr {
         }
     }
 
+    pub fn has_mut_ref(&self) -> bool {
+        self.singleton_refs.iter().any(|(_, is_mut)| *is_mut)
+    }
+
     pub fn deep_clone(&self, seen_tees: &mut SeenSharedNodes) -> Self {
         Self {
             expr: self.expr.clone(),
@@ -583,6 +587,18 @@ pub trait DfirBuilder {
         in_ident: syn::Ident,
         out_ident: &syn::Ident,
     );
+
+    /// Observes non-determinism introduced by a mut closure operating on a non-strict
+    /// (unordered / at-least-once) input. In production this is identity; in simulation
+    /// it delegates to `observe_nondet` with the strict output kind.
+    fn observe_for_mut(
+        &mut self,
+        location: &LocationId,
+        in_ident: syn::Ident,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        op_meta: &HydroIrOpMetadata,
+    );
 }
 
 #[cfg(feature = "build")]
@@ -857,6 +873,24 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         location: &LocationId,
         in_ident: syn::Ident,
         out_ident: &syn::Ident,
+    ) {
+        let builder = self.get_dfir_mut(location);
+        builder.add_dfir(
+            parse_quote! {
+                #out_ident = #in_ident;
+            },
+            None,
+            None,
+        );
+    }
+
+    fn observe_for_mut(
+        &mut self,
+        location: &LocationId,
+        in_ident: syn::Ident,
+        _in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        _op_meta: &HydroIrOpMetadata,
     ) {
         let builder = self.get_dfir_mut(location);
         builder.add_dfir(
@@ -2200,6 +2234,57 @@ impl CollectionKind {
             }
         )
     }
+
+    /// Returns whether this collection kind is already "strict" (TotalOrder + ExactlyOnce),
+    /// meaning no non-determinism needs to be observed for mut closures.
+    pub fn is_strict(&self) -> bool {
+        match self {
+            CollectionKind::Stream { order, retry, .. } => {
+                *order == StreamOrder::TotalOrder && *retry == StreamRetry::ExactlyOnce
+            }
+            CollectionKind::KeyedStream {
+                value_order,
+                value_retry,
+                ..
+            } => {
+                *value_order == StreamOrder::TotalOrder && *value_retry == StreamRetry::ExactlyOnce
+            }
+            // Singletons/Optionals/KeyedSingletons do not have observable
+            // non-determinism other than snapshots / batching
+            CollectionKind::Singleton { .. }
+            | CollectionKind::Optional { .. }
+            | CollectionKind::KeyedSingleton { .. } => true,
+        }
+    }
+
+    /// Creates a "strict" version of this kind with TotalOrder and ExactlyOnce.
+    pub fn strict_kind(&self) -> CollectionKind {
+        match self {
+            CollectionKind::Stream {
+                bound,
+                element_type,
+                ..
+            } => CollectionKind::Stream {
+                bound: bound.clone(),
+                order: StreamOrder::TotalOrder,
+                retry: StreamRetry::ExactlyOnce,
+                element_type: element_type.clone(),
+            },
+            CollectionKind::KeyedStream {
+                bound,
+                key_type,
+                value_type,
+                ..
+            } => CollectionKind::KeyedStream {
+                bound: bound.clone(),
+                value_order: StreamOrder::TotalOrder,
+                value_retry: StreamRetry::ExactlyOnce,
+                key_type: key_type.clone(),
+                value_type: value_type.clone(),
+            },
+            other => other.clone(),
+        }
+    }
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -2572,6 +2657,35 @@ pub enum HydroNode {
 
 pub type SeenSharedNodes = HashMap<*const RefCell<HydroNode>, Rc<RefCell<HydroNode>>>;
 pub type SeenSharedNodeLocations = HashMap<*const RefCell<HydroNode>, LocationId>;
+
+/// If `f` has a mut singleton ref and `in_kind` is non-strict, emits an
+/// `observe_for_mut` node and returns the new ident. Otherwise returns
+/// `in_ident` unchanged. Always consumes a stmt_id when applicable.
+#[cfg(feature = "build")]
+fn maybe_observe_for_mut(
+    f: &ClosureExpr,
+    in_ident: syn::Ident,
+    in_location: &LocationId,
+    in_kind: &CollectionKind,
+    op_meta: &HydroIrOpMetadata,
+    builders_or_callback: &mut BuildersOrCallback<
+        impl FnMut(&mut HydroRoot, &mut crate::Counter<StmtId>),
+        impl FnMut(&mut HydroNode, &mut crate::Counter<StmtId>),
+    >,
+    next_stmt_id: &mut crate::Counter<StmtId>,
+) -> syn::Ident {
+    if f.has_mut_ref() && !in_kind.is_strict() {
+        let observe_stmt_id = next_stmt_id.get_and_increment();
+        let observe_ident =
+            syn::Ident::new(&format!("stream_{}", observe_stmt_id), Span::call_site());
+        if let BuildersOrCallback::Builders(graph_builders) = builders_or_callback {
+            graph_builders.observe_for_mut(in_location, in_ident, in_kind, &observe_ident, op_meta);
+        }
+        observe_ident
+    } else {
+        in_ident
+    }
+}
 
 impl HydroNode {
     pub fn transform_bottom_up(
@@ -3625,7 +3739,7 @@ impl HydroNode {
                     }
 
                     HydroNode::Partition {
-                        inner, f, is_true, ..
+                        inner, f, is_true, metadata,
                     } => {
                         let is_true = *is_true; // need to copy early to avoid borrow checking issues with node
                         let ptr = inner.0.as_ref() as *const RefCell<HydroNode>;
@@ -3646,6 +3760,17 @@ impl HydroNode {
                             // so its ident is on the stack
                             let inner_ident = ident_stack.pop().unwrap();
                             let f_tokens = f.emit_tokens(&mut ident_stack);
+
+                            let inner_ident = {
+                                let inner_borrow = inner.0.borrow();
+                                maybe_observe_for_mut(
+                                    f, inner_ident,
+                                    &inner_borrow.metadata().location_id,
+                                    &inner_borrow.metadata().collection_kind,
+                                    &metadata.op,
+                                    builders_or_callback, next_stmt_id,
+                                )
+                            };
 
                             let partition_ident = syn::Ident::new(
                                 &format!("stream_{}_partition", stmt_id),
@@ -4057,10 +4182,24 @@ impl HydroNode {
                         ident_stack.push(futures_ident);
                     }
 
-                    HydroNode::Map { f, .. } => {
+                    HydroNode::Map {
+                        f,
+                        input,
+                        metadata,
+                    } => {
                         // Pop input ident (pushed last by transform_children).
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
+
+                        let input_ident = maybe_observe_for_mut(
+                            f,
+                            input_ident,
+                            &input.metadata().location_id,
+                            &input.metadata().collection_kind,
+                            &metadata.op,
+                            builders_or_callback,
+                            next_stmt_id,
+                        );
 
                         let stmt_id = next_stmt_id.get_and_increment();
                         let map_ident =
@@ -4085,9 +4224,17 @@ impl HydroNode {
                         ident_stack.push(map_ident);
                     }
 
-                    HydroNode::FlatMap { f, .. } => {
+                    HydroNode::FlatMap { f, input, metadata } => {
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
+
+                        let input_ident = maybe_observe_for_mut(
+                            f, input_ident,
+                            &input.metadata().location_id,
+                            &input.metadata().collection_kind,
+                            &metadata.op,
+                            builders_or_callback, next_stmt_id,
+                        );
 
                         let stmt_id = next_stmt_id.get_and_increment();
                         let flat_map_ident =
@@ -4112,9 +4259,17 @@ impl HydroNode {
                         ident_stack.push(flat_map_ident);
                     }
 
-                    HydroNode::FlatMapStreamBlocking { f, .. } => {
+                    HydroNode::FlatMapStreamBlocking { f, input, metadata } => {
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
+
+                        let input_ident = maybe_observe_for_mut(
+                            f, input_ident,
+                            &input.metadata().location_id,
+                            &input.metadata().collection_kind,
+                            &metadata.op,
+                            builders_or_callback, next_stmt_id,
+                        );
 
                         let stmt_id = next_stmt_id.get_and_increment();
                         let flat_map_stream_blocking_ident =
@@ -4139,9 +4294,17 @@ impl HydroNode {
                         ident_stack.push(flat_map_stream_blocking_ident);
                     }
 
-                    HydroNode::Filter { f, .. } => {
+                    HydroNode::Filter { f, input, metadata } => {
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
+
+                        let input_ident = maybe_observe_for_mut(
+                            f, input_ident,
+                            &input.metadata().location_id,
+                            &input.metadata().collection_kind,
+                            &metadata.op,
+                            builders_or_callback, next_stmt_id,
+                        );
 
                         let stmt_id = next_stmt_id.get_and_increment();
                         let filter_ident =
@@ -4166,9 +4329,17 @@ impl HydroNode {
                         ident_stack.push(filter_ident);
                     }
 
-                    HydroNode::FilterMap { f, .. } => {
+                    HydroNode::FilterMap { f, input, metadata } => {
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
+
+                        let input_ident = maybe_observe_for_mut(
+                            f, input_ident,
+                            &input.metadata().location_id,
+                            &input.metadata().collection_kind,
+                            &metadata.op,
+                            builders_or_callback, next_stmt_id,
+                        );
 
                         let stmt_id = next_stmt_id.get_and_increment();
                         let filter_map_ident =
@@ -4276,9 +4447,17 @@ impl HydroNode {
                         ident_stack.push(enumerate_ident);
                     }
 
-                    HydroNode::Inspect { f, .. } => {
+                    HydroNode::Inspect { f, input, metadata } => {
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
+
+                        let input_ident = maybe_observe_for_mut(
+                            f, input_ident,
+                            &input.metadata().location_id,
+                            &input.metadata().collection_kind,
+                            &metadata.op,
+                            builders_or_callback, next_stmt_id,
+                        );
 
                         let stmt_id = next_stmt_id.get_and_increment();
                         let inspect_ident =
