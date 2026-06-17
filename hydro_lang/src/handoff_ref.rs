@@ -13,7 +13,7 @@ use proc_macro2::Span;
 use quote::quote;
 use stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
 
-use crate::compile::ir::{HydroNode, SharedNode};
+use crate::compile::ir::{AccessCounter, HydroNode, SharedNode};
 use crate::location::Location;
 
 /// Determines which DFIR pseudo-operator a reference node lowers to.
@@ -28,7 +28,7 @@ pub enum HandoffRefKind {
 }
 
 // Thread-local storage for handoff references captured during `q!()` expansion.
-// Stores the HydroNode `(node, is_mut)` for each reference captured in the current closure.
+// Stores the `HydroNode::Reference` and `is_mut: bool` for each reference captured in the current closure.
 // The index determines the ident name via `handoff_ref_ident`.
 thread_local! {
     static CAPTURED_REFS: RefCell<Option<Vec<(HydroNode, bool)>>> = const { RefCell::new(None) };
@@ -86,19 +86,29 @@ fn register_handoff_ref(
             *ir_node.borrow_mut() = HydroNode::Reference {
                 inner: SharedNode(Rc::new(RefCell::new(orig))),
                 kind,
+                access_counter: AccessCounter::new(),
                 metadata: metadata.clone(),
             };
         }
 
         let borrow: std::cell::Ref<'_, HydroNode> = ir_node.borrow();
-        let HydroNode::Reference { inner, .. } = &*borrow else {
+        let HydroNode::Reference {
+            inner,
+            access_counter,
+            ..
+        } = &*borrow
+        else {
             unreachable!()
         };
+
+        // Compute access group at staging time (code order).
+        let group = access_counter.next_group(is_mut);
 
         refs.push((
             HydroNode::Reference {
                 inner: SharedNode(Rc::clone(&inner.0)),
                 kind,
+                access_counter: group,
                 metadata,
             },
             is_mut,
@@ -111,88 +121,94 @@ fn register_handoff_ref(
 /// Macro to define a handoff reference struct with all necessary trait impls.
 macro_rules! define_handoff_ref {
     (
-        $(#[$meta:meta])*
-        $name:ident, $is_mut:expr, $kind:expr, $output:ty
+        $(
+            $(#[$meta:meta])*
+            $name:ident, $is_mut:expr, $kind:expr, $output:ty
+        )+
     ) => {
-        $(#[$meta])*
-        pub struct $name<'a, 'slf, T, L> {
-            pub(crate) ir_node: &'slf RefCell<HydroNode>,
-            _phantom: PhantomData<(&'a T, L)>,
-        }
+        $(
+            $(#[$meta])*
+            pub struct $name<'a, 'slf, T, L> {
+                pub(crate) ir_node: &'slf RefCell<HydroNode>,
+                _phantom: PhantomData<(&'a T, L)>,
+            }
 
-        impl<'slf, T, L> $name<'_, 'slf, T, L> {
-            /// Creates a new reference handle from an IR node cell.
-            pub(crate) fn new(ir_node: &'slf RefCell<HydroNode>) -> Self {
-                Self {
-                    ir_node,
-                    _phantom: PhantomData,
+            impl<'slf, T, L> $name<'_, 'slf, T, L> {
+                /// Creates a new reference handle from an IR node cell.
+                pub(crate) fn new(ir_node: &'slf RefCell<HydroNode>) -> Self {
+                    Self {
+                        ir_node,
+                        _phantom: PhantomData,
+                    }
                 }
             }
-        }
 
-        impl<T, L> Copy for $name<'_, '_, T, L> {}
-        impl<T, L> Clone for $name<'_, '_, T, L> {
-            fn clone(&self) -> Self {
-                *self
+            impl<T, L> Copy for $name<'_, '_, T, L> {}
+            impl<T, L> Clone for $name<'_, '_, T, L> {
+                fn clone(&self) -> Self {
+                    *self
+                }
             }
-        }
 
-        impl<'a, 'slf, T: 'a, L> FreeVariableWithContextWithProps<L, ()> for $name<'a, 'slf, T, L>
-        where
-            L: Location<'a>,
-        {
-            type O = $output;
+            impl<'a, 'slf, T: 'a, L> FreeVariableWithContextWithProps<L, ()> for $name<'a, 'slf, T, L>
+            where
+                L: Location<'a>,
+            {
+                type O = $output;
 
-            fn to_tokens(self, _ctx: &L) -> (QuoteTokens, ()) {
-                let ident = register_handoff_ref(self.ir_node, $is_mut, $kind);
-                (
-                    QuoteTokens {
-                        prelude: None,
-                        expr: Some(quote!(#ident)),
-                    },
-                    (),
-                )
+                fn to_tokens(self, _ctx: &L) -> (QuoteTokens, ()) {
+                    let ident = register_handoff_ref(
+                        self.ir_node,
+                        $is_mut,
+                        $kind,
+                    );
+                    (
+                        QuoteTokens {
+                            prelude: None,
+                            expr: Some(quote!(#ident)),
+                        },
+                        (),
+                    )
+                }
             }
-        }
+        )+
     };
 }
 
+#[stageleft::export(
+    SingletonRef,
+    SingletonMut,
+    OptionalRef,
+    OptionalMut,
+    StreamRef,
+    StreamMut
+)]
 define_handoff_ref!(
     /// A shared reference handle to a singleton, resolves to `&T` at runtime.
     ///
     /// Created via [`Singleton::by_ref()`](crate::live_collections::Singleton::by_ref).
     SingletonRef, false, HandoffRefKind::Singleton, &'a T
-);
 
-define_handoff_ref!(
     /// A mutable reference handle to a singleton, resolves to `&mut T` at runtime.
     ///
     /// Created via [`Singleton::by_mut()`](crate::live_collections::Singleton::by_mut).
     SingletonMut, true, HandoffRefKind::Singleton, &'a mut T
-);
 
-define_handoff_ref!(
     /// A shared reference handle to an optional, resolves to `&Option<T>` at runtime.
     ///
     /// Created via [`Optional::by_ref()`](crate::live_collections::Optional::by_ref).
     OptionalRef, false, HandoffRefKind::Optional, &'a Option<T>
-);
 
-define_handoff_ref!(
     /// A mutable reference handle to an optional, resolves to `&mut Option<T>` at runtime.
     ///
     /// Created via [`Optional::by_mut()`](crate::live_collections::Optional::by_mut).
     OptionalMut, true, HandoffRefKind::Optional, &'a mut Option<T>
-);
 
-define_handoff_ref!(
     /// A shared reference handle to a stream's handoff buffer, resolves to `&Vec<T>` at runtime.
     ///
     /// Created via [`Stream::by_ref()`](crate::live_collections::Stream::by_ref).
     StreamRef, false, HandoffRefKind::Vec, &'a Vec<T>
-);
 
-define_handoff_ref!(
     /// A mutable reference handle to a stream's handoff buffer, resolves to `&mut Vec<T>` at runtime.
     ///
     /// Created via [`Stream::by_mut()`](crate::live_collections::Stream::by_mut).

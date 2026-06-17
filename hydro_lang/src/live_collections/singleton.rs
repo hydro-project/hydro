@@ -1971,4 +1971,87 @@ mod tests {
 
         assert_eq!(count, 1);
     }
+
+    /// Regression test for #2939: singleton mut access-group counter resets per root.
+    /// Two sequential `by_mut` captures on the same singleton, consumed by separate
+    /// `for_each` roots, should get distinct access groups and build successfully.
+    #[cfg(feature = "sim")]
+    #[test]
+    #[expect(unused_mut, reason = "sliced! macro generates mut bindings for state")]
+    fn sim_mut_access_group_across_roots() {
+        use crate::live_collections::sliced::sliced;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let source = node.source_iter(q!(vec![1i32, 2, 3]));
+
+        let (first, second) = sliced! {
+            let batch = use(source, nondet!(/** test */));
+            let mut total = use::state(|l| l.singleton(q!(0i32)));
+            let total_mut = total.by_mut();
+
+            let first = batch.clone().map(q!(|x| {
+                *total_mut += x;
+                *total_mut
+            }));
+            let second = batch.map(q!(|x| {
+                *total_mut += x;
+                *total_mut
+            }));
+            (first, second)
+        };
+
+        let first_recv = first.sim_output();
+        let second_recv = second.sim_output();
+
+        flow.sim().exhaustive(async || {
+            // Both outputs should produce values without panicking.
+            // The exact values depend on ordering, but the graph must build.
+            let _first: Vec<i32> = first_recv.collect().await;
+            let _second: Vec<i32> = second_recv.collect().await;
+        });
+    }
+
+    /// Regression test for #2940: access groups must follow code (staging) order,
+    /// not IR traversal order. When `second.chain(first)` reverses the consumption
+    /// order, the mutations must still execute in the order they were staged.
+    #[cfg(feature = "sim")]
+    #[test]
+    #[expect(unused_mut, reason = "sliced! macro generates mut bindings for state")]
+    fn sim_mut_access_groups_follow_code_order() {
+        use crate::live_collections::sliced::sliced;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let source = node.source_iter(q!(vec![3i32]));
+
+        let out_recv = sliced! {
+            let batch = use(source, nondet!(/** test */));
+            let mut total = use::state(|l| l.singleton(q!(0i32)));
+            let total_mut = total.by_mut();
+
+            // Defined FIRST in code: addition
+            let first = batch.clone().map(q!(|x| {
+                *total_mut += x;
+                *total_mut
+            }));
+            // Defined SECOND in code: doubling
+            let second = batch.map(q!(|_x| {
+                *total_mut *= 2;
+                *total_mut
+            }));
+            // Chain in OPPOSITE order of definition — must not affect mutation order.
+            second.chain(first)
+        }
+        .sim_output();
+
+        flow.sim().exhaustive(async || {
+            let results: Vec<i32> = out_recv.collect().await;
+            // Code-order semantics: first runs (total = 0 + 3 = 3), then second
+            // runs (total = 3 * 2 = 6). Output is second.chain(first) => [6, 3].
+            assert_eq!(results, vec![6, 3]);
+        });
+    }
 }
