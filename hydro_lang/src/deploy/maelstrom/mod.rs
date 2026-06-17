@@ -33,7 +33,6 @@ pub mod deploy_runtime_maelstrom;
 ///     (client_id, response_body)
 /// })));
 /// ```
-#[expect(clippy::type_complexity, reason = "stream markers")]
 pub fn maelstrom_bidi_clients<'a, C, In: DeserializeOwned, Out: Serialize>(
     cluster: &Cluster<'a, C>,
 ) -> (

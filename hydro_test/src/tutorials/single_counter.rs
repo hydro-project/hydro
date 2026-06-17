@@ -2,7 +2,6 @@ use hydro_lang::prelude::*;
 
 pub struct CounterServer;
 
-#[expect(clippy::type_complexity, reason = "multiple outputs")]
 pub fn single_counter_service<'a>(
     increment_requests: KeyedStream<u32, (), Process<'a, CounterServer>>,
     get_requests: KeyedStream<u32, (), Process<'a, CounterServer>>,

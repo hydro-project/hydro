@@ -314,7 +314,6 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         .demux(to, via)
     }
 
-    #[expect(clippy::type_complexity, reason = "guarantees eventual consistency")]
     /// Broadcasts elements of this stream to all members of a cluster,
     /// assuming membership is closed (fixed at deploy time).
     ///
@@ -571,7 +570,6 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[expect(clippy::type_complexity, reason = "DropConsistency type")]
     pub fn demux<N: NetworkFor<T>>(
         self,
         to: &Cluster<'a, L2>,
@@ -1000,7 +998,6 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
     pub fn send<L2, N: NetworkFor<T>>(
         self,
         to: &Process<'a, L2>,
@@ -1162,7 +1159,6 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
     pub fn broadcast<L2: 'a, N: NetworkFor<T>>(
         self,
         to: &Cluster<'a, L2>,
@@ -1205,7 +1201,6 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     ///
     /// This is only available in deployment targets with static cluster membership
     /// (legacy Hydro Deploy and simulation). On dynamic targets, use [`Stream::broadcast`].
-    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
     pub fn broadcast_closed<L2: 'a, N: NetworkFor<T>>(
         self,
         to: &Cluster<'a, L2>,
@@ -1399,7 +1394,6 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
     pub fn demux<N: NetworkFor<T>>(
         self,
         to: &Cluster<'a, L2>,

@@ -148,7 +148,6 @@ impl<'a, C> Cluster<'a, C> {
     ///
     /// Returns a `SimClusterSender` that sends `(member_id, T)` messages targeting
     /// specific cluster members, and a `Stream<T>` received by each member.
-    #[expect(clippy::type_complexity, reason = "stream markers")]
     pub fn sim_input<T>(
         &self,
     ) -> (

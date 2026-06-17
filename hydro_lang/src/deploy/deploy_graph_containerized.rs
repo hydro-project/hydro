@@ -235,7 +235,6 @@ pub struct DockerDeployExternal {
 
     ports: Rc<RefCell<HashMap<ExternalPortId, u16>>>,
 
-    #[expect(clippy::type_complexity, reason = "internal code")]
     connection_info: Rc<RefCell<HashMap<u16, (Rc<RefCell<Option<String>>>, u16, DockerNetwork)>>>,
 }
 

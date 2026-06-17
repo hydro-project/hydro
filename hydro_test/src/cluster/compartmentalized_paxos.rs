@@ -98,11 +98,7 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
 /// in deterministic order. However, when the leader is changing, payloads may be
 /// non-deterministically dropped. The stream of ballots is also non-deterministic because
 /// leaders are elected in a non-deterministic process.
-#[expect(
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    reason = "internal paxos code // TODO"
-)]
+#[expect(clippy::too_many_arguments, reason = "internal paxos code // TODO")]
 pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
     proposers: &Cluster<'a, Proposer>,
     proxy_leaders: &Cluster<'a, ProxyLeader>,

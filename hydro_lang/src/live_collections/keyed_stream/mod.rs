@@ -2219,7 +2219,6 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[expect(clippy::type_complexity, reason = "ordering / retries propagation")]
     pub fn join_keyed_stream<V2, B2: Boundedness, O2: Ordering, R2: Retries>(
         self,
         other: KeyedStream<K, V2, L, B2, O2, R2>,
@@ -2569,7 +2568,6 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[expect(clippy::type_complexity, reason = "retries propagation")]
     pub fn lookup_keyed_stream<V2, O2: Ordering, R2: Retries>(
         self,
         lookup: KeyedStream<V, V2, L, Bounded, O2, R2>,

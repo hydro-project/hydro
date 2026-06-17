@@ -26,7 +26,7 @@ Before partitioning the counter, you need to make the `keyed_counter_service` fu
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
-} showLineNumbers={8}>{getLines(keyedCounterSrc, 8, 14, `
+} showLineNumbers={7}>{getLines(keyedCounterSrc, 7, 13, `
 pub fn keyed_counter_service<'a, L: Location<'a>>(
     increment_requests: KeyedStream<u32, String, L, Unbounded>,
     get_requests: KeyedStream<u32, String, L, Unbounded>,

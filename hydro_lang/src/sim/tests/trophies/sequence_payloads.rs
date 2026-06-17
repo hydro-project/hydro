@@ -25,7 +25,6 @@ struct SequencedKv {
     seq: usize,
 }
 
-#[expect(clippy::type_complexity, reason = "Paxos internals")]
 fn sequence_payloads_old<'a, L: Location<'a>>(
     replica_tick: &Tick<L>,
     p_to_replicas: Stream<SequencedKv, L, Unbounded, NoOrder>,
