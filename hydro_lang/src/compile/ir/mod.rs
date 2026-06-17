@@ -1537,6 +1537,27 @@ impl HydroRoot {
                     fold_hooked_idents,
                 );
 
+                // for_each is always side-effecting, so we observe non-determinism
+                // even when the closure does not capture a mut ref (unlike map/filter
+                // which only observe when they have a mut ref).
+                let input_ident = if !input.metadata().collection_kind.is_strict() {
+                    let observe_stmt_id = next_stmt_id.get_and_increment();
+                    let observe_ident =
+                        syn::Ident::new(&format!("stream_{}", observe_stmt_id), Span::call_site());
+                    if let BuildersOrCallback::Builders(graph_builders) = builders_or_callback {
+                        graph_builders.observe_for_mut(
+                            &input.metadata().location_id,
+                            input_ident,
+                            &input.metadata().collection_kind,
+                            &observe_ident,
+                            &input.metadata().op,
+                        );
+                    }
+                    observe_ident
+                } else {
+                    input_ident
+                };
+
                 let stmt_id = next_stmt_id.get_and_increment();
 
                 match builders_or_callback {
