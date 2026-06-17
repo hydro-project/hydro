@@ -1442,6 +1442,8 @@ impl HydroRoot {
                     fold_hooked_idents,
                 );
 
+                let stmt_id = next_stmt_id.get_and_increment();
+
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         let mut ident_stack: Vec<syn::Ident> = Vec::new();
@@ -1467,15 +1469,13 @@ impl HydroRoot {
                                     #input_ident -> for_each(#f_tokens);
                                 },
                                 None,
-                                Some(&next_stmt_id.to_string()),
+                                Some(&stmt_id.to_string()),
                             );
                     }
                     BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, next_stmt_id);
                     }
                 }
-
-                let _ = next_stmt_id.get_and_increment();
             }
 
             HydroRoot::SendExternal {
@@ -1491,6 +1491,8 @@ impl HydroRoot {
                     next_stmt_id,
                     fold_hooked_idents,
                 );
+
+                let stmt_id = next_stmt_id.get_and_increment();
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1510,15 +1512,13 @@ impl HydroRoot {
                             sink_expr,
                             &input_ident,
                             serialize_fn.as_ref(),
-                            *next_stmt_id,
+                            stmt_id,
                         );
                     }
                     BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, next_stmt_id);
                     }
                 }
-
-                let _ = next_stmt_id.get_and_increment();
             }
 
             HydroRoot::DestSink { sink, input, .. } => {
@@ -1530,6 +1530,8 @@ impl HydroRoot {
                     fold_hooked_idents,
                 );
 
+                let stmt_id = next_stmt_id.get_and_increment();
+
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         graph_builders
@@ -1539,15 +1541,13 @@ impl HydroRoot {
                                     #input_ident -> dest_sink(#sink);
                                 },
                                 None,
-                                Some(&next_stmt_id.to_string()),
+                                Some(&stmt_id.to_string()),
                             );
                     }
                     BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, next_stmt_id);
                     }
                 }
-
-                let _ = next_stmt_id.get_and_increment();
             }
 
             HydroRoot::CycleSink {
@@ -1608,6 +1608,8 @@ impl HydroRoot {
                     fold_hooked_idents,
                 );
 
+                let stmt_id = next_stmt_id.get_and_increment();
+
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         graph_builders
@@ -1617,15 +1619,13 @@ impl HydroRoot {
                                     #input_ident -> for_each(&mut #ident);
                                 },
                                 None,
-                                Some(&next_stmt_id.to_string()),
+                                Some(&stmt_id.to_string()),
                             );
                     }
                     BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, next_stmt_id);
                     }
                 }
-
-                let _ = next_stmt_id.get_and_increment();
             }
 
             HydroRoot::Null { input, .. } => {
@@ -1637,6 +1637,8 @@ impl HydroRoot {
                     fold_hooked_idents,
                 );
 
+                let stmt_id = next_stmt_id.get_and_increment();
+
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         graph_builders
@@ -1646,15 +1648,13 @@ impl HydroRoot {
                                     #input_ident -> for_each(|_| {});
                                 },
                                 None,
-                                Some(&next_stmt_id.to_string()),
+                                Some(&stmt_id.to_string()),
                             );
                     }
                     BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, next_stmt_id);
                     }
                 }
-
-                let _ = next_stmt_id.get_and_increment();
             }
         }
     }
@@ -3143,22 +3143,22 @@ impl HydroNode {
                     HydroNode::Cast { .. } => {
                         // Cast passes through the input ident unchanged
                         // The input ident is already on the stack from processing the child
+                        let _ = next_stmt_id.get_and_increment();
                         match builders_or_callback {
                             BuildersOrCallback::Builders(_) => {}
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
                         // input_ident stays on stack as output
                     }
 
                     HydroNode::UnboundSingleton { .. } => {
                         let inner_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let out_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3187,16 +3187,15 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(out_ident);
                     }
 
                     HydroNode::AssertIsConsistent { inner, trusted, .. } => {
                         let inner_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let out_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3212,8 +3211,6 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(out_ident);
                     }
 
@@ -3225,8 +3222,9 @@ impl HydroNode {
                     } => {
                         let inner_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let observe_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3245,8 +3243,6 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(observe_ident);
                     }
 
@@ -3255,8 +3251,9 @@ impl HydroNode {
                     } => {
                         let inner_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let batch_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3275,16 +3272,15 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(batch_ident);
                     }
 
                     HydroNode::YieldConcat { inner, .. } => {
                         let inner_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let yield_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3301,16 +3297,15 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(yield_ident);
                     }
 
                     HydroNode::BeginAtomic { inner, metadata } => {
                         let inner_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let begin_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3328,16 +3323,15 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(begin_ident);
                     }
 
                     HydroNode::EndAtomic { inner, .. } => {
                         let inner_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let end_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3353,8 +3347,6 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(end_ident);
                     }
 
@@ -3364,8 +3356,9 @@ impl HydroNode {
                         if let HydroSource::ExternalNetwork() = source {
                             ident_stack.push(syn::Ident::new("DUMMY", Span::call_site()));
                         } else {
+                            let stmt_id = next_stmt_id.get_and_increment();
                             let source_ident =
-                                syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                                syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                             let source_stmt = match source {
                                 HydroSource::Stream(expr) => {
@@ -3443,22 +3436,21 @@ impl HydroNode {
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(graph_builders) => {
                                     let builder = graph_builders.get_dfir_mut(&out_location);
-                                    builder.add_dfir(source_stmt, None, Some(&next_stmt_id.to_string()));
+                                    builder.add_dfir(source_stmt, None, Some(&stmt_id.to_string()));
                                 }
                                 BuildersOrCallback::Callback(_, node_callback) => {
                                     node_callback(node, next_stmt_id);
                                 }
                             }
 
-                            let _ = next_stmt_id.get_and_increment();
-
                             ident_stack.push(source_ident);
                         }
                     }
 
                     HydroNode::SingletonSource { value, first_tick_only, metadata } => {
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let source_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3480,7 +3472,7 @@ impl HydroNode {
                                             #source_ident = source_iter([#value]);
                                         },
                                         None,
-                                        Some(&next_stmt_id.to_string()),
+                                        Some(&stmt_id.to_string()),
                                     );
                                 } else {
                                     builder.add_dfir(
@@ -3488,7 +3480,7 @@ impl HydroNode {
                                             #source_ident = source_iter([#value]) -> persist::<'static>();
                                         },
                                         None,
-                                        Some(&next_stmt_id.to_string()),
+                                        Some(&stmt_id.to_string()),
                                     );
                                 }
                             }
@@ -3497,13 +3489,14 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(source_ident);
                     }
 
                     HydroNode::CycleSource { cycle_id, .. } => {
                         let ident = cycle_id.as_ident();
+
+                        // consume a stmt id even though we did not emit anything so that we can instrument this
+                        let _ = next_stmt_id.get_and_increment();
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(_) => {}
@@ -3512,13 +3505,14 @@ impl HydroNode {
                             }
                         }
 
-                        // consume a stmt id even though we did not emit anything so that we can instrument this
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(ident);
                     }
 
                     HydroNode::Tee { inner, .. } => {
+                        // we consume a stmt id regardless of if we emit the tee() operator,
+                        // so that during rewrites we touch all recipients of the tee()
+                        let stmt_id = next_stmt_id.get_and_increment();
+
                         let ret_ident = if let Some(built_idents) =
                             built_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
                         {
@@ -3536,7 +3530,7 @@ impl HydroNode {
                             let inner_ident = ident_stack.pop().unwrap();
 
                             let tee_ident =
-                                syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                                syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                             built_tees.insert(
                                 inner.0.as_ref() as *const RefCell<HydroNode>,
@@ -3565,7 +3559,7 @@ impl HydroNode {
                                             #tee_ident = #inner_ident -> tee();
                                         },
                                         None,
-                                        Some(&next_stmt_id.to_string()),
+                                        Some(&stmt_id.to_string()),
                                     );
                                 }
                                 BuildersOrCallback::Callback(_, node_callback) => {
@@ -3576,14 +3570,14 @@ impl HydroNode {
                             tee_ident
                         };
 
-                        // we consume a stmt id regardless of if we emit the tee() operator,
-                        // so that during rewrites we touch all recipients of the tee()
-
-                        let _ = next_stmt_id.get_and_increment();
                         ident_stack.push(ret_ident);
                     }
 
                     HydroNode::Reference { inner, kind, .. } => {
+                        // we consume a stmt id regardless of if we emit the operator,
+                        // so that during rewrites we touch all recipients
+                        let stmt_id = next_stmt_id.get_and_increment();
+
                         let ret_ident = if let Some(built_idents) =
                             built_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
                         {
@@ -3592,7 +3586,7 @@ impl HydroNode {
                             let inner_ident = ident_stack.pop().unwrap();
 
                             let ref_ident =
-                                syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                                syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                             built_tees.insert(
                                 inner.0.as_ref() as *const RefCell<HydroNode>,
@@ -3615,7 +3609,7 @@ impl HydroNode {
                                             #ref_ident = #inner_ident -> #op_ident();
                                         },
                                         None,
-                                        Some(&next_stmt_id.to_string()),
+                                        Some(&stmt_id.to_string()),
                                     );
                                 }
                                 BuildersOrCallback::Callback(_, node_callback) => {
@@ -3626,9 +3620,6 @@ impl HydroNode {
                             ref_ident
                         };
 
-                        // we consume a stmt id regardless of if we emit the operator,
-                        // so that during rewrites we touch all recipients
-                        let _ = next_stmt_id.get_and_increment();
                         ident_stack.push(ret_ident);
                     }
 
@@ -3637,6 +3628,8 @@ impl HydroNode {
                     } => {
                         let is_true = *is_true; // need to copy early to avoid borrow checking issues with node
                         let ptr = inner.0.as_ref() as *const RefCell<HydroNode>;
+                        let stmt_id = next_stmt_id.get_and_increment();
+
                         let ret_ident = if let Some(built_idents) = built_tees.get(&ptr) {
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(_) => {}
@@ -3654,15 +3647,15 @@ impl HydroNode {
                             let f_tokens = f.emit_tokens(&mut ident_stack);
 
                             let partition_ident = syn::Ident::new(
-                                &format!("stream_{}_partition", *next_stmt_id),
+                                &format!("stream_{}_partition", stmt_id),
                                 Span::call_site(),
                             );
                             let true_ident = syn::Ident::new(
-                                &format!("stream_{}_true", *next_stmt_id),
+                                &format!("stream_{}_true", stmt_id),
                                 Span::call_site(),
                             );
                             let false_ident = syn::Ident::new(
-                                &format!("stream_{}_false", *next_stmt_id),
+                                &format!("stream_{}_false", stmt_id),
                                 Span::call_site(),
                             );
 
@@ -3671,6 +3664,7 @@ impl HydroNode {
                                 vec![true_ident.clone(), false_ident.clone()],
                             );
 
+                            let stmt_id = next_stmt_id.get_and_increment();
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(graph_builders) => {
                                     let builder = graph_builders.get_dfir_mut(&out_location);
@@ -3681,7 +3675,7 @@ impl HydroNode {
                                             #false_ident = #partition_ident[1];
                                         },
                                         None,
-                                        Some(&next_stmt_id.to_string()),
+                                        Some(&stmt_id.to_string()),
                                     );
                                 }
                                 BuildersOrCallback::Callback(_, node_callback) => {
@@ -3692,7 +3686,6 @@ impl HydroNode {
                             if is_true { true_ident } else { false_ident }
                         };
 
-                        let _ = next_stmt_id.get_and_increment();
                         ident_stack.push(ret_ident);
                     }
 
@@ -3701,8 +3694,9 @@ impl HydroNode {
                         let second_ident = ident_stack.pop().unwrap();
                         let first_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let chain_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3714,15 +3708,13 @@ impl HydroNode {
                                         #second_ident -> [1]#chain_ident;
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(chain_ident);
                     }
@@ -3731,8 +3723,9 @@ impl HydroNode {
                         let second_ident = ident_stack.pop().unwrap();
                         let first_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let merge_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3743,15 +3736,13 @@ impl HydroNode {
                                     &merge_ident,
                                     &first.metadata().collection_kind,
                                     &metadata.op,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(merge_ident);
                     }
@@ -3760,8 +3751,9 @@ impl HydroNode {
                         let second_ident = ident_stack.pop().unwrap();
                         let first_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let chain_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3773,15 +3765,13 @@ impl HydroNode {
                                         #second_ident -> [1]#chain_ident;
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(chain_ident);
                     }
@@ -3790,8 +3780,9 @@ impl HydroNode {
                         let right_ident = ident_stack.pop().unwrap();
                         let left_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let cross_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3807,7 +3798,7 @@ impl HydroNode {
                                             #right_ident -> [single]#cross_ident;
                                         },
                                         None,
-                                        Some(&next_stmt_id.to_string()),
+                                        Some(&stmt_id.to_string()),
                                     );
                                 } else {
                                     builder.add_dfir(
@@ -3817,7 +3808,7 @@ impl HydroNode {
                                             #right_ident -> [single]#cross_ident;
                                         },
                                         None,
-                                        Some(&next_stmt_id.to_string()),
+                                        Some(&stmt_id.to_string()),
                                     );
                                 }
                             }
@@ -3825,8 +3816,6 @@ impl HydroNode {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(cross_ident);
                     }
@@ -3861,8 +3850,9 @@ impl HydroNode {
                         let right_ident = ident_stack.pop().unwrap();
                         let left_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let stream_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3885,15 +3875,13 @@ impl HydroNode {
                                     }
                                     ,
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(stream_ident);
                     }
@@ -3920,8 +3908,9 @@ impl HydroNode {
                         let neg_ident = ident_stack.pop().unwrap();
                         let pos_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let stream_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3933,15 +3922,13 @@ impl HydroNode {
                                         #neg_ident -> [neg]#stream_ident;
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(stream_ident);
                     }
@@ -3966,8 +3953,9 @@ impl HydroNode {
                         let build_ident = ident_stack.pop().unwrap();
                         let probe_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let stream_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -3979,7 +3967,7 @@ impl HydroNode {
                                         #build_ident -> [build]#stream_ident;
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
@@ -3987,16 +3975,15 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(stream_ident);
                     }
 
                     HydroNode::ResolveFutures { .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let futures_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4006,7 +3993,7 @@ impl HydroNode {
                                         #futures_ident = #input_ident -> resolve_futures();
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
@@ -4014,16 +4001,15 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(futures_ident);
                     }
 
                     HydroNode::ResolveFuturesBlocking { .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let futures_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4033,7 +4019,7 @@ impl HydroNode {
                                         #futures_ident = #input_ident -> resolve_futures_blocking();
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
@@ -4041,16 +4027,15 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(futures_ident);
                     }
 
                     HydroNode::ResolveFuturesOrdered { .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let futures_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4060,15 +4045,13 @@ impl HydroNode {
                                         #futures_ident = #input_ident -> resolve_futures_ordered();
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(futures_ident);
                     }
@@ -4078,8 +4061,9 @@ impl HydroNode {
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let map_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4089,15 +4073,13 @@ impl HydroNode {
                                         #map_ident = #input_ident -> map(#f_tokens);
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(map_ident);
                     }
@@ -4106,8 +4088,9 @@ impl HydroNode {
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let flat_map_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4117,15 +4100,13 @@ impl HydroNode {
                                         #flat_map_ident = #input_ident -> flat_map(#f_tokens);
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(flat_map_ident);
                     }
@@ -4134,8 +4115,9 @@ impl HydroNode {
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let flat_map_stream_blocking_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4145,15 +4127,13 @@ impl HydroNode {
                                         #flat_map_stream_blocking_ident = #input_ident -> flat_map_stream_blocking(#f_tokens);
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(flat_map_stream_blocking_ident);
                     }
@@ -4162,8 +4142,9 @@ impl HydroNode {
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let filter_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4173,15 +4154,13 @@ impl HydroNode {
                                         #filter_ident = #input_ident -> filter(#f_tokens);
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(filter_ident);
                     }
@@ -4190,8 +4169,9 @@ impl HydroNode {
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let filter_map_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4201,7 +4181,7 @@ impl HydroNode {
                                         #filter_map_ident = #input_ident -> filter_map(#f_tokens);
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
@@ -4209,16 +4189,15 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(filter_map_ident);
                     }
 
                     HydroNode::Sort { .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let sort_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4228,7 +4207,7 @@ impl HydroNode {
                                         #sort_ident = #input_ident -> sort();
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
@@ -4236,16 +4215,15 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(sort_ident);
                     }
 
                     HydroNode::DeferTick { .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let defer_tick_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4255,7 +4233,7 @@ impl HydroNode {
                                         #defer_tick_ident = #input_ident -> defer_tick_lazy();
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
@@ -4263,16 +4241,15 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(defer_tick_ident);
                     }
 
                     HydroNode::Enumerate { input, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let enumerate_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4287,15 +4264,13 @@ impl HydroNode {
                                         #enumerate_ident = #input_ident -> enumerate::<#lifetime>();
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(enumerate_ident);
                     }
@@ -4304,8 +4279,9 @@ impl HydroNode {
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let inspect_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4315,7 +4291,7 @@ impl HydroNode {
                                         #inspect_ident = #input_ident -> inspect(#f_tokens);
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
@@ -4323,16 +4299,15 @@ impl HydroNode {
                             }
                         }
 
-                        let _ = next_stmt_id.get_and_increment();
-
                         ident_stack.push(inspect_ident);
                     }
 
                     HydroNode::Unique { input, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let unique_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4348,15 +4323,13 @@ impl HydroNode {
                                         #unique_ident = #input_ident -> unique::<#lifetime>();
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(unique_ident);
                     }
@@ -4413,8 +4386,9 @@ impl HydroNode {
                         let acc_tokens = acc.emit_tokens(&mut ident_stack);
                         let init_tokens = init.emit_tokens(&mut ident_stack);
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let fold_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4465,7 +4439,7 @@ impl HydroNode {
                                             #fold_ident = chain();
                                         },
                                         None,
-                                        Some(&next_stmt_id.to_string()),
+                                        Some(&stmt_id.to_string()),
                                     );
 
                                     if hooked_input_ident.is_some() {
@@ -4505,7 +4479,7 @@ impl HydroNode {
                                                 #fold_ident = #hooked_input_ident -> flatten() -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #wrapped_acc);
                                             },
                                             None,
-                                            Some(&next_stmt_id.to_string()),
+                                            Some(&stmt_id.to_string()),
                                         );
 
                                         fold_hooked_idents.insert(fold_ident.to_string());
@@ -4515,7 +4489,7 @@ impl HydroNode {
                                                 #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #wrapped_acc);
                                             },
                                             None,
-                                            Some(&next_stmt_id.to_string()),
+                                            Some(&stmt_id.to_string()),
                                         );
                                     }
                                 } else if (matches!(node, HydroNode::Fold { .. })
@@ -4542,7 +4516,7 @@ impl HydroNode {
                                             #fold_ident = #actual_input -> #operator::<#lifetime>(#init_tokens, #acc_tokens);
                                         },
                                         None,
-                                        Some(&next_stmt_id.to_string()),
+                                        Some(&stmt_id.to_string()),
                                     );
                                 } else {
                                     let builder = graph_builders.get_dfir_mut(&out_location);
@@ -4551,7 +4525,7 @@ impl HydroNode {
                                             #fold_ident = #input_ident -> #operator::<#lifetime>(#init_tokens, #acc_tokens);
                                         },
                                         None,
-                                        Some(&next_stmt_id.to_string()),
+                                        Some(&stmt_id.to_string()),
                                     );
                                 }
                             }
@@ -4559,8 +4533,6 @@ impl HydroNode {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(fold_ident);
                     }
@@ -4608,8 +4580,9 @@ impl HydroNode {
 
                         let f_tokens = f.emit_tokens(&mut ident_stack);
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let reduce_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4638,7 +4611,7 @@ impl HydroNode {
                                             #reduce_ident = #input_ident -> #operator::<#lifetime>(#f_tokens);
                                         },
                                         None,
-                                        Some(&next_stmt_id.to_string()),
+                                        Some(&stmt_id.to_string()),
                                     );
                                 }
                             }
@@ -4646,8 +4619,6 @@ impl HydroNode {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(reduce_ident);
                     }
@@ -4669,13 +4640,14 @@ impl HydroNode {
                         let input_ident = ident_stack.pop().unwrap();
                         let f_tokens = f.emit_tokens(&mut ident_stack);
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let chain_ident = syn::Ident::new(
-                            &format!("reduce_keyed_watermark_chain_{}", *next_stmt_id),
+                            &format!("reduce_keyed_watermark_chain_{}", stmt_id),
                             Span::call_site(),
                         );
 
                         let fold_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         let agg_operator: syn::Ident = if input.metadata().location_id.is_top_level()
                             && input.metadata().collection_kind.is_bounded()
@@ -4740,7 +4712,7 @@ impl HydroNode {
                                                 -> flat_map(|(map, _curr_watermark)| map);
                                         },
                                         None,
-                                        Some(&next_stmt_id.to_string()),
+                                        Some(&stmt_id.to_string()),
                                     );
                                 }
                             }
@@ -4748,8 +4720,6 @@ impl HydroNode {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(fold_ident);
                     }
@@ -4764,8 +4734,9 @@ impl HydroNode {
                     } => {
                         let input_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let receiver_stream_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4789,7 +4760,7 @@ impl HydroNode {
                                     sink_expr,
                                     source_expr,
                                     deserialize_pipeline.as_ref(),
-                                    *next_stmt_id,
+                                    stmt_id,
                                     networking_info,
                                 );
                             }
@@ -4797,8 +4768,6 @@ impl HydroNode {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(receiver_stream_ident);
                     }
@@ -4808,8 +4777,9 @@ impl HydroNode {
                         deserialize_fn: deserialize_pipeline,
                         ..
                     } => {
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let receiver_stream_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4829,15 +4799,13 @@ impl HydroNode {
                                     source_expr,
                                     &receiver_stream_ident,
                                     deserialize_pipeline.as_ref(),
-                                    *next_stmt_id,
+                                    stmt_id,
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(receiver_stream_ident);
                     }
@@ -4850,8 +4818,9 @@ impl HydroNode {
                     } => {
                         let input_ident = ident_stack.pop().unwrap();
 
+                        let stmt_id = next_stmt_id.get_and_increment();
                         let counter_ident =
-                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -4862,15 +4831,13 @@ impl HydroNode {
                                         #counter_ident = #input_ident -> _counter(#arg, #duration);
                                     },
                                     None,
-                                    Some(&next_stmt_id.to_string()),
+                                    Some(&stmt_id.to_string()),
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
                             }
                         }
-
-                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(counter_ident);
                     }
