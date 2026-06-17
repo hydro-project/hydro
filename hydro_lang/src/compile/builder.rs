@@ -84,16 +84,16 @@ pub(crate) struct FlowStateInner {
     roots: Option<Vec<HydroRoot>>,
 
     /// Counter for generating unique external output identifiers.
-    next_external_port: ExternalPortId,
+    next_external_port: crate::Counter<ExternalPortId>,
 
     /// Counters for generating identifiers for cycles.
-    next_cycle_id: CycleId,
+    next_cycle_id: crate::Counter<CycleId>,
 
     /// Counters for clock IDs.
-    next_clock_id: ClockId,
+    next_clock_id: crate::Counter<ClockId>,
 
     /// Counter for generating unique sidecar identifiers, not used for anything else.
-    next_sidecar_id: SidecarId,
+    next_sidecar_id: crate::Counter<SidecarId>,
 
     /// Compile-time sidecar directives. Processed during compilation,
     /// not part of the dataflow IR.
@@ -190,10 +190,10 @@ impl<'a> FlowBuilder<'a> {
         Self {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
                 roots: Some(vec![]),
-                next_external_port: ExternalPortId::default(),
-                next_cycle_id: CycleId::default(),
-                next_clock_id: ClockId::default(),
-                next_sidecar_id: SidecarId::default(),
+                next_external_port: crate::Counter::default(),
+                next_cycle_id: crate::Counter::default(),
+                next_clock_id: crate::Counter::default(),
+                next_sidecar_id: crate::Counter::default(),
                 sidecars: Vec::new(),
             })),
             locations: SlotMap::with_key(),
@@ -335,10 +335,10 @@ impl<'a> FlowBuilder<'a> {
         FlowBuilder {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
                 roots: None,
-                next_external_port: ExternalPortId::default(),
-                next_cycle_id: CycleId::default(),
-                next_clock_id: ClockId::default(),
-                next_sidecar_id: SidecarId::default(),
+                next_external_port: crate::Counter::default(),
+                next_cycle_id: crate::Counter::default(),
+                next_clock_id: crate::Counter::default(),
+                next_sidecar_id: crate::Counter::default(),
                 sidecars: Vec::new(),
             })),
             locations: built.locations.clone(),

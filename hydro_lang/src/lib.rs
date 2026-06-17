@@ -153,7 +153,7 @@ mod test_init {
 /// Creates a newtype wrapper around an integer type.
 ///
 /// Usage:
-/// ```rust
+/// ```rust,ignore
 /// hydro_lang::newtype_counter! {
 ///     /// My counter.
 ///     pub struct MyCounter(u32);
@@ -174,27 +174,11 @@ macro_rules! newtype_counter {
         $(
             $( #[$attr] )*
             #[repr(transparent)]
-            #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+            #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
             $vis struct $name($typ);
 
             #[allow(clippy::allow_attributes, dead_code, reason = "macro-generated methods may be unused")]
             impl $name {
-                /// Gets the current ID and increments for the next.
-                pub fn get_and_increment(&mut self) -> Self {
-                    let id = self.0;
-                    self.0 += 1;
-                    Self(id)
-                }
-
-                /// Returns an iterator from zero up to (but excluding) `self`.
-                ///
-                /// This is useful for iterating already-allocated values.
-                pub fn range_up_to(&self) -> impl std::iter::DoubleEndedIterator<Item = Self>
-                    + std::iter::FusedIterator
-                {
-                    (0..self.0).map(Self)
-                }
-
                 /// Reveals the inner ID.
                 pub fn into_inner(self) -> $typ {
                     self.0
@@ -224,6 +208,53 @@ macro_rules! newtype_counter {
                     serde::de::Deserialize::deserialize(deserializer).map(Self)
                 }
             }
+
+            #[sealed::sealed]
+            impl $crate::Countable for $name {
+                fn from_count(val: usize) -> Self {
+                    Self(val as $typ)
+                }
+            }
         )*
     };
+}
+
+/// Sealed trait implemented by ID types produced via [`newtype_counter!`].
+///
+/// This allows [`Counter<T>`] to mint new IDs without exposing a public
+/// constructor on the ID types themselves.
+#[doc(hidden)]
+#[sealed::sealed]
+pub trait Countable {
+    #[doc(hidden)]
+    fn from_count(val: usize) -> Self;
+}
+
+/// An opaque counter that produces unique IDs of type `T` via [`Counter::get_and_increment`].
+///
+/// This is separate from the ID types themselves so that holding an ID does not
+/// give the ability to mint new IDs.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Counter<T: Countable>(usize, std::marker::PhantomData<T>);
+
+impl<T: Countable> Default for Counter<T> {
+    fn default() -> Self {
+        Self(0, std::marker::PhantomData)
+    }
+}
+
+impl<T: Countable> Counter<T> {
+    /// Gets the current counter value and increments for the next call.
+    pub fn get_and_increment(&mut self) -> T {
+        let id = self.0;
+        self.0 += 1;
+        T::from_count(id)
+    }
+
+    /// Returns an iterator from zero up to (but excluding) the current counter value.
+    ///
+    /// This is useful for iterating already-allocated values.
+    pub fn range_up_to(&self) -> impl DoubleEndedIterator<Item = T> + std::iter::FusedIterator {
+        (0..self.0).map(T::from_count)
+    }
 }

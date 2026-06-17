@@ -231,7 +231,7 @@ pub struct DockerDeployExternal {
     next_port: Rc<RefCell<u16>>,
 
     /// Counter for generating ExternalPortId values at deploy time.
-    next_external_port_id: Rc<RefCell<ExternalPortId>>,
+    next_external_port_id: Rc<RefCell<crate::Counter<ExternalPortId>>>,
 
     ports: Rc<RefCell<HashMap<ExternalPortId, u16>>>,
 
@@ -1477,7 +1477,7 @@ impl<'a> ExternalSpec<'a, DockerDeploy> for DockerDeployExternalSpec {
             key,
             name: self.name,
             next_port: Rc::new(RefCell::new(10000)),
-            next_external_port_id: Rc::new(RefCell::new(ExternalPortId::default())),
+            next_external_port_id: Rc::new(RefCell::new(crate::Counter::default())),
             ports: Rc::new(RefCell::new(HashMap::new())),
             connection_info: Rc::new(RefCell::new(HashMap::new())),
         }
