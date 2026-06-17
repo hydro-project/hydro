@@ -1,5 +1,5 @@
 use core::panic;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 #[cfg(feature = "build")]
 use std::collections::HashSet;
@@ -43,8 +43,9 @@ use backtrace::Backtrace;
 /// captures, which is important for nodes with multiple closures (e.g. Fold has `init` and `acc`).
 pub struct ClosureExpr {
     pub(crate) expr: DebugExpr,
-    /// Each entry is `(reference_node, is_mut)`.
+    /// Each entry is `(HydroNode::Reference, is_mut: bool)`.
     /// The index in the Vec determines the ident name via [`handoff_ref_ident`].
+    /// The `access_counter` was assigned at staging time in code order.
     pub(crate) singleton_refs: Vec<(HydroNode, bool)>,
 }
 
@@ -59,6 +60,7 @@ impl Clone for ClosureExpr {
                     let HydroNode::Reference {
                         inner,
                         kind,
+                        access_counter,
                         metadata,
                     } = node
                     else {
@@ -68,6 +70,7 @@ impl Clone for ClosureExpr {
                         HydroNode::Reference {
                             inner: SharedNode(Rc::clone(&inner.0)),
                             kind: *kind,
+                            access_counter: access_counter.freeze(),
                             metadata: metadata.clone(),
                         },
                         *is_mut,
@@ -175,11 +178,7 @@ impl ClosureExpr {
     /// Pop singleton ref idents from the stack and rewrite the closure's token stream,
     /// replacing local singleton ref idents with `#{N} dfir_ident` or `#{N} mut dfir_ident` references.
     #[cfg(feature = "build")]
-    pub fn emit_tokens(
-        &self,
-        ident_stack: &mut Vec<syn::Ident>,
-        access_counters: &mut HashMap<*const RefCell<HydroNode>, u32>,
-    ) -> TokenStream {
+    pub fn emit_tokens(&self, ident_stack: &mut Vec<syn::Ident>) -> TokenStream {
         if self.singleton_refs.is_empty() {
             self.expr.0.to_token_stream()
         } else {
@@ -192,23 +191,13 @@ impl ClosureExpr {
             let ref_idents = ident_stack.drain(ident_stack.len() - self.singleton_refs.len()..);
 
             let mut let_bindings = Vec::new();
-            for ((i, (node, is_mut)), ref_ident) in
+            for ((i, (ref_node, is_mut)), ref_ident) in
                 self.singleton_refs.iter().enumerate().zip(ref_idents)
             {
-                let HydroNode::Reference { inner, .. } = node else {
-                    panic!("singleton_refs should only contain HydroNode::Reference");
+                let HydroNode::Reference { access_counter, .. } = ref_node else {
+                    panic!("ClosureExpression expected references to `HydroNode::Reference`");
                 };
-                let ptr = inner.0.as_ref() as *const RefCell<HydroNode>;
-                let counter = access_counters.entry(ptr).or_insert(0);
-                let group = if *is_mut {
-                    *counter += 1;
-                    let g = *counter;
-                    *counter += 1;
-                    g
-                } else {
-                    *counter
-                };
-
+                let group = access_counter.frozen_group();
                 // TODO(mingwei): proper spanning?
                 let local_ident = handoff_ref_ident(i);
                 let hash = proc_macro2::Punct::new('#', proc_macro2::Spacing::Alone);
@@ -1456,8 +1445,6 @@ impl HydroRoot {
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         let mut ident_stack: Vec<syn::Ident> = Vec::new();
-                        let mut singleton_access_counters: HashMap<*const RefCell<HydroNode>, u32> =
-                            HashMap::new();
 
                         // Look up each captured ref's ident from built_tees
                         for (ref_node, _is_mut) in f.singleton_refs.iter() {
@@ -1471,8 +1458,7 @@ impl HydroRoot {
                             ident_stack.push(idents[0].clone());
                         }
 
-                        let f_tokens =
-                            f.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         graph_builders
                             .get_dfir_mut(&input.metadata().location_id)
@@ -2058,6 +2044,76 @@ impl Hash for SharedNode {
     }
 }
 
+/// A counter for tracking singleton access groups on a `HydroNode::Reference`.
+///
+/// Each mutable access increments the counter (before and after) to isolate itself in its own group;
+/// immutable accesses share the current group.
+#[derive(Debug)]
+pub enum AccessCounter {
+    Counting(Cell<u32>),
+    Frozen(u32),
+}
+
+impl AccessCounter {
+    pub fn new() -> Self {
+        Self::Counting(Cell::new(0))
+    }
+
+    /// Assign the next access group for this reference.
+    /// Mutable accesses get an isolated group (counter increments before and after).
+    /// Immutable accesses share the current group.
+    pub fn next_group(&self, is_mut: bool) -> Self {
+        let AccessCounter::Counting(count) = self else {
+            panic!("Cannot count on `AccessCounter::Frozen`");
+        };
+        let c = if is_mut {
+            let c = count.get() + 1;
+            count.set(c + 1);
+            c
+        } else {
+            count.get()
+        };
+        Self::Frozen(c)
+    }
+
+    /// Creates a frozen counter to prevent further counting.
+    pub fn freeze(&self) -> Self {
+        Self::Frozen(match self {
+            Self::Counting(count) => count.get(),
+            Self::Frozen(count) => *count,
+        })
+    }
+
+    pub fn frozen_group(&self) -> u32 {
+        let Self::Frozen(count) = self else {
+            panic!("`AccessCounter` not frozen");
+        };
+        *count
+    }
+}
+
+impl Default for AccessCounter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Hash for AccessCounter {
+    fn hash<H: Hasher>(&self, _state: &mut H) {
+        // Access counter does not participate in hashing — it is runtime bookkeeping.
+    }
+}
+
+impl serde::Serialize for AccessCounter {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let count = match self {
+            AccessCounter::Counting(count) => count.get(),
+            AccessCounter::Frozen(count) => *count,
+        };
+        count.serialize(serializer)
+    }
+}
+
 #[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
 pub enum BoundKind {
     Unbounded,
@@ -2278,6 +2334,7 @@ pub enum HydroNode {
     Reference {
         inner: SharedNode,
         kind: crate::handoff_ref::HandoffRefKind,
+        access_counter: AccessCounter,
         metadata: HydroIrMetadata,
     },
 
@@ -2746,10 +2803,16 @@ impl HydroNode {
                     *new_rc.borrow_mut() = cloned;
                     SharedNode(new_rc)
                 };
-                if let HydroNode::Reference { kind, .. } = self {
+                if let HydroNode::Reference {
+                    kind,
+                    access_counter,
+                    ..
+                } = self
+                {
                     HydroNode::Reference {
                         inner: cloned_inner,
                         kind: *kind,
+                        access_counter: access_counter.freeze(),
                         metadata: metadata.clone(),
                     }
                 } else {
@@ -3068,7 +3131,6 @@ impl HydroNode {
         fold_hooked_idents: &mut HashSet<String>,
     ) -> syn::Ident {
         let mut ident_stack: Vec<syn::Ident> = Vec::new();
-        let mut singleton_access_counters: HashMap<*const RefCell<HydroNode>, u32> = HashMap::new();
 
         self.transform_bottom_up(
             &mut |node: &mut HydroNode| {
@@ -3589,7 +3651,7 @@ impl HydroNode {
                             // The inner node was already processed by transform_bottom_up,
                             // so its ident is on the stack
                             let inner_ident = ident_stack.pop().unwrap();
-                            let f_tokens = f.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
+                            let f_tokens = f.emit_tokens(&mut ident_stack);
 
                             let partition_ident = syn::Ident::new(
                                 &format!("stream_{}_partition", *next_stmt_id),
@@ -4014,7 +4076,7 @@ impl HydroNode {
                     HydroNode::Map { f, .. } => {
                         // Pop input ident (pushed last by transform_children).
                         let input_ident = ident_stack.pop().unwrap();
-                        let f_tokens = f.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let map_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -4042,7 +4104,7 @@ impl HydroNode {
 
                     HydroNode::FlatMap { f, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
-                        let f_tokens = f.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let flat_map_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -4070,7 +4132,7 @@ impl HydroNode {
 
                     HydroNode::FlatMapStreamBlocking { f, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
-                        let f_tokens = f.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let flat_map_stream_blocking_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -4098,7 +4160,7 @@ impl HydroNode {
 
                     HydroNode::Filter { f, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
-                        let f_tokens = f.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let filter_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -4126,7 +4188,7 @@ impl HydroNode {
 
                     HydroNode::FilterMap { f, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
-                        let f_tokens = f.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let filter_map_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -4240,7 +4302,7 @@ impl HydroNode {
 
                     HydroNode::Inspect { f, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
-                        let f_tokens = f.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let inspect_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -4348,8 +4410,8 @@ impl HydroNode {
                             unreachable!()
                         };
 
-                        let acc_tokens = acc.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
-                        let init_tokens = init.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
+                        let acc_tokens = acc.emit_tokens(&mut ident_stack);
+                        let init_tokens = init.emit_tokens(&mut ident_stack);
 
                         let fold_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -4544,7 +4606,7 @@ impl HydroNode {
                             unreachable!()
                         };
 
-                        let f_tokens = f.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let reduce_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -4605,7 +4667,7 @@ impl HydroNode {
                         // watermark is processed second, so it's on top
                         let watermark_ident = ident_stack.pop().unwrap();
                         let input_ident = ident_stack.pop().unwrap();
-                        let f_tokens = f.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let chain_ident = syn::Ident::new(
                             &format!("reduce_keyed_watermark_chain_{}", *next_stmt_id),
