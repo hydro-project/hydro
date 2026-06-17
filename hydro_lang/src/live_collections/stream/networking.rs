@@ -10,7 +10,7 @@ use syn::parse_quote;
 use super::{ExactlyOnce, MinOrder, Ordering, Stream, TotalOrder};
 use crate::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
-use crate::live_collections::keyed_singleton::KeyedSingleton;
+use crate::live_collections::keyed_singleton::{KeyedSingleton, MonotonicKeys};
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::sliced::sliced;
 use crate::live_collections::stream::Retries;
@@ -31,7 +31,7 @@ use crate::staging_util::get_this_crate;
 // same as the one in `hydro_std`, but internal use only
 fn track_membership<'a, C, L: Location<'a>>(
     membership: KeyedStream<MemberId<C>, MembershipEvent, L, Unbounded>,
-) -> KeyedSingleton<MemberId<C>, bool, L, Unbounded> {
+) -> KeyedSingleton<MemberId<C>, bool, L, MonotonicKeys> {
     membership.fold(
         q!(|| false),
         q!(|present, event| {

@@ -7,7 +7,8 @@ use syn::parse_quote;
 
 use crate::compile::builder::{HandoffId, StmtId};
 use crate::compile::ir::{
-    CollectionKind, DebugExpr, DfirBuilder, HydroIrOpMetadata, StreamOrder, StreamRetry,
+    CollectionKind, DebugExpr, DfirBuilder, HydroIrOpMetadata, KeyedSingletonBoundKind,
+    StreamOrder, StreamRetry,
 };
 use crate::location::dynamic::LocationId;
 use crate::staging_util::get_this_crate;
@@ -339,10 +340,19 @@ impl DfirBuilder for SimBuilder {
                     );
                 }
                 CollectionKind::KeyedSingleton {
+                    bound,
                     key_type,
                     value_type,
-                    ..
                 } => {
+                    if *bound == KeyedSingletonBoundKind::Unbounded {
+                        todo!(
+                            "Simulation of Unbounded keyed singletons is not yet supported. \
+                             Keys may be removed in Unbounded keyed singletons, which the simulator \
+                             cannot currently model. Use a fold (which gives MonotonicKeys) or \
+                             another operator that guarantees keys are never removed."
+                        );
+                    }
+
                     debug_assert!(in_location.is_top_level());
 
                     let hoff_id = self.next_hoff_id.get_and_increment();

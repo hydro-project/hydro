@@ -6,7 +6,7 @@ use stageleft::q;
 
 pub fn track_membership<'a, K: Hash + Eq, L: Location<'a>>(
     membership: KeyedStream<K, MembershipEvent, L, Unbounded>,
-) -> KeyedSingleton<K, bool, L, Unbounded> {
+) -> KeyedSingleton<K, bool, L, MonotonicKeys> {
     membership.fold(
         q!(|| false),
         q!(|present, event| {
