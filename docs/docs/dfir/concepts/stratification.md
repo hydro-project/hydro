@@ -5,7 +5,7 @@ sidebar_position: 3
 # Streaming, Blocking and Stratification
 
 :::warning
-TODO(inline): Stratification is a concept from the scheduled DFIR execution model. The inline codegen path does not use strata — it runs subgraphs in topological order. This page is out of date.
+TODO(mingwei): Stratification is a concept from the scheduled DFIR execution model. The inline codegen path does not use strata — it runs subgraphs in topological order. This page is out of date.
 :::
 Many DFIR operators (e.g. `map`, `filter` and `join`) work in a streaming fashion. Streaming operators process data as it arrives, generating outputs in the midst of processing inputs. If you restrict yourself to operators that work in this streaming fashion, then your process may start sending data across the network mid-tick, even while it is still consuming the data in the input batch.
 
@@ -21,7 +21,7 @@ source_stream(inbound) -> sort() -> for_each(|x| println!("{:?}", x));
 The runtime determines arbitrarily what batch of data is taken from the channel and fed into the `source_stream_serde` operator for this tick. The sort operator will need to know that the `source_stream_serde` operator has no more data to send this tick, so that it can sort the data that got buffered and then send the sorted data to the `for_each` operator, which prints it to stdout. To do this, the runtime provides a mechanism for the `source_stream_serde` operator to buffer its output and notify the `sort` operator that it has no more data to send. This is called a *handoff*.
 
 You can see the mermaid graph for the statement above just below this paragraph. Notice the two outer rectangles and the handoff between them. Each rectangle is a subflow that is
-assigned a *stratum* number. ("Stratum" is latin for "layer"; the plural of "stratum" is "strata".) 
+assigned a *stratum* number. ("Stratum" is latin for "layer"; the plural of "stratum" is "strata".)
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'clusterBkg':'#ddd'}}}%%

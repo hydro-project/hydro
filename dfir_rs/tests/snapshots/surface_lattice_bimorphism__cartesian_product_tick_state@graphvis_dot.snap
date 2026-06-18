@@ -30,8 +30,8 @@ digraph {
     n9v1 -> n10v1
     n12v1 -> n9v1 [label="0"]
     n13v1 -> n9v1 [label="1"]
-    n7v1 -> n9v1 [color=red]
-    n8v1 -> n9v1 [color=red]
+    n7v1 -> n9v1
+    n8v1 -> n9v1
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"

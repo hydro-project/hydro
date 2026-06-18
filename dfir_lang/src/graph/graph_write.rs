@@ -180,10 +180,10 @@ where
             "{b:i$}{src}{arrow_body}{arrow_head}{label}{dst}",
             src = src_str.trim(),
             arrow_body = "--",
-            arrow_head = match delay_type {
-                None => ">",
-                Some(DelayType::Stratum) => "x",
-                Some(DelayType::Tick | DelayType::TickLazy) => "o",
+            arrow_head = if let Some(DelayType::Tick | DelayType::TickLazy) = delay_type {
+                "o"
+            } else {
+                ">"
             },
             label = if let Some(label) = &label {
                 Cow::Owned(format!("|{}|", escape_mermaid(label.trim())))
@@ -194,15 +194,8 @@ where
             b = "",
             i = self.indent,
         )?;
-        if let Some(delay_type) = delay_type {
-            write!(
-                self.write,
-                "; linkStyle {} stroke:{}",
-                self.link_count,
-                match delay_type {
-                    DelayType::Stratum | DelayType::Tick | DelayType::TickLazy => "red",
-                }
-            )?;
+        if let Some(DelayType::Tick | DelayType::TickLazy) = delay_type {
+            write!(self.write, "; linkStyle {} stroke:red", self.link_count)?;
         }
         writeln!(self.write)?;
         self.link_count += 1;
