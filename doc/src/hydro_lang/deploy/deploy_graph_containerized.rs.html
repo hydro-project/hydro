@@ -231,7 +231,7 @@
 <a href=#231 id=231 data-nosnippet>231</a>    next_port: Rc&lt;RefCell&lt;u16&gt;&gt;,
 <a href=#232 id=232 data-nosnippet>232</a>
 <a href=#233 id=233 data-nosnippet>233</a>    <span class="doccomment">/// Counter for generating ExternalPortId values at deploy time.
-<a href=#234 id=234 data-nosnippet>234</a>    </span>next_external_port_id: Rc&lt;RefCell&lt;ExternalPortId&gt;&gt;,
+<a href=#234 id=234 data-nosnippet>234</a>    </span>next_external_port_id: Rc&lt;RefCell&lt;<span class="kw">crate</span>::Counter&lt;ExternalPortId&gt;&gt;&gt;,
 <a href=#235 id=235 data-nosnippet>235</a>
 <a href=#236 id=236 data-nosnippet>236</a>    ports: Rc&lt;RefCell&lt;HashMap&lt;ExternalPortId, u16&gt;&gt;&gt;,
 <a href=#237 id=237 data-nosnippet>237</a>
@@ -1476,7 +1476,7 @@
 <a href=#1476 id=1476 data-nosnippet>1476</a>            key,
 <a href=#1477 id=1477 data-nosnippet>1477</a>            name: <span class="self">self</span>.name,
 <a href=#1478 id=1478 data-nosnippet>1478</a>            next_port: Rc::new(RefCell::new(<span class="number">10000</span>)),
-<a href=#1479 id=1479 data-nosnippet>1479</a>            next_external_port_id: Rc::new(RefCell::new(ExternalPortId::default())),
+<a href=#1479 id=1479 data-nosnippet>1479</a>            next_external_port_id: Rc::new(RefCell::new(<span class="kw">crate</span>::Counter::default())),
 <a href=#1480 id=1480 data-nosnippet>1480</a>            ports: Rc::new(RefCell::new(HashMap::new())),
 <a href=#1481 id=1481 data-nosnippet>1481</a>            connection_info: Rc::new(RefCell::new(HashMap::new())),
 <a href=#1482 id=1482 data-nosnippet>1482</a>        }

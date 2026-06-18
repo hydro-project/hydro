@@ -124,7 +124,7 @@
 <a href=#124 id=124 data-nosnippet>124</a>
 <a href=#125 id=125 data-nosnippet>125</a>        <span class="kw">use </span><span class="kw">crate</span>::sim::graph::SimNodePort;
 <a href=#126 id=126 data-nosnippet>126</a>
-<a href=#127 id=127 data-nosnippet>127</a>        <span class="kw">let </span>shared_port_counter = Rc::new(RefCell::new(SimNodePort::default()));
+<a href=#127 id=127 data-nosnippet>127</a>        <span class="kw">let </span>shared_port_counter = Rc::new(RefCell::new(<span class="kw">crate</span>::Counter::&lt;SimNodePort&gt;::default()));
 <a href=#128 id=128 data-nosnippet>128</a>
 <a href=#129 id=129 data-nosnippet>129</a>        <span class="kw">let </span><span class="kw-2">mut </span>processes = SparseSecondaryMap::new();
 <a href=#130 id=130 data-nosnippet>130</a>        <span class="kw">let </span><span class="kw-2">mut </span>clusters = SparseSecondaryMap::new();

@@ -872,8 +872,8 @@
 <a href=#872 id=872 data-nosnippet>872</a><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 <a href=#873 id=873 data-nosnippet>873</a></span><span class="kw">pub enum </span>BuildersOrCallback&lt;<span class="lifetime">'a</span>, L, N&gt;
 <a href=#874 id=874 data-nosnippet>874</a><span class="kw">where
-<a href=#875 id=875 data-nosnippet>875</a>    </span>L: FnMut(<span class="kw-2">&amp;mut </span>HydroRoot, <span class="kw-2">&amp;mut </span>StmtId),
-<a href=#876 id=876 data-nosnippet>876</a>    N: FnMut(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span>StmtId),
+<a href=#875 id=875 data-nosnippet>875</a>    </span>L: FnMut(<span class="kw-2">&amp;mut </span>HydroRoot, <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;),
+<a href=#876 id=876 data-nosnippet>876</a>    N: FnMut(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;),
 <a href=#877 id=877 data-nosnippet>877</a>{
 <a href=#878 id=878 data-nosnippet>878</a>    Builders(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span><span class="kw">dyn </span>DfirBuilder),
 <a href=#879 id=879 data-nosnippet>879</a>    Callback(L, N),
@@ -1405,13 +1405,13 @@
 <a href=#1405 id=1405 data-nosnippet>1405</a>        graph_builders: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>DfirBuilder,
 <a href=#1406 id=1406 data-nosnippet>1406</a>        seen_tees: <span class="kw-2">&amp;mut </span>SeenSharedNodes,
 <a href=#1407 id=1407 data-nosnippet>1407</a>        built_tees: <span class="kw-2">&amp;mut </span>HashMap&lt;<span class="kw-2">*const </span>RefCell&lt;HydroNode&gt;, Vec&lt;syn::Ident&gt;&gt;,
-<a href=#1408 id=1408 data-nosnippet>1408</a>        next_stmt_id: <span class="kw-2">&amp;mut </span>StmtId,
+<a href=#1408 id=1408 data-nosnippet>1408</a>        next_stmt_id: <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;,
 <a href=#1409 id=1409 data-nosnippet>1409</a>        fold_hooked_idents: <span class="kw-2">&amp;mut </span>HashSet&lt;String&gt;,
 <a href=#1410 id=1410 data-nosnippet>1410</a>    ) {
 <a href=#1411 id=1411 data-nosnippet>1411</a>        <span class="self">self</span>.emit_core(
 <a href=#1412 id=1412 data-nosnippet>1412</a>            <span class="kw-2">&amp;mut </span>BuildersOrCallback::&lt;
-<a href=#1413 id=1413 data-nosnippet>1413</a>                <span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>HydroRoot, <span class="kw-2">&amp;mut </span>StmtId),
-<a href=#1414 id=1414 data-nosnippet>1414</a>                <span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span>StmtId),
+<a href=#1413 id=1413 data-nosnippet>1413</a>                <span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>HydroRoot, <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;),
+<a href=#1414 id=1414 data-nosnippet>1414</a>                <span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;),
 <a href=#1415 id=1415 data-nosnippet>1415</a>            &gt;::Builders(graph_builders),
 <a href=#1416 id=1416 data-nosnippet>1416</a>            seen_tees,
 <a href=#1417 id=1417 data-nosnippet>1417</a>            built_tees,
@@ -1424,12 +1424,12 @@
 <a href=#1424 id=1424 data-nosnippet>1424</a>    </span><span class="kw">pub fn </span>emit_core(
 <a href=#1425 id=1425 data-nosnippet>1425</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#1426 id=1426 data-nosnippet>1426</a>        builders_or_callback: <span class="kw-2">&amp;mut </span>BuildersOrCallback&lt;
-<a href=#1427 id=1427 data-nosnippet>1427</a>            <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroRoot, <span class="kw-2">&amp;mut </span>StmtId),
-<a href=#1428 id=1428 data-nosnippet>1428</a>            <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span>StmtId),
+<a href=#1427 id=1427 data-nosnippet>1427</a>            <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroRoot, <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;),
+<a href=#1428 id=1428 data-nosnippet>1428</a>            <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;),
 <a href=#1429 id=1429 data-nosnippet>1429</a>        &gt;,
 <a href=#1430 id=1430 data-nosnippet>1430</a>        seen_tees: <span class="kw-2">&amp;mut </span>SeenSharedNodes,
 <a href=#1431 id=1431 data-nosnippet>1431</a>        built_tees: <span class="kw-2">&amp;mut </span>HashMap&lt;<span class="kw-2">*const </span>RefCell&lt;HydroNode&gt;, Vec&lt;syn::Ident&gt;&gt;,
-<a href=#1432 id=1432 data-nosnippet>1432</a>        next_stmt_id: <span class="kw-2">&amp;mut </span>StmtId,
+<a href=#1432 id=1432 data-nosnippet>1432</a>        next_stmt_id: <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;,
 <a href=#1433 id=1433 data-nosnippet>1433</a>        fold_hooked_idents: <span class="kw-2">&amp;mut </span>HashSet&lt;String&gt;,
 <a href=#1434 id=1434 data-nosnippet>1434</a>    ) {
 <a href=#1435 id=1435 data-nosnippet>1435</a>        <span class="kw">match </span><span class="self">self </span>{
@@ -1837,7 +1837,7 @@
 <a href=#1837 id=1837 data-nosnippet>1837</a>    <span class="kw">let </span><span class="kw-2">mut </span>builders = SecondaryMap::new();
 <a href=#1838 id=1838 data-nosnippet>1838</a>    <span class="kw">let </span><span class="kw-2">mut </span>seen_tees = HashMap::new();
 <a href=#1839 id=1839 data-nosnippet>1839</a>    <span class="kw">let </span><span class="kw-2">mut </span>built_tees = HashMap::new();
-<a href=#1840 id=1840 data-nosnippet>1840</a>    <span class="kw">let </span><span class="kw-2">mut </span>next_stmt_id = StmtId::default();
+<a href=#1840 id=1840 data-nosnippet>1840</a>    <span class="kw">let </span><span class="kw-2">mut </span>next_stmt_id = <span class="kw">crate</span>::Counter::&lt;StmtId&gt;::default();
 <a href=#1841 id=1841 data-nosnippet>1841</a>    <span class="kw">let </span><span class="kw-2">mut </span>fold_hooked_idents = HashSet::new();
 <a href=#1842 id=1842 data-nosnippet>1842</a>    <span class="kw">for </span>leaf <span class="kw">in </span>ir {
 <a href=#1843 id=1843 data-nosnippet>1843</a>        leaf.emit(
@@ -1854,12 +1854,12 @@
 <a href=#1854 id=1854 data-nosnippet>1854</a><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 <a href=#1855 id=1855 data-nosnippet>1855</a></span><span class="kw">pub fn </span>traverse_dfir(
 <a href=#1856 id=1856 data-nosnippet>1856</a>    ir: <span class="kw-2">&amp;mut </span>[HydroRoot],
-<a href=#1857 id=1857 data-nosnippet>1857</a>    transform_root: <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroRoot, <span class="kw-2">&amp;mut </span>StmtId),
-<a href=#1858 id=1858 data-nosnippet>1858</a>    transform_node: <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span>StmtId),
+<a href=#1857 id=1857 data-nosnippet>1857</a>    transform_root: <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroRoot, <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;),
+<a href=#1858 id=1858 data-nosnippet>1858</a>    transform_node: <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;),
 <a href=#1859 id=1859 data-nosnippet>1859</a>) {
 <a href=#1860 id=1860 data-nosnippet>1860</a>    <span class="kw">let </span><span class="kw-2">mut </span>seen_tees = HashMap::new();
 <a href=#1861 id=1861 data-nosnippet>1861</a>    <span class="kw">let </span><span class="kw-2">mut </span>built_tees = HashMap::new();
-<a href=#1862 id=1862 data-nosnippet>1862</a>    <span class="kw">let </span><span class="kw-2">mut </span>next_stmt_id = StmtId::default();
+<a href=#1862 id=1862 data-nosnippet>1862</a>    <span class="kw">let </span><span class="kw-2">mut </span>next_stmt_id = <span class="kw">crate</span>::Counter::&lt;StmtId&gt;::default();
 <a href=#1863 id=1863 data-nosnippet>1863</a>    <span class="kw">let </span><span class="kw-2">mut </span>fold_hooked_idents = HashSet::new();
 <a href=#1864 id=1864 data-nosnippet>1864</a>    <span class="kw">let </span><span class="kw-2">mut </span>callback = BuildersOrCallback::Callback(transform_root, transform_node);
 <a href=#1865 id=1865 data-nosnippet>1865</a>    ir.iter_mut().for_each(|leaf| {
@@ -3123,12 +3123,12 @@
 <a href=#3123 id=3123 data-nosnippet>3123</a>    </span><span class="kw">pub fn </span>emit_core(
 <a href=#3124 id=3124 data-nosnippet>3124</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#3125 id=3125 data-nosnippet>3125</a>        builders_or_callback: <span class="kw-2">&amp;mut </span>BuildersOrCallback&lt;
-<a href=#3126 id=3126 data-nosnippet>3126</a>            <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroRoot, <span class="kw-2">&amp;mut </span>StmtId),
-<a href=#3127 id=3127 data-nosnippet>3127</a>            <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span>StmtId),
+<a href=#3126 id=3126 data-nosnippet>3126</a>            <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroRoot, <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;),
+<a href=#3127 id=3127 data-nosnippet>3127</a>            <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;),
 <a href=#3128 id=3128 data-nosnippet>3128</a>        &gt;,
 <a href=#3129 id=3129 data-nosnippet>3129</a>        seen_tees: <span class="kw-2">&amp;mut </span>SeenSharedNodes,
 <a href=#3130 id=3130 data-nosnippet>3130</a>        built_tees: <span class="kw-2">&amp;mut </span>HashMap&lt;<span class="kw-2">*const </span>RefCell&lt;HydroNode&gt;, Vec&lt;syn::Ident&gt;&gt;,
-<a href=#3131 id=3131 data-nosnippet>3131</a>        next_stmt_id: <span class="kw-2">&amp;mut </span>StmtId,
+<a href=#3131 id=3131 data-nosnippet>3131</a>        next_stmt_id: <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Counter&lt;StmtId&gt;,
 <a href=#3132 id=3132 data-nosnippet>3132</a>        fold_hooked_idents: <span class="kw-2">&amp;mut </span>HashSet&lt;String&gt;,
 <a href=#3133 id=3133 data-nosnippet>3133</a>    ) -&gt; syn::Ident {
 <a href=#3134 id=3134 data-nosnippet>3134</a>        <span class="kw">let </span><span class="kw-2">mut </span>ident_stack: Vec&lt;syn::Ident&gt; = Vec::new();

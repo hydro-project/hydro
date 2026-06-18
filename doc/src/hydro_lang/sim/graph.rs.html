@@ -40,7 +40,7 @@
 <a href=#40 id=40 data-nosnippet>40</a><span class="attr">#[derive(Clone)]
 <a href=#41 id=41 data-nosnippet>41</a></span><span class="kw">pub struct </span>SimNode {
 <a href=#42 id=42 data-nosnippet>42</a>    <span class="doccomment">/// Counter for port IDs, must be shared across all nodes in a simulation to prevent collisions.
-<a href=#43 id=43 data-nosnippet>43</a>    </span><span class="kw">pub </span>shared_port_counter: Rc&lt;RefCell&lt;SimNodePort&gt;&gt;,
+<a href=#43 id=43 data-nosnippet>43</a>    </span><span class="kw">pub </span>shared_port_counter: Rc&lt;RefCell&lt;<span class="kw">crate</span>::Counter&lt;SimNodePort&gt;&gt;&gt;,
 <a href=#44 id=44 data-nosnippet>44</a>}
 <a href=#45 id=45 data-nosnippet>45</a>
 <a href=#46 id=46 data-nosnippet>46</a><span class="kw">impl </span>Node <span class="kw">for </span>SimNode {
@@ -67,7 +67,7 @@
 <a href=#67 id=67 data-nosnippet>67</a>
 <a href=#68 id=68 data-nosnippet>68</a><span class="attr">#[derive(Clone, Default)]
 <a href=#69 id=69 data-nosnippet>69</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SimExternalPortRegistry {
-<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) port_counter: SimExternalPort,
+<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) port_counter: <span class="kw">crate</span>::Counter&lt;SimExternalPort&gt;,
 <a href=#71 id=71 data-nosnippet>71</a>    <span class="doccomment">/// A mapping from external port IDs (generated in `FlowState`)
 <a href=#72 id=72 data-nosnippet>72</a>    /// which are used for looking up connections, to the IDs
 <a href=#73 id=73 data-nosnippet>73</a>    /// of the external channels created in the simulation.

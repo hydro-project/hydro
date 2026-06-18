@@ -35,7 +35,7 @@
 <a href=#35 id=35 data-nosnippet>35</a>    <span class="kw">pub </span>cluster_graphs: BTreeMap&lt;LocationId, FlatGraphBuilder&gt;,
 <a href=#36 id=36 data-nosnippet>36</a>    <span class="kw">pub </span>process_tick_dfirs: BTreeMap&lt;LocationId, FlatGraphBuilder&gt;,
 <a href=#37 id=37 data-nosnippet>37</a>    <span class="kw">pub </span>cluster_tick_dfirs: BTreeMap&lt;LocationId, FlatGraphBuilder&gt;,
-<a href=#38 id=38 data-nosnippet>38</a>    <span class="kw">pub </span>next_hoff_id: HandoffId,
+<a href=#38 id=38 data-nosnippet>38</a>    <span class="kw">pub </span>next_hoff_id: <span class="kw">crate</span>::Counter&lt;HandoffId&gt;,
 <a href=#39 id=39 data-nosnippet>39</a>    <span class="kw">pub </span>test_safety_only: bool,
 <a href=#40 id=40 data-nosnippet>40</a>    <span class="kw">pub </span>skip_consistency_assertions: bool,
 <a href=#41 id=41 data-nosnippet>41</a>}

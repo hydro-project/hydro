@@ -84,16 +84,16 @@
 <a href=#84 id=84 data-nosnippet>84</a>    </span>roots: <span class="prelude-ty">Option</span>&lt;Vec&lt;HydroRoot&gt;&gt;,
 <a href=#85 id=85 data-nosnippet>85</a>
 <a href=#86 id=86 data-nosnippet>86</a>    <span class="doccomment">/// Counter for generating unique external output identifiers.
-<a href=#87 id=87 data-nosnippet>87</a>    </span>next_external_port: ExternalPortId,
+<a href=#87 id=87 data-nosnippet>87</a>    </span>next_external_port: <span class="kw">crate</span>::Counter&lt;ExternalPortId&gt;,
 <a href=#88 id=88 data-nosnippet>88</a>
 <a href=#89 id=89 data-nosnippet>89</a>    <span class="doccomment">/// Counters for generating identifiers for cycles.
-<a href=#90 id=90 data-nosnippet>90</a>    </span>next_cycle_id: CycleId,
+<a href=#90 id=90 data-nosnippet>90</a>    </span>next_cycle_id: <span class="kw">crate</span>::Counter&lt;CycleId&gt;,
 <a href=#91 id=91 data-nosnippet>91</a>
 <a href=#92 id=92 data-nosnippet>92</a>    <span class="doccomment">/// Counters for clock IDs.
-<a href=#93 id=93 data-nosnippet>93</a>    </span>next_clock_id: ClockId,
+<a href=#93 id=93 data-nosnippet>93</a>    </span>next_clock_id: <span class="kw">crate</span>::Counter&lt;ClockId&gt;,
 <a href=#94 id=94 data-nosnippet>94</a>
 <a href=#95 id=95 data-nosnippet>95</a>    <span class="doccomment">/// Counter for generating unique sidecar identifiers, not used for anything else.
-<a href=#96 id=96 data-nosnippet>96</a>    </span>next_sidecar_id: SidecarId,
+<a href=#96 id=96 data-nosnippet>96</a>    </span>next_sidecar_id: <span class="kw">crate</span>::Counter&lt;SidecarId&gt;,
 <a href=#97 id=97 data-nosnippet>97</a>
 <a href=#98 id=98 data-nosnippet>98</a>    <span class="doccomment">/// Compile-time sidecar directives. Processed during compilation,
 <a href=#99 id=99 data-nosnippet>99</a>    /// not part of the dataflow IR.
@@ -190,10 +190,10 @@
 <a href=#190 id=190 data-nosnippet>190</a>        <span class="self">Self </span>{
 <a href=#191 id=191 data-nosnippet>191</a>            flow_state: Rc::new(RefCell::new(FlowStateInner {
 <a href=#192 id=192 data-nosnippet>192</a>                roots: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[]),
-<a href=#193 id=193 data-nosnippet>193</a>                next_external_port: ExternalPortId::default(),
-<a href=#194 id=194 data-nosnippet>194</a>                next_cycle_id: CycleId::default(),
-<a href=#195 id=195 data-nosnippet>195</a>                next_clock_id: ClockId::default(),
-<a href=#196 id=196 data-nosnippet>196</a>                next_sidecar_id: SidecarId::default(),
+<a href=#193 id=193 data-nosnippet>193</a>                next_external_port: <span class="kw">crate</span>::Counter::default(),
+<a href=#194 id=194 data-nosnippet>194</a>                next_cycle_id: <span class="kw">crate</span>::Counter::default(),
+<a href=#195 id=195 data-nosnippet>195</a>                next_clock_id: <span class="kw">crate</span>::Counter::default(),
+<a href=#196 id=196 data-nosnippet>196</a>                next_sidecar_id: <span class="kw">crate</span>::Counter::default(),
 <a href=#197 id=197 data-nosnippet>197</a>                sidecars: Vec::new(),
 <a href=#198 id=198 data-nosnippet>198</a>            })),
 <a href=#199 id=199 data-nosnippet>199</a>            locations: SlotMap::with_key(),
@@ -335,10 +335,10 @@
 <a href=#335 id=335 data-nosnippet>335</a>        FlowBuilder {
 <a href=#336 id=336 data-nosnippet>336</a>            flow_state: Rc::new(RefCell::new(FlowStateInner {
 <a href=#337 id=337 data-nosnippet>337</a>                roots: <span class="prelude-val">None</span>,
-<a href=#338 id=338 data-nosnippet>338</a>                next_external_port: ExternalPortId::default(),
-<a href=#339 id=339 data-nosnippet>339</a>                next_cycle_id: CycleId::default(),
-<a href=#340 id=340 data-nosnippet>340</a>                next_clock_id: ClockId::default(),
-<a href=#341 id=341 data-nosnippet>341</a>                next_sidecar_id: SidecarId::default(),
+<a href=#338 id=338 data-nosnippet>338</a>                next_external_port: <span class="kw">crate</span>::Counter::default(),
+<a href=#339 id=339 data-nosnippet>339</a>                next_cycle_id: <span class="kw">crate</span>::Counter::default(),
+<a href=#340 id=340 data-nosnippet>340</a>                next_clock_id: <span class="kw">crate</span>::Counter::default(),
+<a href=#341 id=341 data-nosnippet>341</a>                next_sidecar_id: <span class="kw">crate</span>::Counter::default(),
 <a href=#342 id=342 data-nosnippet>342</a>                sidecars: Vec::new(),
 <a href=#343 id=343 data-nosnippet>343</a>            })),
 <a href=#344 id=344 data-nosnippet>344</a>            locations: built.locations.clone(),

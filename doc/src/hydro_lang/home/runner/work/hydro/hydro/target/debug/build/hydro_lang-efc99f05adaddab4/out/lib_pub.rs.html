@@ -2741,13 +2741,13 @@
 <a href=#2741 id=2741 data-nosnippet>2741</a>            /// be set to `None` when this builder is finalized.
 <a href=#2742 id=2742 data-nosnippet>2742</a>            </span><span class="kw">pub </span>roots: <span class="prelude-ty">Option</span>&lt;Vec&lt;HydroRoot&gt;&gt;,
 <a href=#2743 id=2743 data-nosnippet>2743</a>            <span class="doccomment">/// Counter for generating unique external output identifiers.
-<a href=#2744 id=2744 data-nosnippet>2744</a>            </span><span class="kw">pub </span>next_external_port: ExternalPortId,
+<a href=#2744 id=2744 data-nosnippet>2744</a>            </span><span class="kw">pub </span>next_external_port: <span class="kw">crate</span>::__staged::Counter&lt;ExternalPortId&gt;,
 <a href=#2745 id=2745 data-nosnippet>2745</a>            <span class="doccomment">/// Counters for generating identifiers for cycles.
-<a href=#2746 id=2746 data-nosnippet>2746</a>            </span><span class="kw">pub </span>next_cycle_id: CycleId,
+<a href=#2746 id=2746 data-nosnippet>2746</a>            </span><span class="kw">pub </span>next_cycle_id: <span class="kw">crate</span>::__staged::Counter&lt;CycleId&gt;,
 <a href=#2747 id=2747 data-nosnippet>2747</a>            <span class="doccomment">/// Counters for clock IDs.
-<a href=#2748 id=2748 data-nosnippet>2748</a>            </span><span class="kw">pub </span>next_clock_id: ClockId,
+<a href=#2748 id=2748 data-nosnippet>2748</a>            </span><span class="kw">pub </span>next_clock_id: <span class="kw">crate</span>::__staged::Counter&lt;ClockId&gt;,
 <a href=#2749 id=2749 data-nosnippet>2749</a>            <span class="doccomment">/// Counter for generating unique sidecar identifiers, not used for anything else.
-<a href=#2750 id=2750 data-nosnippet>2750</a>            </span><span class="kw">pub </span>next_sidecar_id: SidecarId,
+<a href=#2750 id=2750 data-nosnippet>2750</a>            </span><span class="kw">pub </span>next_sidecar_id: <span class="kw">crate</span>::__staged::Counter&lt;SidecarId&gt;,
 <a href=#2751 id=2751 data-nosnippet>2751</a>            <span class="doccomment">/// Compile-time sidecar directives. Processed during compilation,
 <a href=#2752 id=2752 data-nosnippet>2752</a>            /// not part of the dataflow IR.
 <a href=#2753 id=2753 data-nosnippet>2753</a>            </span><span class="kw">pub </span>sidecars: Vec&lt;Sidecar&gt;,
@@ -2910,10 +2910,14 @@
 <a href=#2910 id=2910 data-nosnippet>2910</a>
 <a href=#2911 id=2911 data-nosnippet>2911</a>}
 <a href=#2912 id=2912 data-nosnippet>2912</a>
-<a href=#2913 id=2913 data-nosnippet>2913</a><span class="kw">pub use </span><span class="kw">crate</span>::setup;
-<a href=#2914 id=2914 data-nosnippet>2914</a><span class="kw">pub use </span><span class="kw">crate</span>::__nondet__;
-<a href=#2915 id=2915 data-nosnippet>2915</a><span class="kw">pub use </span><span class="kw">crate</span>::__sliced_parse_uses__;
-<a href=#2916 id=2916 data-nosnippet>2916</a><span class="kw">pub use </span><span class="kw">crate</span>::__sliced__;
-<a href=#2917 id=2917 data-nosnippet>2917</a><span class="kw">pub use </span><span class="kw">crate</span>::__manual_proof__;
-<a href=#2918 id=2918 data-nosnippet>2918</a><span class="kw">pub use </span><span class="kw">crate</span>::newtype_counter;
+<a href=#2913 id=2913 data-nosnippet>2913</a><span class="kw">pub use </span><span class="kw">crate</span>::Countable;
+<a href=#2914 id=2914 data-nosnippet>2914</a><span class="kw">pub use </span><span class="kw">crate</span>::Counter;
+<a href=#2915 id=2915 data-nosnippet>2915</a>
+<a href=#2916 id=2916 data-nosnippet>2916</a>
+<a href=#2917 id=2917 data-nosnippet>2917</a><span class="kw">pub use </span><span class="kw">crate</span>::setup;
+<a href=#2918 id=2918 data-nosnippet>2918</a><span class="kw">pub use </span><span class="kw">crate</span>::__nondet__;
+<a href=#2919 id=2919 data-nosnippet>2919</a><span class="kw">pub use </span><span class="kw">crate</span>::__sliced_parse_uses__;
+<a href=#2920 id=2920 data-nosnippet>2920</a><span class="kw">pub use </span><span class="kw">crate</span>::__sliced__;
+<a href=#2921 id=2921 data-nosnippet>2921</a><span class="kw">pub use </span><span class="kw">crate</span>::__manual_proof__;
+<a href=#2922 id=2922 data-nosnippet>2922</a><span class="kw">pub use </span><span class="kw">crate</span>::newtype_counter;
 </code></pre></div></section></main></body></html>
