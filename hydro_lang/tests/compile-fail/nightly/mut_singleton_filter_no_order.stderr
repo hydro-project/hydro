@@ -1,0 +1,73 @@
+warning: unexpected `cfg` condition name: `stageleft_macro`
+ --> tests/compile-fail/nightly/mut_singleton_filter_no_order.rs:8:22
+  |
+8 |         .source_iter(q!(0..5i32))
+  |                      ^^^^^^^^^^^
+  |
+  = help: expected names are: `docsrs`, `feature`, and `test` and 32 more
+  = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+  = help: try referring to `q` crate for guidance on how handle this unexpected cfg
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+  = note: `#[warn(unexpected_cfgs)]` on by default
+  = note: this warning originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unexpected `cfg` condition name: `stageleft_macro`
+ --> tests/compile-fail/nightly/mut_singleton_filter_no_order.rs:9:15
+  |
+9 |         .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+  |               ^^^^^^^^^^^
+  |
+  = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+  = help: try referring to `q` crate for guidance on how handle this unexpected cfg
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+  = note: this warning originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unexpected `cfg` condition name: `stageleft_macro`
+ --> tests/compile-fail/nightly/mut_singleton_filter_no_order.rs:9:28
+  |
+9 |         .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+  |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+  = help: try referring to `q` crate for guidance on how handle this unexpected cfg
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+  = note: this warning originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unexpected `cfg` condition name: `stageleft_macro`
+  --> tests/compile-fail/nightly/mut_singleton_filter_no_order.rs:13:22
+   |
+13 |         .source_iter(q!(1..=3i32))
+   |                      ^^^^^^^^^^^^
+   |
+   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try referring to `q` crate for guidance on how handle this unexpected cfg
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: this warning originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unexpected `cfg` condition name: `stageleft_macro`
+  --> tests/compile-fail/nightly/mut_singleton_filter_no_order.rs:15:17
+   |
+15 |           .filter(q!(|x| {
+   |  _________________^
+16 | |             *count_mut += *x;
+17 | |             true
+18 | |         }));
+   | |__________^
+   |
+   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try referring to `q` crate for guidance on how handle this unexpected cfg
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: this warning originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0594]: cannot assign to `*count_mut__free`, as it is a captured variable in a `Fn` closure
+  --> tests/compile-fail/nightly/mut_singleton_filter_no_order.rs:16:13
+   |
+ 6 | fn test<'a>(p1: &Process<'a, P1>) {
+   |    ----                          - change this to return `FnMut` instead of `Fn`
+...
+15 |         .filter(q!(|x| {
+   |                    --- in this closure
+16 |             *count_mut += *x;
+   |             ^^^^^^^^^^^^^^^^ cannot assign
+   |
+   = note: this error originates in the macro `__stageleft_quote_tests_compile_fail_mut_singleton_filter_no_order_rs_15_19` which comes from the expansion of the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
