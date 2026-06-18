@@ -82,7 +82,7 @@ jobs:
           if [ "${{ inputs.bump }}" = "auto" ] || [ "${{ inputs.bump }}" = "keep" ]; then
             CRATES=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[] | select(.publish != []) | .name' | tr '\n' ' ')
           else
-            CRATES="dfir_rs dfir_pipes dfir_lang dfir_macro hydro_lang hydro_std hydro_deploy hydro_deploy_integration multiplatform_test"
+            CRATES="dfir_rs dfir_pipes dfir_lang dfir_macro hydro_lang hydro_std hydro_aws hydro_deploy hydro_deploy_integration multiplatform_test"
           fi
           echo "list=$CRATES" >> "$GITHUB_OUTPUT"
 

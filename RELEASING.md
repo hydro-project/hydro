@@ -30,7 +30,7 @@ cargo smart-release --update-crates-index \
    --no-changelog-preview --allow-fully-generated-changelogs \
    --bump-dependencies auto --bump minor \
    dfir_rs dfir_pipes dfir_lang dfir_macro \
-   hydro_lang hydro_std \
+   hydro_lang hydro_std hydro_aws \
    hydro_deploy hydro_deploy_integration \
    multiplatform_test
 ```

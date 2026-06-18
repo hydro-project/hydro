@@ -23,7 +23,7 @@ members = [
     "sinktools",
     "variadics_macro",
     "variadics",
-    "website_playground",
+    "website_playground", "hydro_aws",
 ]
 exclude = ["template"]
 
