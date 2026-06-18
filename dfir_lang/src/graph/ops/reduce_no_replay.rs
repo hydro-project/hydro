@@ -1,9 +1,10 @@
 use quote::quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
-    RANGE_1, WriteContextArgs,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
+use crate::graph::ops::DelayType;
 
 /// > 1 input stream, 1 output stream
 ///
@@ -29,19 +30,19 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
-                     root,
-                     context,
-                     op_span,
-                     work_fn,
-                     work_fn_async,
-                     ident,
-                     inputs,
-                     outputs,
-                     is_pull,
-                     arguments,
-                     ..
-                 },
-                 diagnostics| {
+                   root,
+                   context,
+                   op_span,
+                   work_fn,
+                   work_fn_async,
+                   ident,
+                   inputs,
+                   outputs,
+                   is_pull,
+                   arguments,
+                   ..
+               },
+               diagnostics| {
         let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let singleton_output_ident = wc.make_ident("singleton_output");

@@ -135,7 +135,7 @@ mod tests {
         let mut tp = TestPush::no_pend();
         let mut fk = FoldKeyed::new(
             &mut map,
-            || String::new(),
+            String::new,
             |acc: &mut String, v: &str| acc.push_str(v),
             &mut tp,
         );
