@@ -124,7 +124,7 @@ impl<'a> BuiltFlow<'a> {
 
         use crate::sim::graph::SimNodePort;
 
-        let shared_port_counter = Rc::new(RefCell::new(SimNodePort::default()));
+        let shared_port_counter = Rc::new(RefCell::new(crate::Counter::<SimNodePort>::default()));
 
         let mut processes = SparseSecondaryMap::new();
         let mut clusters = SparseSecondaryMap::new();

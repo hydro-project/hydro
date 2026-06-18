@@ -40,7 +40,7 @@ crate::newtype_counter! {
 #[derive(Clone)]
 pub struct SimNode {
     /// Counter for port IDs, must be shared across all nodes in a simulation to prevent collisions.
-    pub shared_port_counter: Rc<RefCell<SimNodePort>>,
+    pub shared_port_counter: Rc<RefCell<crate::Counter<SimNodePort>>>,
 }
 
 impl Node for SimNode {
@@ -67,7 +67,7 @@ impl Node for SimNode {
 
 #[derive(Clone, Default)]
 pub(crate) struct SimExternalPortRegistry {
-    pub(crate) port_counter: SimExternalPort,
+    pub(crate) port_counter: crate::Counter<SimExternalPort>,
     /// A mapping from external port IDs (generated in `FlowState`)
     /// which are used for looking up connections, to the IDs
     /// of the external channels created in the simulation.

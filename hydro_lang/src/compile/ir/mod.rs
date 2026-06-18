@@ -872,8 +872,8 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
 #[cfg(feature = "build")]
 pub enum BuildersOrCallback<'a, L, N>
 where
-    L: FnMut(&mut HydroRoot, &mut StmtId),
-    N: FnMut(&mut HydroNode, &mut StmtId),
+    L: FnMut(&mut HydroRoot, &mut crate::Counter<StmtId>),
+    N: FnMut(&mut HydroNode, &mut crate::Counter<StmtId>),
 {
     Builders(&'a mut dyn DfirBuilder),
     Callback(L, N),
@@ -1405,13 +1405,13 @@ impl HydroRoot {
         graph_builders: &mut dyn DfirBuilder,
         seen_tees: &mut SeenSharedNodes,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, Vec<syn::Ident>>,
-        next_stmt_id: &mut StmtId,
+        next_stmt_id: &mut crate::Counter<StmtId>,
         fold_hooked_idents: &mut HashSet<String>,
     ) {
         self.emit_core(
             &mut BuildersOrCallback::<
-                fn(&mut HydroRoot, &mut StmtId),
-                fn(&mut HydroNode, &mut StmtId),
+                fn(&mut HydroRoot, &mut crate::Counter<StmtId>),
+                fn(&mut HydroNode, &mut crate::Counter<StmtId>),
             >::Builders(graph_builders),
             seen_tees,
             built_tees,
@@ -1424,12 +1424,12 @@ impl HydroRoot {
     pub fn emit_core(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<
-            impl FnMut(&mut HydroRoot, &mut StmtId),
-            impl FnMut(&mut HydroNode, &mut StmtId),
+            impl FnMut(&mut HydroRoot, &mut crate::Counter<StmtId>),
+            impl FnMut(&mut HydroNode, &mut crate::Counter<StmtId>),
         >,
         seen_tees: &mut SeenSharedNodes,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, Vec<syn::Ident>>,
-        next_stmt_id: &mut StmtId,
+        next_stmt_id: &mut crate::Counter<StmtId>,
         fold_hooked_idents: &mut HashSet<String>,
     ) {
         match self {
@@ -1837,7 +1837,7 @@ pub fn emit(ir: &mut Vec<HydroRoot>) -> SecondaryMap<LocationKey, FlatGraphBuild
     let mut builders = SecondaryMap::new();
     let mut seen_tees = HashMap::new();
     let mut built_tees = HashMap::new();
-    let mut next_stmt_id = StmtId::default();
+    let mut next_stmt_id = crate::Counter::<StmtId>::default();
     let mut fold_hooked_idents = HashSet::new();
     for leaf in ir {
         leaf.emit(
@@ -1854,12 +1854,12 @@ pub fn emit(ir: &mut Vec<HydroRoot>) -> SecondaryMap<LocationKey, FlatGraphBuild
 #[cfg(feature = "build")]
 pub fn traverse_dfir(
     ir: &mut [HydroRoot],
-    transform_root: impl FnMut(&mut HydroRoot, &mut StmtId),
-    transform_node: impl FnMut(&mut HydroNode, &mut StmtId),
+    transform_root: impl FnMut(&mut HydroRoot, &mut crate::Counter<StmtId>),
+    transform_node: impl FnMut(&mut HydroNode, &mut crate::Counter<StmtId>),
 ) {
     let mut seen_tees = HashMap::new();
     let mut built_tees = HashMap::new();
-    let mut next_stmt_id = StmtId::default();
+    let mut next_stmt_id = crate::Counter::<StmtId>::default();
     let mut fold_hooked_idents = HashSet::new();
     let mut callback = BuildersOrCallback::Callback(transform_root, transform_node);
     ir.iter_mut().for_each(|leaf| {
@@ -3123,12 +3123,12 @@ impl HydroNode {
     pub fn emit_core(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<
-            impl FnMut(&mut HydroRoot, &mut StmtId),
-            impl FnMut(&mut HydroNode, &mut StmtId),
+            impl FnMut(&mut HydroRoot, &mut crate::Counter<StmtId>),
+            impl FnMut(&mut HydroNode, &mut crate::Counter<StmtId>),
         >,
         seen_tees: &mut SeenSharedNodes,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, Vec<syn::Ident>>,
-        next_stmt_id: &mut StmtId,
+        next_stmt_id: &mut crate::Counter<StmtId>,
         fold_hooked_idents: &mut HashSet<String>,
     ) -> syn::Ident {
         let mut ident_stack: Vec<syn::Ident> = Vec::new();

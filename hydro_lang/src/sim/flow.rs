@@ -12,7 +12,7 @@ use slotmap::SparseSecondaryMap;
 use super::builder::SimBuilder;
 use super::compiled::{CompiledSim, CompiledSimInstance};
 use super::graph::{SimDeploy, SimExternal, SimNode, compile_sim, create_sim_graph_trybuild};
-use crate::compile::builder::{HandoffId, StmtId};
+use crate::compile::builder::StmtId;
 use crate::compile::ir::HydroRoot;
 use crate::location::LocationKey;
 use crate::location::dynamic::LocationId;
@@ -132,7 +132,7 @@ impl<'a> SimFlow<'a> {
             cluster_tick_dfirs: BTreeMap::new(),
             extra_stmts_global: vec![],
             extra_stmts_cluster: BTreeMap::new(),
-            next_hoff_id: HandoffId::default(),
+            next_hoff_id: crate::Counter::default(),
             test_safety_only: self.test_safety_only,
             skip_consistency_assertions: self.skip_consistency_assertions,
         };
@@ -161,7 +161,7 @@ impl<'a> SimFlow<'a> {
 
         let mut seen_tees = HashMap::new();
         let mut built_tees = HashMap::new();
-        let mut next_stmt_id = StmtId::default();
+        let mut next_stmt_id = crate::Counter::<StmtId>::default();
         let mut fold_hooked_idents = HashSet::new();
         for leaf in &mut self.ir {
             leaf.emit(

@@ -35,7 +35,7 @@ pub struct SimBuilder {
     pub cluster_graphs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub process_tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub cluster_tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
-    pub next_hoff_id: HandoffId,
+    pub next_hoff_id: crate::Counter<HandoffId>,
     pub test_safety_only: bool,
     pub skip_consistency_assertions: bool,
 }
