@@ -30,9 +30,13 @@ use crate::staging_util::Invariant;
 /// needed.
 ///
 /// # Creating a Process
-/// ```rust,ignore
+/// ```rust
+/// # use hydro_lang::prelude::*;
+/// struct MyTag;
 /// let mut flow = FlowBuilder::new();
 /// let node = flow.process::<MyTag>();
+/// # let _ = &node;
+/// # let _ = flow.finalize();
 /// ```
 pub struct Process<'a, ProcessTag = ()> {
     pub(crate) key: LocationKey,
