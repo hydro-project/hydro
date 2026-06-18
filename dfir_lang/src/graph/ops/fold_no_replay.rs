@@ -1,7 +1,5 @@
 use quote::quote_spanned;
 
-use crate::graph::ops::DelayType;
-
 use super::{
     OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
     RANGE_1, WriteContextArgs,

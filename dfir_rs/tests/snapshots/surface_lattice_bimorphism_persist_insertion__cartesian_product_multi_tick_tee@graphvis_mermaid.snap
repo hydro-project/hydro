@@ -37,8 +37,8 @@ linkStyle default stroke:#aaa
 11v1-->12v1
 14v1-->|0|11v1
 15v1-->|1|11v1
-9v1--x11v1; linkStyle 14 stroke:red
-10v1--x11v1; linkStyle 15 stroke:red
+9v1-->11v1
+10v1-->11v1
 subgraph sg_1v1 ["sg_1v1"]
     subgraph sg_1v1_var_lhs_op ["var <tt>lhs_op</tt>"]
         1v1

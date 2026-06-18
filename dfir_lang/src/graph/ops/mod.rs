@@ -23,8 +23,6 @@ use crate::parse::{Operator, PortIndex};
 /// The delay (soft barrier) type, for each input to an operator if needed.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum DelayType {
-    /// Input must be collected over the preceding stratum.
-    Stratum,
     /// Input must be collected over the previous tick.
     Tick,
     /// Input must be collected over the previous tick but also not cause a new tick to occur.
