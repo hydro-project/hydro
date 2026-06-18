@@ -20,6 +20,8 @@ _15v1 = map (| res | { let (id , b) = res . unwrap () ; (hydro_lang :: __staged 
 _16v1 = map (stageleft :: runtime_support :: fnmut1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , (std :: string :: String , i32)) , (std :: string :: String , i32) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_keyed_stream_mod_rs_747_30 ! ([] [| (_ , v) | v]) }));
 _17v1 = reduce_keyed :: < 'static > (stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_map_reduce_rs_36_8 ! ([] [| total , count | * total += count]) }));
 _18v1 = for_each (stageleft :: runtime_support :: fnmut1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_map_reduce_rs_45_21 ! ([] [| (string , count) | println ! ("{}: {}" , string , count)]) }));
+_19v1 = handoff();
+_20v1 = handoff();
 
 _1v1 -> _2v1;
 _2v1 -> _3v1;
@@ -27,9 +29,9 @@ _4v1 -> _5v1;
 _5v1 -> _6v1;
 _6v1 -> _7v1;
 _7v1 -> _8v1;
-_8v1 -> _9v1;
+_8v1 -> _19v1;
 _3v1 -> [input]_10v1;
-_9v1 -> [single]_10v1;
+_9v1 -> _20v1;
 _10v1 -> _11v1;
 _12v1 -> _13v1;
 _11v1 -> _12v1;
@@ -37,3 +39,5 @@ _14v1 -> _15v1;
 _15v1 -> _16v1;
 _16v1 -> _17v1;
 _17v1 -> _18v1;
+_19v1 -> _9v1;
+_20v1 -> [single]_10v1;

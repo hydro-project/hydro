@@ -87,7 +87,7 @@ error[E0277]: the trait bound `impl dfir_rs::dfir_pipes::push::Push<std::option:
              `&mut P` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
              `Accumulate<State, Next>` implements `dfir_rs::dfir_pipes::push::Push<<State as AccumState>::Input, ()>`
              `DemuxEnum<Outputs>` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
-             `FoldKeyed<&mut HashMap<K, V, S>, InitFn, CombFn, Next, K, V>` implements `dfir_rs::dfir_pipes::push::Push<(K, V), ()>`
+             `FoldKeyed<&mut HashMap<K, Acc, S>, InitFn, CombFn, Next, K, V, Acc>` implements `dfir_rs::dfir_pipes::push::Push<(K, V), ()>`
              `ReduceKeyed<&mut HashMap<K, V, S>, ReduceFn, Next, K, V>` implements `dfir_rs::dfir_pipes::push::Push<(K, V), ()>`
              `ResolveFutures<Psh, Queue, QueueInner>` implements `dfir_rs::dfir_pipes::push::Push<Fut, ()>`
              `Sort<Item, Next>` implements `dfir_rs::dfir_pipes::push::Push<Item, ()>`

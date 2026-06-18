@@ -274,21 +274,21 @@ linkStyle default stroke:#aaa
 264v1["<div style=text-align:center>(264v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
 265v1["<div style=text-align:center>(265v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
 1v1-->2v1
-132v1-->|0|3v1
+132v1--x|0|3v1; linkStyle 1 stroke:red
 250v1-->|1|3v1
-3v1-->|0|4v1
+3v1--x|0|4v1; linkStyle 3 stroke:red
 50v1-->|1|4v1
-4v1-->5v1
+4v1--x5v1; linkStyle 5 stroke:red
 6v1-->7v1
-5v1-->|0|8v1
+5v1--x|0|8v1; linkStyle 7 stroke:red
 7v1-->|1|8v1
 8v1-->9v1
 17v1--o10v1; linkStyle 10 stroke:red
 11v1-->12v1
-10v1-->|0|13v1
+10v1--x|0|13v1; linkStyle 12 stroke:red
 12v1-->|1|13v1
 9v1-->|input|14v1
-13v1-->|single|14v1
+13v1--x|single|14v1; linkStyle 15 stroke:red
 14v1-->15v1
 15v1-->16v1
 16v1-->17v1
@@ -302,20 +302,20 @@ linkStyle default stroke:#aaa
 129v1-->26v1
 26v1-->27v1
 25v1-->|input|28v1
-27v1-->|single|28v1
+27v1--x|single|28v1; linkStyle 29 stroke:red
 28v1-->29v1
 30v1-->31v1
 31v1-->32v1
-32v1-->33v1
+32v1--x33v1; linkStyle 33 stroke:red
 33v1-->34v1
 34v1-->35v1
 36v1-->37v1
-35v1-->|0|38v1
+35v1--x|0|38v1; linkStyle 37 stroke:red
 37v1-->|1|38v1
 38v1-->39v1
 39v1-->40v1
 29v1-->|input|41v1
-40v1-->|single|41v1
+40v1--x|single|41v1; linkStyle 42 stroke:red
 41v1-->42v1
 22v1-->|0|43v1
 42v1-->|1|43v1
@@ -330,34 +330,34 @@ linkStyle default stroke:#aaa
 53v1-->54v1
 54v1-->55v1
 55v1-->56v1
-49v1-->57v1
+49v1--x57v1; linkStyle 57 stroke:red
 57v1-->58v1
 26v1-->59v1
 59v1-->60v1
 58v1-->|input|61v1
-60v1-->|single|61v1
+60v1--x|single|61v1; linkStyle 62 stroke:red
 61v1-->62v1
 62v1-->63v1
 63v1-->64v1
 65v1-->66v1
-64v1-->|0|67v1
+64v1--x|0|67v1; linkStyle 67 stroke:red
 66v1-->|1|67v1
 67v1-->68v1
 69v1-->70v1
 70v1-->71v1
-71v1-->72v1
+71v1--x72v1; linkStyle 72 stroke:red
 72v1-->73v1
 73v1-->74v1
 75v1-->76v1
-74v1-->|0|77v1
+74v1--x|0|77v1; linkStyle 76 stroke:red
 76v1-->|1|77v1
 77v1-->78v1
 68v1-->|input|79v1
-78v1-->|single|79v1
+78v1--x|single|79v1; linkStyle 80 stroke:red
 79v1-->80v1
 80v1-->81v1
 25v1-->|input|82v1
-81v1-->|single|82v1
+81v1--x|single|82v1; linkStyle 84 stroke:red
 82v1-->83v1
 83v1-->84v1
 56v1-->|0|85v1
@@ -368,7 +368,7 @@ linkStyle default stroke:#aaa
 89v1-->90v1
 90v1-->91v1
 91v1-->92v1
-51v1-->|0|93v1
+51v1--x|0|93v1; linkStyle 95 stroke:red
 92v1-->|1|93v1
 93v1-->94v1
 94v1-->95v1
@@ -377,39 +377,39 @@ linkStyle default stroke:#aaa
 97v1-->98v1
 98v1-->99v1
 94v1-->|pos|100v1
-99v1-->|neg|100v1
+99v1--x|neg|100v1; linkStyle 104 stroke:red
 100v1-->101v1
 96v1-->102v1
 102v1-->103v1
 103v1-->|pos|104v1
-99v1-->|neg|104v1
+99v1--x|neg|104v1; linkStyle 109 stroke:red
 104v1-->105v1
 96v1-->106v1
 106v1-->107v1
 94v1-->|pos|108v1
-107v1-->|neg|108v1
+107v1--x|neg|108v1; linkStyle 114 stroke:red
 105v1--o109v1; linkStyle 115 stroke:red
 108v1-->|pos|110v1
-109v1-->|neg|110v1
+109v1--x|neg|110v1; linkStyle 117 stroke:red
 110v1-->111v1
 111v1-->112v1
 112v1-->113v1
-113v1-->114v1
+113v1--x114v1; linkStyle 121 stroke:red
 114v1-->|input|115v1
-25v1-->|single|115v1
+25v1--x|single|115v1; linkStyle 123 stroke:red
 115v1-->116v1
 116v1-->117v1
 117v1-->118v1
 118v1-->119v1
 120v1-->121v1
-119v1-->|0|122v1
+119v1--x|0|122v1; linkStyle 129 stroke:red
 121v1-->|1|122v1
 122v1-->123v1
 9v1-->|input|124v1
-24v1-->|single|124v1
+24v1--x|single|124v1; linkStyle 133 stroke:red
 124v1-->125v1
 123v1-->|input|126v1
-125v1-->|single|126v1
+125v1--x|single|126v1; linkStyle 136 stroke:red
 126v1-->127v1
 127v1-->128v1
 128v1-->129v1
@@ -426,16 +426,16 @@ linkStyle default stroke:#aaa
 140v1-->141v1
 141v1-->142v1
 143v1-->144v1
-142v1-->|0|145v1
+142v1--x|0|145v1; linkStyle 153 stroke:red
 144v1-->|1|145v1
 145v1-->146v1
 128v1-->|input|147v1
-146v1-->|single|147v1
+146v1--x|single|147v1; linkStyle 157 stroke:red
 147v1-->148v1
 148v1-->149v1
 149v1-->150v1
 25v1-->|input|151v1
-150v1-->|single|151v1
+150v1--x|single|151v1; linkStyle 162 stroke:red
 151v1-->152v1
 137v1-->|0|153v1
 152v1-->|1|153v1
@@ -445,7 +445,7 @@ linkStyle default stroke:#aaa
 157v1-->158v1
 128v1-->159v1
 158v1-->|input|160v1
-159v1-->|single|160v1
+159v1--x|single|160v1; linkStyle 172 stroke:red
 160v1-->161v1
 161v1-->162v1
 117v1-->163v1
@@ -456,23 +456,23 @@ linkStyle default stroke:#aaa
 167v1-->168v1
 168v1-->169v1
 169v1-->170v1
-170v1-->171v1
+170v1--x171v1; linkStyle 183 stroke:red
 171v1-->172v1
 172v1-->173v1
 186v1--o174v1; linkStyle 186 stroke:red
 175v1-->176v1
-174v1-->|0|177v1
+174v1--x|0|177v1; linkStyle 188 stroke:red
 176v1-->|1|177v1
-173v1-->|0|178v1
+173v1--x|0|178v1; linkStyle 190 stroke:red
 177v1-->|1|178v1
 178v1-->179v1
 162v1-->|input|180v1
-179v1-->|single|180v1
+179v1--x|single|180v1; linkStyle 194 stroke:red
 180v1-->181v1
 181v1-->182v1
-182v1-->183v1
+182v1--x183v1; linkStyle 197 stroke:red
 183v1-->|input|184v1
-179v1-->|single|184v1
+179v1--x|single|184v1; linkStyle 199 stroke:red
 184v1-->185v1
 185v1-->186v1
 233v1--o187v1; linkStyle 202 stroke:red
@@ -481,36 +481,36 @@ linkStyle default stroke:#aaa
 190v1-->191v1
 191v1-->192v1
 182v1-->|input|193v1
-25v1-->|single|193v1
+25v1--x|single|193v1; linkStyle 208 stroke:red
 193v1-->194v1
 169v1-->|input|195v1
-25v1-->|single|195v1
+25v1--x|single|195v1; linkStyle 211 stroke:red
 164v1-->196v1
-196v1-->197v1
+196v1--x197v1; linkStyle 213 stroke:red
 197v1-->198v1
 199v1-->200v1
-198v1-->|0|201v1
+198v1--x|0|201v1; linkStyle 216 stroke:red
 200v1-->|1|201v1
 201v1-->202v1
 195v1-->|input|203v1
-202v1-->|single|203v1
+202v1--x|single|203v1; linkStyle 220 stroke:red
 203v1-->204v1
 172v1-->|input|205v1
-202v1-->|single|205v1
+202v1--x|single|205v1; linkStyle 223 stroke:red
 205v1-->206v1
 169v1-->207v1
 206v1-->|pos|208v1
-207v1-->|neg|208v1
+207v1--x|neg|208v1; linkStyle 227 stroke:red
 208v1-->|input|209v1
-25v1-->|single|209v1
+25v1--x|single|209v1; linkStyle 229 stroke:red
 209v1-->210v1
-204v1-->|0|211v1
+204v1--x|0|211v1; linkStyle 231 stroke:red
 210v1-->|1|211v1
-194v1-->|0|212v1
+194v1--x|0|212v1; linkStyle 233 stroke:red
 211v1-->|1|212v1
 128v1-->213v1
 212v1-->|input|214v1
-213v1-->|single|214v1
+213v1--x|single|214v1; linkStyle 237 stroke:red
 214v1-->215v1
 215v1-->216v1
 216v1-->217v1
@@ -521,7 +521,7 @@ linkStyle default stroke:#aaa
 221v1-->222v1
 222v1-->223v1
 223v1-->224v1
-187v1-->|0|225v1
+187v1--x|0|225v1; linkStyle 248 stroke:red
 224v1-->|1|225v1
 225v1-->226v1
 226v1-->227v1
@@ -530,32 +530,32 @@ linkStyle default stroke:#aaa
 229v1-->230v1
 230v1-->231v1
 226v1-->|pos|232v1
-231v1-->|neg|232v1
+231v1--x|neg|232v1; linkStyle 257 stroke:red
 232v1-->233v1
 228v1-->234v1
 234v1-->235v1
 235v1-->|pos|236v1
-231v1-->|neg|236v1
+231v1--x|neg|236v1; linkStyle 262 stroke:red
 236v1-->237v1
 247v1--o238v1; linkStyle 264 stroke:red
-238v1-->|0|239v1
+238v1--x|0|239v1; linkStyle 265 stroke:red
 216v1-->|1|239v1
 239v1-->240v1
 237v1--o241v1; linkStyle 268 stroke:red
 235v1-->|pos|242v1
-241v1-->|neg|242v1
+241v1--x|neg|242v1; linkStyle 270 stroke:red
 242v1-->243v1
 243v1-->244v1
 244v1-->245v1
 240v1-->|pos|246v1
-245v1-->|neg|246v1
+245v1--x|neg|246v1; linkStyle 275 stroke:red
 246v1-->247v1
 224v1-->248v1
 248v1-->249v1
 249v1-->250v1
 149v1-->251v1
 25v1-->|input|252v1
-251v1-->|single|252v1
+251v1--x|single|252v1; linkStyle 282 stroke:red
 252v1-->253v1
 253v1-->254v1
 255v1-->256v1
@@ -563,7 +563,7 @@ linkStyle default stroke:#aaa
 257v1-->258v1
 258v1-->259v1
 240v1-->|probe|260v1
-244v1-->|build|260v1
+244v1--x|build|260v1; linkStyle 290 stroke:red
 260v1-->261v1
 261v1-->262v1
 259v1-->|0|263v1
