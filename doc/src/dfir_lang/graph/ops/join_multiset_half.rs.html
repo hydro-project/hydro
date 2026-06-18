@@ -112,7 +112,7 @@
 <a href=#112 id=112 data-nosnippet>112</a>                    </span><span class="kw">fn </span>probe_join&lt;<span class="lifetime">'a</span>, K, V1, V2, I&gt;(
 <a href=#113 id=113 data-nosnippet>113</a>                        probe: I,
 <a href=#114 id=114 data-nosnippet>114</a>                        build_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>#root::rustc_hash::FxHashMap&lt;K, ::std::vec::Vec&lt;V1&gt;&gt;,
-<a href=#115 id=115 data-nosnippet>115</a>                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::dfir_pipes::pull::Pull&lt;Item = (K, (V2, V1)), Meta = ()&gt;
+<a href=#115 id=115 data-nosnippet>115</a>                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::dfir_pipes::pull::Pull&lt;Item = (K, (V2, V1)), Meta = (), CanPend = I::CanPend, CanEnd = I::CanEnd&gt;
 <a href=#116 id=116 data-nosnippet>116</a>                    <span class="kw">where
 <a href=#117 id=117 data-nosnippet>117</a>                        </span>K: ::std::cmp::Eq + ::std::hash::Hash + ::std::clone::Clone + <span class="lifetime">'a</span>,
 <a href=#118 id=118 data-nosnippet>118</a>                        V1: ::std::clone::Clone + <span class="lifetime">'a</span>,
