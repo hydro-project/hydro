@@ -112,7 +112,7 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
                     fn probe_join<'a, K, V1, V2, I>(
                         probe: I,
                         build_state: &'a #root::rustc_hash::FxHashMap<K, ::std::vec::Vec<V1>>,
-                    ) -> impl 'a + #root::dfir_pipes::pull::Pull<Item = (K, (V2, V1)), Meta = ()>
+                    ) -> impl 'a + #root::dfir_pipes::pull::Pull<Item = (K, (V2, V1)), Meta = (), CanPend = I::CanPend, CanEnd = I::CanEnd>
                     where
                         K: ::std::cmp::Eq + ::std::hash::Hash + ::std::clone::Clone + 'a,
                         V1: ::std::clone::Clone + 'a,
