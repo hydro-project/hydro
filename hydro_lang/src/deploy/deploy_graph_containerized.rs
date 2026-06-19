@@ -77,6 +77,8 @@ pub struct DockerDeployProcess {
     base_image: Option<String>,
 
     linux_compile_type: LinuxCompileType,
+
+    features: Vec<String>,
 }
 
 impl Node for DockerDeployProcess {
@@ -130,6 +132,10 @@ impl Node for DockerDeployProcess {
             ret = ret.features(features);
         }
 
+        if !self.features.is_empty() {
+            ret = ret.features(self.features.clone());
+        }
+
         ret = ret.build_env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
         ret = ret.config("build.incremental = false");
 
@@ -158,6 +164,8 @@ pub struct DockerDeployCluster {
     base_image: Option<String>,
 
     linux_compile_type: LinuxCompileType,
+
+    features: Vec<String>,
 }
 
 impl Node for DockerDeployCluster {
@@ -209,6 +217,10 @@ impl Node for DockerDeployCluster {
 
         if let Some(features) = config.features {
             ret = ret.features(features);
+        }
+
+        if !self.features.is_empty() {
+            ret = ret.features(self.features.clone());
         }
 
         ret = ret.build_env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
@@ -778,6 +790,7 @@ impl DockerDeploy {
             deployment_instance: self.deployment_instance.clone(),
             base_image: None,
             linux_compile_type: LinuxCompileType::Musl,
+            features: vec![],
         };
 
         self.docker_processes.push(process.clone());
@@ -799,6 +812,7 @@ impl DockerDeploy {
             deployment_instance: self.deployment_instance.clone(),
             base_image: None,
             linux_compile_type: LinuxCompileType::Musl,
+            features: vec![],
         };
 
         self.docker_clusters.push(cluster.clone());
@@ -1369,6 +1383,7 @@ pub struct DockerDeployProcessSpec {
     deployment_instance: String,
     base_image: Option<String>,
     linux_compile_type: LinuxCompileType,
+    features: Vec<String>,
 }
 
 impl<'a> ProcessSpec<'a, DockerDeploy> for DockerDeployProcessSpec {
@@ -1392,6 +1407,7 @@ impl<'a> ProcessSpec<'a, DockerDeploy> for DockerDeployProcessSpec {
 
             base_image: self.base_image,
             linux_compile_type: self.linux_compile_type,
+            features: self.features,
         }
     }
 }
@@ -1405,6 +1421,7 @@ pub struct DockerDeployClusterSpec {
     deployment_instance: String,
     base_image: Option<String>,
     linux_compile_type: LinuxCompileType,
+    features: Vec<String>,
 }
 
 impl<'a> ClusterSpec<'a, DockerDeploy> for DockerDeployClusterSpec {
@@ -1428,6 +1445,7 @@ impl<'a> ClusterSpec<'a, DockerDeploy> for DockerDeployClusterSpec {
 
             base_image: self.base_image,
             linux_compile_type: self.linux_compile_type,
+            features: self.features,
         }
     }
 }
@@ -1446,6 +1464,18 @@ impl DockerDeployProcessSpec {
         self.linux_compile_type = compile_type;
         self
     }
+
+    /// Add features to enable when compiling the final binary.
+    pub fn features(mut self, features: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.features.extend(features.into_iter().map(Into::into));
+        self
+    }
+
+    /// Add a single feature to enable when compiling the final binary.
+    pub fn feature(mut self, feature: impl Into<String>) -> Self {
+        self.features.push(feature.into());
+        self
+    }
 }
 
 impl DockerDeployClusterSpec {
@@ -1460,6 +1490,18 @@ impl DockerDeployClusterSpec {
     /// Defaults to `Musl` if not specified.
     pub fn linux_compile_type(mut self, compile_type: LinuxCompileType) -> Self {
         self.linux_compile_type = compile_type;
+        self
+    }
+
+    /// Add features to enable when compiling the final binary.
+    pub fn features(mut self, features: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.features.extend(features.into_iter().map(Into::into));
+        self
+    }
+
+    /// Add a single feature to enable when compiling the final binary.
+    pub fn feature(mut self, feature: impl Into<String>) -> Self {
+        self.features.push(feature.into());
         self
     }
 }
