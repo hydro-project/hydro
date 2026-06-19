@@ -834,17 +834,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-    use std::task::{Context, Poll};
+    use std::task::{Context, Poll, Waker};
 
     use futures::stream;
 
     use super::*;
-
-    struct TestWaker;
-    impl std::task::Wake for TestWaker {
-        fn wake(self: Arc<Self>) {}
-    }
 
     #[test]
     fn test_merge_source_fair_polling() {
@@ -859,8 +853,7 @@ mod tests {
             poll_cursor: 0,
         };
 
-        let waker = Arc::new(TestWaker).into();
-        let mut cx = Context::from_waker(&waker);
+        let mut cx = Context::from_waker(Waker::noop());
 
         let mut results = Vec::new();
 
