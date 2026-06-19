@@ -14,8 +14,8 @@ maelstrom = ["hydro_lang/maelstrom"]
 stageleft_macro_entrypoint = ["hydro_lang/stageleft_macro_entrypoint"]
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.1" }
-hydro_std = { path = "../hydro_std", version = "^0.17.0-alpha.1" }
+hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.2" }
+hydro_std = { path = "../hydro_std", version = "^0.17.0-alpha.2" }
 stageleft.workspace = true
 rand = "0.8.0"
 serde = { version = "1.0.197", features = ["derive"] }
@@ -42,11 +42,11 @@ hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0" 
 [dev-dependencies]
 clap = { version = "4.4", features = ["derive"] }
 ctor = "0.2"
-dfir_lang = { path = "../dfir_lang", version = "^0.17.0-alpha.1" }
+dfir_lang = { path = "../dfir_lang", version = "^0.17.0-alpha.2" }
 example_test = { path = "../example_test", version = "^0.0.1" }
 futures = "0.3.0"
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.17.0-alpha.0" }
-hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.1", features = [
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.17.0-alpha.1" }
+hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.2", features = [
     "deploy",
     "maelstrom",
     "sim",
@@ -57,7 +57,7 @@ hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0",
 regex = "1"
 tokio = { version = "1.29.0", features = ["full"] }
 tokio-test = "0.4.4"
-dfir_rs = { path = "../dfir_rs", version = "^0.17.0-alpha.1", default-features = false }
+dfir_rs = { path = "../dfir_rs", version = "^0.17.0-alpha.2", default-features = false }
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 
 [[bench]]

@@ -17,15 +17,15 @@ test_embedded = [
 ]
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.1", features = ["embedded_runtime"], optional = true }
+hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.2", features = ["embedded_runtime"], optional = true }
 hydro_test = { path = "../hydro_test", version = "0.0.0", features = ["stageleft_macro_entrypoint"], optional = true }
 stageleft = { workspace = true, optional = true }
 
 [dev-dependencies]
-dfir_rs = { path = "../dfir_rs", version = "^0.17.0-alpha.1", default-features = false }
+dfir_rs = { path = "../dfir_rs", version = "^0.17.0-alpha.2", default-features = false }
 tokio = { version = "1.29.0", features = ["full"] }
 
 [build-dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.1", features = ["build"], optional = true }
+hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.2", features = ["build"], optional = true }
 hydro_test = { path = "../hydro_test", version = "0.0.0", optional = true }
 prettyplease = { version = "0.2.0", features = ["verbatim"], optional = true }
