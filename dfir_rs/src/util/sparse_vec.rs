@@ -4,6 +4,7 @@ use std::hash::Hash;
 use std::iter::FusedIterator;
 
 /// A vector that supports efficient deletion without reordering all subsequent items.
+#[derive(Clone, Debug)]
 pub struct SparseVec<T> {
     items: Vec<Option<T>>,
     item_locs: HashMap<T, Vec<usize>>,
