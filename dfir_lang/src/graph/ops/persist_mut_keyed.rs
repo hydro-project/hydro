@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
     OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
@@ -41,13 +41,14 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
                    work_fn_async,
                    ident,
                    inputs,
+                   outputs,
                    is_pull,
                    op_name,
                    op_inst:
@@ -61,8 +62,6 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                    ..
                },
                diagnostics| {
-        assert!(is_pull);
-
         if [Persistence::Mutable] != persistence_args[..] {
             diagnostics.push(Diagnostic::spanned(
                 op_span,
@@ -81,7 +80,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                 #root::rustc_hash::FxHashMap::<_, #root::util::sparse_vec::SparseVec<_>>::default();
         };
 
-        let write_iterator = {
+        let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
@@ -114,6 +113,51 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                             .flat_map(|(k, v)| v.iter().map(move |v| (k.clone(), v.clone())))
                     };
                     #root::dfir_pipes::pull::iter(iter)
+                };
+            }
+        } else {
+            let output = &outputs[0];
+            quote_spanned! {op_span=>
+                let #ident = {
+                    #[inline(always)]
+                    fn check_push<'a, Next, K, V>(
+                        persistdata: &'a mut #root::rustc_hash::FxHashMap<K, #root::util::sparse_vec::SparseVec<V>>,
+                        next: Next,
+                    )
+                        -> impl 'a + #root::dfir_pipes::push::Push<#root::util::PersistenceKeyed::<K, V>, ()>
+                    where
+                        Next: 'a + #root::dfir_pipes::push::Push<(K, V), ()>,
+                        K: ::std::clone::Clone + ::std::cmp::Eq + ::std::hash::Hash,
+                        V: ::std::clone::Clone + ::std::cmp::Eq + ::std::hash::Hash,
+                    {
+                        #root::dfir_pipes::push::fold(
+                            persistdata,
+                            |state: &mut #root::rustc_hash::FxHashMap<K, #root::util::sparse_vec::SparseVec<V>>, item| {
+                                match item {
+                                    #root::util::PersistenceKeyed::Persist(k, v) => {
+                                        state.entry(k).or_default().push(v);
+                                    },
+                                    #root::util::PersistenceKeyed::Delete(k) => {
+                                        state.remove(&k);
+                                    }
+                                }
+                            },
+                            #root::dfir_pipes::push::flat_map(
+                                #[allow(clippy::clone_on_copy)]
+                                #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                                |state: &mut #root::rustc_hash::FxHashMap<K, #root::util::sparse_vec::SparseVec<V>>| {
+                                    state
+                                        .iter()
+                                        .flat_map(|(k, vec)| {
+                                            vec.iter().map(move |v| (k.clone(), v.clone()))
+                                        })
+                                },
+                                next,
+                            ),
+                        )
+                    }
+
+                    check_push(&mut #persistdata_ident, #output)
                 };
             }
         };
