@@ -4814,4 +4814,90 @@ mod tests {
         // After retain(> 3): [4, 5] => len = 2
         assert_eq!(result, 2);
     }
+
+    /// A map with a mut singleton ref on an unordered input should produce > 1
+    /// simulation instance because the ordering of elements through the mut closure
+    /// is non-deterministic.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_map_with_mut_on_unordered_explores_multiple_states() {
+        use crate::live_collections::sliced::sliced;
+        use crate::live_collections::stream::ExactlyOnce;
+        use crate::properties::manual_proof;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (trigger_send, trigger) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
+
+        let out_recv = sliced! {
+            let batch = use(trigger, nondet!(/** test */));
+            let counter = batch.location().source_iter(q!(vec![0i32]))
+                .fold(q!(|| 0i32), q!(|acc, v| *acc += v));
+            let counter_mut = counter.by_mut();
+            let items = batch.location().source_iter(q!(vec![1i32, 2])).weaken_ordering::<NoOrder>();
+            items.map(q!(
+                |x| {
+                    *counter_mut += x;
+                    *counter_mut
+                },
+                commutative = manual_proof!(/** test */)
+            ))
+        }
+        .sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            trigger_send.send(1);
+            let _all: Vec<i32> = out_recv.collect_sorted().await;
+        });
+
+        assert_eq!(
+            count, 2,
+            "Expected 2 simulation instances due to mut on unordered input, got {}",
+            count
+        );
+    }
+
+    /// A map with a mut singleton ref on a top-level unordered input should produce > 1
+    /// simulation instance. Currently panics because observe_nondet doesn't support
+    /// top-level bounded inputs yet.
+    #[cfg(feature = "sim")]
+    #[test]
+    #[ignore = "observe_nondet not yet supported for top-level bounded inputs (https://github.com/hydro-project/hydro/issues/2950)"]
+    fn sim_map_with_mut_on_unordered_top_level() {
+        use crate::properties::manual_proof;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let counter = node
+            .source_iter(q!(vec![0i32]))
+            .fold(q!(|| 0i32), q!(|acc, v| *acc += v));
+        let counter_mut = counter.by_mut();
+
+        let out_recv = node
+            .source_iter(q!(vec![1i32, 2]))
+            .weaken_ordering::<NoOrder>()
+            .map(q!(
+                |x| {
+                    *counter_mut += x;
+                    *counter_mut
+                },
+                commutative = manual_proof!(/** test */)
+            ))
+            .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            .sim_output();
+
+        counter.into_stream().for_each(q!(|_| {}));
+
+        let count = flow.sim().exhaustive(async || {
+            let _all: Vec<i32> = out_recv.collect().await;
+        });
+
+        assert_eq!(
+            count, 2,
+            "Expected 2 simulation instances due to mut on unordered input, got {}",
+            count
+        );
+    }
 }
