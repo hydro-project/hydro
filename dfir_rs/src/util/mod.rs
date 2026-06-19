@@ -6,28 +6,36 @@
 pub mod demux_enum;
 pub mod multiset;
 pub mod sparse_vec;
+#[cfg(feature = "tokio")]
 pub mod unsync;
 
 mod monotonic;
 pub use monotonic::*;
 
+#[cfg(feature = "tokio")]
 mod udp;
+#[cfg(feature = "tokio")]
 #[cfg(not(target_arch = "wasm32"))]
 pub use udp::*;
 
+#[cfg(feature = "tokio")]
 mod tcp;
+#[cfg(feature = "tokio")]
 #[cfg(not(target_arch = "wasm32"))]
 pub use tcp::*;
 
+#[cfg(feature = "tokio")]
 #[cfg(unix)]
 mod socket;
 use std::net::SocketAddr;
+#[cfg(feature = "tokio")]
 use std::num::NonZeroUsize;
 use std::task::{Context, Poll};
 
 use futures::Stream;
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
+#[cfg(feature = "tokio")]
 #[cfg(unix)]
 pub use socket::*;
 
@@ -48,6 +56,7 @@ pub enum PersistenceKeyed<K, V> {
 }
 
 /// Returns a channel as a (1) unbounded sender and (2) unbounded receiver `Stream` for use in DFIR.
+#[cfg(feature = "tokio")]
 pub fn unbounded_channel<T>() -> (
     tokio::sync::mpsc::UnboundedSender<T>,
     tokio_stream::wrappers::UnboundedReceiverStream<T>,
@@ -58,6 +67,7 @@ pub fn unbounded_channel<T>() -> (
 }
 
 /// Returns an unsync channel as a (1) sender and (2) receiver `Stream` for use in DFIR.
+#[cfg(feature = "tokio")]
 pub fn unsync_channel<T>(
     capacity: Option<NonZeroUsize>,
 ) -> (unsync::mpsc::Sender<T>, unsync::mpsc::Receiver<T>) {
@@ -85,6 +95,7 @@ where
 ///
 /// This consumes the stream, use [`futures::StreamExt::by_ref()`] (or just `&mut ...`) if you want
 /// to retain ownership of your stream.
+#[cfg(feature = "tokio")]
 pub fn collect_ready<C, S>(stream: S) -> C
 where
     C: FromIterator<S::Item>,
@@ -101,6 +112,7 @@ where
 ///
 /// This consumes the stream, use [`futures::StreamExt::by_ref()`] (or just `&mut ...`) if you want
 /// to retain ownership of your stream.
+#[cfg(feature = "tokio")]
 pub async fn collect_ready_async<C, S>(stream: S) -> C
 where
     C: Default + Extend<S::Item>,
@@ -153,6 +165,7 @@ pub fn ipv4_resolve(addr: &str) -> Result<SocketAddr, std::io::Error> {
 
 /// Returns a length-delimited bytes `Sink`, `Stream`, and `SocketAddr` bound to the given address.
 /// The input `addr` may have a port of `0`, the returned `SocketAddr` will have the chosen port.
+#[cfg(feature = "tokio")]
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn bind_udp_bytes(addr: SocketAddr) -> (UdpSink, UdpStream, SocketAddr) {
     let socket = tokio::net::UdpSocket::bind(addr).await.unwrap();
@@ -161,6 +174,7 @@ pub async fn bind_udp_bytes(addr: SocketAddr) -> (UdpSink, UdpStream, SocketAddr
 
 /// Returns a newline-delimited bytes `Sink`, `Stream`, and `SocketAddr` bound to the given address.
 /// The input `addr` may have a port of `0`, the returned `SocketAddr` will have the chosen port.
+#[cfg(feature = "tokio")]
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn bind_udp_lines(addr: SocketAddr) -> (UdpLinesSink, UdpLinesStream, SocketAddr) {
     let socket = tokio::net::UdpSocket::bind(addr).await.unwrap();
@@ -173,6 +187,7 @@ pub async fn bind_udp_lines(addr: SocketAddr) -> (UdpLinesSink, UdpLinesStream, 
 /// The inbound connections can be used in full duplex mode. When a `(T, SocketAddr)` pair is fed to the `Sender`
 /// returned by this function, the `SocketAddr` will be looked up against the currently existing connections.
 /// If a match is found then the data will be sent on that connection. If no match is found then the data is silently dropped.
+#[cfg(feature = "tokio")]
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn bind_tcp_bytes(
     addr: SocketAddr,
@@ -187,6 +202,7 @@ pub async fn bind_tcp_bytes(
 }
 
 /// This is the same thing as `bind_tcp_bytes` except instead of using a length-delimited encoding scheme it uses new lines to separate frames.
+#[cfg(feature = "tokio")]
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn bind_tcp_lines(
     addr: SocketAddr,
@@ -204,6 +220,7 @@ pub async fn bind_tcp_lines(
 ///
 /// `(Bytes, SocketAddr)` pairs fed to the returned `Sender` will initiate new tcp connections to the specified `SocketAddr`.
 /// These connections will be cached and reused, so that there will only be one connection per destination endpoint. When the endpoint sends data back it will be available via the returned `Receiver`
+#[cfg(feature = "tokio")]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn connect_tcp_bytes() -> (
     TcpFramedSink<bytes::Bytes>,
@@ -213,6 +230,7 @@ pub fn connect_tcp_bytes() -> (
 }
 
 /// This is the same thing as `connect_tcp_bytes` except instead of using a length-delimited encoding scheme it uses new lines to separate frames.
+#[cfg(feature = "tokio")]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn connect_tcp_lines() -> (
     TcpFramedSink<String>,

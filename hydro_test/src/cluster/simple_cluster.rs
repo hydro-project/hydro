@@ -14,8 +14,9 @@ pub fn partition<'a, F>(
 where
     F: Fn((MemberId<()>, String)) -> (MemberId<()>, String) + 'a,
 {
-    cluster1
-        .source_stream(q!(tokio_stream::iter(vec!(CLUSTER_SELF_ID))))
+    let unbounded: Stream<_, _> = cluster1.source_iter(q!(vec!(CLUSTER_SELF_ID))).into();
+
+    unbounded
         .map(q!(move |id| (id.clone(), format!("Hello from {}", id))))
         .send_partitioned(&cluster2, dist_policy)
         .assume_ordering::<TotalOrder>(nondet!(/** testing, order does not matter */))

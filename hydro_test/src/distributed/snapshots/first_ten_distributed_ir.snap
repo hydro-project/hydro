@@ -39,7 +39,7 @@ expression: builder.finalize().ir()
         input: Cast {
             inner: Source {
                 source: Iter(
-                    stageleft :: runtime_support :: type_hint :: < [() ; 0] > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_581_55 ! ([] [[]]) }),
+                    stageleft :: runtime_support :: type_hint :: < [() ; 0] > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_594_55 ! ([] [[]]) }),
                 ),
                 metadata: HydroIrMetadata {
                     location_id: Process(loc2v1),

@@ -1,3 +1,4 @@
+#[cfg(feature = "alloc")]
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
 

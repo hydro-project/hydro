@@ -71,6 +71,7 @@ pub struct Context {
     metrics: Rc<DfirMetrics>,
     /// Tasks buffered via [`Self::request_task`], spawned by [`Dfir::spawn_tasks`]
     /// once the runtime is running inside a tokio `LocalSet`.
+    #[cfg(feature = "tokio")]
     tasks_to_spawn: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>>,
 }
 
@@ -81,6 +82,7 @@ impl Context {
             current_tick: TickInstant::default(),
             wake_state,
             metrics,
+            #[cfg(feature = "tokio")]
             tasks_to_spawn: Vec::new(),
         }
     }
@@ -94,6 +96,7 @@ impl Context {
     /// drained and spawned via `tokio::task::spawn_local` at the start of
     /// [`Dfir::run_tick`]. Tasks requested after that point remain buffered until
     /// the next call to [`Dfir::run_tick`].
+    #[cfg(feature = "tokio")]
     pub fn request_task<Fut>(&mut self, future: Fut)
     where
         Fut: Future<Output = ()> + 'static,
@@ -311,6 +314,7 @@ impl<Tick: TickClosure> Dfir<Tick> {
     /// Spawns all tasks buffered via [`Context::request_task`].
     ///
     /// This drains the buffer, so subsequent calls are no-ops until new tasks are requested.
+    #[cfg(feature = "tokio")]
     fn spawn_tasks(&mut self) {
         for task in self.context.tasks_to_spawn.drain(..) {
             tokio::task::spawn_local(task);
@@ -322,6 +326,7 @@ impl<Tick: TickClosure> Dfir<Tick> {
     /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
     /// and external events (via `can_start_tick` set by wakers/schedule_subgraph).
     pub async fn run_tick(&mut self) -> bool {
+        #[cfg(feature = "tokio")]
         self.spawn_tasks();
         let had_external = self
             .wake_state
@@ -345,6 +350,7 @@ impl<Tick: TickClosure> Dfir<Tick> {
     }
 
     /// Run ticks as long as work is available, then return.
+    #[cfg(feature = "tokio")]
     pub async fn run_available(&mut self) {
         // Always run at least one tick.
         self.wake_state
@@ -382,6 +388,7 @@ impl<Tick: TickClosure> Dfir<Tick> {
     }
 
     /// Run forever, processing ticks when work is available and yielding when idle.
+    #[cfg(feature = "tokio")]
     pub async fn run(&mut self) -> crate::Never {
         loop {
             self.run_available().await;

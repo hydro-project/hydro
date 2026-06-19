@@ -92,11 +92,17 @@ async fn main() {
         .with_default_optimize()
         .with_process(
             &leader,
-            TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
+            TrybuildHost::new(create_host(&mut deployment))
+                .rustflags(rustflags)
+                .features(["tokio"]),
         )
         .with_cluster(
             &cluster,
-            (0..8).map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+            (0..8).map(|_| {
+                TrybuildHost::new(create_host(&mut deployment))
+                    .rustflags(rustflags)
+                    .features(["tokio"])
+            }),
         )
         .deploy(&mut deployment);
 

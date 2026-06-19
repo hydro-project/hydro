@@ -6,6 +6,7 @@ use tracing_subscriber::registry::LookupSpan;
 
 use crate::location::{LocationKey, LocationType};
 
+#[cfg(feature = "telemetry_emf")]
 pub mod emf;
 
 struct Formatter;

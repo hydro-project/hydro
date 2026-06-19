@@ -9,9 +9,11 @@ use std::collections::HashSet;
 
 use cc_traits::SimpleCollectionRef;
 
+#[cfg(feature = "alloc")]
+use crate::Atomize;
 use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, OptionSet, SingletonSet};
-use crate::{Atomize, DeepReveal, IsBot, IsTop, LatticeBimorphism, LatticeFrom, LatticeOrd, Merge};
+use crate::{DeepReveal, IsBot, IsTop, LatticeBimorphism, LatticeFrom, LatticeOrd, Merge};
 
 /// Set-union lattice.
 ///

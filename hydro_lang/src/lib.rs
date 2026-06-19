@@ -18,13 +18,15 @@ stageleft::stageleft_no_entry_crate!();
 #[cfg_attr(docsrs, doc(cfg(feature = "runtime_support")))]
 #[doc(hidden)]
 pub mod runtime_support {
-    pub use ::{bincode, dfir_rs, slotmap, stageleft, tokio};
+    pub use ::{bincode, dfir_rs, slotmap, stageleft};
     #[cfg(feature = "sim")]
     pub use colored;
     #[cfg(feature = "deploy_integration")]
     pub use hydro_deploy_integration;
+    #[cfg(feature = "tokio")]
+    pub use tokio;
 
-    #[cfg(any(feature = "deploy_integration", feature = "docker_runtime"))]
+    #[cfg(feature = "deploy_integration")]
     pub mod launch;
 }
 
@@ -95,9 +97,10 @@ pub mod telemetry;
 
 #[cfg(any(
     feature = "deploy",
+    feature = "sim",
     feature = "deploy_integration" // hidden internal feature enabled in the trybuild
 ))]
-#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "deploy", feature = "sim"))))]
 pub mod deploy;
 
 #[cfg(feature = "sim")]

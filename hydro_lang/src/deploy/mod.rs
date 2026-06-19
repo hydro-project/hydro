@@ -1,6 +1,6 @@
 //! Infrastructure for deploying Hydro programs to the cloud using [`hydro_deploy`].
 
-#[cfg(feature = "deploy_integration")]
+#[cfg(any(feature = "deploy", feature = "sim", feature = "deploy_integration"))]
 pub(crate) mod deploy_runtime;
 
 #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]

@@ -441,9 +441,16 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     command.args(["rustc", "--locked"]);
     command.args(["--example", "sim-dylib"]);
     command.args(["--target-dir", trybuild.target_dir.to_str().unwrap()]);
-    if let Some(features) = &trybuild.features {
-        command.args(["--features", &features.join(",")]);
-    }
+    command.args([
+        "--features",
+        &trybuild
+            .features
+            .into_iter()
+            .flatten()
+            .chain(["hydro___feature_sim_runtime".to_owned()])
+            .collect::<Vec<_>>()
+            .join(","),
+    ]);
     command.args(["--config", "build.incremental = false"]);
     command.args(["--crate-type", "cdylib"]);
     command.arg("--message-format=json-diagnostic-rendered-ansi");

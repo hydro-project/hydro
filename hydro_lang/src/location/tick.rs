@@ -24,12 +24,15 @@ use crate::compile::ir::{HydroNode, HydroSource};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
 use crate::forward_handle::{TickCycle, TickCycleHandle};
+#[cfg(feature = "tokio")]
 use crate::live_collections::Singleton;
 use crate::live_collections::boundedness::Bounded;
 use crate::live_collections::optional::Optional;
 use crate::live_collections::stream::{ExactlyOnce, Stream, TotalOrder};
 use crate::location::TopLevel;
-use crate::nondet::{NonDet, nondet};
+#[cfg(feature = "tokio")]
+use crate::nondet::NonDet;
+use crate::nondet::nondet;
 
 /// A location wrapper that provides atomicity guarantees within a [`Tick`].
 ///
@@ -284,6 +287,7 @@ where
     /// Reading wall-clock time is inherently non-deterministic because the
     /// value depends on when the tick executes. A [`NonDet`] guard is required
     /// to acknowledge this.
+    #[cfg(feature = "tokio")]
     pub fn current_tick_instant(
         &self,
         _nondet: NonDet,

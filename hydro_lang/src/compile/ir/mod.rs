@@ -976,15 +976,22 @@ impl HydroRoot {
         self.transform_bottom_up(
             &mut |l| {
                 if let HydroRoot::SendExternal {
+                    #[cfg(feature = "tokio")]
                     input,
+                    #[cfg(feature = "tokio")]
                     to_external_key,
+                    #[cfg(feature = "tokio")]
                     to_port_id,
+                    #[cfg(feature = "tokio")]
                     to_many,
+                    #[cfg(feature = "tokio")]
                     unpaired,
+                    #[cfg(feature = "tokio")]
                     instantiate_fn,
                     ..
                 } = l
                 {
+                    #[cfg(feature = "tokio")]
                     let ((sink_expr, source_expr), connect_fn) = match instantiate_fn {
                         DebugInstantiate::Building => {
                             let to_node = externals
@@ -1092,12 +1099,20 @@ impl HydroRoot {
                         DebugInstantiate::Finalized(_) => panic!("network already finalized"),
                     };
 
-                    *instantiate_fn = DebugInstantiateFinalized {
-                        sink: sink_expr,
-                        source: source_expr,
-                        connect_fn: Some(connect_fn),
-                    }
-                    .into();
+                    #[cfg(not(feature = "tokio"))]
+                    {
+                        panic!("Cannot instantiate external inputs without tokio");
+                    };
+
+                    #[cfg(feature = "tokio")]
+                    {
+                        *instantiate_fn = DebugInstantiateFinalized {
+                            sink: sink_expr,
+                            source: source_expr,
+                            connect_fn: Some(connect_fn),
+                        }
+                        .into();
+                    };
                 } else if let HydroRoot::EmbeddedOutput { ident, input, .. } = l {
                     let element_type = match &input.metadata().collection_kind {
                         CollectionKind::Stream { element_type, .. } => element_type.0.as_ref().clone(),

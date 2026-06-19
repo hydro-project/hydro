@@ -118,8 +118,8 @@ jobs:
         if: matrix.os != 'windows-latest'
         uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          distribution: "temurin"
+          java-version: "21"
 
       - name: Download and setup Maelstrom
         if: matrix.os != 'windows-latest'
