@@ -86,7 +86,7 @@ if [ "$TEST_DFIR" = true ]; then
     TARGETS="$TARGETS -p dfir_lang -p dfir_pipes -p dfir_rs -p dfir_macro -p lattices -p variadics"
 fi
 if [ "$TEST_HYDRO" = true ]; then
-    TARGETS="$TARGETS -p hydro_lang -p hydro_std -p hydro_test -p hydro_deploy -p hydro_deploy_integration"
+    TARGETS="$TARGETS -p hydro_lang -p hydro_std -p hydro_test -p hydro_test_embedded -p hydro_deploy -p hydro_deploy_integration"
     FEATURES="$FEATURES --features deploy,sim"
 
     if [ "$TEST_DOCKER" = true ]; then
