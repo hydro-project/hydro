@@ -4814,5 +4814,91 @@
 <a href=#4814 id=4814 data-nosnippet>4814</a>        <span class="comment">// After retain(&gt; 3): [4, 5] =&gt; len = 2
 <a href=#4815 id=4815 data-nosnippet>4815</a>        </span><span class="macro">assert_eq!</span>(result, <span class="number">2</span>);
 <a href=#4816 id=4816 data-nosnippet>4816</a>    }
-<a href=#4817 id=4817 data-nosnippet>4817</a>}
+<a href=#4817 id=4817 data-nosnippet>4817</a>
+<a href=#4818 id=4818 data-nosnippet>4818</a>    <span class="doccomment">/// A map with a mut singleton ref on an unordered input should produce &gt; 1
+<a href=#4819 id=4819 data-nosnippet>4819</a>    /// simulation instance because the ordering of elements through the mut closure
+<a href=#4820 id=4820 data-nosnippet>4820</a>    /// is non-deterministic.
+<a href=#4821 id=4821 data-nosnippet>4821</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#4822 id=4822 data-nosnippet>4822</a>    #[test]
+<a href=#4823 id=4823 data-nosnippet>4823</a>    </span><span class="kw">fn </span>sim_map_with_mut_on_unordered_explores_multiple_states() {
+<a href=#4824 id=4824 data-nosnippet>4824</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::sliced::sliced;
+<a href=#4825 id=4825 data-nosnippet>4825</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::ExactlyOnce;
+<a href=#4826 id=4826 data-nosnippet>4826</a>        <span class="kw">use </span><span class="kw">crate</span>::properties::manual_proof;
+<a href=#4827 id=4827 data-nosnippet>4827</a>
+<a href=#4828 id=4828 data-nosnippet>4828</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#4829 id=4829 data-nosnippet>4829</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#4830 id=4830 data-nosnippet>4830</a>
+<a href=#4831 id=4831 data-nosnippet>4831</a>        <span class="kw">let </span>(trigger_send, trigger) = node.sim_input::&lt;i32, TotalOrder, ExactlyOnce&gt;();
+<a href=#4832 id=4832 data-nosnippet>4832</a>
+<a href=#4833 id=4833 data-nosnippet>4833</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
+<a href=#4834 id=4834 data-nosnippet>4834</a>            <span class="kw">let </span>batch = <span class="kw">use</span>(trigger, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#4835 id=4835 data-nosnippet>4835</a>            <span class="kw">let </span>counter = batch.location().source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">0i32</span>]))
+<a href=#4836 id=4836 data-nosnippet>4836</a>                .fold(<span class="macro">q!</span>(|| <span class="number">0i32</span>), <span class="macro">q!</span>(|acc, v| <span class="kw-2">*</span>acc += v));
+<a href=#4837 id=4837 data-nosnippet>4837</a>            <span class="kw">let </span>counter_mut = counter.by_mut();
+<a href=#4838 id=4838 data-nosnippet>4838</a>            <span class="kw">let </span>items = batch.location().source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1i32</span>, <span class="number">2</span>])).weaken_ordering::&lt;NoOrder&gt;();
+<a href=#4839 id=4839 data-nosnippet>4839</a>            items.map(<span class="macro">q!</span>(
+<a href=#4840 id=4840 data-nosnippet>4840</a>                |x| {
+<a href=#4841 id=4841 data-nosnippet>4841</a>                    <span class="kw-2">*</span>counter_mut += x;
+<a href=#4842 id=4842 data-nosnippet>4842</a>                    <span class="kw-2">*</span>counter_mut
+<a href=#4843 id=4843 data-nosnippet>4843</a>                },
+<a href=#4844 id=4844 data-nosnippet>4844</a>                commutative = <span class="macro">manual_proof!</span>(<span class="doccomment">/** test */</span>)
+<a href=#4845 id=4845 data-nosnippet>4845</a>            ))
+<a href=#4846 id=4846 data-nosnippet>4846</a>        }
+<a href=#4847 id=4847 data-nosnippet>4847</a>        .sim_output();
+<a href=#4848 id=4848 data-nosnippet>4848</a>
+<a href=#4849 id=4849 data-nosnippet>4849</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#4850 id=4850 data-nosnippet>4850</a>            trigger_send.send(<span class="number">1</span>);
+<a href=#4851 id=4851 data-nosnippet>4851</a>            <span class="kw">let </span>_all: Vec&lt;i32&gt; = out_recv.collect_sorted().<span class="kw">await</span>;
+<a href=#4852 id=4852 data-nosnippet>4852</a>        });
+<a href=#4853 id=4853 data-nosnippet>4853</a>
+<a href=#4854 id=4854 data-nosnippet>4854</a>        <span class="macro">assert_eq!</span>(
+<a href=#4855 id=4855 data-nosnippet>4855</a>            count, <span class="number">2</span>,
+<a href=#4856 id=4856 data-nosnippet>4856</a>            <span class="string">"Expected 2 simulation instances due to mut on unordered input, got {}"</span>,
+<a href=#4857 id=4857 data-nosnippet>4857</a>            count
+<a href=#4858 id=4858 data-nosnippet>4858</a>        );
+<a href=#4859 id=4859 data-nosnippet>4859</a>    }
+<a href=#4860 id=4860 data-nosnippet>4860</a>
+<a href=#4861 id=4861 data-nosnippet>4861</a>    <span class="doccomment">/// A map with a mut singleton ref on a top-level unordered input should produce &gt; 1
+<a href=#4862 id=4862 data-nosnippet>4862</a>    /// simulation instance. Currently panics because observe_nondet doesn't support
+<a href=#4863 id=4863 data-nosnippet>4863</a>    /// top-level bounded inputs yet.
+<a href=#4864 id=4864 data-nosnippet>4864</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#4865 id=4865 data-nosnippet>4865</a>    #[test]
+<a href=#4866 id=4866 data-nosnippet>4866</a>    #[ignore = <span class="string">"observe_nondet not yet supported for top-level bounded inputs (https://github.com/hydro-project/hydro/issues/2950)"</span>]
+<a href=#4867 id=4867 data-nosnippet>4867</a>    </span><span class="kw">fn </span>sim_map_with_mut_on_unordered_top_level() {
+<a href=#4868 id=4868 data-nosnippet>4868</a>        <span class="kw">use </span><span class="kw">crate</span>::properties::manual_proof;
+<a href=#4869 id=4869 data-nosnippet>4869</a>
+<a href=#4870 id=4870 data-nosnippet>4870</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#4871 id=4871 data-nosnippet>4871</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#4872 id=4872 data-nosnippet>4872</a>
+<a href=#4873 id=4873 data-nosnippet>4873</a>        <span class="kw">let </span>counter = node
+<a href=#4874 id=4874 data-nosnippet>4874</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">0i32</span>]))
+<a href=#4875 id=4875 data-nosnippet>4875</a>            .fold(<span class="macro">q!</span>(|| <span class="number">0i32</span>), <span class="macro">q!</span>(|acc, v| <span class="kw-2">*</span>acc += v));
+<a href=#4876 id=4876 data-nosnippet>4876</a>        <span class="kw">let </span>counter_mut = counter.by_mut();
+<a href=#4877 id=4877 data-nosnippet>4877</a>
+<a href=#4878 id=4878 data-nosnippet>4878</a>        <span class="kw">let </span>out_recv = node
+<a href=#4879 id=4879 data-nosnippet>4879</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1i32</span>, <span class="number">2</span>]))
+<a href=#4880 id=4880 data-nosnippet>4880</a>            .weaken_ordering::&lt;NoOrder&gt;()
+<a href=#4881 id=4881 data-nosnippet>4881</a>            .map(<span class="macro">q!</span>(
+<a href=#4882 id=4882 data-nosnippet>4882</a>                |x| {
+<a href=#4883 id=4883 data-nosnippet>4883</a>                    <span class="kw-2">*</span>counter_mut += x;
+<a href=#4884 id=4884 data-nosnippet>4884</a>                    <span class="kw-2">*</span>counter_mut
+<a href=#4885 id=4885 data-nosnippet>4885</a>                },
+<a href=#4886 id=4886 data-nosnippet>4886</a>                commutative = <span class="macro">manual_proof!</span>(<span class="doccomment">/** test */</span>)
+<a href=#4887 id=4887 data-nosnippet>4887</a>            ))
+<a href=#4888 id=4888 data-nosnippet>4888</a>            .assume_ordering::&lt;TotalOrder&gt;(<span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#4889 id=4889 data-nosnippet>4889</a>            .sim_output();
+<a href=#4890 id=4890 data-nosnippet>4890</a>
+<a href=#4891 id=4891 data-nosnippet>4891</a>        counter.into_stream().for_each(<span class="macro">q!</span>(|<span class="kw">_</span>| {}));
+<a href=#4892 id=4892 data-nosnippet>4892</a>
+<a href=#4893 id=4893 data-nosnippet>4893</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#4894 id=4894 data-nosnippet>4894</a>            <span class="kw">let </span>_all: Vec&lt;i32&gt; = out_recv.collect().<span class="kw">await</span>;
+<a href=#4895 id=4895 data-nosnippet>4895</a>        });
+<a href=#4896 id=4896 data-nosnippet>4896</a>
+<a href=#4897 id=4897 data-nosnippet>4897</a>        <span class="macro">assert_eq!</span>(
+<a href=#4898 id=4898 data-nosnippet>4898</a>            count, <span class="number">2</span>,
+<a href=#4899 id=4899 data-nosnippet>4899</a>            <span class="string">"Expected 2 simulation instances due to mut on unordered input, got {}"</span>,
+<a href=#4900 id=4900 data-nosnippet>4900</a>            count
+<a href=#4901 id=4901 data-nosnippet>4901</a>        );
+<a href=#4902 id=4902 data-nosnippet>4902</a>    }
+<a href=#4903 id=4903 data-nosnippet>4903</a>}
 </code></pre></div></section></main></body></html>
