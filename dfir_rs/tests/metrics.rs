@@ -83,7 +83,7 @@ async fn test_handoff_metrics() {
     let mut flow = dfir_rs::dfir_syntax! {
         source_iter(0..5)
             -> map(|x| x * 2)
-            -> fold(|| 0, |acc: &mut _, x| { *acc += x; })
+            -> defer_tick()
             -> for_each(|x| { output_send.send(x).unwrap(); });
     };
 
@@ -99,7 +99,7 @@ async fn test_handoff_metrics() {
 
     // Verify output
     let output: Vec<_> = collect_ready_async(&mut output_recv).await;
-    assert_eq!(output, vec![20]);
+    assert_eq!(output, vec![0, 2, 4, 6, 8]);
 }
 
 #[multiplatform_test(dfir)]

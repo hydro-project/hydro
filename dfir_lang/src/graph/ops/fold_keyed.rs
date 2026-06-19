@@ -1,7 +1,7 @@
 use quote::{ToTokens, quote_spanned};
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
     OperatorWriteOutput, Persistence, RANGE_1, WriteContextArgs,
 };
 
@@ -79,15 +79,15 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    op_span,
                    work_fn_async,
                    ident,
                    inputs,
+                   outputs,
                    is_pull,
                    root,
-                   op_name,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -102,8 +102,6 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                    ..
                },
                _| {
-        assert!(is_pull, "TODO(mingwei): `{}` only supports pull.", op_name);
-
         let persistence = match persistence_args[..] {
             [] => Persistence::Tick,
             [a] => a,
@@ -143,7 +141,21 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
             let mut #hashtable_ident = &mut #singleton_output_ident;
         };
 
-        let write_iterator = if Persistence::Mutable == persistence {
+        let write_iterator = if !is_pull {
+            assert!(
+                Persistence::Mutable != persistence,
+                "fold_keyed::<'mutable> on push side is not supported ('mutable is being removed)"
+            );
+            let output = &outputs[0];
+            quote_spanned! {op_span=>
+                let #ident = #root::dfir_pipes::push::FoldKeyed::new(
+                    &mut #singleton_output_ident,
+                    #initfn,
+                    #aggfn,
+                    #output,
+                );
+            }
+        } else if Persistence::Mutable == persistence {
             quote_spanned! {op_span=>
                 #assign_hashtable_ident
 

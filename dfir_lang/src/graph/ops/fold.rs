@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
     RANGE_1, WriteContextArgs,
 };
 
@@ -46,7 +46,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
@@ -126,14 +126,43 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                     )
                 );
             }
-        } else {
-            assert_eq!(0, outputs.len());
+        } else if outputs.is_empty() {
+            // Terminal push: fold is a singleton reference target with no downstream.
             quote_spanned! {op_span=>
                 let #ident = #root::dfir_pipes::push::for_each(|#item_ident| {
                     #assign_accum_ident
 
                     #foreach_body
                 });
+            }
+        } else {
+            let output = &outputs[0];
+            quote_spanned! {op_span=>
+                let #ident = {
+                    #[inline(always)]
+                    fn __push_fold<'a, Acc, Item, CombFn, Next>(
+                        acc_ref: &'a mut Acc,
+                        comb_fn: CombFn,
+                        next: Next,
+                    ) -> #root::dfir_pipes::push::Accumulate<
+                        #root::dfir_pipes::push::FoldState<&'a mut Acc, CombFn, Acc, Item>,
+                        Next,
+                    >
+                    where
+                        CombFn: ::std::ops::FnMut(&mut Acc, Item),
+                        Next: #root::dfir_pipes::push::Push<&'a mut Acc, ()>,
+                    {
+                        #root::dfir_pipes::push::fold(acc_ref, comb_fn, next)
+                    }
+                    __push_fold(
+                        &mut #singleton_output_ident,
+                        |#accumulator_ident: &mut _, #item_ident| { #foreach_body },
+                        #root::dfir_pipes::push::map(
+                            |__val: &mut _| ::std::clone::Clone::clone(&*__val),
+                            #output,
+                        ),
+                    )
+                };
             }
         };
 
