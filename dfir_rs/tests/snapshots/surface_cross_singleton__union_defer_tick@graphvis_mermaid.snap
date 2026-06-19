@@ -26,7 +26,6 @@ linkStyle default stroke:#aaa
 16v1["(16v1) <code>handoff</code>"]:::otherClass
 17v1["(17v1) <code>handoff</code>"]:::otherClass
 18v1["(18v1) <code>handoff</code>"]:::otherClass
-19v1["(19v1) <code>handoff</code>"]:::otherClass
 2v1-->3v1
 1v1-->2v1
 3v1-->15v1
@@ -34,19 +33,18 @@ linkStyle default stroke:#aaa
 14v1-->16v1
 5v1-->6v1
 6v1-->|1|7v1
-7v1-->17v1
+7v1-->|single|8v1
 8v1-->9v1
 9v1-->10v1
 9v1-->11v1
-3v1-->18v1
-11v1-->19v1
+3v1-->17v1
+11v1-->18v1
 13v1-->14v1
 12v1-->13v1
 15v1-->|input|8v1
 16v1--o4v1; linkStyle 16 stroke:red
-17v1--x|single|8v1; linkStyle 17 stroke:red
-18v1-->|input|12v1
-19v1--x|single|12v1; linkStyle 19 stroke:red
+17v1-->|input|12v1
+18v1-->|single|12v1
 subgraph sg_1v1 ["sg_1v1"]
     subgraph sg_1v1_var_teed_in ["var <tt>teed_in</tt>"]
         1v1
@@ -56,6 +54,14 @@ subgraph sg_1v1 ["sg_1v1"]
 end
 subgraph sg_2v1 ["sg_2v1"]
     4v1
+    10v1
+    subgraph sg_2v1_var_folded_thing ["var <tt>folded_thing</tt>"]
+        11v1
+    end
+    subgraph sg_2v1_var_join ["var <tt>join</tt>"]
+        8v1
+        9v1
+    end
     subgraph sg_2v1_var_persisted_stream ["var <tt>persisted_stream</tt>"]
         5v1
         6v1
@@ -65,21 +71,11 @@ subgraph sg_2v1 ["sg_2v1"]
     end
 end
 subgraph sg_3v1 ["sg_3v1"]
-    10v1
-    subgraph sg_3v1_var_folded_thing ["var <tt>folded_thing</tt>"]
-        11v1
-    end
-    subgraph sg_3v1_var_join ["var <tt>join</tt>"]
-        8v1
-        9v1
-    end
-end
-subgraph sg_4v1 ["sg_4v1"]
-    subgraph sg_4v1_var_deferred_stream ["var <tt>deferred_stream</tt>"]
+    subgraph sg_3v1_var_deferred_stream ["var <tt>deferred_stream</tt>"]
         13v1
         14v1
     end
-    subgraph sg_4v1_var_joined_folded ["var <tt>joined_folded</tt>"]
+    subgraph sg_3v1_var_joined_folded ["var <tt>joined_folded</tt>"]
         12v1
     end
 end

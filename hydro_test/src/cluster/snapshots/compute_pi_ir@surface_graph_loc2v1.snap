@@ -20,7 +20,6 @@ _15v1 = filter (stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool ,
 _16v1 = cross_singleton ();
 _17v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < ((u64 , u64) , bool) , (u64 , u64) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_1105_51 ! ([] [| (d , _) | d]) }));
 _18v1 = for_each (stageleft :: runtime_support :: fnmut1_type_hint :: < (u64 , u64) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_compute_pi_rs_50_21 ! ([] [| (inside , total) | { println ! ("pi: {} ({} trials)" , 4.0 * inside as f64 / total as f64 , total) ; }]) }));
-_19v1 = handoff();
 
 _1v1 -> _2v1;
 _2v1 -> _3v1;
@@ -36,7 +35,6 @@ _12v1 -> [1]_13v1;
 _13v1 -> _14v1;
 _14v1 -> _15v1;
 _4v1 -> [input]_16v1;
-_15v1 -> _19v1;
+_15v1 -> [single]_16v1;
 _16v1 -> _17v1;
 _17v1 -> _18v1;
-_19v1 -> [single]_16v1;
