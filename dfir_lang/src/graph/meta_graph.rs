@@ -1980,9 +1980,8 @@ impl DfirGraph {
                     let Some(resolved_src) = resolved_src else {
                         continue;
                     };
-                    let delay_type = Some(DelayType::Stratum);
                     let label = None;
-                    graph_write.write_edge(resolved_src, dst_id, delay_type, label, true)?;
+                    graph_write.write_edge(resolved_src, dst_id, None, label, true)?;
                 }
             }
         }
