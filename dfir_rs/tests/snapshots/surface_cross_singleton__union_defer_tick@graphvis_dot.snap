@@ -24,28 +24,26 @@ digraph {
     n17v1 [label="(n17v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n18v1 [label="(n18v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n19v1 [label="(n19v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n20v1 [label="(n20v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n2v1 -> n3v1
-    n1v1 -> n15v1
-    n3v1 -> n16v1
+    n1v1 -> n2v1
+    n3v1 -> n15v1
     n4v1 -> n7v1 [label="0"]
-    n14v1 -> n17v1
+    n14v1 -> n16v1
     n5v1 -> n6v1
     n6v1 -> n7v1 [label="1"]
-    n7v1 -> n18v1
+    n7v1 -> n17v1
     n8v1 -> n9v1
     n9v1 -> n10v1
     n9v1 -> n11v1
-    n3v1 -> n19v1
-    n11v1 -> n20v1
+    n3v1 -> n18v1
+    n11v1 -> n19v1
     n13v1 -> n14v1
     n12v1 -> n13v1
-    n15v1 -> n2v1 [color=red]
-    n16v1 -> n8v1 [label="input"]
-    n17v1 -> n4v1 [color=red]
-    n18v1 -> n8v1 [label="single", color=red]
-    n19v1 -> n12v1 [label="input"]
-    n20v1 -> n12v1 [label="single", color=red]
+    n15v1 -> n8v1 [label="input"]
+    n16v1 -> n4v1 [color=red]
+    n17v1 -> n8v1 [label="single", color=red]
+    n18v1 -> n12v1 [label="input"]
+    n19v1 -> n12v1 [label="single", color=red]
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -55,6 +53,8 @@ digraph {
             cluster=true
             label="var teed_in"
             n1v1
+            n2v1
+            n3v1
         }
     }
     subgraph sg_2v1 {
@@ -62,11 +62,17 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_2v1"
-        subgraph sg_2v1_var_teed_in {
+        n4v1
+        subgraph sg_2v1_var_persisted_stream {
             cluster=true
-            label="var teed_in"
-            n2v1
-            n3v1
+            label="var persisted_stream"
+            n5v1
+            n6v1
+        }
+        subgraph sg_2v1_var_unioned_stream {
+            cluster=true
+            label="var unioned_stream"
+            n7v1
         }
     }
     subgraph sg_3v1 {
@@ -74,17 +80,17 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_3v1"
-        n4v1
-        subgraph sg_3v1_var_persisted_stream {
+        n10v1
+        subgraph sg_3v1_var_folded_thing {
             cluster=true
-            label="var persisted_stream"
-            n5v1
-            n6v1
+            label="var folded_thing"
+            n11v1
         }
-        subgraph sg_3v1_var_unioned_stream {
+        subgraph sg_3v1_var_join {
             cluster=true
-            label="var unioned_stream"
-            n7v1
+            label="var join"
+            n8v1
+            n9v1
         }
     }
     subgraph sg_4v1 {
@@ -92,31 +98,13 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_4v1"
-        n10v1
-        subgraph sg_4v1_var_folded_thing {
-            cluster=true
-            label="var folded_thing"
-            n11v1
-        }
-        subgraph sg_4v1_var_join {
-            cluster=true
-            label="var join"
-            n8v1
-            n9v1
-        }
-    }
-    subgraph sg_5v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_5v1"
-        subgraph sg_5v1_var_deferred_stream {
+        subgraph sg_4v1_var_deferred_stream {
             cluster=true
             label="var deferred_stream"
             n13v1
             n14v1
         }
-        subgraph sg_5v1_var_joined_folded {
+        subgraph sg_4v1_var_joined_folded {
             cluster=true
             label="var joined_folded"
             n12v1

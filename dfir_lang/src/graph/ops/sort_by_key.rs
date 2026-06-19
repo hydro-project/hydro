@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
     WriteContextArgs,
 };
 
@@ -29,27 +29,46 @@ pub const SORT_BY_KEY: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |&WriteContextArgs {
                    root,
                    op_span,
                    work_fn_async,
                    ident,
                    inputs,
+                   outputs,
                    is_pull,
                    arguments,
                    ..
                },
                _| {
-        assert!(is_pull);
-        let input = &inputs[0];
-        let write_iterator = quote_spanned! {op_span=>
-            // TODO(mingwei): unnecessary extra handoff into_iter() then collect().
-            let #ident = {
-                let mut tmp = #work_fn_async(#root::dfir_pipes::pull::Pull::collect::<::std::vec::Vec<_>>(#input)).await;
-                #root::util::sort_unstable_by_key_hrtb(&mut tmp, #arguments);
-                #root::dfir_pipes::pull::iter(tmp)
-            };
+        let write_iterator = if is_pull {
+            let input = &inputs[0];
+            quote_spanned! {op_span=>
+                let #ident = {
+                    let mut tmp = #work_fn_async(#root::dfir_pipes::pull::Pull::collect::<::std::vec::Vec<_>>(#input)).await;
+                    #root::util::sort_unstable_by_key_hrtb(&mut tmp, #arguments);
+                    #root::dfir_pipes::pull::iter(tmp)
+                };
+            }
+        } else {
+            let output = &outputs[0];
+            quote_spanned! {op_span=>
+                let #ident = #root::dfir_pipes::push::fold(
+                    ::std::vec::Vec::new(),
+                    |__buf: &mut ::std::vec::Vec<_>, __item| {
+                        __buf.push(__item);
+                    },
+                    #root::dfir_pipes::push::flat_map(
+                        |__buf: ::std::vec::Vec<_>| {
+                            let mut __buf = __buf;
+                            #root::util::sort_unstable_by_key_hrtb(&mut __buf, #arguments);
+                            __buf
+                        },
+                        #output,
+                    ),
+                );
+            }
         };
         Ok(OperatorWriteOutput {
             write_iterator,
