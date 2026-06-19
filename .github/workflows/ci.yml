@@ -144,6 +144,7 @@ jobs:
           INSTA_UPDATE: ${{ (matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) && 'always' || '' }}
           INSTA_FORCE_PASS: ${{ (matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) && '1' || '' }}
           RUST_BACKTRACE: "1"
+          __CARGO_DEFAULT_LIB_METADATA: "1"
         run: cargo nextest run --no-fail-fast --all-targets --features "deploy,test_embedded,test_ecs,test_docker"
 
       - name: Run doctests
@@ -154,6 +155,7 @@ jobs:
           # note: no-capture is not supported by doctests, that's why the unstable is needed (nightly only).
           RUSTDOCFLAGS: ${{ matrix.rust_release == 'latest-nightly' && '-Zunstable-options --no-capture' || '' }}
           RUST_BACKTRACE: "1"
+          __CARGO_DEFAULT_LIB_METADATA: "1"
         run: cargo test --no-fail-fast --doc
 
       # Nightly snapshot update logic

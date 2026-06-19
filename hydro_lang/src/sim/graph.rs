@@ -427,9 +427,10 @@ impl<'a> Deploy<'a> for SimDeploy {
 }
 
 pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempPath, ()> {
-    let mut command = Command::new("cargo");
-
     let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
+    // When RUSTFLAGS is set, our prebuild fingerprint doesn't account for it, so skip the
+    // parallel build machinery entirely and build directly into the shared target dir.
+    let has_custom_rustflags = std::env::var("RUSTFLAGS").is_ok();
 
     // Run from dylib-examples crate which has the dylib as a dev-dependency (only if not fuzzing)
     let crate_to_compile = if is_fuzz {
@@ -437,10 +438,100 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     } else {
         path!(trybuild.project_dir / "dylib-examples")
     };
+
+    let (final_target_dir, _prebuild_guard, _cargo_lock) = if !has_custom_rustflags {
+        let shared_debug = trybuild.target_dir.join("debug");
+        let jobs_dir = trybuild.target_dir.join("jobs");
+        let per_job = hydro_concurrent_cargo::setup_job_dir(&jobs_dir, &bin, &shared_debug);
+
+        let mut features: Vec<String> = trybuild.features.clone().unwrap_or_default();
+        features.push("hydro___feature_sim_runtime".to_owned());
+
+        let staged_paths = vec![
+            path!(trybuild.project_dir / "src" / "__staged.rs"),
+            path!(trybuild.project_dir / "Cargo.lock"),
+            std::env::current_exe().unwrap(),
+        ];
+
+        let project_dir = trybuild.project_dir.clone();
+        let features_for_closure = features.clone();
+        let is_fuzz_for_closure = is_fuzz;
+
+        let (guard, cargo_lock) = hydro_concurrent_cargo::run_prebuild(
+            &trybuild.target_dir,
+            trybuild.project_dir.file_name().unwrap().to_str().unwrap(),
+            &features,
+            &staged_paths,
+            |prebuild_target| {
+                let features_str = features_for_closure.join(",");
+
+                let dylib_crate = path!(project_dir / "dylib");
+                let mut dep_cmd = Command::new("cargo");
+                dep_cmd.current_dir(&dylib_crate);
+                dep_cmd.args(["build", "--locked"]);
+                dep_cmd.args(["--target-dir", prebuild_target.to_str().unwrap()]);
+                dep_cmd.args(["--features", &features_str]);
+                dep_cmd.args(["--config", "build.incremental = false"]);
+                dep_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
+                eprintln!("[hydro-build] starting sim prebuild child cargo");
+                let status = dep_cmd.stdin(Stdio::null()).status().unwrap();
+                eprintln!(
+                    "[hydro-build] sim prebuild child cargo finished, success={}",
+                    status.success()
+                );
+                if !status.success() {
+                    panic!("dep prebuild failed");
+                }
+
+                // Also prebuild the dylib-examples lib so concurrent final builds
+                // don't race on compiling it. Skip in fuzz mode since fuzzing
+                // compiles from the base trybuild crate directly (no dylib-examples).
+                if !is_fuzz_for_closure {
+                    eprintln!("[hydro-build] starting sim prebuild dylib-examples lib");
+                    let dylib_examples_crate = path!(project_dir / "dylib-examples");
+                    let mut lib_cmd = Command::new("cargo");
+                    lib_cmd.current_dir(&dylib_examples_crate);
+                    lib_cmd.args(["build", "--locked", "--lib"]);
+                    lib_cmd.args(["--target-dir", prebuild_target.to_str().unwrap()]);
+                    lib_cmd.args(["--features", &features_str]);
+                    lib_cmd.args(["--config", "build.incremental = false"]);
+                    lib_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
+                    let lib_status = lib_cmd.stdin(Stdio::null()).status().unwrap();
+                    if !lib_status.success() {
+                        panic!("dylib-examples lib prebuild failed");
+                    }
+                }
+            },
+        );
+
+        (per_job, Some(guard), Some(cargo_lock))
+    } else {
+        (trybuild.target_dir.clone(), None, None)
+    };
+
+    // Populate per-job build/ dir right before final build. Hold guard for entire build.
+    let _job_build_guard = if !has_custom_rustflags {
+        let shared_debug = trybuild.target_dir.join("debug");
+        Some(hydro_concurrent_cargo::populate_job_build_dir(
+            &final_target_dir.join("debug"),
+            &shared_debug,
+        ))
+    } else {
+        None
+    };
+
+    let mut command = Command::new("cargo");
     command.current_dir(&crate_to_compile);
-    command.args(["rustc", "--locked"]);
+    command.args([
+        "rustc",
+        if has_custom_rustflags {
+            "--locked"
+        } else {
+            "--frozen"
+        },
+    ]);
     command.args(["--example", "sim-dylib"]);
-    command.args(["--target-dir", trybuild.target_dir.to_str().unwrap()]);
+    command.args(["--target-dir", final_target_dir.to_str().unwrap()]);
     command.args([
         "--features",
         &trybuild
@@ -461,9 +552,9 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
 
     if cfg!(target_os = "linux") {
         let debug_path = if let Ok(target) = std::env::var("CARGO_BUILD_TARGET") {
-            path!(trybuild.target_dir / target / "debug")
+            path!(final_target_dir / target / "debug")
         } else {
-            path!(trybuild.target_dir / "debug")
+            path!(final_target_dir / "debug")
         };
 
         command.args([&format!(
@@ -497,10 +588,20 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
 
     let mut spawned = command
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .stdin(Stdio::null())
         .spawn()
         .unwrap();
     let reader = std::io::BufReader::new(spawned.stdout.take().unwrap());
+    let stderr_handle = spawned.stderr.take().unwrap();
+    let stderr_thread = std::thread::spawn(move || {
+        use std::io::Read;
+        let mut buf = String::new();
+        std::io::BufReader::new(stderr_handle)
+            .read_to_string(&mut buf)
+            .unwrap();
+        buf
+    });
 
     let mut out = Err(());
     for message in cargo_metadata::Message::parse_stream(reader) {
@@ -546,6 +647,23 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     }
 
     spawned.wait().unwrap();
+    let stderr_output = stderr_thread.join().unwrap();
+
+    // Check for unexpected recompilations — only dylib-examples should be compiled.
+    // (Only relevant when prebuild is active, i.e. no custom RUSTFLAGS.)
+    if !has_custom_rustflags {
+        for line in stderr_output.lines() {
+            if line.contains("Compiling") && !line.contains("dylib-examples") {
+                panic!(
+                    "unexpected recompilation in final build: {line}\nfull stderr:\n{stderr_output}"
+                );
+            }
+        }
+    }
+
+    if out.is_err() {
+        panic!("final build failed to produce binary.\nstderr:\n{stderr_output}");
+    }
 
     let out_file = tempfile::NamedTempFile::new().unwrap().into_temp_path();
     fs::copy(out.as_ref().unwrap(), &out_file).unwrap();

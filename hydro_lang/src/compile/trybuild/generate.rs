@@ -259,7 +259,7 @@ pub fn compile_graph_trybuild(
         #[cfg(any(feature = "docker_deploy", feature = "ecs_deploy"))]
         DeployMode::Containerized => {
             syn::parse_quote! {
-                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case, unexpected_cfgs, unfulfilled_lint_expectations)]
                 use #trybuild_crate_name_ident::__root as #orig_crate_name;
                 use #trybuild_crate_name_ident::__root::*;
                 use #trybuild_crate_name_ident::__staged::__deps::*;
@@ -287,7 +287,7 @@ pub fn compile_graph_trybuild(
         #[cfg(feature = "deploy")]
         DeployMode::HydroDeploy => {
             syn::parse_quote! {
-                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case, unexpected_cfgs, unfulfilled_lint_expectations)]
                 use #trybuild_crate_name_ident::__root as #orig_crate_name;
                 use #trybuild_crate_name_ident::__root::*;
                 use #trybuild_crate_name_ident::__staged::__deps::*;
@@ -324,7 +324,7 @@ pub fn compile_graph_trybuild(
         #[cfg(feature = "maelstrom")]
         DeployMode::Maelstrom => {
             syn::parse_quote! {
-                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case, unexpected_cfgs, unfulfilled_lint_expectations)]
                 use #trybuild_crate_name_ident::__root as #orig_crate_name;
                 use #trybuild_crate_name_ident::__root::*;
                 use #trybuild_crate_name_ident::__staged::__deps::*;
@@ -491,7 +491,7 @@ pub fn create_trybuild()
 
         write_atomic(
             prettyplease::unparse(&syn::parse_quote! {
-                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case, unexpected_cfgs, unfulfilled_lint_expectations)]
 
                 pub use #crate_name_ident as __root;
 
@@ -521,7 +521,7 @@ pub fn create_trybuild()
         );
         write_atomic(
             prettyplease::unparse(&syn::parse_quote! {
-                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case, unexpected_cfgs, unfulfilled_lint_expectations)]
                 pub use #trybuild_crate_name_ident::*;
             })
             .as_bytes(),
@@ -535,9 +535,14 @@ pub fn create_trybuild()
         )
         .unwrap();
 
-        // Dylib crate Cargo.toml - only dylib crate-type, no features needed
-        // Features are enabled on the base crate directly from dylib-examples
+        // Dylib crate Cargo.toml - only dylib crate-type, with feature forwarding to base crate
         // On Windows, we currently disable dylib compilation due to https://github.com/bevyengine/bevy/pull/2016
+        let dylib_features_section = feature_names
+            .iter()
+            .map(|f| format!("{f} = [\"{project_name}/{f}\"]"))
+            .collect::<Vec<_>>()
+            .join("\n");
+
         let dylib_manifest = format!(
             r#"[package]
 name = "{project_name}-dylib"
@@ -549,6 +554,9 @@ crate-type = ["{}"]
 
 [dependencies]
 {project_name} = {{ path = "..", default-features = false }}
+
+[features]
+{dylib_features_section}
 "#,
             serialized_edition,
             if cfg!(target_os = "windows") {
@@ -568,14 +576,14 @@ crate-type = ["{}"]
             &path!(dylib_examples_dir / "src" / "lib.rs"),
         )?;
 
-        // Build feature forwarding for dylib-examples - forward directly to base crate
+        // Build feature forwarding for dylib-examples - forward to both base and dylib crates
         let features_section = feature_names
             .iter()
-            .map(|f| format!("{f} = [\"{project_name}/{f}\"]"))
+            .map(|f| format!("{f} = [\"{project_name}/{f}\", \"{project_name}-dylib/{f}\"]"))
             .collect::<Vec<_>>()
             .join("\n");
 
-        // Dylib-examples crate Cargo.toml - has dylib as dev-dependency, features go to base crate
+        // Dylib-examples crate Cargo.toml - has base crate and dylib as dev-dependencies
         let dylib_examples_manifest = format!(
             r#"[package]
 name = "{project_name}-dylib-examples"
@@ -602,7 +610,7 @@ crate-type = ["cdylib"]
 
         // sim-dylib.rs for the base crate and dylib-examples crate
         let sim_dylib_contents = prettyplease::unparse(&syn::parse_quote! {
-            #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+            #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case, unexpected_cfgs, unfulfilled_lint_expectations)]
             include!(std::concat!(env!("TRYBUILD_LIB_NAME"), ".rs"));
         });
         write_atomic(

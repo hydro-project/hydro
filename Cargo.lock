@@ -2612,6 +2612,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "hydro_concurrent_cargo"
+version = "0.1.0-alpha.0"
+dependencies = [
+ "parking_lot",
+]
+
+[[package]]
 name = "hydro_deploy"
 version = "0.17.0-alpha.2"
 dependencies = [
@@ -2627,6 +2634,7 @@ dependencies = [
  "cargo_metadata",
  "dunce",
  "futures",
+ "hydro_concurrent_cargo",
  "hydro_deploy_integration",
  "indicatif",
  "inferno",
@@ -2689,6 +2697,7 @@ dependencies = [
  "futures",
  "http-body-util",
  "hydro_build_utils",
+ "hydro_concurrent_cargo",
  "hydro_deploy",
  "hydro_deploy_integration",
  "indenter",
