@@ -21,7 +21,6 @@ _16v1 = map (stageleft :: runtime_support :: fnmut1_type_hint :: < (hydro_test :
 _17v1 = reduce_keyed :: < 'static > (stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_map_reduce_rs_36_8 ! ([] [| total , count | * total += count]) }));
 _18v1 = for_each (stageleft :: runtime_support :: fnmut1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_map_reduce_rs_45_21 ! ([] [| (string , count) | println ! ("{}: {}" , string , count)]) }));
 _19v1 = handoff();
-_20v1 = handoff();
 
 _1v1 -> _2v1;
 _2v1 -> _3v1;
@@ -37,7 +36,6 @@ _12v1 -> _13v1;
 _11v1 -> _12v1;
 _14v1 -> _15v1;
 _15v1 -> _16v1;
-_16v1 -> _20v1;
+_16v1 -> _17v1;
 _17v1 -> _18v1;
 _19v1 -> [single]_10v1;
-_20v1 -> _17v1;

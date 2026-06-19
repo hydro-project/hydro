@@ -65,7 +65,7 @@ linkStyle default stroke:#aaa
 4v1-->5v1
 5v1-->6v1
 6v1-->7v1
-7v1--x8v1; linkStyle 5 stroke:red
+7v1-->8v1
 9v1-->10v1
 8v1--x|0|11v1; linkStyle 7 stroke:red
 10v1-->|1|11v1
@@ -104,7 +104,7 @@ linkStyle default stroke:#aaa
 38v1--x|single|39v1; linkStyle 41 stroke:red
 39v1-->40v1
 41v1-->42v1
-42v1--x43v1; linkStyle 44 stroke:red
+42v1-->43v1
 43v1-->44v1
 44v1-->45v1
 45v1-->46v1
@@ -113,7 +113,7 @@ linkStyle default stroke:#aaa
 47v1--x|single|48v1; linkStyle 50 stroke:red
 48v1-->49v1
 49v1-->50v1
-50v1--x51v1; linkStyle 53 stroke:red
+50v1-->51v1
 51v1-->52v1
 2v1
 34v1
