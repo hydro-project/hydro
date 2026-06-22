@@ -1761,7 +1761,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_macro"
-version = "0.17.0-alpha.1"
+version = "0.17.0-alpha.2"
 dependencies = [
  "dfir_lang",
  "hydro_build_utils",
