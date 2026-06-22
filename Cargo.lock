@@ -1761,7 +1761,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_macro"
-version = "0.17.0-alpha.2"
+version = "0.17.0-alpha.3"
 dependencies = [
  "dfir_lang",
  "hydro_build_utils",
@@ -1791,7 +1791,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_rs"
-version = "0.17.0-alpha.2"
+version = "0.17.0-alpha.3"
 dependencies = [
  "bincode",
  "bumpalo",
@@ -2613,7 +2613,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_deploy"
-version = "0.17.0-alpha.1"
+version = "0.17.0-alpha.2"
 dependencies = [
  "anyhow",
  "append-only-vec",
@@ -2648,7 +2648,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_deploy_integration"
-version = "0.17.0-alpha.1"
+version = "0.17.0-alpha.2"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -2665,7 +2665,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_lang"
-version = "0.17.0-alpha.2"
+version = "0.17.0-alpha.3"
 dependencies = [
  "anyhow",
  "auto_impl",
@@ -2727,7 +2727,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_std"
-version = "0.17.0-alpha.2"
+version = "0.17.0-alpha.3"
 dependencies = [
  "ctor 0.2.9",
  "hdrhistogram",
@@ -3279,7 +3279,7 @@ dependencies = [
 
 [[package]]
 name = "lattices"
-version = "0.8.0-alpha.1"
+version = "0.8.0-alpha.2"
 dependencies = [
  "cc-traits",
  "fst",
@@ -5299,7 +5299,7 @@ checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
 name = "sinktools"
-version = "0.2.0-alpha.2"
+version = "0.2.0-alpha.3"
 dependencies = [
  "bytes",
  "futures-task",

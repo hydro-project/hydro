@@ -1,5 +1,40 @@
 
 
+## v0.17.0-alpha.3 (2026-06-22)
+
+## v0.17.0-alpha.2 (2026-06-19)
+
+### Chore
+
+ - <csr-id-1c980fe272b0f8641d04b14b10837366e42531d2/> raise clippy type-complexity-threshold
+
+### New Features
+
+ - <csr-id-a9fa46867833f42f1a4698619cb73eac9a7cada3/> Add MonotonicKeys boundedness variant for keyed singletons
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release over the course of 1 calendar day.
+ - 7 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 2 unique issues were worked on: [#2916](https://github.com/hydro-project/hydro/issues/2916), [#2947](https://github.com/hydro-project/hydro/issues/2947)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2916](https://github.com/hydro-project/hydro/issues/2916)**
+    - Add MonotonicKeys boundedness variant for keyed singletons ([`a9fa468`](https://github.com/hydro-project/hydro/commit/a9fa46867833f42f1a4698619cb73eac9a7cada3))
+ * **[#2947](https://github.com/hydro-project/hydro/issues/2947)**
+    - Raise clippy type-complexity-threshold ([`1c980fe`](https://github.com/hydro-project/hydro/commit/1c980fe272b0f8641d04b14b10837366e42531d2))
+ * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.2, dfir_pipes v0.1.0-alpha.2, sinktools v0.2.0-alpha.2, hydro_deploy_integration v0.17.0-alpha.1, dfir_rs v0.17.0-alpha.2, hydro_deploy v0.17.0-alpha.1, hydro_lang v0.17.0-alpha.2, hydro_std v0.17.0-alpha.2 ([`faa7a90`](https://github.com/hydro-project/hydro/commit/faa7a90d1d9524d1870360d4701a8746c804c10c))
+</details>
+
 ## v0.17.0-alpha.1 (2026-06-11)
 
 ### Chore
@@ -10,7 +45,7 @@
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -21,6 +56,7 @@
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.1, dfir_macro v0.17.0-alpha.1, variadics v0.2.0-alpha.1, variadics_macro v0.8.0-alpha.1, lattices v0.8.0-alpha.1, dfir_pipes v0.1.0-alpha.1, sinktools v0.2.0-alpha.1, dfir_rs v0.17.0-alpha.1, hydro_lang v0.17.0-alpha.1, hydro_std v0.17.0-alpha.1 ([`2035d2e`](https://github.com/hydro-project/hydro/commit/2035d2e29fabae26c069bb01aefbed58b631742c))
     - Revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version ([`e70eab6`](https://github.com/hydro-project/hydro/commit/e70eab6a0c793ef095e2cd747220d5419f7bf1a4))
 </details>
 
@@ -51,12 +87,12 @@
    syntax
    - Access group assignment: immutable refs get current counter value;
    mutable refs
-        increment before and after (ensuring isolation in their own group)
+   increment before and after (ensuring isolation in their own group)
    - Added `singleton_access_counters` local in `emit_core`, threaded to
    all
    `emit_tokens` call sites (Map, FlatMap, Filter, FilterMap, Inspect,
    Fold,
-        Scan, Reduce, ReduceKeyed, ReduceKeyedWatermark, Partition, etc.)
+   Scan, Reduce, ReduceKeyed, ReduceKeyedWatermark, Partition, etc.)
    
    3. hydro_lang/src/live_collections/singleton.rs:
    - Added `by_ref_mut()` method mirroring `by_ref()` but returning
@@ -335,9 +371,6 @@
     - Release dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0 ([`118b356`](https://github.com/hydro-project/hydro/commit/118b356447d92e778313d72a351e5a8d2814aa1a))
     - Release hydro_build_utils v0.1.0, dfir_lang v0.16.0, dfir_macro v0.16.0, variadics v0.1.0, dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0, safety bump 13 crates ([`c20757a`](https://github.com/hydro-project/hydro/commit/c20757ae0e9e10463b2a499de4b7d37ab02269d0))
 </details>
-
-<csr-unknown>
-Notebench_client contains an unused variable in sliced! because slicedrequires at least 1 use statement. The error is currently suppressedbut the requirement should probably be removed from sliced?Notebench_client contains an unused variable in sliced! because slicedrequires at least 1 use statement. The error is currently suppressedbut the requirement should probably be removed from sliced?<csr-unknown/>
 
 ## v0.15.0 (2025-11-25)
 
