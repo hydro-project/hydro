@@ -85,13 +85,13 @@ error[E0277]: the trait bound `impl dfir_rs::dfir_pipes::push::Push<std::option:
    = help: the trait `dfir_rs::dfir_pipes::push::Push<Shape, ()>` is not implemented for `impl dfir_rs::dfir_pipes::push::Push<std::option::Option<()>, (), CanPend = <impl dfir_rs::dfir_pipes::push::Push<std::option::Option<()>, ()> as dfir_rs::dfir_pipes::push::Push<std::option::Option<()>, ()>>::CanPend>`
    = help: the following other types implement trait `dfir_rs::dfir_pipes::push::Push<Item, Meta>`:
              `&mut P` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
+             `Accumulate<State, Next>` implements `dfir_rs::dfir_pipes::push::Push<<State as AccumState>::Input, ()>`
              `DemuxEnum<Outputs>` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
+             `FoldKeyed<&mut HashMap<K, Acc, S>, InitFn, CombFn, Next, K, V, Acc>` implements `dfir_rs::dfir_pipes::push::Push<(K, V), ()>`
+             `ReduceKeyed<&mut HashMap<K, V, S>, ReduceFn, Next, K, V>` implements `dfir_rs::dfir_pipes::push::Push<(K, V), ()>`
              `ResolveFutures<Psh, Queue, QueueInner>` implements `dfir_rs::dfir_pipes::push::Push<Fut, ()>`
+             `Sort<Item, Next>` implements `dfir_rs::dfir_pipes::push::Push<Item, ()>`
              `StatePush<'a, Item, MappingFn, ItemsPsh, StatePsh, Lat>` implements `dfir_rs::dfir_pipes::push::Push<Item, ()>`
-             `VecPush<Buf>` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
-             `dfir_rs::dfir_pipes::push::DemuxVar<Pushes>` implements `dfir_rs::dfir_pipes::push::Push<(usize, Item), Meta>`
-             `dfir_rs::dfir_pipes::push::Fanout<P0, P1>` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
-             `dfir_rs::dfir_pipes::push::Filter<Next, Func>` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
            and $N others
 note: required by a bound in `pivot_run_sg_1v1`
   --> tests/compile-fail/stable/surface_demuxenum_wrongenum.rs:17:15
