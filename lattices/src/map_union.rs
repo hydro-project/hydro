@@ -10,11 +10,15 @@ use std::collections::HashMap;
 
 use cc_traits::{Collection, GetKeyValue, Iter, MapInsert, SimpleCollectionRef};
 
-use crate::cc_traits::{GetMut, Keyed, Map, MapIter, SimpleKeyedRef};
+#[cfg(feature = "alloc")]
+use crate::cc_traits::GetMut;
+use crate::cc_traits::{Keyed, Map, MapIter, SimpleKeyedRef};
 #[cfg(feature = "alloc")]
 use crate::collections::VecMap;
 use crate::collections::{ArrayMap, MapMapValues, OptionMap, SingletonMap};
-use crate::{Atomize, DeepReveal, IsBot, IsTop, LatticeBimorphism, LatticeFrom, LatticeOrd, Merge};
+#[cfg(feature = "alloc")]
+use crate::{Atomize, Merge};
+use crate::{DeepReveal, IsBot, IsTop, LatticeBimorphism, LatticeFrom, LatticeOrd};
 
 /// Map-union compound lattice.
 ///

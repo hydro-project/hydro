@@ -116,11 +116,15 @@ async fn main() {
     let nodes = optimized
         .with_process(
             &p1,
-            TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
+            TrybuildHost::new(create_host(&mut deployment))
+                .rustflags(rustflags)
+                .features(["tokio"]),
         )
         .with_process(
             &p2,
-            TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
+            TrybuildHost::new(create_host(&mut deployment))
+                .rustflags(rustflags)
+                .features(["tokio"]),
         )
         .with_external(&external, deployment.Localhost())
         .deploy(&mut deployment);

@@ -9,6 +9,7 @@
 
 use clap::Parser;
 use futures::{SinkExt, StreamExt};
+use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::prelude::*;
 use hydro_lang::telemetry;
 use tokio_util::codec::LengthDelimitedCodec;
@@ -93,8 +94,14 @@ async fn localhost() {
 
     let _nodes = built
         .with_default_optimize()
-        .with_process(&process, deployment.Localhost())
-        .with_cluster(&cluster, (0..1).map(|_| deployment.Localhost()))
+        .with_process(
+            &process,
+            TrybuildHost::new(deployment.Localhost()).features(["tokio"]),
+        )
+        .with_cluster(
+            &cluster,
+            (0..1).map(|_| TrybuildHost::new(deployment.Localhost()).features(["tokio"])),
+        )
         .deploy(&mut deployment);
 
     deployment.deploy().await.unwrap();
@@ -160,11 +167,15 @@ async fn docker() {
         .with_default_optimize()
         .with_process(
             &process,
-            deployment.add_localhost_docker(None, config.clone()),
+            deployment
+                .add_localhost_docker(None, config.clone())
+                .features(["tokio"]),
         )
         .with_cluster(
             &cluster,
-            deployment.add_localhost_docker_cluster(None, config, 2),
+            deployment
+                .add_localhost_docker_cluster(None, config, 2)
+                .features(["tokio"]),
         )
         .deploy(&mut deployment);
 

@@ -8,6 +8,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q, quote_type};
+#[cfg(feature = "tokio")]
 use tokio::time::Instant;
 
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
@@ -1973,6 +1974,7 @@ where
     /// # Non-Determinism
     /// The output stream is non-deterministic in which elements are sampled, since this
     /// is controlled by a clock.
+    #[cfg(feature = "tokio")]
     pub fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
@@ -1999,6 +2001,7 @@ where
     /// and the notification of the timeout may be delayed as well. There is also no
     /// guarantee on how long the [`Optional`] will have a value after the timeout is
     /// detected based on when the next sample is taken.
+    #[cfg(feature = "tokio")]
     pub fn timeout(
         self,
         duration: impl QuotedWithContext<'a, std::time::Duration, Tick<L::DropConsistency>> + Copy + 'a,

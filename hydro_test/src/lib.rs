@@ -6,6 +6,7 @@ pub mod distributed;
 pub mod embedded;
 pub mod external_client;
 pub mod local;
+#[cfg(feature = "tokio")]
 pub mod maelstrom;
 pub mod tutorials;
 

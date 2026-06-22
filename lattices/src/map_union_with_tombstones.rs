@@ -9,13 +9,19 @@ use std::collections::{HashMap, HashSet};
 #[cfg(feature = "std")]
 use std::string::String;
 
-use cc_traits::{Get, Iter, Len, Remove};
+#[cfg(feature = "std")]
+use cc_traits::Remove;
+use cc_traits::{Get, Iter, Len};
 
-use crate::cc_traits::{GetMut, Keyed, Map, MapIter, SimpleKeyedRef};
+#[cfg(feature = "std")]
+use crate::Merge;
+#[cfg(feature = "std")]
+use crate::cc_traits::GetMut;
+use crate::cc_traits::{Keyed, Map, MapIter, SimpleKeyedRef};
 use crate::collections::{EmptyMap, EmptySet, SingletonMap, SingletonSet};
 #[cfg(feature = "std")]
 use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet, TombstoneSet};
-use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
+use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd};
 
 /// Map-union-with-tombstones compound lattice.
 ///

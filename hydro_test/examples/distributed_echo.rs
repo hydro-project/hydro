@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use futures::{SinkExt, StreamExt};
 use hydro_deploy::{AwsNetwork, Deployment};
+use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::prelude::FlowBuilder;
 use hydro_lang::telemetry;
 use hydro_test::distributed::distributed_echo::distributed_echo;
@@ -84,21 +85,31 @@ async fn docker() {
     let config = vec![r#"profile.dev.strip="symbols""#.to_owned()];
 
     let nodes = builder
-        .with_process(&p1, deployment.add_localhost_docker(None, config.clone()))
+        .with_process(
+            &p1,
+            deployment
+                .add_localhost_docker(None, config.clone())
+                .features(["tokio"]),
+        )
         .with_cluster(
             &c2,
-            deployment.add_localhost_docker_cluster(None, config.clone(), CLUSTER_SIZE),
+            deployment
+                .add_localhost_docker_cluster(None, config.clone(), CLUSTER_SIZE)
+                .features(["tokio"]),
         )
         .with_cluster(
             &c3,
-            deployment.add_localhost_docker_cluster(None, config.clone(), CLUSTER_SIZE),
+            deployment
+                .add_localhost_docker_cluster(None, config.clone(), CLUSTER_SIZE)
+                .features(["tokio"]),
         )
         .with_process(
             &p4,
             deployment
                 .add_localhost_docker(None, config.clone())
                 .base_image("debian:bookworm-slim")
-                .linux_compile_type(LinuxCompileType::Glibc),
+                .linux_compile_type(LinuxCompileType::Glibc)
+                .features(["tokio"]),
         )
         .with_external(&external, deployment.add_external("external".to_owned()))
         .deploy(&mut deployment);
@@ -134,10 +145,24 @@ async fn localhost() {
     let bidi_port = distributed_echo(&external, &p1, &c2, &c3, &p4);
 
     let nodes = builder
-        .with_process(&p1, deployment.Localhost())
-        .with_cluster(&c2, (0..CLUSTER_SIZE).map(|_| deployment.Localhost()))
-        .with_cluster(&c3, (0..CLUSTER_SIZE).map(|_| deployment.Localhost()))
-        .with_process(&p4, deployment.Localhost())
+        .with_process(
+            &p1,
+            TrybuildHost::new(deployment.Localhost()).features(["tokio"]),
+        )
+        .with_cluster(
+            &c2,
+            (0..CLUSTER_SIZE)
+                .map(|_| TrybuildHost::new(deployment.Localhost()).features(["tokio"])),
+        )
+        .with_cluster(
+            &c3,
+            (0..CLUSTER_SIZE)
+                .map(|_| TrybuildHost::new(deployment.Localhost()).features(["tokio"])),
+        )
+        .with_process(
+            &p4,
+            TrybuildHost::new(deployment.Localhost()).features(["tokio"]),
+        )
         .with_external(&external, deployment.Localhost())
         .deploy(&mut deployment);
 

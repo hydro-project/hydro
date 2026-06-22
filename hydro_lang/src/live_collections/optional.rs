@@ -17,10 +17,12 @@ use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::singleton::SingletonBound;
+#[cfg(feature = "tokio")]
+use crate::location::TopLevel;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, DeferTick};
-use crate::location::{Location, Tick, TopLevel, check_matching_location};
+use crate::location::{Location, Tick, check_matching_location};
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::KeyedSingleton;
 use crate::properties::{StreamMapFuncAlgebra, ValidMutCommutativityFor, ValidMutIdempotenceFor};
@@ -1375,6 +1377,7 @@ where
     /// # Non-Determinism
     /// The output stream is non-deterministic in which elements are sampled, since this
     /// is controlled by a clock.
+    #[cfg(feature = "tokio")]
     pub fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,

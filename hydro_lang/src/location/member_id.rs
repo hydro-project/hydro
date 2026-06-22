@@ -26,9 +26,20 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Deserialize, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[non_exhaustive] // Variants change based on features.
 pub enum TaglessMemberId {
-    /// A legacy numeric member ID, used with the `deploy_integration` feature.
-    #[cfg(feature = "deploy_integration")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
+    /// A legacy numeric member ID, used with the `deploy_integration` / `embedded_runtime` feature.
+    #[cfg(any(
+        feature = "deploy",
+        feature = "deploy_integration",
+        feature = "embedded_runtime"
+    ))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(
+            feature = "deploy",
+            feature = "deploy_integration",
+            feature = "embedded_runtime"
+        )))
+    )]
     Legacy {
         /// The raw numeric identifier for this cluster member.
         raw_id: u32,
@@ -50,11 +61,11 @@ pub enum TaglessMemberId {
 }
 
 macro_rules! assert_feature {
-    (#[cfg(feature = $feat:expr)] $( $code:stmt )+) => {
-        #[cfg(not(feature = $feat))]
-        panic!("Feature {:?} is not enabled.", $feat);
+    (#[cfg($meta:meta)] $( $code:stmt )+) => {
+        #[cfg(not($meta))]
+        panic!("Feature {:?} is not enabled.", stringify!($meta));
 
-        #[cfg(feature = $feat)]
+        #[cfg($meta)]
         {
             $( $code )+
         }
@@ -65,10 +76,10 @@ impl TaglessMemberId {
     /// Creates a [`TaglessMemberId`] from a raw numeric ID.
     ///
     /// # Panics
-    /// Panics if the `deploy_integration` feature is not enabled.
+    /// Panics if the `deploy` / `deploy_integration` / `embedded_runtime` feature is not enabled.
     pub fn from_raw_id(_raw_id: u32) -> Self {
         assert_feature! {
-            #[cfg(feature = "deploy_integration")]
+            #[cfg(any(feature = "deploy", feature = "deploy_integration", feature = "embedded_runtime"))]
             Self::Legacy { raw_id: _raw_id }
         }
     }

@@ -96,7 +96,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_default_optimize()
         .with_process(
             &process,
-            TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
+            TrybuildHost::new(create_host(&mut deployment))
+                .rustflags(rustflags)
+                .features(["tokio"]),
         )
         .with_external(&external, deployment.Localhost())
         .deploy(&mut deployment);

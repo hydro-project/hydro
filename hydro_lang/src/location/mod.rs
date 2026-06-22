@@ -15,24 +15,33 @@
 
 use std::fmt::Debug;
 use std::future::Future;
+#[cfg(feature = "tokio")]
 use std::marker::PhantomData;
 use std::num::ParseIntError;
+#[cfg(feature = "tokio")]
 use std::time::Duration;
 
+#[cfg(feature = "tokio")]
 use bytes::{Bytes, BytesMut};
 use futures::stream::Stream as FuturesStream;
 use proc_macro2::Span;
 use quote::quote;
+#[cfg(feature = "tokio")]
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use slotmap::{Key, new_key_type};
+#[cfg(feature = "tokio")]
+use stageleft::quote_type;
 use stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
-use stageleft::{QuotedWithContext, q, quote_type};
+use stageleft::{QuotedWithContext, q};
 use syn::parse_quote;
+#[cfg(feature = "tokio")]
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
+#[cfg(feature = "tokio")]
+use crate::compile::ir::DebugInstantiate;
 use crate::compile::ir::{
-    ClusterMembersState, DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource,
+    ClusterMembersState, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource,
 };
 use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
@@ -40,16 +49,18 @@ use crate::forward_handle::{CycleCollection, ForwardHandle};
 use crate::live_collections::boundedness::{Bounded, Unbounded};
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
-use crate::live_collections::stream::{
-    ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
-};
+use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
+#[cfg(feature = "tokio")]
+use crate::live_collections::stream::{Ordering, Retries};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::dynamic::{ClusterConsistency, LocationId};
+#[cfg(feature = "tokio")]
 use crate::location::external_process::{
     ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many, NotMany,
 };
 use crate::nondet::NonDet;
+#[cfg(feature = "tokio")]
 use crate::properties::manual_proof;
 #[cfg(feature = "sim")]
 use crate::sim::SimSender;
@@ -542,6 +553,7 @@ pub trait Location<'a>: DynLocation {
     ///
     /// For bidirectional communication or typed data, see [`Location::bind_single_client`]
     /// or [`Location::source_external_bincode`].
+    #[cfg(feature = "tokio")]
     fn source_external_bytes<L>(
         &self,
         from: &External<L>,
@@ -566,6 +578,7 @@ pub trait Location<'a>: DynLocation {
     /// of received values.
     ///
     /// For bidirectional communication, see [`Location::bind_single_client_bincode`].
+    #[cfg(feature = "tokio")]
     fn source_external_bincode<L, T, O: Ordering, R: Retries>(
         &self,
         from: &External<L>,
@@ -715,6 +728,7 @@ pub trait Location<'a>: DynLocation {
     /// # });
     /// # }
     /// ```
+    #[cfg(feature = "tokio")]
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bind_single_client<L, T, Codec: Encoder<T> + Decoder>(
         &self,
@@ -798,6 +812,7 @@ pub trait Location<'a>: DynLocation {
     /// # Type Parameters
     /// - `InT`: The type of incoming messages (must implement [`DeserializeOwned`])
     /// - `OutT`: The type of outgoing messages (must implement [`Serialize`])
+    #[cfg(feature = "tokio")]
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bind_single_client_bincode<L, InT: DeserializeOwned, OutT: Serialize>(
         &self,
@@ -895,6 +910,7 @@ pub trait Location<'a>: DynLocation {
     /// - A keyed stream of incoming messages, keyed by client ID
     /// - A keyed stream of membership events (client joins/leaves), keyed by client ID
     /// - A handle to send outgoing messages, keyed by client ID
+    #[cfg(feature = "tokio")]
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bidi_external_many_bytes<L, T, Codec: Encoder<T> + Decoder>(
         &self,
@@ -1043,6 +1059,7 @@ pub trait Location<'a>: DynLocation {
     /// # Type Parameters
     /// - `InT`: The type of incoming messages (must implement [`DeserializeOwned`])
     /// - `OutT`: The type of outgoing messages (must implement [`Serialize`])
+    #[cfg(feature = "tokio")]
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bidi_external_many_bincode<L, InT: DeserializeOwned, OutT: Serialize>(
         &self,
@@ -1387,6 +1404,7 @@ pub trait Location<'a>: DynLocation {
     /// Because this only emits `()`, the non-determinism of *when* events fire
     /// is captured by the `AtLeastOnce` retry semantics downstream, so no
     /// [`NonDet`] guard is required.
+    #[cfg(feature = "tokio")]
     fn source_interval(
         &self,
         interval: impl QuotedWithContext<'a, Duration, Self> + Copy + 'a,
@@ -1409,6 +1427,7 @@ pub trait Location<'a>: DynLocation {
     /// Because this only emits `()`, the non-determinism of *when* events fire
     /// is captured by the `AtLeastOnce` retry semantics downstream, so no
     /// [`NonDet`] guard is required.
+    #[cfg(feature = "tokio")]
     fn source_interval_delayed(
         &self,
         delay: impl QuotedWithContext<'a, Duration, Self> + Copy + 'a,

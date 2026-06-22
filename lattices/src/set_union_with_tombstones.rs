@@ -10,13 +10,17 @@ use std::collections::HashSet;
 #[cfg(feature = "std")]
 use std::string::String;
 
-use cc_traits::{Collection, Get, Remove};
+#[cfg(feature = "std")]
+use cc_traits::Remove;
+use cc_traits::{Collection, Get};
 
+#[cfg(feature = "std")]
+use crate::Merge;
 use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, EmptySet, OptionSet, SingletonSet};
 #[cfg(feature = "std")]
 use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet, TombstoneSet};
-use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
+use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd};
 
 /// Set-union lattice with tombstones.
 ///

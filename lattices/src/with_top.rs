@@ -1,6 +1,8 @@
 use core::cmp::Ordering::{self, *};
 
-use crate::{Atomize, DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
+#[cfg(feature = "alloc")]
+use crate::Atomize;
+use crate::{DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
 /// Adds a new "top" value to the nested lattice type.
 ///

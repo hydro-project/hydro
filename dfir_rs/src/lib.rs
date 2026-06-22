@@ -23,9 +23,11 @@ pub mod util;
 #[doc(hidden)]
 pub use ::{
     bincode, bumpalo, bytes, dfir_lang, dfir_lang as lang, dfir_pipes, futures, lattices,
-    pin_project_lite, rustc_hash, serde, serde_json, sinktools, slotmap, tokio, tokio_stream,
-    tokio_util, tracing, variadics, web_time,
+    pin_project_lite, rustc_hash, serde, serde_json, sinktools, slotmap, tracing, variadics,
+    web_time,
 };
+#[cfg(feature = "tokio")]
+pub use ::{tokio, tokio_stream, tokio_util};
 #[doc(hidden)]
 pub use dfir_pipes::itertools;
 #[doc(hidden)]

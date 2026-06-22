@@ -25,6 +25,7 @@ pub const HYDRO_RUNTIME_FEATURES: &[&str] = &[
     "docker_runtime",
     "ecs_runtime",
     "maelstrom_runtime",
+    "sim_runtime",
 ];
 
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
