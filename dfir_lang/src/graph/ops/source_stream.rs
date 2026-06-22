@@ -40,14 +40,14 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
-                   root,
-                   context,
-                   op_span,
-                   ident,
-                   arguments,
-                   ..
-               },
-               _| {
+                     root,
+                     context,
+                     op_span,
+                     ident,
+                     arguments,
+                     ..
+                 },
+                 _| {
         let receiver = &arguments[0];
         let stream_ident = wc.make_ident("stream");
         let write_prologue = quote_spanned! {op_span=>
@@ -67,9 +67,23 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
                 #context.waker(),
             );
         };
+
+        // Drain remaining items from the stream to ensure the waker is registered
+        // (poll_next must return Pending at least once to register the waker for
+        // future sends to wake this DFIR).
+        let write_iterator_after = quote_spanned! {op_span=>
+            {
+                use #root::futures::stream::Stream;
+                let waker = #context.waker();
+                let mut cx = ::std::task::Context::from_waker(&waker);
+                while let ::std::task::Poll::Ready(Some(_)) = ::std::pin::Pin::new(&mut #stream_ident).poll_next(&mut cx) {}
+            }
+        };
+
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
+            write_iterator_after,
             ..Default::default()
         })
     },
