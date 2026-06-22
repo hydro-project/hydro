@@ -2,6 +2,6 @@
     stream: UnixStream,
     codec: Codec,
 ) -&gt; (FramedWrite&lt;OwnedWriteHalf, Codec&gt;, FramedRead&lt;OwnedReadHalf, Codec&gt;)<div class="where">where
-    Codec: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> + Decoder,</div></code></pre><span class="item-info"><div class="stab portability">Available on <strong>Unix</strong> only.</div></span><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Helper creates a Unix <code>Stream</code> and <code>Sink</code> from the given socket, using the given <code>Codec</code> to
+    Codec: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> + Decoder,</div></code></pre><span class="item-info"><div class="stab portability">Available on <strong>Unix and crate feature <code>tokio</code></strong> only.</div></span><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Helper creates a Unix <code>Stream</code> and <code>Sink</code> from the given socket, using the given <code>Codec</code> to
 handle delineation between inputs/outputs.</p>
 </div></details></section></div></main></body></html>

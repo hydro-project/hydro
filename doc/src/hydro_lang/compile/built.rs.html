@@ -53,7 +53,7 @@
 <a href=#53 id=53 data-nosnippet>53</a>    }
 <a href=#54 id=54 data-nosnippet>54</a>
 <a href=#55 id=55 data-nosnippet>55</a>    <span class="doccomment">/// Serialize the IR as JSON.
-<a href=#56 id=56 data-nosnippet>56</a>    </span><span class="attr">#[cfg(feature = <span class="string">"runtime_support"</span>)]
+<a href=#56 id=56 data-nosnippet>56</a>    </span><span class="attr">#[cfg(feature = <span class="string">"viz"</span>)]
 <a href=#57 id=57 data-nosnippet>57</a>    </span><span class="kw">pub fn </span>ir_json(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, serde_json::Error&gt; {
 <a href=#58 id=58 data-nosnippet>58</a>        <span class="kw">super</span>::ir::serialize_dedup_shared(|| serde_json::to_string_pretty(<span class="kw-2">&amp;</span><span class="self">self</span>.ir))
 <a href=#59 id=59 data-nosnippet>59</a>    }

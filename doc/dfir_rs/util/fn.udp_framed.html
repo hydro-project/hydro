@@ -2,6 +2,6 @@
     socket: UdpSocket,
     codec: Codec,
 ) -&gt; (<a class="type" href="type.UdpFramedSink.html" title="type dfir_rs::util::UdpFramedSink">UdpFramedSink</a>&lt;Codec, Item&gt;, <a class="type" href="type.UdpFramedStream.html" title="type dfir_rs::util::UdpFramedStream">UdpFramedStream</a>&lt;Codec&gt;, <a class="enum" href="https://doc.rust-lang.org/nightly/core/net/socket_addr/enum.SocketAddr.html" title="enum core::net::socket_addr::SocketAddr">SocketAddr</a>)<div class="where">where
-    Codec: Encoder&lt;Item&gt; + Decoder,</div></code></pre><span class="item-info"><div class="stab portability">Available on <strong>non-WebAssembly</strong> only.</div></span><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Returns a UDP <code>Stream</code>, <code>Sink</code>, and address for the given socket, using the given <code>Codec</code> to
+    Codec: Encoder&lt;Item&gt; + Decoder,</div></code></pre><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>tokio</code> and non-WebAssembly</strong> only.</div></span><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Returns a UDP <code>Stream</code>, <code>Sink</code>, and address for the given socket, using the given <code>Codec</code> to
 handle delineation between inputs/outputs.</p>
 </div></details></section></div></main></body></html>
