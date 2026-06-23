@@ -26,10 +26,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Deserialize, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[non_exhaustive] // Variants change based on features.
 pub enum TaglessMemberId {
-    /// A legacy numeric member ID, used with the `deploy_integration` / `embedded_runtime` feature.
+    /// A legacy numeric member ID, used with the `deploy_integration` / `sim_runtime` / `embedded_runtime` feature.
     #[cfg(any(
         feature = "deploy",
         feature = "deploy_integration",
+        feature = "sim",
+        feature = "sim_runtime",
         feature = "embedded_runtime"
     ))]
     #[cfg_attr(
@@ -37,6 +39,8 @@ pub enum TaglessMemberId {
         doc(cfg(any(
             feature = "deploy",
             feature = "deploy_integration",
+            feature = "sim",
+            feature = "sim_runtime",
             feature = "embedded_runtime"
         )))
     )]
@@ -76,10 +80,10 @@ impl TaglessMemberId {
     /// Creates a [`TaglessMemberId`] from a raw numeric ID.
     ///
     /// # Panics
-    /// Panics if the `deploy` / `deploy_integration` / `embedded_runtime` feature is not enabled.
+    /// Panics if the `deploy` / `deploy_integration` / `sim_runtime` / `embedded_runtime` feature is not enabled.
     pub fn from_raw_id(_raw_id: u32) -> Self {
         assert_feature! {
-            #[cfg(any(feature = "deploy", feature = "deploy_integration", feature = "embedded_runtime"))]
+            #[cfg(any(feature = "deploy", feature = "deploy_integration", feature = "sim", feature = "sim_runtime", feature = "embedded_runtime"))]
             Self::Legacy { raw_id: _raw_id }
         }
     }
@@ -87,11 +91,11 @@ impl TaglessMemberId {
     /// Returns the raw numeric ID from this member identifier.
     ///
     /// # Panics
-    /// Panics if this is not the `Legacy` variant or if the `deploy_integration`
+    /// Panics if this is not the `Legacy` variant or if the `deploy_integration` / `sim_runtime`
     /// feature is not enabled.
     pub fn get_raw_id(&self) -> u32 {
         assert_feature! {
-            #[cfg(feature = "deploy_integration")]
+            #[cfg(any(feature = "deploy", feature = "deploy_integration", feature = "sim", feature = "sim_runtime", feature = "embedded_runtime"))]
             #[expect(clippy::allow_attributes, reason = "Depends on features.")]
             #[allow(
                 irrefutable_let_patterns,
@@ -174,7 +178,13 @@ impl TaglessMemberId {
 impl Display for TaglessMemberId {
     fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            #[cfg(feature = "deploy_integration")]
+            #[cfg(any(
+                feature = "deploy",
+                feature = "deploy_integration",
+                feature = "sim",
+                feature = "sim_runtime",
+                feature = "embedded_runtime"
+            ))]
             TaglessMemberId::Legacy { raw_id } => write!(_f, "{}", raw_id),
             #[cfg(feature = "docker_runtime")]
             TaglessMemberId::Docker { container_name } => write!(_f, "{}", container_name),
