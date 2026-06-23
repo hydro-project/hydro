@@ -129,3 +129,43 @@ pub fn test_tick_persistence_resets() {
     let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, []);
 }
+
+/// Regression test: `source_stream` must register waker even when downstream
+/// (e.g. `cross_singleton`) only pulls one item. Without the drain-to-pending
+/// cleanup, subsequent sends wouldn't wake the DFIR for another tick.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_source_stream_waker_registration() {
+    let (input_tx, input_rx) = dfir_rs::util::unbounded_channel::<i32>();
+    let (single_tx, single_rx) = dfir_rs::util::unbounded_channel::<i32>();
+    let (egress_tx, mut egress_rx) = dfir_rs::util::unbounded_channel();
+
+    let mut df = dfir_syntax! {
+        source_stream(input_rx) -> [input]join;
+        source_stream(single_rx) -> [single]join;
+        join = cross_singleton();
+        join -> for_each(|x| egress_tx.send(x).unwrap());
+    };
+
+    // First tick: send one item on each channel.
+    input_tx.send(1).unwrap();
+    single_tx.send(100).unwrap();
+    df.run_tick_sync();
+    let out: Vec<_> = collect_ready(&mut egress_rx);
+    assert_eq!(out, vec![(1, 100)]);
+
+    // Second tick: send again. The singleton channel must have its waker
+    // registered from the first tick (via drain-to-pending) so that this
+    // send wakes the DFIR.
+    input_tx.send(2).unwrap();
+    single_tx.send(200).unwrap();
+    df.run_tick_sync();
+    let out: Vec<_> = collect_ready(&mut egress_rx);
+    assert_eq!(out, vec![(2, 200)]);
+
+    // Third tick: same pattern to confirm stability.
+    input_tx.send(3).unwrap();
+    single_tx.send(300).unwrap();
+    df.run_tick_sync();
+    let out: Vec<_> = collect_ready(&mut egress_rx);
+    assert_eq!(out, vec![(3, 300)]);
+}
