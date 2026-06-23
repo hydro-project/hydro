@@ -1,4 +1,23 @@
 //! Interfaces for compiled Hydro simulators and concrete simulation instances.
+//!
+//! NOTE: This module runs inside bolero's `catch_unwind` scope, which silently
+//! swallows panics. Internal invariant checks should use `abort_assert!`
+//! rather than `panic!`/`assert!`.
+//!
+//! TODO(mingwei): Panics inside the tick DFIR (generated code in the dylib) are
+//! also caught by bolero's `catch_unwind`. Consider a mechanism to detect and
+//! propagate those as well.
+
+/// Like `assert!`, but calls `std::process::abort()` instead of `panic!()`.
+/// Use for internal invariants that must not be silently caught by bolero.
+macro_rules! abort_assert {
+    ($cond:expr, $($arg:tt)*) => {
+        if !$cond {
+            eprintln!("Simulator internal error: {}", format!($($arg)*));
+            std::process::abort();
+        }
+    };
+}
 
 use core::{fmt, panic};
 use std::cell::{Cell, RefCell};
@@ -1129,9 +1148,9 @@ impl<W: std::io::Write> LaunchedSim<W> {
                     // simulator bug — it means a singleton never received a value.
                     for (name, cid, _) in &self.not_ready_ticks {
                         let hooks = self.hooks.get(&(name.clone(), *cid)).unwrap();
-                        assert!(
+                        abort_assert!(
                             hooks.iter().all(|hook| hook.is_ready()),
-                            "Simulator bug: tick has a hook that never became ready"
+                            "tick has a hook that never became ready"
                         );
                     }
 
@@ -1196,7 +1215,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                                 tokio::select! {
                                     biased;
                                     r = &mut run_tick_future_pinned => {
-                                        assert!(r);
+                                        abort_assert!(r, "tick DFIR run_tick() returned false");
                                         break;
                                     }
                                     _ = async {} => {
@@ -1215,7 +1234,10 @@ impl<W: std::io::Write> LaunchedSim<W> {
                                 }
                             }
                         } else {
-                            assert!(run_tick_future.await);
+                            abort_assert!(
+                                run_tick_future.await,
+                                "tick DFIR run_tick() returned false"
+                            );
                         }
 
                         self.possibly_ready_ticks.push(removed);
