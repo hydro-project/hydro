@@ -61,22 +61,24 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
                 check_stream(#receiver)
             };
         };
+        let fused_ident = wc.make_ident("stream_fused");
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::dfir_pipes::pull::stream_ready(
+            let mut #fused_ident = #root::dfir_pipes::pull::Pull::fuse(#root::dfir_pipes::pull::stream_ready(
                 &mut #stream_ident,
                 #context.waker(),
-            );
+            ));
+            let #ident = &mut #fused_ident;
         };
 
         // Drain remaining items from the stream to ensure the waker is registered
         // (poll_next must return Pending at least once to register the waker for
-        // future sends to wake this DFIR).
+        // future sends to wake this DFIR). The fused pull returns Ended immediately
+        // if Pending was already hit during the pipeline.
         let write_iterator_after = quote_spanned! {op_span=>
             {
-                use #root::futures::stream::Stream;
-                let waker = #context.waker();
-                let mut cx = ::std::task::Context::from_waker(&waker);
-                while let ::std::task::Poll::Ready(Some(_)) = ::std::pin::Pin::new(&mut #stream_ident).poll_next(&mut cx) {}
+                use #root::dfir_pipes::pull::Pull;
+                let mut drain = ::std::pin::pin!(#fused_ident);
+                while let #root::dfir_pipes::pull::PullStep::Ready(_, _) = drain.as_mut().pull(&mut ()) {}
             }
         };
 
