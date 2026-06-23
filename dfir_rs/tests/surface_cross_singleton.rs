@@ -149,7 +149,7 @@ pub fn test_source_stream_waker_registration() {
     // First tick: send one item on each channel.
     input_tx.send(1).unwrap();
     single_tx.send(100).unwrap();
-    df.run_tick_sync();
+    assert!(df.run_tick_sync());
     let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, vec![(1, 100)]);
 
@@ -158,14 +158,14 @@ pub fn test_source_stream_waker_registration() {
     // send wakes the DFIR.
     input_tx.send(2).unwrap();
     single_tx.send(200).unwrap();
-    df.run_tick_sync();
+    assert!(df.run_tick_sync());
     let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, vec![(2, 200)]);
 
     // Third tick: same pattern to confirm stability.
     input_tx.send(3).unwrap();
     single_tx.send(300).unwrap();
-    df.run_tick_sync();
+    assert!(df.run_tick_sync());
     let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, vec![(3, 300)]);
 }
