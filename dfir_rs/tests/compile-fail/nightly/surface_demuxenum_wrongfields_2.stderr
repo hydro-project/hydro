@@ -7,13 +7,13 @@ error[E0277]: the trait bound `impl dfir_pipes::push::Push<(u32,), (), CanPend =
    = help: the trait `dfir_pipes::push::Push<(f64,), ()>` is not implemented for `impl dfir_pipes::push::Push<(u32,), (), CanPend = <dfir_pipes::push::for_each::ForEach<{closure@$DIR/tests/compile-fail/nightly/surface_demuxenum_wrongfields_2.rs:20:38: 20:52}> as dfir_pipes::push::Push<(u32,), ()>>::CanPend>`
    = help: the following other types implement trait `dfir_pipes::push::Push<Item, Meta>`:
              `&mut P` implements `dfir_pipes::push::Push<Item, Meta>`
+             `Accumulate<State, Next>` implements `dfir_pipes::push::Push<<State as AccumState>::Input, ()>`
              `DemuxEnum<Outputs>` implements `dfir_pipes::push::Push<Item, Meta>`
+             `FoldKeyed<&mut HashMap<K, Acc, S>, InitFn, CombFn, Next, K, V, Acc>` implements `dfir_pipes::push::Push<(K, V), ()>`
+             `ReduceKeyed<&mut HashMap<K, V, S>, ReduceFn, Next, K, V>` implements `dfir_pipes::push::Push<(K, V), ()>`
              `ResolveFutures<Psh, Queue, QueueInner>` implements `dfir_pipes::push::Push<Fut, ()>`
+             `Sort<Item, Next>` implements `dfir_pipes::push::Push<Item, ()>`
              `StatePush<'a, Item, MappingFn, ItemsPsh, StatePsh, Lat>` implements `dfir_pipes::push::Push<Item, ()>`
-             `VecPush<Buf>` implements `dfir_pipes::push::Push<Item, Meta>`
-             `dfir_pipes::push::demux_var::DemuxVar<Pushes>` implements `dfir_pipes::push::Push<(usize, Item), Meta>`
-             `dfir_pipes::push::fanout::Fanout<P0, P1>` implements `dfir_pipes::push::Push<Item, Meta>`
-             `dfir_pipes::push::filter::Filter<Next, Func>` implements `dfir_pipes::push::Push<Item, Meta>`
            and $N others
 note: required for `Shape` to implement `DemuxEnumPush<(Pin<&mut impl dfir_pipes::push::Push<(f64,), (), CanPend = <dfir_pipes::push::for_each::ForEach<fn((f64,)) {std::mem::drop::<(f64,)>}> as dfir_pipes::push::Push<(f64,), ()>>::CanPend>>, Pin<&mut impl dfir_pipes::push::Push<(f64, f64), (), CanPend = <dfir_pipes::push::for_each::ForEach<fn((f64, f64)) {std::mem::drop::<(f64, f64)>}> as dfir_pipes::push::Push<(f64, f64), ()>>::CanPend>>, Pin<&mut impl dfir_pipes::push::Push<(u32,), (), CanPend = <dfir_pipes::push::for_each::ForEach<{closure@$DIR/tests/compile-fail/nightly/surface_demuxenum_wrongfields_2.rs:20:38: 20:52}> as dfir_pipes::push::Push<(u32,), ()>>::CanPend>>), ()>`
   --> tests/compile-fail/nightly/surface_demuxenum_wrongfields_2.rs:6:10
@@ -38,13 +38,13 @@ error[E0277]: the trait bound `impl dfir_pipes::push::Push<(u32,), (), CanPend =
    = help: the trait `dfir_pipes::push::Push<(f64,), ()>` is not implemented for `impl dfir_pipes::push::Push<(u32,), (), CanPend = <dfir_pipes::push::for_each::ForEach<{closure@$DIR/tests/compile-fail/nightly/surface_demuxenum_wrongfields_2.rs:20:38: 20:52}> as dfir_pipes::push::Push<(u32,), ()>>::CanPend>`
    = help: the following other types implement trait `dfir_pipes::push::Push<Item, Meta>`:
              `&mut P` implements `dfir_pipes::push::Push<Item, Meta>`
+             `Accumulate<State, Next>` implements `dfir_pipes::push::Push<<State as AccumState>::Input, ()>`
              `DemuxEnum<Outputs>` implements `dfir_pipes::push::Push<Item, Meta>`
+             `FoldKeyed<&mut HashMap<K, Acc, S>, InitFn, CombFn, Next, K, V, Acc>` implements `dfir_pipes::push::Push<(K, V), ()>`
+             `ReduceKeyed<&mut HashMap<K, V, S>, ReduceFn, Next, K, V>` implements `dfir_pipes::push::Push<(K, V), ()>`
              `ResolveFutures<Psh, Queue, QueueInner>` implements `dfir_pipes::push::Push<Fut, ()>`
+             `Sort<Item, Next>` implements `dfir_pipes::push::Push<Item, ()>`
              `StatePush<'a, Item, MappingFn, ItemsPsh, StatePsh, Lat>` implements `dfir_pipes::push::Push<Item, ()>`
-             `VecPush<Buf>` implements `dfir_pipes::push::Push<Item, Meta>`
-             `dfir_pipes::push::demux_var::DemuxVar<Pushes>` implements `dfir_pipes::push::Push<(usize, Item), Meta>`
-             `dfir_pipes::push::fanout::Fanout<P0, P1>` implements `dfir_pipes::push::Push<Item, Meta>`
-             `dfir_pipes::push::filter::Filter<Next, Func>` implements `dfir_pipes::push::Push<Item, Meta>`
            and $N others
 note: required for `Shape` to implement `DemuxEnumPush<(Pin<&mut impl dfir_pipes::push::Push<(f64,), (), CanPend = <dfir_pipes::push::for_each::ForEach<fn((f64,)) {std::mem::drop::<(f64,)>}> as dfir_pipes::push::Push<(f64,), ()>>::CanPend>>, Pin<&mut impl dfir_pipes::push::Push<(f64, f64), (), CanPend = <dfir_pipes::push::for_each::ForEach<fn((f64, f64)) {std::mem::drop::<(f64, f64)>}> as dfir_pipes::push::Push<(f64, f64), ()>>::CanPend>>, Pin<&mut impl dfir_pipes::push::Push<(u32,), (), CanPend = <dfir_pipes::push::for_each::ForEach<{closure@$DIR/tests/compile-fail/nightly/surface_demuxenum_wrongfields_2.rs:20:38: 20:52}> as dfir_pipes::push::Push<(u32,), ()>>::CanPend>>), ()>`
   --> tests/compile-fail/nightly/surface_demuxenum_wrongfields_2.rs:6:10
@@ -74,13 +74,13 @@ error[E0277]: the trait bound `impl dfir_pipes::push::Push<(u32,), (), CanPend =
    = help: the trait `dfir_pipes::push::Push<(f64,), ()>` is not implemented for `impl dfir_pipes::push::Push<(u32,), (), CanPend = <dfir_pipes::push::for_each::ForEach<{closure@$DIR/tests/compile-fail/nightly/surface_demuxenum_wrongfields_2.rs:20:38: 20:52}> as dfir_pipes::push::Push<(u32,), ()>>::CanPend>`
    = help: the following other types implement trait `dfir_pipes::push::Push<Item, Meta>`:
              `&mut P` implements `dfir_pipes::push::Push<Item, Meta>`
+             `Accumulate<State, Next>` implements `dfir_pipes::push::Push<<State as AccumState>::Input, ()>`
              `DemuxEnum<Outputs>` implements `dfir_pipes::push::Push<Item, Meta>`
+             `FoldKeyed<&mut HashMap<K, Acc, S>, InitFn, CombFn, Next, K, V, Acc>` implements `dfir_pipes::push::Push<(K, V), ()>`
+             `ReduceKeyed<&mut HashMap<K, V, S>, ReduceFn, Next, K, V>` implements `dfir_pipes::push::Push<(K, V), ()>`
              `ResolveFutures<Psh, Queue, QueueInner>` implements `dfir_pipes::push::Push<Fut, ()>`
+             `Sort<Item, Next>` implements `dfir_pipes::push::Push<Item, ()>`
              `StatePush<'a, Item, MappingFn, ItemsPsh, StatePsh, Lat>` implements `dfir_pipes::push::Push<Item, ()>`
-             `VecPush<Buf>` implements `dfir_pipes::push::Push<Item, Meta>`
-             `dfir_pipes::push::demux_var::DemuxVar<Pushes>` implements `dfir_pipes::push::Push<(usize, Item), Meta>`
-             `dfir_pipes::push::fanout::Fanout<P0, P1>` implements `dfir_pipes::push::Push<Item, Meta>`
-             `dfir_pipes::push::filter::Filter<Next, Func>` implements `dfir_pipes::push::Push<Item, Meta>`
            and $N others
 note: required for `Shape` to implement `DemuxEnumPush<(Pin<&mut impl dfir_pipes::push::Push<(f64,), (), CanPend = <dfir_pipes::push::for_each::ForEach<fn((f64,)) {std::mem::drop::<(f64,)>}> as dfir_pipes::push::Push<(f64,), ()>>::CanPend>>, Pin<&mut impl dfir_pipes::push::Push<(f64, f64), (), CanPend = <dfir_pipes::push::for_each::ForEach<fn((f64, f64)) {std::mem::drop::<(f64, f64)>}> as dfir_pipes::push::Push<(f64, f64), ()>>::CanPend>>, Pin<&mut impl dfir_pipes::push::Push<(u32,), (), CanPend = <dfir_pipes::push::for_each::ForEach<{closure@$DIR/tests/compile-fail/nightly/surface_demuxenum_wrongfields_2.rs:20:38: 20:52}> as dfir_pipes::push::Push<(u32,), ()>>::CanPend>>), ()>`
   --> tests/compile-fail/nightly/surface_demuxenum_wrongfields_2.rs:6:10
