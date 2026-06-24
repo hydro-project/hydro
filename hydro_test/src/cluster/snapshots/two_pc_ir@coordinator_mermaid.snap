@@ -64,7 +64,7 @@ linkStyle default stroke:#aaa
 56v1["<div style=text-align:center>(56v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
 24v1--o1v1; linkStyle 0 stroke:red
 2v1-->3v1
-3v1--x4v1; linkStyle 2 stroke:red
+3v1-->4v1
 4v1-->5v1
 5v1-->6v1
 7v1-->8v1
@@ -79,7 +79,7 @@ linkStyle default stroke:#aaa
 1v1--x|0|17v1; linkStyle 14 stroke:red
 16v1-->|1|17v1
 17v1-->18v1
-18v1--x19v1; linkStyle 17 stroke:red
+18v1-->19v1
 19v1-->21v1
 21v1-->22v1
 18v1-->|pos|23v1
@@ -91,7 +91,7 @@ linkStyle default stroke:#aaa
 27v1-->28v1
 50v1--o29v1; linkStyle 27 stroke:red
 30v1-->31v1
-31v1--x32v1; linkStyle 29 stroke:red
+31v1-->32v1
 32v1-->33v1
 33v1-->34v1
 34v1-->|0|35v1
@@ -105,7 +105,7 @@ linkStyle default stroke:#aaa
 29v1--x|0|43v1; linkStyle 40 stroke:red
 42v1-->|1|43v1
 43v1-->44v1
-44v1--x45v1; linkStyle 43 stroke:red
+44v1-->45v1
 45v1-->47v1
 47v1-->48v1
 44v1-->|pos|49v1
