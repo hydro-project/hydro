@@ -556,3 +556,154 @@ pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
 
     Ok(partitioned_graph)
 }
+
+#[cfg(test)]
+mod tests {
+    use proc_macro2::Span;
+
+    use super::*;
+    use crate::graph::{GraphNode, HandoffKind, PortIndexValue};
+
+    fn elided() -> PortIndexValue {
+        PortIndexValue::Elided(None)
+    }
+
+    fn make_op_node(graph: &mut DfirGraph, loop_ctx: Option<GraphLoopId>) -> GraphNodeId {
+        let operator: crate::parse::Operator = syn::parse_quote! { identity() };
+        graph.insert_node(GraphNode::Operator(operator), None, loop_ctx)
+    }
+
+    fn make_handoff_node(graph: &mut DfirGraph) -> GraphNodeId {
+        graph.insert_node(
+            GraphNode::Handoff {
+                kind: HandoffKind::Vec,
+                src_span: Span::call_site(),
+                dst_span: Span::call_site(),
+            },
+            None,
+            None,
+        )
+    }
+
+    /// Test that subgraphs within a loop are contiguous in the toposort,
+    /// even when there are unrelated subgraphs outside the loop.
+    #[test]
+    fn test_hierarchical_toposort_contiguity() {
+        let mut graph = DfirGraph::default();
+
+        // Create a loop.
+        let loop_id = graph.insert_loop(None);
+
+        // Create operator nodes: two outside the loop, two inside.
+        let op_a = make_op_node(&mut graph, None);
+        let op_b = make_op_node(&mut graph, None);
+        let op_c = make_op_node(&mut graph, Some(loop_id));
+        let op_d = make_op_node(&mut graph, Some(loop_id));
+
+        // Create handoffs to connect: A -> [h1] -> C -> [h2] -> D -> [h3] -> B
+        let h1 = make_handoff_node(&mut graph);
+        let h2 = make_handoff_node(&mut graph);
+        let h3 = make_handoff_node(&mut graph);
+
+        graph.insert_edge(op_a, elided(), h1, elided());
+        graph.insert_edge(h1, elided(), op_c, elided());
+        graph.insert_edge(op_c, elided(), h2, elided());
+        graph.insert_edge(h2, elided(), op_d, elided());
+        graph.insert_edge(op_d, elided(), h3, elided());
+        graph.insert_edge(h3, elided(), op_b, elided());
+
+        // Manually create subgraphs (one per operator node).
+        let sg_a = graph.insert_subgraph(vec![op_a]).unwrap();
+        let sg_b = graph.insert_subgraph(vec![op_b]).unwrap();
+        let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
+        let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
+
+        let toposort = build_hierarchical_toposort(&graph).unwrap();
+
+        // Verify: A comes first, then C and D (contiguous, in order), then B.
+        assert_eq!(toposort, vec![sg_a, sg_c, sg_d, sg_b]);
+    }
+
+    /// Test that two independent sibling loops each have their subgraphs contiguous.
+    #[test]
+    fn test_hierarchical_toposort_independent_loops() {
+        let mut graph = DfirGraph::default();
+
+        let loop1 = graph.insert_loop(None);
+        let loop2 = graph.insert_loop(None);
+
+        // Loop1: C, D. Loop2: E, F.
+        let op_c = make_op_node(&mut graph, Some(loop1));
+        let op_d = make_op_node(&mut graph, Some(loop1));
+        let op_e = make_op_node(&mut graph, Some(loop2));
+        let op_f = make_op_node(&mut graph, Some(loop2));
+
+        // Internal handoffs within each loop.
+        let h1 = make_handoff_node(&mut graph);
+        let h2 = make_handoff_node(&mut graph);
+
+        graph.insert_edge(op_c, elided(), h1, elided());
+        graph.insert_edge(h1, elided(), op_d, elided());
+        graph.insert_edge(op_e, elided(), h2, elided());
+        graph.insert_edge(h2, elided(), op_f, elided());
+
+        let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
+        let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
+        let sg_e = graph.insert_subgraph(vec![op_e]).unwrap();
+        let sg_f = graph.insert_subgraph(vec![op_f]).unwrap();
+
+        let toposort = build_hierarchical_toposort(&graph).unwrap();
+
+        // Both loops should be contiguous. Order between loops is unspecified,
+        // but within each loop the order must be respected.
+        let pos_c = toposort.iter().position(|&s| s == sg_c).unwrap();
+        let pos_d = toposort.iter().position(|&s| s == sg_d).unwrap();
+        let pos_e = toposort.iter().position(|&s| s == sg_e).unwrap();
+        let pos_f = toposort.iter().position(|&s| s == sg_f).unwrap();
+
+        // C before D, E before F.
+        assert!(pos_c < pos_d);
+        assert!(pos_e < pos_f);
+
+        // Contiguity: C and D are adjacent, E and F are adjacent.
+        assert_eq!(pos_d - pos_c, 1, "Loop1 subgraphs must be contiguous");
+        assert_eq!(pos_f - pos_e, 1, "Loop2 subgraphs must be contiguous");
+    }
+
+    /// Test nested loops: inner loop subgraphs are contiguous within the outer loop block.
+    #[test]
+    fn test_hierarchical_toposort_nested_loops() {
+        let mut graph = DfirGraph::default();
+
+        let outer = graph.insert_loop(None);
+        let inner = graph.insert_loop(Some(outer));
+
+        // Outer loop has: op_a, then inner loop (op_b, op_c), then op_d.
+        let op_a = make_op_node(&mut graph, Some(outer));
+        let op_b = make_op_node(&mut graph, Some(inner));
+        let op_c = make_op_node(&mut graph, Some(inner));
+        let op_d = make_op_node(&mut graph, Some(outer));
+
+        // A -> [h1] -> B -> [h2] -> C -> [h3] -> D
+        let h1 = make_handoff_node(&mut graph);
+        let h2 = make_handoff_node(&mut graph);
+        let h3 = make_handoff_node(&mut graph);
+
+        graph.insert_edge(op_a, elided(), h1, elided());
+        graph.insert_edge(h1, elided(), op_b, elided());
+        graph.insert_edge(op_b, elided(), h2, elided());
+        graph.insert_edge(h2, elided(), op_c, elided());
+        graph.insert_edge(op_c, elided(), h3, elided());
+        graph.insert_edge(h3, elided(), op_d, elided());
+
+        let sg_a = graph.insert_subgraph(vec![op_a]).unwrap();
+        let sg_b = graph.insert_subgraph(vec![op_b]).unwrap();
+        let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
+        let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
+
+        let toposort = build_hierarchical_toposort(&graph).unwrap();
+
+        // Expected: A, B, C, D (all contiguous within outer, B/C contiguous within inner).
+        assert_eq!(toposort, vec![sg_a, sg_b, sg_c, sg_d]);
+    }
+}
