@@ -2242,6 +2242,11 @@ impl DfirGraph {
     pub fn loop_children(&self, loop_id: GraphLoopId) -> &Vec<GraphLoopId> {
         self.loop_children.get(loop_id).unwrap()
     }
+
+    /// Get root-level loops (those with no parent loop).
+    pub fn root_loops(&self) -> &[GraphLoopId] {
+        &self.root_loops
+    }
 }
 
 /// Configuration for writing graphs.
