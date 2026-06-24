@@ -287,7 +287,7 @@ fn make_subgraphs(
 
     // Build a hierarchical topological sort that guarantees subgraphs within a loop
     // are contiguous in the final order.
-    let subgraph_toposort = build_hierarchical_toposort(partitioned_graph)?;
+    let subgraph_toposort = build_hierarchical_toposort(partitioned_graph, tick_edges)?;
     partitioned_graph.set_subgraph_toposort(subgraph_toposort);
     Ok(())
 }
@@ -306,8 +306,12 @@ enum HierItem {
 /// At each level of the loop hierarchy, the sortable items are bare subgraphs at that level
 /// plus child loops (treated as opaque units). Edges between items are derived from handoff
 /// edges crossing between them. The sort recurses into child loops and flattens the result.
+///
+/// `tick_edges` is used to skip tick-boundary (defer_tick) handoffs, which represent
+/// back-edges across ticks and should not introduce ordering constraints.
 fn build_hierarchical_toposort(
     graph: &DfirGraph,
+    tick_edges: &SecondaryMap<GraphEdgeId, DelayType>,
 ) -> Result<Vec<GraphSubgraphId>, Diagnostic> {
     // Build a map: for each subgraph, what is its immediate loop context.
     // Also build a map: for each loop, which subgraphs are directly in it (not in child loops).
@@ -326,6 +330,7 @@ fn build_hierarchical_toposort(
         graph: &DfirGraph,
         parent_loop: Option<GraphLoopId>,
         loop_direct_subgraphs: &HashMap<Option<GraphLoopId>, Vec<GraphSubgraphId>>,
+        tick_edges: &SecondaryMap<GraphEdgeId, DelayType>,
     ) -> Result<Vec<GraphSubgraphId>, Diagnostic> {
         // Collect items at this level: direct subgraphs + child loops.
         let direct_sgs = loop_direct_subgraphs
@@ -366,6 +371,7 @@ fn build_hierarchical_toposort(
         // Build predecessor edges between items by examining handoff edges.
         // A handoff connects a sender subgraph to a receiver subgraph. If they map to
         // different items at this level, that's a dependency edge.
+        // Skip tick-boundary (defer_tick) handoffs — they are back-edges across ticks.
         let mut item_preds: HashMap<HierItem, HashSet<HierItem>> = HashMap::new();
         for &item in &items {
             item_preds.entry(item).or_default();
@@ -373,6 +379,13 @@ fn build_hierarchical_toposort(
 
         for (hoff_id, hoff) in graph.nodes() {
             if !matches!(hoff, GraphNode::Handoff { .. }) {
+                continue;
+            }
+            // Skip tick-boundary handoffs (defer_tick / defer_tick_lazy back-edges).
+            let is_tick_boundary = graph
+                .node_successors(hoff_id)
+                .any(|(edge_id, _)| tick_edges.contains_key(edge_id));
+            if is_tick_boundary {
                 continue;
             }
             // Each handoff has predecessors (senders) and successors (receivers).
@@ -422,7 +435,8 @@ fn build_hierarchical_toposort(
             match item {
                 HierItem::Subgraph(sg) => result.push(sg),
                 HierItem::Loop(loop_id) => {
-                    let inner = sort_level(graph, Some(loop_id), loop_direct_subgraphs)?;
+                    let inner =
+                        sort_level(graph, Some(loop_id), loop_direct_subgraphs, tick_edges)?;
                     result.extend(inner);
                 }
             }
@@ -430,7 +444,7 @@ fn build_hierarchical_toposort(
         Ok(result)
     }
 
-    sort_level(graph, None, &loop_direct_subgraphs)
+    sort_level(graph, None, &loop_direct_subgraphs, tick_edges)
 }
 
 /// Recursively collects all subgraph IDs transitively inside a loop (including nested child loops).
@@ -618,7 +632,7 @@ mod tests {
         let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
         let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
 
-        let toposort = build_hierarchical_toposort(&graph).unwrap();
+        let toposort = build_hierarchical_toposort(&graph, &SecondaryMap::new()).unwrap();
 
         // Verify: A comes first, then C and D (contiguous, in order), then B.
         assert_eq!(toposort, vec![sg_a, sg_c, sg_d, sg_b]);
@@ -652,7 +666,7 @@ mod tests {
         let sg_e = graph.insert_subgraph(vec![op_e]).unwrap();
         let sg_f = graph.insert_subgraph(vec![op_f]).unwrap();
 
-        let toposort = build_hierarchical_toposort(&graph).unwrap();
+        let toposort = build_hierarchical_toposort(&graph, &SecondaryMap::new()).unwrap();
 
         // Both loops should be contiguous. Order between loops is unspecified,
         // but within each loop the order must be respected.
@@ -701,7 +715,7 @@ mod tests {
         let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
         let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
 
-        let toposort = build_hierarchical_toposort(&graph).unwrap();
+        let toposort = build_hierarchical_toposort(&graph, &SecondaryMap::new()).unwrap();
 
         // Expected: A, B, C, D (all contiguous within outer, B/C contiguous within inner).
         assert_eq!(toposort, vec![sg_a, sg_b, sg_c, sg_d]);
