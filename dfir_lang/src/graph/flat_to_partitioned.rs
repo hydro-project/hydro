@@ -1,13 +1,15 @@
 //! Subgraph partioning algorithm
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use itertools::Itertools;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 
 use super::meta_graph::DfirGraph;
 use super::ops::{DelayType, FloType};
-use super::{Color, GraphEdgeId, GraphNode, GraphNodeId, HandoffKind};
+use super::{
+    Color, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, HandoffKind,
+};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::graph::graph_algorithms::SubgraphMerge;
 
@@ -269,7 +271,6 @@ fn make_subgraphs(
 
     // Register subgraphs. SubgraphMerge maintains operators in topo-sorted order per subgraph.
     // Filter out handoff nodes — they are not part of any subgraph.
-    let mut subgraph_toposort = Vec::new();
     for nodes in subgraph_merge.subgraphs() {
         if nodes.is_empty() {
             continue;
@@ -281,11 +282,172 @@ fn make_subgraphs(
         {
             continue;
         }
-        let sg_id = partitioned_graph.insert_subgraph(nodes.to_vec()).unwrap();
-        subgraph_toposort.push(sg_id);
+        partitioned_graph.insert_subgraph(nodes.to_vec()).unwrap();
     }
+
+    // Build a hierarchical topological sort that guarantees subgraphs within a loop
+    // are contiguous in the final order.
+    let subgraph_toposort = build_hierarchical_toposort(partitioned_graph)?;
     partitioned_graph.set_subgraph_toposort(subgraph_toposort);
     Ok(())
+}
+
+/// An item in a particular level of the loop hierarchy, used for hierarchical topo sort.
+/// Either a bare subgraph or an entire child loop (treated as a single unit).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+enum HierItem {
+    Subgraph(GraphSubgraphId),
+    Loop(GraphLoopId),
+}
+
+/// Builds a hierarchical topological sort of subgraphs, guaranteeing that all subgraphs
+/// within a loop are contiguous in the final order.
+///
+/// At each level of the loop hierarchy, the sortable items are bare subgraphs at that level
+/// plus child loops (treated as opaque units). Edges between items are derived from handoff
+/// edges crossing between them. The sort recurses into child loops and flattens the result.
+fn build_hierarchical_toposort(
+    graph: &DfirGraph,
+) -> Result<Vec<GraphSubgraphId>, Diagnostic> {
+    // Build a map: for each subgraph, what is its immediate loop context.
+    // Also build a map: for each loop, which subgraphs are directly in it (not in child loops).
+    let mut loop_direct_subgraphs: HashMap<Option<GraphLoopId>, Vec<GraphSubgraphId>> =
+        HashMap::new();
+    for sg_id in graph.subgraph_ids() {
+        let loop_ctx = graph.subgraph_loop(sg_id);
+        loop_direct_subgraphs
+            .entry(loop_ctx)
+            .or_default()
+            .push(sg_id);
+    }
+
+    // Recursively sort a level. `parent_loop` is None for top-level.
+    fn sort_level(
+        graph: &DfirGraph,
+        parent_loop: Option<GraphLoopId>,
+        loop_direct_subgraphs: &HashMap<Option<GraphLoopId>, Vec<GraphSubgraphId>>,
+    ) -> Result<Vec<GraphSubgraphId>, Diagnostic> {
+        // Collect items at this level: direct subgraphs + child loops.
+        let direct_sgs = loop_direct_subgraphs
+            .get(&parent_loop)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[]);
+        let child_loops: &[GraphLoopId] = match parent_loop {
+            Some(parent) => graph.loop_children(parent),
+            None => graph.root_loops(),
+        };
+
+        // If nothing at this level, return empty.
+        if direct_sgs.is_empty() && child_loops.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Assign each item an index for the topo sort.
+        let items: Vec<HierItem> = direct_sgs
+            .iter()
+            .map(|&sg| HierItem::Subgraph(sg))
+            .chain(child_loops.iter().map(|&l| HierItem::Loop(l)))
+            .collect();
+
+        // Build a lookup: subgraph_id -> which HierItem it belongs to at this level.
+        // For subgraphs directly at this level, it maps to themselves.
+        // For subgraphs inside a child loop, it maps to that child loop's HierItem.
+        let mut sg_to_item: HashMap<GraphSubgraphId, HierItem> = HashMap::new();
+        for &sg in direct_sgs {
+            sg_to_item.insert(sg, HierItem::Subgraph(sg));
+        }
+        for &child_loop in child_loops {
+            // All subgraphs transitively inside this child loop map to the loop item.
+            collect_subgraphs_in_loop(graph, child_loop, loop_direct_subgraphs, &mut |sg| {
+                sg_to_item.insert(sg, HierItem::Loop(child_loop));
+            });
+        }
+
+        // Build predecessor edges between items by examining handoff edges.
+        // A handoff connects a sender subgraph to a receiver subgraph. If they map to
+        // different items at this level, that's a dependency edge.
+        let mut item_preds: HashMap<HierItem, HashSet<HierItem>> = HashMap::new();
+        for &item in &items {
+            item_preds.entry(item).or_default();
+        }
+
+        for (hoff_id, hoff) in graph.nodes() {
+            if !matches!(hoff, GraphNode::Handoff { .. }) {
+                continue;
+            }
+            // Each handoff has predecessors (senders) and successors (receivers).
+            for (_edge, pred_id) in graph.node_predecessors(hoff_id) {
+                let Some(pred_sg) = graph.node_subgraph(pred_id) else {
+                    continue;
+                };
+                for (_edge, succ_id) in graph.node_successors(hoff_id) {
+                    let Some(succ_sg) = graph.node_subgraph(succ_id) else {
+                        continue;
+                    };
+                    // Look up what item each belongs to at this level.
+                    let Some(&pred_item) = sg_to_item.get(&pred_sg) else {
+                        continue;
+                    };
+                    let Some(&succ_item) = sg_to_item.get(&succ_sg) else {
+                        continue;
+                    };
+                    if pred_item != succ_item {
+                        item_preds.entry(succ_item).or_default().insert(pred_item);
+                    }
+                }
+            }
+        }
+
+        // Topo sort items at this level.
+        let sorted_items = super::graph_algorithms::topo_sort(items.iter().copied(), |item| {
+            item_preds
+                .get(&item)
+                .into_iter()
+                .flatten()
+                .copied()
+                .collect::<Vec<_>>()
+                .into_iter()
+        })
+        .map_err(|_cycle| {
+            Diagnostic::spanned(
+                proc_macro2::Span::call_site(),
+                Level::Error,
+                "Cyclical dataflow between loop regions is not supported.",
+            )
+        })?;
+
+        // Flatten: for each item in sorted order, emit its subgraphs.
+        let mut result = Vec::new();
+        for item in sorted_items {
+            match item {
+                HierItem::Subgraph(sg) => result.push(sg),
+                HierItem::Loop(loop_id) => {
+                    let inner = sort_level(graph, Some(loop_id), loop_direct_subgraphs)?;
+                    result.extend(inner);
+                }
+            }
+        }
+        Ok(result)
+    }
+
+    sort_level(graph, None, &loop_direct_subgraphs)
+}
+
+/// Recursively collects all subgraph IDs transitively inside a loop (including nested child loops).
+fn collect_subgraphs_in_loop(
+    graph: &DfirGraph,
+    loop_id: GraphLoopId,
+    loop_direct_subgraphs: &HashMap<Option<GraphLoopId>, Vec<GraphSubgraphId>>,
+    collector: &mut impl FnMut(GraphSubgraphId),
+) {
+    if let Some(direct) = loop_direct_subgraphs.get(&Some(loop_id)) {
+        for &sg in direct {
+            collector(sg);
+        }
+    }
+    for &child in graph.loop_children(loop_id) {
+        collect_subgraphs_in_loop(graph, child, loop_direct_subgraphs, collector);
+    }
 }
 
 /// Set `src` or `dst` color if `None` based on the other (if possible):
