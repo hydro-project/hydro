@@ -39,7 +39,8 @@ use serde::ser::Serialize;
 #[cfg(unix)]
 pub use socket::*;
 
-/// Persit or delete tuples
+/// Persist or delete tuples
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Persistence<T> {
     /// Persist T values
     Persist(T),
@@ -47,7 +48,8 @@ pub enum Persistence<T> {
     Delete(T),
 }
 
-/// Persit or delete key-value pairs
+/// Persist or delete key-value pairs
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum PersistenceKeyed<K, V> {
     /// Persist key-value pairs
     Persist(K, V),
