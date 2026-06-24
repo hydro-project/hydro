@@ -91,6 +91,11 @@ pub struct DfirGraph {
     /// Set by `order_subgraphs` for `defer_tick` / `defer_tick_lazy`, either on handoff nodes
     /// it injects or on existing handoff nodes that it marks as tick-boundary back-edges.
     handoff_delay_type: SparseSecondaryMap<GraphNodeId, DelayType>,
+
+    /// Handoff nodes entering each loop (sender outside, receiver inside).
+    loop_entry_handoffs: SecondaryMap<GraphLoopId, Vec<GraphNodeId>>,
+    /// Handoff nodes exiting each loop (sender inside, receiver outside).
+    loop_exit_handoffs: SecondaryMap<GraphLoopId, Vec<GraphNodeId>>,
 }
 
 /// Basic methods.
@@ -2246,6 +2251,32 @@ impl DfirGraph {
     /// Get root-level loops (those with no parent loop).
     pub fn root_loops(&self) -> &[GraphLoopId] {
         &self.root_loops
+    }
+
+    /// Get entry handoffs for a loop (sender outside, receiver inside).
+    pub fn loop_entry_handoffs(&self, loop_id: GraphLoopId) -> &[GraphNodeId] {
+        self.loop_entry_handoffs
+            .get(loop_id)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
+    }
+
+    /// Get exit handoffs for a loop (sender inside, receiver outside).
+    pub fn loop_exit_handoffs(&self, loop_id: GraphLoopId) -> &[GraphNodeId] {
+        self.loop_exit_handoffs
+            .get(loop_id)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
+    }
+
+    /// Set entry handoffs for a loop.
+    pub fn set_loop_entry_handoffs(&mut self, loop_id: GraphLoopId, handoffs: Vec<GraphNodeId>) {
+        self.loop_entry_handoffs.insert(loop_id, handoffs);
+    }
+
+    /// Set exit handoffs for a loop.
+    pub fn set_loop_exit_handoffs(&mut self, loop_id: GraphLoopId, handoffs: Vec<GraphNodeId>) {
+        self.loop_exit_handoffs.insert(loop_id, handoffs);
     }
 }
 
