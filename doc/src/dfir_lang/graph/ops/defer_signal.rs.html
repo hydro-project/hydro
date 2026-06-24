@@ -2,7 +2,7 @@
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>syn::parse_quote;
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use super</span>::{
-<a href=#5 id=5 data-nosnippet>5</a>    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+<a href=#5 id=5 data-nosnippet>5</a>    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
 <a href=#6 id=6 data-nosnippet>6</a>    WriteContextArgs,
 <a href=#7 id=7 data-nosnippet>7</a>};
 <a href=#8 id=8 data-nosnippet>8</a>
@@ -36,7 +36,7 @@
 <a href=#36 id=36 data-nosnippet>36</a>    flo_type: <span class="prelude-val">None</span>,
 <a href=#37 id=37 data-nosnippet>37</a>    ports_inn: <span class="prelude-val">Some</span>(|| <span class="kw">super</span>::PortListSpec::Fixed(<span class="macro">parse_quote!</span> { input, signal })),
 <a href=#38 id=38 data-nosnippet>38</a>    ports_out: <span class="prelude-val">None</span>,
-<a href=#39 id=39 data-nosnippet>39</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">Some</span>(DelayType::Stratum),
+<a href=#39 id=39 data-nosnippet>39</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
 <a href=#40 id=40 data-nosnippet>40</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
 <a href=#41 id=41 data-nosnippet>41</a>                   root,
 <a href=#42 id=42 data-nosnippet>42</a>                   ident,

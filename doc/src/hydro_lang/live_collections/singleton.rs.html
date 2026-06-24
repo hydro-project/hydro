@@ -1831,231 +1831,230 @@
 <a href=#1831 id=1831 data-nosnippet>1831</a>        });
 <a href=#1832 id=1832 data-nosnippet>1832</a>
 <a href=#1833 id=1833 data-nosnippet>1833</a>        <span class="macro">assert_eq!</span>(count, <span class="number">52</span>);
-<a href=#1834 id=1834 data-nosnippet>1834</a>        <span class="comment">// don't have a combinatorial explanation for this number yet, but checked via logs
-<a href=#1835 id=1835 data-nosnippet>1835</a>    </span>}
-<a href=#1836 id=1836 data-nosnippet>1836</a>
-<a href=#1837 id=1837 data-nosnippet>1837</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#1838 id=1838 data-nosnippet>1838</a>    #[test]
-<a href=#1839 id=1839 data-nosnippet>1839</a>    </span><span class="kw">fn </span>sim_top_level_singleton_exhaustive() {
-<a href=#1840 id=1840 data-nosnippet>1840</a>        <span class="comment">// ensures that top-level singletons have only one snapshot
-<a href=#1841 id=1841 data-nosnippet>1841</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#1842 id=1842 data-nosnippet>1842</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#1843 id=1843 data-nosnippet>1843</a>
-<a href=#1844 id=1844 data-nosnippet>1844</a>        <span class="kw">let </span>singleton = node.singleton(<span class="macro">q!</span>(<span class="number">1</span>));
-<a href=#1845 id=1845 data-nosnippet>1845</a>        <span class="kw">let </span>tick = node.tick();
-<a href=#1846 id=1846 data-nosnippet>1846</a>        <span class="kw">let </span>batch = singleton.snapshot(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
-<a href=#1847 id=1847 data-nosnippet>1847</a>        <span class="kw">let </span>out_recv = batch.all_ticks().sim_output();
-<a href=#1848 id=1848 data-nosnippet>1848</a>
-<a href=#1849 id=1849 data-nosnippet>1849</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#1850 id=1850 data-nosnippet>1850</a>            <span class="kw">let _ </span>= out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#1851 id=1851 data-nosnippet>1851</a>        });
-<a href=#1852 id=1852 data-nosnippet>1852</a>
-<a href=#1853 id=1853 data-nosnippet>1853</a>        <span class="macro">assert_eq!</span>(count, <span class="number">1</span>);
-<a href=#1854 id=1854 data-nosnippet>1854</a>    }
-<a href=#1855 id=1855 data-nosnippet>1855</a>
-<a href=#1856 id=1856 data-nosnippet>1856</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#1857 id=1857 data-nosnippet>1857</a>    #[test]
-<a href=#1858 id=1858 data-nosnippet>1858</a>    </span><span class="kw">fn </span>sim_top_level_singleton_join_count() {
-<a href=#1859 id=1859 data-nosnippet>1859</a>        <span class="comment">// if a tick consumes a static snapshot and a stream batch, only the batch require space
-<a href=#1860 id=1860 data-nosnippet>1860</a>        // exploration
-<a href=#1861 id=1861 data-nosnippet>1861</a>
-<a href=#1862 id=1862 data-nosnippet>1862</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#1863 id=1863 data-nosnippet>1863</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#1864 id=1864 data-nosnippet>1864</a>
-<a href=#1865 id=1865 data-nosnippet>1865</a>        <span class="kw">let </span>source_iter = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
-<a href=#1866 id=1866 data-nosnippet>1866</a>        <span class="kw">let </span>tick = node.tick();
-<a href=#1867 id=1867 data-nosnippet>1867</a>        <span class="kw">let </span>batch = source_iter
-<a href=#1868 id=1868 data-nosnippet>1868</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#1869 id=1869 data-nosnippet>1869</a>            .cross_singleton(node.singleton(<span class="macro">q!</span>(<span class="number">123</span>)).clone_into_tick(<span class="kw-2">&amp;</span>tick));
-<a href=#1870 id=1870 data-nosnippet>1870</a>        <span class="kw">let </span>out_recv = batch.all_ticks().sim_output();
-<a href=#1871 id=1871 data-nosnippet>1871</a>
-<a href=#1872 id=1872 data-nosnippet>1872</a>        <span class="kw">let </span>instance_count = flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#1873 id=1873 data-nosnippet>1873</a>            <span class="kw">let _ </span>= out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#1874 id=1874 data-nosnippet>1874</a>        });
-<a href=#1875 id=1875 data-nosnippet>1875</a>
-<a href=#1876 id=1876 data-nosnippet>1876</a>        <span class="macro">assert_eq!</span>(
-<a href=#1877 id=1877 data-nosnippet>1877</a>            instance_count,
-<a href=#1878 id=1878 data-nosnippet>1878</a>            <span class="number">16 </span><span class="comment">// 2^4 ways to split up (including a possibly empty first batch)
-<a href=#1879 id=1879 data-nosnippet>1879</a>        </span>)
-<a href=#1880 id=1880 data-nosnippet>1880</a>    }
-<a href=#1881 id=1881 data-nosnippet>1881</a>
-<a href=#1882 id=1882 data-nosnippet>1882</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#1883 id=1883 data-nosnippet>1883</a>    #[test]
-<a href=#1884 id=1884 data-nosnippet>1884</a>    </span><span class="kw">fn </span>top_level_singleton_into_stream_no_replay() {
-<a href=#1885 id=1885 data-nosnippet>1885</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#1886 id=1886 data-nosnippet>1886</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#1887 id=1887 data-nosnippet>1887</a>
-<a href=#1888 id=1888 data-nosnippet>1888</a>        <span class="kw">let </span>source_iter = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
-<a href=#1889 id=1889 data-nosnippet>1889</a>        <span class="kw">let </span>folded = source_iter.fold(<span class="macro">q!</span>(|| <span class="number">0</span>), <span class="macro">q!</span>(|a, b| <span class="kw-2">*</span>a += b));
-<a href=#1890 id=1890 data-nosnippet>1890</a>
-<a href=#1891 id=1891 data-nosnippet>1891</a>        <span class="kw">let </span>out_recv = folded.into_stream().sim_output();
-<a href=#1892 id=1892 data-nosnippet>1892</a>
-<a href=#1893 id=1893 data-nosnippet>1893</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#1894 id=1894 data-nosnippet>1894</a>            out_recv.assert_yields_only([<span class="number">10</span>]).<span class="kw">await</span>;
-<a href=#1895 id=1895 data-nosnippet>1895</a>        });
-<a href=#1896 id=1896 data-nosnippet>1896</a>    }
-<a href=#1897 id=1897 data-nosnippet>1897</a>
-<a href=#1898 id=1898 data-nosnippet>1898</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#1899 id=1899 data-nosnippet>1899</a>    #[test]
-<a href=#1900 id=1900 data-nosnippet>1900</a>    </span><span class="kw">fn </span>inside_tick_singleton_zip() {
-<a href=#1901 id=1901 data-nosnippet>1901</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::Stream;
-<a href=#1902 id=1902 data-nosnippet>1902</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::sliced::sliced;
-<a href=#1903 id=1903 data-nosnippet>1903</a>
-<a href=#1904 id=1904 data-nosnippet>1904</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#1905 id=1905 data-nosnippet>1905</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#1906 id=1906 data-nosnippet>1906</a>
-<a href=#1907 id=1907 data-nosnippet>1907</a>        <span class="kw">let </span>source_iter: Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>])).into();
-<a href=#1908 id=1908 data-nosnippet>1908</a>        <span class="kw">let </span>folded = source_iter.fold(<span class="macro">q!</span>(|| <span class="number">0</span>), <span class="macro">q!</span>(|a, b| <span class="kw-2">*</span>a += b));
-<a href=#1909 id=1909 data-nosnippet>1909</a>
-<a href=#1910 id=1910 data-nosnippet>1910</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
-<a href=#1911 id=1911 data-nosnippet>1911</a>            <span class="kw">let </span>v = <span class="kw">use</span>(folded, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
-<a href=#1912 id=1912 data-nosnippet>1912</a>            v.clone().zip(v).into_stream()
-<a href=#1913 id=1913 data-nosnippet>1913</a>        }
-<a href=#1914 id=1914 data-nosnippet>1914</a>        .sim_output();
-<a href=#1915 id=1915 data-nosnippet>1915</a>
-<a href=#1916 id=1916 data-nosnippet>1916</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#1917 id=1917 data-nosnippet>1917</a>            <span class="kw">let </span>out = out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#1918 id=1918 data-nosnippet>1918</a>            <span class="macro">assert_eq!</span>(out.last(), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>(<span class="number">3</span>, <span class="number">3</span>)));
-<a href=#1919 id=1919 data-nosnippet>1919</a>        });
-<a href=#1920 id=1920 data-nosnippet>1920</a>
-<a href=#1921 id=1921 data-nosnippet>1921</a>        <span class="macro">assert_eq!</span>(count, <span class="number">4</span>);
-<a href=#1922 id=1922 data-nosnippet>1922</a>    }
-<a href=#1923 id=1923 data-nosnippet>1923</a>
-<a href=#1924 id=1924 data-nosnippet>1924</a>    <span class="doccomment">/// Reproducer for simulator hang when using cross_singleton on a top-level
-<a href=#1925 id=1925 data-nosnippet>1925</a>    /// unbounded stream (not inside sliced!). The exhaustive simulator hangs
-<a href=#1926 id=1926 data-nosnippet>1926</a>    /// after the first iteration.
-<a href=#1927 id=1927 data-nosnippet>1927</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#1928 id=1928 data-nosnippet>1928</a>    #[test]
-<a href=#1929 id=1929 data-nosnippet>1929</a>    </span><span class="kw">fn </span>sim_cross_singleton_top_level_unbounded_hang() {
-<a href=#1930 id=1930 data-nosnippet>1930</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#1931 id=1931 data-nosnippet>1931</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#1932 id=1932 data-nosnippet>1932</a>
-<a href=#1933 id=1933 data-nosnippet>1933</a>        <span class="kw">let </span>(cmd_port, input) = node.sim_input::&lt;String, <span class="kw">_</span>, <span class="kw">_</span>&gt;();
-<a href=#1934 id=1934 data-nosnippet>1934</a>
-<a href=#1935 id=1935 data-nosnippet>1935</a>        <span class="kw">let </span>top_level_singleton = node.singleton(<span class="macro">q!</span>(<span class="number">123</span>));
-<a href=#1936 id=1936 data-nosnippet>1936</a>
-<a href=#1937 id=1937 data-nosnippet>1937</a>        <span class="comment">// cross_singleton on a top-level stream - bug trigger
-<a href=#1938 id=1938 data-nosnippet>1938</a>        </span><span class="kw">let </span>crossed = input.cross_singleton(top_level_singleton);
-<a href=#1939 id=1939 data-nosnippet>1939</a>
-<a href=#1940 id=1940 data-nosnippet>1940</a>        <span class="comment">// Output directly
-<a href=#1941 id=1941 data-nosnippet>1941</a>        </span><span class="kw">let </span>resp_port = crossed.sim_output();
-<a href=#1942 id=1942 data-nosnippet>1942</a>
-<a href=#1943 id=1943 data-nosnippet>1943</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#1944 id=1944 data-nosnippet>1944</a>            cmd_port.send(<span class="string">"abc"</span>.to_owned());
-<a href=#1945 id=1945 data-nosnippet>1945</a>
-<a href=#1946 id=1946 data-nosnippet>1946</a>            <span class="kw">let </span>responses: Vec&lt;<span class="kw">_</span>&gt; = resp_port.collect().<span class="kw">await</span>;
-<a href=#1947 id=1947 data-nosnippet>1947</a>            <span class="macro">assert!</span>(!responses.is_empty());
-<a href=#1948 id=1948 data-nosnippet>1948</a>        });
-<a href=#1949 id=1949 data-nosnippet>1949</a>
-<a href=#1950 id=1950 data-nosnippet>1950</a>        <span class="macro">assert_eq!</span>(count, <span class="number">1</span>);
-<a href=#1951 id=1951 data-nosnippet>1951</a>    }
-<a href=#1952 id=1952 data-nosnippet>1952</a>
-<a href=#1953 id=1953 data-nosnippet>1953</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#1954 id=1954 data-nosnippet>1954</a>    #[test]
-<a href=#1955 id=1955 data-nosnippet>1955</a>    </span><span class="kw">fn </span>sim_top_level_singleton_state_count() {
-<a href=#1956 id=1956 data-nosnippet>1956</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#1957 id=1957 data-nosnippet>1957</a>        <span class="kw">let </span>process = flow.process::&lt;()&gt;();
-<a href=#1958 id=1958 data-nosnippet>1958</a>
-<a href=#1959 id=1959 data-nosnippet>1959</a>        <span class="kw">let </span>(cmd_port, input) = process.sim_input();
-<a href=#1960 id=1960 data-nosnippet>1960</a>        {
-<a href=#1961 id=1961 data-nosnippet>1961</a>            <span class="comment">// increases exhaustive inputs from 1 to 2 before we optimized `From`
-<a href=#1962 id=1962 data-nosnippet>1962</a>            </span><span class="kw">use </span><span class="kw">super</span>::Singleton;
-<a href=#1963 id=1963 data-nosnippet>1963</a>            <span class="kw">use </span><span class="kw">crate</span>::live_collections::boundedness::Unbounded;
-<a href=#1964 id=1964 data-nosnippet>1964</a>            <span class="kw">let </span>_singleton: Singleton&lt;<span class="kw">_</span>, <span class="kw">_</span>, Unbounded&gt; = process.singleton(<span class="macro">q!</span>(<span class="bool-val">false</span>)).into();
-<a href=#1965 id=1965 data-nosnippet>1965</a>        }
-<a href=#1966 id=1966 data-nosnippet>1966</a>        <span class="kw">let </span>tick = process.tick();
-<a href=#1967 id=1967 data-nosnippet>1967</a>        <span class="kw">let </span>batched_unbatched = input.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** */</span>)).all_ticks();
-<a href=#1968 id=1968 data-nosnippet>1968</a>        <span class="kw">let </span>resp_port = batched_unbatched.sim_output();
-<a href=#1969 id=1969 data-nosnippet>1969</a>
-<a href=#1970 id=1970 data-nosnippet>1970</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#1971 id=1971 data-nosnippet>1971</a>            cmd_port.send(());
-<a href=#1972 id=1972 data-nosnippet>1972</a>            <span class="kw">let </span>_responses: Vec&lt;<span class="kw">_</span>&gt; = resp_port.collect().<span class="kw">await</span>;
-<a href=#1973 id=1973 data-nosnippet>1973</a>        });
-<a href=#1974 id=1974 data-nosnippet>1974</a>
-<a href=#1975 id=1975 data-nosnippet>1975</a>        <span class="macro">assert_eq!</span>(count, <span class="number">1</span>);
-<a href=#1976 id=1976 data-nosnippet>1976</a>    }
-<a href=#1977 id=1977 data-nosnippet>1977</a>
-<a href=#1978 id=1978 data-nosnippet>1978</a>    <span class="doccomment">/// Regression test for #2939: singleton mut access-group counter resets per root.
-<a href=#1979 id=1979 data-nosnippet>1979</a>    /// Two sequential `by_mut` captures on the same singleton, consumed by separate
-<a href=#1980 id=1980 data-nosnippet>1980</a>    /// `for_each` roots, should get distinct access groups and build successfully.
-<a href=#1981 id=1981 data-nosnippet>1981</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#1982 id=1982 data-nosnippet>1982</a>    #[test]
-<a href=#1983 id=1983 data-nosnippet>1983</a>    #[expect(unused_mut, reason = <span class="string">"sliced! macro generates mut bindings for state"</span>)]
-<a href=#1984 id=1984 data-nosnippet>1984</a>    </span><span class="kw">fn </span>sim_mut_access_group_across_roots() {
-<a href=#1985 id=1985 data-nosnippet>1985</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::sliced::sliced;
-<a href=#1986 id=1986 data-nosnippet>1986</a>
-<a href=#1987 id=1987 data-nosnippet>1987</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#1988 id=1988 data-nosnippet>1988</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#1989 id=1989 data-nosnippet>1989</a>
-<a href=#1990 id=1990 data-nosnippet>1990</a>        <span class="kw">let </span>source = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1i32</span>, <span class="number">2</span>, <span class="number">3</span>]));
-<a href=#1991 id=1991 data-nosnippet>1991</a>
-<a href=#1992 id=1992 data-nosnippet>1992</a>        <span class="kw">let </span>(first, second) = <span class="macro">sliced!</span> {
-<a href=#1993 id=1993 data-nosnippet>1993</a>            <span class="kw">let </span>batch = <span class="kw">use</span>(source, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
-<a href=#1994 id=1994 data-nosnippet>1994</a>            <span class="kw">let </span><span class="kw-2">mut </span>total = <span class="kw">use</span>::state(|l| l.singleton(<span class="macro">q!</span>(<span class="number">0i32</span>)));
-<a href=#1995 id=1995 data-nosnippet>1995</a>            <span class="kw">let </span>total_mut = total.by_mut();
-<a href=#1996 id=1996 data-nosnippet>1996</a>
-<a href=#1997 id=1997 data-nosnippet>1997</a>            <span class="kw">let </span>first = batch.clone().map(<span class="macro">q!</span>(|x| {
-<a href=#1998 id=1998 data-nosnippet>1998</a>                <span class="kw-2">*</span>total_mut += x;
-<a href=#1999 id=1999 data-nosnippet>1999</a>                <span class="kw-2">*</span>total_mut
-<a href=#2000 id=2000 data-nosnippet>2000</a>            }));
-<a href=#2001 id=2001 data-nosnippet>2001</a>            <span class="kw">let </span>second = batch.map(<span class="macro">q!</span>(|x| {
-<a href=#2002 id=2002 data-nosnippet>2002</a>                <span class="kw-2">*</span>total_mut += x;
-<a href=#2003 id=2003 data-nosnippet>2003</a>                <span class="kw-2">*</span>total_mut
-<a href=#2004 id=2004 data-nosnippet>2004</a>            }));
-<a href=#2005 id=2005 data-nosnippet>2005</a>            (first, second)
-<a href=#2006 id=2006 data-nosnippet>2006</a>        };
-<a href=#2007 id=2007 data-nosnippet>2007</a>
-<a href=#2008 id=2008 data-nosnippet>2008</a>        <span class="kw">let </span>first_recv = first.sim_output();
-<a href=#2009 id=2009 data-nosnippet>2009</a>        <span class="kw">let </span>second_recv = second.sim_output();
-<a href=#2010 id=2010 data-nosnippet>2010</a>
-<a href=#2011 id=2011 data-nosnippet>2011</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#2012 id=2012 data-nosnippet>2012</a>            <span class="comment">// Both outputs should produce values without panicking.
-<a href=#2013 id=2013 data-nosnippet>2013</a>            // The exact values depend on ordering, but the graph must build.
-<a href=#2014 id=2014 data-nosnippet>2014</a>            </span><span class="kw">let </span>_first: Vec&lt;i32&gt; = first_recv.collect().<span class="kw">await</span>;
-<a href=#2015 id=2015 data-nosnippet>2015</a>            <span class="kw">let </span>_second: Vec&lt;i32&gt; = second_recv.collect().<span class="kw">await</span>;
-<a href=#2016 id=2016 data-nosnippet>2016</a>        });
-<a href=#2017 id=2017 data-nosnippet>2017</a>    }
-<a href=#2018 id=2018 data-nosnippet>2018</a>
-<a href=#2019 id=2019 data-nosnippet>2019</a>    <span class="doccomment">/// Regression test for #2940: access groups must follow code (staging) order,
-<a href=#2020 id=2020 data-nosnippet>2020</a>    /// not IR traversal order. When `second.chain(first)` reverses the consumption
-<a href=#2021 id=2021 data-nosnippet>2021</a>    /// order, the mutations must still execute in the order they were staged.
-<a href=#2022 id=2022 data-nosnippet>2022</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#2023 id=2023 data-nosnippet>2023</a>    #[test]
-<a href=#2024 id=2024 data-nosnippet>2024</a>    #[expect(unused_mut, reason = <span class="string">"sliced! macro generates mut bindings for state"</span>)]
-<a href=#2025 id=2025 data-nosnippet>2025</a>    </span><span class="kw">fn </span>sim_mut_access_groups_follow_code_order() {
-<a href=#2026 id=2026 data-nosnippet>2026</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::sliced::sliced;
-<a href=#2027 id=2027 data-nosnippet>2027</a>
-<a href=#2028 id=2028 data-nosnippet>2028</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#2029 id=2029 data-nosnippet>2029</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#2030 id=2030 data-nosnippet>2030</a>
-<a href=#2031 id=2031 data-nosnippet>2031</a>        <span class="kw">let </span>source = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">3i32</span>]));
-<a href=#2032 id=2032 data-nosnippet>2032</a>
-<a href=#2033 id=2033 data-nosnippet>2033</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
-<a href=#2034 id=2034 data-nosnippet>2034</a>            <span class="kw">let </span>batch = <span class="kw">use</span>(source, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
-<a href=#2035 id=2035 data-nosnippet>2035</a>            <span class="kw">let </span><span class="kw-2">mut </span>total = <span class="kw">use</span>::state(|l| l.singleton(<span class="macro">q!</span>(<span class="number">0i32</span>)));
-<a href=#2036 id=2036 data-nosnippet>2036</a>            <span class="kw">let </span>total_mut = total.by_mut();
-<a href=#2037 id=2037 data-nosnippet>2037</a>
-<a href=#2038 id=2038 data-nosnippet>2038</a>            <span class="comment">// Defined FIRST in code: addition
-<a href=#2039 id=2039 data-nosnippet>2039</a>            </span><span class="kw">let </span>first = batch.clone().map(<span class="macro">q!</span>(|x| {
-<a href=#2040 id=2040 data-nosnippet>2040</a>                <span class="kw-2">*</span>total_mut += x;
-<a href=#2041 id=2041 data-nosnippet>2041</a>                <span class="kw-2">*</span>total_mut
-<a href=#2042 id=2042 data-nosnippet>2042</a>            }));
-<a href=#2043 id=2043 data-nosnippet>2043</a>            <span class="comment">// Defined SECOND in code: doubling
-<a href=#2044 id=2044 data-nosnippet>2044</a>            </span><span class="kw">let </span>second = batch.map(<span class="macro">q!</span>(|_x| {
-<a href=#2045 id=2045 data-nosnippet>2045</a>                <span class="kw-2">*</span>total_mut <span class="kw-2">*</span>= <span class="number">2</span>;
-<a href=#2046 id=2046 data-nosnippet>2046</a>                <span class="kw-2">*</span>total_mut
-<a href=#2047 id=2047 data-nosnippet>2047</a>            }));
-<a href=#2048 id=2048 data-nosnippet>2048</a>            <span class="comment">// Chain in OPPOSITE order of definition — must not affect mutation order.
-<a href=#2049 id=2049 data-nosnippet>2049</a>            </span>second.chain(first)
-<a href=#2050 id=2050 data-nosnippet>2050</a>        }
-<a href=#2051 id=2051 data-nosnippet>2051</a>        .sim_output();
-<a href=#2052 id=2052 data-nosnippet>2052</a>
-<a href=#2053 id=2053 data-nosnippet>2053</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#2054 id=2054 data-nosnippet>2054</a>            <span class="kw">let </span>results: Vec&lt;i32&gt; = out_recv.collect().<span class="kw">await</span>;
-<a href=#2055 id=2055 data-nosnippet>2055</a>            <span class="comment">// Code-order semantics: first runs (total = 0 + 3 = 3), then second
-<a href=#2056 id=2056 data-nosnippet>2056</a>            // runs (total = 3 * 2 = 6). Output is second.chain(first) =&gt; [6, 3].
-<a href=#2057 id=2057 data-nosnippet>2057</a>            </span><span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[<span class="number">6</span>, <span class="number">3</span>]);
-<a href=#2058 id=2058 data-nosnippet>2058</a>        });
-<a href=#2059 id=2059 data-nosnippet>2059</a>    }
-<a href=#2060 id=2060 data-nosnippet>2060</a>}
+<a href=#1834 id=1834 data-nosnippet>1834</a>    }
+<a href=#1835 id=1835 data-nosnippet>1835</a>
+<a href=#1836 id=1836 data-nosnippet>1836</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#1837 id=1837 data-nosnippet>1837</a>    #[test]
+<a href=#1838 id=1838 data-nosnippet>1838</a>    </span><span class="kw">fn </span>sim_top_level_singleton_exhaustive() {
+<a href=#1839 id=1839 data-nosnippet>1839</a>        <span class="comment">// ensures that top-level singletons have only one snapshot
+<a href=#1840 id=1840 data-nosnippet>1840</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#1841 id=1841 data-nosnippet>1841</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#1842 id=1842 data-nosnippet>1842</a>
+<a href=#1843 id=1843 data-nosnippet>1843</a>        <span class="kw">let </span>singleton = node.singleton(<span class="macro">q!</span>(<span class="number">1</span>));
+<a href=#1844 id=1844 data-nosnippet>1844</a>        <span class="kw">let </span>tick = node.tick();
+<a href=#1845 id=1845 data-nosnippet>1845</a>        <span class="kw">let </span>batch = singleton.snapshot(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#1846 id=1846 data-nosnippet>1846</a>        <span class="kw">let </span>out_recv = batch.all_ticks().sim_output();
+<a href=#1847 id=1847 data-nosnippet>1847</a>
+<a href=#1848 id=1848 data-nosnippet>1848</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#1849 id=1849 data-nosnippet>1849</a>            <span class="kw">let _ </span>= out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#1850 id=1850 data-nosnippet>1850</a>        });
+<a href=#1851 id=1851 data-nosnippet>1851</a>
+<a href=#1852 id=1852 data-nosnippet>1852</a>        <span class="macro">assert_eq!</span>(count, <span class="number">1</span>);
+<a href=#1853 id=1853 data-nosnippet>1853</a>    }
+<a href=#1854 id=1854 data-nosnippet>1854</a>
+<a href=#1855 id=1855 data-nosnippet>1855</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#1856 id=1856 data-nosnippet>1856</a>    #[test]
+<a href=#1857 id=1857 data-nosnippet>1857</a>    </span><span class="kw">fn </span>sim_top_level_singleton_join_count() {
+<a href=#1858 id=1858 data-nosnippet>1858</a>        <span class="comment">// if a tick consumes a static snapshot and a stream batch, only the batch require space
+<a href=#1859 id=1859 data-nosnippet>1859</a>        // exploration
+<a href=#1860 id=1860 data-nosnippet>1860</a>
+<a href=#1861 id=1861 data-nosnippet>1861</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#1862 id=1862 data-nosnippet>1862</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#1863 id=1863 data-nosnippet>1863</a>
+<a href=#1864 id=1864 data-nosnippet>1864</a>        <span class="kw">let </span>source_iter = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
+<a href=#1865 id=1865 data-nosnippet>1865</a>        <span class="kw">let </span>tick = node.tick();
+<a href=#1866 id=1866 data-nosnippet>1866</a>        <span class="kw">let </span>batch = source_iter
+<a href=#1867 id=1867 data-nosnippet>1867</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#1868 id=1868 data-nosnippet>1868</a>            .cross_singleton(node.singleton(<span class="macro">q!</span>(<span class="number">123</span>)).clone_into_tick(<span class="kw-2">&amp;</span>tick));
+<a href=#1869 id=1869 data-nosnippet>1869</a>        <span class="kw">let </span>out_recv = batch.all_ticks().sim_output();
+<a href=#1870 id=1870 data-nosnippet>1870</a>
+<a href=#1871 id=1871 data-nosnippet>1871</a>        <span class="kw">let </span>instance_count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#1872 id=1872 data-nosnippet>1872</a>            <span class="kw">let _ </span>= out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#1873 id=1873 data-nosnippet>1873</a>        });
+<a href=#1874 id=1874 data-nosnippet>1874</a>
+<a href=#1875 id=1875 data-nosnippet>1875</a>        <span class="macro">assert_eq!</span>(
+<a href=#1876 id=1876 data-nosnippet>1876</a>            instance_count,
+<a href=#1877 id=1877 data-nosnippet>1877</a>            <span class="number">16 </span><span class="comment">// 2^4 ways to split up (including a possibly empty first batch)
+<a href=#1878 id=1878 data-nosnippet>1878</a>        </span>)
+<a href=#1879 id=1879 data-nosnippet>1879</a>    }
+<a href=#1880 id=1880 data-nosnippet>1880</a>
+<a href=#1881 id=1881 data-nosnippet>1881</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#1882 id=1882 data-nosnippet>1882</a>    #[test]
+<a href=#1883 id=1883 data-nosnippet>1883</a>    </span><span class="kw">fn </span>top_level_singleton_into_stream_no_replay() {
+<a href=#1884 id=1884 data-nosnippet>1884</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#1885 id=1885 data-nosnippet>1885</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#1886 id=1886 data-nosnippet>1886</a>
+<a href=#1887 id=1887 data-nosnippet>1887</a>        <span class="kw">let </span>source_iter = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
+<a href=#1888 id=1888 data-nosnippet>1888</a>        <span class="kw">let </span>folded = source_iter.fold(<span class="macro">q!</span>(|| <span class="number">0</span>), <span class="macro">q!</span>(|a, b| <span class="kw-2">*</span>a += b));
+<a href=#1889 id=1889 data-nosnippet>1889</a>
+<a href=#1890 id=1890 data-nosnippet>1890</a>        <span class="kw">let </span>out_recv = folded.into_stream().sim_output();
+<a href=#1891 id=1891 data-nosnippet>1891</a>
+<a href=#1892 id=1892 data-nosnippet>1892</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#1893 id=1893 data-nosnippet>1893</a>            out_recv.assert_yields_only([<span class="number">10</span>]).<span class="kw">await</span>;
+<a href=#1894 id=1894 data-nosnippet>1894</a>        });
+<a href=#1895 id=1895 data-nosnippet>1895</a>    }
+<a href=#1896 id=1896 data-nosnippet>1896</a>
+<a href=#1897 id=1897 data-nosnippet>1897</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#1898 id=1898 data-nosnippet>1898</a>    #[test]
+<a href=#1899 id=1899 data-nosnippet>1899</a>    </span><span class="kw">fn </span>inside_tick_singleton_zip() {
+<a href=#1900 id=1900 data-nosnippet>1900</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::Stream;
+<a href=#1901 id=1901 data-nosnippet>1901</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::sliced::sliced;
+<a href=#1902 id=1902 data-nosnippet>1902</a>
+<a href=#1903 id=1903 data-nosnippet>1903</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#1904 id=1904 data-nosnippet>1904</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#1905 id=1905 data-nosnippet>1905</a>
+<a href=#1906 id=1906 data-nosnippet>1906</a>        <span class="kw">let </span>source_iter: Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>])).into();
+<a href=#1907 id=1907 data-nosnippet>1907</a>        <span class="kw">let </span>folded = source_iter.fold(<span class="macro">q!</span>(|| <span class="number">0</span>), <span class="macro">q!</span>(|a, b| <span class="kw-2">*</span>a += b));
+<a href=#1908 id=1908 data-nosnippet>1908</a>
+<a href=#1909 id=1909 data-nosnippet>1909</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
+<a href=#1910 id=1910 data-nosnippet>1910</a>            <span class="kw">let </span>v = <span class="kw">use</span>(folded, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#1911 id=1911 data-nosnippet>1911</a>            v.clone().zip(v).into_stream()
+<a href=#1912 id=1912 data-nosnippet>1912</a>        }
+<a href=#1913 id=1913 data-nosnippet>1913</a>        .sim_output();
+<a href=#1914 id=1914 data-nosnippet>1914</a>
+<a href=#1915 id=1915 data-nosnippet>1915</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#1916 id=1916 data-nosnippet>1916</a>            <span class="kw">let </span>out = out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#1917 id=1917 data-nosnippet>1917</a>            <span class="macro">assert_eq!</span>(out.last(), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>(<span class="number">3</span>, <span class="number">3</span>)));
+<a href=#1918 id=1918 data-nosnippet>1918</a>        });
+<a href=#1919 id=1919 data-nosnippet>1919</a>
+<a href=#1920 id=1920 data-nosnippet>1920</a>        <span class="macro">assert_eq!</span>(count, <span class="number">4</span>);
+<a href=#1921 id=1921 data-nosnippet>1921</a>    }
+<a href=#1922 id=1922 data-nosnippet>1922</a>
+<a href=#1923 id=1923 data-nosnippet>1923</a>    <span class="doccomment">/// Reproducer for simulator hang when using cross_singleton on a top-level
+<a href=#1924 id=1924 data-nosnippet>1924</a>    /// unbounded stream (not inside sliced!). The exhaustive simulator hangs
+<a href=#1925 id=1925 data-nosnippet>1925</a>    /// after the first iteration.
+<a href=#1926 id=1926 data-nosnippet>1926</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#1927 id=1927 data-nosnippet>1927</a>    #[test]
+<a href=#1928 id=1928 data-nosnippet>1928</a>    </span><span class="kw">fn </span>sim_cross_singleton_top_level_unbounded_hang() {
+<a href=#1929 id=1929 data-nosnippet>1929</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#1930 id=1930 data-nosnippet>1930</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#1931 id=1931 data-nosnippet>1931</a>
+<a href=#1932 id=1932 data-nosnippet>1932</a>        <span class="kw">let </span>(cmd_port, input) = node.sim_input::&lt;String, <span class="kw">_</span>, <span class="kw">_</span>&gt;();
+<a href=#1933 id=1933 data-nosnippet>1933</a>
+<a href=#1934 id=1934 data-nosnippet>1934</a>        <span class="kw">let </span>top_level_singleton = node.singleton(<span class="macro">q!</span>(<span class="number">123</span>));
+<a href=#1935 id=1935 data-nosnippet>1935</a>
+<a href=#1936 id=1936 data-nosnippet>1936</a>        <span class="comment">// cross_singleton on a top-level stream - bug trigger
+<a href=#1937 id=1937 data-nosnippet>1937</a>        </span><span class="kw">let </span>crossed = input.cross_singleton(top_level_singleton);
+<a href=#1938 id=1938 data-nosnippet>1938</a>
+<a href=#1939 id=1939 data-nosnippet>1939</a>        <span class="comment">// Output directly
+<a href=#1940 id=1940 data-nosnippet>1940</a>        </span><span class="kw">let </span>resp_port = crossed.sim_output();
+<a href=#1941 id=1941 data-nosnippet>1941</a>
+<a href=#1942 id=1942 data-nosnippet>1942</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#1943 id=1943 data-nosnippet>1943</a>            cmd_port.send(<span class="string">"abc"</span>.to_owned());
+<a href=#1944 id=1944 data-nosnippet>1944</a>
+<a href=#1945 id=1945 data-nosnippet>1945</a>            <span class="kw">let </span>responses: Vec&lt;<span class="kw">_</span>&gt; = resp_port.collect().<span class="kw">await</span>;
+<a href=#1946 id=1946 data-nosnippet>1946</a>            <span class="macro">assert!</span>(!responses.is_empty());
+<a href=#1947 id=1947 data-nosnippet>1947</a>        });
+<a href=#1948 id=1948 data-nosnippet>1948</a>
+<a href=#1949 id=1949 data-nosnippet>1949</a>        <span class="macro">assert_eq!</span>(count, <span class="number">1</span>);
+<a href=#1950 id=1950 data-nosnippet>1950</a>    }
+<a href=#1951 id=1951 data-nosnippet>1951</a>
+<a href=#1952 id=1952 data-nosnippet>1952</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#1953 id=1953 data-nosnippet>1953</a>    #[test]
+<a href=#1954 id=1954 data-nosnippet>1954</a>    </span><span class="kw">fn </span>sim_top_level_singleton_state_count() {
+<a href=#1955 id=1955 data-nosnippet>1955</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#1956 id=1956 data-nosnippet>1956</a>        <span class="kw">let </span>process = flow.process::&lt;()&gt;();
+<a href=#1957 id=1957 data-nosnippet>1957</a>
+<a href=#1958 id=1958 data-nosnippet>1958</a>        <span class="kw">let </span>(cmd_port, input) = process.sim_input();
+<a href=#1959 id=1959 data-nosnippet>1959</a>        {
+<a href=#1960 id=1960 data-nosnippet>1960</a>            <span class="comment">// increases exhaustive inputs from 1 to 2 before we optimized `From`
+<a href=#1961 id=1961 data-nosnippet>1961</a>            </span><span class="kw">use </span><span class="kw">super</span>::Singleton;
+<a href=#1962 id=1962 data-nosnippet>1962</a>            <span class="kw">use </span><span class="kw">crate</span>::live_collections::boundedness::Unbounded;
+<a href=#1963 id=1963 data-nosnippet>1963</a>            <span class="kw">let </span>_singleton: Singleton&lt;<span class="kw">_</span>, <span class="kw">_</span>, Unbounded&gt; = process.singleton(<span class="macro">q!</span>(<span class="bool-val">false</span>)).into();
+<a href=#1964 id=1964 data-nosnippet>1964</a>        }
+<a href=#1965 id=1965 data-nosnippet>1965</a>        <span class="kw">let </span>tick = process.tick();
+<a href=#1966 id=1966 data-nosnippet>1966</a>        <span class="kw">let </span>batched_unbatched = input.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** */</span>)).all_ticks();
+<a href=#1967 id=1967 data-nosnippet>1967</a>        <span class="kw">let </span>resp_port = batched_unbatched.sim_output();
+<a href=#1968 id=1968 data-nosnippet>1968</a>
+<a href=#1969 id=1969 data-nosnippet>1969</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#1970 id=1970 data-nosnippet>1970</a>            cmd_port.send(());
+<a href=#1971 id=1971 data-nosnippet>1971</a>            <span class="kw">let </span>_responses: Vec&lt;<span class="kw">_</span>&gt; = resp_port.collect().<span class="kw">await</span>;
+<a href=#1972 id=1972 data-nosnippet>1972</a>        });
+<a href=#1973 id=1973 data-nosnippet>1973</a>
+<a href=#1974 id=1974 data-nosnippet>1974</a>        <span class="macro">assert_eq!</span>(count, <span class="number">1</span>);
+<a href=#1975 id=1975 data-nosnippet>1975</a>    }
+<a href=#1976 id=1976 data-nosnippet>1976</a>
+<a href=#1977 id=1977 data-nosnippet>1977</a>    <span class="doccomment">/// Regression test for #2939: singleton mut access-group counter resets per root.
+<a href=#1978 id=1978 data-nosnippet>1978</a>    /// Two sequential `by_mut` captures on the same singleton, consumed by separate
+<a href=#1979 id=1979 data-nosnippet>1979</a>    /// `for_each` roots, should get distinct access groups and build successfully.
+<a href=#1980 id=1980 data-nosnippet>1980</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#1981 id=1981 data-nosnippet>1981</a>    #[test]
+<a href=#1982 id=1982 data-nosnippet>1982</a>    #[expect(unused_mut, reason = <span class="string">"sliced! macro generates mut bindings for state"</span>)]
+<a href=#1983 id=1983 data-nosnippet>1983</a>    </span><span class="kw">fn </span>sim_mut_access_group_across_roots() {
+<a href=#1984 id=1984 data-nosnippet>1984</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::sliced::sliced;
+<a href=#1985 id=1985 data-nosnippet>1985</a>
+<a href=#1986 id=1986 data-nosnippet>1986</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#1987 id=1987 data-nosnippet>1987</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#1988 id=1988 data-nosnippet>1988</a>
+<a href=#1989 id=1989 data-nosnippet>1989</a>        <span class="kw">let </span>source = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1i32</span>, <span class="number">2</span>, <span class="number">3</span>]));
+<a href=#1990 id=1990 data-nosnippet>1990</a>
+<a href=#1991 id=1991 data-nosnippet>1991</a>        <span class="kw">let </span>(first, second) = <span class="macro">sliced!</span> {
+<a href=#1992 id=1992 data-nosnippet>1992</a>            <span class="kw">let </span>batch = <span class="kw">use</span>(source, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#1993 id=1993 data-nosnippet>1993</a>            <span class="kw">let </span><span class="kw-2">mut </span>total = <span class="kw">use</span>::state(|l| l.singleton(<span class="macro">q!</span>(<span class="number">0i32</span>)));
+<a href=#1994 id=1994 data-nosnippet>1994</a>            <span class="kw">let </span>total_mut = total.by_mut();
+<a href=#1995 id=1995 data-nosnippet>1995</a>
+<a href=#1996 id=1996 data-nosnippet>1996</a>            <span class="kw">let </span>first = batch.clone().map(<span class="macro">q!</span>(|x| {
+<a href=#1997 id=1997 data-nosnippet>1997</a>                <span class="kw-2">*</span>total_mut += x;
+<a href=#1998 id=1998 data-nosnippet>1998</a>                <span class="kw-2">*</span>total_mut
+<a href=#1999 id=1999 data-nosnippet>1999</a>            }));
+<a href=#2000 id=2000 data-nosnippet>2000</a>            <span class="kw">let </span>second = batch.map(<span class="macro">q!</span>(|x| {
+<a href=#2001 id=2001 data-nosnippet>2001</a>                <span class="kw-2">*</span>total_mut += x;
+<a href=#2002 id=2002 data-nosnippet>2002</a>                <span class="kw-2">*</span>total_mut
+<a href=#2003 id=2003 data-nosnippet>2003</a>            }));
+<a href=#2004 id=2004 data-nosnippet>2004</a>            (first, second)
+<a href=#2005 id=2005 data-nosnippet>2005</a>        };
+<a href=#2006 id=2006 data-nosnippet>2006</a>
+<a href=#2007 id=2007 data-nosnippet>2007</a>        <span class="kw">let </span>first_recv = first.sim_output();
+<a href=#2008 id=2008 data-nosnippet>2008</a>        <span class="kw">let </span>second_recv = second.sim_output();
+<a href=#2009 id=2009 data-nosnippet>2009</a>
+<a href=#2010 id=2010 data-nosnippet>2010</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#2011 id=2011 data-nosnippet>2011</a>            <span class="comment">// Both outputs should produce values without panicking.
+<a href=#2012 id=2012 data-nosnippet>2012</a>            // The exact values depend on ordering, but the graph must build.
+<a href=#2013 id=2013 data-nosnippet>2013</a>            </span><span class="kw">let </span>_first: Vec&lt;i32&gt; = first_recv.collect().<span class="kw">await</span>;
+<a href=#2014 id=2014 data-nosnippet>2014</a>            <span class="kw">let </span>_second: Vec&lt;i32&gt; = second_recv.collect().<span class="kw">await</span>;
+<a href=#2015 id=2015 data-nosnippet>2015</a>        });
+<a href=#2016 id=2016 data-nosnippet>2016</a>    }
+<a href=#2017 id=2017 data-nosnippet>2017</a>
+<a href=#2018 id=2018 data-nosnippet>2018</a>    <span class="doccomment">/// Regression test for #2940: access groups must follow code (staging) order,
+<a href=#2019 id=2019 data-nosnippet>2019</a>    /// not IR traversal order. When `second.chain(first)` reverses the consumption
+<a href=#2020 id=2020 data-nosnippet>2020</a>    /// order, the mutations must still execute in the order they were staged.
+<a href=#2021 id=2021 data-nosnippet>2021</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#2022 id=2022 data-nosnippet>2022</a>    #[test]
+<a href=#2023 id=2023 data-nosnippet>2023</a>    #[expect(unused_mut, reason = <span class="string">"sliced! macro generates mut bindings for state"</span>)]
+<a href=#2024 id=2024 data-nosnippet>2024</a>    </span><span class="kw">fn </span>sim_mut_access_groups_follow_code_order() {
+<a href=#2025 id=2025 data-nosnippet>2025</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::sliced::sliced;
+<a href=#2026 id=2026 data-nosnippet>2026</a>
+<a href=#2027 id=2027 data-nosnippet>2027</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#2028 id=2028 data-nosnippet>2028</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#2029 id=2029 data-nosnippet>2029</a>
+<a href=#2030 id=2030 data-nosnippet>2030</a>        <span class="kw">let </span>source = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">3i32</span>]));
+<a href=#2031 id=2031 data-nosnippet>2031</a>
+<a href=#2032 id=2032 data-nosnippet>2032</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
+<a href=#2033 id=2033 data-nosnippet>2033</a>            <span class="kw">let </span>batch = <span class="kw">use</span>(source, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#2034 id=2034 data-nosnippet>2034</a>            <span class="kw">let </span><span class="kw-2">mut </span>total = <span class="kw">use</span>::state(|l| l.singleton(<span class="macro">q!</span>(<span class="number">0i32</span>)));
+<a href=#2035 id=2035 data-nosnippet>2035</a>            <span class="kw">let </span>total_mut = total.by_mut();
+<a href=#2036 id=2036 data-nosnippet>2036</a>
+<a href=#2037 id=2037 data-nosnippet>2037</a>            <span class="comment">// Defined FIRST in code: addition
+<a href=#2038 id=2038 data-nosnippet>2038</a>            </span><span class="kw">let </span>first = batch.clone().map(<span class="macro">q!</span>(|x| {
+<a href=#2039 id=2039 data-nosnippet>2039</a>                <span class="kw-2">*</span>total_mut += x;
+<a href=#2040 id=2040 data-nosnippet>2040</a>                <span class="kw-2">*</span>total_mut
+<a href=#2041 id=2041 data-nosnippet>2041</a>            }));
+<a href=#2042 id=2042 data-nosnippet>2042</a>            <span class="comment">// Defined SECOND in code: doubling
+<a href=#2043 id=2043 data-nosnippet>2043</a>            </span><span class="kw">let </span>second = batch.map(<span class="macro">q!</span>(|_x| {
+<a href=#2044 id=2044 data-nosnippet>2044</a>                <span class="kw-2">*</span>total_mut <span class="kw-2">*</span>= <span class="number">2</span>;
+<a href=#2045 id=2045 data-nosnippet>2045</a>                <span class="kw-2">*</span>total_mut
+<a href=#2046 id=2046 data-nosnippet>2046</a>            }));
+<a href=#2047 id=2047 data-nosnippet>2047</a>            <span class="comment">// Chain in OPPOSITE order of definition — must not affect mutation order.
+<a href=#2048 id=2048 data-nosnippet>2048</a>            </span>second.chain(first)
+<a href=#2049 id=2049 data-nosnippet>2049</a>        }
+<a href=#2050 id=2050 data-nosnippet>2050</a>        .sim_output();
+<a href=#2051 id=2051 data-nosnippet>2051</a>
+<a href=#2052 id=2052 data-nosnippet>2052</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#2053 id=2053 data-nosnippet>2053</a>            <span class="kw">let </span>results: Vec&lt;i32&gt; = out_recv.collect().<span class="kw">await</span>;
+<a href=#2054 id=2054 data-nosnippet>2054</a>            <span class="comment">// Code-order semantics: first runs (total = 0 + 3 = 3), then second
+<a href=#2055 id=2055 data-nosnippet>2055</a>            // runs (total = 3 * 2 = 6). Output is second.chain(first) =&gt; [6, 3].
+<a href=#2056 id=2056 data-nosnippet>2056</a>            </span><span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[<span class="number">6</span>, <span class="number">3</span>]);
+<a href=#2057 id=2057 data-nosnippet>2057</a>        });
+<a href=#2058 id=2058 data-nosnippet>2058</a>    }
+<a href=#2059 id=2059 data-nosnippet>2059</a>}
 </code></pre></div></section></main></body></html>
