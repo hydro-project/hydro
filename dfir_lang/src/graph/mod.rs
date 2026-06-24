@@ -499,19 +499,6 @@ pub fn build_dfir_code(
         }
     }
 
-    // Reject `loop { }` blocks (not yet supported in inline codegen).
-    // TODO(cleanup): find a better home for this check — ideally inside `partition_graph` once
-    // it supports returning multiple diagnostics.
-    for (_loop_id, nodes) in flat_graph.loops() {
-        let span = nodes
-            .first()
-            .map_or_else(Span::call_site, |&n| flat_graph.node(n).span());
-        diagnostics.push(Diagnostic::spanned(
-            span,
-            Level::Error,
-            "`loop { }` blocks are not (yet) supported in `dfir_syntax!`.",
-        ));
-    }
     if diagnostics.has_error() {
         return Err(diagnostics);
     }
