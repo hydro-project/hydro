@@ -3,7 +3,7 @@
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>syn::{Ident, parse_quote};
 <a href=#4 id=4 data-nosnippet>4</a>
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use super</span>::{
-<a href=#6 id=6 data-nosnippet>6</a>    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
+<a href=#6 id=6 data-nosnippet>6</a>    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
 <a href=#7 id=7 data-nosnippet>7</a>    RANGE_1, WriteContextArgs,
 <a href=#8 id=8 data-nosnippet>8</a>};
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span><span class="kw">crate</span>::diagnostic::Diagnostic;
@@ -109,7 +109,7 @@
 <a href=#109 id=109 data-nosnippet>109</a>    flo_type: <span class="prelude-val">None</span>,
 <a href=#110 id=110 data-nosnippet>110</a>    ports_inn: <span class="prelude-val">Some</span>(|| <span class="kw">super</span>::PortListSpec::Fixed(<span class="macro">parse_quote!</span> { <span class="number">0</span>, <span class="number">1 </span>})),
 <a href=#111 id=111 data-nosnippet>111</a>    ports_out: <span class="prelude-val">None</span>,
-<a href=#112 id=112 data-nosnippet>112</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">Some</span>(DelayType::Stratum),
+<a href=#112 id=112 data-nosnippet>112</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
 <a href=#113 id=113 data-nosnippet>113</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
 <a href=#114 id=114 data-nosnippet>114</a>                   root,
 <a href=#115 id=115 data-nosnippet>115</a>                   op_span,
@@ -137,7 +137,7 @@
 <a href=#137 id=137 data-nosnippet>137</a>        <span class="kw">let </span>lhs_accum = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
 <a href=#138 id=138 data-nosnippet>138</a>        <span class="kw">let </span>rhs_accum = <span class="kw-2">&amp;</span>arguments[<span class="number">1</span>];
 <a href=#139 id=139 data-nosnippet>139</a>
-<a href=#140 id=140 data-nosnippet>140</a>        <span class="comment">// Since both input arguments are stratum blocking then we don't need to keep track of ticks to avoid emitting the same thing twice in the same tick.
+<a href=#140 id=140 data-nosnippet>140</a>        <span class="comment">// Since both inputs are fully accumulated before emitting, we don't need to keep track of ticks to avoid emitting the same thing twice in the same tick.
 <a href=#141 id=141 data-nosnippet>141</a>        </span><span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#142 id=142 data-nosnippet>142</a>            #lhs_pre_write_iter
 <a href=#143 id=143 data-nosnippet>143</a>            #rhs_pre_write_iter
