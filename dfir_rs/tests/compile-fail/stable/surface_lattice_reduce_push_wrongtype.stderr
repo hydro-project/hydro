@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `{integer}: dfir_rs::lattices::Merge<{integer}>` is not satisfied
+ --> tests/compile-fail/stable/surface_lattice_reduce_push_wrongtype.rs:6:19
+  |
+6 |         my_tee -> lattice_reduce() -> for_each(|x| println!("{:?}", x));
+  |                   ^^^^^^^^^^^^^^ the trait `dfir_rs::lattices::Merge<{integer}>` is not implemented for `{integer}`
+  |
+  = help: the following other types implement trait `dfir_rs::lattices::Merge<Other>`:
+            `()` implements `dfir_rs::lattices::Merge<()>`
+            `Conflict<T>` implements `dfir_rs::lattices::Merge<Conflict<O>>`
+            `DomPair<KeySelf, ValSelf>` implements `dfir_rs::lattices::Merge<DomPair<KeyOther, ValOther>>`
+            `GhtInner<Head, Node>` implements `dfir_rs::lattices::Merge<GhtInner<Head, Node>>`
+            `GhtLeaf<Schema, ValType, Storage>` implements `dfir_rs::lattices::Merge<GhtLeaf<Schema, ValType, Storage>>`
+            `MapUnion<MapSelf>` implements `dfir_rs::lattices::Merge<MapUnion<MapOther>>`
+            `MapUnionWithTombstones<MapSelf, TombstoneSetSelf>` implements `dfir_rs::lattices::Merge<MapUnionWithTombstones<MapOther, TombstoneSetOther>>`
+            `Max<T>` implements `dfir_rs::lattices::Merge<Max<T>>`
+          and $N others

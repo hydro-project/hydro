@@ -142,6 +142,36 @@ pub fn test_reduce_no_replay_push() {
     assert_eq!(&[13], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 }
 
+/// lattice_reduce on push side: source -> tee -> lattice_reduce -> for_each
+#[multiplatform_test]
+pub fn test_lattice_reduce_push() {
+    use dfir_rs::lattices::Max;
+
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<Max<u32>>();
+    let mut df = dfir_syntax! {
+        my_tee = source_iter([1u32, 2, 3, 4, 5]) -> map(Max::new) -> tee();
+        my_tee -> lattice_reduce() -> for_each(|v| out_send.send(v).unwrap());
+        my_tee -> null();
+    };
+    df.run_available_sync();
+    assert_eq!(&[Max::new(5)], &*collect_ready::<Vec<_>, _>(&mut out_recv));
+}
+
+/// lattice_fold on push side: source -> tee -> lattice_fold -> for_each
+#[multiplatform_test]
+pub fn test_lattice_fold_push() {
+    use dfir_rs::lattices::Max;
+
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<Max<u32>>();
+    let mut df = dfir_syntax! {
+        my_tee = source_iter([1u32, 2, 3, 4, 5]) -> map(Max::new) -> tee();
+        my_tee -> lattice_fold::<'static>(|| Max::<u32>::new(0)) -> for_each(|v| out_send.send(v).unwrap());
+        my_tee -> null();
+    };
+    df.run_available_sync();
+    assert_eq!(&[Max::new(5)], &*collect_ready::<Vec<_>, _>(&mut out_recv));
+}
+
 /// persist_mut on push side: source -> tee -> persist_mut -> for_each
 #[multiplatform_test]
 pub fn test_persist_mut_push() {

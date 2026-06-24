@@ -1,8 +1,7 @@
 use syn::parse_quote_spanned;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, WriteContextArgs,
-    RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, WriteContextArgs, RANGE_0, RANGE_1,
 };
 
 /// > 1 input stream, 1 output stream
@@ -41,17 +40,14 @@ pub const LATTICE_FOLD: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::MonotoneAccum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   is_pull,
                    op_span,
                    arguments,
                    ..
                },
                diagnostics| {
-        assert!(is_pull);
-
         let first_arg = &arguments[0];
 
         let arguments = &parse_quote_spanned! {op_span=>

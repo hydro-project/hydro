@@ -21,43 +21,39 @@ linkStyle default stroke:#aaa
 11v1[/"(11v1) <code>map(|x: Max&lt;_&gt;| (context.current_tick(), x.into_reveal()))</code>"\]:::pushClass
 12v1[/"(12v1) <code>for_each(|x| max_send.send(x).unwrap())</code>"\]:::pushClass
 13v1["(13v1) <code>handoff</code>"]:::otherClass
-14v1["(14v1) <code>handoff</code>"]:::otherClass
 2v1-->3v1
 4v1-->5v1
-3v1-->13v1
+3v1-->4v1
 1v1-->|0|7v1
 6v1-->|1|7v1
-5v1-->14v1
+5v1-->13v1
 9v1-->10v1
 8v1-->9v1
 7v1-->8v1
 11v1-->12v1
 5v1-->11v1
-13v1-->4v1; linkStyle 11 stroke:#060
-14v1-->6v1
+13v1-->6v1
 subgraph sg_1v1 ["sg_1v1"]
+    11v1
+    12v1
+    subgraph sg_1v1_var_max_of_stream2 ["var <tt>max_of_stream2</tt>"]
+        4v1
+        5v1
+    end
     subgraph sg_1v1_var_stream2 ["var <tt>stream2</tt>"]
         2v1
         3v1
     end
 end
 subgraph sg_2v1 ["sg_2v1"]
-    11v1
-    12v1
-    subgraph sg_2v1_var_max_of_stream2 ["var <tt>max_of_stream2</tt>"]
-        4v1
-        5v1
-    end
-end
-subgraph sg_3v1 ["sg_3v1"]
     6v1
-    subgraph sg_3v1_var_filtered_stream2 ["var <tt>filtered_stream2</tt>"]
+    subgraph sg_2v1_var_filtered_stream2 ["var <tt>filtered_stream2</tt>"]
         7v1
         8v1
         9v1
         10v1
     end
-    subgraph sg_3v1_var_stream1 ["var <tt>stream1</tt>"]
+    subgraph sg_2v1_var_stream1 ["var <tt>stream1</tt>"]
         1v1
     end
 end
