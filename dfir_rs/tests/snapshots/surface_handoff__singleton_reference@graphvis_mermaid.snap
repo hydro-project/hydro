@@ -18,7 +18,7 @@ linkStyle default stroke:#aaa
 2v1-->3v1
 5v1-->6v1
 4v1-->5v1
-2v1--x5v1; linkStyle 4 stroke:red
+2v1-->5v1
 subgraph sg_1v1 ["sg_1v1"]
     subgraph sg_1v1_var_my_val ["var <tt>my_val</tt>"]
         1v1

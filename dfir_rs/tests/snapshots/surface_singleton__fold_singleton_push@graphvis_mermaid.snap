@@ -22,7 +22,7 @@ linkStyle default stroke:#aaa
 6v1-->7v1
 5v1-->6v1
 1v1-->5v1
-4v1--x6v1; linkStyle 6 stroke:red
+4v1-->6v1
 subgraph sg_1v1 ["sg_1v1"]
     subgraph sg_1v1_var_max_of_stream2 ["var <tt>max_of_stream2</tt>"]
         3v1
