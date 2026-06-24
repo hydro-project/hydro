@@ -278,7 +278,7 @@ linkStyle default stroke:#aaa
 250v1-->|1|3v1
 3v1--x|0|4v1; linkStyle 3 stroke:red
 50v1-->|1|4v1
-4v1--x5v1; linkStyle 5 stroke:red
+4v1-->5v1
 6v1-->7v1
 5v1--x|0|8v1; linkStyle 7 stroke:red
 7v1-->|1|8v1
@@ -306,7 +306,7 @@ linkStyle default stroke:#aaa
 28v1-->29v1
 30v1-->31v1
 31v1-->32v1
-32v1--x33v1; linkStyle 33 stroke:red
+32v1-->33v1
 33v1-->34v1
 34v1-->35v1
 36v1-->37v1
@@ -345,7 +345,7 @@ linkStyle default stroke:#aaa
 67v1-->68v1
 69v1-->70v1
 70v1-->71v1
-71v1--x72v1; linkStyle 72 stroke:red
+71v1-->72v1
 72v1-->73v1
 73v1-->74v1
 75v1-->76v1
@@ -394,7 +394,7 @@ linkStyle default stroke:#aaa
 110v1-->111v1
 111v1-->112v1
 112v1-->113v1
-113v1--x114v1; linkStyle 121 stroke:red
+113v1-->114v1
 114v1-->|input|115v1
 25v1--x|single|115v1; linkStyle 123 stroke:red
 115v1-->116v1
@@ -456,7 +456,7 @@ linkStyle default stroke:#aaa
 167v1-->168v1
 168v1-->169v1
 169v1-->170v1
-170v1--x171v1; linkStyle 183 stroke:red
+170v1-->171v1
 171v1-->172v1
 172v1-->173v1
 186v1--o174v1; linkStyle 186 stroke:red
@@ -486,7 +486,7 @@ linkStyle default stroke:#aaa
 169v1-->|input|195v1
 25v1--x|single|195v1; linkStyle 211 stroke:red
 164v1-->196v1
-196v1--x197v1; linkStyle 213 stroke:red
+196v1-->197v1
 197v1-->198v1
 199v1-->200v1
 198v1--x|0|201v1; linkStyle 216 stroke:red

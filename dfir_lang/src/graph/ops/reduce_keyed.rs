@@ -1,7 +1,7 @@
 use quote::{ToTokens, quote_spanned};
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
     OperatorWriteOutput, Persistence, RANGE_1, WriteContextArgs,
 };
 
@@ -68,15 +68,15 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    op_span,
                    ident,
                    inputs,
+                   outputs,
                    is_pull,
                    work_fn_async,
                    root,
-                   op_name,
                    op_inst:
                        OperatorInstance {
                            generics: OpInstGenerics { type_args, .. },
@@ -86,8 +86,6 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                    ..
                },
                diagnostics| {
-        assert!(is_pull, "TODO(mingwei): `{}` only supports pull.", op_name);
-
         let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let generic_type_args = [
@@ -118,7 +116,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
             _ => Default::default(),
         };
 
-        let write_iterator = {
+        let write_iterator = if is_pull {
             let iter_expr = match persistence {
                 Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
                     #hashtable_ident.drain()
@@ -183,6 +181,33 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                 #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
                 let #ident = #iter_expr;
                 let #ident = #root::dfir_pipes::pull::iter(#ident);
+            }
+        } else if outputs.is_empty() {
+            // Terminal push: reduce_keyed is a singleton reference target with no downstream.
+            quote_spanned! {op_span=>
+                let #ident = #root::dfir_pipes::push::for_each(|kv: (#( #generic_type_args ),*)| {
+                    match #singleton_output_ident.entry(kv.0) {
+                        ::std::collections::hash_map::Entry::Vacant(vacant) => {
+                            vacant.insert(kv.1);
+                        }
+                        ::std::collections::hash_map::Entry::Occupied(mut occupied) => {
+                            #[inline(always)]
+                            fn call_comb_type<A>(acc: &mut A, item: A, f: impl Fn(&mut A, A)) {
+                                let () = (f)(acc, item);
+                            }
+                            call_comb_type(occupied.get_mut(), kv.1, #aggfn);
+                        }
+                    }
+                });
+            }
+        } else {
+            let output = &outputs[0];
+            quote_spanned! {op_span=>
+                let #ident = #root::dfir_pipes::push::ReduceKeyed::new(
+                    &mut #singleton_output_ident,
+                    #aggfn,
+                    #output,
+                );
             }
         };
 
