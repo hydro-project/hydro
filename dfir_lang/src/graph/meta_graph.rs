@@ -1544,6 +1544,7 @@ impl DfirGraph {
                                 Level::Error,
                                 "Degenerate subgraph detected, is there a disconnected `null()` or other degenerate pipeline somewhere?",
                             ));
+                            subgraph_blocks.push(quote! {});
                             continue;
                         };
 
@@ -1671,6 +1672,111 @@ impl DfirGraph {
             }
         }
 
+        // Post-process subgraph_blocks: wrap loop regions in conditional gates.
+        // Since subgraphs within a loop are contiguous in the toposort, we group
+        // them by loop context and wrap each loop's blocks in an `if` gate.
+        let gated_subgraph_code = {
+            // Build a list of (loop_context, block) pairs.
+            let indexed_blocks: Vec<(Option<GraphLoopId>, &TokenStream)> = all_subgraphs
+                .iter()
+                .enumerate()
+                .map(|(idx, &(sg_id, _))| (self.subgraph_loop(sg_id), &subgraph_blocks[idx]))
+                .collect();
+
+            fn emit_level(
+                graph: &DfirGraph,
+                indexed_blocks: &[(Option<GraphLoopId>, &TokenStream)],
+                parent_loop: Option<GraphLoopId>,
+                back_edge_hoffs_and_lazyness: &SparseSecondaryMap<GraphNodeId, bool>,
+            ) -> TokenStream {
+                let mut output = TokenStream::new();
+                let mut i = 0;
+                while i < indexed_blocks.len() {
+                    let (loop_ctx, _) = indexed_blocks[i];
+                    if loop_ctx == parent_loop {
+                        // Emit this block directly.
+                        output.extend(indexed_blocks[i].1.clone());
+                        i += 1;
+                    } else {
+                        // Find the contiguous run for this child loop.
+                        // The child loop is the immediate child of parent_loop at this point.
+                        let child_loop = loop_ctx.unwrap();
+                        // Find the actual immediate child of parent_loop.
+                        let immediate_child = {
+                            let mut l = child_loop;
+                            loop {
+                                let parent = graph.loop_parent(l);
+                                if parent == parent_loop {
+                                    break l;
+                                }
+                                l = parent.unwrap();
+                            }
+                        };
+                        // Collect all blocks that belong inside this immediate child.
+                        let start = i;
+                        while i < indexed_blocks.len() {
+                            let (ctx, _) = indexed_blocks[i];
+                            if ctx == parent_loop {
+                                break;
+                            }
+                            // Check if this block is inside the immediate_child.
+                            let mut is_inside = false;
+                            let mut cur = ctx;
+                            while let Some(l) = cur {
+                                if l == immediate_child {
+                                    is_inside = true;
+                                    break;
+                                }
+                                cur = graph.loop_parent(l);
+                            }
+                            if !is_inside {
+                                break;
+                            }
+                            i += 1;
+                        }
+
+                        // Recursively emit the child loop's blocks.
+                        let child_body = emit_level(
+                            graph,
+                            &indexed_blocks[start..i],
+                            Some(immediate_child),
+                            back_edge_hoffs_and_lazyness,
+                        );
+
+                        // Build the gate condition from entry handoffs.
+                        let entry_handoffs = graph.loop_entry_handoffs(immediate_child);
+                        let gate_checks: Vec<TokenStream> = entry_handoffs
+                            .iter()
+                            .map(|&hoff_id| {
+                                let span = graph.node(hoff_id).span();
+                                let buf_ident = graph.hoff_buf_ident(hoff_id, span);
+                                if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
+                                    let back_ident = graph.hoff_back_ident(hoff_id, span);
+                                    quote_spanned! {span=> !#back_ident.is_empty() }
+                                } else {
+                                    quote_spanned! {span=> !#buf_ident.is_empty() }
+                                }
+                            })
+                            .collect();
+
+                        if gate_checks.is_empty() {
+                            // No entry handoffs — always run.
+                            output.extend(child_body);
+                        } else {
+                            output.extend(quote! {
+                                if false #( || #gate_checks )* {
+                                    #child_body
+                                }
+                            });
+                        }
+                    }
+                }
+                output
+            }
+
+            emit_level(self, &indexed_blocks, None, &back_edge_hoffs_and_lazyness)
+        };
+
         if diagnostics.has_error() {
             return Err(std::mem::take(diagnostics));
         }
@@ -1778,7 +1884,7 @@ impl DfirGraph {
                     {
                         let __dfir_metrics = #df.metrics();
 
-                        #( #subgraph_blocks )*
+                        #gated_subgraph_code
 
                         // For non-lazy defer_tick: if any deferred buffer has data,
                         // signal that another tick should run.
