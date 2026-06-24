@@ -22,7 +22,7 @@ linkStyle default stroke:#aaa
 5v1-->6v1
 6v1-->8v1
 6v1-->7v1
-8v1--x|neg|1v1; linkStyle 6 stroke:red
+8v1-->|neg|1v1
 subgraph sg_1v1 ["sg_1v1"]
     7v1
     subgraph sg_1v1_var_negs ["var <tt>negs</tt>"]

@@ -1,11 +1,10 @@
-use quote::{ToTokens, quote_spanned};
+use quote::quote_spanned;
 use syn::parse_quote;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
     OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
-use crate::graph::PortIndexValue;
 
 /// > 2 input streams, 1 output stream, no arguments.
 ///
@@ -41,12 +40,7 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { input, single })),
     ports_out: None,
-    input_delaytype_fn: |idx| match idx {
-        PortIndexValue::Path(path) if "single" == path.to_token_stream().to_string() => {
-            Some(DelayType::Stratum)
-        }
-        _else => None,
-    },
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    ident,

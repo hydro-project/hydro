@@ -1831,7 +1831,6 @@ mod tests {
         });
 
         assert_eq!(count, 52);
-        // don't have a combinatorial explanation for this number yet, but checked via logs
     }
 
     #[cfg(feature = "sim")]
