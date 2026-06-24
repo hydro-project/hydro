@@ -1,8 +1,7 @@
 use syn::parse_quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, WriteContextArgs,
-    RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, WriteContextArgs, RANGE_0, RANGE_1,
 };
 
 /// > 1 input stream, 1 output stream
