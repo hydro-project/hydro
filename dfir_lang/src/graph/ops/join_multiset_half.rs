@@ -1,8 +1,8 @@
-use quote::{ToTokens, quote_spanned};
+use quote::quote_spanned;
 use syn::parse_quote;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0,
     RANGE_1, WriteContextArgs,
 };
 use crate::graph::ops::Persistence;
@@ -11,7 +11,7 @@ use crate::graph::ops::Persistence;
 /// > with output type `<(K, (V2, V1))>`
 ///
 /// An asymmetric hash join where the `build` side is accumulated first
-/// (stratum-delayed) and then the `probe` side streams through, emitting
+/// and then the `probe` side streams through, emitting
 /// matches. This preserves the probe side's arrival order.
 ///
 /// ```dfir
@@ -34,12 +34,7 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { build, probe })),
     ports_out: None,
-    input_delaytype_fn: |idx| match idx {
-        PortIndexValue::Path(path) if "build" == path.to_token_stream().to_string() => {
-            Some(DelayType::Stratum)
-        }
-        _else => None,
-    },
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                      root,
                      op_span,
@@ -91,7 +86,7 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
             Default::default()
         };
 
-        let input_build = &inputs[0]; // build before probe (stratum-delayed comes first)
+        let input_build = &inputs[0]; // build before probe
         let input_probe = &inputs[1];
 
         let accum_build = quote_spanned! {op_span=>
