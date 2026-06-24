@@ -76,7 +76,7 @@ linkStyle default stroke:#aaa
 13v1-->14v1
 14v1-->15v1
 15v1-->16v1
-1v1--x|0|17v1; linkStyle 14 stroke:red
+1v1-->|0|17v1
 16v1-->|1|17v1
 17v1-->18v1
 18v1-->19v1
@@ -102,7 +102,7 @@ linkStyle default stroke:#aaa
 39v1-->40v1
 40v1-->41v1
 41v1-->42v1
-29v1--x|0|43v1; linkStyle 40 stroke:red
+29v1-->|0|43v1
 42v1-->|1|43v1
 43v1-->44v1
 44v1-->45v1
@@ -117,14 +117,14 @@ linkStyle default stroke:#aaa
 53v1-->54v1
 55v1-->56v1
 48v1-->55v1
+28v1
 10v1
 11v1
-28v1
-36v1
-37v1
 54v1
 55v1
 56v1
+36v1
+37v1
 subgraph var_cycle_2 ["var <tt>cycle_2</tt>"]
     style var_cycle_2 fill:transparent
     24v1
