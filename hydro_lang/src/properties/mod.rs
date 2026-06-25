@@ -83,16 +83,27 @@ pub use crate::__manual_proof__ as manual_proof;
 /// The argument must be a doc comment explaining why the property is satisfied.
 ///
 /// # Examples
-/// ```rust,ignore
-/// use hydro_lang::prelude::*;
-///
-/// stream.fold(
-///     q!(|| 0),
-///     q!(
-///         |acc, x| *acc += x,
-///         commutative = manual_proof!(/** integer addition is commutative */)
+/// ```rust
+/// # #[cfg(feature = "deploy")] {
+/// # use hydro_lang::prelude::*;
+/// # use hydro_lang::live_collections::stream::NoOrder;
+/// # use futures::StreamExt;
+/// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+/// # let stream = process.source_iter(q!(vec![1, 2, 3])).weaken_ordering::<NoOrder>();
+/// // stream: [1, 2, 3] (unordered)
+/// stream
+///     .fold(
+///         q!(|| 0),
+///         q!(
+///             |acc, x| *acc += x,
+///             commutative = manual_proof!(/** integer addition is commutative */)
+///         ),
 ///     )
-/// )
+///     .into_stream()
+/// # }, |mut stream| async move {
+/// # assert_eq!(stream.next().await.unwrap(), 6);
+/// # }));
+/// # }
 /// ```
 macro_rules! __manual_proof__ {
     ($(#[doc = $doc:expr])+) => {

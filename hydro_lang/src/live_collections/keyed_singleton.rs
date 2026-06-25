@@ -1112,14 +1112,28 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// does not carry ongoing memory cost.
     ///
     /// # Example
-    /// ```rust,ignore
-    /// use hydro_lang::prelude::*;
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// // A keyed singleton of per-key values (in practice often a monotone counter): { 1: 6, 2: 4 }
+    /// let counts = process
+    ///     .source_iter(q!(vec![(1, 6), (2, 4)]))
+    ///     .into_keyed()
+    ///     .first();
     ///
-    /// let counts: KeyedSingleton<u32, usize, _, MonotonicValue> = events.into_keyed()
-    ///     .fold(q!(|| 0), q!(|acc, _| *acc += 1, monotone = manual_proof!(/** +1 */)));
+    /// // A single threshold value shared across all keys
+    /// let threshold = process.singleton(q!(5));
     ///
-    /// let threshold = process.singleton(q!(5usize));
-    /// let crossed = counts.threshold_greater_or_equal_uniform(threshold);
+    /// // Emits (key, threshold) the first time each key's value >= threshold
+    /// counts.threshold_greater_or_equal_uniform(threshold)
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: 5 } -- key 1's value 6 >= 5, but key 2's value 4 < 5
+    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
+    /// # }));
+    /// # }
     /// ```
     pub fn threshold_greater_or_equal_uniform(
         self,
