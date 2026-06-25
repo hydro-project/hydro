@@ -9,15 +9,10 @@ use dfir_lang::graph::DfirGraph;
 use sha2::{Digest, Sha256};
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use stageleft::internal::quote;
-#[cfg(any(feature = "deploy", feature = "maelstrom"))]
-use syn::visit_mut::VisitMut;
 use trybuild_internals_api::cargo::{self, Metadata};
 use trybuild_internals_api::env::Update;
 use trybuild_internals_api::run::{PathDependency, Project};
 use trybuild_internals_api::{Runner, dependencies, features, path};
-
-#[cfg(any(feature = "deploy", feature = "maelstrom"))]
-use super::rewriters::UseTestModeStaged;
 
 pub const HYDRO_RUNTIME_FEATURES: &[&str] = &[
     "deploy_integration",
@@ -117,14 +112,8 @@ pub fn create_graph_trybuild(
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
-    let generated_code = compile_graph_trybuild(
-        graph,
-        extra_stmts,
-        sidecars,
-        &crate_name,
-        is_test,
-        deploy_mode,
-    );
+    let generated_code =
+        compile_graph_trybuild(graph, extra_stmts, sidecars, &crate_name, deploy_mode);
 
     let inlined_staged = if is_test {
         let raw_toml_manifest = toml::from_str::<toml::Value>(
@@ -232,22 +221,17 @@ pub fn compile_graph_trybuild(
     extra_stmts: &[syn::Stmt],
     sidecars: &[syn::Expr],
     crate_name: &str,
-    is_test: bool,
     deploy_mode: DeployMode,
 ) -> syn::File {
     use crate::staging_util::get_this_crate;
 
     let mut diagnostics = Diagnostics::new();
-    let mut dfir_expr: syn::Expr = syn::parse2(
+    let dfir_expr: syn::Expr = syn::parse2(
         partitioned_graph
             .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
             .expect("DFIR code generation failed with diagnostics."),
     )
     .unwrap();
-
-    if is_test {
-        UseTestModeStaged { crate_name }.visit_expr_mut(&mut dfir_expr);
-    }
 
     let orig_crate_name = quote::format_ident!("{}", crate_name);
     let trybuild_crate_name_ident = quote::format_ident!("{}_hydro_trybuild", crate_name);
@@ -261,11 +245,11 @@ pub fn compile_graph_trybuild(
             syn::parse_quote! {
                 #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
                 use #trybuild_crate_name_ident::__root as #orig_crate_name;
-                use #trybuild_crate_name_ident::__root::*;
-                use #trybuild_crate_name_ident::__staged::__deps::*;
+                use #orig_crate_name::*;
+                use #orig_crate_name::__staged::__deps::*;
                 use #root::prelude::*;
                 use #root::runtime_support::dfir_rs as __root_dfir_rs;
-                pub use #trybuild_crate_name_ident::__staged;
+                pub use #orig_crate_name::__staged;
 
                 #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
                 async fn main() {
@@ -289,11 +273,11 @@ pub fn compile_graph_trybuild(
             syn::parse_quote! {
                 #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
                 use #trybuild_crate_name_ident::__root as #orig_crate_name;
-                use #trybuild_crate_name_ident::__root::*;
-                use #trybuild_crate_name_ident::__staged::__deps::*;
+                use #orig_crate_name::*;
+                use #orig_crate_name::__staged::__deps::*;
                 use #root::prelude::*;
                 use #root::runtime_support::dfir_rs as __root_dfir_rs;
-                pub use #trybuild_crate_name_ident::__staged;
+                pub use #orig_crate_name::__staged;
 
                 #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
                 async fn main() {
@@ -326,11 +310,11 @@ pub fn compile_graph_trybuild(
             syn::parse_quote! {
                 #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
                 use #trybuild_crate_name_ident::__root as #orig_crate_name;
-                use #trybuild_crate_name_ident::__root::*;
-                use #trybuild_crate_name_ident::__staged::__deps::*;
+                use #orig_crate_name::*;
+                use #orig_crate_name::__staged::__deps::*;
                 use #root::prelude::*;
                 use #root::runtime_support::dfir_rs as __root_dfir_rs;
-                pub use #trybuild_crate_name_ident::__staged;
+                pub use #orig_crate_name::__staged;
 
                 #[allow(unused)]
                 fn __hydro_runtime<'a>(
@@ -493,13 +477,14 @@ pub fn create_trybuild()
             prettyplease::unparse(&syn::parse_quote! {
                 #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
 
-                pub use #crate_name_ident as __root;
+                pub mod __root {
+                    pub use #crate_name_ident::*;
+                    #[cfg(feature = "hydro___test")]
+                    pub use super::__staged;
+                }
 
                 #[cfg(feature = "hydro___test")]
                 pub mod __staged;
-
-                #[cfg(not(feature = "hydro___test"))]
-                pub use #crate_name_ident::__staged;
             })
             .as_bytes(),
             &path!(project.dir / "src" / "lib.rs"),
