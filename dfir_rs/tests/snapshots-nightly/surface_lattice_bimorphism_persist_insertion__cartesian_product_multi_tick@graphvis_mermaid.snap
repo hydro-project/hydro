@@ -21,7 +21,6 @@ linkStyle default stroke:#aaa
 11v1[/"(11v1) <code>for_each(|x| out_send.send(x).unwrap())</code>"\]:::pushClass
 12v1["(12v1) <code>handoff</code>"]:::otherClass
 13v1["(13v1) <code>handoff</code>"]:::otherClass
-14v1["(14v1) <code>handoff</code>"]:::otherClass
 2v1-->3v1
 1v1-->2v1
 5v1-->6v1
@@ -31,12 +30,11 @@ linkStyle default stroke:#aaa
 3v1-->|state|7v1
 6v1-->|state|8v1
 10v1-->11v1
-9v1-->14v1
+9v1-->10v1
 12v1-->|0|9v1
 13v1-->|1|9v1
-14v1-->10v1; linkStyle 12 stroke:#060
-7v1--x9v1; linkStyle 13 stroke:red
-8v1--x9v1; linkStyle 14 stroke:red
+7v1-->9v1
+8v1-->9v1
 subgraph sg_1v1 ["sg_1v1"]
     subgraph sg_1v1_var_lhs_op ["var <tt>lhs_op</tt>"]
         1v1
@@ -54,10 +52,6 @@ end
 subgraph sg_3v1 ["sg_3v1"]
     subgraph sg_3v1_var_my_join ["var <tt>my_join</tt>"]
         9v1
-    end
-end
-subgraph sg_4v1 ["sg_4v1"]
-    subgraph sg_4v1_var_my_join ["var <tt>my_join</tt>"]
         10v1
         11v1
     end

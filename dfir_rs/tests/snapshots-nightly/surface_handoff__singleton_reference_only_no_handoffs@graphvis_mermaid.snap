@@ -14,7 +14,7 @@ linkStyle default stroke:#aaa
 5v1[/"(5v1) <code>for_each(|v: i32| out.push(v))</code>"\]:::pushClass
 4v1-->5v1
 3v1-->4v1
-1v1--x4v1; linkStyle 2 stroke:red
+1v1-->4v1
 subgraph sg_1v1 ["sg_1v1"]
     subgraph sg_1v1_var_my_val ["var <tt>my_val</tt>"]
         1v1

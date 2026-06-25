@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `{integer}: lattices::Merge<{integer}>` is not satisfied
+ --> tests/compile-fail/nightly/surface_lattice_reduce_push_wrongtype.rs:6:19
+  |
+6 |         my_tee -> lattice_reduce() -> for_each(|x| println!("{:?}", x));
+  |                   ^^^^^^^^^^^^^^^^ the trait `lattices::Merge<{integer}>` is not implemented for `{integer}`
+  |
+  = help: the following other types implement trait `lattices::Merge<Other>`:
+            `()` implements `lattices::Merge<()>`
+            `Conflict<T>` implements `lattices::Merge<Conflict<O>>`
+            `DomPair<KeySelf, ValSelf>` implements `lattices::Merge<DomPair<KeyOther, ValOther>>`
+            `GhtInner<Head, Node>` implements `lattices::Merge<GhtInner<Head, Node>>`
+            `GhtLeaf<Schema, ValType, Storage>` implements `lattices::Merge<GhtLeaf<Schema, ValType, Storage>>`
+            `MapUnion<MapSelf>` implements `lattices::Merge<MapUnion<MapOther>>`
+            `MapUnionWithTombstones<MapSelf, TombstoneSetSelf>` implements `lattices::Merge<MapUnionWithTombstones<MapOther, TombstoneSetOther>>`
+            `Max<T>` implements `lattices::Merge<Max<T>>`
+          and $N others
