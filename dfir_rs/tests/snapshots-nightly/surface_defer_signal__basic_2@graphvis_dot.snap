@@ -9,34 +9,18 @@ digraph {
     n2v1 [label="(n2v1) source_iter([1, 2, 3])", shape=invhouse, fillcolor="#88aaff"]
     n3v1 [label="(n3v1) source_stream(signal_rx)", shape=invhouse, fillcolor="#88aaff"]
     n4v1 [label="(n4v1) for_each(|x| egress_tx.send(x).unwrap())", shape=house, fillcolor="#ffff88"]
-    n5v1 [label="(n5v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n6v1 [label="(n6v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n2v1 -> n5v1
-    n3v1 -> n6v1
+    n2v1 -> n1v1 [label="input"]
+    n3v1 -> n1v1 [label="signal"]
     n1v1 -> n4v1
-    n5v1 -> n1v1 [label="input", color=red]
-    n6v1 -> n1v1 [label="signal", color=red]
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1"
-        n2v1
-    }
-    subgraph sg_2v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_2v1"
         n3v1
-    }
-    subgraph sg_3v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_3v1"
+        n2v1
         n4v1
-        subgraph sg_3v1_var_gate {
+        subgraph sg_1v1_var_gate {
             cluster=true
             label="var gate"
             n1v1

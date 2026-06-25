@@ -28,8 +28,8 @@ linkStyle default stroke:#aaa
 18v1["<div style=text-align:center>(18v1)</div> <code><br>source_stream(DUMMY)</code>"]:::otherClass
 19v1["<div style=text-align:center>(19v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_545_16!(<br>        [] [| (k, v) | (MemberId::from_tagless(k), v)]<br>    )<br>})</code>"]:::otherClass
 20v1["<div style=text-align:center>(20v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_36_11!(<br>            [] [| | false]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_37_11!(<br>            [] [| present, event | { match event { MembershipEvent::Joined =&gt; *<br>            present = true, MembershipEvent::Left =&gt; * present = false, } }]<br>        )<br>    },<br>)</code>"]:::otherClass
-21v1["<div style=text-align:center>(21v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1793_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_1187_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-22v1["<div style=text-align:center>(22v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+21v1["<div style=text-align:center>(21v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1807_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_1187_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+22v1["<div style=text-align:center>(22v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 23v1["<div style=text-align:center>(23v1)</div> <code><br>map({<br>    &num;[allow(unused_imports)]<br>    __stageleft_quote_src_cluster_paxos_rs_378_51!(<br>        [CLUSTER_SELF_ID__free = hydro_lang::__staged::location::MemberId:: &lt;<br>        hydro_test::__staged::cluster::paxos::Proposer &gt;<br>        ::from_tagless((__hydro_lang_cluster_self_id_loc1v1).clone()),] [move | num |<br>        Ballot { num, proposer_id : CLUSTER_SELF_ID__free.clone() }]<br>    )<br>})</code>"]:::otherClass
 24v1["<div style=text-align:center>(24v1)</div> <code><br>tee()</code>"]:::otherClass
 25v1["<div style=text-align:center>(25v1)</div> <code><br>tee()</code>"]:::otherClass
@@ -62,8 +62,8 @@ linkStyle default stroke:#aaa
 52v1["<div style=text-align:center>(52v1)</div> <code><br>source_stream(DUMMY)</code>"]:::otherClass
 53v1["<div style=text-align:center>(53v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_545_16!(<br>        [] [| (k, v) | (MemberId::from_tagless(k), v)]<br>    )<br>})</code>"]:::otherClass
 54v1["<div style=text-align:center>(54v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_36_11!(<br>            [] [| | false]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_37_11!(<br>            [] [| present, event | { match event { MembershipEvent::Joined =&gt; *<br>            present = true, MembershipEvent::Left =&gt; * present = false, } }]<br>        )<br>    },<br>)</code>"]:::otherClass
-55v1["<div style=text-align:center>(55v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1793_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_1187_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-56v1["<div style=text-align:center>(56v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+55v1["<div style=text-align:center>(55v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1807_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_1187_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+56v1["<div style=text-align:center>(56v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 57v1["<div style=text-align:center>(57v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_2016_15!(<br>            [] [| | None]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_2018_16!(<br>            [] [| latest, _ | { * latest = Some(Instant::now()); }]<br>        )<br>    },<br>)</code>"]:::otherClass
 58v1["<div style=text-align:center>(58v1)</div> <code><br>filter_map({<br>    hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_2027_27!(<br>        [duration__free = { use crate ::__staged::__deps:: *; use crate<br>        ::__staged::cluster::paxos:: *; &num;[allow(unused_imports)] use crate :: *;<br>        __stageleft_quote_src_cluster_paxos_rs_438_15!([i_am_leader_check_timeout__free<br>        = 10u64,] [Duration::from_secs(i_am_leader_check_timeout__free)]) },] [move |<br>        latest_received | { if let Some(latest_received) = latest_received { if<br>        Instant::now().duration_since(latest_received) &gt; duration__free { Some(()) }<br>        else { None } } else { Some(()) } }]<br>    )<br>})</code>"]:::otherClass
 59v1["<div style=text-align:center>(59v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_singleton_rs_1078_20!(<br>        [] [| b | ! b]<br>    )<br>})</code>"]:::otherClass
@@ -104,24 +104,24 @@ linkStyle default stroke:#aaa
 94v1["<div style=text-align:center>(94v1)</div> <code><br>tee()</code>"]:::otherClass
 95v1["<div style=text-align:center>(95v1)</div> <code><br>fold_keyed::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        hydro_std::__stageleft_quote_src_quorum_rs_34_15!([] [move | | (0, 0)])<br>    },<br>    {<br>        hydro_std::__stageleft_quote_src_quorum_rs_35_15!(<br>            [] [move | accum, value | { if value.is_ok() { accum.0 += 1; } else {<br>            accum.1 += 1; } }]<br>        )<br>    },<br>)</code>"]:::otherClass
 96v1["<div style=text-align:center>(96v1)</div> <code><br>tee()</code>"]:::otherClass
-97v1["<div style=text-align:center>(97v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1793_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; (usize,<br>        usize), bool &gt; ({ use hydro_std::__staged::__deps:: *; use<br>        hydro_std::__staged::quorum:: *;<br>        hydro_std::__stageleft_quote_src_quorum_rs_60_27!([max__free = 3usize,] [move<br>        | (success, error) | (success + error) &gt;= max__free]) }),] [{ let orig =<br>        f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-98v1["<div style=text-align:center>(98v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+97v1["<div style=text-align:center>(97v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1807_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; (usize,<br>        usize), bool &gt; ({ use hydro_std::__staged::__deps:: *; use<br>        hydro_std::__staged::quorum:: *;<br>        hydro_std::__stageleft_quote_src_quorum_rs_60_27!([max__free = 3usize,] [move<br>        | (success, error) | (success + error) &gt;= max__free]) }),] [{ let orig =<br>        f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+98v1["<div style=text-align:center>(98v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 99v1["<div style=text-align:center>(99v1)</div> <code><br>tee()</code>"]:::otherClass
 100v1["<div style=text-align:center>(100v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 101v1["<div style=text-align:center>(101v1)</div> <code><br>identity::&lt;<br>    (<br>        hydro_test::__staged::cluster::paxos::Ballot,<br>        core::result::Result&lt;<br>            (<br>                core::option::Option&lt;usize&gt;,<br>                std::collections::hash_map::HashMap&lt;<br>                    usize,<br>                    hydro_test::__staged::cluster::paxos::LogValue&lt;<br>                        (<br>                            u32,<br>                            (<br>                                hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                                    hydro_test::__staged::cluster::paxos_bench::Client,<br>                                &gt;,<br>                                i32,<br>                            ),<br>                        ),<br>                    &gt;,<br>                &gt;,<br>            ),<br>            hydro_test::__staged::cluster::paxos::Ballot,<br>        &gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
-102v1["<div style=text-align:center>(102v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1793_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; (usize,<br>        usize), bool &gt; ({ use hydro_std::__staged::__deps:: *; use<br>        hydro_std::__staged::quorum:: *;<br>        hydro_std::__stageleft_quote_src_quorum_rs_51_23!([min__free = 2usize,] [move<br>        | (success, _error) | success &gt;= &amp; min__free]) }),] [{ let orig = f__free;<br>        move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-103v1["<div style=text-align:center>(103v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+102v1["<div style=text-align:center>(102v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1807_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; (usize,<br>        usize), bool &gt; ({ use hydro_std::__staged::__deps:: *; use<br>        hydro_std::__staged::quorum:: *;<br>        hydro_std::__stageleft_quote_src_quorum_rs_51_23!([min__free = 2usize,] [move<br>        | (success, _error) | success &gt;= &amp; min__free]) }),] [{ let orig = f__free;<br>        move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+103v1["<div style=text-align:center>(103v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 104v1["<div style=text-align:center>(104v1)</div> <code><br>difference::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 105v1["<div style=text-align:center>(105v1)</div> <code><br>identity::&lt;hydro_test::__staged::cluster::paxos::Ballot&gt;()</code>"]:::otherClass
-106v1["<div style=text-align:center>(106v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1793_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; (usize,<br>        usize), bool &gt; ({ use hydro_std::__staged::__deps:: *; use<br>        hydro_std::__staged::quorum:: *;<br>        hydro_std::__stageleft_quote_src_quorum_rs_46_23!([min__free = 2usize,] [move<br>        | (success, _error) | success &lt; &amp; min__free]) }),] [{ let orig = f__free;<br>        move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-107v1["<div style=text-align:center>(107v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+106v1["<div style=text-align:center>(106v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1807_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; (usize,<br>        usize), bool &gt; ({ use hydro_std::__staged::__deps:: *; use<br>        hydro_std::__staged::quorum:: *;<br>        hydro_std::__stageleft_quote_src_quorum_rs_46_23!([min__free = 2usize,] [move<br>        | (success, _error) | success &lt; &amp; min__free]) }),] [{ let orig = f__free;<br>        move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+107v1["<div style=text-align:center>(107v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 108v1["<div style=text-align:center>(108v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 109v1["<div style=text-align:center>(109v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
 110v1["<div style=text-align:center>(110v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 111v1["<div style=text-align:center>(111v1)</div> <code><br>filter_map({<br>    hydro_std::__stageleft_quote_src_quorum_rs_74_42!(<br>        [] [move | (key, res) | match res { Ok(v) =&gt; Some((key, v)), Err(_) =&gt; None,<br>        }]<br>    )<br>})</code>"]:::otherClass
 112v1["<div style=text-align:center>(112v1)</div> <code><br>scan::&lt;<br>    'static,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_keyed_stream_mod_rs_1629_27!(<br>            [] [| | HashMap::new()]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_keyed_stream_mod_rs_1632_24!(<br>            [f__free = stageleft::runtime_support::fn2_borrow_mut_type_hint:: &lt;<br>            core::option::Option &lt; std::vec::Vec &lt; (core::option::Option &lt; usize &gt;,<br>            std::collections::hash_map::HashMap &lt; usize,<br>            hydro_test::__staged::cluster::paxos::LogValue &lt; (u32,<br>            (hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId<br>            &lt; hydro_test::__staged::cluster::paxos_bench::Client &gt;, i32)) &gt; &gt;) &gt; &gt;,<br>            (core::option::Option &lt; usize &gt;, std::collections::hash_map::HashMap &lt;<br>            usize, hydro_test::__staged::cluster::paxos::LogValue &lt; (u32,<br>            (hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId<br>            &lt; hydro_test::__staged::cluster::paxos_bench::Client &gt;, i32)) &gt; &gt;),<br>            hydro_test::__staged::__deps::hydro_lang::live_collections::keyed_stream::Generate<br>            &lt; std::vec::Vec &lt; (core::option::Option &lt; usize &gt;,<br>            std::collections::hash_map::HashMap &lt; usize,<br>            hydro_test::__staged::cluster::paxos::LogValue &lt; (u32,<br>            (hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId<br>            &lt; hydro_test::__staged::cluster::paxos_bench::Client &gt;, i32)) &gt; &gt;) &gt; &gt; &gt;<br>            ({ use hydro_lang::__staged::__deps:: *; use<br>            hydro_lang::__staged::live_collections::keyed_stream:: *;<br>            hydro_lang::__stageleft_quote_src_live_collections_keyed_stream_mod_rs_1737_15!([f__free<br>            = stageleft::runtime_support::fn2_borrow_mut_type_hint:: &lt; std::vec::Vec<br>            &lt; (core::option::Option &lt; usize &gt;, std::collections::hash_map::HashMap &lt;<br>            usize, hydro_test::__staged::cluster::paxos::LogValue &lt; (u32,<br>            (hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId<br>            &lt; hydro_test::__staged::cluster::paxos_bench::Client &gt;, i32)) &gt; &gt;) &gt;,<br>            (core::option::Option &lt; usize &gt;, std::collections::hash_map::HashMap &lt;<br>            usize, hydro_test::__staged::cluster::paxos::LogValue &lt; (u32,<br>            (hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId<br>            &lt; hydro_test::__staged::cluster::paxos_bench::Client &gt;, i32)) &gt; &gt;), bool<br>            &gt; ({ use crate ::__staged::__deps:: *; use crate<br>            ::__staged::cluster::paxos:: *; &num;[allow(unused_imports)] use crate :: *;<br>            __stageleft_quote_src_cluster_paxos_rs_544_15!([quorum_size__free =<br>            2usize,] [move | logs, log | { logs.push(log); logs.len() &gt;=<br>            quorum_size__free }]) }),] [move | key_state, v | { if let<br>            Some(key_state_value) = key_state.as_mut() { if f__free(key_state_value,<br>            v) { Generate::Return(key_state.take().unwrap()) } else {<br>            Generate::Continue } } else { unreachable!() } }]) }), init__free =<br>            stageleft::runtime_support::fn0_type_hint:: &lt; core::option::Option &lt;<br>            std::vec::Vec &lt; (core::option::Option &lt; usize &gt;,<br>            std::collections::hash_map::HashMap &lt; usize,<br>            hydro_test::__staged::cluster::paxos::LogValue &lt; (u32,<br>            (hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId<br>            &lt; hydro_test::__staged::cluster::paxos_bench::Client &gt;, i32)) &gt; &gt;) &gt; &gt; &gt;<br>            ({ use hydro_lang::__staged::__deps:: *; use<br>            hydro_lang::__staged::live_collections::keyed_stream:: *;<br>            hydro_lang::__stageleft_quote_src_live_collections_keyed_stream_mod_rs_1736_15!([init__free<br>            = stageleft::runtime_support::fn0_type_hint:: &lt; std::vec::Vec &lt;<br>            (core::option::Option &lt; usize &gt;, std::collections::hash_map::HashMap &lt;<br>            usize, hydro_test::__staged::cluster::paxos::LogValue &lt; (u32,<br>            (hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId<br>            &lt; hydro_test::__staged::cluster::paxos_bench::Client &gt;, i32)) &gt; &gt;) &gt; &gt; ({<br>            *; &num;[allow(unused_imports)] use crate :: *;<br>            __stageleft_quote_src_cluster_paxos_rs_543_15!([] [| | vec![]]) }),]<br>            [move | | Some(init__free())]) }),] [move | acc : &amp; mut HashMap &lt; _, _ &gt;,<br>            (k, v) | { let existing_state = acc.entry(Clone::clone(&amp; k))<br>            .or_insert_with(| | Some(init__free())); if let<br>            Some(existing_state_value) = existing_state { match<br>            f__free(existing_state_value, v) { Generate::Yield(out) =&gt; Some(Some((k,<br>            out))), Generate::Return(out) =&gt; { let _ = existing_state.take();<br>            Some(Some((k, out))) } Generate::Break =&gt; { let _ = existing_state<br>            .take(); Some(None) } Generate::Continue =&gt; Some(None), } } else {<br>            Some(None) } }]<br>        )<br>    },<br>)</code>"]:::otherClass
 113v1["<div style=text-align:center>(113v1)</div> <code><br>flat_map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_stream_mod_rs_1667_27!(<br>        [] [| d | d]<br>    )<br>})</code>"]:::otherClass
-114v1["<div style=text-align:center>(114v1)</div> <code><br>reduce::&lt;<br>    'static,<br>&gt;({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1535_16!(<br>        [] [move | curr, new | { if new.0 &gt; curr.0 { * curr = new; } }]<br>    )<br>})</code>"]:::otherClass
+114v1["<div style=text-align:center>(114v1)</div> <code><br>reduce::&lt;<br>    'static,<br>&gt;({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1549_16!(<br>        [] [move | curr, new | { if new.0 &gt; curr.0 { * curr = new; } }]<br>    )<br>})</code>"]:::otherClass
 115v1["<div style=text-align:center>(115v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
 116v1["<div style=text-align:center>(116v1)</div> <code><br>filter_map({<br>    &num;[allow(unused_imports)]<br>    __stageleft_quote_src_cluster_paxos_rs_564_12!(<br>        [] [move | ((quorum_ballot, quorum_accepted), my_ballot) | if quorum_ballot<br>        == my_ballot { Some(quorum_accepted) } else { None }]<br>    )<br>})</code>"]:::otherClass
 117v1["<div style=text-align:center>(117v1)</div> <code><br>tee()</code>"]:::otherClass
@@ -143,8 +143,8 @@ linkStyle default stroke:#aaa
 133v1["<div style=text-align:center>(133v1)</div> <code><br>source_stream(DUMMY)</code>"]:::otherClass
 134v1["<div style=text-align:center>(134v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_545_16!(<br>        [] [| (k, v) | (MemberId::from_tagless(k), v)]<br>    )<br>})</code>"]:::otherClass
 135v1["<div style=text-align:center>(135v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_36_11!(<br>            [] [| | false]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_37_11!(<br>            [] [| present, event | { match event { MembershipEvent::Joined =&gt; *<br>            present = true, MembershipEvent::Left =&gt; * present = false, } }]<br>        )<br>    },<br>)</code>"]:::otherClass
-136v1["<div style=text-align:center>(136v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1793_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_1187_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-137v1["<div style=text-align:center>(137v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+136v1["<div style=text-align:center>(136v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1807_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_1187_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+137v1["<div style=text-align:center>(137v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 138v1["<div style=text-align:center>(138v1)</div> <code><br>map({<br>    &num;[allow(unused_imports)]<br>    __stageleft_quote_src_cluster_paxos_rs_192_16!(<br>        [] [| is_leader | is_leader.then_some(())]<br>    )<br>})</code>"]:::otherClass
 139v1["<div style=text-align:center>(139v1)</div> <code><br>filter_map({<br>    hydro_lang::__stageleft_quote_src_live_collections_singleton_rs_1109_27!(<br>        [] [| v | v]<br>    )<br>})</code>"]:::otherClass
 140v1["<div style=text-align:center>(140v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
@@ -177,7 +177,7 @@ linkStyle default stroke:#aaa
 167v1["<div style=text-align:center>(167v1)</div> <code><br>fold_keyed::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        &num;[allow(unused_imports)]<br>        __stageleft_quote_src_cluster_paxos_rs_607_67!([] [| | (0, None)])<br>    },<br>    {<br>        &num;[allow(unused_imports)]<br>        __stageleft_quote_src_cluster_paxos_rs_607_85!(<br>            [] [| curr_entry, new_entry | { if let Some(curr_entry_payload) = &amp; mut<br>            curr_entry.1 { let same_values = new_entry.value == curr_entry_payload<br>            .value; let higher_ballot = new_entry.ballot &gt; curr_entry_payload.ballot;<br>            if same_values { curr_entry.0 += 1; } if higher_ballot {<br>            curr_entry_payload.ballot = new_entry.ballot; if ! same_values {<br>            curr_entry.0 = 1; curr_entry_payload.value = new_entry.value; } } } else<br>            { * curr_entry = (1, Some(new_entry)); } }]<br>        )<br>    },<br>)</code>"]:::otherClass
 168v1["<div style=text-align:center>(168v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_484_23!(<br>        [f__free = stageleft::runtime_support::fn1_type_hint:: &lt; (usize,<br>        core::option::Option &lt; hydro_test::__staged::cluster::paxos::LogValue &lt; (u32,<br>        (hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId &lt;<br>        hydro_test::__staged::cluster::paxos_bench::Client &gt;, i32)) &gt; &gt;), (usize,<br>        hydro_test::__staged::cluster::paxos::LogValue &lt; (u32,<br>        (hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId &lt;<br>        hydro_test::__staged::cluster::paxos_bench::Client &gt;, i32)) &gt;) &gt; ({ use crate<br>        ::__staged::__deps:: *; use crate ::__staged::cluster::paxos:: *;<br>        &num;[allow(unused_imports)] use crate :: *;<br>        __stageleft_quote_src_cluster_paxos_rs_628_16!([] [| (count, entry) | (count,<br>        entry.unwrap())]) }),] [{ let orig = f__free; move | (k, v) | (k, orig(v)) }]<br>    )<br>})</code>"]:::otherClass
 169v1["<div style=text-align:center>(169v1)</div> <code><br>tee()</code>"]:::otherClass
-170v1["<div style=text-align:center>(170v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+170v1["<div style=text-align:center>(170v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 171v1["<div style=text-align:center>(171v1)</div> <code><br>reduce::&lt;<br>    'tick,<br>&gt;({<br>    hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_1519_23!(<br>        [] [| curr, new | { if new &gt; * curr { * curr = new; } }]<br>    )<br>})</code>"]:::otherClass
 172v1["<div style=text-align:center>(172v1)</div> <code><br>tee()</code>"]:::otherClass
 173v1["<div style=text-align:center>(173v1)</div> <code><br>map({<br>    &num;[allow(unused_imports)]<br>    __stageleft_quote_src_cluster_paxos_rs_780_71!([] [| s | s + 1])<br>})</code>"]:::otherClass
@@ -198,8 +198,8 @@ linkStyle default stroke:#aaa
 188v1["<div style=text-align:center>(188v1)</div> <code><br>source_stream(DUMMY)</code>"]:::otherClass
 189v1["<div style=text-align:center>(189v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_545_16!(<br>        [] [| (k, v) | (MemberId::from_tagless(k), v)]<br>    )<br>})</code>"]:::otherClass
 190v1["<div style=text-align:center>(190v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_36_11!(<br>            [] [| | false]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_37_11!(<br>            [] [| present, event | { match event { MembershipEvent::Joined =&gt; *<br>            present = true, MembershipEvent::Left =&gt; * present = false, } }]<br>        )<br>    },<br>)</code>"]:::otherClass
-191v1["<div style=text-align:center>(191v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1793_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_1187_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-192v1["<div style=text-align:center>(192v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+191v1["<div style=text-align:center>(191v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1807_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_1187_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+192v1["<div style=text-align:center>(192v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 193v1["<div style=text-align:center>(193v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
 194v1["<div style=text-align:center>(194v1)</div> <code><br>map({<br>    &num;[allow(unused_imports)]<br>    __stageleft_quote_src_cluster_paxos_rs_721_16!(<br>        [] [| ((slot, payload), ballot) | ((slot, ballot), Some(payload))]<br>    )<br>})</code>"]:::otherClass
 195v1["<div style=text-align:center>(195v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
@@ -214,7 +214,7 @@ linkStyle default stroke:#aaa
 204v1["<div style=text-align:center>(204v1)</div> <code><br>filter_map({<br>    &num;[allow(unused_imports)]<br>    __stageleft_quote_src_cluster_paxos_rs_634_23!(<br>        [f__free = 1usize,] [move | (((slot, (count, entry)), ballot), checkpoint) |<br>        { if count &gt; f__free { return None; } else if let Some(checkpoint) =<br>        checkpoint &amp;&amp; slot &lt;= checkpoint { return None; } Some(((slot, ballot), entry<br>        .value)) }]<br>    )<br>})</code>"]:::otherClass
 205v1["<div style=text-align:center>(205v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
 206v1["<div style=text-align:center>(206v1)</div> <code><br>flat_map({<br>    &num;[allow(unused_imports)]<br>    __stageleft_quote_src_cluster_paxos_rs_649_29!(<br>        [] [| (max_slot, checkpoint) | { if let Some(checkpoint) = checkpoint {<br>        (checkpoint + 1)..max_slot } else { 0..max_slot } }]<br>    )<br>})</code>"]:::otherClass
-207v1["<div style=text-align:center>(207v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+207v1["<div style=text-align:center>(207v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 208v1["<div style=text-align:center>(208v1)</div> <code><br>difference::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 209v1["<div style=text-align:center>(209v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
 210v1["<div style=text-align:center>(210v1)</div> <code><br>map({<br>    &num;[allow(unused_imports)]<br>    __stageleft_quote_src_cluster_paxos_rs_658_16!(<br>        [] [move | (slot, ballot) | ((slot, ballot), None)]<br>    )<br>})</code>"]:::otherClass
@@ -236,8 +236,8 @@ linkStyle default stroke:#aaa
 226v1["<div style=text-align:center>(226v1)</div> <code><br>tee()</code>"]:::otherClass
 227v1["<div style=text-align:center>(227v1)</div> <code><br>fold_keyed::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        hydro_std::__stageleft_quote_src_quorum_rs_109_15!([] [move | | (0, 0)])<br>    },<br>    {<br>        hydro_std::__stageleft_quote_src_quorum_rs_110_15!(<br>            [] [move | accum, value | { if value.is_ok() { accum.0 += 1; } else {<br>            accum.1 += 1; } }]<br>        )<br>    },<br>)</code>"]:::otherClass
 228v1["<div style=text-align:center>(228v1)</div> <code><br>tee()</code>"]:::otherClass
-229v1["<div style=text-align:center>(229v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1793_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; (usize,<br>        usize), bool &gt; ({ use hydro_std::__staged::__deps:: *; use<br>        hydro_std::__staged::quorum:: *;<br>        hydro_std::__stageleft_quote_src_quorum_rs_134_27!([max__free = 3usize,]<br>        [move | (success, error) | (success + error) &gt;= max__free]) }),] [{ let orig<br>        = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-230v1["<div style=text-align:center>(230v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+229v1["<div style=text-align:center>(229v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1807_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; (usize,<br>        usize), bool &gt; ({ use hydro_std::__staged::__deps:: *; use<br>        hydro_std::__staged::quorum:: *;<br>        hydro_std::__stageleft_quote_src_quorum_rs_134_27!([max__free = 3usize,]<br>        [move | (success, error) | (success + error) &gt;= max__free]) }),] [{ let orig<br>        = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+230v1["<div style=text-align:center>(230v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 231v1["<div style=text-align:center>(231v1)</div> <code><br>tee()</code>"]:::otherClass
 232v1["<div style=text-align:center>(232v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 233v1["<div style=text-align:center>(233v1)</div> <code><br>identity::&lt;<br>    (<br>        (usize, hydro_test::__staged::cluster::paxos::Ballot),<br>        core::result::Result&lt;(), hydro_test::__staged::cluster::paxos::Ballot&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
@@ -265,8 +265,8 @@ linkStyle default stroke:#aaa
 255v1["<div style=text-align:center>(255v1)</div> <code><br>source_stream(DUMMY)</code>"]:::otherClass
 256v1["<div style=text-align:center>(256v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_545_16!(<br>        [] [| (k, v) | (MemberId::from_tagless(k), v)]<br>    )<br>})</code>"]:::otherClass
 257v1["<div style=text-align:center>(257v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_36_11!(<br>            [] [| | false]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_37_11!(<br>            [] [| present, event | { match event { MembershipEvent::Joined =&gt; *<br>            present = true, MembershipEvent::Left =&gt; * present = false, } }]<br>        )<br>    },<br>)</code>"]:::otherClass
-258v1["<div style=text-align:center>(258v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1793_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_1187_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-259v1["<div style=text-align:center>(259v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+258v1["<div style=text-align:center>(258v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1807_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_1187_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+259v1["<div style=text-align:center>(259v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 260v1["<div style=text-align:center>(260v1)</div> <code><br>join_multiset_half::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 261v1["<div style=text-align:center>(261v1)</div> <code><br>map({<br>    hydro_std::__stageleft_quote_src_request_response_rs_37_20!(<br>        [] [| (key, (meta, resp)) | (key, (meta, resp))]<br>    )<br>})</code>"]:::otherClass
 262v1["<div style=text-align:center>(262v1)</div> <code><br>map({<br>    &num;[allow(unused_imports)]<br>    __stageleft_quote_src_cluster_paxos_rs_763_29!(<br>        [] [| ((slot, _ballot), (value, _)) | (slot, value)]<br>    )<br>})</code>"]:::otherClass
@@ -274,26 +274,26 @@ linkStyle default stroke:#aaa
 264v1["<div style=text-align:center>(264v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
 265v1["<div style=text-align:center>(265v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
 1v1-->2v1
-132v1--x|0|3v1; linkStyle 1 stroke:red
+132v1-->|0|3v1
 250v1-->|1|3v1
-3v1--x|0|4v1; linkStyle 3 stroke:red
+3v1-->|0|4v1
 50v1-->|1|4v1
-4v1--x5v1; linkStyle 5 stroke:red
+4v1-->5v1
 6v1-->7v1
-5v1--x|0|8v1; linkStyle 7 stroke:red
+5v1-->|0|8v1
 7v1-->|1|8v1
 8v1-->9v1
 17v1--o10v1; linkStyle 10 stroke:red
 11v1-->12v1
-10v1--x|0|13v1; linkStyle 12 stroke:red
+10v1-->|0|13v1
 12v1-->|1|13v1
 9v1-->|input|14v1
-13v1--x|single|14v1; linkStyle 15 stroke:red
+13v1-->|single|14v1
 14v1-->15v1
 15v1-->16v1
 16v1-->17v1
 18v1-->19v1
-19v1--x20v1; linkStyle 20 stroke:red
+19v1-->20v1
 20v1-->21v1
 21v1-->22v1
 16v1-->23v1
@@ -302,20 +302,20 @@ linkStyle default stroke:#aaa
 129v1-->26v1
 26v1-->27v1
 25v1-->|input|28v1
-27v1--x|single|28v1; linkStyle 29 stroke:red
+27v1-->|single|28v1
 28v1-->29v1
 30v1-->31v1
 31v1-->32v1
-32v1--x33v1; linkStyle 33 stroke:red
+32v1-->33v1
 33v1-->34v1
 34v1-->35v1
 36v1-->37v1
-35v1--x|0|38v1; linkStyle 37 stroke:red
+35v1-->|0|38v1
 37v1-->|1|38v1
 38v1-->39v1
 39v1-->40v1
 29v1-->|input|41v1
-40v1--x|single|41v1; linkStyle 42 stroke:red
+40v1-->|single|41v1
 41v1-->42v1
 22v1-->|0|43v1
 42v1-->|1|43v1
@@ -327,37 +327,37 @@ linkStyle default stroke:#aaa
 49v1-->50v1
 101v1--o51v1; linkStyle 52 stroke:red
 52v1-->53v1
-53v1--x54v1; linkStyle 54 stroke:red
+53v1-->54v1
 54v1-->55v1
 55v1-->56v1
-49v1--x57v1; linkStyle 57 stroke:red
+49v1-->57v1
 57v1-->58v1
 26v1-->59v1
 59v1-->60v1
 58v1-->|input|61v1
-60v1--x|single|61v1; linkStyle 62 stroke:red
+60v1-->|single|61v1
 61v1-->62v1
 62v1-->63v1
 63v1-->64v1
 65v1-->66v1
-64v1--x|0|67v1; linkStyle 67 stroke:red
+64v1-->|0|67v1
 66v1-->|1|67v1
 67v1-->68v1
 69v1-->70v1
 70v1-->71v1
-71v1--x72v1; linkStyle 72 stroke:red
+71v1-->72v1
 72v1-->73v1
 73v1-->74v1
 75v1-->76v1
-74v1--x|0|77v1; linkStyle 76 stroke:red
+74v1-->|0|77v1
 76v1-->|1|77v1
 77v1-->78v1
 68v1-->|input|79v1
-78v1--x|single|79v1; linkStyle 80 stroke:red
+78v1-->|single|79v1
 79v1-->80v1
 80v1-->81v1
 25v1-->|input|82v1
-81v1--x|single|82v1; linkStyle 84 stroke:red
+81v1-->|single|82v1
 82v1-->83v1
 83v1-->84v1
 56v1-->|0|85v1
@@ -368,48 +368,48 @@ linkStyle default stroke:#aaa
 89v1-->90v1
 90v1-->91v1
 91v1-->92v1
-51v1--x|0|93v1; linkStyle 95 stroke:red
+51v1-->|0|93v1
 92v1-->|1|93v1
 93v1-->94v1
-94v1--x95v1; linkStyle 98 stroke:red
+94v1-->95v1
 95v1-->96v1
 96v1-->97v1
 97v1-->98v1
 98v1-->99v1
 94v1-->|pos|100v1
-99v1--x|neg|100v1; linkStyle 104 stroke:red
+99v1-->|neg|100v1
 100v1-->101v1
 96v1-->102v1
 102v1-->103v1
 103v1-->|pos|104v1
-99v1--x|neg|104v1; linkStyle 109 stroke:red
+99v1-->|neg|104v1
 104v1-->105v1
 96v1-->106v1
 106v1-->107v1
 94v1-->|pos|108v1
-107v1--x|neg|108v1; linkStyle 114 stroke:red
+107v1-->|neg|108v1
 105v1--o109v1; linkStyle 115 stroke:red
 108v1-->|pos|110v1
-109v1--x|neg|110v1; linkStyle 117 stroke:red
+109v1-->|neg|110v1
 110v1-->111v1
 111v1-->112v1
 112v1-->113v1
-113v1--x114v1; linkStyle 121 stroke:red
+113v1-->114v1
 114v1-->|input|115v1
-25v1--x|single|115v1; linkStyle 123 stroke:red
+25v1-->|single|115v1
 115v1-->116v1
 116v1-->117v1
 117v1-->118v1
 118v1-->119v1
 120v1-->121v1
-119v1--x|0|122v1; linkStyle 129 stroke:red
+119v1-->|0|122v1
 121v1-->|1|122v1
 122v1-->123v1
 9v1-->|input|124v1
-24v1--x|single|124v1; linkStyle 133 stroke:red
+24v1-->|single|124v1
 124v1-->125v1
 123v1-->|input|126v1
-125v1--x|single|126v1; linkStyle 136 stroke:red
+125v1-->|single|126v1
 126v1-->127v1
 127v1-->128v1
 128v1-->129v1
@@ -417,7 +417,7 @@ linkStyle default stroke:#aaa
 130v1-->131v1
 131v1-->132v1
 133v1-->134v1
-134v1--x135v1; linkStyle 144 stroke:red
+134v1-->135v1
 135v1-->136v1
 136v1-->137v1
 128v1-->138v1
@@ -426,16 +426,16 @@ linkStyle default stroke:#aaa
 140v1-->141v1
 141v1-->142v1
 143v1-->144v1
-142v1--x|0|145v1; linkStyle 153 stroke:red
+142v1-->|0|145v1
 144v1-->|1|145v1
 145v1-->146v1
 128v1-->|input|147v1
-146v1--x|single|147v1; linkStyle 157 stroke:red
+146v1-->|single|147v1
 147v1-->148v1
 148v1-->149v1
 149v1-->150v1
 25v1-->|input|151v1
-150v1--x|single|151v1; linkStyle 162 stroke:red
+150v1-->|single|151v1
 151v1-->152v1
 137v1-->|0|153v1
 152v1-->|1|153v1
@@ -445,72 +445,72 @@ linkStyle default stroke:#aaa
 157v1-->158v1
 128v1-->159v1
 158v1-->|input|160v1
-159v1--x|single|160v1; linkStyle 172 stroke:red
+159v1-->|single|160v1
 160v1-->161v1
 161v1-->162v1
 117v1-->163v1
 163v1-->164v1
 164v1-->165v1
 165v1-->166v1
-166v1--x167v1; linkStyle 179 stroke:red
+166v1-->167v1
 167v1-->168v1
 168v1-->169v1
 169v1-->170v1
-170v1--x171v1; linkStyle 183 stroke:red
+170v1-->171v1
 171v1-->172v1
 172v1-->173v1
 186v1--o174v1; linkStyle 186 stroke:red
 175v1-->176v1
-174v1--x|0|177v1; linkStyle 188 stroke:red
+174v1-->|0|177v1
 176v1-->|1|177v1
-173v1--x|0|178v1; linkStyle 190 stroke:red
+173v1-->|0|178v1
 177v1-->|1|178v1
 178v1-->179v1
 162v1-->|input|180v1
-179v1--x|single|180v1; linkStyle 194 stroke:red
+179v1-->|single|180v1
 180v1-->181v1
 181v1-->182v1
-182v1--x183v1; linkStyle 197 stroke:red
+182v1-->183v1
 183v1-->|input|184v1
-179v1--x|single|184v1; linkStyle 199 stroke:red
+179v1-->|single|184v1
 184v1-->185v1
 185v1-->186v1
 233v1--o187v1; linkStyle 202 stroke:red
 188v1-->189v1
-189v1--x190v1; linkStyle 204 stroke:red
+189v1-->190v1
 190v1-->191v1
 191v1-->192v1
 182v1-->|input|193v1
-25v1--x|single|193v1; linkStyle 208 stroke:red
+25v1-->|single|193v1
 193v1-->194v1
 169v1-->|input|195v1
-25v1--x|single|195v1; linkStyle 211 stroke:red
+25v1-->|single|195v1
 164v1-->196v1
-196v1--x197v1; linkStyle 213 stroke:red
+196v1-->197v1
 197v1-->198v1
 199v1-->200v1
-198v1--x|0|201v1; linkStyle 216 stroke:red
+198v1-->|0|201v1
 200v1-->|1|201v1
 201v1-->202v1
 195v1-->|input|203v1
-202v1--x|single|203v1; linkStyle 220 stroke:red
+202v1-->|single|203v1
 203v1-->204v1
 172v1-->|input|205v1
-202v1--x|single|205v1; linkStyle 223 stroke:red
+202v1-->|single|205v1
 205v1-->206v1
 169v1-->207v1
 206v1-->|pos|208v1
-207v1--x|neg|208v1; linkStyle 227 stroke:red
+207v1-->|neg|208v1
 208v1-->|input|209v1
-25v1--x|single|209v1; linkStyle 229 stroke:red
+25v1-->|single|209v1
 209v1-->210v1
-204v1--x|0|211v1; linkStyle 231 stroke:red
+204v1-->|0|211v1
 210v1-->|1|211v1
-194v1--x|0|212v1; linkStyle 233 stroke:red
+194v1-->|0|212v1
 211v1-->|1|212v1
 128v1-->213v1
 212v1-->|input|214v1
-213v1--x|single|214v1; linkStyle 237 stroke:red
+213v1-->|single|214v1
 214v1-->215v1
 215v1-->216v1
 216v1-->217v1
@@ -521,49 +521,49 @@ linkStyle default stroke:#aaa
 221v1-->222v1
 222v1-->223v1
 223v1-->224v1
-187v1--x|0|225v1; linkStyle 248 stroke:red
+187v1-->|0|225v1
 224v1-->|1|225v1
 225v1-->226v1
-226v1--x227v1; linkStyle 251 stroke:red
+226v1-->227v1
 227v1-->228v1
 228v1-->229v1
 229v1-->230v1
 230v1-->231v1
 226v1-->|pos|232v1
-231v1--x|neg|232v1; linkStyle 257 stroke:red
+231v1-->|neg|232v1
 232v1-->233v1
 228v1-->234v1
 234v1-->235v1
 235v1-->|pos|236v1
-231v1--x|neg|236v1; linkStyle 262 stroke:red
+231v1-->|neg|236v1
 236v1-->237v1
 247v1--o238v1; linkStyle 264 stroke:red
-238v1--x|0|239v1; linkStyle 265 stroke:red
+238v1-->|0|239v1
 216v1-->|1|239v1
 239v1-->240v1
 237v1--o241v1; linkStyle 268 stroke:red
 235v1-->|pos|242v1
-241v1--x|neg|242v1; linkStyle 270 stroke:red
+241v1-->|neg|242v1
 242v1-->243v1
 243v1-->244v1
 244v1-->245v1
 240v1-->|pos|246v1
-245v1--x|neg|246v1; linkStyle 275 stroke:red
+245v1-->|neg|246v1
 246v1-->247v1
 224v1-->248v1
 248v1-->249v1
 249v1-->250v1
 149v1-->251v1
 25v1-->|input|252v1
-251v1--x|single|252v1; linkStyle 282 stroke:red
+251v1-->|single|252v1
 252v1-->253v1
 253v1-->254v1
 255v1-->256v1
-256v1--x257v1; linkStyle 286 stroke:red
+256v1-->257v1
 257v1-->258v1
 258v1-->259v1
 240v1-->|probe|260v1
-244v1--x|build|260v1; linkStyle 290 stroke:red
+244v1-->|build|260v1
 260v1-->261v1
 261v1-->262v1
 259v1-->|0|263v1

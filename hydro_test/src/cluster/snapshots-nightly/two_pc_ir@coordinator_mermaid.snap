@@ -12,8 +12,8 @@ linkStyle default stroke:#aaa
 2v1["<div style=text-align:center>(2v1)</div> <code><br>source_stream(DUMMY)</code>"]:::otherClass
 3v1["<div style=text-align:center>(3v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_545_16!(<br>        [] [| (k, v) | (MemberId::from_tagless(k), v)]<br>    )<br>})</code>"]:::otherClass
 4v1["<div style=text-align:center>(4v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_36_11!(<br>            [] [| | false]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_37_11!(<br>            [] [| present, event | { match event { MembershipEvent::Joined =&gt; *<br>            present = true, MembershipEvent::Left =&gt; * present = false, } }]<br>        )<br>    },<br>)</code>"]:::otherClass
-5v1["<div style=text-align:center>(5v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1793_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_311_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-6v1["<div style=text-align:center>(6v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+5v1["<div style=text-align:center>(5v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1807_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_311_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+6v1["<div style=text-align:center>(6v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 7v1["<div style=text-align:center>(7v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
 8v1["<div style=text-align:center>(8v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;(u32, i32)&gt;(&amp;b).unwrap(),<br>    )<br>})</code>"]:::otherClass
 9v1["<div style=text-align:center>(9v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
@@ -39,8 +39,8 @@ linkStyle default stroke:#aaa
 30v1["<div style=text-align:center>(30v1)</div> <code><br>source_stream(DUMMY)</code>"]:::otherClass
 31v1["<div style=text-align:center>(31v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_545_16!(<br>        [] [| (k, v) | (MemberId::from_tagless(k), v)]<br>    )<br>})</code>"]:::otherClass
 32v1["<div style=text-align:center>(32v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_36_11!(<br>            [] [| | false]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_37_11!(<br>            [] [| present, event | { match event { MembershipEvent::Joined =&gt; *<br>            present = true, MembershipEvent::Left =&gt; * present = false, } }]<br>        )<br>    },<br>)</code>"]:::otherClass
-33v1["<div style=text-align:center>(33v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1793_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_311_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-34v1["<div style=text-align:center>(34v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1355_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+33v1["<div style=text-align:center>(33v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1807_26!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_311_61!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+34v1["<div style=text-align:center>(34v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_1369_30!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
 35v1["<div style=text-align:center>(35v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 36v1["<div style=text-align:center>(36v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
 37v1["<div style=text-align:center>(37v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
@@ -64,7 +64,7 @@ linkStyle default stroke:#aaa
 56v1["<div style=text-align:center>(56v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
 24v1--o1v1; linkStyle 0 stroke:red
 2v1-->3v1
-3v1--x4v1; linkStyle 2 stroke:red
+3v1-->4v1
 4v1-->5v1
 5v1-->6v1
 7v1-->8v1
@@ -76,14 +76,14 @@ linkStyle default stroke:#aaa
 13v1-->14v1
 14v1-->15v1
 15v1-->16v1
-1v1--x|0|17v1; linkStyle 14 stroke:red
+1v1-->|0|17v1
 16v1-->|1|17v1
 17v1-->18v1
-18v1--x19v1; linkStyle 17 stroke:red
+18v1-->19v1
 19v1-->21v1
 21v1-->22v1
 18v1-->|pos|23v1
-22v1--x|neg|23v1; linkStyle 21 stroke:red
+22v1-->|neg|23v1
 23v1-->24v1
 26v1--o25v1; linkStyle 23 stroke:red
 25v1-->26v1
@@ -91,7 +91,7 @@ linkStyle default stroke:#aaa
 27v1-->28v1
 50v1--o29v1; linkStyle 27 stroke:red
 30v1-->31v1
-31v1--x32v1; linkStyle 29 stroke:red
+31v1-->32v1
 32v1-->33v1
 33v1-->34v1
 34v1-->|0|35v1
@@ -102,14 +102,14 @@ linkStyle default stroke:#aaa
 39v1-->40v1
 40v1-->41v1
 41v1-->42v1
-29v1--x|0|43v1; linkStyle 40 stroke:red
+29v1-->|0|43v1
 42v1-->|1|43v1
 43v1-->44v1
-44v1--x45v1; linkStyle 43 stroke:red
+44v1-->45v1
 45v1-->47v1
 47v1-->48v1
 44v1-->|pos|49v1
-48v1--x|neg|49v1; linkStyle 47 stroke:red
+48v1-->|neg|49v1
 49v1-->50v1
 52v1--o51v1; linkStyle 49 stroke:red
 51v1-->52v1
@@ -117,14 +117,14 @@ linkStyle default stroke:#aaa
 53v1-->54v1
 55v1-->56v1
 48v1-->55v1
+28v1
 10v1
 11v1
-28v1
-36v1
-37v1
 54v1
 55v1
 56v1
+36v1
+37v1
 subgraph var_cycle_2 ["var <tt>cycle_2</tt>"]
     style var_cycle_2 fill:transparent
     24v1
