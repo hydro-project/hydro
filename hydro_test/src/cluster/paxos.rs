@@ -94,7 +94,7 @@ impl<'a> PaxosLike<'a> for CorePaxos<'a> {
         ballot.map(q!(|ballot| ballot.proposer_id))
     }
 
-    fn build<P: PaxosPayload>(
+    fn build<P: PaxosPayload + 'a>(
         self,
         with_ballot: impl FnOnce(
             Stream<Ballot, Cluster<'a, Self::PaxosIn>, Unbounded>,
@@ -132,7 +132,7 @@ impl<'a> PaxosLike<'a> for CorePaxos<'a> {
 /// in deterministic order. However, when the leader is changing, payloads may be
 /// non-deterministically dropped. The stream of ballots is also non-deterministic because
 /// leaders are elected in a non-deterministic process.
-pub fn paxos_core<'a, P: PaxosPayload>(
+pub fn paxos_core<'a, P: PaxosPayload + 'a>(
     proposers: &Cluster<'a, Proposer>,
     acceptors: &Cluster<'a, Acceptor>,
     a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
@@ -245,7 +245,7 @@ pub fn paxos_core<'a, P: PaxosPayload>(
     clippy::too_many_arguments,
     reason = "internal paxos code // TODO"
 )]
-pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
+pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned + 'a>(
     proposers: &Cluster<'a, Proposer>,
     acceptors: &Cluster<'a, Acceptor>,
     proposer_tick: &Tick<Cluster<'a, Proposer>>,
@@ -472,7 +472,7 @@ fn p_leader_heartbeat<'a>(
 }
 
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone>(
+fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone + 'a>(
     acceptor_tick: &Tick<Cluster<'a, Acceptor>>,
     p_to_acceptors_p1a: Stream<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded, NoOrder>,
     a_log: Singleton<(Option<usize>, L), Tick<Cluster<'a, Acceptor>>, Bounded>,
@@ -490,22 +490,26 @@ fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone>(
             proposer_id: MemberId::from_raw_id(0)
         })));
 
+    let a_max_ballot_ref = a_max_ballot.by_ref();
+    let a_log_ref = a_log.by_ref();
     (
         a_max_ballot.clone(),
         p_to_acceptors_p1a
-            .cross_singleton(a_max_ballot)
-            .cross_singleton(a_log)
-            .map(q!(|((ballot, max_ballot), log)| (
-                ballot.proposer_id.clone(),
+            .map(q!(|ballot| {
+                let max_ballot = a_max_ballot_ref.clone();
+                let log = a_log_ref.clone();
                 (
-                    ballot.clone(),
-                    if ballot == max_ballot {
-                        Ok(log)
-                    } else {
-                        Err(max_ballot)
-                    }
+                    ballot.proposer_id.clone(),
+                    (
+                        ballot.clone(),
+                        if ballot == max_ballot {
+                            Ok(log)
+                        } else {
+                            Err(max_ballot)
+                        },
+                    ),
                 )
-            )))
+            }))
             .all_ticks()
             .demux(proposers, TCP.fail_stop().bincode())
             .values(),
@@ -626,20 +630,20 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
             }
         }, commutative = manual_proof!(/** TODO */)))
         .map(q!(|(count, entry)| (count, entry.unwrap())));
+    let p_ballot_ref = p_ballot.by_ref();
+    let p_p1b_max_checkpoint_ref = p_p1b_max_checkpoint.by_ref();
     let p_log_to_try_commit = p_p1b_highest_entries_and_count
         .clone()
         .entries()
-        .cross_singleton(p_ballot.clone())
-        .cross_singleton(p_p1b_max_checkpoint.clone())
-        .filter_map(q!(move |(((slot, (count, entry)), ballot), checkpoint)| {
+        .filter_map(q!(move |(slot, (count, entry))| {
             if count > f {
                 return None;
-            } else if let Some(checkpoint) = checkpoint
+            } else if let Some(checkpoint) = *p_p1b_max_checkpoint_ref
                 && slot <= checkpoint
             {
                 return None;
             }
-            Some(((slot, ballot), entry.value))
+            Some(((slot, p_ballot_ref.clone()), entry.value))
         }));
     let p_max_slot = p_p1b_highest_entries_and_count.clone().keys().max();
     let p_proposed_slots = p_p1b_highest_entries_and_count.clone().keys();
@@ -654,8 +658,7 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
             }
         }))
         .filter_not_in(p_proposed_slots)
-        .cross_singleton(p_ballot.clone())
-        .map(q!(move |(slot, ballot)| ((slot, ballot), None)));
+        .map(q!(move |slot| ((slot, p_ballot_ref.clone()), None)));
 
     (p_log_to_try_commit.chain(p_log_holes), p_max_slot)
 }
@@ -716,10 +719,10 @@ fn sequence_payload<'a, P: PaxosPayload>(
             .filter_if(p_is_leader.clone()),
     );
 
+    let p_ballot_ref = p_ballot.by_ref();
     let payloads_to_send = indexed_payloads
-        .cross_singleton(p_ballot.clone())
-        .map(q!(|((slot, payload), ballot)| (
-            (slot, ballot),
+        .map(q!(|(slot, payload)| (
+            (slot, p_ballot_ref.clone()),
             Some(payload)
         )))
         .chain(p_log_to_recommit)
@@ -767,7 +770,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
 }
 
 // Proposer logic to send p2as, outputting the next slot and the p2as to send to acceptors.
-pub fn index_payloads<'a, L: Location<'a>, P: PaxosPayload>(
+pub fn index_payloads<'a, L: Location<'a> + 'a, P: PaxosPayload>(
     p_max_slot: Optional<usize, Tick<L>, Bounded>,
     c_to_proposers: Stream<P, Tick<L>, Bounded>,
 ) -> Stream<(usize, P), Tick<L::DropConsistency>, Bounded> {
@@ -780,11 +783,11 @@ pub fn index_payloads<'a, L: Location<'a>, P: PaxosPayload>(
         let next_slot_after_reconciling_p1bs = updated_max_slot.map(q!(|s| s + 1));
         let base_slot = next_slot_after_reconciling_p1bs.unwrap_or(next_slot);
 
+        let base_slot_ref = base_slot.by_ref();
         let indexed_payloads = payload_batch
             .enumerate()
-            .cross_singleton(base_slot.clone())
-            .map(q!(|((index, payload), base_slot)| (
-                base_slot + index,
+            .map(q!(|(index, payload)| (
+                *base_slot_ref + index,
                 payload
             )));
 
@@ -832,19 +835,21 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
     );
     // .inspect(q!(|min_seq| println!("Acceptor new checkpoint: {:?}", min_seq)));
 
-    let a_p2as_to_place_in_log = p_to_acceptors_p2a_batch
-        .clone()
-        .cross_singleton(a_max_ballot.clone()) // Don't consider p2as if the current ballot is higher
-        .filter_map(q!(|(p2a, max_ballot)|
-            if p2a.ballot >= max_ballot {
-                Some((p2a.slot, LogValue {
-                    ballot: p2a.ballot,
-                    value: p2a.value,
-                }))
+    let a_max_ballot_ref = a_max_ballot.by_ref();
+    let a_p2as_to_place_in_log =
+        p_to_acceptors_p2a_batch
+            .clone()
+            .filter_map(q!(|p2a| if p2a.ballot >= *a_max_ballot_ref {
+                Some((
+                    p2a.slot,
+                    LogValue {
+                        ballot: p2a.ballot,
+                        value: p2a.value,
+                    },
+                ))
             } else {
                 None
-            }
-        ));
+            }));
     let a_log = a_p2as_to_place_in_log.across_ticks(|s| {
         s.into_keyed().reduce_watermark(
             a_checkpoint.clone(),
@@ -870,18 +875,20 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
     );
 
     let a_to_proposers_p2b = p_to_acceptors_p2a_batch
-        .cross_singleton(a_max_ballot)
-        .map(q!(|(p2a, max_ballot)| (
-            p2a.sender,
+        .map(q!(|p2a| {
+            let max_ballot = a_max_ballot_ref.clone();
             (
-                (p2a.slot, p2a.ballot.clone()),
-                if p2a.ballot == max_ballot {
-                    Ok(())
-                } else {
-                    Err(max_ballot)
-                }
+                p2a.sender,
+                (
+                    (p2a.slot, p2a.ballot.clone()),
+                    if p2a.ballot == max_ballot {
+                        Ok(())
+                    } else {
+                        Err(max_ballot)
+                    },
+                ),
             )
-        )))
+        }))
         .all_ticks()
         .demux(proposers, TCP.fail_stop().bincode())
         .values();
