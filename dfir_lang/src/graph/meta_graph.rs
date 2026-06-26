@@ -1020,10 +1020,10 @@ impl DfirGraph {
             .filter_map(|node_id| {
                 if let Some(delay_type) = self.handoff_delay_type(node_id) {
                     assert!(
-                        matches!(delay_type, DelayType::Tick | DelayType::TickLazy),
-                        "Handoff `DelayType` must be either `Tick` or `TickLazy` (or unset)."
+                        matches!(delay_type, DelayType::Tick | DelayType::TickLazy | DelayType::Loop | DelayType::LoopLazy),
+                        "Handoff `DelayType` must be `Tick`, `TickLazy`, `Loop`, or `LoopLazy` (or unset)."
                     );
-                    Some((node_id, matches!(delay_type, DelayType::TickLazy)))
+                    Some((node_id, matches!(delay_type, DelayType::TickLazy | DelayType::LoopLazy)))
                 } else {
                     None
                 }
@@ -1046,9 +1046,13 @@ impl DfirGraph {
         // Generate swap code for tick-boundary (defer_tick / defer_tick_lazy) handoffs.
         // At the end of each tick, swap the regular buffer and back buffer so the
         // consumer reads last tick's data from the back buffer.
+        // Only tick-level swaps go here; loop-level swaps are emitted inside the loop gate.
         let back_edge_swap_code = handoff_nodes
             .iter()
-            .filter(|&&(node_id, _kind, _)| back_edge_hoffs_and_lazyness.contains_key(node_id))
+            .filter(|&&(node_id, _kind, _)| {
+                self.handoff_delay_type(node_id)
+                    .is_some_and(|dt| matches!(dt, DelayType::Tick | DelayType::TickLazy))
+            })
             .map(|&(hoff_id, _kind, _)| {
                 let span = self.nodes[hoff_id].span();
                 let buf_ident = self.hoff_buf_ident(hoff_id, span);
@@ -1058,6 +1062,37 @@ impl DfirGraph {
                 }
             })
             .collect::<Vec<_>>();
+
+        // Collect per-loop swap code for defer_loop / defer_loop_lazy handoffs.
+        // Keyed by the loop ID of the consumer (successor) of the handoff.
+        let mut loop_swap_code: std::collections::HashMap<GraphLoopId, Vec<TokenStream>> =
+            std::collections::HashMap::new();
+        for &(hoff_id, _kind, _) in handoff_nodes.iter() {
+            let Some(delay_type) = self.handoff_delay_type(hoff_id) else {
+                continue;
+            };
+            if !matches!(delay_type, DelayType::Loop | DelayType::LoopLazy) {
+                continue;
+            }
+            // Find the loop this handoff belongs to (from its consumer's loop context).
+            let loop_id = self
+                .node_successors(hoff_id)
+                .next()
+                .and_then(|(_, succ)| self.node_subgraph(succ))
+                .and_then(|sg| self.subgraph_loop(sg));
+            let Some(loop_id) = loop_id else {
+                continue;
+            };
+            let span = self.nodes[hoff_id].span();
+            let buf_ident = self.hoff_buf_ident(hoff_id, span);
+            let back_ident = self.hoff_back_ident(hoff_id, span);
+            loop_swap_code
+                .entry(loop_id)
+                .or_default()
+                .push(quote_spanned! {span=>
+                    ::std::mem::swap(&mut #buf_ident, &mut #back_ident);
+                });
+        }
 
         // 2. Collect per-subgraph recv & send handoffs.
         let subgraph_handoffs = self.helper_collect_subgraph_handoffs();
@@ -1688,6 +1723,7 @@ impl DfirGraph {
                 indexed_blocks: &[(Option<GraphLoopId>, &TokenStream)],
                 parent_loop: Option<GraphLoopId>,
                 back_edge_hoffs_and_lazyness: &SparseSecondaryMap<GraphNodeId, bool>,
+                loop_swap_code: &std::collections::HashMap<GraphLoopId, Vec<TokenStream>>,
             ) -> TokenStream {
                 let mut output = TokenStream::new();
                 let mut i = 0;
@@ -1741,11 +1777,18 @@ impl DfirGraph {
                             &indexed_blocks[start..i],
                             Some(immediate_child),
                             back_edge_hoffs_and_lazyness,
+                            loop_swap_code,
                         );
+
+                        // Get swap code for this loop's defer_loop handoffs.
+                        let swap_code = loop_swap_code
+                            .get(&immediate_child)
+                            .map(|v| v.as_slice())
+                            .unwrap_or(&[]);
 
                         // Build the gate condition from entry handoffs.
                         let entry_handoffs = graph.loop_entry_handoffs(immediate_child);
-                        let gate_checks: Vec<TokenStream> = entry_handoffs
+                        let mut gate_checks: Vec<TokenStream> = entry_handoffs
                             .iter()
                             .map(|&hoff_id| {
                                 let span = graph.node(hoff_id).span();
@@ -1759,13 +1802,41 @@ impl DfirGraph {
                             })
                             .collect();
 
+                        // Non-lazy defer_loop back-buffers also contribute to the gate.
+                        // (They have DelayType::Loop, which means is_lazy = false in back_edge_hoffs_and_lazyness.)
+                        for (hoff_id, hoff) in graph.nodes() {
+                            if !matches!(hoff, GraphNode::Handoff { .. }) {
+                                continue;
+                            }
+                            let Some(delay_type) = graph.handoff_delay_type(hoff_id) else {
+                                continue;
+                            };
+                            if delay_type != DelayType::Loop {
+                                continue;
+                            }
+                            // Check this handoff belongs to immediate_child.
+                            let hoff_loop = graph
+                                .node_successors(hoff_id)
+                                .next()
+                                .and_then(|(_, succ)| graph.node_subgraph(succ))
+                                .and_then(|sg| graph.subgraph_loop(sg));
+                            if hoff_loop != Some(immediate_child) {
+                                continue;
+                            }
+                            let span = graph.node(hoff_id).span();
+                            let back_ident = graph.hoff_back_ident(hoff_id, span);
+                            gate_checks.push(quote_spanned! {span=> !#back_ident.is_empty() });
+                        }
+
                         if gate_checks.is_empty() {
                             // No entry handoffs — always run.
                             output.extend(child_body);
+                            output.extend(quote! { #( #swap_code )* });
                         } else {
                             output.extend(quote! {
-                                if false #( || #gate_checks )* {
+                                while false #( || #gate_checks )* {
                                     #child_body
+                                    #( #swap_code )*
                                 }
                             });
                         }
@@ -1774,7 +1845,13 @@ impl DfirGraph {
                 output
             }
 
-            emit_level(self, &indexed_blocks, None, &back_edge_hoffs_and_lazyness)
+            emit_level(
+                self,
+                &indexed_blocks,
+                None,
+                &back_edge_hoffs_and_lazyness,
+                &loop_swap_code,
+            )
         };
 
         if diagnostics.has_error() {

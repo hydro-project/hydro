@@ -14,10 +14,9 @@ use crate::diagnostic::{Diagnostic, Level};
 use crate::graph::graph_algorithms::SubgraphMerge;
 
 /// Find edge barriers: edges whose destination operator declares an input delay type.
-/// Excludes edges within `loop {}` blocks.
 ///
 /// Returns:
-/// - Tick/TickLazy edges keyed by edge ID (for topo-sort exclusion and handoff marking).
+/// - Tick/TickLazy/Loop/LoopLazy edges keyed by edge ID (for topo-sort exclusion and handoff marking).
 /// - All barrier (src, dst) node pairs (for the enemies set).
 fn find_edge_barriers(
     partitioned_graph: &DfirGraph,
@@ -29,10 +28,6 @@ fn find_edge_barriers(
     let mut barrier_pairs = Vec::new();
 
     for (edge_id, (src, dst)) in partitioned_graph.edges() {
-        // Ignore barriers within `loop {` blocks.
-        if partitioned_graph.node_loop(dst).is_some() {
-            continue;
-        }
         let Some(op_inst) = partitioned_graph.node_op_inst(dst) else {
             continue;
         };
@@ -41,9 +36,20 @@ fn find_edge_barriers(
             continue;
         };
 
-        barrier_pairs.push((src, dst));
-        if matches!(delay_type, DelayType::Tick | DelayType::TickLazy) {
-            tick_edges.insert(edge_id, delay_type);
+        match delay_type {
+            DelayType::Tick | DelayType::TickLazy => {
+                // Skip tick barriers within loop blocks (handled differently there).
+                if partitioned_graph.node_loop(dst).is_some() {
+                    continue;
+                }
+                barrier_pairs.push((src, dst));
+                tick_edges.insert(edge_id, delay_type);
+            }
+            DelayType::Loop | DelayType::LoopLazy => {
+                // Loop barriers create subgraph splits within loop blocks.
+                barrier_pairs.push((src, dst));
+                tick_edges.insert(edge_id, delay_type);
+            }
         }
     }
 
