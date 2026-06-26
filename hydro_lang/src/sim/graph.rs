@@ -368,7 +368,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         let p1_port_usize = p1_port.0;
         syn::parse_quote!({
             let (__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
-            #ident.entry(#p1_port_usize).or_insert_with(Vec::new).push(__sender);
+            #ident.entry(#p1_port_usize).or_insert_with(::std::collections::HashMap::new).insert(__current_cluster_id, __sender);
             __receiver
         })
     }
@@ -394,7 +394,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         let p2_port_usize = p2_port.0;
         syn::parse_quote!({
             let (__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
-            #ident.entry(#p2_port_usize).or_insert_with(Vec::new).push(__root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream::new(__receiver.into_inner()));
+            #ident.entry(#p2_port_usize).or_insert_with(::std::collections::HashMap::new).insert(__current_cluster_id, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream::new(__receiver.into_inner()));
             __sender
         })
     }
@@ -552,10 +552,12 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     Ok(out_file)
 }
 
+#[expect(clippy::too_many_arguments, reason = "necessary for code generation")]
 pub(super) fn create_sim_graph_trybuild(
     process_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_max_sizes: SparseSecondaryMap<LocationKey, usize>,
+    cluster_member_ids: BTreeMap<LocationId, Vec<u32>>,
     process_tick_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_tick_graphs: BTreeMap<LocationId, DfirGraph>,
     extra_stmts_global: Vec<syn::Stmt>,
@@ -571,6 +573,7 @@ pub(super) fn create_sim_graph_trybuild(
         process_graphs,
         cluster_graphs,
         cluster_max_sizes,
+        cluster_member_ids,
         process_tick_graphs,
         cluster_tick_graphs,
         extra_stmts_global,
@@ -684,6 +687,7 @@ fn compile_sim_graph_trybuild(
     process_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_max_sizes: SparseSecondaryMap<LocationKey, usize>,
+    cluster_member_ids: BTreeMap<LocationId, Vec<u32>>,
     process_tick_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_tick_graphs: BTreeMap<LocationId, DfirGraph>,
     mut extra_stmts_global: Vec<syn::Stmt>,
@@ -781,7 +785,9 @@ fn compile_sim_graph_trybuild(
             let ser_lid = serde_json::to_string(&lid).unwrap();
             let extra_stmts_per_cluster =
                 extra_stmts_cluster.get(&lid).cloned().unwrap_or_default();
-            let max_size = cluster_max_sizes.get(lid.key()).cloned().unwrap() as u32;
+            let member_ids = cluster_member_ids.get(&lid).cloned().unwrap_or_else(|| {
+                panic!("cluster {lid:?} has a dataflow graph but no member-id range from sizing")
+            });
 
             let self_id_ident = syn::Ident::new(
                 &format!("__hydro_lang_cluster_self_id_{}", lid.key()),
@@ -789,7 +795,7 @@ fn compile_sim_graph_trybuild(
             );
 
             syn::parse_quote! {
-                for __current_cluster_id in 0..#max_size {
+                for __current_cluster_id in [#(#member_ids),*] {
                     __async_dfirs.push((
                         #ser_lid,
                         Some(__current_cluster_id),
@@ -860,8 +866,8 @@ fn compile_sim_graph_trybuild(
         fn __hydro_runtime_core<'a>(
             __hydro_external_out: &mut ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>,
             __hydro_external_in: &mut ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
-            __hydro_cluster_external_out: &mut ::std::collections::HashMap<usize, Vec<__root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>>,
-            __hydro_cluster_external_in: &mut ::std::collections::HashMap<usize, Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>>,
+            __hydro_cluster_external_out: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>>,
+            __hydro_cluster_external_in: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>>,
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
@@ -930,8 +936,8 @@ fn compile_sim_graph_trybuild(
             should_color: bool,
             __hydro_external_out: &mut ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>,
             __hydro_external_in: &mut ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
-            __hydro_cluster_external_out: &mut ::std::collections::HashMap<usize, Vec<__root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>>,
-            __hydro_cluster_external_in: &mut ::std::collections::HashMap<usize, Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>>,
+            __hydro_cluster_external_out: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>>,
+            __hydro_cluster_external_in: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>>,
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (

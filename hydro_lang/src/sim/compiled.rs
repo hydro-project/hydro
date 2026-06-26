@@ -87,9 +87,9 @@ impl QuiescenceState {
 struct SimConnections {
     input_senders: HashMap<SimExternalPort, Rc<UnboundedSender<Bytes>>>,
     output_receivers: HashMap<SimExternalPort, Rc<Mutex<UnboundedReceiverStream<Bytes>>>>,
-    cluster_input_senders: HashMap<SimExternalPort, Vec<Rc<UnboundedSender<Bytes>>>>,
+    cluster_input_senders: HashMap<SimExternalPort, HashMap<u32, Rc<UnboundedSender<Bytes>>>>,
     cluster_output_receivers:
-        HashMap<SimExternalPort, Vec<Rc<Mutex<UnboundedReceiverStream<Bytes>>>>>,
+        HashMap<SimExternalPort, HashMap<u32, Rc<Mutex<UnboundedReceiverStream<Bytes>>>>>,
     external_registered: HashMap<ExternalPortId, SimExternalPort>,
     quiescence: Rc<QuiescenceState>,
 }
@@ -135,8 +135,8 @@ type SimLoaded<'a> = libloading::Symbol<
         should_color: bool,
         external_out: &mut HashMap<usize, UnboundedReceiverStream<Bytes>>,
         external_in: &mut HashMap<usize, UnboundedSender<Bytes>>,
-        cluster_external_out: &mut HashMap<usize, Vec<UnboundedReceiverStream<Bytes>>>,
-        cluster_external_in: &mut HashMap<usize, Vec<UnboundedSender<Bytes>>>,
+        cluster_external_out: &mut HashMap<usize, HashMap<u32, UnboundedReceiverStream<Bytes>>>,
+        cluster_external_in: &mut HashMap<usize, HashMap<u32, UnboundedSender<Bytes>>>,
         println_handler: fn(fmt::Arguments<'_>),
         eprintln_handler: fn(fmt::Arguments<'_>),
     ) -> (
@@ -420,9 +420,10 @@ impl<'a> CompiledSimInstance<'a> {
     ) {
         let mut external_out: HashMap<usize, UnboundedReceiverStream<Bytes>> = HashMap::new();
         let mut external_in: HashMap<usize, UnboundedSender<Bytes>> = HashMap::new();
-        let mut cluster_external_out: HashMap<usize, Vec<UnboundedReceiverStream<Bytes>>> =
+        let mut cluster_external_out: HashMap<usize, HashMap<u32, UnboundedReceiverStream<Bytes>>> =
             HashMap::new();
-        let mut cluster_external_in: HashMap<usize, Vec<UnboundedSender<Bytes>>> = HashMap::new();
+        let mut cluster_external_in: HashMap<usize, HashMap<u32, UnboundedSender<Bytes>>> =
+            HashMap::new();
 
         let dylib_result = unsafe {
             (self.func)(
@@ -470,14 +471,20 @@ impl<'a> CompiledSimInstance<'a> {
                 output_receivers.insert(*sim_port, Rc::new(Mutex::new(receiver)));
             }
             if let Some(senders) = cluster_external_in.remove(&usize_key) {
-                cluster_input_senders.insert(*sim_port, senders.into_iter().map(Rc::new).collect());
+                cluster_input_senders.insert(
+                    *sim_port,
+                    senders
+                        .into_iter()
+                        .map(|(member, s)| (member, Rc::new(s)))
+                        .collect(),
+                );
             }
             if let Some(receivers) = cluster_external_out.remove(&usize_key) {
                 cluster_output_receivers.insert(
                     *sim_port,
                     receivers
                         .into_iter()
-                        .map(|r| Rc::new(Mutex::new(r)))
+                        .map(|(member, r)| (member, Rc::new(Mutex::new(r))))
                         .collect(),
                 );
             }
@@ -913,7 +920,7 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterReceive
             let port = connections.external_registered.get(&self.0).unwrap();
             let receivers = connections.cluster_output_receivers.get(port).unwrap();
             (
-                receivers[member_id as usize].clone(),
+                receivers[&member_id].clone(),
                 connections.quiescence.clone(),
             )
         });
@@ -990,7 +997,7 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterSender<
 
         thunk(&move |member_id: u32, t: T| {
             let payload = bincode::serialize(&t).unwrap();
-            let res = senders[member_id as usize].send(Bytes::from(payload));
+            let res = senders[&member_id].send(Bytes::from(payload));
             quiescence.resume();
             res
         })
