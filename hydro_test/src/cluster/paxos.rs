@@ -245,7 +245,7 @@ pub fn paxos_core<'a, P: PaxosPayload + 'a>(
     clippy::too_many_arguments,
     reason = "internal paxos code // TODO"
 )]
-pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
+pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned + 'a>(
     proposers: &Cluster<'a, Proposer>,
     acceptors: &Cluster<'a, Acceptor>,
     proposer_tick: &Tick<Cluster<'a, Proposer>>,
@@ -472,7 +472,7 @@ fn p_leader_heartbeat<'a>(
 }
 
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone>(
+fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone + 'a>(
     acceptor_tick: &Tick<Cluster<'a, Acceptor>>,
     p_to_acceptors_p1a: Stream<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded, NoOrder>,
     a_log: Singleton<(Option<usize>, L), Tick<Cluster<'a, Acceptor>>, Bounded>,
@@ -490,22 +490,26 @@ fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone>(
             proposer_id: MemberId::from_raw_id(0)
         })));
 
+    let a_max_ballot_ref = a_max_ballot.by_ref();
+    let a_log_ref = a_log.by_ref();
     (
         a_max_ballot.clone(),
         p_to_acceptors_p1a
-            .cross_singleton(a_max_ballot)
-            .cross_singleton(a_log)
-            .map(q!(|((ballot, max_ballot), log)| (
-                ballot.proposer_id.clone(),
+            .map(q!(|ballot| {
+                let max_ballot = a_max_ballot_ref.clone();
+                let log = a_log_ref.clone();
                 (
-                    ballot.clone(),
-                    if ballot == max_ballot {
-                        Ok(log)
-                    } else {
-                        Err(max_ballot)
-                    }
+                    ballot.proposer_id.clone(),
+                    (
+                        ballot.clone(),
+                        if ballot == max_ballot {
+                            Ok(log)
+                        } else {
+                            Err(max_ballot)
+                        },
+                    ),
                 )
-            )))
+            }))
             .all_ticks()
             .demux(proposers, TCP.fail_stop().bincode())
             .values(),
