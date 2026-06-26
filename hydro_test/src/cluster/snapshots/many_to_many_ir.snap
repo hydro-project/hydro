@@ -4,7 +4,7 @@ expression: built.ir()
 ---
 [
     ForEach {
-        f: stageleft :: runtime_support :: fnmut1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_many_to_many_rs_15_21 ! ([] [| n | println ! ("cluster received: {:?}" , n)]) }),
+        f: stageleft :: runtime_support :: fnmut1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; crate :: __staged :: __stageleft_quote_src_cluster_many_to_many_rs_15_21 ! ([] [| n | println ! ("cluster received: {:?}" , n)]) }),
         input: ObserveNonDet {
             inner: Cast {
                 inner: Network {
@@ -146,7 +146,7 @@ expression: built.ir()
                                 right: Batch {
                                     inner: Source {
                                         source: Iter(
-                                            stageleft :: runtime_support :: type_hint :: < std :: ops :: Range < i32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_many_to_many_rs_7_24 ! ([] [0 .. 2]) }),
+                                            stageleft :: runtime_support :: type_hint :: < core :: ops :: Range < i32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; crate :: __staged :: __stageleft_quote_src_cluster_many_to_many_rs_7_24 ! ([] [0 .. 2]) }),
                                         ),
                                         metadata: HydroIrMetadata {
                                             location_id: Cluster(loc1v1),
