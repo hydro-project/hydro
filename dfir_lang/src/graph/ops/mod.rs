@@ -27,6 +27,10 @@ pub enum DelayType {
     Tick,
     /// Input must be collected over the previous tick but also not cause a new tick to occur.
     TickLazy,
+    /// Input must be collected over the previous loop iteration. Causes the loop to re-fire.
+    Loop,
+    /// Input must be collected over the previous loop iteration. Does NOT cause the loop to re-fire.
+    LoopLazy,
 }
 
 /// Specification of the named (or unnamed) ports for an operator's inputs or outputs.
@@ -320,6 +324,8 @@ declare_ops![
     defer_signal::DEFER_SIGNAL,
     defer_tick::DEFER_TICK,
     defer_tick_lazy::DEFER_TICK_LAZY,
+    defer_loop::DEFER_LOOP,
+    defer_loop_lazy::DEFER_LOOP_LAZY,
     null::NULL,
     partition::PARTITION,
     persist::PERSIST,

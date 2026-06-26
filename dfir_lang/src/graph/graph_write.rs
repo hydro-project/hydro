@@ -180,7 +180,10 @@ where
             "{b:i$}{src}{arrow_body}{arrow_head}{label}{dst}",
             src = src_str.trim(),
             arrow_body = "--",
-            arrow_head = if let Some(DelayType::Tick | DelayType::TickLazy) = delay_type {
+            arrow_head = if let Some(
+                DelayType::Tick | DelayType::TickLazy | DelayType::Loop | DelayType::LoopLazy,
+            ) = delay_type
+            {
                 "o"
             } else {
                 ">"
@@ -194,7 +197,9 @@ where
             b = "",
             i = self.indent,
         )?;
-        if let Some(DelayType::Tick | DelayType::TickLazy) = delay_type {
+        if let Some(DelayType::Tick | DelayType::TickLazy | DelayType::Loop | DelayType::LoopLazy) =
+            delay_type
+        {
             write!(self.write, "; linkStyle {} stroke:red", self.link_count)?;
         }
         writeln!(self.write)?;
