@@ -11,7 +11,6 @@ use quote::quote;
 use sha2::{Digest, Sha256};
 use slotmap::SparseSecondaryMap;
 use stageleft::QuotedWithContext;
-use syn::visit_mut::VisitMut;
 use tempfile::TempPath;
 use trybuild_internals_api::{cargo, dependencies, path};
 
@@ -22,7 +21,6 @@ use crate::compile::trybuild::generate::LinkingMode;
 use crate::compile::trybuild::generate::{
     CONCURRENT_TEST_LOCK, IS_TEST, TrybuildConfig, create_trybuild, write_atomic,
 };
-use crate::compile::trybuild::rewriters::UseTestModeStaged;
 use crate::deploy::deploy_runtime::cluster_membership_stream;
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
@@ -579,7 +577,6 @@ pub(super) fn create_sim_graph_trybuild(
         extra_stmts_global,
         extra_stmts_cluster,
         &crate_name,
-        is_test,
     );
 
     let inlined_staged = if is_test {
@@ -690,15 +687,14 @@ fn compile_sim_graph_trybuild(
     cluster_member_ids: BTreeMap<LocationId, Vec<u32>>,
     process_tick_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_tick_graphs: BTreeMap<LocationId, DfirGraph>,
-    mut extra_stmts_global: Vec<syn::Stmt>,
-    mut extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
+    extra_stmts_global: Vec<syn::Stmt>,
+    extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
     crate_name: &str,
-    is_test: bool,
 ) -> syn::File {
     let mut diagnostics = Diagnostics::new();
 
     let mut dfir_into_code = |g: &DfirGraph| {
-        let mut dfir_expr: syn::Expr = syn::parse2(
+        let dfir_expr: syn::Expr = syn::parse2(
             g.as_code_with_options(
                 &quote! { __root_dfir_rs },
                 true,
@@ -710,10 +706,6 @@ fn compile_sim_graph_trybuild(
         )
         .unwrap();
 
-        if is_test {
-            UseTestModeStaged { crate_name }.visit_expr_mut(&mut dfir_expr);
-        }
-
         dfir_expr
     };
 
@@ -724,18 +716,6 @@ fn compile_sim_graph_trybuild(
             __root_dfir_rs::scheduled::context::Dfir::into_erased(#inner)
         }
     };
-
-    if is_test {
-        extra_stmts_global.iter_mut().for_each(|stmt| {
-            UseTestModeStaged { crate_name }.visit_stmt_mut(stmt);
-        });
-
-        extra_stmts_cluster.values_mut().for_each(|stmts| {
-            stmts.iter_mut().for_each(|stmt| {
-                UseTestModeStaged { crate_name }.visit_stmt_mut(stmt);
-            })
-        });
-    }
 
     let process_dfir_exprs = process_graphs
         .into_iter()
@@ -854,11 +834,11 @@ fn compile_sim_graph_trybuild(
 
     let source_ast: syn::File = syn::parse_quote! {
         use #trybuild_crate_name_ident::__root as #orig_crate_name;
-        use #trybuild_crate_name_ident::__root::*;
-        use #trybuild_crate_name_ident::__staged::__deps::*;
+        use #orig_crate_name::*;
+        use #orig_crate_name::__staged::__deps::*;
         use #root::prelude::*;
         use #root::runtime_support::dfir_rs as __root_dfir_rs;
-        pub use #trybuild_crate_name_ident::__staged;
+        pub use #orig_crate_name::__staged;
 
         /// NOTE: This method signature MUST BE THE SAME as `SimLoaded`.
         /// TODO(mingwei): enforce/check this, somehow
