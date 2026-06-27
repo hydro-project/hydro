@@ -4,7 +4,6 @@ default-filter = "not (package(hydro_test) & kind(bench))"
 
 [test-groups]
 serial-integration = { max-threads = 1 }
-hydro-trybuild-group = { max-threads = 1 }
 
 # TODO(inline): deadlock_detector disabled (intra-tick cycles)
 # [[profile.default.overrides]]
@@ -28,17 +27,18 @@ filter = 'binary(echo_local)'
 test-group = 'serial-integration'
 
 [[profile.default.overrides]]
-filter = 'package(hydro_lang)'
-test-group = 'hydro-trybuild-group'
+filter = 'test(fuzz_with_cargo_sim)'
+threads-required = 'num-test-threads'
 
 [[profile.default.overrides]]
-filter = 'package(hydro_std)'
-test-group = 'hydro-trybuild-group'
+filter = 'test(test_distributed_echo_example_docker)'
+threads-required = 'num-test-threads'
+
+# under heavy CPU load, Maelstrom is flaky when multiple nodes are launched
+[[profile.default.overrides]]
+filter = 'test(maelstrom::broadcast::tests::broadcast_3b_maelstrom)'
+threads-required = 'num-test-threads'
 
 [[profile.default.overrides]]
-filter = 'package(hydro_test)'
-test-group = 'hydro-trybuild-group'
-
-[[profile.default.overrides]]
-filter = 'package(hydro_test_template)'
-test-group = 'hydro-trybuild-group'
+filter = 'test(maelstrom::broadcast::tests::broadcast_3c_maelstrom)'
+threads-required = 'num-test-threads'

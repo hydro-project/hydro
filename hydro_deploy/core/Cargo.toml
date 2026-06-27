@@ -28,6 +28,7 @@ bytes = "1.1.0"
 cargo_metadata = "0.18.0"
 dunce = "1.0.0"
 futures = "0.3.0"
+hydro_concurrent_cargo = { path = "../../hydro_concurrent_cargo", version = "^0.1.0-alpha.0" }
 hydro_deploy_integration = { path = "../hydro_deploy_integration", version = "^0.17.0-alpha.2" }
 indicatif = "0.17.0"
 inferno = { version = "0.11.0", default-features = false, optional = true }

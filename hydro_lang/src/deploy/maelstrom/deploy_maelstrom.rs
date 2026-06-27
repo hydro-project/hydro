@@ -514,6 +514,9 @@ impl MaelstromDeployment {
     pub fn run(self) -> Result<(), Error> {
         let binary_path = self.build()?;
 
+        // Use a unique working directory per run to avoid conflicts with concurrent tests.
+        let run_dir = tempfile::tempdir().map_err(Error::other)?;
+
         let mut cmd = std::process::Command::new(&self.maelstrom_path);
         cmd.arg("test")
             .arg("-w")
@@ -522,6 +525,7 @@ impl MaelstromDeployment {
             .arg(&binary_path)
             .arg("--node-count")
             .arg(self.node_count.to_string())
+            .current_dir(run_dir.path())
             .stdout(Stdio::piped());
 
         if let Some(time_limit) = self.time_limit {
@@ -551,7 +555,11 @@ impl MaelstromDeployment {
             eprintln!("{}", &line);
 
             if line.starts_with("Analysis invalid!") {
-                return Err(Error::other("Analysis was invalid"));
+                let path = run_dir.keep();
+                return Err(Error::other(format!(
+                    "Analysis was invalid. Maelstrom store at: {}",
+                    path.display()
+                )));
             } else if line.starts_with("Errors occurred during analysis, but no anomalies found.")
                 || line.starts_with("Everything looks good!")
             {
@@ -559,7 +567,11 @@ impl MaelstromDeployment {
             }
         }
 
-        Err(Error::other("Maelstrom produced an unexpected result"))
+        let path = run_dir.keep();
+        Err(Error::other(format!(
+            "Maelstrom produced an unexpected result. Store at: {}",
+            path.display()
+        )))
     }
 
     /// Get the path to the compiled binary (after building).

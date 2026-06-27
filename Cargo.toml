@@ -9,6 +9,7 @@ members = [
     "dfir_rs",
     "dfir_pipes",
     "example_test",
+    "hydro_concurrent_cargo",
     "hydro_deploy/core",
     "hydro_deploy/hydro_deploy_integration",
     "hydro_lang",
