@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/deploy/maelstrom/deploy_maelstrom.rs`."><title>deploy_maelstrom.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (bd08c9e71 2026-06-25)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/deploy/maelstrom/</div>deploy_maelstrom.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Deployment backend for Hydro that targets Maelstrom for distributed systems testing.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/deploy/maelstrom/deploy_maelstrom.rs`."><title>deploy_maelstrom.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (ce9954c0c 2026-06-26)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/deploy/maelstrom/</div>deploy_maelstrom.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Deployment backend for Hydro that targets Maelstrom for distributed systems testing.
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! Maelstrom is a workbench for learning distributed systems by writing your own.
 <a href=#4 id=4 data-nosnippet>4</a>//! This backend compiles Hydro programs to binaries that communicate via Maelstrom's
@@ -514,59 +514,71 @@
 <a href=#514 id=514 data-nosnippet>514</a>    </span><span class="kw">pub fn </span>run(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
 <a href=#515 id=515 data-nosnippet>515</a>        <span class="kw">let </span>binary_path = <span class="self">self</span>.build()<span class="question-mark">?</span>;
 <a href=#516 id=516 data-nosnippet>516</a>
-<a href=#517 id=517 data-nosnippet>517</a>        <span class="kw">let </span><span class="kw-2">mut </span>cmd = std::process::Command::new(<span class="kw-2">&amp;</span><span class="self">self</span>.maelstrom_path);
-<a href=#518 id=518 data-nosnippet>518</a>        cmd.arg(<span class="string">"test"</span>)
-<a href=#519 id=519 data-nosnippet>519</a>            .arg(<span class="string">"-w"</span>)
-<a href=#520 id=520 data-nosnippet>520</a>            .arg(<span class="kw-2">&amp;</span><span class="self">self</span>.workload)
-<a href=#521 id=521 data-nosnippet>521</a>            .arg(<span class="string">"--bin"</span>)
-<a href=#522 id=522 data-nosnippet>522</a>            .arg(<span class="kw-2">&amp;</span>binary_path)
-<a href=#523 id=523 data-nosnippet>523</a>            .arg(<span class="string">"--node-count"</span>)
-<a href=#524 id=524 data-nosnippet>524</a>            .arg(<span class="self">self</span>.node_count.to_string())
-<a href=#525 id=525 data-nosnippet>525</a>            .stdout(Stdio::piped());
-<a href=#526 id=526 data-nosnippet>526</a>
-<a href=#527 id=527 data-nosnippet>527</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(time_limit) = <span class="self">self</span>.time_limit {
-<a href=#528 id=528 data-nosnippet>528</a>            cmd.arg(<span class="string">"--time-limit"</span>).arg(time_limit.to_string());
-<a href=#529 id=529 data-nosnippet>529</a>        }
+<a href=#517 id=517 data-nosnippet>517</a>        <span class="comment">// Use a unique working directory per run to avoid conflicts with concurrent tests.
+<a href=#518 id=518 data-nosnippet>518</a>        </span><span class="kw">let </span>run_dir = tempfile::tempdir().map_err(Error::other)<span class="question-mark">?</span>;
+<a href=#519 id=519 data-nosnippet>519</a>
+<a href=#520 id=520 data-nosnippet>520</a>        <span class="kw">let </span><span class="kw-2">mut </span>cmd = std::process::Command::new(<span class="kw-2">&amp;</span><span class="self">self</span>.maelstrom_path);
+<a href=#521 id=521 data-nosnippet>521</a>        cmd.arg(<span class="string">"test"</span>)
+<a href=#522 id=522 data-nosnippet>522</a>            .arg(<span class="string">"-w"</span>)
+<a href=#523 id=523 data-nosnippet>523</a>            .arg(<span class="kw-2">&amp;</span><span class="self">self</span>.workload)
+<a href=#524 id=524 data-nosnippet>524</a>            .arg(<span class="string">"--bin"</span>)
+<a href=#525 id=525 data-nosnippet>525</a>            .arg(<span class="kw-2">&amp;</span>binary_path)
+<a href=#526 id=526 data-nosnippet>526</a>            .arg(<span class="string">"--node-count"</span>)
+<a href=#527 id=527 data-nosnippet>527</a>            .arg(<span class="self">self</span>.node_count.to_string())
+<a href=#528 id=528 data-nosnippet>528</a>            .current_dir(run_dir.path())
+<a href=#529 id=529 data-nosnippet>529</a>            .stdout(Stdio::piped());
 <a href=#530 id=530 data-nosnippet>530</a>
-<a href=#531 id=531 data-nosnippet>531</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(rate) = <span class="self">self</span>.rate {
-<a href=#532 id=532 data-nosnippet>532</a>            cmd.arg(<span class="string">"--rate"</span>).arg(rate.to_string());
+<a href=#531 id=531 data-nosnippet>531</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(time_limit) = <span class="self">self</span>.time_limit {
+<a href=#532 id=532 data-nosnippet>532</a>            cmd.arg(<span class="string">"--time-limit"</span>).arg(time_limit.to_string());
 <a href=#533 id=533 data-nosnippet>533</a>        }
 <a href=#534 id=534 data-nosnippet>534</a>
-<a href=#535 id=535 data-nosnippet>535</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(availability) = <span class="self">self</span>.availability {
-<a href=#536 id=536 data-nosnippet>536</a>            cmd.arg(<span class="string">"--availability"</span>).arg(availability);
+<a href=#535 id=535 data-nosnippet>535</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(rate) = <span class="self">self</span>.rate {
+<a href=#536 id=536 data-nosnippet>536</a>            cmd.arg(<span class="string">"--rate"</span>).arg(rate.to_string());
 <a href=#537 id=537 data-nosnippet>537</a>        }
 <a href=#538 id=538 data-nosnippet>538</a>
-<a href=#539 id=539 data-nosnippet>539</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(nemesis) = <span class="self">self</span>.nemesis {
-<a href=#540 id=540 data-nosnippet>540</a>            cmd.arg(<span class="string">"--nemesis"</span>).arg(nemesis);
+<a href=#539 id=539 data-nosnippet>539</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(availability) = <span class="self">self</span>.availability {
+<a href=#540 id=540 data-nosnippet>540</a>            cmd.arg(<span class="string">"--availability"</span>).arg(availability);
 <a href=#541 id=541 data-nosnippet>541</a>        }
 <a href=#542 id=542 data-nosnippet>542</a>
-<a href=#543 id=543 data-nosnippet>543</a>        <span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.extra_args {
-<a href=#544 id=544 data-nosnippet>544</a>            cmd.arg(arg);
+<a href=#543 id=543 data-nosnippet>543</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(nemesis) = <span class="self">self</span>.nemesis {
+<a href=#544 id=544 data-nosnippet>544</a>            cmd.arg(<span class="string">"--nemesis"</span>).arg(nemesis);
 <a href=#545 id=545 data-nosnippet>545</a>        }
 <a href=#546 id=546 data-nosnippet>546</a>
-<a href=#547 id=547 data-nosnippet>547</a>        <span class="kw">let </span>spawned = cmd.spawn()<span class="question-mark">?</span>;
-<a href=#548 id=548 data-nosnippet>548</a>
-<a href=#549 id=549 data-nosnippet>549</a>        <span class="kw">for </span>line <span class="kw">in </span>BufReader::new(spawned.stdout.unwrap()).lines() {
-<a href=#550 id=550 data-nosnippet>550</a>            <span class="kw">let </span>line = line<span class="question-mark">?</span>;
-<a href=#551 id=551 data-nosnippet>551</a>            <span class="macro">eprintln!</span>(<span class="string">"{}"</span>, <span class="kw-2">&amp;</span>line);
+<a href=#547 id=547 data-nosnippet>547</a>        <span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.extra_args {
+<a href=#548 id=548 data-nosnippet>548</a>            cmd.arg(arg);
+<a href=#549 id=549 data-nosnippet>549</a>        }
+<a href=#550 id=550 data-nosnippet>550</a>
+<a href=#551 id=551 data-nosnippet>551</a>        <span class="kw">let </span>spawned = cmd.spawn()<span class="question-mark">?</span>;
 <a href=#552 id=552 data-nosnippet>552</a>
-<a href=#553 id=553 data-nosnippet>553</a>            <span class="kw">if </span>line.starts_with(<span class="string">"Analysis invalid!"</span>) {
-<a href=#554 id=554 data-nosnippet>554</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::other(<span class="string">"Analysis was invalid"</span>));
-<a href=#555 id=555 data-nosnippet>555</a>            } <span class="kw">else if </span>line.starts_with(<span class="string">"Errors occurred during analysis, but no anomalies found."</span>)
-<a href=#556 id=556 data-nosnippet>556</a>                || line.starts_with(<span class="string">"Everything looks good!"</span>)
-<a href=#557 id=557 data-nosnippet>557</a>            {
-<a href=#558 id=558 data-nosnippet>558</a>                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
-<a href=#559 id=559 data-nosnippet>559</a>            }
-<a href=#560 id=560 data-nosnippet>560</a>        }
-<a href=#561 id=561 data-nosnippet>561</a>
-<a href=#562 id=562 data-nosnippet>562</a>        <span class="prelude-val">Err</span>(Error::other(<span class="string">"Maelstrom produced an unexpected result"</span>))
-<a href=#563 id=563 data-nosnippet>563</a>    }
-<a href=#564 id=564 data-nosnippet>564</a>
-<a href=#565 id=565 data-nosnippet>565</a>    <span class="doccomment">/// Get the path to the compiled binary (after building).
-<a href=#566 id=566 data-nosnippet>566</a>    </span><span class="kw">pub fn </span>binary_path(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;PathBuf&gt; {
-<a href=#567 id=567 data-nosnippet>567</a>        <span class="kw">let </span>bin_name = <span class="self">self</span>.bin_name.as_ref()<span class="question-mark">?</span>;
-<a href=#568 id=568 data-nosnippet>568</a>        <span class="kw">let </span>target_dir = <span class="self">self</span>.target_dir.as_ref()<span class="question-mark">?</span>;
-<a href=#569 id=569 data-nosnippet>569</a>        <span class="prelude-val">Some</span>(target_dir.join(<span class="string">"debug"</span>).join(<span class="string">"examples"</span>).join(bin_name))
-<a href=#570 id=570 data-nosnippet>570</a>    }
-<a href=#571 id=571 data-nosnippet>571</a>}
+<a href=#553 id=553 data-nosnippet>553</a>        <span class="kw">for </span>line <span class="kw">in </span>BufReader::new(spawned.stdout.unwrap()).lines() {
+<a href=#554 id=554 data-nosnippet>554</a>            <span class="kw">let </span>line = line<span class="question-mark">?</span>;
+<a href=#555 id=555 data-nosnippet>555</a>            <span class="macro">eprintln!</span>(<span class="string">"{}"</span>, <span class="kw-2">&amp;</span>line);
+<a href=#556 id=556 data-nosnippet>556</a>
+<a href=#557 id=557 data-nosnippet>557</a>            <span class="kw">if </span>line.starts_with(<span class="string">"Analysis invalid!"</span>) {
+<a href=#558 id=558 data-nosnippet>558</a>                <span class="kw">let </span>path = run_dir.keep();
+<a href=#559 id=559 data-nosnippet>559</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::other(<span class="macro">format!</span>(
+<a href=#560 id=560 data-nosnippet>560</a>                    <span class="string">"Analysis was invalid. Maelstrom store at: {}"</span>,
+<a href=#561 id=561 data-nosnippet>561</a>                    path.display()
+<a href=#562 id=562 data-nosnippet>562</a>                )));
+<a href=#563 id=563 data-nosnippet>563</a>            } <span class="kw">else if </span>line.starts_with(<span class="string">"Errors occurred during analysis, but no anomalies found."</span>)
+<a href=#564 id=564 data-nosnippet>564</a>                || line.starts_with(<span class="string">"Everything looks good!"</span>)
+<a href=#565 id=565 data-nosnippet>565</a>            {
+<a href=#566 id=566 data-nosnippet>566</a>                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+<a href=#567 id=567 data-nosnippet>567</a>            }
+<a href=#568 id=568 data-nosnippet>568</a>        }
+<a href=#569 id=569 data-nosnippet>569</a>
+<a href=#570 id=570 data-nosnippet>570</a>        <span class="kw">let </span>path = run_dir.keep();
+<a href=#571 id=571 data-nosnippet>571</a>        <span class="prelude-val">Err</span>(Error::other(<span class="macro">format!</span>(
+<a href=#572 id=572 data-nosnippet>572</a>            <span class="string">"Maelstrom produced an unexpected result. Store at: {}"</span>,
+<a href=#573 id=573 data-nosnippet>573</a>            path.display()
+<a href=#574 id=574 data-nosnippet>574</a>        )))
+<a href=#575 id=575 data-nosnippet>575</a>    }
+<a href=#576 id=576 data-nosnippet>576</a>
+<a href=#577 id=577 data-nosnippet>577</a>    <span class="doccomment">/// Get the path to the compiled binary (after building).
+<a href=#578 id=578 data-nosnippet>578</a>    </span><span class="kw">pub fn </span>binary_path(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;PathBuf&gt; {
+<a href=#579 id=579 data-nosnippet>579</a>        <span class="kw">let </span>bin_name = <span class="self">self</span>.bin_name.as_ref()<span class="question-mark">?</span>;
+<a href=#580 id=580 data-nosnippet>580</a>        <span class="kw">let </span>target_dir = <span class="self">self</span>.target_dir.as_ref()<span class="question-mark">?</span>;
+<a href=#581 id=581 data-nosnippet>581</a>        <span class="prelude-val">Some</span>(target_dir.join(<span class="string">"debug"</span>).join(<span class="string">"examples"</span>).join(bin_name))
+<a href=#582 id=582 data-nosnippet>582</a>    }
+<a href=#583 id=583 data-nosnippet>583</a>}
 </code></pre></div></section></main></body></html>
