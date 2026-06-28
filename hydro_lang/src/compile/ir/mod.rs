@@ -1537,6 +1537,16 @@ impl HydroRoot {
                     fold_hooked_idents,
                 );
 
+                let input_ident = maybe_observe_for_mut(
+                    f,
+                    input_ident,
+                    &input.metadata().location_id,
+                    &input.metadata().collection_kind,
+                    &input.metadata().op,
+                    builders_or_callback,
+                    next_stmt_id,
+                );
+
                 let stmt_id = next_stmt_id.get_and_increment();
 
                 match builders_or_callback {
