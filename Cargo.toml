@@ -84,5 +84,5 @@ uninlined_format_args = "allow"
 unused_async = "warn"
 
 [workspace.dependencies]
-stageleft = "0.14.1"
-stageleft_tool = "0.14.1"
+stageleft = "0.14.3"
+stageleft_tool = "0.14.3"
