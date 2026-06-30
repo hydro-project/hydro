@@ -283,69 +283,7 @@ fn make_subgraphs(
     let subgraph_toposort = build_hierarchical_toposort(partitioned_graph, tick_edges)?;
     partitioned_graph.set_subgraph_toposort(subgraph_toposort);
 
-    // Compute per-loop entry/exit handoffs.
-    compute_loop_handoffs(partitioned_graph);
     Ok(())
-}
-
-/// For each loop, compute which handoff nodes are entry (sender outside, receiver inside)
-/// and which are exit (sender inside, receiver outside).
-fn compute_loop_handoffs(graph: &mut DfirGraph) {
-    // Collect all loop IDs first to avoid borrow issues.
-    let loop_ids: Vec<GraphLoopId> = graph.loop_ids().collect();
-
-    for loop_id in loop_ids {
-        let mut entry_handoffs = Vec::new();
-        let mut exit_handoffs = Vec::new();
-
-        // Check each handoff node.
-        for (hoff_id, hoff) in graph.nodes() {
-            if !matches!(hoff, GraphNode::Handoff { .. }) {
-                continue;
-            }
-
-            // Get the loop context of the sender and receiver.
-            let sender_loop = graph
-                .node_predecessors(hoff_id)
-                .next()
-                .and_then(|(_, pred)| graph.node_subgraph(pred))
-                .and_then(|sg| graph.subgraph_loop(sg));
-            let receiver_loop = graph
-                .node_successors(hoff_id)
-                .next()
-                .and_then(|(_, succ)| graph.node_subgraph(succ))
-                .and_then(|sg| graph.subgraph_loop(sg));
-
-            // Entry: sender is outside this loop (or in a parent), receiver is inside.
-            if is_inside_loop(graph, receiver_loop, loop_id)
-                && !is_inside_loop(graph, sender_loop, loop_id)
-            {
-                entry_handoffs.push(hoff_id);
-            }
-
-            // Exit: sender is inside this loop, receiver is outside (or in a parent).
-            if is_inside_loop(graph, sender_loop, loop_id)
-                && !is_inside_loop(graph, receiver_loop, loop_id)
-            {
-                exit_handoffs.push(hoff_id);
-            }
-        }
-
-        graph.set_loop_entry_handoffs(loop_id, entry_handoffs);
-        graph.set_loop_exit_handoffs(loop_id, exit_handoffs);
-    }
-}
-
-/// Returns true if `node_loop` is `loop_id` or a (transitive) child of `loop_id`.
-fn is_inside_loop(graph: &DfirGraph, node_loop: Option<GraphLoopId>, loop_id: GraphLoopId) -> bool {
-    let mut current = node_loop;
-    while let Some(l) = current {
-        if l == loop_id {
-            return true;
-        }
-        current = graph.loop_parent(l);
-    }
-    false
 }
 
 /// An item in a particular level of the loop hierarchy, used for hierarchical topo sort.

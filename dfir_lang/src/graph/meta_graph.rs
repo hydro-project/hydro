@@ -91,11 +91,6 @@ pub struct DfirGraph {
     /// Set by `order_subgraphs` for `defer_tick` / `defer_tick_lazy`, either on handoff nodes
     /// it injects or on existing handoff nodes that it marks as tick-boundary back-edges.
     handoff_delay_type: SparseSecondaryMap<GraphNodeId, DelayType>,
-
-    /// Handoff nodes entering each loop (sender outside, receiver inside).
-    loop_entry_handoffs: SecondaryMap<GraphLoopId, Vec<GraphNodeId>>,
-    /// Handoff nodes exiting each loop (sender inside, receiver outside).
-    loop_exit_handoffs: SecondaryMap<GraphLoopId, Vec<GraphNodeId>>,
 }
 
 /// Basic methods.
@@ -951,6 +946,59 @@ impl DfirGraph {
         subgraph_handoffs
     }
 
+    /// Compute the input handoffs into each loop (predecessor outside, successor inside).
+    fn helper_loop_input_handoffs(&self) -> SecondaryMap<GraphLoopId, Vec<GraphNodeId>> {
+        let mut loop_hoffs_inn = SecondaryMap::<GraphLoopId, Vec<GraphNodeId>>::new();
+
+        // TODO(mingwei): silly to iterate all loop ids? - just use loop_pred or loop_succ?
+        for loop_id in self.loop_ids() {
+            // Check each handoff node.
+            for (hoff_id, hoff) in self.nodes() {
+                if !matches!(hoff, GraphNode::Handoff { .. }) {
+                    continue;
+                }
+
+                // Get the loop context of the predecessor and successor.
+                let loop_pred = self
+                    .node_predecessors(hoff_id)
+                    .next()
+                    .and_then(|(_, pred)| self.node_subgraph(pred))
+                    .and_then(|sg| self.subgraph_loop(sg));
+                let loop_succ = self
+                    .node_successors(hoff_id)
+                    .next()
+                    .and_then(|(_, succ)| self.node_subgraph(succ))
+                    .and_then(|sg| self.subgraph_loop(sg));
+
+                // In: pred is outside this loop (or in a parent), succ is inside.
+                // TODO(mingwei): is it good that `is_inside_loop` is recursive, not direct parent-child?
+                if self.is_inside_loop(loop_succ, loop_id)
+                    && !self.is_inside_loop(loop_pred, loop_id)
+                {
+                    loop_hoffs_inn
+                        .entry(loop_id)
+                        .expect("loop removed")
+                        .or_default()
+                        .push(hoff_id);
+                }
+            }
+        }
+
+        loop_hoffs_inn
+    }
+
+    /// Returns true if `node_loop` is `loop_id` or a (transitive) child of `loop_id`.
+    fn is_inside_loop(&self, node_loop: Option<GraphLoopId>, loop_id: GraphLoopId) -> bool {
+        let mut current = node_loop;
+        while let Some(l) = current {
+            if l == loop_id {
+                return true;
+            }
+            current = self.loop_parent(l);
+        }
+        false
+    }
+
     /// Emit this graph as runnable Rust source code tokens that execute inline.
     /// Generates a flat `async move |df: &mut Context|` closure where subgraph
     /// blocks are inlined in topological order, using local `Vec<T>` buffers
@@ -1718,8 +1766,12 @@ impl DfirGraph {
                 .map(|(idx, &(sg_id, _))| (self.subgraph_loop(sg_id), &subgraph_blocks[idx]))
                 .collect();
 
+            // Each loop's input handoffs.
+            let loop_input_handoffs = self.helper_loop_input_handoffs();
+
             fn emit_level(
                 graph: &DfirGraph,
+                loop_input_handoffs: &SecondaryMap<GraphLoopId, Vec<GraphNodeId>>,
                 indexed_blocks: &[(Option<GraphLoopId>, &TokenStream)],
                 parent_loop: Option<GraphLoopId>,
                 back_edge_hoffs_and_lazyness: &SparseSecondaryMap<GraphNodeId, bool>,
@@ -1774,6 +1826,7 @@ impl DfirGraph {
                         // Recursively emit the child loop's blocks.
                         let child_body = emit_level(
                             graph,
+                            loop_input_handoffs,
                             &indexed_blocks[start..i],
                             Some(immediate_child),
                             back_edge_hoffs_and_lazyness,
@@ -1787,7 +1840,9 @@ impl DfirGraph {
                             .unwrap_or(&[]);
 
                         // Build the gate condition from entry handoffs.
-                        let entry_handoffs = graph.loop_entry_handoffs(immediate_child);
+                        let entry_handoffs = loop_input_handoffs
+                            .get(immediate_child)
+                            .expect("loop missing");
                         let mut gate_checks: Vec<TokenStream> = entry_handoffs
                             .iter()
                             .map(|&hoff_id| {
@@ -1847,6 +1902,7 @@ impl DfirGraph {
 
             emit_level(
                 self,
+                &loop_input_handoffs,
                 &indexed_blocks,
                 None,
                 &back_edge_hoffs_and_lazyness,
@@ -2434,32 +2490,6 @@ impl DfirGraph {
     /// Get root-level loops (those with no parent loop).
     pub fn root_loops(&self) -> &[GraphLoopId] {
         &self.root_loops
-    }
-
-    /// Get entry handoffs for a loop (sender outside, receiver inside).
-    pub fn loop_entry_handoffs(&self, loop_id: GraphLoopId) -> &[GraphNodeId] {
-        self.loop_entry_handoffs
-            .get(loop_id)
-            .map(|v| v.as_slice())
-            .unwrap_or(&[])
-    }
-
-    /// Get exit handoffs for a loop (sender inside, receiver outside).
-    pub fn loop_exit_handoffs(&self, loop_id: GraphLoopId) -> &[GraphNodeId] {
-        self.loop_exit_handoffs
-            .get(loop_id)
-            .map(|v| v.as_slice())
-            .unwrap_or(&[])
-    }
-
-    /// Set entry handoffs for a loop.
-    pub fn set_loop_entry_handoffs(&mut self, loop_id: GraphLoopId, handoffs: Vec<GraphNodeId>) {
-        self.loop_entry_handoffs.insert(loop_id, handoffs);
-    }
-
-    /// Set exit handoffs for a loop.
-    pub fn set_loop_exit_handoffs(&mut self, loop_id: GraphLoopId, handoffs: Vec<GraphNodeId>) {
-        self.loop_exit_handoffs.insert(loop_id, handoffs);
     }
 }
 
