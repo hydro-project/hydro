@@ -332,6 +332,47 @@ impl<T> SimHook for StreamHook<T, NoOrder> {
     }
 }
 
+/// A hook for atomic source inputs. Always releases all pending items —
+/// the nontrivial decision is simply "there are items available", which
+/// forces the scheduler to consider this tick as ready.
+pub struct AtomicSourceHook<T> {
+    pub input: Rc<RefCell<VecDeque<T>>>,
+    pub to_release: Option<Vec<T>>,
+    pub output: UnboundedSender<T>,
+}
+
+impl<T> SimHook for AtomicSourceHook<T> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|v| !v.is_empty())
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        !self.input.borrow().is_empty()
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        _driver: &mut Borrowed<'a>,
+        _force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+        let items: Vec<T> = current_input.drain(..).collect();
+        let was_nontrivial = !items.is_empty();
+        self.to_release = Some(items);
+        was_nontrivial
+    }
+
+    fn release_decision(&mut self, _log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            for item in to_release {
+                self.output.send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
 pub struct KeyedStreamHook<K: Hash + Eq + Clone, V, Order: Ordering> {
     pub input: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>, // FxHasher is deterministic
     pub to_release: Option<Vec<(K, V)>>,

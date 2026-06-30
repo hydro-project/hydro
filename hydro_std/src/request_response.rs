@@ -56,11 +56,8 @@ mod tests {
 
         // Set up inputs (TotalOrder for deterministic simulation)
         let (response_send, responses) = process.sim_input::<(u32, String), _, _>();
-        let (metadata_send, metadata_input) = process.sim_input::<(u32, i32), _, _>();
+        let (metadata_send, metadata_processing) = process.sim_atomic_input::<(u32, i32), _, _>();
 
-        // Create an atomic tick for metadata processing
-        let metadata_processing = metadata_input.atomic();
-        let metadata_ack = metadata_processing.clone().end_atomic();
         let metadata = metadata_processing
             .batch_atomic(&process.tick(), nondet!(/** test */))
             .weaken_ordering();
@@ -69,14 +66,11 @@ mod tests {
         let joined = join_responses(responses.weaken_ordering(), metadata);
 
         // Set up outputs
-        let metadata_ack_recv = metadata_ack.sim_output();
         let joined_recv = joined.sim_output();
 
         flow.sim().exhaustive(async || {
             // Send metadata first
-            metadata_send.send((1, 42));
-            // Wait for metadata ack to ensure it's processed
-            metadata_ack_recv.assert_yields([(1, 42)]).await;
+            metadata_send.send_atomic((1, 42));
 
             // Now send response
             response_send.send((1, "hello".to_owned()));
@@ -94,23 +88,19 @@ mod tests {
         let process = flow.process::<()>();
 
         let (response_send, responses) = process.sim_input::<(u32, String), _, _>();
-        let (metadata_send, metadata_input) = process.sim_input::<(u32, i32), _, _>();
+        let (metadata_send, metadata_processing) = process.sim_atomic_input::<(u32, i32), _, _>();
 
-        let metadata_processing = metadata_input.atomic();
-        let metadata_ack = metadata_processing.clone().end_atomic();
         let metadata = metadata_processing
             .batch_atomic(&process.tick(), nondet!(/** test */))
             .weaken_ordering();
 
         let joined = join_responses(responses.weaken_ordering(), metadata);
 
-        let metadata_ack_recv = metadata_ack.sim_output();
         let joined_recv = joined.sim_output();
 
         flow.sim().exhaustive(async || {
             // Send multiple metadata entries
-            metadata_send.send_many([(1, 10), (2, 20)]);
-            metadata_ack_recv.assert_yields([(1, 10), (2, 20)]).await;
+            metadata_send.send_many_atomic([(1, 10), (2, 20)]);
 
             // Send responses for both keys
             response_send.send_many([(2, "two".to_owned()), (1, "one".to_owned())]);
@@ -130,23 +120,19 @@ mod tests {
         let process = flow.process::<()>();
 
         let (response_send, responses) = process.sim_input::<(u32, String), _, _>();
-        let (metadata_send, metadata_input) = process.sim_input::<(u32, i32), _, _>();
+        let (metadata_send, metadata_processing) = process.sim_atomic_input::<(u32, i32), _, _>();
 
-        let metadata_processing = metadata_input.atomic();
-        let metadata_ack = metadata_processing.clone().end_atomic();
         let metadata = metadata_processing
             .batch_atomic(&process.tick(), nondet!(/** test */))
             .weaken_ordering();
 
         let joined = join_responses(responses.weaken_ordering(), metadata);
 
-        let metadata_ack_recv = metadata_ack.sim_output();
         let joined_recv = joined.sim_output();
 
         flow.sim().exhaustive(async || {
             // Send metadata for key 1
-            metadata_send.send((1, 42));
-            metadata_ack_recv.assert_yields([(1, 42)]).await;
+            metadata_send.send_atomic((1, 42));
 
             // Send responses for key 1 (has metadata) and key 2 (no metadata)
             response_send.send_many([(1, "matched".to_owned()), (2, "unmatched".to_owned())]);
@@ -165,23 +151,19 @@ mod tests {
         let process = flow.process::<()>();
 
         let (response_send, responses) = process.sim_input::<(u32, String), _, _>();
-        let (metadata_send, metadata_input) = process.sim_input::<(u32, i32), _, _>();
+        let (metadata_send, metadata_processing) = process.sim_atomic_input::<(u32, i32), _, _>();
 
-        let metadata_processing = metadata_input.atomic();
-        let metadata_ack = metadata_processing.clone().end_atomic();
         let metadata = metadata_processing
             .batch_atomic(&process.tick(), nondet!(/** test */))
             .weaken_ordering();
 
         let joined = join_responses(responses.weaken_ordering(), metadata);
 
-        let metadata_ack_recv = metadata_ack.sim_output();
         let joined_recv = joined.sim_output();
 
         flow.sim().exhaustive(async || {
             // Send metadata for key 1
-            metadata_send.send((1, 42));
-            metadata_ack_recv.assert_yields([(1, 42)]).await;
+            metadata_send.send_atomic((1, 42));
 
             // First response for key 1 should match
             response_send.send((1, "first".to_owned()));

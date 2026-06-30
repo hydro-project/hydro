@@ -62,8 +62,6 @@ use crate::location::external_process::{
 use crate::nondet::NonDet;
 #[cfg(feature = "tokio")]
 use crate::properties::manual_proof;
-#[cfg(feature = "sim")]
-use crate::sim::SimSender;
 use crate::staging_util::get_this_crate;
 
 pub mod dynamic;
@@ -601,32 +599,6 @@ pub trait Location<'a>: DynLocation {
             },
             stream.weaken_ordering().weaken_retries(),
         )
-    }
-
-    /// Sets up a simulated input port on this location for testing.
-    ///
-    /// Returns a handle to send messages to the location as well as a stream
-    /// of received messages. This is only available when the `sim` feature is enabled.
-    #[cfg(feature = "sim")]
-    fn sim_input<T, O: Ordering, R: Retries>(
-        &self,
-    ) -> (
-        SimSender<T, O, R>,
-        Stream<T, Self::DropConsistency, Unbounded, O, R>,
-    )
-    where
-        Self: TopLevel<'a> + Sized,
-        T: Serialize + DeserializeOwned,
-    {
-        let external_location: External<'a, ()> = External {
-            key: LocationKey::FIRST,
-            flow_state: self.flow_state().clone(),
-            _phantom: PhantomData,
-        };
-
-        let (external, stream) = self.source_external_bincode(&external_location);
-
-        (SimSender(external.port_id, PhantomData), stream)
     }
 
     /// Creates an external input stream for embedded deployment mode.

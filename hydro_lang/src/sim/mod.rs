@@ -40,6 +40,14 @@ pub struct SimClusterSender<T: Serialize + DeserializeOwned, O: Ordering, R: Ret
     pub(crate) PhantomData<(T, O, R)>,
 );
 
+/// A sender for an atomic input in a simulation.
+///
+/// `send_atomic` is synchronous — the value is immediately available in
+/// the next atomic slice without requiring a separate tick.
+pub struct SimAtomicSender<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+    pub(crate) SimSender<T, O, R>,
+);
+
 #[cfg(stageleft_runtime)]
 mod builder;
 

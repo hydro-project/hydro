@@ -896,6 +896,28 @@ impl<T: Serialize + DeserializeOwned> SimSender<T, TotalOrder, ExactlyOnce> {
     }
 }
 
+impl<T: Serialize + DeserializeOwned, O: Ordering> super::SimAtomicSender<T, O, ExactlyOnce> {
+    /// Sends several messages into the atomic input, in non-deterministic order.
+    /// Values are immediately available in the next atomic slice.
+    pub fn send_many_unordered_atomic<I: IntoIterator<Item = T>>(&self, iter: I) {
+        self.0.send_many_unordered(iter);
+    }
+}
+
+impl<T: Serialize + DeserializeOwned> super::SimAtomicSender<T, TotalOrder, ExactlyOnce> {
+    /// Sends a message into the atomic input. The value is immediately
+    /// available in the next atomic slice without requiring a separate tick.
+    pub fn send_atomic(&self, t: T) {
+        self.0.send(t);
+    }
+
+    /// Sends several messages into the atomic input. Values are immediately
+    /// available in the next atomic slice.
+    pub fn send_many_atomic<I: IntoIterator<Item = T>>(&self, iter: I) {
+        self.0.send_many(iter);
+    }
+}
+
 impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> Clone
     for SimClusterReceiver<T, O, R>
 {
