@@ -4,14 +4,14 @@ expression: built.ir()
 ---
 [
     ForEach {
-        f: stageleft :: runtime_support :: fnmut1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_map_reduce_rs_45_21 ! ([] [| (string , count) | println ! ("{}: {}" , string , count)]) }),
+        f: stageleft :: runtime_support :: fnmut1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; crate :: __staged :: __stageleft_quote_src_cluster_map_reduce_rs_45_21 ! ([] [| (string , count) | println ! ("{}: {}" , string , count)]) }),
         input: ObserveNonDet {
             inner: YieldConcat {
                 inner: Cast {
                     inner: Cast {
                         inner: Batch {
                             inner: ReduceKeyed {
-                                f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_map_reduce_rs_36_8 ! ([] [| total , count | * total += count]) }),
+                                f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; crate :: __staged :: __stageleft_quote_src_cluster_map_reduce_rs_36_8 ! ([] [| total , count | * total += count]) }),
                                 input: ObserveNonDet {
                                     inner: Cast {
                                         inner: Map {
@@ -32,16 +32,16 @@ expression: built.ir()
                                                         ),
                                                         input: YieldConcat {
                                                             inner: Inspect {
-                                                                f: stageleft :: runtime_support :: fnmut1_borrow_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_map_reduce_rs_27_20 ! ([] [| (string , count) | println ! ("partition count: {} - {}" , string , count)]) }),
+                                                                f: stageleft :: runtime_support :: fnmut1_borrow_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; crate :: __staged :: __stageleft_quote_src_cluster_map_reduce_rs_27_20 ! ([] [| (string , count) | println ! ("partition count: {} - {}" , string , count)]) }),
                                                                 input: Cast {
                                                                     inner: Cast {
                                                                         inner: FoldKeyed {
-                                                                            init: stageleft :: runtime_support :: fn0_type_hint :: < i32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_map_reduce_rs_25_17 ! ([] [| | 0]) }),
-                                                                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , () , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_map_reduce_rs_25_27 ! ([] [| count , _ | * count += 1]) }),
+                                                                            init: stageleft :: runtime_support :: fn0_type_hint :: < i32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; crate :: __staged :: __stageleft_quote_src_cluster_map_reduce_rs_25_17 ! ([] [| | 0]) }),
+                                                                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , () , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; crate :: __staged :: __stageleft_quote_src_cluster_map_reduce_rs_25_27 ! ([] [| count , _ | * count += 1]) }),
                                                                             input: Batch {
                                                                                 inner: Cast {
                                                                                     inner: Map {
-                                                                                        f: stageleft :: runtime_support :: fnmut1_type_hint :: < std :: string :: String , (std :: string :: String , ()) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_map_reduce_rs_17_16 ! ([] [| string | (string , ())]) }),
+                                                                                        f: stageleft :: runtime_support :: fnmut1_type_hint :: < std :: string :: String , (std :: string :: String , ()) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; crate :: __staged :: __stageleft_quote_src_cluster_map_reduce_rs_17_16 ! ([] [| string | (string , ())]) }),
                                                                                         input: Network {
                                                                                             name: None,
                                                                                             networking_info: Tcp {
@@ -62,10 +62,10 @@ expression: built.ir()
                                                                                                             left: Batch {
                                                                                                                 inner: Enumerate {
                                                                                                                     input: Map {
-                                                                                                                        f: stageleft :: runtime_support :: fnmut1_type_hint :: < & str , std :: string :: String > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_map_reduce_rs_13_16 ! ([] [| s | s . to_owned ()]) }),
+                                                                                                                        f: stageleft :: runtime_support :: fnmut1_type_hint :: < & str , std :: string :: String > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; crate :: __staged :: __stageleft_quote_src_cluster_map_reduce_rs_13_16 ! ([] [| s | s . to_owned ()]) }),
                                                                                                                         input: Source {
                                                                                                                             source: Iter(
-                                                                                                                                stageleft :: runtime_support :: type_hint :: < std :: vec :: Vec < & str > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_cluster_map_reduce_rs_12_24 ! ([] [vec ! ["abc" , "abc" , "xyz" , "abc"]]) }),
+                                                                                                                                stageleft :: runtime_support :: type_hint :: < std :: vec :: Vec < & str > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; crate :: __staged :: __stageleft_quote_src_cluster_map_reduce_rs_12_24 ! ([] [vec ! ["abc" , "abc" , "xyz" , "abc"]]) }),
                                                                                                                             ),
                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                 location_id: Process(loc1v1),

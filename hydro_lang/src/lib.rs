@@ -138,10 +138,10 @@ fn init_rewrites() {
         vec!["tokio_util", "codec", "lines_codec"],
         vec!["tokio_util", "codec"],
     );
-    // TODO: remove once stageleft is updated with this rewrite built-in
+    // TODO: remove once stabilized
     stageleft::add_private_reexport(
-        vec!["core", "iter", "sources", "empty"],
-        vec!["std", "iter"],
+        vec!["core", "io", "error", "Error"],
+        vec!["std", "io", "Error"],
     );
 }
 
