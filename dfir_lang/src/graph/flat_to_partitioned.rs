@@ -36,21 +36,8 @@ fn find_edge_barriers(
             continue;
         };
 
-        match delay_type {
-            DelayType::Tick | DelayType::TickLazy => {
-                // Skip tick barriers within loop blocks (handled differently there).
-                if partitioned_graph.node_loop(dst).is_some() {
-                    continue;
-                }
-                barrier_pairs.push((src, dst));
-                tick_edges.insert(edge_id, delay_type);
-            }
-            DelayType::Loop | DelayType::LoopLazy => {
-                // Loop barriers create subgraph splits within loop blocks.
-                barrier_pairs.push((src, dst));
-                tick_edges.insert(edge_id, delay_type);
-            }
-        }
+        barrier_pairs.push((src, dst));
+        tick_edges.insert(edge_id, delay_type);
     }
 
     (tick_edges, barrier_pairs)
