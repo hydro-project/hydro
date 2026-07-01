@@ -264,6 +264,8 @@ fn make_subgraphs(
 
     // Register subgraphs. SubgraphMerge maintains operators in topo-sorted order per subgraph.
     // Filter out handoff nodes — they are not part of any subgraph.
+    // Collect subgraph IDs in flat topological order.
+    let mut flat_toposort = Vec::new();
     for nodes in subgraph_merge.subgraphs() {
         if nodes.is_empty() {
             continue;
@@ -275,18 +277,73 @@ fn make_subgraphs(
         {
             continue;
         }
-        partitioned_graph.insert_subgraph(nodes.to_vec()).unwrap();
+        let sg_id = partitioned_graph.insert_subgraph(nodes.to_vec()).unwrap();
+        flat_toposort.push(sg_id);
     }
 
-    // Build a hierarchical topological sort that guarantees subgraphs within a loop
-    // are contiguous in the final order.
-    let subgraph_toposort = build_hierarchical_toposort(partitioned_graph, tick_edges)?;
+    // Rearrange the flat toposort to make loop subgraphs contiguous.
+    let subgraph_toposort = make_loops_contiguous(partitioned_graph, &flat_toposort, None);
     partitioned_graph.set_subgraph_toposort(subgraph_toposort);
 
     Ok(())
 }
 
-/// An item in a particular level of the loop hierarchy, used for hierarchical topo sort.
+/// Rearranges a flat topological order of subgraphs so that all subgraphs within
+/// a loop are contiguous, while preserving the relative topological order.
+///
+/// This works by walking the flat order and grouping subgraphs by their nearest
+/// ancestor that is a direct child of `parent_loop`. Subgraphs directly at this
+/// level keep their position; subgraphs inside a child loop are grouped together
+/// at the position where the child loop first appears. Recurses into child loops.
+///
+/// Correctness: subgraphs from different loop contexts that appear interleaved in
+/// the flat order have no dependency between them (data can only enter/exit a loop
+/// via windowing/unwindowing operators, never between siblings), so reordering them
+/// for contiguity preserves the topological invariant.
+fn make_loops_contiguous(
+    graph: &DfirGraph,
+    flat_order: &[GraphSubgraphId],
+    parent_loop: Option<GraphLoopId>,
+) -> Vec<GraphSubgraphId> {
+    // Items at this level, in the order they first appear in `flat_order`.
+    let mut items: Vec<HierItem> = Vec::new();
+    // For child loops: accumulate their subgraphs in flat-order.
+    let mut loop_subgraphs: HashMap<GraphLoopId, Vec<GraphSubgraphId>> = HashMap::new();
+    // Track which child loops we've already placed.
+    let mut seen_loops: HashSet<GraphLoopId> = HashSet::new();
+
+    for &sg in flat_order {
+        let sg_loop = graph.subgraph_loop(sg);
+        match child_loop_ancestor(graph, sg_loop, parent_loop) {
+            None => {
+                // Directly at this level — emit in place.
+                items.push(HierItem::Subgraph(sg));
+            }
+            Some(child_loop) => {
+                // Inside a child loop — group it.
+                loop_subgraphs.entry(child_loop).or_default().push(sg);
+                if seen_loops.insert(child_loop) {
+                    items.push(HierItem::Loop(child_loop));
+                }
+            }
+        }
+    }
+
+    // Flatten: direct subgraphs emit themselves, loops recurse.
+    let mut result = Vec::new();
+    for item in items {
+        match item {
+            HierItem::Subgraph(sg) => result.push(sg),
+            HierItem::Loop(loop_id) => {
+                let loop_sgs = loop_subgraphs.remove(&loop_id).unwrap();
+                result.extend(make_loops_contiguous(graph, &loop_sgs, Some(loop_id)));
+            }
+        }
+    }
+    result
+}
+
+/// An item in a particular level of the loop hierarchy.
 /// Either a bare subgraph or an entire child loop (treated as a single unit).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum HierItem {
@@ -294,167 +351,27 @@ enum HierItem {
     Loop(GraphLoopId),
 }
 
-/// Builds a hierarchical topological sort of subgraphs, guaranteeing that all subgraphs
-/// within a loop are contiguous in the final order.
-///
-/// At each level of the loop hierarchy, the sortable items are bare subgraphs at that level
-/// plus child loops (treated as opaque units). Edges between items are derived from handoff
-/// edges crossing between them. The sort recurses into child loops and flattens the result.
-///
-/// `tick_edges` is used to skip tick-boundary (defer_tick) handoffs, which represent
-/// back-edges across ticks and should not introduce ordering constraints.
-fn build_hierarchical_toposort(
+/// Given a subgraph's loop context `sg_loop`, find which direct child loop of
+/// `parent_loop` it belongs to. Returns `None` if the subgraph is directly at
+/// the `parent_loop` level.
+fn child_loop_ancestor(
     graph: &DfirGraph,
-    tick_edges: &SecondaryMap<GraphEdgeId, DelayType>,
-) -> Result<Vec<GraphSubgraphId>, Diagnostic> {
-    // Build a map: for each subgraph, what is its immediate loop context.
-    // Also build a map: for each loop, which subgraphs are directly in it (not in child loops).
-    let mut loop_direct_subgraphs: HashMap<Option<GraphLoopId>, Vec<GraphSubgraphId>> =
-        HashMap::new();
-    for sg_id in graph.subgraph_ids() {
-        let loop_ctx = graph.subgraph_loop(sg_id);
-        loop_direct_subgraphs
-            .entry(loop_ctx)
-            .or_default()
-            .push(sg_id);
+    sg_loop: Option<GraphLoopId>,
+    parent_loop: Option<GraphLoopId>,
+) -> Option<GraphLoopId> {
+    // If the subgraph is directly at this level, no child loop.
+    if sg_loop == parent_loop {
+        return None;
     }
-
-    // Recursively sort a level. `parent_loop` is None for top-level.
-    fn sort_level(
-        graph: &DfirGraph,
-        parent_loop: Option<GraphLoopId>,
-        loop_direct_subgraphs: &HashMap<Option<GraphLoopId>, Vec<GraphSubgraphId>>,
-        tick_edges: &SecondaryMap<GraphEdgeId, DelayType>,
-    ) -> Result<Vec<GraphSubgraphId>, Diagnostic> {
-        // Collect items at this level: direct subgraphs + child loops.
-        let direct_sgs = loop_direct_subgraphs
-            .get(&parent_loop)
-            .map(|v| v.as_slice())
-            .unwrap_or(&[]);
-        let child_loops: &[GraphLoopId] = match parent_loop {
-            Some(parent) => graph.loop_children(parent),
-            None => graph.root_loops(),
-        };
-
-        // If nothing at this level, return empty.
-        if direct_sgs.is_empty() && child_loops.is_empty() {
-            return Ok(Vec::new());
+    // Walk up from sg_loop until we find one whose parent is parent_loop.
+    let mut current = sg_loop?;
+    loop {
+        let parent = graph.loop_parent(current);
+        if parent == parent_loop {
+            return Some(current);
         }
-
-        // Assign each item an index for the topo sort.
-        let items: Vec<HierItem> = direct_sgs
-            .iter()
-            .map(|&sg| HierItem::Subgraph(sg))
-            .chain(child_loops.iter().map(|&l| HierItem::Loop(l)))
-            .collect();
-
-        // Build a lookup: subgraph_id -> which HierItem it belongs to at this level.
-        // For subgraphs directly at this level, it maps to themselves.
-        // For subgraphs inside a child loop, it maps to that child loop's HierItem.
-        let mut sg_to_item: HashMap<GraphSubgraphId, HierItem> = HashMap::new();
-        for &sg in direct_sgs {
-            sg_to_item.insert(sg, HierItem::Subgraph(sg));
-        }
-        for &child_loop in child_loops {
-            // All subgraphs transitively inside this child loop map to the loop item.
-            collect_subgraphs_in_loop(graph, child_loop, loop_direct_subgraphs, &mut |sg| {
-                sg_to_item.insert(sg, HierItem::Loop(child_loop));
-            });
-        }
-
-        // Build predecessor edges between items by examining handoff edges.
-        // A handoff connects a sender subgraph to a receiver subgraph. If they map to
-        // different items at this level, that's a dependency edge.
-        // Skip tick-boundary (defer_tick) handoffs — they are back-edges across ticks.
-        let mut item_preds: HashMap<HierItem, HashSet<HierItem>> = HashMap::new();
-        for &item in &items {
-            item_preds.entry(item).or_default();
-        }
-
-        for (hoff_id, hoff) in graph.nodes() {
-            if !matches!(hoff, GraphNode::Handoff { .. }) {
-                continue;
-            }
-            // Skip tick-boundary handoffs (defer_tick / defer_tick_lazy back-edges).
-            let is_tick_boundary = graph
-                .node_successors(hoff_id)
-                .any(|(edge_id, _)| tick_edges.contains_key(edge_id));
-            if is_tick_boundary {
-                continue;
-            }
-            // Each handoff has predecessors (senders) and successors (receivers).
-            for (_edge, pred_id) in graph.node_predecessors(hoff_id) {
-                let Some(pred_sg) = graph.node_subgraph(pred_id) else {
-                    continue;
-                };
-                for (_edge, succ_id) in graph.node_successors(hoff_id) {
-                    let Some(succ_sg) = graph.node_subgraph(succ_id) else {
-                        continue;
-                    };
-                    // Look up what item each belongs to at this level.
-                    let Some(&pred_item) = sg_to_item.get(&pred_sg) else {
-                        continue;
-                    };
-                    let Some(&succ_item) = sg_to_item.get(&succ_sg) else {
-                        continue;
-                    };
-                    if pred_item != succ_item {
-                        item_preds.entry(succ_item).or_default().insert(pred_item);
-                    }
-                }
-            }
-        }
-
-        // Topo sort items at this level.
-        let sorted_items = super::graph_algorithms::topo_sort(items.iter().copied(), |item| {
-            item_preds
-                .get(&item)
-                .into_iter()
-                .flatten()
-                .copied()
-                .collect::<Vec<_>>()
-                .into_iter()
-        })
-        .map_err(|_cycle| {
-            Diagnostic::spanned(
-                proc_macro2::Span::call_site(),
-                Level::Error,
-                "Cyclical dataflow between loop regions is not supported.",
-            )
-        })?;
-
-        // Flatten: for each item in sorted order, emit its subgraphs.
-        let mut result = Vec::new();
-        for item in sorted_items {
-            match item {
-                HierItem::Subgraph(sg) => result.push(sg),
-                HierItem::Loop(loop_id) => {
-                    let inner =
-                        sort_level(graph, Some(loop_id), loop_direct_subgraphs, tick_edges)?;
-                    result.extend(inner);
-                }
-            }
-        }
-        Ok(result)
-    }
-
-    sort_level(graph, None, &loop_direct_subgraphs, tick_edges)
-}
-
-/// Recursively collects all subgraph IDs transitively inside a loop (including nested child loops).
-fn collect_subgraphs_in_loop(
-    graph: &DfirGraph,
-    loop_id: GraphLoopId,
-    loop_direct_subgraphs: &HashMap<Option<GraphLoopId>, Vec<GraphSubgraphId>>,
-    collector: &mut impl FnMut(GraphSubgraphId),
-) {
-    if let Some(direct) = loop_direct_subgraphs.get(&Some(loop_id)) {
-        for &sg in direct {
-            collector(sg);
-        }
-    }
-    for &child in graph.loop_children(loop_id) {
-        collect_subgraphs_in_loop(graph, child, loop_direct_subgraphs, collector);
+        // Move up.
+        current = parent?;
     }
 }
 
@@ -567,36 +484,18 @@ pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
 
 #[cfg(test)]
 mod tests {
-    use proc_macro2::Span;
-
     use super::*;
-    use crate::graph::{GraphNode, HandoffKind, PortIndexValue};
-
-    fn elided() -> PortIndexValue {
-        PortIndexValue::Elided(None)
-    }
+    use crate::graph::GraphNode;
 
     fn make_op_node(graph: &mut DfirGraph, loop_ctx: Option<GraphLoopId>) -> GraphNodeId {
         let operator: crate::parse::Operator = syn::parse_quote! { identity() };
         graph.insert_node(GraphNode::Operator(operator), None, loop_ctx)
     }
 
-    fn make_handoff_node(graph: &mut DfirGraph) -> GraphNodeId {
-        graph.insert_node(
-            GraphNode::Handoff {
-                kind: HandoffKind::Vec,
-                src_span: Span::call_site(),
-                dst_span: Span::call_site(),
-            },
-            None,
-            None,
-        )
-    }
-
-    /// Test that subgraphs within a loop are contiguous in the toposort,
-    /// even when there are unrelated subgraphs outside the loop.
+    /// Test that subgraphs within a loop are contiguous after rearrangement,
+    /// even when the flat input order interleaves them with unrelated subgraphs.
     #[test]
-    fn test_hierarchical_toposort_contiguity() {
+    fn test_make_loops_contiguous_basic() {
         let mut graph = DfirGraph::default();
 
         // Create a loop.
@@ -608,33 +507,23 @@ mod tests {
         let op_c = make_op_node(&mut graph, Some(loop_id));
         let op_d = make_op_node(&mut graph, Some(loop_id));
 
-        // Create handoffs to connect: A -> [h1] -> C -> [h2] -> D -> [h3] -> B
-        let h1 = make_handoff_node(&mut graph);
-        let h2 = make_handoff_node(&mut graph);
-        let h3 = make_handoff_node(&mut graph);
-
-        graph.insert_edge(op_a, elided(), h1, elided());
-        graph.insert_edge(h1, elided(), op_c, elided());
-        graph.insert_edge(op_c, elided(), h2, elided());
-        graph.insert_edge(h2, elided(), op_d, elided());
-        graph.insert_edge(op_d, elided(), h3, elided());
-        graph.insert_edge(h3, elided(), op_b, elided());
-
-        // Manually create subgraphs (one per operator node).
+        // Create subgraphs (one per operator node).
         let sg_a = graph.insert_subgraph(vec![op_a]).unwrap();
         let sg_b = graph.insert_subgraph(vec![op_b]).unwrap();
         let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
         let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
 
-        let toposort = build_hierarchical_toposort(&graph, &SecondaryMap::new()).unwrap();
+        // Flat order: A, C, B, D — the loop subgraphs (C, D) are not contiguous.
+        let flat_order = vec![sg_a, sg_c, sg_b, sg_d];
+        let result = make_loops_contiguous(&graph, &flat_order, None);
 
-        // Verify: A comes first, then C and D (contiguous, in order), then B.
-        assert_eq!(toposort, vec![sg_a, sg_c, sg_d, sg_b]);
+        // After rearrangement: A, C, D, B — loop subgraphs are now contiguous.
+        assert_eq!(result, vec![sg_a, sg_c, sg_d, sg_b]);
     }
 
     /// Test that two independent sibling loops each have their subgraphs contiguous.
     #[test]
-    fn test_hierarchical_toposort_independent_loops() {
+    fn test_make_loops_contiguous_independent_loops() {
         let mut graph = DfirGraph::default();
 
         let loop1 = graph.insert_loop(None);
@@ -646,30 +535,22 @@ mod tests {
         let op_e = make_op_node(&mut graph, Some(loop2));
         let op_f = make_op_node(&mut graph, Some(loop2));
 
-        // Internal handoffs within each loop.
-        let h1 = make_handoff_node(&mut graph);
-        let h2 = make_handoff_node(&mut graph);
-
-        graph.insert_edge(op_c, elided(), h1, elided());
-        graph.insert_edge(h1, elided(), op_d, elided());
-        graph.insert_edge(op_e, elided(), h2, elided());
-        graph.insert_edge(h2, elided(), op_f, elided());
-
         let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
         let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
         let sg_e = graph.insert_subgraph(vec![op_e]).unwrap();
         let sg_f = graph.insert_subgraph(vec![op_f]).unwrap();
 
-        let toposort = build_hierarchical_toposort(&graph, &SecondaryMap::new()).unwrap();
+        // Flat order interleaves the two loops: C, E, D, F.
+        let flat_order = vec![sg_c, sg_e, sg_d, sg_f];
+        let result = make_loops_contiguous(&graph, &flat_order, None);
 
-        // Both loops should be contiguous. Order between loops is unspecified,
-        // but within each loop the order must be respected.
-        let pos_c = toposort.iter().position(|&s| s == sg_c).unwrap();
-        let pos_d = toposort.iter().position(|&s| s == sg_d).unwrap();
-        let pos_e = toposort.iter().position(|&s| s == sg_e).unwrap();
-        let pos_f = toposort.iter().position(|&s| s == sg_f).unwrap();
+        // Both loops should be contiguous. Loop1 appears first (C seen first).
+        let pos_c = result.iter().position(|&s| s == sg_c).unwrap();
+        let pos_d = result.iter().position(|&s| s == sg_d).unwrap();
+        let pos_e = result.iter().position(|&s| s == sg_e).unwrap();
+        let pos_f = result.iter().position(|&s| s == sg_f).unwrap();
 
-        // C before D, E before F.
+        // C before D, E before F (relative order preserved).
         assert!(pos_c < pos_d);
         assert!(pos_e < pos_f);
 
@@ -680,7 +561,7 @@ mod tests {
 
     /// Test nested loops: inner loop subgraphs are contiguous within the outer loop block.
     #[test]
-    fn test_hierarchical_toposort_nested_loops() {
+    fn test_make_loops_contiguous_nested() {
         let mut graph = DfirGraph::default();
 
         let outer = graph.insert_loop(None);
@@ -692,26 +573,42 @@ mod tests {
         let op_c = make_op_node(&mut graph, Some(inner));
         let op_d = make_op_node(&mut graph, Some(outer));
 
-        // A -> [h1] -> B -> [h2] -> C -> [h3] -> D
-        let h1 = make_handoff_node(&mut graph);
-        let h2 = make_handoff_node(&mut graph);
-        let h3 = make_handoff_node(&mut graph);
+        let sg_a = graph.insert_subgraph(vec![op_a]).unwrap();
+        let sg_b = graph.insert_subgraph(vec![op_b]).unwrap();
+        let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
+        let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
 
-        graph.insert_edge(op_a, elided(), h1, elided());
-        graph.insert_edge(h1, elided(), op_b, elided());
-        graph.insert_edge(op_b, elided(), h2, elided());
-        graph.insert_edge(h2, elided(), op_c, elided());
-        graph.insert_edge(op_c, elided(), h3, elided());
-        graph.insert_edge(h3, elided(), op_d, elided());
+        // Flat order: A, B, C, D (already valid).
+        let flat_order = vec![sg_a, sg_b, sg_c, sg_d];
+        let result = make_loops_contiguous(&graph, &flat_order, None);
+
+        // Expected: A, B, C, D (all contiguous within outer, B/C contiguous within inner).
+        assert_eq!(result, vec![sg_a, sg_b, sg_c, sg_d]);
+    }
+
+    /// Test nested loops with interleaving: outer-level subgraph between inner loop items.
+    #[test]
+    fn test_make_loops_contiguous_nested_interleaved() {
+        let mut graph = DfirGraph::default();
+
+        let outer = graph.insert_loop(None);
+        let inner = graph.insert_loop(Some(outer));
+
+        let op_a = make_op_node(&mut graph, Some(outer));
+        let op_b = make_op_node(&mut graph, Some(inner));
+        let op_c = make_op_node(&mut graph, Some(inner));
+        let op_d = make_op_node(&mut graph, Some(outer));
 
         let sg_a = graph.insert_subgraph(vec![op_a]).unwrap();
         let sg_b = graph.insert_subgraph(vec![op_b]).unwrap();
         let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
         let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
 
-        let toposort = build_hierarchical_toposort(&graph, &SecondaryMap::new()).unwrap();
+        // Flat order: A, B, D, C — D (outer) is between B and C (inner).
+        let flat_order = vec![sg_a, sg_b, sg_d, sg_c];
+        let result = make_loops_contiguous(&graph, &flat_order, None);
 
-        // Expected: A, B, C, D (all contiguous within outer, B/C contiguous within inner).
-        assert_eq!(toposort, vec![sg_a, sg_b, sg_c, sg_d]);
+        // After rearrangement within outer: A, B, C, D — inner loop (B, C) contiguous.
+        assert_eq!(result, vec![sg_a, sg_b, sg_c, sg_d]);
     }
 }
