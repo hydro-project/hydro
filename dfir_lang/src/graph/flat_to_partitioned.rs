@@ -1,6 +1,6 @@
 //! Subgraph partioning algorithm
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::BTreeSet;
 
 use itertools::Itertools;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
@@ -282,7 +282,7 @@ fn make_subgraphs(
     }
 
     // Rearrange the flat toposort to make loop subgraphs contiguous.
-    let subgraph_toposort = make_loops_contiguous(partitioned_graph, &flat_toposort, None);
+    let subgraph_toposort = make_loops_contiguous(partitioned_graph, &flat_toposort);
     partitioned_graph.set_subgraph_toposort(subgraph_toposort);
 
     Ok(())
@@ -303,76 +303,64 @@ fn make_subgraphs(
 fn make_loops_contiguous(
     graph: &DfirGraph,
     flat_order: &[GraphSubgraphId],
-    parent_loop: Option<GraphLoopId>,
 ) -> Vec<GraphSubgraphId> {
-    // Items at this level, in the order they first appear in `flat_order`.
-    let mut items: Vec<HierItem> = Vec::new();
-    // For child loops: accumulate their subgraphs in flat-order.
-    let mut loop_subgraphs: HashMap<GraphLoopId, Vec<GraphSubgraphId>> = HashMap::new();
-    // Track which child loops we've already placed.
-    let mut seen_loops: HashSet<GraphLoopId> = HashSet::new();
+    use std::collections::HashMap;
 
-    for &sg in flat_order {
-        let sg_loop = graph.subgraph_loop(sg);
-        match child_loop_ancestor(graph, sg_loop, parent_loop) {
-            None => {
-                // Directly at this level — emit in place.
-                items.push(HierItem::Subgraph(sg));
+    /// Given a subgraph's loop context `sg_loop`, find which direct child loop of
+    /// `parent_loop` it belongs to. Returns `None` if the subgraph is directly at
+    /// the `parent_loop` level.
+    fn child_loop_ancestor(
+        graph: &DfirGraph,
+        sg_loop: Option<GraphLoopId>,
+        parent_loop: Option<GraphLoopId>,
+    ) -> Option<GraphLoopId> {
+        // If the subgraph is directly at this level, no child loop.
+        if sg_loop == parent_loop {
+            return None;
+        }
+        // Walk up from sg_loop until we find one whose parent is parent_loop.
+        let mut current = sg_loop?;
+        loop {
+            let parent = graph.loop_parent(current);
+            if parent == parent_loop {
+                return Some(current);
             }
-            Some(child_loop) => {
-                // Inside a child loop — group it.
-                loop_subgraphs.entry(child_loop).or_default().push(sg);
-                if seen_loops.insert(child_loop) {
-                    items.push(HierItem::Loop(child_loop));
+            // Move up.
+            current = parent?;
+        }
+    }
+
+    fn make_loops_contiguous_helper(
+        graph: &DfirGraph,
+        flat_order: &[GraphSubgraphId],
+        parent_loop: Option<GraphLoopId>,
+        output: &mut Vec<GraphSubgraphId>,
+    ) {
+        // Group: each direct child loop's descendant subgraphs.
+        let mut loop_subgraphs = HashMap::<GraphLoopId, Vec<GraphSubgraphId>>::new();
+        for &sg_id in flat_order {
+            let sg_loop = graph.subgraph_loop(sg_id);
+            if let Some(child_loop) = child_loop_ancestor(graph, sg_loop, parent_loop) {
+                loop_subgraphs.entry(child_loop).or_default().push(sg_id);
+            }
+        }
+
+        // Flatten: direct subgraphs emit themselves, loops recurse in order of first appearance.
+        for &sg_id in flat_order {
+            let sg_loop = graph.subgraph_loop(sg_id);
+            if let Some(child_loop) = child_loop_ancestor(graph, sg_loop, parent_loop) {
+                if let Some(child_subgraphs) = loop_subgraphs.remove(&child_loop) {
+                    make_loops_contiguous_helper(graph, &child_subgraphs, Some(child_loop), output);
                 }
+            } else {
+                output.push(sg_id);
             }
         }
     }
 
-    // Flatten: direct subgraphs emit themselves, loops recurse.
-    let mut result = Vec::new();
-    for item in items {
-        match item {
-            HierItem::Subgraph(sg) => result.push(sg),
-            HierItem::Loop(loop_id) => {
-                let loop_sgs = loop_subgraphs.remove(&loop_id).unwrap();
-                result.extend(make_loops_contiguous(graph, &loop_sgs, Some(loop_id)));
-            }
-        }
-    }
-    result
-}
-
-/// An item in a particular level of the loop hierarchy.
-/// Either a bare subgraph or an entire child loop (treated as a single unit).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-enum HierItem {
-    Subgraph(GraphSubgraphId),
-    Loop(GraphLoopId),
-}
-
-/// Given a subgraph's loop context `sg_loop`, find which direct child loop of
-/// `parent_loop` it belongs to. Returns `None` if the subgraph is directly at
-/// the `parent_loop` level.
-fn child_loop_ancestor(
-    graph: &DfirGraph,
-    sg_loop: Option<GraphLoopId>,
-    parent_loop: Option<GraphLoopId>,
-) -> Option<GraphLoopId> {
-    // If the subgraph is directly at this level, no child loop.
-    if sg_loop == parent_loop {
-        return None;
-    }
-    // Walk up from sg_loop until we find one whose parent is parent_loop.
-    let mut current = sg_loop?;
-    loop {
-        let parent = graph.loop_parent(current);
-        if parent == parent_loop {
-            return Some(current);
-        }
-        // Move up.
-        current = parent?;
-    }
+    let mut output = Vec::new();
+    make_loops_contiguous_helper(graph, flat_order, None, &mut output);
+    output
 }
 
 /// Set `src` or `dst` color if `None` based on the other (if possible):
@@ -515,7 +503,7 @@ mod tests {
 
         // Flat order: A, C, B, D — the loop subgraphs (C, D) are not contiguous.
         let flat_order = vec![sg_a, sg_c, sg_b, sg_d];
-        let result = make_loops_contiguous(&graph, &flat_order, None);
+        let result = make_loops_contiguous(&graph, &flat_order);
 
         // After rearrangement: A, C, D, B — loop subgraphs are now contiguous.
         assert_eq!(result, vec![sg_a, sg_c, sg_d, sg_b]);
@@ -542,7 +530,7 @@ mod tests {
 
         // Flat order interleaves the two loops: C, E, D, F.
         let flat_order = vec![sg_c, sg_e, sg_d, sg_f];
-        let result = make_loops_contiguous(&graph, &flat_order, None);
+        let result = make_loops_contiguous(&graph, &flat_order);
 
         // Both loops should be contiguous. Loop1 appears first (C seen first).
         let pos_c = result.iter().position(|&s| s == sg_c).unwrap();
@@ -580,7 +568,7 @@ mod tests {
 
         // Flat order: A, B, C, D (already valid).
         let flat_order = vec![sg_a, sg_b, sg_c, sg_d];
-        let result = make_loops_contiguous(&graph, &flat_order, None);
+        let result = make_loops_contiguous(&graph, &flat_order);
 
         // Expected: A, B, C, D (all contiguous within outer, B/C contiguous within inner).
         assert_eq!(result, vec![sg_a, sg_b, sg_c, sg_d]);
@@ -606,7 +594,7 @@ mod tests {
 
         // Flat order: A, B, D, C — D (outer) is between B and C (inner).
         let flat_order = vec![sg_a, sg_b, sg_d, sg_c];
-        let result = make_loops_contiguous(&graph, &flat_order, None);
+        let result = make_loops_contiguous(&graph, &flat_order);
 
         // After rearrangement within outer: A, B, C, D — inner loop (B, C) contiguous.
         assert_eq!(result, vec![sg_a, sg_b, sg_c, sg_d]);
