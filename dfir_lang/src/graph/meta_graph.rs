@@ -1764,28 +1764,26 @@ impl DfirGraph {
                         output.extend(indexed_blocks[i].1.clone());
                         i += 1;
                     } else {
-                        // Find the contiguous run for this child loop.
-                        // The child loop is the immediate child of parent_loop at this point.
-                        let child_loop = loop_ctx.unwrap();
-                        // Find the actual immediate child of parent_loop.
-                        let immediate_child = {
-                            let mut l = child_loop;
-                            loop {
-                                let parent = graph.loop_parent(l);
-                                if parent == parent_loop {
-                                    break l;
-                                }
-                                l = parent.unwrap();
-                            }
-                        };
-                        // Collect all blocks that belong inside this immediate child.
+                        // The contiguity invariant (from make_loops_contiguous) guarantees
+                        // that this block's loop context is a direct child of parent_loop.
+                        let immediate_child = loop_ctx.unwrap();
+                        assert_eq!(
+                            graph.loop_parent(immediate_child),
+                            parent_loop,
+                            "expected direct child loop of parent, but found a deeper nested loop. \
+                             This indicates a bug in the subgraph topological ordering."
+                        );
+
+                        // Collect all contiguous blocks that belong inside this immediate child.
+                        // Due to contiguity, all blocks for this child loop are adjacent, so we
+                        // consume until we hit a block at parent_loop or a different child loop.
                         let start = i;
                         while i < indexed_blocks.len() {
                             let (ctx, _) = indexed_blocks[i];
                             if ctx == parent_loop {
                                 break;
                             }
-                            // Check if this block is inside the immediate_child.
+                            // Check ctx is inside immediate_child (not a sibling loop).
                             let mut is_inside = false;
                             let mut cur = ctx;
                             while let Some(l) = cur {
