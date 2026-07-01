@@ -950,53 +950,35 @@ impl DfirGraph {
     fn helper_loop_input_handoffs(&self) -> SecondaryMap<GraphLoopId, Vec<GraphNodeId>> {
         let mut loop_hoffs_inn = SecondaryMap::<GraphLoopId, Vec<GraphNodeId>>::new();
 
-        // TODO(mingwei): silly to iterate all loop ids? - just use loop_pred or loop_succ?
-        for loop_id in self.loop_ids() {
-            // Check each handoff node.
-            for (hoff_id, hoff) in self.nodes() {
-                if !matches!(hoff, GraphNode::Handoff { .. }) {
-                    continue;
-                }
+        // Check each handoff node.
+        for (hoff_id, hoff) in self.nodes() {
+            if !matches!(hoff, GraphNode::Handoff { .. }) {
+                continue;
+            }
 
-                // Get the loop context of the predecessor and successor.
-                let loop_pred = self
-                    .node_predecessors(hoff_id)
-                    .next()
-                    .and_then(|(_, pred)| self.node_subgraph(pred))
-                    .and_then(|sg| self.subgraph_loop(sg));
-                let loop_succ = self
-                    .node_successors(hoff_id)
-                    .next()
-                    .and_then(|(_, succ)| self.node_subgraph(succ))
-                    .and_then(|sg| self.subgraph_loop(sg));
+            // Get the loop context of the predecessor and successor.
+            let loop_pred = self
+                .node_predecessors(hoff_id)
+                .next()
+                .and_then(|(_, pred)| self.node_loop(pred));
+            let loop_succ = self
+                .node_successors(hoff_id)
+                .next()
+                .and_then(|(_, succ)| self.node_loop(succ));
 
-                // In: pred is outside this loop (or in a parent), succ is inside.
-                // TODO(mingwei): is it good that `is_inside_loop` is recursive, not direct parent-child?
-                if self.is_inside_loop(loop_succ, loop_id)
-                    && !self.is_inside_loop(loop_pred, loop_id)
-                {
-                    loop_hoffs_inn
-                        .entry(loop_id)
-                        .expect("loop removed")
-                        .or_default()
-                        .push(hoff_id);
-                }
+            if let Some(loop_succ) = loop_succ
+                && loop_pred == self.loop_parent(loop_succ)
+            {
+                // Pred is parent/outer loop of succ.
+                loop_hoffs_inn
+                    .entry(loop_succ)
+                    .expect("loop removed")
+                    .or_default()
+                    .push(hoff_id);
             }
         }
 
         loop_hoffs_inn
-    }
-
-    /// Returns true if `node_loop` is `loop_id` or a (transitive) child of `loop_id`.
-    fn is_inside_loop(&self, node_loop: Option<GraphLoopId>, loop_id: GraphLoopId) -> bool {
-        let mut current = node_loop;
-        while let Some(l) = current {
-            if l == loop_id {
-                return true;
-            }
-            current = self.loop_parent(l);
-        }
-        false
     }
 
     /// Emit this graph as runnable Rust source code tokens that execute inline.
@@ -1066,15 +1048,11 @@ impl DfirGraph {
             .iter()
             .map(|&(node_id, _, _)| node_id)
             .filter_map(|node_id| {
-                if let Some(delay_type) = self.handoff_delay_type(node_id) {
-                    assert!(
-                        matches!(delay_type, DelayType::Tick | DelayType::TickLazy | DelayType::Loop | DelayType::LoopLazy),
-                        "Handoff `DelayType` must be `Tick`, `TickLazy`, `Loop`, or `LoopLazy` (or unset)."
-                    );
-                    Some((node_id, matches!(delay_type, DelayType::TickLazy | DelayType::LoopLazy)))
-                } else {
-                    None
-                }
+                let delay_type = self.handoff_delay_type(node_id)?;
+                Some((
+                    node_id,
+                    matches!(delay_type, DelayType::TickLazy | DelayType::LoopLazy),
+                ))
             })
             .collect::<SparseSecondaryMap<_, _>>();
 
