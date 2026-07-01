@@ -7,15 +7,16 @@ use slotmap::{SecondaryMap, SparseSecondaryMap};
 
 use super::meta_graph::DfirGraph;
 use super::ops::{DelayType, FloType};
-use super::{Color, GraphEdgeId, GraphNode, GraphNodeId, HandoffKind};
+use super::{
+    Color, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, HandoffKind,
+};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::graph::graph_algorithms::SubgraphMerge;
 
 /// Find edge barriers: edges whose destination operator declares an input delay type.
-/// Excludes edges within `loop {}` blocks.
 ///
 /// Returns:
-/// - Tick/TickLazy edges keyed by edge ID (for topo-sort exclusion and handoff marking).
+/// - Tick/TickLazy/Loop/LoopLazy edges keyed by edge ID (for topo-sort exclusion and handoff marking).
 /// - All barrier (src, dst) node pairs (for the enemies set).
 fn find_edge_barriers(
     partitioned_graph: &DfirGraph,
@@ -27,10 +28,6 @@ fn find_edge_barriers(
     let mut barrier_pairs = Vec::new();
 
     for (edge_id, (src, dst)) in partitioned_graph.edges() {
-        // Ignore barriers within `loop {` blocks.
-        if partitioned_graph.node_loop(dst).is_some() {
-            continue;
-        }
         let Some(op_inst) = partitioned_graph.node_op_inst(dst) else {
             continue;
         };
@@ -40,9 +37,7 @@ fn find_edge_barriers(
         };
 
         barrier_pairs.push((src, dst));
-        if matches!(delay_type, DelayType::Tick | DelayType::TickLazy) {
-            tick_edges.insert(edge_id, delay_type);
-        }
+        tick_edges.insert(edge_id, delay_type);
     }
 
     (tick_edges, barrier_pairs)
@@ -269,7 +264,8 @@ fn make_subgraphs(
 
     // Register subgraphs. SubgraphMerge maintains operators in topo-sorted order per subgraph.
     // Filter out handoff nodes — they are not part of any subgraph.
-    let mut subgraph_toposort = Vec::new();
+    // Collect subgraph IDs in flat topological order.
+    let mut flat_toposort = Vec::new();
     for nodes in subgraph_merge.subgraphs() {
         if nodes.is_empty() {
             continue;
@@ -282,10 +278,74 @@ fn make_subgraphs(
             continue;
         }
         let sg_id = partitioned_graph.insert_subgraph(nodes.to_vec()).unwrap();
-        subgraph_toposort.push(sg_id);
+        flat_toposort.push(sg_id);
     }
+
+    // Rearrange the flat toposort to make loop subgraphs contiguous.
+    let subgraph_toposort = make_loops_contiguous(partitioned_graph, &flat_toposort);
     partitioned_graph.set_subgraph_toposort(subgraph_toposort);
+
     Ok(())
+}
+
+/// Rearranges a flat topological order of subgraphs so that all subgraphs within
+/// a loop are contiguous, while preserving the relative topological order.
+///
+/// Pre-computes for each loop the set of descendant subgraphs (in flat-order),
+/// then recurses through the loop hierarchy. At each level, subgraphs directly
+/// at that level are emitted in place; when a child loop is first encountered,
+/// all of its descendants are emitted recursively.
+///
+/// Correctness: subgraphs from different loop contexts that appear interleaved in
+/// the flat order have no dependency between them (data can only enter/exit a loop
+/// via windowing/unwindowing operators, never between siblings), so reordering them
+/// for contiguity preserves the topological invariant.
+fn make_loops_contiguous(
+    graph: &DfirGraph,
+    flat_order: &[GraphSubgraphId],
+) -> Vec<GraphSubgraphId> {
+    use std::collections::HashMap;
+
+    // Pre-compute: for each loop, collect *all* descendant subgraphs in flat-order (not just direct).
+    // Each sg_id is inserted into every ancestor loop.
+    let mut loop_descendants = HashMap::<GraphLoopId, Vec<GraphSubgraphId>>::new();
+    for &sg_id in flat_order {
+        let mut current = graph.subgraph_loop(sg_id);
+        while let Some(loop_id) = current {
+            loop_descendants.entry(loop_id).or_default().push(sg_id);
+            current = graph.loop_parent(loop_id);
+        }
+    }
+
+    fn helper(
+        graph: &DfirGraph,
+        flat_order: &[GraphSubgraphId],
+        current_loop: Option<GraphLoopId>,
+        loop_descendants: &mut HashMap<GraphLoopId, Vec<GraphSubgraphId>>,
+        output: &mut Vec<GraphSubgraphId>,
+    ) {
+        for &sg_id in flat_order {
+            let sg_loop = graph.subgraph_loop(sg_id);
+            if current_loop == sg_loop {
+                // Directly at this level — emit in place.
+                output.push(sg_id);
+                continue;
+            }
+            let sg_loop = sg_loop.expect("root-level subgraph cannot be within a loop: `sg_loop == None` implies `current_loop == None`");
+            if current_loop == graph.loop_parent(sg_loop) {
+                // In a direct child loop of current_loop, recurse if we haven't yet (tracked by `loop_descendant`
+                // entry removal).
+                if let Some(inner_order) = loop_descendants.remove(&sg_loop) {
+                    helper(graph, &inner_order, Some(sg_loop), loop_descendants, output);
+                }
+            }
+            // else: Deeper nested — skip, will be handled by recursion into its ancestor.
+        }
+    }
+
+    let mut output = Vec::with_capacity(flat_order.len());
+    helper(graph, flat_order, None, &mut loop_descendants, &mut output);
+    output
 }
 
 /// Set `src` or `dst` color if `None` based on the other (if possible):
@@ -393,4 +453,135 @@ pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
     mark_tick_boundary_handoffs(&mut partitioned_graph, &tick_edges);
 
     Ok(partitioned_graph)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph::GraphNode;
+
+    fn make_op_node(graph: &mut DfirGraph, loop_ctx: Option<GraphLoopId>) -> GraphNodeId {
+        let operator: crate::parse::Operator = syn::parse_quote! { identity() };
+        graph.insert_node(GraphNode::Operator(operator), None, loop_ctx)
+    }
+
+    /// Test that subgraphs within a loop are contiguous after rearrangement,
+    /// even when the flat input order interleaves them with unrelated subgraphs.
+    #[test]
+    fn test_make_loops_contiguous_basic() {
+        let mut graph = DfirGraph::default();
+
+        // Create a loop.
+        let loop_id = graph.insert_loop(None);
+
+        // Create operator nodes: two outside the loop, two inside.
+        let op_a = make_op_node(&mut graph, None);
+        let op_b = make_op_node(&mut graph, None);
+        let op_c = make_op_node(&mut graph, Some(loop_id));
+        let op_d = make_op_node(&mut graph, Some(loop_id));
+
+        // Create subgraphs (one per operator node).
+        let sg_a = graph.insert_subgraph(vec![op_a]).unwrap();
+        let sg_b = graph.insert_subgraph(vec![op_b]).unwrap();
+        let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
+        let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
+
+        // Flat order: A, C, B, D — the loop subgraphs (C, D) are not contiguous.
+        let flat_order = vec![sg_a, sg_c, sg_b, sg_d];
+        let result = make_loops_contiguous(&graph, &flat_order);
+
+        // After rearrangement: A, C, D, B — loop subgraphs are now contiguous.
+        assert_eq!(result, vec![sg_a, sg_c, sg_d, sg_b]);
+    }
+
+    /// Test that two independent sibling loops each have their subgraphs contiguous.
+    #[test]
+    fn test_make_loops_contiguous_independent_loops() {
+        let mut graph = DfirGraph::default();
+
+        let loop1 = graph.insert_loop(None);
+        let loop2 = graph.insert_loop(None);
+
+        // Loop1: C, D. Loop2: E, F.
+        let op_c = make_op_node(&mut graph, Some(loop1));
+        let op_d = make_op_node(&mut graph, Some(loop1));
+        let op_e = make_op_node(&mut graph, Some(loop2));
+        let op_f = make_op_node(&mut graph, Some(loop2));
+
+        let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
+        let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
+        let sg_e = graph.insert_subgraph(vec![op_e]).unwrap();
+        let sg_f = graph.insert_subgraph(vec![op_f]).unwrap();
+
+        // Flat order interleaves the two loops: C, E, D, F.
+        let flat_order = vec![sg_c, sg_e, sg_d, sg_f];
+        let result = make_loops_contiguous(&graph, &flat_order);
+
+        // Both loops should be contiguous. Loop1 appears first (C seen first).
+        let pos_c = result.iter().position(|&s| s == sg_c).unwrap();
+        let pos_d = result.iter().position(|&s| s == sg_d).unwrap();
+        let pos_e = result.iter().position(|&s| s == sg_e).unwrap();
+        let pos_f = result.iter().position(|&s| s == sg_f).unwrap();
+
+        // C before D, E before F (relative order preserved).
+        assert!(pos_c < pos_d);
+        assert!(pos_e < pos_f);
+
+        // Contiguity: C and D are adjacent, E and F are adjacent.
+        assert_eq!(pos_d - pos_c, 1, "Loop1 subgraphs must be contiguous");
+        assert_eq!(pos_f - pos_e, 1, "Loop2 subgraphs must be contiguous");
+    }
+
+    /// Test nested loops: inner loop subgraphs are contiguous within the outer loop block.
+    #[test]
+    fn test_make_loops_contiguous_nested() {
+        let mut graph = DfirGraph::default();
+
+        let outer = graph.insert_loop(None);
+        let inner = graph.insert_loop(Some(outer));
+
+        // Outer loop has: op_a, then inner loop (op_b, op_c), then op_d.
+        let op_a = make_op_node(&mut graph, Some(outer));
+        let op_b = make_op_node(&mut graph, Some(inner));
+        let op_c = make_op_node(&mut graph, Some(inner));
+        let op_d = make_op_node(&mut graph, Some(outer));
+
+        let sg_a = graph.insert_subgraph(vec![op_a]).unwrap();
+        let sg_b = graph.insert_subgraph(vec![op_b]).unwrap();
+        let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
+        let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
+
+        // Flat order: A, B, C, D (already valid).
+        let flat_order = vec![sg_a, sg_b, sg_c, sg_d];
+        let result = make_loops_contiguous(&graph, &flat_order);
+
+        // Expected: A, B, C, D (all contiguous within outer, B/C contiguous within inner).
+        assert_eq!(result, vec![sg_a, sg_b, sg_c, sg_d]);
+    }
+
+    /// Test nested loops with interleaving: outer-level subgraph between inner loop items.
+    #[test]
+    fn test_make_loops_contiguous_nested_interleaved() {
+        let mut graph = DfirGraph::default();
+
+        let outer = graph.insert_loop(None);
+        let inner = graph.insert_loop(Some(outer));
+
+        let op_a = make_op_node(&mut graph, Some(outer));
+        let op_b = make_op_node(&mut graph, Some(inner));
+        let op_c = make_op_node(&mut graph, Some(inner));
+        let op_d = make_op_node(&mut graph, Some(outer));
+
+        let sg_a = graph.insert_subgraph(vec![op_a]).unwrap();
+        let sg_b = graph.insert_subgraph(vec![op_b]).unwrap();
+        let sg_c = graph.insert_subgraph(vec![op_c]).unwrap();
+        let sg_d = graph.insert_subgraph(vec![op_d]).unwrap();
+
+        // Flat order: A, B, D, C — D (outer) is between B and C (inner).
+        let flat_order = vec![sg_a, sg_b, sg_d, sg_c];
+        let result = make_loops_contiguous(&graph, &flat_order);
+
+        // After rearrangement within outer: A, B, C, D — inner loop (B, C) contiguous.
+        assert_eq!(result, vec![sg_a, sg_b, sg_c, sg_d]);
+    }
 }

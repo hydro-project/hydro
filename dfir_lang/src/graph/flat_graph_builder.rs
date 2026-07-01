@@ -13,7 +13,7 @@ use syn::{Error, Ident, ItemUse};
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::graph::meta_graph::ResolvedHandoffRef;
 use crate::graph::ops::next_iteration::NEXT_ITERATION;
-use crate::graph::ops::{FloType, Persistence, PortListSpec, RangeTrait};
+use crate::graph::ops::{DelayType, FloType, Persistence, PortListSpec, RangeTrait};
 use crate::graph::{
     DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, HandoffKind, PortIndexValue,
     graph_algorithms,
@@ -1078,6 +1078,24 @@ impl FlatGraphBuilder {
                         "Source operator `{}(...)` must be at the root level, not within any `loop {{ ... }}` contexts.",
                         op_inst.op_constraints.name
                     )
+                ));
+            }
+
+            // Ensure `defer_tick`/`defer_tick_lazy` (tick-boundary operators) are NOT inside a loop.
+            // (`defer_loop`/`defer_loop_lazy` outside a loop is already caught by the
+            // FloType::NextIteration check below.)
+            let delay_type =
+                (op_inst.op_constraints.input_delaytype_fn)(&PortIndexValue::Elided(None));
+            if let (Some(_loop_id), Some(DelayType::Tick | DelayType::TickLazy)) =
+                (loop_opt, delay_type)
+            {
+                self.diagnostics.push(Diagnostic::spanned(
+                    node.span(),
+                    Level::Error,
+                    format!(
+                        "Operator `{}(...)` is not allowed within a `loop {{ ... }}` context. Use `defer_loop()` or `defer_loop_lazy()` instead.",
+                        op_inst.op_constraints.name
+                    ),
                 ));
             }
         }
