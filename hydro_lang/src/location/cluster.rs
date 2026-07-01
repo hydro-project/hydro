@@ -148,20 +148,27 @@ impl<'a, C> Cluster<'a, C> {
     ///
     /// Returns a `SimClusterSender` that sends `(member_id, T)` messages targeting
     /// specific cluster members, and a `Stream<T>` received by each member.
-    pub fn sim_input<T>(
+    ///
+    /// This method is generic over the [`Ordering`](crate::live_collections::stream::Ordering)
+    /// and [`Retries`](crate::live_collections::stream::Retries) guarantees of the produced
+    /// stream, mirroring [`Location::sim_input`]. For
+    /// unordered inputs (e.g. anything downstream of a `NoOrder` network channel), create the
+    /// input with `O = NoOrder` and drive it with
+    /// [`SimClusterSender::send_many_unordered`](crate::sim::SimClusterSender::send_many_unordered).
+    pub fn sim_input<
+        T,
+        O: crate::live_collections::stream::Ordering,
+        R: crate::live_collections::stream::Retries,
+    >(
         &self,
     ) -> (
-        crate::sim::SimClusterSender<
-            T,
-            crate::live_collections::stream::TotalOrder,
-            crate::live_collections::stream::ExactlyOnce,
-        >,
+        crate::sim::SimClusterSender<T, O, R>,
         crate::live_collections::Stream<
             T,
             Self,
             crate::live_collections::boundedness::Unbounded,
-            crate::live_collections::stream::TotalOrder,
-            crate::live_collections::stream::ExactlyOnce,
+            O,
+            R,
         >,
     )
     where

@@ -287,7 +287,7 @@ fn sim_cluster_e2m_m2e() {
     let mut flow = FlowBuilder::new();
     let cluster = flow.cluster::<()>();
 
-    let (in_send, input) = cluster.sim_input::<i32>();
+    let (in_send, input) = cluster.sim_input::<i32, _, _>();
     let out_recv = input.map(q!(|x| x * 10)).sim_cluster_output();
 
     flow.sim()
@@ -303,6 +303,43 @@ fn sim_cluster_e2m_m2e() {
             assert_eq!(out_recv.next(1).await, Some(20));
             assert_eq!(out_recv.next(2).await, Some(30));
         });
+}
+
+#[test]
+fn sim_cluster_unordered_input() {
+    use crate::live_collections::stream::NoOrder;
+
+    let mut flow = FlowBuilder::new();
+    let cluster = flow.cluster::<()>();
+
+    // Create a cluster input that is semantically unordered, driven directly
+    // via `send_many_unordered` without needing to `weaken_ordering` afterwards.
+    let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
+
+    // Batch the unordered input through a tick via `sliced!` so the simulator
+    // explores the different interleavings of the unordered arrivals.
+    let out_recv = sliced! {
+        let batch = use(input, nondet!(/** test */));
+        batch.map(q!(|x| x * 10))
+    }
+    .sim_cluster_output();
+
+    let count = flow
+        .sim()
+        .with_cluster_size(&cluster, 2)
+        .exhaustive(async || {
+            in_send.send_many_unordered([(0, 1), (0, 2), (1, 3)]);
+
+            let r0 = out_recv.collect_sorted::<Vec<_>>(0).await;
+            assert_eq!(r0, vec![10, 20]);
+
+            let r1 = out_recv.collect_sorted::<Vec<_>>(1).await;
+            assert_eq!(r1, vec![30]);
+        });
+
+    // The two unordered values delivered to member 0 are batched non-deterministically
+    // across ticks, so the simulator explores multiple executions.
+    assert_eq!(count, 8);
 }
 
 #[test]

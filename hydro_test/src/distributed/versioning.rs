@@ -505,7 +505,7 @@ mod tests {
         hydro_lang::sim::SimClusterSender<usize, TotalOrder, ExactlyOnce>,
         hydro_lang::sim::SimClusterReceiver<usize, TotalOrder, ExactlyOnce>,
     ) {
-        let (inputter, requests) = servers.sim_input::<usize>();
+        let (inputter, requests) = servers.sim_input::<usize, _, _>();
         let output = echo(requests).sim_cluster_output();
         (inputter, output)
     }
@@ -554,7 +554,7 @@ mod tests {
         hydro_lang::sim::SimClusterSender<usize, TotalOrder, ExactlyOnce>,
         hydro_lang::sim::SimClusterReceiver<usize, TotalOrder, ExactlyOnce>,
     ) {
-        let (inputter, requests) = cluster.sim_input::<usize>();
+        let (inputter, requests) = cluster.sim_input::<usize, _, _>();
         let output = requests.map(q!(|x| x + 1)).sim_cluster_output();
         (inputter, output)
     }
@@ -665,11 +665,11 @@ mod tests {
         let mut flow = FlowBuilder::new();
 
         let servers_a = flow.cluster::<GossipServer>();
-        let (inputter_a, requests_a) = servers_a.sim_input::<usize>();
+        let (inputter_a, requests_a) = servers_a.sim_input::<usize, _, _>();
         let output_a = echo(requests_a).sim_cluster_output();
 
         let servers_b = flow.cluster::<GossipServer>();
-        let (inputter_b, requests_b) = servers_b.sim_input::<usize>();
+        let (inputter_b, requests_b) = servers_b.sim_input::<usize, _, _>();
         let output_b = echo(requests_b).sim_cluster_output();
 
         flow.sim()

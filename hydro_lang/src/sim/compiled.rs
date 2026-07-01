@@ -1004,6 +1004,18 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterSender<
     }
 }
 
+impl<T: Serialize + DeserializeOwned, O: Ordering> SimClusterSender<T, O, ExactlyOnce> {
+    /// Sends multiple values to specific cluster members. The messages will be asynchronously
+    /// processed as part of the simulation, in non-deterministic order.
+    pub fn send_many_unordered<I: IntoIterator<Item = (u32, T)>>(&self, iter: I) {
+        self.with_sink(|send| {
+            for (member_id, t) in iter {
+                send(member_id, t).unwrap();
+            }
+        })
+    }
+}
+
 impl<T: Serialize + DeserializeOwned> SimClusterSender<T, TotalOrder, ExactlyOnce> {
     /// Sends a value to a specific cluster member.
     pub fn send(&self, member_id: u32, t: T) {
