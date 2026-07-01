@@ -22,7 +22,10 @@ use stageleft::{QuotedWithContext, RuntimeData};
 use super::deploy_runtime_maelstrom::*;
 use crate::compile::builder::ExternalPortId;
 use crate::compile::deploy_provider::{ClusterSpec, Deploy, Node, RegisterPort};
-use crate::compile::trybuild::generate::{LinkingMode, create_graph_trybuild};
+use crate::compile::trybuild::generate::{
+    ExampleBuildConfig, LinkingMode, TrybuildConfig, compile_trybuild_example,
+    create_graph_trybuild,
+};
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
 use crate::location::{LocationKey, MembershipEvent, NetworkHint};
@@ -272,13 +275,11 @@ impl Node for MaelstromCluster {
             sidecars,
             self.name_hint.as_deref(),
             crate::compile::trybuild::generate::DeployMode::Maelstrom,
-            LinkingMode::Static,
+            LinkingMode::Dynamic,
         );
 
         env.bin_name = Some(bin_name);
-        env.project_dir = Some(config.project_dir);
-        env.target_dir = Some(config.target_dir);
-        env.features = config.features;
+        env.trybuild = Some(config);
     }
 }
 
@@ -403,9 +404,7 @@ pub struct MaelstromDeployment {
 
     // Populated during deployment
     pub(crate) bin_name: Option<String>,
-    pub(crate) project_dir: Option<PathBuf>,
-    pub(crate) target_dir: Option<PathBuf>,
-    pub(crate) features: Option<Vec<String>>,
+    pub(crate) trybuild: Option<TrybuildConfig>,
 }
 
 impl MaelstromDeployment {
@@ -421,9 +420,7 @@ impl MaelstromDeployment {
             nemesis: None,
             extra_args: vec![],
             bin_name: None,
-            project_dir: None,
-            target_dir: None,
-            features: None,
+            trybuild: None,
         }
     }
 
@@ -471,41 +468,35 @@ impl MaelstromDeployment {
 
     /// Build the compiled binary in dev mode.
     /// Returns the path to the compiled binary.
+    ///
+    /// This shares the same parallel-compilation machinery as the simulator: the
+    /// program is linked dynamically against a prebuilt dylib of its dependencies,
+    /// so repeated and concurrent builds only need to recompile the generated
+    /// example itself.
     pub fn build(&self) -> Result<PathBuf, Error> {
         let bin_name = self
             .bin_name
             .as_ref()
             .expect("No binary name set - did you call deploy?");
-        let project_dir = self.project_dir.as_ref().expect("No project dir set");
-        let target_dir = self.target_dir.as_ref().expect("No target dir set");
+        let trybuild = self
+            .trybuild
+            .as_ref()
+            .expect("No trybuild config set - did you call deploy?");
 
-        let mut cmd = std::process::Command::new("cargo");
-        cmd.arg("build")
-            .arg("--example")
-            .arg(bin_name)
-            .arg("--no-default-features")
-            .current_dir(project_dir)
-            .env("CARGO_TARGET_DIR", target_dir)
-            .env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
+        let out = compile_trybuild_example(ExampleBuildConfig {
+            trybuild: trybuild.clone(),
+            bin_name: bin_name.clone(),
+            runtime_feature: "hydro___feature_maelstrom_runtime",
+            // Maelstrom builds the generated example directly as an executable.
+            example_name: bin_name.clone(),
+            crate_type: None,
+            set_trybuild_lib_name: false,
+            allow_fuzz: false,
+        })
+        .map_err(|()| Error::other("Maelstrom binary compilation failed"))?;
 
-        // Always include maelstrom_runtime feature for runtime support
-        let mut all_features = vec!["hydro___feature_maelstrom_runtime".to_owned()];
-        if let Some(features) = &self.features {
-            all_features.extend(features.iter().cloned());
-        }
-        if !all_features.is_empty() {
-            cmd.arg("--features").arg(all_features.join(","));
-        }
-
-        let status = cmd.status()?;
-        if !status.success() {
-            return Err(Error::other(format!(
-                "cargo build failed with status: {}",
-                status
-            )));
-        }
-
-        Ok(target_dir.join("debug").join("examples").join(bin_name))
+        // Persist the built executable so it survives past the temporary build guards.
+        out.keep().map_err(|e| Error::other(e.to_string()))
     }
 
     /// Run Maelstrom with the compiled binary, return Ok(()) if all checks pass.
@@ -574,10 +565,8 @@ impl MaelstromDeployment {
         )))
     }
 
-    /// Get the path to the compiled binary (after building).
+    /// Get the path to the compiled binary, building it if necessary.
     pub fn binary_path(&self) -> Option<PathBuf> {
-        let bin_name = self.bin_name.as_ref()?;
-        let target_dir = self.target_dir.as_ref()?;
-        Some(target_dir.join("debug").join("examples").join(bin_name))
+        self.build().ok()
     }
 }

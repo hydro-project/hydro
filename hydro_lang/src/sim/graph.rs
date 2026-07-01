@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
-use std::process::{Command, Stdio};
 use std::rc::Rc;
 
 use dfir_lang::diagnostic::Diagnostics;
@@ -16,10 +15,11 @@ use trybuild_internals_api::{cargo, dependencies, path};
 
 use crate::compile::builder::ExternalPortId;
 use crate::compile::deploy_provider::{Deploy, DynSourceSink, Node, RegisterPort};
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use crate::compile::trybuild::generate::LinkingMode;
 use crate::compile::trybuild::generate::{
-    CONCURRENT_TEST_LOCK, IS_TEST, TrybuildConfig, create_trybuild, write_atomic,
+    CONCURRENT_TEST_LOCK, ExampleBuildConfig, IS_TEST, TrybuildConfig, compile_trybuild_example,
+    create_trybuild, write_atomic,
 };
 use crate::deploy::deploy_runtime::cluster_membership_stream;
 use crate::location::dynamic::LocationId;
@@ -425,247 +425,17 @@ impl<'a> Deploy<'a> for SimDeploy {
 }
 
 pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempPath, ()> {
-    let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
-    // When RUSTFLAGS is set, our prebuild fingerprint doesn't account for it, so skip the
-    // parallel build machinery entirely and build directly into the shared target dir.
-    let has_custom_rustflags = std::env::var("RUSTFLAGS").is_ok();
-
-    // Run from dylib-examples crate which has the dylib as a dev-dependency (only if not fuzzing)
-    let crate_to_compile = if is_fuzz {
-        trybuild.project_dir.clone()
-    } else {
-        path!(trybuild.project_dir / "dylib-examples")
-    };
-
-    let (final_target_dir, _prebuild_guard, _cargo_lock) = if !has_custom_rustflags {
-        let shared_debug = trybuild.target_dir.join("debug");
-        let jobs_dir = trybuild.target_dir.join("jobs");
-        let per_job = hydro_concurrent_cargo::setup_job_dir(&jobs_dir, &bin, &shared_debug);
-
-        let mut features: Vec<String> = trybuild.features.clone().unwrap_or_default();
-        features.push("hydro___feature_sim_runtime".to_owned());
-
-        let staged_paths = vec![
-            path!(trybuild.project_dir / "src" / "__staged.rs"),
-            path!(trybuild.project_dir / "Cargo.lock"),
-            std::env::current_exe().unwrap(),
-        ];
-
-        let project_dir = trybuild.project_dir.clone();
-        let features_for_closure = features.clone();
-        let is_fuzz_for_closure = is_fuzz;
-
-        let (guard, cargo_lock) = hydro_concurrent_cargo::run_prebuild(
-            &trybuild.target_dir,
-            trybuild.project_dir.file_name().unwrap().to_str().unwrap(),
-            &features,
-            &staged_paths,
-            |prebuild_target| {
-                let features_str = features_for_closure.join(",");
-
-                let dylib_crate = path!(project_dir / "dylib");
-                let mut dep_cmd = Command::new("cargo");
-                dep_cmd.current_dir(&dylib_crate);
-                dep_cmd.args(["build", "--locked"]);
-                dep_cmd.args(["--target-dir", prebuild_target.to_str().unwrap()]);
-                dep_cmd.args(["--features", &features_str]);
-                dep_cmd.args(["--config", "build.incremental = false"]);
-                dep_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
-                eprintln!("[hydro-build] starting sim prebuild child cargo");
-                let status = dep_cmd.stdin(Stdio::null()).status().unwrap();
-                eprintln!(
-                    "[hydro-build] sim prebuild child cargo finished, success={}",
-                    status.success()
-                );
-                if !status.success() {
-                    panic!("dep prebuild failed");
-                }
-
-                // Also prebuild the dylib-examples lib so concurrent final builds
-                // don't race on compiling it. Skip in fuzz mode since fuzzing
-                // compiles from the base trybuild crate directly (no dylib-examples).
-                if !is_fuzz_for_closure {
-                    eprintln!("[hydro-build] starting sim prebuild dylib-examples lib");
-                    let dylib_examples_crate = path!(project_dir / "dylib-examples");
-                    let mut lib_cmd = Command::new("cargo");
-                    lib_cmd.current_dir(&dylib_examples_crate);
-                    lib_cmd.args(["build", "--locked", "--lib"]);
-                    lib_cmd.args(["--target-dir", prebuild_target.to_str().unwrap()]);
-                    lib_cmd.args(["--features", &features_str]);
-                    lib_cmd.args(["--config", "build.incremental = false"]);
-                    lib_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
-                    let lib_status = lib_cmd.stdin(Stdio::null()).status().unwrap();
-                    if !lib_status.success() {
-                        panic!("dylib-examples lib prebuild failed");
-                    }
-                }
-            },
-        );
-
-        (per_job, Some(guard), Some(cargo_lock))
-    } else {
-        (trybuild.target_dir.clone(), None, None)
-    };
-
-    // Populate per-job build/ dir right before final build. Hold guard for entire build.
-    let _job_build_guard = if !has_custom_rustflags {
-        let shared_debug = trybuild.target_dir.join("debug");
-        Some(hydro_concurrent_cargo::populate_job_build_dir(
-            &final_target_dir.join("debug"),
-            &shared_debug,
-        ))
-    } else {
-        None
-    };
-
-    let mut command = Command::new("cargo");
-    command.current_dir(&crate_to_compile);
-    command.args([
-        "rustc",
-        if has_custom_rustflags {
-            "--locked"
-        } else {
-            "--frozen"
-        },
-    ]);
-    command.args(["--example", "sim-dylib"]);
-    command.args(["--target-dir", final_target_dir.to_str().unwrap()]);
-    command.args([
-        "--features",
-        &trybuild
-            .features
-            .into_iter()
-            .flatten()
-            .chain(["hydro___feature_sim_runtime".to_owned()])
-            .collect::<Vec<_>>()
-            .join(","),
-    ]);
-    command.args(["--config", "build.incremental = false"]);
-    command.args(["--crate-type", "cdylib"]);
-    command.arg("--message-format=json-diagnostic-rendered-ansi");
-    command.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
-    command.env("TRYBUILD_LIB_NAME", &bin);
-
-    command.arg("--");
-
-    if cfg!(target_os = "linux") {
-        let debug_path = if let Ok(target) = std::env::var("CARGO_BUILD_TARGET") {
-            path!(final_target_dir / target / "debug")
-        } else {
-            path!(final_target_dir / "debug")
-        };
-
-        command.args([&format!(
-            "-Clink-arg=-Wl,-rpath,{}",
-            debug_path.to_str().unwrap()
-        )]);
-
-        if cfg!(target_env = "gnu") {
-            command.arg(
-                // https://github.com/rust-lang/rust/issues/91979
-                "-Clink-args=-Wl,-z,nodelete",
-            );
-        }
-    }
-
-    if let Ok(fuzzer) = std::env::var("BOLERO_FUZZER") {
-        command.env_remove("BOLERO_FUZZER");
-
-        if fuzzer == "libfuzzer" {
-            #[cfg(target_os = "macos")]
-            {
-                command.args(["-Clink-arg=-undefined", "-Clink-arg=dynamic_lookup"]);
-            }
-
-            #[cfg(target_os = "linux")]
-            {
-                command.args(["-Clink-arg=-Wl,--unresolved-symbols=ignore-all"]);
-            }
-        }
-    }
-
-    let mut spawned = command
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .stdin(Stdio::null())
-        .spawn()
-        .unwrap();
-    let reader = std::io::BufReader::new(spawned.stdout.take().unwrap());
-    let stderr_handle = spawned.stderr.take().unwrap();
-    let stderr_thread = std::thread::spawn(move || {
-        use std::io::Read;
-        let mut buf = String::new();
-        std::io::BufReader::new(stderr_handle)
-            .read_to_string(&mut buf)
-            .unwrap();
-        buf
-    });
-
-    let mut out = Err(());
-    for message in cargo_metadata::Message::parse_stream(reader) {
-        match message.unwrap() {
-            cargo_metadata::Message::CompilerArtifact(artifact) => {
-                // unlike dylib, cdylib only exports the explicitly exported symbols
-                let is_output = artifact.target.is_example();
-
-                if is_output {
-                    use std::path::PathBuf;
-
-                    let path = artifact.filenames.first().unwrap();
-                    let path_buf: PathBuf = path.clone().into();
-                    out = Ok(path_buf);
-                }
-            }
-            cargo_metadata::Message::CompilerMessage(mut msg) => {
-                // Update the path displayed to enable clicking in IDE.
-                // TODO(mingwei): deduplicate code with hydro_deploy rust_crate/build.rs
-                if let Some(rendered) = msg.message.rendered.as_mut() {
-                    let file_names = msg
-                        .message
-                        .spans
-                        .iter()
-                        .map(|s| &s.file_name)
-                        .collect::<std::collections::BTreeSet<_>>();
-                    for file_name in file_names {
-                        *rendered = rendered.replace(
-                            file_name,
-                            &format!("(full path) {}/{file_name}", trybuild.project_dir.display()),
-                        )
-                    }
-                }
-                eprintln!("{}", msg.message);
-            }
-            cargo_metadata::Message::TextLine(line) => {
-                eprintln!("{}", line);
-            }
-            cargo_metadata::Message::BuildFinished(_) => {}
-            cargo_metadata::Message::BuildScriptExecuted(_) => {}
-            msg => panic!("Unexpected message type: {:?}", msg),
-        }
-    }
-
-    spawned.wait().unwrap();
-    let stderr_output = stderr_thread.join().unwrap();
-
-    // Check for unexpected recompilations — only dylib-examples should be compiled.
-    // (Only relevant when prebuild is active, i.e. no custom RUSTFLAGS.)
-    if !has_custom_rustflags {
-        for line in stderr_output.lines() {
-            if line.contains("Compiling") && !line.contains("dylib-examples") {
-                panic!(
-                    "unexpected recompilation in final build: {line}\nfull stderr:\n{stderr_output}"
-                );
-            }
-        }
-    }
-
-    if out.is_err() {
-        panic!("final build failed to produce binary.\nstderr:\n{stderr_output}");
-    }
-
-    let out_file = tempfile::NamedTempFile::new().unwrap().into_temp_path();
-    fs::copy(out.as_ref().unwrap(), &out_file).unwrap();
-    Ok(out_file)
+    compile_trybuild_example(ExampleBuildConfig {
+        trybuild,
+        bin_name: bin,
+        runtime_feature: "hydro___feature_sim_runtime",
+        // The simulator builds a fixed `sim-dylib` wrapper that `include!`s the
+        // generated file selected via the `TRYBUILD_LIB_NAME` env var.
+        example_name: "sim-dylib".to_owned(),
+        crate_type: Some("cdylib"),
+        set_trybuild_lib_name: true,
+        allow_fuzz: true,
+    })
 }
 
 #[expect(clippy::too_many_arguments, reason = "necessary for code generation")]
@@ -791,7 +561,7 @@ pub(super) fn create_sim_graph_trybuild(
             project_dir,
             target_dir,
             features: cur_bin_enabled_features,
-            #[cfg(feature = "deploy")]
+            #[cfg(any(feature = "deploy", feature = "maelstrom"))]
             linking_mode: LinkingMode::Dynamic,
         },
     )
