@@ -29,8 +29,17 @@ pub const HYDRO_RUNTIME_FEATURES: &[&str] = &[
 /// - `Dynamic`: Place in dylib crate examples (for sim and localhost deploys)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LinkingMode {
+    // `Static` is only constructed by the deploy backends; Maelstrom-only builds
+    // always use `Dynamic`.
+    #[cfg_attr(
+        not(feature = "deploy"),
+        expect(
+            dead_code,
+            reason = "only constructed by the deploy backends; Maelstrom-only builds use Dynamic"
+        )
+    )]
     Static,
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "maelstrom"))]
     Dynamic,
 }
 
@@ -90,7 +99,13 @@ pub struct TrybuildConfig {
     pub project_dir: PathBuf,
     pub target_dir: PathBuf,
     pub features: Option<Vec<String>>,
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "maelstrom"))]
+    // Only the deploy backends read this field; Maelstrom-only builds derive the
+    // linking behavior directly.
+    #[cfg_attr(
+        not(feature = "deploy"),
+        expect(dead_code, reason = "only read by the deploy backends")
+    )]
     /// Which crate within the workspace to use for examples.
     /// - `Static`: base crate (for remote/containerized deploys)
     /// - `Dynamic`: dylib-examples crate (for sim and localhost deploys)
@@ -171,7 +186,7 @@ pub fn create_graph_trybuild(
     // Determine which crate's examples folder to use based on linking mode
     let examples_dir = match linking_mode {
         LinkingMode::Static => path!(project_dir / "examples"),
-        #[cfg(feature = "deploy")]
+        #[cfg(any(feature = "deploy", feature = "maelstrom"))]
         LinkingMode::Dynamic => path!(project_dir / "dylib-examples" / "examples"),
     };
 
@@ -209,7 +224,7 @@ pub fn create_graph_trybuild(
             project_dir,
             target_dir,
             features: cur_bin_enabled_features,
-            #[cfg(feature = "deploy")]
+            #[cfg(any(feature = "deploy", feature = "maelstrom"))]
             linking_mode,
         },
     )
@@ -349,6 +364,300 @@ pub fn compile_graph_trybuild(
         }
     };
     source_ast
+}
+
+/// Configuration for [`compile_trybuild_example`], the shared concurrent-build
+/// entrypoint used by both the simulator and the Maelstrom deployment target.
+#[cfg(any(feature = "sim", feature = "maelstrom"))]
+pub struct ExampleBuildConfig<'a> {
+    /// The trybuild project + target directories and enabled features.
+    pub trybuild: TrybuildConfig,
+    /// The generated example base name (a content hash). Used as the per-job
+    /// directory name and, when [`Self::set_trybuild_lib_name`] is set, as the
+    /// value of the `TRYBUILD_LIB_NAME` environment variable.
+    pub bin_name: String,
+    /// A runtime feature to enable in addition to [`TrybuildConfig::features`]
+    /// (e.g. `hydro___feature_sim_runtime` or `hydro___feature_maelstrom_runtime`).
+    pub runtime_feature: &'a str,
+    /// The cargo `--example` target to build. For the simulator this is the
+    /// fixed `sim-dylib` wrapper; for Maelstrom it is the generated `bin_name`.
+    pub example_name: String,
+    /// If `Some`, override the crate type on the command line (e.g. `cdylib`
+    /// for the simulator). `None` builds a normal executable example.
+    pub crate_type: Option<&'a str>,
+    /// Whether to set `TRYBUILD_LIB_NAME` to `bin_name` (the simulator uses this
+    /// for its `include!`-based indirection).
+    pub set_trybuild_lib_name: bool,
+    /// Whether to honor the `BOLERO_FUZZER` environment variable. Only the
+    /// simulator supports fuzzing; other targets should set this to `false`.
+    pub allow_fuzz: bool,
+}
+
+/// Compiles a generated trybuild example against the prebuilt dylib crate,
+/// using the shared parallel-compilation machinery (per-job target dirs with
+/// symlinked shared artifacts, plus a prebuild of the dylib dependencies).
+///
+/// Returns the path to a temporary copy of the built artifact (a `cdylib` for
+/// the simulator, or an executable for Maelstrom). The copy allows the caller
+/// to hold onto the artifact independently of the shared target directory.
+#[cfg(any(feature = "sim", feature = "maelstrom"))]
+pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfile::TempPath, ()> {
+    use std::process::{Command, Stdio};
+
+    let ExampleBuildConfig {
+        trybuild,
+        bin_name,
+        runtime_feature,
+        example_name,
+        crate_type,
+        set_trybuild_lib_name,
+        allow_fuzz,
+    } = config;
+
+    let is_fuzz = allow_fuzz && std::env::var("BOLERO_FUZZER").is_ok();
+    // When RUSTFLAGS is set, our prebuild fingerprint doesn't account for it, so skip the
+    // parallel build machinery entirely and build directly into the shared target dir.
+    let has_custom_rustflags = std::env::var("RUSTFLAGS").is_ok();
+
+    // Run from dylib-examples crate which has the dylib as a dev-dependency (only if not fuzzing)
+    let crate_to_compile = if is_fuzz {
+        trybuild.project_dir.clone()
+    } else {
+        path!(trybuild.project_dir / "dylib-examples")
+    };
+
+    let (final_target_dir, _prebuild_guard, _cargo_lock) = if !has_custom_rustflags {
+        let shared_debug = trybuild.target_dir.join("debug");
+        let jobs_dir = trybuild.target_dir.join("jobs");
+        let per_job = hydro_concurrent_cargo::setup_job_dir(&jobs_dir, &bin_name, &shared_debug);
+
+        let mut features: Vec<String> = trybuild.features.clone().unwrap_or_default();
+        features.push(runtime_feature.to_owned());
+
+        let staged_paths = vec![
+            path!(trybuild.project_dir / "src" / "__staged.rs"),
+            path!(trybuild.project_dir / "Cargo.lock"),
+            std::env::current_exe().unwrap(),
+        ];
+
+        let project_dir = trybuild.project_dir.clone();
+        let features_for_closure = features.clone();
+        let is_fuzz_for_closure = is_fuzz;
+
+        let (guard, cargo_lock) = hydro_concurrent_cargo::run_prebuild(
+            &trybuild.target_dir,
+            trybuild.project_dir.file_name().unwrap().to_str().unwrap(),
+            &features,
+            &staged_paths,
+            |prebuild_target| {
+                let features_str = features_for_closure.join(",");
+
+                let dylib_crate = path!(project_dir / "dylib");
+                let mut dep_cmd = Command::new("cargo");
+                dep_cmd.current_dir(&dylib_crate);
+                dep_cmd.args(["build", "--locked"]);
+                dep_cmd.args(["--target-dir", prebuild_target.to_str().unwrap()]);
+                dep_cmd.args(["--features", &features_str]);
+                dep_cmd.args(["--config", "build.incremental = false"]);
+                dep_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
+                eprintln!("[hydro-build] starting prebuild child cargo");
+                let status = dep_cmd.stdin(Stdio::null()).status().unwrap();
+                eprintln!(
+                    "[hydro-build] prebuild child cargo finished, success={}",
+                    status.success()
+                );
+                if !status.success() {
+                    panic!("dep prebuild failed");
+                }
+
+                // Also prebuild the dylib-examples lib so concurrent final builds
+                // don't race on compiling it. Skip in fuzz mode since fuzzing
+                // compiles from the base trybuild crate directly (no dylib-examples).
+                if !is_fuzz_for_closure {
+                    eprintln!("[hydro-build] starting prebuild dylib-examples lib");
+                    let dylib_examples_crate = path!(project_dir / "dylib-examples");
+                    let mut lib_cmd = Command::new("cargo");
+                    lib_cmd.current_dir(&dylib_examples_crate);
+                    lib_cmd.args(["build", "--locked", "--lib"]);
+                    lib_cmd.args(["--target-dir", prebuild_target.to_str().unwrap()]);
+                    lib_cmd.args(["--features", &features_str]);
+                    lib_cmd.args(["--config", "build.incremental = false"]);
+                    lib_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
+                    let lib_status = lib_cmd.stdin(Stdio::null()).status().unwrap();
+                    if !lib_status.success() {
+                        panic!("dylib-examples lib prebuild failed");
+                    }
+                }
+            },
+        );
+
+        (per_job, Some(guard), Some(cargo_lock))
+    } else {
+        (trybuild.target_dir.clone(), None, None)
+    };
+
+    // Populate per-job build/ dir right before final build. Hold guard for entire build.
+    let _job_build_guard = if !has_custom_rustflags {
+        let shared_debug = trybuild.target_dir.join("debug");
+        Some(hydro_concurrent_cargo::populate_job_build_dir(
+            &final_target_dir.join("debug"),
+            &shared_debug,
+        ))
+    } else {
+        None
+    };
+
+    let mut command = Command::new("cargo");
+    command.current_dir(&crate_to_compile);
+    command.args([
+        "rustc",
+        if has_custom_rustflags {
+            "--locked"
+        } else {
+            "--frozen"
+        },
+    ]);
+    command.args(["--example", &example_name]);
+    command.args(["--target-dir", final_target_dir.to_str().unwrap()]);
+    command.args([
+        "--features",
+        &trybuild
+            .features
+            .clone()
+            .into_iter()
+            .flatten()
+            .chain([runtime_feature.to_owned()])
+            .collect::<Vec<_>>()
+            .join(","),
+    ]);
+    command.args(["--config", "build.incremental = false"]);
+    if let Some(crate_type) = crate_type {
+        command.args(["--crate-type", crate_type]);
+    }
+    command.arg("--message-format=json-diagnostic-rendered-ansi");
+    command.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
+    if set_trybuild_lib_name {
+        command.env("TRYBUILD_LIB_NAME", &bin_name);
+    }
+
+    command.arg("--");
+
+    if cfg!(target_os = "linux") {
+        let debug_path = if let Ok(target) = std::env::var("CARGO_BUILD_TARGET") {
+            path!(final_target_dir / target / "debug")
+        } else {
+            path!(final_target_dir / "debug")
+        };
+
+        command.args([&format!(
+            "-Clink-arg=-Wl,-rpath,{}",
+            debug_path.to_str().unwrap()
+        )]);
+
+        if cfg!(target_env = "gnu") {
+            command.arg(
+                // https://github.com/rust-lang/rust/issues/91979
+                "-Clink-args=-Wl,-z,nodelete",
+            );
+        }
+    }
+
+    if allow_fuzz && let Ok(fuzzer) = std::env::var("BOLERO_FUZZER") {
+        command.env_remove("BOLERO_FUZZER");
+
+        if fuzzer == "libfuzzer" {
+            #[cfg(target_os = "macos")]
+            {
+                command.args(["-Clink-arg=-undefined", "-Clink-arg=dynamic_lookup"]);
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                command.args(["-Clink-arg=-Wl,--unresolved-symbols=ignore-all"]);
+            }
+        }
+    }
+
+    let mut spawned = command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .stdin(Stdio::null())
+        .spawn()
+        .unwrap();
+    let reader = std::io::BufReader::new(spawned.stdout.take().unwrap());
+    let stderr_handle = spawned.stderr.take().unwrap();
+    let stderr_thread = std::thread::spawn(move || {
+        use std::io::Read;
+        let mut buf = String::new();
+        std::io::BufReader::new(stderr_handle)
+            .read_to_string(&mut buf)
+            .unwrap();
+        buf
+    });
+
+    let mut out = Err(());
+    for message in cargo_metadata::Message::parse_stream(reader) {
+        match message.unwrap() {
+            cargo_metadata::Message::CompilerArtifact(artifact) => {
+                // unlike dylib, cdylib only exports the explicitly exported symbols
+                let is_output = artifact.target.is_example();
+
+                if is_output {
+                    let path = artifact.filenames.first().unwrap();
+                    let path_buf: PathBuf = path.clone().into();
+                    out = Ok(path_buf);
+                }
+            }
+            cargo_metadata::Message::CompilerMessage(mut msg) => {
+                // Update the path displayed to enable clicking in IDE.
+                // TODO(mingwei): deduplicate code with hydro_deploy rust_crate/build.rs
+                if let Some(rendered) = msg.message.rendered.as_mut() {
+                    let file_names = msg
+                        .message
+                        .spans
+                        .iter()
+                        .map(|s| &s.file_name)
+                        .collect::<std::collections::BTreeSet<_>>();
+                    for file_name in file_names {
+                        *rendered = rendered.replace(
+                            file_name,
+                            &format!("(full path) {}/{file_name}", trybuild.project_dir.display()),
+                        )
+                    }
+                }
+                eprintln!("{}", msg.message);
+            }
+            cargo_metadata::Message::TextLine(line) => {
+                eprintln!("{}", line);
+            }
+            cargo_metadata::Message::BuildFinished(_) => {}
+            cargo_metadata::Message::BuildScriptExecuted(_) => {}
+            msg => panic!("Unexpected message type: {:?}", msg),
+        }
+    }
+
+    spawned.wait().unwrap();
+    let stderr_output = stderr_thread.join().unwrap();
+
+    // Check for unexpected recompilations — only dylib-examples should be compiled.
+    // (Only relevant when prebuild is active, i.e. no custom RUSTFLAGS.)
+    if !has_custom_rustflags {
+        for line in stderr_output.lines() {
+            if line.contains("Compiling") && !line.contains("dylib-examples") {
+                panic!(
+                    "unexpected recompilation in final build: {line}\nfull stderr:\n{stderr_output}"
+                );
+            }
+        }
+    }
+
+    if out.is_err() {
+        panic!("final build failed to produce binary.\nstderr:\n{stderr_output}");
+    }
+
+    let out_file = tempfile::NamedTempFile::new().unwrap().into_temp_path();
+    fs::copy(out.as_ref().unwrap(), &out_file).unwrap();
+    Ok(out_file)
 }
 
 pub fn create_trybuild()

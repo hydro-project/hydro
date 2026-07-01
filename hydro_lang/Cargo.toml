@@ -74,6 +74,8 @@ maelstrom = [
     "trybuild",
     "maelstrom_runtime",
     "dep:tempfile",
+    "dep:hydro_concurrent_cargo",
+    "dep:cargo_metadata",
 ]
 
 sim_runtime = [
