@@ -291,10 +291,10 @@ fn make_subgraphs(
 /// Rearranges a flat topological order of subgraphs so that all subgraphs within
 /// a loop are contiguous, while preserving the relative topological order.
 ///
-/// This works by walking the flat order and grouping subgraphs by their nearest
-/// ancestor that is a direct child of `parent_loop`. Subgraphs directly at this
-/// level keep their position; subgraphs inside a child loop are grouped together
-/// at the position where the child loop first appears. Recurses into child loops.
+/// Pre-computes for each loop the set of descendant subgraphs (in flat-order),
+/// then recurses through the loop hierarchy. At each level, subgraphs directly
+/// at that level are emitted in place; when a child loop is first encountered,
+/// all of its descendants are emitted recursively.
 ///
 /// Correctness: subgraphs from different loop contexts that appear interleaved in
 /// the flat order have no dependency between them (data can only enter/exit a loop
@@ -306,60 +306,45 @@ fn make_loops_contiguous(
 ) -> Vec<GraphSubgraphId> {
     use std::collections::HashMap;
 
-    /// Given a subgraph's loop context `sg_loop`, find which direct child loop of
-    /// `parent_loop` it belongs to. Returns `None` if the subgraph is directly at
-    /// the `parent_loop` level.
-    fn child_loop_ancestor(
-        graph: &DfirGraph,
-        sg_loop: Option<GraphLoopId>,
-        parent_loop: Option<GraphLoopId>,
-    ) -> Option<GraphLoopId> {
-        // If the subgraph is directly at this level, no child loop.
-        if sg_loop == parent_loop {
-            return None;
-        }
-        // Walk up from sg_loop until we find one whose parent is parent_loop.
-        let mut current = sg_loop?;
-        loop {
-            let parent = graph.loop_parent(current);
-            if parent == parent_loop {
-                return Some(current);
-            }
-            // Move up.
-            current = parent?;
+    // Pre-compute: for each loop, collect *all* descendant subgraphs in flat-order (not just direct).
+    // Each sg_id is inserted into every ancestor loop.
+    let mut loop_descendants = HashMap::<GraphLoopId, Vec<GraphSubgraphId>>::new();
+    for &sg_id in flat_order {
+        let mut current = graph.subgraph_loop(sg_id);
+        while let Some(loop_id) = current {
+            loop_descendants.entry(loop_id).or_default().push(sg_id);
+            current = graph.loop_parent(loop_id);
         }
     }
 
-    fn make_loops_contiguous_helper(
+    fn helper(
         graph: &DfirGraph,
         flat_order: &[GraphSubgraphId],
-        parent_loop: Option<GraphLoopId>,
+        current_loop: Option<GraphLoopId>,
+        loop_descendants: &mut HashMap<GraphLoopId, Vec<GraphSubgraphId>>,
         output: &mut Vec<GraphSubgraphId>,
     ) {
-        // Group: each direct child loop's descendant subgraphs.
-        let mut loop_subgraphs = HashMap::<GraphLoopId, Vec<GraphSubgraphId>>::new();
         for &sg_id in flat_order {
             let sg_loop = graph.subgraph_loop(sg_id);
-            if let Some(child_loop) = child_loop_ancestor(graph, sg_loop, parent_loop) {
-                loop_subgraphs.entry(child_loop).or_default().push(sg_id);
-            }
-        }
-
-        // Flatten: direct subgraphs emit themselves, loops recurse in order of first appearance.
-        for &sg_id in flat_order {
-            let sg_loop = graph.subgraph_loop(sg_id);
-            if let Some(child_loop) = child_loop_ancestor(graph, sg_loop, parent_loop) {
-                if let Some(child_subgraphs) = loop_subgraphs.remove(&child_loop) {
-                    make_loops_contiguous_helper(graph, &child_subgraphs, Some(child_loop), output);
-                }
-            } else {
+            if current_loop == sg_loop {
+                // Directly at this level — emit in place.
                 output.push(sg_id);
+                continue;
             }
+            let sg_loop = sg_loop.expect("root-level subgraph cannot be within a loop: `sg_loop == None` implies `current_loop == None`");
+            if current_loop == graph.loop_parent(sg_loop) {
+                // In a direct child loop of current_loop, recurse if we haven't yet (tracked by `loop_descendant`
+                // entry removal).
+                if let Some(inner_order) = loop_descendants.remove(&sg_loop) {
+                    helper(graph, &inner_order, Some(sg_loop), loop_descendants, output);
+                }
+            }
+            // else: Deeper nested — skip, will be handled by recursion into its ancestor.
         }
     }
 
-    let mut output = Vec::new();
-    make_loops_contiguous_helper(graph, flat_order, None, &mut output);
+    let mut output = Vec::with_capacity(flat_order.len());
+    helper(graph, flat_order, None, &mut loop_descendants, &mut output);
     output
 }
 
