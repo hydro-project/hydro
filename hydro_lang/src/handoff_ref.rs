@@ -542,4 +542,152 @@ mod tests {
         my_count.into_stream().for_each(q!(|_| {}));
         let _built = flow.finalize();
     }
+
+    /// Compile-only test: singleton by_ref inside scan closures.
+    #[test]
+    fn singleton_by_ref_scan() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let offset = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let offset_ref = offset.by_ref();
+
+        node.source_iter(q!(1..=3i32))
+            .scan(
+                q!(move || *offset_ref),
+                q!(move |acc: &mut i32, x| {
+                    *acc += x + *offset_ref;
+                    Some(*acc)
+                }),
+            )
+            .for_each(q!(|_| {}));
+
+        offset.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
+
+    /// Compile-only test: singleton by_ref inside scan_async_blocking closure.
+    #[test]
+    fn singleton_by_ref_scan_async_blocking() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let offset = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let offset_ref = offset.by_ref();
+
+        node.source_iter(q!(1..=3i32))
+            .scan_async_blocking(
+                q!(|| 0i32),
+                q!(move |acc: &mut i32, x| {
+                    *acc += x + *offset_ref;
+                    let val = *acc;
+                    async move { Some(val) }
+                }),
+            )
+            .for_each(q!(|_| {}));
+
+        offset.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
+
+    /// Compile-only test: singleton by_ref inside generator closure.
+    #[test]
+    fn singleton_by_ref_generator() {
+        use crate::live_collections::keyed_stream::Generate;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let threshold = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let threshold_ref = threshold.by_ref();
+
+        node.source_iter(q!(1..=3i32))
+            .generator(
+                q!(|| 0i32),
+                q!(move |acc: &mut i32, x| {
+                    *acc += x;
+                    if *acc > *threshold_ref {
+                        Generate::Return(*acc)
+                    } else {
+                        Generate::Yield(*acc)
+                    }
+                }),
+            )
+            .for_each(q!(|_| {}));
+
+        threshold.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
+
+    /// Compile-only test: singleton by_ref inside keyed scan closure.
+    #[test]
+    fn singleton_by_ref_keyed_scan() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let offset = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let offset_ref = offset.by_ref();
+
+        node.source_iter(q!(vec![(0, 1i32), (1, 2i32)]))
+            .into_keyed()
+            .scan(
+                q!(|| 0i32),
+                q!(move |acc: &mut i32, x| {
+                    *acc += x + *offset_ref;
+                    Some(*acc)
+                }),
+            )
+            .entries()
+            .assume_ordering::<crate::live_collections::stream::TotalOrder>(
+                crate::nondet::nondet!(/** test */),
+            )
+            .for_each(q!(|_| {}));
+
+        offset.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
+
+    /// Compile-only test: singleton by_ref inside keyed generator closure.
+    #[test]
+    fn singleton_by_ref_keyed_generator() {
+        use crate::live_collections::keyed_stream::Generate;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let threshold = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let threshold_ref = threshold.by_ref();
+
+        node.source_iter(q!(vec![(0, 1i32), (1, 2i32)]))
+            .into_keyed()
+            .generator(
+                q!(|| 0i32),
+                q!(move |acc: &mut i32, x| {
+                    *acc += x;
+                    if *acc > *threshold_ref {
+                        Generate::Return(*acc)
+                    } else {
+                        Generate::Yield(*acc)
+                    }
+                }),
+            )
+            .entries()
+            .assume_ordering::<crate::live_collections::stream::TotalOrder>(
+                crate::nondet::nondet!(/** test */),
+            )
+            .for_each(q!(|_| {}));
+
+        threshold.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
 }

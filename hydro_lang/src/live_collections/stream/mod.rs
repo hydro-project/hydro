@@ -1716,6 +1716,9 @@ where
     /// an `Option<U>`. If the function returns `Some(value)`, `value` is emitted to the output stream.
     /// If the function returns `None`, the stream is terminated and no more elements are processed.
     ///
+    /// The `init` and `f` closures may capture bounded singletons, optionals, or streams by
+    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref).
+    ///
     /// # Examples
     ///
     /// Basic usage - running sum:
@@ -1776,8 +1779,11 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, T) -> Option<U> + 'a,
     {
-        let init = init.splice_fn0_ctx(&self.location).into();
-        let f = f.splice_fn2_borrow_mut_ctx(&self.location).into();
+        let init =
+            crate::handoff_ref::with_ref_capture(|| init.splice_fn0_ctx(&self.location).into());
+        let f = crate::handoff_ref::with_ref_capture(|| {
+            f.splice_fn2_borrow_mut_ctx(&self.location).into()
+        });
 
         Stream::new(
             self.location.clone(),
@@ -1799,6 +1805,9 @@ where
     /// The closure runs synchronously (so it can mutate the accumulator), then returns a
     /// future. The future is polled to completion. If it resolves to `Some`, the value is
     /// emitted. If it resolves to `None`, the item is filtered out.
+    ///
+    /// The `init` and `f` closures may capture bounded singletons, optionals, or streams by
+    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref).
     ///
     /// # Examples
     ///
@@ -1837,8 +1846,11 @@ where
         F: Fn(&mut A, T) -> Fut + 'a,
         Fut: Future<Output = Option<U>> + 'a,
     {
-        let init = init.splice_fn0_ctx(&self.location).into();
-        let f = f.splice_fn2_borrow_mut_ctx(&self.location).into();
+        let init =
+            crate::handoff_ref::with_ref_capture(|| init.splice_fn0_ctx(&self.location).into());
+        let f = crate::handoff_ref::with_ref_capture(|| {
+            f.splice_fn2_borrow_mut_ctx(&self.location).into()
+        });
 
         Stream::new(
             self.location.clone(),
@@ -1861,6 +1873,9 @@ where
     /// state. The second argument defines the processing logic, taking in a mutable reference
     /// to the state and the value to be processed. It emits a [`Generate`] value, whose
     /// variants define what is emitted and whether further inputs should be processed.
+    ///
+    /// The `init` and `f` closures may capture bounded singletons, optionals, or streams by
+    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref).
     ///
     /// # Example
     /// ```rust
@@ -1912,32 +1927,36 @@ where
         //   None = not yet initialized
         //   Some(Some(a)) = active with state a
         //   Some(None) = terminated
-        let scan_init = q!(|| None)
-            .splice_fn0_ctx::<Option<Option<A>>>(&this.location)
-            .into();
-        let scan_f = q!(move |state: &mut Option<Option<_>>, v| {
-            if state.is_none() {
-                *state = Some(Some(init()));
-            }
-            match state {
-                Some(Some(state_value)) => match f(state_value, v) {
-                    Generate::Yield(out) => Some(Some(out)),
-                    Generate::Return(out) => {
-                        *state = Some(None);
-                        Some(Some(out))
-                    }
-                    // Unlike KeyedStream, we can terminate the scan directly on
-                    // Break/Return because there is only one state (no other keys
-                    // that still need processing).
-                    Generate::Break => None,
-                    Generate::Continue => Some(None),
-                },
-                // State is Some(None) after Return; terminate the scan.
-                _ => None,
-            }
-        })
-        .splice_fn2_borrow_mut_ctx::<Option<Option<A>>, T, _>(&this.location)
-        .into();
+        let scan_init = crate::handoff_ref::with_ref_capture(|| {
+            q!(|| None)
+                .splice_fn0_ctx::<Option<Option<A>>>(&this.location)
+                .into()
+        });
+        let scan_f = crate::handoff_ref::with_ref_capture(|| {
+            q!(move |state: &mut Option<Option<_>>, v| {
+                if state.is_none() {
+                    *state = Some(Some(init()));
+                }
+                match state {
+                    Some(Some(state_value)) => match f(state_value, v) {
+                        Generate::Yield(out) => Some(Some(out)),
+                        Generate::Return(out) => {
+                            *state = Some(None);
+                            Some(Some(out))
+                        }
+                        // Unlike KeyedStream, we can terminate the scan directly on
+                        // Break/Return because there is only one state (no other keys
+                        // that still need processing).
+                        Generate::Break => None,
+                        Generate::Continue => Some(None),
+                    },
+                    // State is Some(None) after Return; terminate the scan.
+                    _ => None,
+                }
+            })
+            .splice_fn2_borrow_mut_ctx::<Option<Option<A>>, T, _>(&this.location)
+            .into()
+        });
 
         let scan_node = HydroNode::Scan {
             init: scan_init,
@@ -4857,6 +4876,57 @@ mod tests {
         assert_eq!(
             count, 2,
             "Expected 2 simulation instances due to mut on unordered input, got {}",
+            count
+        );
+    }
+
+    /// A `scan` closure that captures a bounded singleton by reference should compile,
+    /// run correctly, and (because the input is totally ordered) explore a single
+    /// simulation instance.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_scan_with_ref_capture() {
+        use crate::live_collections::sliced::sliced;
+        use crate::live_collections::stream::ExactlyOnce;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (trigger_send, trigger) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
+
+        let out_recv = sliced! {
+            let batch = use(trigger, nondet!(/** test */));
+            let offset = batch
+                .location()
+                .source_iter(q!(vec![10i32]))
+                .fold(q!(|| 0i32), q!(|acc, v| *acc += v));
+            let offset_ref = offset.by_ref();
+            batch
+                .location()
+                .source_iter(q!(vec![1i32, 2, 3]))
+                .scan(
+                    q!(|| 0i32),
+                    q!(move |acc: &mut i32, x| {
+                        *acc += x + *offset_ref;
+                        Some(*acc)
+                    }),
+                )
+        }
+        .sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            trigger_send.send(1);
+            let all: Vec<i32> = out_recv.collect().await;
+            // offset = 10, running accumulator starts at 0:
+            //   x=1: acc += 1 + 10 = 11 -> 11
+            //   x=2: acc += 2 + 10 = 12 -> 23
+            //   x=3: acc += 3 + 10 = 13 -> 36
+            assert_eq!(all, vec![11, 23, 36]);
+        });
+
+        assert_eq!(
+            count, 1,
+            "Expected a single simulation instance for a totally-ordered scan, got {}",
             count
         );
     }
