@@ -73,13 +73,13 @@ const config = {
             extendDefaults: true,
           },
         },
-        // blog: {
-        //   showReadingTime: true,
-        //   // Please change this to your repo.
-        //   // Remove this to remove the "edit this page" links.
-        //   editUrl:
-        //     'https://github.com/hydro-project/hydro/tree/main/docs/',
-        // },
+        blog: {
+          showReadingTime: true,
+          // Please change this to your repo.
+          // Remove this to remove the "edit this page" links.
+          editUrl:
+            "https://github.com/hydro-project/hydro/tree/main/docs/",
+        },
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
         },
@@ -177,7 +177,7 @@ const config = {
             position: "left",
             label: "People",
           },
-          // {to: '/blog', label: 'Blog', position: 'left'},
+          {to: '/blog', label: 'Blog', position: 'left'},
           {
             href: "https://github.com/hydro-project/hydro",
             position: "right",
@@ -224,10 +224,10 @@ const config = {
           {
             title: "More",
             items: [
-              // {
-              //   label: 'Blog',
-              //   to: '/blog',
-              // },
+              {
+                label: 'Blog',
+                to: '/blog',
+              },
               {
                 label: "GitHub",
                 href: "https://github.com/hydro-project/hydro",
