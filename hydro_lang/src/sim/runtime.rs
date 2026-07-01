@@ -1860,6 +1860,294 @@ impl<T> SimHook for TopLevelMergeOrderedHook<T> {
     }
 }
 
+type KeyedMergeOrderedInput<K, V> = Rc<RefCell<Option<Vec<(K, V)>>>>;
+
+/// Keyed variant of [`MergeOrderedHook`], used for bounded / non-root keyed
+/// streams. Both inputs are fully materialized batches. Interleaves the two
+/// batches *independently within each key*, preserving per-input order within
+/// each key. The interleaving across different keys is irrelevant because a
+/// [`crate::live_collections::keyed_stream::KeyedStream`] carries no ordering
+/// guarantee across keys.
+pub struct KeyedMergeOrderedHook<K: Hash + Eq + Clone, V> {
+    first: KeyedMergeOrderedInput<K, V>,
+    second: KeyedMergeOrderedInput<K, V>,
+    to_release: Option<Vec<(K, V)>>,
+    release_sources: Option<Vec<bool>>,
+    output: UnboundedSender<Vec<(K, V)>>,
+    batch_location: HookLocationMeta,
+    format_item_debug: fn(&(K, V)) -> Option<String>,
+}
+
+impl<K: Hash + Eq + Clone, V> KeyedMergeOrderedHook<K, V> {
+    pub fn new(
+        first: KeyedMergeOrderedInput<K, V>,
+        second: KeyedMergeOrderedInput<K, V>,
+        output: UnboundedSender<Vec<(K, V)>>,
+        batch_location: HookLocationMeta,
+        format_item_debug: fn(&(K, V)) -> Option<String>,
+    ) -> Self {
+        Self {
+            first,
+            second,
+            to_release: None,
+            release_sources: None,
+            output,
+            batch_location,
+            format_item_debug,
+        }
+    }
+}
+
+impl<K: Hash + Eq + Clone, V> SimInlineHook for KeyedMergeOrderedHook<K, V> {
+    fn pending_decision(&self) -> bool {
+        self.first.borrow().is_some() && self.second.borrow().is_some()
+    }
+
+    fn has_decision(&self) -> bool {
+        self.to_release.is_some()
+    }
+
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let first_input = self.first.borrow_mut().take().unwrap();
+        let second_input = self.second.borrow_mut().take().unwrap();
+
+        // Group each input by key, preserving per-input order within each key
+        // and recording the order in which keys are first seen so that output
+        // is deterministic given the same random choices.
+        let mut key_order: Vec<K> = Vec::new();
+        let mut first_grouped: FxHashMap<K, VecDeque<V>> = FxHashMap::default();
+        let mut second_grouped: FxHashMap<K, VecDeque<V>> = FxHashMap::default();
+
+        for (k, v) in first_input {
+            if !first_grouped.contains_key(&k) && !second_grouped.contains_key(&k) {
+                key_order.push(k.clone());
+            }
+            first_grouped.entry(k).or_default().push_back(v);
+        }
+        for (k, v) in second_input {
+            if !first_grouped.contains_key(&k) && !second_grouped.contains_key(&k) {
+                key_order.push(k.clone());
+            }
+            second_grouped.entry(k).or_default().push_back(v);
+        }
+
+        let mut result = Vec::new();
+        let mut sources = Vec::new();
+
+        for key in key_order {
+            let mut first_q = first_grouped.remove(&key).unwrap_or_default();
+            let mut second_q = second_grouped.remove(&key).unwrap_or_default();
+
+            // Generate a valid interleaving of this key's two sub-sequences,
+            // preserving per-input order.
+            while !first_q.is_empty() && !second_q.is_empty() {
+                let take_second: bool = produce().generate(driver).unwrap();
+                if take_second {
+                    result.push((key.clone(), second_q.pop_front().unwrap()));
+                    sources.push(true);
+                } else {
+                    result.push((key.clone(), first_q.pop_front().unwrap()));
+                    sources.push(false);
+                }
+            }
+            for v in first_q {
+                result.push((key.clone(), v));
+                sources.push(false);
+            }
+            for v in second_q {
+                result.push((key.clone(), v));
+                sources.push(true);
+            }
+        }
+
+        self.to_release = Some(result);
+        self.release_sources = Some(sources);
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            let sources = self.release_sources.take().unwrap();
+            if !to_release.is_empty() {
+                let (batch_location, line, caret_indent) = self.batch_location;
+
+                let labeled_iter =
+                    sources
+                        .iter()
+                        .zip(to_release.iter())
+                        .map(|(is_second, item)| {
+                            let label: &'static str = if *is_second { "r" } else { "l" };
+                            (label, item)
+                        });
+
+                let note_str = format!(
+                    "^ observed non-deterministic merge order: {:?}",
+                    TruncatedLabeledVecDebug(
+                        RefCell::new(Some(labeled_iter)),
+                        8,
+                        self.format_item_debug
+                    )
+                );
+
+                let _ = writeln!(
+                    log_writer,
+                    "{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
+
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Cyan)
+                );
+            }
+
+            self.output.send(to_release).unwrap();
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
+/// Keyed variant of [`TopLevelMergeOrderedHook`]. Releases one element at a
+/// time, picking from the front of some key's queue in either the first or the
+/// second input. This preserves per-input order within each key while allowing
+/// arbitrary interleaving both across the two inputs and across keys (which is
+/// unconstrained for keyed streams), and lets feedback cycles deliver elements
+/// between releases.
+pub struct TopLevelKeyedMergeOrderedHook<K: Hash + Eq + Clone, V> {
+    pub first: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>,
+    pub second: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>,
+    pub to_release: Option<Vec<(K, V)>>,
+    pub release_source: Option<&'static str>,
+    pub output: UnboundedSender<(K, V)>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&(K, V)) -> Option<String>,
+}
+
+impl<K: Hash + Eq + Clone, V> SimHook for TopLevelKeyedMergeOrderedHook<K, V> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|v| !v.is_empty())
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let first_nonempty = !self.first.borrow().values().all(|q| q.is_empty());
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let second_nonempty = !self.second.borrow().values().all(|q| q.is_empty());
+        first_nonempty || second_nonempty
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        driver: &mut Borrowed<'a>,
+        force_nontrivial: bool,
+    ) -> bool {
+        // Collect candidates: for each non-empty key queue in either input, we
+        // can release its front element. `false` = first input, `true` = second.
+        let mut candidates: Vec<(bool, K)> = Vec::new();
+        {
+            #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+            for (k, q) in self.first.borrow().iter() {
+                if !q.is_empty() {
+                    candidates.push((false, k.clone()));
+                }
+            }
+            #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+            for (k, q) in self.second.borrow().iter() {
+                if !q.is_empty() {
+                    candidates.push((true, k.clone()));
+                }
+            }
+        }
+
+        if candidates.is_empty() {
+            self.to_release = Some(vec![]);
+            self.release_source = None;
+            return false;
+        }
+
+        if !force_nontrivial && produce().generate(driver).unwrap() {
+            // don't release anything
+            self.to_release = Some(vec![]);
+            self.release_source = None;
+            return false;
+        }
+
+        let idx = (0..candidates.len()).generate(driver).unwrap();
+        let (take_second, key) = &candidates[idx];
+        let take_second = *take_second;
+
+        let item = if take_second {
+            self.second
+                .borrow_mut()
+                .get_mut(key)
+                .unwrap()
+                .pop_front()
+                .unwrap()
+        } else {
+            self.first
+                .borrow_mut()
+                .get_mut(key)
+                .unwrap()
+                .pop_front()
+                .unwrap()
+        };
+
+        self.to_release = Some(vec![(key.clone(), item)]);
+        self.release_source = Some(if take_second { "r" } else { "l" });
+        true
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            let source = self.release_source.take();
+            if !to_release.is_empty() {
+                let (batch_location, line, caret_indent) = self.location;
+                let source_label = source.unwrap_or("?");
+
+                let labeled_iter = to_release.iter().map(|item| (source_label, item));
+
+                let note_str = format!(
+                    "^ observed non-deterministic merge order: {:?}",
+                    TruncatedLabeledVecDebug(
+                        RefCell::new(Some(labeled_iter)),
+                        8,
+                        self.format_item_debug
+                    )
+                );
+
+                let _ = writeln!(
+                    log_writer,
+                    "\n{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
+
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
+
+            for item in to_release {
+                self.output.send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
 #[cfg(test)]
 mod maybe_debug_tests {
     struct NotDebuggable;
