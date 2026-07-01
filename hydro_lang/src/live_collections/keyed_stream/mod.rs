@@ -2756,6 +2756,71 @@ impl<'a, K, V, L: Location<'a>, O: Ordering, R: Retries> KeyedStream<K, V, L, Un
     }
 }
 
+impl<'a, K, V, L: Location<'a>, B: Boundedness, R: Retries> KeyedStream<K, V, L, B, TotalOrder, R> {
+    /// Produces a new keyed stream that combines the elements of the two input keyed streams,
+    /// preserving the relative order of elements within each group of each input.
+    ///
+    /// Because each group in both inputs is [`TotalOrder`], the output preserves the relative
+    /// order of elements within each group of each input, and the result is [`TotalOrder`].
+    ///
+    /// # Non-Determinism
+    /// For groups whose key appears in both inputs, the order in which the elements of the two
+    /// inputs are interleaved *within that group* is non-deterministic, so the order of elements
+    /// will vary across runs. If the keys across both inputs do not overlap, the ordering is
+    /// deterministic. If the output order within each group is irrelevant, use
+    /// [`KeyedStream::merge_unordered`] instead, which is deterministic but emits an unordered
+    /// keyed stream.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let numbers1: KeyedStream<i32, i32, _> = // { 1: [2], 3: [4] }
+    /// # process.source_iter(q!(vec![(1, 2), (3, 4)])).into_keyed().into();
+    /// let numbers2: KeyedStream<i32, i32, _> = // { 1: [3], 3: [5] }
+    /// # process.source_iter(q!(vec![(1, 3), (3, 5)])).into_keyed().into();
+    /// numbers1.merge_ordered(numbers2, nondet!(/** example */))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [2, 3], 3: [4, 5] } with each group interleaved in some order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (3, 4), (3, 5)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn merge_ordered<R2: Retries>(
+        self,
+        other: KeyedStream<K, V, L, B, TotalOrder, R2>,
+        _nondet: NonDet,
+    ) -> KeyedStream<K, V, L::DropConsistency, B, TotalOrder, <R as MinRetries<R2>>::Min>
+    where
+        R: MinRetries<R2>,
+    {
+        let target_location = self.location.drop_consistency();
+        KeyedStream::new(
+            target_location.clone(),
+            HydroNode::MergeOrdered {
+                first: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                second: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
+                metadata: target_location.new_node_metadata(KeyedStream::<
+                    K,
+                    V,
+                    L::DropConsistency,
+                    B,
+                    TotalOrder,
+                    <R as MinRetries<R2>>::Min,
+                >::collection_kind()),
+            },
+        )
+    }
+}
+
 impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, Atomic<L>, B, O, R>
 where
     L: Location<'a>,
@@ -3685,5 +3750,129 @@ mod tests {
 
         assert!(saw, "did not see an instance with (1, 1) before (1, 2)");
         assert_eq!(instance_count, 78);
+    }
+
+    /// Tests that `merge_ordered` on a keyed stream explores every valid
+    /// interleaving within a shared key while always preserving per-input
+    /// order.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_keyed_merge_ordered() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, TotalOrder, _>();
+        let (in_send2, input2) = node.sim_input::<_, TotalOrder, _>();
+
+        let out_recv = input
+            .into_keyed()
+            .merge_ordered(input2.into_keyed(), nondet!(/** test */))
+            .entries_partially_ordered(nondet!(/** test */))
+            .sim_output();
+
+        let mut saw_first = false;
+        let mut saw_interleaved = false;
+        let mut saw_second_first = false;
+        let instances = flow.sim().exhaustive(async || {
+            in_send.send((1, 'a'));
+            in_send.send((1, 'b'));
+            in_send2.send((1, 'c'));
+
+            let out: Vec<(i32, char)> = out_recv.collect().await;
+            let key1: Vec<char> = out
+                .iter()
+                .filter(|(k, _)| *k == 1)
+                .map(|(_, v)| *v)
+                .collect();
+
+            // Within-group order for the first input must always be preserved.
+            let first_order: Vec<char> = key1
+                .iter()
+                .filter(|c| **c == 'a' || **c == 'b')
+                .copied()
+                .collect();
+            assert_eq!(
+                first_order,
+                vec!['a', 'b'],
+                "within-group order violated: {:?}",
+                out
+            );
+
+            match key1.as_slice() {
+                ['a', 'b', 'c'] => saw_first = true,
+                ['a', 'c', 'b'] => saw_interleaved = true,
+                ['c', 'a', 'b'] => saw_second_first = true,
+                other => panic!("unexpected interleaving: {:?}", other),
+            }
+        });
+
+        assert!(saw_first, "did not observe [a, b, c]");
+        assert!(saw_interleaved, "did not observe [a, c, b]");
+        assert!(saw_second_first, "did not observe [c, a, b]");
+        assert_eq!(instances, 33);
+    }
+
+    /// Tests that `merge_ordered` on a keyed stream interleaves each group
+    /// *independently*. It must be possible to observe, in the same execution,
+    /// key `10` taking its second-input value before its first-input value
+    /// while key `20` does the opposite. A merge that treated the two inputs
+    /// as a single totally-ordered sequence could not produce this combination.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_keyed_merge_ordered_independent_keys() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, TotalOrder, _>();
+        let (in_send2, input2) = node.sim_input::<_, TotalOrder, _>();
+
+        let out_recv = input
+            .into_keyed()
+            .merge_ordered(input2.into_keyed(), nondet!(/** test */))
+            .entries_partially_ordered(nondet!(/** test */))
+            .sim_output();
+
+        let mut saw_independent = false;
+        let instances = flow.sim().exhaustive(async || {
+            // First input: key 10 -> [1], key 20 -> [2].
+            in_send.send((10, 1));
+            in_send.send((20, 2));
+            // Second input: key 10 -> [4], key 20 -> [3].
+            in_send2.send((10, 4));
+            in_send2.send((20, 3));
+
+            let out: Vec<(i32, i32)> = out_recv.collect().await;
+            let key10: Vec<i32> = out
+                .iter()
+                .filter(|(k, _)| *k == 10)
+                .map(|(_, v)| *v)
+                .collect();
+            let key20: Vec<i32> = out
+                .iter()
+                .filter(|(k, _)| *k == 20)
+                .map(|(_, v)| *v)
+                .collect();
+
+            // Within-input order must be preserved within each key (each key has
+            // a single value per input here, so only the multiset is checked).
+            let mut s10 = key10.clone();
+            s10.sort();
+            assert_eq!(s10, vec![1, 4], "unexpected values for key 10: {:?}", out);
+            let mut s20 = key20.clone();
+            s20.sort();
+            assert_eq!(s20, vec![2, 3], "unexpected values for key 20: {:?}", out);
+
+            // key 10: second-input value (4) before first-input value (1).
+            // key 20: first-input value (2) before second-input value (3).
+            if key10 == vec![4, 1] && key20 == vec![2, 3] {
+                saw_independent = true;
+            }
+        });
+
+        assert!(
+            saw_independent,
+            "did not observe per-key-independent interleaving"
+        );
+        assert_eq!(instances, 2944);
     }
 }
