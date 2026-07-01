@@ -112,7 +112,7 @@ mod tests {
     use stageleft::q;
 
     use super::*;
-    use crate::live_collections::stream::TotalOrder;
+    use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
     use crate::nondet::nondet;
     use crate::prelude::{FlowBuilder, TCP};
 
@@ -124,7 +124,7 @@ mod tests {
         let mut flow = FlowBuilder::new();
 
         let servers0 = flow.cluster::<u8>();
-        let (_in0, input0) = servers0.sim_input::<i32>();
+        let (_in0, input0) = servers0.sim_input::<i32, TotalOrder, ExactlyOnce>();
         input0
             .broadcast(
                 &servers0,
@@ -136,7 +136,7 @@ mod tests {
             .for_each(q!(|x| println!("{x}")));
 
         let servers1 = flow.next_version(&servers0);
-        let (_in1, input1) = servers1.sim_input::<i32>();
+        let (_in1, input1) = servers1.sim_input::<i32, TotalOrder, ExactlyOnce>();
         input1
             .broadcast(
                 &servers1,
