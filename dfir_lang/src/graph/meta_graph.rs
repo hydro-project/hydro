@@ -15,7 +15,7 @@ use syn::spanned::Spanned;
 
 use super::graph_write::{Dot, GraphWrite, Mermaid};
 use super::ops::{
-    DelayType, OPERATORS, OperatorWriteOutput, WriteContextArgs, find_op_op_constraints,
+    DelayType, FloType, OPERATORS, OperatorWriteOutput, WriteContextArgs, find_op_op_constraints,
     null_write_iterator_fn,
 };
 use super::{
@@ -975,10 +975,22 @@ impl DfirGraph {
             .map(|v| v.as_slice())
             .unwrap_or(&[]);
 
-        // Build the gate condition from entry handoffs.
+        // Build the gate condition from entry handoffs (excluding lazy windowing operators).
         let entry_handoffs = loop_input_handoffs.get(loop_id).expect("loop missing");
         let mut gate_checks: Vec<TokenStream> = entry_handoffs
             .iter()
+            .filter(|&&hoff_id| {
+                // Check if the successor (windowing operator) is lazy.
+                // If so, exclude from the gate — it doesn't trigger the loop.
+                let is_lazy = self
+                    .node_successors(hoff_id)
+                    .next()
+                    .and_then(|(_, succ)| self.node_op_inst(succ))
+                    .is_some_and(|op_inst| {
+                        op_inst.op_constraints.flo_type == Some(FloType::WindowingLazy)
+                    });
+                !is_lazy
+            })
             .map(|&hoff_id| {
                 let span = self.node(hoff_id).span();
                 let buf_ident = self.hoff_buf_ident(hoff_id, span);
@@ -1257,22 +1269,22 @@ impl DfirGraph {
                 }
 
                 // Open new loops if we've descended.
-                if let Some(target_loop) = sg_loop {
-                    if loop_stack.last().map(|&(l, _)| l) != Some(target_loop) {
-                        // Find the path of loops to open (from outermost to target).
-                        let mut path = Vec::new();
-                        let mut cur = Some(target_loop);
-                        while let Some(l) = cur {
-                            if loop_stack.last().map(|&(top, _)| top) == Some(l) {
-                                break;
-                            }
-                            path.push(l);
-                            cur = self.loop_parent(l);
+                if let Some(target_loop) = sg_loop
+                    && loop_stack.last().map(|&(l, _)| l) != Some(target_loop)
+                {
+                    // Find the path of loops to open (from outermost to target).
+                    let mut path = Vec::new();
+                    let mut cur = Some(target_loop);
+                    while let Some(l) = cur {
+                        if loop_stack.last().map(|&(top, _)| top) == Some(l) {
+                            break;
                         }
-                        // Push in outermost-first order.
-                        for &loop_id in path.iter().rev() {
-                            loop_stack.push((loop_id, TokenStream::new()));
-                        }
+                        path.push(l);
+                        cur = self.loop_parent(l);
+                    }
+                    // Push in outermost-first order.
+                    for &loop_id in path.iter().rev() {
+                        loop_stack.push((loop_id, TokenStream::new()));
                     }
                 }
                 let sg_metrics_ffi = subgraph_id.data().as_ffi();

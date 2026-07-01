@@ -1153,7 +1153,7 @@ impl FlatGraphBuilder {
                         ));
                     }
                 }
-                Some(FloType::Windowing) => {
+                Some(FloType::Windowing | FloType::WindowingLazy) => {
                     if !is_input {
                         self.diagnostics.push(Diagnostic::spanned(
                             span,

@@ -130,3 +130,50 @@ pub fn test_defer_loop_lazy() {
     out.sort();
     assert_eq!(out, vec![2, 10]);
 }
+
+/// Test batch_lazy: data enters the loop but does NOT trigger it to fire.
+/// If the loop fires for another reason, the lazy data is available.
+/// If the loop does not fire, the data is dropped.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_batch_lazy() {
+    let (trigger_send, trigger_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (lazy_send, lazy_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+
+    let mut df = dfir_syntax! {
+        trigger_inp = source_stream(trigger_recv);
+        lazy_inp = source_stream(lazy_recv);
+        loop {
+            merged = union();
+            trigger_inp -> batch() -> merged;
+            lazy_inp -> batch_lazy() -> merged;
+            merged -> for_each(|x| out_send.send(x).unwrap());
+        };
+    };
+
+    // Tick 1: only lazy data — loop should NOT fire.
+    lazy_send.send(100).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, Vec::<i32>::new());
+
+    // Tick 2: trigger data arrives — loop fires, sees both trigger and lazy data.
+    trigger_send.send(1).unwrap();
+    lazy_send.send(200).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![1, 200]);
+
+    // Tick 3: only trigger, no lazy data.
+    trigger_send.send(2).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, vec![2]);
+
+    // Tick 4: only lazy data again — loop should NOT fire, data dropped.
+    lazy_send.send(300).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, Vec::<i32>::new());
+}

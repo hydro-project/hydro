@@ -277,6 +277,7 @@ declare_ops![
     assert::ASSERT,
     assert_eq::ASSERT_EQ,
     batch::BATCH,
+    batch_lazy::BATCH_LAZY,
     chain::CHAIN,
     chain_first_n::CHAIN_FIRST_N,
     _counter::_COUNTER,
@@ -649,6 +650,9 @@ pub enum FloType {
     Source,
     /// A windowing operator, for moving data into a loop context.
     Windowing,
+    /// A lazy windowing operator — moves data into a loop context but does not trigger the loop.
+    /// Data is dropped if the loop does not fire that tick.
+    WindowingLazy,
     /// An un-windowing operator, for moving data out of a loop context.
     Unwindowing,
     /// Moves data into the next loop iteration within a loop context.
