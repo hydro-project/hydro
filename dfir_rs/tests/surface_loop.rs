@@ -177,3 +177,34 @@ pub fn test_batch_lazy() {
     let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
     assert_eq!(out, Vec::<i32>::new());
 }
+
+/// Test all_iterations: collects output from all loop iterations and emits
+/// it outside the loop after the loop completes.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_all_iterations() {
+    let (in_send, in_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+
+    let mut df = dfir_syntax! {
+        inp = source_stream(in_recv);
+        loop {
+            merged = union() -> tee();
+            inp -> batch() -> merged;
+            deferred -> merged;
+            // Defer items < 100 back, multiplied by 10.
+            merged -> filter(|&x| x < 100) -> map(|x| x * 10) -> defer_iteration() -> deferred;
+            deferred = identity();
+            // Send output outside the loop.
+            merged -> output;
+        };
+        output = all_iterations() -> for_each(|x| out_send.send(x).unwrap());
+    };
+
+    // Send 1. Iterations: sees 1 (defers 10), sees 10 (defers 100), sees 100 (stops).
+    // all_iterations should collect output from all 3 iterations.
+    in_send.send(1).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![1, 10, 100]);
+}

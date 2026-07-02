@@ -946,6 +946,40 @@ impl DfirGraph {
         subgraph_handoffs
     }
 
+    /// Compute the output handoffs exiting each loop (sender inside, receiver outside).
+    /// Returns a map from loop ID to the list of handoff node IDs that exit that loop.
+    fn helper_loop_output_handoffs(&self) -> SecondaryMap<GraphLoopId, Vec<GraphNodeId>> {
+        let mut loop_hoffs_out = SecondaryMap::<GraphLoopId, Vec<GraphNodeId>>::new();
+
+        for (hoff_id, hoff) in self.nodes() {
+            if !matches!(hoff, GraphNode::Handoff { .. }) {
+                continue;
+            }
+
+            let loop_pred = self
+                .node_predecessors(hoff_id)
+                .next()
+                .and_then(|(_, pred)| self.node_loop(pred));
+            let loop_succ = self
+                .node_successors(hoff_id)
+                .next()
+                .and_then(|(_, succ)| self.node_loop(succ));
+
+            if let Some(loop_pred) = loop_pred
+                && loop_succ == self.loop_parent(loop_pred)
+            {
+                // Pred is inside a child loop, succ is in the parent/outer.
+                loop_hoffs_out
+                    .entry(loop_pred)
+                    .expect("loop removed")
+                    .or_default()
+                    .push(hoff_id);
+            }
+        }
+
+        loop_hoffs_out
+    }
+
     /// Returns true if `node_loop` is `loop_id` or a (transitive) child of `loop_id`.
     fn is_inside_loop(&self, node_loop: Option<GraphLoopId>, loop_id: GraphLoopId) -> bool {
         let mut current = node_loop;
@@ -1240,6 +1274,7 @@ impl DfirGraph {
 
         // Pre-compute loop gate data.
         let loop_input_handoffs = self.helper_loop_input_handoffs();
+        let loop_output_handoffs = self.helper_loop_output_handoffs();
 
         {
             for &(subgraph_id, subgraph_nodes) in all_subgraphs.iter() {
@@ -1282,8 +1317,33 @@ impl DfirGraph {
                         path.push(l);
                         cur = self.loop_parent(l);
                     }
-                    // Push in outermost-first order.
+                    // Push in outermost-first order, emitting exit-handoff declarations
+                    // to the parent level before the while loop.
                     for &loop_id in path.iter().rev() {
+                        // Declare exit-handoff buffers at the current (parent) level.
+                        if let Some(exit_hoffs) = loop_output_handoffs.get(loop_id) {
+                            let exit_hoff_decls = exit_hoffs.iter().map(|&hoff_id| {
+                                let span = self.nodes[hoff_id].span();
+                                let buf_ident = self.hoff_buf_ident(hoff_id, span);
+                                let GraphNode::Handoff { kind, .. } = self.node(hoff_id) else {
+                                    panic!()
+                                };
+                                match kind {
+                                    HandoffKind::Vec => quote_spanned! {span=>
+                                        let mut #buf_ident = #root::bumpalo::collections::Vec::new_in(&#bump_ident);
+                                    },
+                                    HandoffKind::Singleton | HandoffKind::Optional => quote_spanned! {span=>
+                                        let mut #buf_ident = ::std::option::Option::None;
+                                    },
+                                }
+                            });
+                            let target = if let Some((_, body)) = loop_stack.last_mut() {
+                                body
+                            } else {
+                                &mut current_output
+                            };
+                            target.extend(quote! { #( #exit_hoff_decls )* });
+                        }
                         loop_stack.push((loop_id, TokenStream::new()));
                     }
                 }
@@ -1811,28 +1871,47 @@ impl DfirGraph {
                     .collect::<Vec<_>>();
 
                 // Create the handoffs we are about to push to (send).
+                // Exit handoffs (sender inside a loop, receiver in parent) are already declared
+                // before the while loop, so skip them here.
                 let send_hoff_make_code = send_buf_idents.iter()
                     .zip(send_kinds.iter())
                     .zip(send_hoffs.iter())
-                    .map(|((buf_ident, &kind), &hoff_id)| {
+                    .filter_map(|((buf_ident, &kind), &hoff_id)| {
                         let span = buf_ident.span();
                         if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
                             // Defer_tick send buffers are declared outside the tick closure
                             // as std::vec::Vec for O(1) swap. Just clear here.
-                            quote_spanned! {span=>
+                            Some(quote_spanned! {span=>
                                 #buf_ident.clear();
-                            }
+                            })
                         } else {
-                            match kind {
-                                HandoffKind::Vec => quote_spanned! {span=>
-                                    let mut #buf_ident = #root::bumpalo::collections::Vec::new_in(&#bump_ident);
-                                },
-                                HandoffKind::Singleton | HandoffKind::Optional => quote_spanned! {span=>
-                                    let mut #buf_ident = ::std::option::Option::None;
-                                },
+                            // Check if this is a loop-exit handoff: sender is in a loop,
+                            // receiver is in the parent (already declared outside the while loop).
+                            let receiver_loop = self
+                                .node_successors(hoff_id)
+                                .next()
+                                .and_then(|(_, succ)| self.node_loop(succ));
+                            let is_exit = if let Some(sender_loop) = sg_loop {
+                                receiver_loop == self.loop_parent(sender_loop)
+                            } else {
+                                false
+                            };
+                            if is_exit {
+                                // Exit handoff: buffer already declared at parent level.
+                                None
+                            } else {
+                                Some(match kind {
+                                    HandoffKind::Vec => quote_spanned! {span=>
+                                        let mut #buf_ident = #root::bumpalo::collections::Vec::new_in(&#bump_ident);
+                                    },
+                                    HandoffKind::Singleton | HandoffKind::Optional => quote_spanned! {span=>
+                                        let mut #buf_ident = ::std::option::Option::None;
+                                    },
+                                })
                             }
                         }
-                    });
+                    })
+                    .collect::<Vec<_>>();
                 // Drop the handoffs we just drained (recv).
                 // TODO(mingwei): we could use `.into_iter()` instead of `.drain(..)` to consume the handoffs directly.
                 // This only works for handoffs within the tick, though, not `defer_tick` handoffs.
