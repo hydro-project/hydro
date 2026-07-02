@@ -208,3 +208,64 @@ pub fn test_all_iterations() {
     out.sort();
     assert_eq!(out, vec![1, 10, 100]);
 }
+
+/// Test batch_lazy in a nested loop: verify lazy data doesn't persist across
+/// outer loop iterations or across ticks.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_batch_lazy_nested_no_stale_data() {
+    let (trigger_send, trigger_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (lazy_send, lazy_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+
+    let mut df = dfir_syntax! {
+        trigger_inp = source_stream(trigger_recv);
+        lazy_inp = source_stream(lazy_recv);
+        // Outer loop: iterates via defer_iteration (1 -> 10 -> 100, stops).
+        loop {
+            outer_merged = union() -> tee();
+            trigger_inp -> batch() -> outer_merged;
+            lazy_inp -> batch_lazy() -> lazy_in_outer;
+            lazy_in_outer = identity();
+            outer_deferred -> outer_merged;
+            outer_merged
+                -> filter(|&x: &i32| x < 100)
+                -> map(|x: i32| x * 10)
+                -> defer_iteration()
+                -> outer_deferred;
+            outer_deferred = identity();
+
+            // Inner loop: always fires when outer_merged has data (via batch).
+            // Lazy data from outer also enters.
+            loop {
+                inner_out = union();
+                outer_merged -> batch() -> inner_out;
+                lazy_in_outer -> batch_lazy() -> inner_out;
+                inner_out -> inner_results;
+            };
+            inner_results = all_iterations() -> outer_results;
+        };
+        outer_results = all_iterations() -> for_each(|x: i32| out_send.send(x).unwrap());
+    };
+
+    // Tick 1: trigger=1, lazy=999.
+    // Outer iteration 1: outer_merged=1, lazy_in_outer=999.
+    //   Inner fires: sees 1 and 999.
+    // Outer iteration 2: outer_merged=10, lazy_in_outer buffer re-created (empty).
+    //   Inner fires: sees only 10 (no stale 999).
+    // Outer iteration 3: outer_merged=100, lazy_in_outer buffer re-created (empty).
+    //   Inner fires: sees only 100.
+    trigger_send.send(1).unwrap();
+    lazy_send.send(999).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![1, 10, 100, 999]);
+
+    // Tick 2: trigger=1, no lazy data.
+    // No stale 999 from previous tick.
+    trigger_send.send(1).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![1, 10, 100]);
+}
