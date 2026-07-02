@@ -969,7 +969,7 @@ impl DfirGraph {
         loop_swap_code: &std::collections::HashMap<GraphLoopId, Vec<TokenStream>>,
         output: &mut TokenStream,
     ) {
-        // Get swap code for this loop's defer_loop handoffs.
+        // Get swap code for this loop's defer_iteration handoffs.
         let swap_code = loop_swap_code
             .get(&loop_id)
             .map(|v| v.as_slice())
@@ -1003,7 +1003,7 @@ impl DfirGraph {
             })
             .collect();
 
-        // Non-lazy defer_loop back-buffers also contribute to the gate.
+        // Non-lazy defer_iteration back-buffers also contribute to the gate.
         for (hoff_id, hoff) in self.nodes() {
             if !matches!(hoff, GraphNode::Handoff { .. }) {
                 continue;
@@ -1185,7 +1185,7 @@ impl DfirGraph {
             })
             .collect::<Vec<_>>();
 
-        // Collect per-loop swap code for defer_loop / defer_loop_lazy handoffs.
+        // Collect per-loop swap code for defer_iteration / defer_iteration_lazy handoffs.
         // Keyed by the loop ID of the consumer (successor) of the handoff.
         let mut loop_swap_code: std::collections::HashMap<GraphLoopId, Vec<TokenStream>> =
             std::collections::HashMap::new();

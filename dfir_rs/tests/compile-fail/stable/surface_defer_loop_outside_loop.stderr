@@ -1,5 +1,0 @@
-error: Operator `defer_loop(...)` must be within a `loop { ... }` context.
- --> tests/compile-fail/stable/surface_defer_loop_outside_loop.rs:3:31
-  |
-3 |         source_iter(0..10) -> defer_loop() -> null();
-  |                               ^^^^^^^^^^

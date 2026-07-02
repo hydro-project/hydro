@@ -1,6 +1,6 @@
 fn main() {
     let mut df = dfir_rs::dfir_syntax! {
-        source_iter(0..10) -> defer_loop_lazy() -> null();
+        source_iter(0..10) -> defer_iteration() -> null();
     };
     df.run_available_sync();
 }

@@ -3,13 +3,14 @@ use super::{
 };
 
 /// Buffers all input items and releases them on the next iteration of the enclosing loop.
-/// Causes the loop to re-fire (non-lazy).
+/// Does NOT cause the loop to re-fire (lazy).
 ///
-/// Must be used inside a `loop { }` block. Data written in one loop firing
-/// is available on the next firing. The presence of buffered data will cause
-/// the loop to fire again (similar to how `defer_tick` causes a new tick).
-pub const DEFER_LOOP: OperatorConstraints = OperatorConstraints {
-    name: "defer_loop",
+/// Must be used inside a `loop { }` block. Data written in one loop iteration
+/// is available on the next iteration, but will not trigger the loop to fire.
+/// The data persists until the loop fires for another reason (e.g., new
+/// data arriving at an entry handoff, or a non-lazy `defer_iteration` triggering).
+pub const DEFER_ITERATION_LAZY: OperatorConstraints = OperatorConstraints {
+    name: "defer_iteration_lazy",
     categories: &[OperatorCategory::Control],
     hard_range_inn: RANGE_1,
     soft_range_inn: RANGE_1,
@@ -22,6 +23,6 @@ pub const DEFER_LOOP: OperatorConstraints = OperatorConstraints {
     flo_type: Some(FloType::NextIteration),
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Loop),
+    input_delaytype_fn: |_| Some(DelayType::LoopLazy),
     write_fn: IDENTITY_WRITE_FN,
 };

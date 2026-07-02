@@ -10,7 +10,7 @@ error: `batch` must have exactly 1 input(s), actually has 0.
 5 |             batch() -> defer_tick() -> null();
   |             ^^^^^
 
-error: Operator `defer_tick(...)` is not allowed within a `loop { ... }` context. Use `defer_loop()` or `defer_loop_lazy()` instead.
+error: Operator `defer_tick(...)` is not allowed within a `loop { ... }` context. Use `defer_iteration()` or `defer_iteration_lazy()` instead.
  --> tests/compile-fail/stable/surface_loop_defer_tick.rs:5:24
   |
 5 |             batch() -> defer_tick() -> null();

@@ -65,10 +65,10 @@ pub fn test_loop_independence() {
     assert_eq!(out_b, Vec::<&str>::new());
 }
 
-/// Test defer_loop (non-lazy): data deferred in one firing is available on the next,
-/// and the non-empty defer_loop buffer causes the loop to re-fire.
+/// Test defer_iteration (non-lazy): data deferred in one firing is available on the next,
+/// and the non-empty defer_iteration buffer causes the loop to re-fire.
 #[multiplatform_test(test, wasm, env_tracing)]
-pub fn test_defer_loop_basic() {
+pub fn test_defer_iteration_basic() {
     let (in_send, in_recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
@@ -80,13 +80,13 @@ pub fn test_defer_loop_basic() {
             deferred -> merged;
             merged -> for_each(|x| out_send.send(x).unwrap());
             // Defer items < 100 back, multiplied by 10, to trigger re-fire.
-            merged -> filter(|&x| x < 100) -> map(|x| x * 10) -> defer_loop() -> deferred;
+            merged -> filter(|&x| x < 100) -> map(|x| x * 10) -> defer_iteration() -> deferred;
             deferred = identity();
         };
     };
 
     // Send 1. First firing: sees 1, defers 10.
-    // Second firing (triggered by defer_loop): sees 10, defers 100.
+    // Second firing (triggered by defer_iteration): sees 10, defers 100.
     // Third firing: sees 100 (>=100, no defer). Loop stops.
     in_send.send(1).unwrap();
     df.run_tick_sync();
@@ -96,10 +96,10 @@ pub fn test_defer_loop_basic() {
     assert_eq!(out, vec![1, 10, 100]);
 }
 
-/// Test defer_loop_lazy: data deferred is available next firing but does NOT
+/// Test defer_iteration_lazy: data deferred is available next firing but does NOT
 /// cause re-fire on its own.
 #[multiplatform_test(test, wasm, env_tracing)]
-pub fn test_defer_loop_lazy() {
+pub fn test_defer_iteration_lazy() {
     let (in_send, in_recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
@@ -111,7 +111,7 @@ pub fn test_defer_loop_lazy() {
             deferred -> merged;
             merged -> for_each(|x| out_send.send(x).unwrap());
             // Lazy defer: stash data but don't re-fire.
-            merged -> map(|x| x * 10) -> defer_loop_lazy() -> deferred;
+            merged -> map(|x| x * 10) -> defer_iteration_lazy() -> deferred;
             deferred = identity();
         };
     };

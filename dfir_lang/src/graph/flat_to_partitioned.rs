@@ -192,7 +192,7 @@ fn find_subgraph_unionfind(
             if partitioned_graph.node_loop(src) != partitioned_graph.node_loop(dst) {
                 continue;
             }
-            // Do not connect `next_iteration()`.
+            // Do not connect `defer_iteration()`.
             if partitioned_graph.node_op_inst(dst).is_some_and(|op_inst| {
                 Some(FloType::NextIteration) == op_inst.op_constraints.flo_type
             }) {

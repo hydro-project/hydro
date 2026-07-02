@@ -12,7 +12,7 @@ use syn::{Error, Ident, ItemUse};
 
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::graph::meta_graph::ResolvedHandoffRef;
-use crate::graph::ops::next_iteration::NEXT_ITERATION;
+use crate::graph::ops::defer_iteration::DEFER_ITERATION;
 use crate::graph::ops::{DelayType, FloType, Persistence, PortListSpec, RangeTrait};
 use crate::graph::{
     DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, HandoffKind, PortIndexValue,
@@ -1082,7 +1082,7 @@ impl FlatGraphBuilder {
             }
 
             // Ensure `defer_tick`/`defer_tick_lazy` (tick-boundary operators) are NOT inside a loop.
-            // (`defer_loop`/`defer_loop_lazy` outside a loop is already caught by the
+            // (`defer_iteration`/`defer_iteration_lazy` outside a loop is already caught by the
             // FloType::NextIteration check below.)
             let delay_type =
                 (op_inst.op_constraints.input_delaytype_fn)(&PortIndexValue::Elided(None));
@@ -1093,7 +1093,7 @@ impl FlatGraphBuilder {
                     node.span(),
                     Level::Error,
                     format!(
-                        "Operator `{}(...)` is not allowed within a `loop {{ ... }}` context. Use `defer_loop()` or `defer_loop_lazy()` instead.",
+                        "Operator `{}(...)` is not allowed within a `loop {{ ... }}` context. Use `defer_iteration()` or `defer_iteration_lazy()` instead.",
                         op_inst.op_constraints.name
                     ),
                 ));
@@ -1196,12 +1196,12 @@ impl FlatGraphBuilder {
             }
         }
 
-        // Must be a DAG (excluding `next_iteration()` operators).
+        // Must be a DAG (excluding `defer_iteration()` / `defer_iteration_lazy()` operators).
         // TODO(mingwei): Nested loop blocks should count as a single node.
         // But this doesn't cause any correctness issues because the nested loops are also DAGs.
         for (loop_id, loop_nodes) in self.flat_graph.loops() {
-            // Filter out `next_iteration()` operators.
-            let filter_next_iteration = |&node_id: &GraphNodeId| {
+            // Filter out `defer_iteration()` / `defer_iteration_lazy()` operators.
+            let filter_defer_iteration = |&node_id: &GraphNodeId| {
                 self.flat_graph
                     .node_op_inst(node_id)
                     .map(|op_inst| Some(FloType::NextIteration) != op_inst.op_constraints.flo_type)
@@ -1209,12 +1209,12 @@ impl FlatGraphBuilder {
             };
 
             let topo_sort_result = graph_algorithms::topo_sort(
-                loop_nodes.iter().copied().filter(filter_next_iteration),
+                loop_nodes.iter().copied().filter(filter_defer_iteration),
                 |dst| {
                     self.flat_graph
                         .node_predecessor_nodes(dst)
                         .filter(|&src| Some(loop_id) == self.flat_graph.node_loop(src))
-                        .filter(filter_next_iteration)
+                        .filter(filter_defer_iteration)
                 },
             );
             if let Err(cycle) = topo_sort_result {
@@ -1226,7 +1226,7 @@ impl FlatGraphBuilder {
                         Level::Error,
                         format!(
                             "Operator forms an illegal cycle within a `loop {{ ... }}` block. Use `{}()` to pass data across loop iterations. ({}/{})",
-                            NEXT_ITERATION.name,
+                            DEFER_ITERATION.name,
                             i + 1,
                             len,
                         ),
