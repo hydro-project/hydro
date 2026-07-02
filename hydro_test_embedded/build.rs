@@ -69,6 +69,29 @@ fn generate_embedded() {
         .unwrap();
     }
 
+    // --- echo_network_embedded (o2o networking, `.embedded()` serialization) ---
+    {
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let sender = flow.process::<hydro_test::embedded::echo_network_embedded::Sender>();
+        let receiver = flow.process::<hydro_test::embedded::echo_network_embedded::Receiver>();
+        hydro_test::embedded::echo_network_embedded::echo_network_embedded(
+            &receiver,
+            sender.embedded_input("input"),
+        )
+        .embedded_output("output");
+
+        let code = flow
+            .with_process(&sender, "echo_sender")
+            .with_process(&receiver, "echo_receiver")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/echo_network_embedded.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
     // --- o2m_broadcast (process -> cluster) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();

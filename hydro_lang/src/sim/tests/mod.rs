@@ -283,6 +283,30 @@ fn sim_batch_nondebuggable_type() {
 }
 
 #[test]
+fn sim_embedded_send() {
+    use crate::networking::TCP;
+
+    let mut flow = FlowBuilder::new();
+    let p1 = flow.process::<()>();
+    let p2 = flow.process::<()>();
+
+    let (in_send, input) = p1.sim_input::<i32, _, _>();
+    // `.embedded()` leaves serialization to external code; in the simulator the raw value is
+    // carried directly through the in-memory channel.
+    let out_recv = input
+        .send(&p2, TCP.fail_stop().embedded().name("ch"))
+        .map(q!(|x| x * 10))
+        .sim_output();
+
+    flow.sim().exhaustive(async || {
+        in_send.send(1);
+        in_send.send(2);
+        let all: Vec<i32> = out_recv.collect().await;
+        assert_eq!(all, vec![10, 20]);
+    });
+}
+
+#[test]
 fn sim_cluster_e2m_m2e() {
     let mut flow = FlowBuilder::new();
     let cluster = flow.cluster::<()>();
@@ -304,7 +328,6 @@ fn sim_cluster_e2m_m2e() {
             assert_eq!(out_recv.next(2).await, Some(30));
         });
 }
-
 #[test]
 fn sim_send_after_assert_yields_only() {
     let mut flow = FlowBuilder::new();

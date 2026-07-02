@@ -173,6 +173,10 @@ impl<'a> Deploy<'a> for SimDeploy {
     type Cluster = SimNode;
     type External = SimExternal;
 
+    // The simulator carries the raw payload directly through its in-memory channels, so it can
+    // support channels that leave serialization to external code (see [`crate::networking::Embedded`]).
+    const SUPPORTS_EXTERNAL_SERIALIZATION: bool = true;
+
     fn o2o_sink_source(
         _env: &mut Self::InstantiateEnv,
         _p1: &Self::Process,
@@ -181,6 +185,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         p2_port: &<Self::Process as Node>::Port,
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
+        _external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_o2o_sink_{}", p1_port), Span::call_site());
@@ -211,6 +216,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         c2_port: &<Self::Cluster as Node>::Port,
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
+        _external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_o2m_sink_{}", p1_port), Span::call_site());
@@ -241,6 +247,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         p2_port: &<Self::Process as Node>::Port,
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
+        _external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_m2o_sink_{}", c1_port), Span::call_site());
@@ -272,6 +279,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         c2_port: &<Self::Cluster as Node>::Port,
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
+        _external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_m2m_sink_{}", c1_port), Span::call_site());

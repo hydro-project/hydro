@@ -38,6 +38,17 @@ pub mod echo_network {
     reason = "generated code"
 )]
 #[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod echo_network_embedded {
+    include!(concat!(env!("OUT_DIR"), "/echo_network_embedded.rs"));
+}
+
+#[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
 pub mod o2m_broadcast {
     include!(concat!(env!("OUT_DIR"), "/o2m_broadcast.rs"));
 }
@@ -147,6 +158,45 @@ mod tests {
             output: |s: String| received.push(s),
         };
         let mut flow_receiver = crate::echo_network::echo_receiver(&mut outputs, net_in);
+        run_flow(&mut flow_receiver).await;
+        drop(flow_receiver);
+        assert_eq!(received, vec!["HELLO", "WORLD"]);
+    }
+
+    // --- echo_network_embedded (o2o, `.embedded()` serialization) ---
+    // Unlike `echo_network`, the network channel exposes the raw `String` payload (not `Bytes`),
+    // so serialization is performed by the surrounding (test) code.
+    #[tokio::test]
+    async fn test_echo_network_embedded() {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+
+        // Sender: `messages` is now `FnMut(String)` (the raw payload, not `Bytes`).
+        let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
+        let mut net_out = crate::echo_network_embedded::echo_sender::EmbeddedNetworkOut {
+            messages: move |s: String| {
+                tx.send(s).unwrap();
+            },
+        };
+        let mut flow_sender = crate::echo_network_embedded::echo_sender(input, &mut net_out);
+        run_flow(&mut flow_sender).await;
+        drop(flow_sender);
+
+        // The transport delivers raw `String`s (embedded serialization has no transport `Result`).
+        let mut msgs: Vec<String> = vec![];
+        while let Ok(s) = rx.try_recv() {
+            msgs.push(s);
+        }
+        assert_eq!(msgs.len(), 2);
+
+        // Receiver: `messages` is now `Stream<Item = String>` (the raw payload).
+        let net_in = crate::echo_network_embedded::echo_receiver::EmbeddedNetworkIn {
+            messages: stream::iter(msgs),
+        };
+        let mut received = vec![];
+        let mut outputs = crate::echo_network_embedded::echo_receiver::EmbeddedOutputs {
+            output: |s: String| received.push(s),
+        };
+        let mut flow_receiver = crate::echo_network_embedded::echo_receiver(&mut outputs, net_in);
         run_flow(&mut flow_receiver).await;
         drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);

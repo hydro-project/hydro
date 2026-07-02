@@ -14,6 +14,13 @@ trait SerKind<T: ?Sized> {
     fn serialize_thunk(is_demux: bool) -> syn::Expr;
 
     fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr;
+
+    /// Whether this serialization backend leaves serialization to code outside of Hydro (see
+    /// [`Embedded`]). When `true`, [`Self::serialize_thunk`] and [`Self::deserialize_thunk`] are
+    /// never called; the raw element type flows across the channel unserialized.
+    fn is_embedded() -> bool {
+        false
+    }
 }
 
 /// Serialize items using the [`bincode`] crate.
@@ -27,6 +34,29 @@ impl<T: Serialize + DeserializeOwned> SerKind<T> for Bincode {
 
     fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr {
         deserialize_bincode::<T>(tagged)
+    }
+}
+
+/// Leaves serialization of items to code outside of Hydro.
+///
+/// This serialization backend is only supported by the embedded deployment backend (it will panic
+/// on all other backends). The generated network channel exposes the raw element type `T` to the
+/// developer (rather than serialized bytes), so they can perform custom serialization logic outside
+/// of the Hydro program for that channel.
+pub enum Embedded {}
+
+#[sealed::sealed]
+impl<T> SerKind<T> for Embedded {
+    fn serialize_thunk(_is_demux: bool) -> syn::Expr {
+        unreachable!("embedded serialization does not use a serialize thunk")
+    }
+
+    fn deserialize_thunk(_tagged: Option<&syn::Type>) -> syn::Expr {
+        unreachable!("embedded serialization does not use a deserialize thunk")
+    }
+
+    fn is_embedded() -> bool {
+        true
     }
 }
 
@@ -130,6 +160,13 @@ pub trait NetworkFor<T: ?Sized> {
     /// Generates deserialization logic for receiving `T`.
     fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr;
 
+    /// Whether this network channel leaves serialization to code outside of Hydro (see
+    /// [`Embedded`]). When `true`, [`Self::serialize_thunk`] and [`Self::deserialize_thunk`] are
+    /// never called; the raw element type flows across the channel unserialized.
+    fn is_embedded() -> bool {
+        false
+    }
+
     /// Returns the optional name of the network channel.
     fn name(&self) -> Option<&str>;
 
@@ -178,6 +215,21 @@ impl<Tr: ?Sized, S: ?Sized> NetworkingConfig<Tr, S> {
 impl<Tr: ?Sized, N> NetworkingConfig<Tr, NoSer, N> {
     /// Configures the network channel to use [`bincode`] to serialize items.
     pub const fn bincode(mut self) -> NetworkingConfig<Tr, Bincode, N> {
+        let taken_name = self.name.take();
+        std::mem::forget(self); // nothing else is stored
+        NetworkingConfig {
+            name: taken_name,
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
+
+    /// Configures the network channel to leave serialization to code outside of Hydro.
+    ///
+    /// This is only supported by the embedded deployment backend (it will panic on all other
+    /// backends). The generated network channel exposes the raw element type to the developer
+    /// (rather than serialized bytes), so they can perform custom serialization logic outside of
+    /// the Hydro program for that channel.
+    pub const fn embedded(mut self) -> NetworkingConfig<Tr, Embedded, N> {
         let taken_name = self.name.take();
         std::mem::forget(self); // nothing else is stored
         NetworkingConfig {
@@ -257,6 +309,10 @@ where
         S::deserialize_thunk(tagged)
     }
 
+    fn is_embedded() -> bool {
+        S::is_embedded()
+    }
+
     fn name(&self) -> Option<&str> {
         None
     }
@@ -280,6 +336,10 @@ where
 
     fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr {
         S::deserialize_thunk(tagged)
+    }
+
+    fn is_embedded() -> bool {
+        S::is_embedded()
     }
 
     fn name(&self) -> Option<&str> {

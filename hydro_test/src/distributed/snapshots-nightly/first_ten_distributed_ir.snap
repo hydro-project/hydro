@@ -98,13 +98,17 @@ expression: builder.finalize().ir()
             networking_info: Tcp {
                 fault: FailStop,
             },
-            serialize_fn: Some(
-                hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
-            ),
+            serialize: Custom {
+                serialize_fn: Some(
+                    hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                ),
+            },
+            deserialize: Custom {
+                deserialize_fn: Some(
+                    | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork > (& res . unwrap ()) . unwrap () },
+                ),
+            },
             instantiate_fn: <network instantiate>,
-            deserialize_fn: Some(
-                | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork > (& res . unwrap ()) . unwrap () },
-            ),
             input: Map {
                 f: stageleft :: runtime_support :: fnmut1_type_hint :: < u32 , hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; crate :: __staged :: __stageleft_quote_src_distributed_first_ten_rs_23_16 ! ([] [| n | SendOverNetwork { n }]) }),
                 input: Source {

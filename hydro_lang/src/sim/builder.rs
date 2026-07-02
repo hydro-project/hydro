@@ -100,11 +100,21 @@ impl SimBuilder {
         }
     }
 
-    fn channel_elem_ty(from: &LocationId, root: &proc_macro2::TokenStream) -> syn::Type {
+    fn channel_elem_ty(
+        from: &LocationId,
+        root: &proc_macro2::TokenStream,
+        external_ty: Option<&syn::Type>,
+    ) -> syn::Type {
+        // For embedded (external) serialization, the raw payload type flows across the in-memory
+        // simulation channel instead of serialized `Bytes`.
+        let payload: syn::Type = match external_ty {
+            Some(ty) => ty.clone(),
+            None => syn::parse_quote!(__root_dfir_rs::bytes::Bytes),
+        };
         if matches!(from, LocationId::Cluster(_)) {
-            syn::parse_quote!((#root::__staged::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes))
+            syn::parse_quote!((#root::__staged::location::TaglessMemberId, #payload))
         } else {
-            syn::parse_quote!(__root_dfir_rs::bytes::Bytes)
+            payload
         }
     }
 
@@ -131,13 +141,14 @@ impl SimBuilder {
         to: &LocationId,
         input_ident: syn::Ident,
         serialize: Option<&DebugExpr>,
+        external_ty: Option<&syn::Type>,
         suffix: &str,
         channel_id: u32,
         root: &proc_macro2::TokenStream,
     ) {
         let from_is_cluster = matches!(from, LocationId::Cluster(_));
         let to_is_cluster = matches!(to, LocationId::Cluster(_));
-        let elem_ty = Self::channel_elem_ty(from, root);
+        let elem_ty = Self::channel_elem_ty(from, root, external_ty);
         let table = self.channel_table_ident(channel_id, &elem_ty);
         let send_table = syn::Ident::new(&format!("__channel_send_{suffix}"), Span::call_site());
 
@@ -1348,6 +1359,7 @@ impl DfirBuilder for SimBuilder {
         sink: syn::Expr,
         source: syn::Expr,
         deserialize: Option<&DebugExpr>,
+        external_element_type: Option<&syn::Type>,
         tag_id: StmtId,
         networking_info: &crate::networking::NetworkingInfo,
     ) {
@@ -1372,10 +1384,26 @@ impl DfirBuilder for SimBuilder {
 
         let root = get_this_crate();
 
+        // For embedded (external) serialization, the raw payload type flows across the in-memory
+        // channel instead of serialized `Bytes`.
+        let payload: syn::Type = match external_element_type {
+            Some(ty) => ty.clone(),
+            None => parse_quote!(__root_dfir_rs::bytes::Bytes),
+        };
+
+        // Bincode channels wrap the received value in a transport `Result` (matching real
+        // deployments) which the bincode deserialize expression then unwraps. Embedded channels
+        // deliver the raw payload directly, so no such wrapper is inserted.
+        let ok_wrap: proc_macro2::TokenStream = if external_element_type.is_some() {
+            proc_macro2::TokenStream::new()
+        } else {
+            quote::quote!(-> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }))
+        };
+
         match (from, to) {
             (LocationId::Process(_), LocationId::Process(_)) => {
                 self.extra_stmts_global.push(syn::parse_quote! {
-                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
+                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<#payload>();
                 });
 
                 if let Some(serialize_pipeline) = serialize {
@@ -1399,7 +1427,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(deserialize_pipeline) = deserialize {
                     self.get_dfir_mut(to).add_dfir(
                         parse_quote! {
-                            #out_ident = source_stream(#source) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
+                            #out_ident = source_stream(#source) #ok_wrap -> map(#deserialize_pipeline);
                         },
                         None,
                         Some(&format!("recv{}", tag_id)),
@@ -1416,7 +1444,7 @@ impl DfirBuilder for SimBuilder {
             }
             (LocationId::Cluster(_), LocationId::Process(_)) => {
                 self.extra_stmts_global.push(syn::parse_quote! {
-                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<(#root::__staged::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)>();
+                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<(#root::__staged::location::TaglessMemberId, #payload)>();
                 });
 
                 self.extra_stmts_cluster
@@ -1447,7 +1475,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(deserialize_pipeline) = deserialize {
                     self.get_dfir_mut(to).add_dfir(
                         parse_quote! {
-                            #out_ident = source_stream(#source) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
+                            #out_ident = source_stream(#source) #ok_wrap -> map(#deserialize_pipeline);
                         },
                         None,
                         Some(&format!("recv{}", tag_id)),
@@ -1468,7 +1496,7 @@ impl DfirBuilder for SimBuilder {
                     Span::call_site(),
                 );
                 self.extra_stmts_global.push(syn::parse_quote! {
-                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
+                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<#payload>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
                 });
 
                 self.extra_stmts_global.push(syn::parse_quote! {
@@ -1480,7 +1508,7 @@ impl DfirBuilder for SimBuilder {
                     .or_default()
                     .push(syn::parse_quote! {
                         let #source = {
-                            let (__sink, __source) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
+                            let (__sink, __source) = __root_dfir_rs::util::unbounded_channel::<#payload>();
                             #sink_writer.borrow_mut().push(__sink);
                             __source
                         };
@@ -1507,7 +1535,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(deserialize_pipeline) = deserialize {
                     self.get_dfir_mut(to).add_dfir(
                         parse_quote! {
-                            #out_ident = source_stream(#source) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
+                            #out_ident = source_stream(#source) #ok_wrap -> map(#deserialize_pipeline);
                         },
                         None,
                         Some(&format!("recv{}", tag_id)),
@@ -1528,7 +1556,7 @@ impl DfirBuilder for SimBuilder {
                     Span::call_site(),
                 );
                 self.extra_stmts_global.push(syn::parse_quote! {
-                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<(#root::__staged::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
+                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<(#root::__staged::location::TaglessMemberId, #payload)>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
                 });
 
                 self.extra_stmts_global.push(syn::parse_quote! {
@@ -1547,7 +1575,7 @@ impl DfirBuilder for SimBuilder {
                     .or_default()
                     .push(syn::parse_quote! {
                         let #source = {
-                            let (__sink, __source) = __root_dfir_rs::util::unbounded_channel::<(#root::__staged::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)>();
+                            let (__sink, __source) = __root_dfir_rs::util::unbounded_channel::<(#root::__staged::location::TaglessMemberId, #payload)>();
                             #sink_writer.borrow_mut().push(__sink);
                             __source
                         };
@@ -1574,7 +1602,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(deserialize_pipeline) = deserialize {
                     self.get_dfir_mut(to).add_dfir(
                         parse_quote! {
-                            #out_ident = source_stream(#source) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
+                            #out_ident = source_stream(#source) #ok_wrap -> map(#deserialize_pipeline);
                         },
                         None,
                         Some(&format!("recv{}", tag_id)),
@@ -1860,6 +1888,7 @@ impl DfirBuilder for SimBuilder {
         channel_id: u32,
         dest: &LocationId,
         senders: Vec<(LocationId, syn::Ident, Option<DebugExpr>)>,
+        external_element_type: Option<&syn::Type>,
         tag_id: StmtId,
     ) {
         let root = get_this_crate();
@@ -1870,6 +1899,7 @@ impl DfirBuilder for SimBuilder {
                 dest,
                 input_ident,
                 serialize.as_ref(),
+                external_element_type,
                 &suffix,
                 channel_id,
                 &root,
@@ -1884,10 +1914,11 @@ impl DfirBuilder for SimBuilder {
         dest: &LocationId,
         out_ident: &syn::Ident,
         deserialize: Option<&DebugExpr>,
+        external_element_type: Option<&syn::Type>,
         tag_id: StmtId,
     ) {
         let root = get_this_crate();
-        let elem_ty = Self::channel_elem_ty(source, &root);
+        let elem_ty = Self::channel_elem_ty(source, &root, external_element_type);
         self.emit_channel_receive_half(
             dest,
             out_ident,

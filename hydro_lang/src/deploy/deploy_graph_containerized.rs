@@ -1009,6 +1009,7 @@ impl<'a> Deploy<'a> for DockerDeploy {
         p2_port: &<Self::Process as Node>::Port,
         name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
+        _external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
             crate::networking::NetworkingInfo::Tcp {
@@ -1046,6 +1047,7 @@ impl<'a> Deploy<'a> for DockerDeploy {
         c2_port: &<Self::Cluster as Node>::Port,
         name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
+        _external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
             crate::networking::NetworkingInfo::Tcp {
@@ -1082,6 +1084,7 @@ impl<'a> Deploy<'a> for DockerDeploy {
         p2_port: &<Self::Process as Node>::Port,
         name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
+        _external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
             crate::networking::NetworkingInfo::Tcp {
@@ -1119,6 +1122,7 @@ impl<'a> Deploy<'a> for DockerDeploy {
         c2_port: &<Self::Cluster as Node>::Port,
         name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
+        _external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
             crate::networking::NetworkingInfo::Tcp {
