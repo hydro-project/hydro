@@ -1860,29 +1860,317 @@
 <a href=#1860 id=1860 data-nosnippet>1860</a>    }
 <a href=#1861 id=1861 data-nosnippet>1861</a>}
 <a href=#1862 id=1862 data-nosnippet>1862</a>
-<a href=#1863 id=1863 data-nosnippet>1863</a><span class="attr">#[cfg(test)]
-<a href=#1864 id=1864 data-nosnippet>1864</a></span><span class="kw">mod </span>maybe_debug_tests {
-<a href=#1865 id=1865 data-nosnippet>1865</a>    <span class="kw">struct </span>NotDebuggable;
-<a href=#1866 id=1866 data-nosnippet>1866</a>
-<a href=#1867 id=1867 data-nosnippet>1867</a>    <span class="attr">#[derive(Debug)]
-<a href=#1868 id=1868 data-nosnippet>1868</a>    </span><span class="kw">struct </span>Debuggable;
-<a href=#1869 id=1869 data-nosnippet>1869</a>
-<a href=#1870 id=1870 data-nosnippet>1870</a>    <span class="attr">#[test]
-<a href=#1871 id=1871 data-nosnippet>1871</a>    </span><span class="kw">fn </span>test_non_debug_type_returns_none() {
-<a href=#1872 id=1872 data-nosnippet>1872</a>        <span class="kw">let </span>fmt_fn: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>NotDebuggable) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="macro">crate::__maybe_debug__!</span>(NotDebuggable);
-<a href=#1873 id=1873 data-nosnippet>1873</a>        <span class="macro">assert_eq!</span>(fmt_fn(<span class="kw-2">&amp;</span>NotDebuggable), <span class="prelude-val">None</span>);
-<a href=#1874 id=1874 data-nosnippet>1874</a>    }
-<a href=#1875 id=1875 data-nosnippet>1875</a>
-<a href=#1876 id=1876 data-nosnippet>1876</a>    <span class="attr">#[test]
-<a href=#1877 id=1877 data-nosnippet>1877</a>    </span><span class="kw">fn </span>test_debug_type_returns_some() {
-<a href=#1878 id=1878 data-nosnippet>1878</a>        <span class="kw">let </span>fmt_fn: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>Debuggable) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="macro">crate::__maybe_debug__!</span>(Debuggable);
-<a href=#1879 id=1879 data-nosnippet>1879</a>        <span class="macro">assert_eq!</span>(fmt_fn(<span class="kw-2">&amp;</span>Debuggable), <span class="prelude-val">Some</span>(<span class="string">"Debuggable"</span>.to_owned()));
-<a href=#1880 id=1880 data-nosnippet>1880</a>    }
-<a href=#1881 id=1881 data-nosnippet>1881</a>
-<a href=#1882 id=1882 data-nosnippet>1882</a>    <span class="attr">#[test]
-<a href=#1883 id=1883 data-nosnippet>1883</a>    </span><span class="kw">fn </span>test_primitive_debug() {
-<a href=#1884 id=1884 data-nosnippet>1884</a>        <span class="kw">let </span>fmt_fn: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>i32) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="macro">crate::__maybe_debug__!</span>(i32);
-<a href=#1885 id=1885 data-nosnippet>1885</a>        <span class="macro">assert_eq!</span>(fmt_fn(<span class="kw-2">&amp;</span><span class="number">42</span>), <span class="prelude-val">Some</span>(<span class="string">"42"</span>.to_owned()));
-<a href=#1886 id=1886 data-nosnippet>1886</a>    }
-<a href=#1887 id=1887 data-nosnippet>1887</a>}
+<a href=#1863 id=1863 data-nosnippet>1863</a><span class="kw">type </span>KeyedMergeOrderedInput&lt;K, V&gt; = Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;(K, V)&gt;&gt;&gt;&gt;;
+<a href=#1864 id=1864 data-nosnippet>1864</a>
+<a href=#1865 id=1865 data-nosnippet>1865</a><span class="doccomment">/// Keyed variant of [`MergeOrderedHook`], used for bounded / non-root keyed
+<a href=#1866 id=1866 data-nosnippet>1866</a>/// streams. Both inputs are fully materialized batches. Interleaves the two
+<a href=#1867 id=1867 data-nosnippet>1867</a>/// batches *independently within each key*, preserving per-input order within
+<a href=#1868 id=1868 data-nosnippet>1868</a>/// each key. The interleaving across different keys is irrelevant because a
+<a href=#1869 id=1869 data-nosnippet>1869</a>/// [`crate::live_collections::keyed_stream::KeyedStream`] carries no ordering
+<a href=#1870 id=1870 data-nosnippet>1870</a>/// guarantee across keys.
+<a href=#1871 id=1871 data-nosnippet>1871</a></span><span class="kw">pub struct </span>KeyedMergeOrderedHook&lt;K: Hash + Eq + Clone, V&gt; {
+<a href=#1872 id=1872 data-nosnippet>1872</a>    first: KeyedMergeOrderedInput&lt;K, V&gt;,
+<a href=#1873 id=1873 data-nosnippet>1873</a>    second: KeyedMergeOrderedInput&lt;K, V&gt;,
+<a href=#1874 id=1874 data-nosnippet>1874</a>    to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;(K, V)&gt;&gt;,
+<a href=#1875 id=1875 data-nosnippet>1875</a>    release_sources: <span class="prelude-ty">Option</span>&lt;Vec&lt;bool&gt;&gt;,
+<a href=#1876 id=1876 data-nosnippet>1876</a>    output: UnboundedSender&lt;Vec&lt;(K, V)&gt;&gt;,
+<a href=#1877 id=1877 data-nosnippet>1877</a>    batch_location: HookLocationMeta,
+<a href=#1878 id=1878 data-nosnippet>1878</a>    format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>(K, V)) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#1879 id=1879 data-nosnippet>1879</a>}
+<a href=#1880 id=1880 data-nosnippet>1880</a>
+<a href=#1881 id=1881 data-nosnippet>1881</a><span class="kw">impl</span>&lt;K: Hash + Eq + Clone, V&gt; KeyedMergeOrderedHook&lt;K, V&gt; {
+<a href=#1882 id=1882 data-nosnippet>1882</a>    <span class="kw">pub fn </span>new(
+<a href=#1883 id=1883 data-nosnippet>1883</a>        first: KeyedMergeOrderedInput&lt;K, V&gt;,
+<a href=#1884 id=1884 data-nosnippet>1884</a>        second: KeyedMergeOrderedInput&lt;K, V&gt;,
+<a href=#1885 id=1885 data-nosnippet>1885</a>        output: UnboundedSender&lt;Vec&lt;(K, V)&gt;&gt;,
+<a href=#1886 id=1886 data-nosnippet>1886</a>        batch_location: HookLocationMeta,
+<a href=#1887 id=1887 data-nosnippet>1887</a>        format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>(K, V)) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#1888 id=1888 data-nosnippet>1888</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#1889 id=1889 data-nosnippet>1889</a>        <span class="self">Self </span>{
+<a href=#1890 id=1890 data-nosnippet>1890</a>            first,
+<a href=#1891 id=1891 data-nosnippet>1891</a>            second,
+<a href=#1892 id=1892 data-nosnippet>1892</a>            to_release: <span class="prelude-val">None</span>,
+<a href=#1893 id=1893 data-nosnippet>1893</a>            release_sources: <span class="prelude-val">None</span>,
+<a href=#1894 id=1894 data-nosnippet>1894</a>            output,
+<a href=#1895 id=1895 data-nosnippet>1895</a>            batch_location,
+<a href=#1896 id=1896 data-nosnippet>1896</a>            format_item_debug,
+<a href=#1897 id=1897 data-nosnippet>1897</a>        }
+<a href=#1898 id=1898 data-nosnippet>1898</a>    }
+<a href=#1899 id=1899 data-nosnippet>1899</a>}
+<a href=#1900 id=1900 data-nosnippet>1900</a>
+<a href=#1901 id=1901 data-nosnippet>1901</a><span class="kw">impl</span>&lt;K: Hash + Eq + Clone, V&gt; SimInlineHook <span class="kw">for </span>KeyedMergeOrderedHook&lt;K, V&gt; {
+<a href=#1902 id=1902 data-nosnippet>1902</a>    <span class="kw">fn </span>pending_decision(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#1903 id=1903 data-nosnippet>1903</a>        <span class="self">self</span>.first.borrow().is_some() &amp;&amp; <span class="self">self</span>.second.borrow().is_some()
+<a href=#1904 id=1904 data-nosnippet>1904</a>    }
+<a href=#1905 id=1905 data-nosnippet>1905</a>
+<a href=#1906 id=1906 data-nosnippet>1906</a>    <span class="kw">fn </span>has_decision(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#1907 id=1907 data-nosnippet>1907</a>        <span class="self">self</span>.to_release.is_some()
+<a href=#1908 id=1908 data-nosnippet>1908</a>    }
+<a href=#1909 id=1909 data-nosnippet>1909</a>
+<a href=#1910 id=1910 data-nosnippet>1910</a>    <span class="kw">fn </span>autonomous_decision&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, driver: <span class="kw-2">&amp;mut </span>Borrowed&lt;<span class="lifetime">'a</span>&gt;) {
+<a href=#1911 id=1911 data-nosnippet>1911</a>        <span class="kw">let </span>first_input = <span class="self">self</span>.first.borrow_mut().take().unwrap();
+<a href=#1912 id=1912 data-nosnippet>1912</a>        <span class="kw">let </span>second_input = <span class="self">self</span>.second.borrow_mut().take().unwrap();
+<a href=#1913 id=1913 data-nosnippet>1913</a>
+<a href=#1914 id=1914 data-nosnippet>1914</a>        <span class="comment">// Group each input by key, preserving per-input order within each key
+<a href=#1915 id=1915 data-nosnippet>1915</a>        // and recording the order in which keys are first seen so that output
+<a href=#1916 id=1916 data-nosnippet>1916</a>        // is deterministic given the same random choices.
+<a href=#1917 id=1917 data-nosnippet>1917</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>key_order: Vec&lt;K&gt; = Vec::new();
+<a href=#1918 id=1918 data-nosnippet>1918</a>        <span class="kw">let </span><span class="kw-2">mut </span>first_grouped: FxHashMap&lt;K, VecDeque&lt;V&gt;&gt; = FxHashMap::default();
+<a href=#1919 id=1919 data-nosnippet>1919</a>        <span class="kw">let </span><span class="kw-2">mut </span>second_grouped: FxHashMap&lt;K, VecDeque&lt;V&gt;&gt; = FxHashMap::default();
+<a href=#1920 id=1920 data-nosnippet>1920</a>
+<a href=#1921 id=1921 data-nosnippet>1921</a>        <span class="kw">for </span>(k, v) <span class="kw">in </span>first_input {
+<a href=#1922 id=1922 data-nosnippet>1922</a>            <span class="kw">if </span>!first_grouped.contains_key(<span class="kw-2">&amp;</span>k) &amp;&amp; !second_grouped.contains_key(<span class="kw-2">&amp;</span>k) {
+<a href=#1923 id=1923 data-nosnippet>1923</a>                key_order.push(k.clone());
+<a href=#1924 id=1924 data-nosnippet>1924</a>            }
+<a href=#1925 id=1925 data-nosnippet>1925</a>            first_grouped.entry(k).or_default().push_back(v);
+<a href=#1926 id=1926 data-nosnippet>1926</a>        }
+<a href=#1927 id=1927 data-nosnippet>1927</a>        <span class="kw">for </span>(k, v) <span class="kw">in </span>second_input {
+<a href=#1928 id=1928 data-nosnippet>1928</a>            <span class="kw">if </span>!first_grouped.contains_key(<span class="kw-2">&amp;</span>k) &amp;&amp; !second_grouped.contains_key(<span class="kw-2">&amp;</span>k) {
+<a href=#1929 id=1929 data-nosnippet>1929</a>                key_order.push(k.clone());
+<a href=#1930 id=1930 data-nosnippet>1930</a>            }
+<a href=#1931 id=1931 data-nosnippet>1931</a>            second_grouped.entry(k).or_default().push_back(v);
+<a href=#1932 id=1932 data-nosnippet>1932</a>        }
+<a href=#1933 id=1933 data-nosnippet>1933</a>
+<a href=#1934 id=1934 data-nosnippet>1934</a>        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::new();
+<a href=#1935 id=1935 data-nosnippet>1935</a>        <span class="kw">let </span><span class="kw-2">mut </span>sources = Vec::new();
+<a href=#1936 id=1936 data-nosnippet>1936</a>
+<a href=#1937 id=1937 data-nosnippet>1937</a>        <span class="kw">for </span>key <span class="kw">in </span>key_order {
+<a href=#1938 id=1938 data-nosnippet>1938</a>            <span class="kw">let </span><span class="kw-2">mut </span>first_q = first_grouped.remove(<span class="kw-2">&amp;</span>key).unwrap_or_default();
+<a href=#1939 id=1939 data-nosnippet>1939</a>            <span class="kw">let </span><span class="kw-2">mut </span>second_q = second_grouped.remove(<span class="kw-2">&amp;</span>key).unwrap_or_default();
+<a href=#1940 id=1940 data-nosnippet>1940</a>
+<a href=#1941 id=1941 data-nosnippet>1941</a>            <span class="comment">// Generate a valid interleaving of this key's two sub-sequences,
+<a href=#1942 id=1942 data-nosnippet>1942</a>            // preserving per-input order.
+<a href=#1943 id=1943 data-nosnippet>1943</a>            </span><span class="kw">while </span>!first_q.is_empty() &amp;&amp; !second_q.is_empty() {
+<a href=#1944 id=1944 data-nosnippet>1944</a>                <span class="kw">let </span>take_second: bool = produce().generate(driver).unwrap();
+<a href=#1945 id=1945 data-nosnippet>1945</a>                <span class="kw">if </span>take_second {
+<a href=#1946 id=1946 data-nosnippet>1946</a>                    result.push((key.clone(), second_q.pop_front().unwrap()));
+<a href=#1947 id=1947 data-nosnippet>1947</a>                    sources.push(<span class="bool-val">true</span>);
+<a href=#1948 id=1948 data-nosnippet>1948</a>                } <span class="kw">else </span>{
+<a href=#1949 id=1949 data-nosnippet>1949</a>                    result.push((key.clone(), first_q.pop_front().unwrap()));
+<a href=#1950 id=1950 data-nosnippet>1950</a>                    sources.push(<span class="bool-val">false</span>);
+<a href=#1951 id=1951 data-nosnippet>1951</a>                }
+<a href=#1952 id=1952 data-nosnippet>1952</a>            }
+<a href=#1953 id=1953 data-nosnippet>1953</a>            <span class="kw">for </span>v <span class="kw">in </span>first_q {
+<a href=#1954 id=1954 data-nosnippet>1954</a>                result.push((key.clone(), v));
+<a href=#1955 id=1955 data-nosnippet>1955</a>                sources.push(<span class="bool-val">false</span>);
+<a href=#1956 id=1956 data-nosnippet>1956</a>            }
+<a href=#1957 id=1957 data-nosnippet>1957</a>            <span class="kw">for </span>v <span class="kw">in </span>second_q {
+<a href=#1958 id=1958 data-nosnippet>1958</a>                result.push((key.clone(), v));
+<a href=#1959 id=1959 data-nosnippet>1959</a>                sources.push(<span class="bool-val">true</span>);
+<a href=#1960 id=1960 data-nosnippet>1960</a>            }
+<a href=#1961 id=1961 data-nosnippet>1961</a>        }
+<a href=#1962 id=1962 data-nosnippet>1962</a>
+<a href=#1963 id=1963 data-nosnippet>1963</a>        <span class="self">self</span>.to_release = <span class="prelude-val">Some</span>(result);
+<a href=#1964 id=1964 data-nosnippet>1964</a>        <span class="self">self</span>.release_sources = <span class="prelude-val">Some</span>(sources);
+<a href=#1965 id=1965 data-nosnippet>1965</a>    }
+<a href=#1966 id=1966 data-nosnippet>1966</a>
+<a href=#1967 id=1967 data-nosnippet>1967</a>    <span class="kw">fn </span>release_decision(<span class="kw-2">&amp;mut </span><span class="self">self</span>, log_writer: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write) {
+<a href=#1968 id=1968 data-nosnippet>1968</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(to_release) = <span class="self">self</span>.to_release.take() {
+<a href=#1969 id=1969 data-nosnippet>1969</a>            <span class="kw">let </span>sources = <span class="self">self</span>.release_sources.take().unwrap();
+<a href=#1970 id=1970 data-nosnippet>1970</a>            <span class="kw">if </span>!to_release.is_empty() {
+<a href=#1971 id=1971 data-nosnippet>1971</a>                <span class="kw">let </span>(batch_location, line, caret_indent) = <span class="self">self</span>.batch_location;
+<a href=#1972 id=1972 data-nosnippet>1972</a>
+<a href=#1973 id=1973 data-nosnippet>1973</a>                <span class="kw">let </span>labeled_iter =
+<a href=#1974 id=1974 data-nosnippet>1974</a>                    sources
+<a href=#1975 id=1975 data-nosnippet>1975</a>                        .iter()
+<a href=#1976 id=1976 data-nosnippet>1976</a>                        .zip(to_release.iter())
+<a href=#1977 id=1977 data-nosnippet>1977</a>                        .map(|(is_second, item)| {
+<a href=#1978 id=1978 data-nosnippet>1978</a>                            <span class="kw">let </span>label: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str = <span class="kw">if </span><span class="kw-2">*</span>is_second { <span class="string">"r" </span>} <span class="kw">else </span>{ <span class="string">"l" </span>};
+<a href=#1979 id=1979 data-nosnippet>1979</a>                            (label, item)
+<a href=#1980 id=1980 data-nosnippet>1980</a>                        });
+<a href=#1981 id=1981 data-nosnippet>1981</a>
+<a href=#1982 id=1982 data-nosnippet>1982</a>                <span class="kw">let </span>note_str = <span class="macro">format!</span>(
+<a href=#1983 id=1983 data-nosnippet>1983</a>                    <span class="string">"^ observed non-deterministic merge order: {:?}"</span>,
+<a href=#1984 id=1984 data-nosnippet>1984</a>                    TruncatedLabeledVecDebug(
+<a href=#1985 id=1985 data-nosnippet>1985</a>                        RefCell::new(<span class="prelude-val">Some</span>(labeled_iter)),
+<a href=#1986 id=1986 data-nosnippet>1986</a>                        <span class="number">8</span>,
+<a href=#1987 id=1987 data-nosnippet>1987</a>                        <span class="self">self</span>.format_item_debug
+<a href=#1988 id=1988 data-nosnippet>1988</a>                    )
+<a href=#1989 id=1989 data-nosnippet>1989</a>                );
+<a href=#1990 id=1990 data-nosnippet>1990</a>
+<a href=#1991 id=1991 data-nosnippet>1991</a>                <span class="kw">let _ </span>= <span class="macro">writeln!</span>(
+<a href=#1992 id=1992 data-nosnippet>1992</a>                    log_writer,
+<a href=#1993 id=1993 data-nosnippet>1993</a>                    <span class="string">"{} {}"</span>,
+<a href=#1994 id=1994 data-nosnippet>1994</a>                    <span class="string">"--&gt;"</span>.color(colored::Color::Blue),
+<a href=#1995 id=1995 data-nosnippet>1995</a>                    batch_location
+<a href=#1996 id=1996 data-nosnippet>1996</a>                );
+<a href=#1997 id=1997 data-nosnippet>1997</a>
+<a href=#1998 id=1998 data-nosnippet>1998</a>                <span class="kw">let _ </span>= <span class="macro">writeln!</span>(log_writer, <span class="string">" {}{}"</span>, <span class="string">"|"</span>.color(colored::Color::Blue), line);
+<a href=#1999 id=1999 data-nosnippet>1999</a>
+<a href=#2000 id=2000 data-nosnippet>2000</a>                <span class="kw">let _ </span>= <span class="macro">writeln!</span>(
+<a href=#2001 id=2001 data-nosnippet>2001</a>                    log_writer,
+<a href=#2002 id=2002 data-nosnippet>2002</a>                    <span class="string">" {}{}{}"</span>,
+<a href=#2003 id=2003 data-nosnippet>2003</a>                    <span class="string">"|"</span>.color(colored::Color::Blue),
+<a href=#2004 id=2004 data-nosnippet>2004</a>                    caret_indent,
+<a href=#2005 id=2005 data-nosnippet>2005</a>                    note_str.color(colored::Color::Cyan)
+<a href=#2006 id=2006 data-nosnippet>2006</a>                );
+<a href=#2007 id=2007 data-nosnippet>2007</a>            }
+<a href=#2008 id=2008 data-nosnippet>2008</a>
+<a href=#2009 id=2009 data-nosnippet>2009</a>            <span class="self">self</span>.output.send(to_release).unwrap();
+<a href=#2010 id=2010 data-nosnippet>2010</a>        } <span class="kw">else </span>{
+<a href=#2011 id=2011 data-nosnippet>2011</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
+<a href=#2012 id=2012 data-nosnippet>2012</a>        }
+<a href=#2013 id=2013 data-nosnippet>2013</a>    }
+<a href=#2014 id=2014 data-nosnippet>2014</a>}
+<a href=#2015 id=2015 data-nosnippet>2015</a>
+<a href=#2016 id=2016 data-nosnippet>2016</a><span class="doccomment">/// Keyed variant of [`TopLevelMergeOrderedHook`]. Releases one element at a
+<a href=#2017 id=2017 data-nosnippet>2017</a>/// time, picking from the front of some key's queue in either the first or the
+<a href=#2018 id=2018 data-nosnippet>2018</a>/// second input. This preserves per-input order within each key while allowing
+<a href=#2019 id=2019 data-nosnippet>2019</a>/// arbitrary interleaving both across the two inputs and across keys (which is
+<a href=#2020 id=2020 data-nosnippet>2020</a>/// unconstrained for keyed streams), and lets feedback cycles deliver elements
+<a href=#2021 id=2021 data-nosnippet>2021</a>/// between releases.
+<a href=#2022 id=2022 data-nosnippet>2022</a></span><span class="kw">pub struct </span>TopLevelKeyedMergeOrderedHook&lt;K: Hash + Eq + Clone, V&gt; {
+<a href=#2023 id=2023 data-nosnippet>2023</a>    <span class="kw">pub </span>first: Rc&lt;RefCell&lt;FxHashMap&lt;K, VecDeque&lt;V&gt;&gt;&gt;&gt;,
+<a href=#2024 id=2024 data-nosnippet>2024</a>    <span class="kw">pub </span>second: Rc&lt;RefCell&lt;FxHashMap&lt;K, VecDeque&lt;V&gt;&gt;&gt;&gt;,
+<a href=#2025 id=2025 data-nosnippet>2025</a>    <span class="kw">pub </span>to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;(K, V)&gt;&gt;,
+<a href=#2026 id=2026 data-nosnippet>2026</a>    <span class="kw">pub </span>release_source: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;,
+<a href=#2027 id=2027 data-nosnippet>2027</a>    <span class="kw">pub </span>output: UnboundedSender&lt;(K, V)&gt;,
+<a href=#2028 id=2028 data-nosnippet>2028</a>    <span class="kw">pub </span>location: HookLocationMeta,
+<a href=#2029 id=2029 data-nosnippet>2029</a>    <span class="kw">pub </span>format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>(K, V)) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#2030 id=2030 data-nosnippet>2030</a>}
+<a href=#2031 id=2031 data-nosnippet>2031</a>
+<a href=#2032 id=2032 data-nosnippet>2032</a><span class="kw">impl</span>&lt;K: Hash + Eq + Clone, V&gt; SimHook <span class="kw">for </span>TopLevelKeyedMergeOrderedHook&lt;K, V&gt; {
+<a href=#2033 id=2033 data-nosnippet>2033</a>    <span class="kw">fn </span>current_decision(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
+<a href=#2034 id=2034 data-nosnippet>2034</a>        <span class="self">self</span>.to_release.as_ref().map(|v| !v.is_empty())
+<a href=#2035 id=2035 data-nosnippet>2035</a>    }
+<a href=#2036 id=2036 data-nosnippet>2036</a>
+<a href=#2037 id=2037 data-nosnippet>2037</a>    <span class="kw">fn </span>can_make_nontrivial_decision(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#2038 id=2038 data-nosnippet>2038</a>        <span class="attr">#[expect(clippy::disallowed_methods, reason = <span class="string">"FxHasher is deterministic"</span>)]
+<a href=#2039 id=2039 data-nosnippet>2039</a>        </span><span class="kw">let </span>first_nonempty = !<span class="self">self</span>.first.borrow().values().all(|q| q.is_empty());
+<a href=#2040 id=2040 data-nosnippet>2040</a>        <span class="attr">#[expect(clippy::disallowed_methods, reason = <span class="string">"FxHasher is deterministic"</span>)]
+<a href=#2041 id=2041 data-nosnippet>2041</a>        </span><span class="kw">let </span>second_nonempty = !<span class="self">self</span>.second.borrow().values().all(|q| q.is_empty());
+<a href=#2042 id=2042 data-nosnippet>2042</a>        first_nonempty || second_nonempty
+<a href=#2043 id=2043 data-nosnippet>2043</a>    }
+<a href=#2044 id=2044 data-nosnippet>2044</a>
+<a href=#2045 id=2045 data-nosnippet>2045</a>    <span class="kw">fn </span>autonomous_decision&lt;<span class="lifetime">'a</span>&gt;(
+<a href=#2046 id=2046 data-nosnippet>2046</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#2047 id=2047 data-nosnippet>2047</a>        driver: <span class="kw-2">&amp;mut </span>Borrowed&lt;<span class="lifetime">'a</span>&gt;,
+<a href=#2048 id=2048 data-nosnippet>2048</a>        force_nontrivial: bool,
+<a href=#2049 id=2049 data-nosnippet>2049</a>    ) -&gt; bool {
+<a href=#2050 id=2050 data-nosnippet>2050</a>        <span class="comment">// Collect candidates: for each non-empty key queue in either input, we
+<a href=#2051 id=2051 data-nosnippet>2051</a>        // can release its front element. `false` = first input, `true` = second.
+<a href=#2052 id=2052 data-nosnippet>2052</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>candidates: Vec&lt;(bool, K)&gt; = Vec::new();
+<a href=#2053 id=2053 data-nosnippet>2053</a>        {
+<a href=#2054 id=2054 data-nosnippet>2054</a>            <span class="attr">#[expect(clippy::disallowed_methods, reason = <span class="string">"FxHasher is deterministic"</span>)]
+<a href=#2055 id=2055 data-nosnippet>2055</a>            </span><span class="kw">for </span>(k, q) <span class="kw">in </span><span class="self">self</span>.first.borrow().iter() {
+<a href=#2056 id=2056 data-nosnippet>2056</a>                <span class="kw">if </span>!q.is_empty() {
+<a href=#2057 id=2057 data-nosnippet>2057</a>                    candidates.push((<span class="bool-val">false</span>, k.clone()));
+<a href=#2058 id=2058 data-nosnippet>2058</a>                }
+<a href=#2059 id=2059 data-nosnippet>2059</a>            }
+<a href=#2060 id=2060 data-nosnippet>2060</a>            <span class="attr">#[expect(clippy::disallowed_methods, reason = <span class="string">"FxHasher is deterministic"</span>)]
+<a href=#2061 id=2061 data-nosnippet>2061</a>            </span><span class="kw">for </span>(k, q) <span class="kw">in </span><span class="self">self</span>.second.borrow().iter() {
+<a href=#2062 id=2062 data-nosnippet>2062</a>                <span class="kw">if </span>!q.is_empty() {
+<a href=#2063 id=2063 data-nosnippet>2063</a>                    candidates.push((<span class="bool-val">true</span>, k.clone()));
+<a href=#2064 id=2064 data-nosnippet>2064</a>                }
+<a href=#2065 id=2065 data-nosnippet>2065</a>            }
+<a href=#2066 id=2066 data-nosnippet>2066</a>        }
+<a href=#2067 id=2067 data-nosnippet>2067</a>
+<a href=#2068 id=2068 data-nosnippet>2068</a>        <span class="kw">if </span>candidates.is_empty() {
+<a href=#2069 id=2069 data-nosnippet>2069</a>            <span class="self">self</span>.to_release = <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[]);
+<a href=#2070 id=2070 data-nosnippet>2070</a>            <span class="self">self</span>.release_source = <span class="prelude-val">None</span>;
+<a href=#2071 id=2071 data-nosnippet>2071</a>            <span class="kw">return </span><span class="bool-val">false</span>;
+<a href=#2072 id=2072 data-nosnippet>2072</a>        }
+<a href=#2073 id=2073 data-nosnippet>2073</a>
+<a href=#2074 id=2074 data-nosnippet>2074</a>        <span class="kw">if </span>!force_nontrivial &amp;&amp; produce().generate(driver).unwrap() {
+<a href=#2075 id=2075 data-nosnippet>2075</a>            <span class="comment">// don't release anything
+<a href=#2076 id=2076 data-nosnippet>2076</a>            </span><span class="self">self</span>.to_release = <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[]);
+<a href=#2077 id=2077 data-nosnippet>2077</a>            <span class="self">self</span>.release_source = <span class="prelude-val">None</span>;
+<a href=#2078 id=2078 data-nosnippet>2078</a>            <span class="kw">return </span><span class="bool-val">false</span>;
+<a href=#2079 id=2079 data-nosnippet>2079</a>        }
+<a href=#2080 id=2080 data-nosnippet>2080</a>
+<a href=#2081 id=2081 data-nosnippet>2081</a>        <span class="kw">let </span>idx = (<span class="number">0</span>..candidates.len()).generate(driver).unwrap();
+<a href=#2082 id=2082 data-nosnippet>2082</a>        <span class="kw">let </span>(take_second, key) = <span class="kw-2">&amp;</span>candidates[idx];
+<a href=#2083 id=2083 data-nosnippet>2083</a>        <span class="kw">let </span>take_second = <span class="kw-2">*</span>take_second;
+<a href=#2084 id=2084 data-nosnippet>2084</a>
+<a href=#2085 id=2085 data-nosnippet>2085</a>        <span class="kw">let </span>item = <span class="kw">if </span>take_second {
+<a href=#2086 id=2086 data-nosnippet>2086</a>            <span class="self">self</span>.second
+<a href=#2087 id=2087 data-nosnippet>2087</a>                .borrow_mut()
+<a href=#2088 id=2088 data-nosnippet>2088</a>                .get_mut(key)
+<a href=#2089 id=2089 data-nosnippet>2089</a>                .unwrap()
+<a href=#2090 id=2090 data-nosnippet>2090</a>                .pop_front()
+<a href=#2091 id=2091 data-nosnippet>2091</a>                .unwrap()
+<a href=#2092 id=2092 data-nosnippet>2092</a>        } <span class="kw">else </span>{
+<a href=#2093 id=2093 data-nosnippet>2093</a>            <span class="self">self</span>.first
+<a href=#2094 id=2094 data-nosnippet>2094</a>                .borrow_mut()
+<a href=#2095 id=2095 data-nosnippet>2095</a>                .get_mut(key)
+<a href=#2096 id=2096 data-nosnippet>2096</a>                .unwrap()
+<a href=#2097 id=2097 data-nosnippet>2097</a>                .pop_front()
+<a href=#2098 id=2098 data-nosnippet>2098</a>                .unwrap()
+<a href=#2099 id=2099 data-nosnippet>2099</a>        };
+<a href=#2100 id=2100 data-nosnippet>2100</a>
+<a href=#2101 id=2101 data-nosnippet>2101</a>        <span class="self">self</span>.to_release = <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[(key.clone(), item)]);
+<a href=#2102 id=2102 data-nosnippet>2102</a>        <span class="self">self</span>.release_source = <span class="prelude-val">Some</span>(<span class="kw">if </span>take_second { <span class="string">"r" </span>} <span class="kw">else </span>{ <span class="string">"l" </span>});
+<a href=#2103 id=2103 data-nosnippet>2103</a>        <span class="bool-val">true
+<a href=#2104 id=2104 data-nosnippet>2104</a>    </span>}
+<a href=#2105 id=2105 data-nosnippet>2105</a>
+<a href=#2106 id=2106 data-nosnippet>2106</a>    <span class="kw">fn </span>release_decision(<span class="kw-2">&amp;mut </span><span class="self">self</span>, log_writer: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write) {
+<a href=#2107 id=2107 data-nosnippet>2107</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(to_release) = <span class="self">self</span>.to_release.take() {
+<a href=#2108 id=2108 data-nosnippet>2108</a>            <span class="kw">let </span>source = <span class="self">self</span>.release_source.take();
+<a href=#2109 id=2109 data-nosnippet>2109</a>            <span class="kw">if </span>!to_release.is_empty() {
+<a href=#2110 id=2110 data-nosnippet>2110</a>                <span class="kw">let </span>(batch_location, line, caret_indent) = <span class="self">self</span>.location;
+<a href=#2111 id=2111 data-nosnippet>2111</a>                <span class="kw">let </span>source_label = source.unwrap_or(<span class="string">"?"</span>);
+<a href=#2112 id=2112 data-nosnippet>2112</a>
+<a href=#2113 id=2113 data-nosnippet>2113</a>                <span class="kw">let </span>labeled_iter = to_release.iter().map(|item| (source_label, item));
+<a href=#2114 id=2114 data-nosnippet>2114</a>
+<a href=#2115 id=2115 data-nosnippet>2115</a>                <span class="kw">let </span>note_str = <span class="macro">format!</span>(
+<a href=#2116 id=2116 data-nosnippet>2116</a>                    <span class="string">"^ observed non-deterministic merge order: {:?}"</span>,
+<a href=#2117 id=2117 data-nosnippet>2117</a>                    TruncatedLabeledVecDebug(
+<a href=#2118 id=2118 data-nosnippet>2118</a>                        RefCell::new(<span class="prelude-val">Some</span>(labeled_iter)),
+<a href=#2119 id=2119 data-nosnippet>2119</a>                        <span class="number">8</span>,
+<a href=#2120 id=2120 data-nosnippet>2120</a>                        <span class="self">self</span>.format_item_debug
+<a href=#2121 id=2121 data-nosnippet>2121</a>                    )
+<a href=#2122 id=2122 data-nosnippet>2122</a>                );
+<a href=#2123 id=2123 data-nosnippet>2123</a>
+<a href=#2124 id=2124 data-nosnippet>2124</a>                <span class="kw">let _ </span>= <span class="macro">writeln!</span>(
+<a href=#2125 id=2125 data-nosnippet>2125</a>                    log_writer,
+<a href=#2126 id=2126 data-nosnippet>2126</a>                    <span class="string">"\n{} {}"</span>,
+<a href=#2127 id=2127 data-nosnippet>2127</a>                    <span class="string">"--&gt;"</span>.color(colored::Color::Blue),
+<a href=#2128 id=2128 data-nosnippet>2128</a>                    batch_location
+<a href=#2129 id=2129 data-nosnippet>2129</a>                );
+<a href=#2130 id=2130 data-nosnippet>2130</a>
+<a href=#2131 id=2131 data-nosnippet>2131</a>                <span class="kw">let _ </span>= <span class="macro">writeln!</span>(log_writer, <span class="string">" {}{}"</span>, <span class="string">"|"</span>.color(colored::Color::Blue), line);
+<a href=#2132 id=2132 data-nosnippet>2132</a>
+<a href=#2133 id=2133 data-nosnippet>2133</a>                <span class="kw">let _ </span>= <span class="macro">writeln!</span>(
+<a href=#2134 id=2134 data-nosnippet>2134</a>                    log_writer,
+<a href=#2135 id=2135 data-nosnippet>2135</a>                    <span class="string">" {}{}{}"</span>,
+<a href=#2136 id=2136 data-nosnippet>2136</a>                    <span class="string">"|"</span>.color(colored::Color::Blue),
+<a href=#2137 id=2137 data-nosnippet>2137</a>                    caret_indent,
+<a href=#2138 id=2138 data-nosnippet>2138</a>                    note_str.color(colored::Color::Green)
+<a href=#2139 id=2139 data-nosnippet>2139</a>                );
+<a href=#2140 id=2140 data-nosnippet>2140</a>            }
+<a href=#2141 id=2141 data-nosnippet>2141</a>
+<a href=#2142 id=2142 data-nosnippet>2142</a>            <span class="kw">for </span>item <span class="kw">in </span>to_release {
+<a href=#2143 id=2143 data-nosnippet>2143</a>                <span class="self">self</span>.output.send(item).unwrap();
+<a href=#2144 id=2144 data-nosnippet>2144</a>            }
+<a href=#2145 id=2145 data-nosnippet>2145</a>        } <span class="kw">else </span>{
+<a href=#2146 id=2146 data-nosnippet>2146</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
+<a href=#2147 id=2147 data-nosnippet>2147</a>        }
+<a href=#2148 id=2148 data-nosnippet>2148</a>    }
+<a href=#2149 id=2149 data-nosnippet>2149</a>}
+<a href=#2150 id=2150 data-nosnippet>2150</a>
+<a href=#2151 id=2151 data-nosnippet>2151</a><span class="attr">#[cfg(test)]
+<a href=#2152 id=2152 data-nosnippet>2152</a></span><span class="kw">mod </span>maybe_debug_tests {
+<a href=#2153 id=2153 data-nosnippet>2153</a>    <span class="kw">struct </span>NotDebuggable;
+<a href=#2154 id=2154 data-nosnippet>2154</a>
+<a href=#2155 id=2155 data-nosnippet>2155</a>    <span class="attr">#[derive(Debug)]
+<a href=#2156 id=2156 data-nosnippet>2156</a>    </span><span class="kw">struct </span>Debuggable;
+<a href=#2157 id=2157 data-nosnippet>2157</a>
+<a href=#2158 id=2158 data-nosnippet>2158</a>    <span class="attr">#[test]
+<a href=#2159 id=2159 data-nosnippet>2159</a>    </span><span class="kw">fn </span>test_non_debug_type_returns_none() {
+<a href=#2160 id=2160 data-nosnippet>2160</a>        <span class="kw">let </span>fmt_fn: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>NotDebuggable) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="macro">crate::__maybe_debug__!</span>(NotDebuggable);
+<a href=#2161 id=2161 data-nosnippet>2161</a>        <span class="macro">assert_eq!</span>(fmt_fn(<span class="kw-2">&amp;</span>NotDebuggable), <span class="prelude-val">None</span>);
+<a href=#2162 id=2162 data-nosnippet>2162</a>    }
+<a href=#2163 id=2163 data-nosnippet>2163</a>
+<a href=#2164 id=2164 data-nosnippet>2164</a>    <span class="attr">#[test]
+<a href=#2165 id=2165 data-nosnippet>2165</a>    </span><span class="kw">fn </span>test_debug_type_returns_some() {
+<a href=#2166 id=2166 data-nosnippet>2166</a>        <span class="kw">let </span>fmt_fn: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>Debuggable) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="macro">crate::__maybe_debug__!</span>(Debuggable);
+<a href=#2167 id=2167 data-nosnippet>2167</a>        <span class="macro">assert_eq!</span>(fmt_fn(<span class="kw-2">&amp;</span>Debuggable), <span class="prelude-val">Some</span>(<span class="string">"Debuggable"</span>.to_owned()));
+<a href=#2168 id=2168 data-nosnippet>2168</a>    }
+<a href=#2169 id=2169 data-nosnippet>2169</a>
+<a href=#2170 id=2170 data-nosnippet>2170</a>    <span class="attr">#[test]
+<a href=#2171 id=2171 data-nosnippet>2171</a>    </span><span class="kw">fn </span>test_primitive_debug() {
+<a href=#2172 id=2172 data-nosnippet>2172</a>        <span class="kw">let </span>fmt_fn: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>i32) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="macro">crate::__maybe_debug__!</span>(i32);
+<a href=#2173 id=2173 data-nosnippet>2173</a>        <span class="macro">assert_eq!</span>(fmt_fn(<span class="kw-2">&amp;</span><span class="number">42</span>), <span class="prelude-val">Some</span>(<span class="string">"42"</span>.to_owned()));
+<a href=#2174 id=2174 data-nosnippet>2174</a>    }
+<a href=#2175 id=2175 data-nosnippet>2175</a>}
 </code></pre></div></section></main></body></html>
