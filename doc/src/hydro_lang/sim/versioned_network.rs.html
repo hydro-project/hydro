@@ -112,7 +112,7 @@
 <a href=#112 id=112 data-nosnippet>112</a>    <span class="kw">use </span>stageleft::q;
 <a href=#113 id=113 data-nosnippet>113</a>
 <a href=#114 id=114 data-nosnippet>114</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-<a href=#115 id=115 data-nosnippet>115</a>    <span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::TotalOrder;
+<a href=#115 id=115 data-nosnippet>115</a>    <span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::{ExactlyOnce, TotalOrder};
 <a href=#116 id=116 data-nosnippet>116</a>    <span class="kw">use </span><span class="kw">crate</span>::nondet::nondet;
 <a href=#117 id=117 data-nosnippet>117</a>    <span class="kw">use </span><span class="kw">crate</span>::prelude::{FlowBuilder, TCP};
 <a href=#118 id=118 data-nosnippet>118</a>
@@ -124,7 +124,7 @@
 <a href=#124 id=124 data-nosnippet>124</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#125 id=125 data-nosnippet>125</a>
 <a href=#126 id=126 data-nosnippet>126</a>        <span class="kw">let </span>servers0 = flow.cluster::&lt;u8&gt;();
-<a href=#127 id=127 data-nosnippet>127</a>        <span class="kw">let </span>(_in0, input0) = servers0.sim_input::&lt;i32&gt;();
+<a href=#127 id=127 data-nosnippet>127</a>        <span class="kw">let </span>(_in0, input0) = servers0.sim_input::&lt;i32, TotalOrder, ExactlyOnce&gt;();
 <a href=#128 id=128 data-nosnippet>128</a>        input0
 <a href=#129 id=129 data-nosnippet>129</a>            .broadcast(
 <a href=#130 id=130 data-nosnippet>130</a>                <span class="kw-2">&amp;</span>servers0,
@@ -136,7 +136,7 @@
 <a href=#136 id=136 data-nosnippet>136</a>            .for_each(<span class="macro">q!</span>(|x| <span class="macro">println!</span>(<span class="string">"{x}"</span>)));
 <a href=#137 id=137 data-nosnippet>137</a>
 <a href=#138 id=138 data-nosnippet>138</a>        <span class="kw">let </span>servers1 = flow.next_version(<span class="kw-2">&amp;</span>servers0);
-<a href=#139 id=139 data-nosnippet>139</a>        <span class="kw">let </span>(_in1, input1) = servers1.sim_input::&lt;i32&gt;();
+<a href=#139 id=139 data-nosnippet>139</a>        <span class="kw">let </span>(_in1, input1) = servers1.sim_input::&lt;i32, TotalOrder, ExactlyOnce&gt;();
 <a href=#140 id=140 data-nosnippet>140</a>        input1
 <a href=#141 id=141 data-nosnippet>141</a>            .broadcast(
 <a href=#142 id=142 data-nosnippet>142</a>                <span class="kw-2">&amp;</span>servers1,

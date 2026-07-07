@@ -505,7 +505,7 @@
 <a href=#505 id=505 data-nosnippet>505</a>        hydro_lang::sim::SimClusterSender&lt;usize, TotalOrder, ExactlyOnce&gt;,
 <a href=#506 id=506 data-nosnippet>506</a>        hydro_lang::sim::SimClusterReceiver&lt;usize, TotalOrder, ExactlyOnce&gt;,
 <a href=#507 id=507 data-nosnippet>507</a>    ) {
-<a href=#508 id=508 data-nosnippet>508</a>        <span class="kw">let </span>(inputter, requests) = servers.sim_input::&lt;usize&gt;();
+<a href=#508 id=508 data-nosnippet>508</a>        <span class="kw">let </span>(inputter, requests) = servers.sim_input::&lt;usize, <span class="kw">_</span>, <span class="kw">_</span>&gt;();
 <a href=#509 id=509 data-nosnippet>509</a>        <span class="kw">let </span>output = echo(requests).sim_cluster_output();
 <a href=#510 id=510 data-nosnippet>510</a>        (inputter, output)
 <a href=#511 id=511 data-nosnippet>511</a>    }
@@ -554,7 +554,7 @@
 <a href=#554 id=554 data-nosnippet>554</a>        hydro_lang::sim::SimClusterSender&lt;usize, TotalOrder, ExactlyOnce&gt;,
 <a href=#555 id=555 data-nosnippet>555</a>        hydro_lang::sim::SimClusterReceiver&lt;usize, TotalOrder, ExactlyOnce&gt;,
 <a href=#556 id=556 data-nosnippet>556</a>    ) {
-<a href=#557 id=557 data-nosnippet>557</a>        <span class="kw">let </span>(inputter, requests) = cluster.sim_input::&lt;usize&gt;();
+<a href=#557 id=557 data-nosnippet>557</a>        <span class="kw">let </span>(inputter, requests) = cluster.sim_input::&lt;usize, <span class="kw">_</span>, <span class="kw">_</span>&gt;();
 <a href=#558 id=558 data-nosnippet>558</a>        <span class="kw">let </span>output = requests.map(<span class="macro">q!</span>(|x| x + <span class="number">1</span>)).sim_cluster_output();
 <a href=#559 id=559 data-nosnippet>559</a>        (inputter, output)
 <a href=#560 id=560 data-nosnippet>560</a>    }
@@ -665,11 +665,11 @@
 <a href=#665 id=665 data-nosnippet>665</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#666 id=666 data-nosnippet>666</a>
 <a href=#667 id=667 data-nosnippet>667</a>        <span class="kw">let </span>servers_a = flow.cluster::&lt;GossipServer&gt;();
-<a href=#668 id=668 data-nosnippet>668</a>        <span class="kw">let </span>(inputter_a, requests_a) = servers_a.sim_input::&lt;usize&gt;();
+<a href=#668 id=668 data-nosnippet>668</a>        <span class="kw">let </span>(inputter_a, requests_a) = servers_a.sim_input::&lt;usize, <span class="kw">_</span>, <span class="kw">_</span>&gt;();
 <a href=#669 id=669 data-nosnippet>669</a>        <span class="kw">let </span>output_a = echo(requests_a).sim_cluster_output();
 <a href=#670 id=670 data-nosnippet>670</a>
 <a href=#671 id=671 data-nosnippet>671</a>        <span class="kw">let </span>servers_b = flow.cluster::&lt;GossipServer&gt;();
-<a href=#672 id=672 data-nosnippet>672</a>        <span class="kw">let </span>(inputter_b, requests_b) = servers_b.sim_input::&lt;usize&gt;();
+<a href=#672 id=672 data-nosnippet>672</a>        <span class="kw">let </span>(inputter_b, requests_b) = servers_b.sim_input::&lt;usize, <span class="kw">_</span>, <span class="kw">_</span>&gt;();
 <a href=#673 id=673 data-nosnippet>673</a>        <span class="kw">let </span>output_b = echo(requests_b).sim_cluster_output();
 <a href=#674 id=674 data-nosnippet>674</a>
 <a href=#675 id=675 data-nosnippet>675</a>        flow.sim()
