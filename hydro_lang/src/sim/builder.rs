@@ -1178,6 +1178,16 @@ impl DfirBuilder for SimBuilder {
             } => parse_quote!((#key_type, #value_type)),
         };
 
+        // A `KeyedStream` only guarantees ordering *within* each key. A plain
+        // stream merge over the `(K, V)` pairs already preserves each input's
+        // order (and hence each key's order), so it would be correct here too.
+        // Using dedicated keyed hooks is an optimization tailored to keyed
+        // streams: since cross-key order is unobservable, they interleave the two
+        // inputs independently per key and explore those per-key orderings
+        // directly, rather than global interleavings that differ only in
+        // unobservable cross-key order.
+        let is_keyed = matches!(in_kind, CollectionKind::KeyedStream { .. });
+
         if !location.is_root() || in_kind.is_bounded() {
             // Inside a tick: both inputs are fully materialized batches.
             // Generate a valid interleaving preserving per-input order.
@@ -1211,18 +1221,33 @@ impl DfirBuilder for SimBuilder {
                 let #buffered_second_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(None));
             });
 
-            self.add_inline_hook(
-                location,
-                syn::parse_quote!(
-                    Box::new(#root::sim::runtime::MergeOrderedHook::<_>::new(
-                        #buffered_first_ident.clone(),
-                        #buffered_second_ident.clone(),
-                        #hoff_send_ident,
-                        (#assume_location, #line, #caret),
-                        #root::__maybe_debug__!(#element_type),
-                    ))
-                ),
-            );
+            if is_keyed {
+                self.add_inline_hook(
+                    location,
+                    syn::parse_quote!(
+                        Box::new(#root::sim::runtime::KeyedMergeOrderedHook::<_, _>::new(
+                            #buffered_first_ident.clone(),
+                            #buffered_second_ident.clone(),
+                            #hoff_send_ident,
+                            (#assume_location, #line, #caret),
+                            #root::__maybe_debug__!(#element_type),
+                        ))
+                    ),
+                );
+            } else {
+                self.add_inline_hook(
+                    location,
+                    syn::parse_quote!(
+                        Box::new(#root::sim::runtime::MergeOrderedHook::<_>::new(
+                            #buffered_first_ident.clone(),
+                            #buffered_second_ident.clone(),
+                            #hoff_send_ident,
+                            (#assume_location, #line, #caret),
+                            #root::__maybe_debug__!(#element_type),
+                        ))
+                    ),
+                );
+            }
 
             let builder = self.get_dfir_mut(location);
 
@@ -1290,43 +1315,84 @@ impl DfirBuilder for SimBuilder {
             self.add_extra_stmt_internal(location, syn::parse_quote! {
                 let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
             });
-            self.add_extra_stmt_internal(location, syn::parse_quote! {
-                let #buffered_first_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
-            });
-            self.add_extra_stmt_internal(location, syn::parse_quote! {
-                let #buffered_second_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
-            });
-            self.add_hook(
-                location,
-                location,
-                syn::parse_quote!(
-                    Box::new(#root::sim::runtime::TopLevelMergeOrderedHook::<_> {
-                        first: #buffered_first_ident.clone(),
-                        second: #buffered_second_ident.clone(),
-                        to_release: None,
-                        release_source: None,
-                        output: #hoff_send_ident,
-                        location: (#assume_location, #line, #caret),
-                        format_item_debug: #root::__maybe_debug__!(#element_type),
-                    })
-                ),
-            );
 
-            self.get_dfir_mut(location).add_dfir(
-                parse_quote! {
-                    #first_ident -> for_each(|v| #buffered_first_ident.borrow_mut().push_back(v));
-                },
-                None,
-                None,
-            );
+            if is_keyed {
+                self.add_extra_stmt_internal(location, syn::parse_quote! {
+                    let #buffered_first_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(__root_dfir_rs::rustc_hash::FxHashMap::default()));
+                });
+                self.add_extra_stmt_internal(location, syn::parse_quote! {
+                    let #buffered_second_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(__root_dfir_rs::rustc_hash::FxHashMap::default()));
+                });
+                self.add_hook(
+                    location,
+                    location,
+                    syn::parse_quote!(
+                        Box::new(#root::sim::runtime::TopLevelKeyedMergeOrderedHook::<_, _> {
+                            first: #buffered_first_ident.clone(),
+                            second: #buffered_second_ident.clone(),
+                            to_release: None,
+                            release_source: None,
+                            output: #hoff_send_ident,
+                            location: (#assume_location, #line, #caret),
+                            format_item_debug: #root::__maybe_debug__!(#element_type),
+                        })
+                    ),
+                );
 
-            self.get_dfir_mut(location).add_dfir(
-                parse_quote! {
-                    #second_ident -> for_each(|v| #buffered_second_ident.borrow_mut().push_back(v));
-                },
-                None,
-                None,
-            );
+                self.get_dfir_mut(location).add_dfir(
+                    parse_quote! {
+                        #first_ident -> for_each(|(k, v)| #buffered_first_ident.borrow_mut().entry(k).or_insert_with(::std::collections::VecDeque::new).push_back(v));
+                    },
+                    None,
+                    None,
+                );
+
+                self.get_dfir_mut(location).add_dfir(
+                    parse_quote! {
+                        #second_ident -> for_each(|(k, v)| #buffered_second_ident.borrow_mut().entry(k).or_insert_with(::std::collections::VecDeque::new).push_back(v));
+                    },
+                    None,
+                    None,
+                );
+            } else {
+                self.add_extra_stmt_internal(location, syn::parse_quote! {
+                    let #buffered_first_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                });
+                self.add_extra_stmt_internal(location, syn::parse_quote! {
+                    let #buffered_second_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                });
+                self.add_hook(
+                    location,
+                    location,
+                    syn::parse_quote!(
+                        Box::new(#root::sim::runtime::TopLevelMergeOrderedHook::<_> {
+                            first: #buffered_first_ident.clone(),
+                            second: #buffered_second_ident.clone(),
+                            to_release: None,
+                            release_source: None,
+                            output: #hoff_send_ident,
+                            location: (#assume_location, #line, #caret),
+                            format_item_debug: #root::__maybe_debug__!(#element_type),
+                        })
+                    ),
+                );
+
+                self.get_dfir_mut(location).add_dfir(
+                    parse_quote! {
+                        #first_ident -> for_each(|v| #buffered_first_ident.borrow_mut().push_back(v));
+                    },
+                    None,
+                    None,
+                );
+
+                self.get_dfir_mut(location).add_dfir(
+                    parse_quote! {
+                        #second_ident -> for_each(|v| #buffered_second_ident.borrow_mut().push_back(v));
+                    },
+                    None,
+                    None,
+                );
+            }
 
             self.get_dfir_mut(location).add_dfir(
                 parse_quote! {
