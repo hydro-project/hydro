@@ -1505,6 +1505,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// an `Option<U>`. If the function returns `Some(value)`, `value` is emitted to the output stream.
     /// If the function returns `None`, the stream is terminated and no more elements are processed.
     ///
+    /// The `init` and `f` closures may capture bounded singletons, optionals, or streams by
+    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref).
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -1571,6 +1574,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// [`Generate`] value, whose variants define what is emitted and whether further inputs
     /// should be processed.
     ///
+    /// The `init` and `f` closures may capture bounded singletons, optionals, or streams by
+    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref).
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -1626,30 +1632,34 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
 
         let this = self.make_totally_ordered().make_exactly_once();
 
-        let scan_init = q!(|| HashMap::new())
-            .splice_fn0_ctx::<HashMap<K, Option<A>>>(&this.location)
-            .into();
-        let scan_f = q!(move |acc: &mut HashMap<_, _>, (k, v)| {
-            let existing_state = acc.entry(Clone::clone(&k)).or_insert_with(|| Some(init()));
-            if let Some(existing_state_value) = existing_state {
-                match f(existing_state_value, v) {
-                    Generate::Yield(out) => Some(Some((k, out))),
-                    Generate::Return(out) => {
-                        let _ = existing_state.take(); // TODO(shadaj): garbage collect with termination markers
-                        Some(Some((k, out)))
+        let scan_init = crate::handoff_ref::with_ref_capture(|| {
+            q!(|| HashMap::new())
+                .splice_fn0_ctx::<HashMap<K, Option<A>>>(&this.location)
+                .into()
+        });
+        let scan_f = crate::handoff_ref::with_ref_capture(|| {
+            q!(move |acc: &mut HashMap<_, _>, (k, v)| {
+                let existing_state = acc.entry(Clone::clone(&k)).or_insert_with(|| Some(init()));
+                if let Some(existing_state_value) = existing_state {
+                    match f(existing_state_value, v) {
+                        Generate::Yield(out) => Some(Some((k, out))),
+                        Generate::Return(out) => {
+                            let _ = existing_state.take(); // TODO(shadaj): garbage collect with termination markers
+                            Some(Some((k, out)))
+                        }
+                        Generate::Break => {
+                            let _ = existing_state.take(); // TODO(shadaj): garbage collect with termination markers
+                            Some(None)
+                        }
+                        Generate::Continue => Some(None),
                     }
-                    Generate::Break => {
-                        let _ = existing_state.take(); // TODO(shadaj): garbage collect with termination markers
-                        Some(None)
-                    }
-                    Generate::Continue => Some(None),
+                } else {
+                    Some(None)
                 }
-            } else {
-                Some(None)
-            }
-        })
-        .splice_fn2_borrow_mut_ctx::<HashMap<K, Option<A>>, (K, V), _>(&this.location)
-        .into();
+            })
+            .splice_fn2_borrow_mut_ctx::<HashMap<K, Option<A>>, (K, V), _>(&this.location)
+            .into()
+        });
 
         let scan_node = HydroNode::Scan {
             init: scan_init,
