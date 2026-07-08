@@ -47,10 +47,12 @@ fn sim_source_singleton_by_ref_in_map() {
 
 /// Same as above but on a cluster, which is the topology described in the bug report.
 ///
-/// Currently panics with SIGABRT due to unwrap() on None in the singleton buffer.
-/// Remove #[ignore] once #3005 is fixed.
+/// This reproduces a separate aspect of #3005: on a cluster, the exhaustive simulator
+/// may schedule the consumer subgraph before the singleton source subgraph on the
+/// first tick. This is a simulator scheduling issue distinct from the codegen fix
+/// (which addresses the multi-tick problem).
 #[test]
-#[ignore = "panics with SIGABRT due to https://github.com/hydro-project/hydro/issues/3005"]
+#[ignore = "panics with SIGABRT due to https://github.com/hydro-project/hydro/issues/3005 (scheduler ordering)"]
 fn sim_source_singleton_by_ref_in_map_cluster() {
     let mut flow = FlowBuilder::new();
     let cluster = flow.cluster::<()>();
@@ -85,10 +87,9 @@ fn sim_source_singleton_by_ref_in_map_cluster() {
 /// sends multiple items across multiple ticks. After the singleton source fires once (tick 0),
 /// subsequent ticks have no producer output, so the buffer may be None if drained.
 ///
-/// Currently panics with SIGABRT due to unwrap() on None in the singleton buffer.
-/// Remove #[ignore] once #3005 is fixed.
+/// With the fix (persist::<'static>() on top-level SingletonSource), the singleton buffer
+/// is refilled every tick and the reference consumer works correctly.
 #[test]
-#[ignore = "panics with SIGABRT due to https://github.com/hydro-project/hydro/issues/3005"]
 fn sim_source_singleton_by_ref_multi_send() {
     let mut flow = FlowBuilder::new();
     let process = flow.process::<()>();
