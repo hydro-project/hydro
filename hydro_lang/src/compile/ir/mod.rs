@@ -3927,9 +3927,10 @@ impl HydroNode {
                                     );
                                 }
 
-                                if *first_tick_only {
-                                    // Inside a tick, source_iter fires once per tick execution
-                                    // which is sufficient to fill the singleton buffer.
+                                if *first_tick_only
+                                    || (metadata.location_id.is_top_level()
+                                        && metadata.collection_kind.is_bounded())
+                                {
                                     graph_builders.add_dfir_at(
                                         &out_location,
                                         parse_quote! {
@@ -3938,11 +3939,6 @@ impl HydroNode {
                                         Some(&stmt_id.to_string()),
                                     );
                                 } else {
-                                    // At the top level, we need persist::<'static>() so the
-                                    // singleton buffer is refilled every tick. Without it,
-                                    // source_iter fires only on tick 0 and the buffer becomes
-                                    // None on subsequent ticks, causing panics in reference
-                                    // consumers (see #3005).
                                     graph_builders.add_dfir_at(
                                         &out_location,
                                         parse_quote! {
@@ -4040,7 +4036,7 @@ impl HydroNode {
                         ident_stack.push(ret_ident);
                     }
 
-                    HydroNode::Reference { inner, kind, .. } => {
+                    HydroNode::Reference { inner, kind, metadata, .. } => {
                         // we consume a stmt id regardless of if we emit the operator,
                         // so that during rewrites we touch all recipients
                         let stmt_id = next_stmt_id.get_and_increment();
@@ -4070,13 +4066,34 @@ impl HydroNode {
                                         },
                                         Span::call_site(),
                                     );
-                                    graph_builders.add_dfir_at(
-                                        &out_location,
-                                        parse_quote! {
-                                            #ref_ident = #inner_ident -> #op_ident();
-                                        },
-                                        Some(&stmt_id.to_string()),
-                                    );
+
+                                    // For top-level bounded singletons, the source only fires
+                                    // once (tick 0). We need persist so the handoff buffer stays
+                                    // populated on subsequent ticks for reference consumers.
+                                    // This persist is only on the reference path, not the pipe
+                                    // consumer path, preserving bounded into_stream() semantics.
+                                    // See https://github.com/hydro-project/hydro/issues/3005
+                                    let needs_persist = metadata.location_id.is_top_level()
+                                        && metadata.collection_kind.is_bounded()
+                                        && matches!(kind, crate::handoff_ref::HandoffRefKind::Singleton);
+
+                                    if needs_persist {
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
+                                            parse_quote! {
+                                                #ref_ident = #inner_ident -> persist::<'static>() -> #op_ident();
+                                            },
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    } else {
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
+                                            parse_quote! {
+                                                #ref_ident = #inner_ident -> #op_ident();
+                                            },
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    }
                                 }
                                 BuildersOrCallback::Callback(_, node_callback) => {
                                     node_callback(node, next_stmt_id);
