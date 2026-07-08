@@ -215,6 +215,39 @@ pub async fn test_singleton_reference_only_multi_tick() {
     assert_eq!(vec![43, 45, 142], *output.borrow());
 }
 
+/// Regression test for https://github.com/hydro-project/hydro/issues/3005
+///
+/// A singleton() without persist (fires once) referenced via #var panics on the second tick
+/// when a stream consumer tries to read the singleton buffer via .as_ref().unwrap() but
+/// the buffer is None because the source only produced on tick 0.
+///
+/// This demonstrates that a source singleton's reference is not safe across multiple ticks
+/// unless the singleton is persisted or re-filled.
+#[dfir_rs::test]
+#[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+pub async fn test_singleton_reference_no_persist_panics_on_second_tick() {
+    let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let output = std::rc::Rc::new(std::cell::RefCell::new(Vec::<i32>::new()));
+    let out = output.clone();
+    let mut flow = dfir_rs::dfir_syntax! {
+        // source_iter fires once, WITHOUT persist, so the singleton is only filled on tick 0
+        my_val = source_iter([42_i32]) -> singleton();
+        source_stream(recv)
+            -> map(|x| x + #my_val)
+            -> for_each(|v: i32| out.borrow_mut().push(v));
+    };
+    send.send(1).unwrap();
+    flow.run_tick().await;
+    // Tick 0 works fine: singleton has value 42
+    assert_eq!(vec![43], *output.borrow());
+
+    // Tick 1: the singleton buffer was drained at end of tick 0, and source_iter doesn't
+    // fire again (it's exhausted). The singleton buffer is now None.
+    // When the map tries to read #my_val, it calls .as_ref().unwrap() on None → panic.
+    send.send(100).unwrap();
+    flow.run_tick().await;
+}
+
 /// Test: `singleton()` can be mutably referenced via `#mut var`.
 #[dfir_rs::test]
 pub async fn test_singleton_mut_reference() {
