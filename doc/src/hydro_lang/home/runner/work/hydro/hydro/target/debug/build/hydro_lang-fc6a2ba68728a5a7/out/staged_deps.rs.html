@@ -16,7 +16,7 @@
 <a href=#16 id=16 data-nosnippet>16</a>    <span class="attr">#[cfg(any(feature = <span class="string">"sim"</span>, feature = <span class="string">"runtime_support"</span>, feature = <span class="string">"dfir_context"</span>))]
 <a href=#17 id=17 data-nosnippet>17</a>    </span><span class="kw">pub use </span>dfir_rs;
 <a href=#18 id=18 data-nosnippet>18</a>    <span class="kw">pub use </span>futures;
-<a href=#19 id=19 data-nosnippet>19</a>    <span class="attr">#[cfg(any(feature = <span class="string">"sim"</span>))]
+<a href=#19 id=19 data-nosnippet>19</a>    <span class="attr">#[cfg(any(feature = <span class="string">"sim"</span>, feature = <span class="string">"maelstrom"</span>))]
 <a href=#20 id=20 data-nosnippet>20</a>    </span><span class="kw">pub use </span>hydro_concurrent_cargo;
 <a href=#21 id=21 data-nosnippet>21</a>    <span class="attr">#[cfg(any(feature = <span class="string">"deploy"</span>))]
 <a href=#22 id=22 data-nosnippet>22</a>    </span><span class="kw">pub use </span>hydro_deploy;
@@ -95,7 +95,7 @@
 <a href=#95 id=95 data-nosnippet>95</a>    </span><span class="kw">pub use </span>regex;
 <a href=#96 id=96 data-nosnippet>96</a>    <span class="attr">#[cfg(any(feature = <span class="string">"sim"</span>))]
 <a href=#97 id=97 data-nosnippet>97</a>    </span><span class="kw">pub use </span>bolero;
-<a href=#98 id=98 data-nosnippet>98</a>    <span class="attr">#[cfg(any(feature = <span class="string">"sim"</span>))]
+<a href=#98 id=98 data-nosnippet>98</a>    <span class="attr">#[cfg(any(feature = <span class="string">"sim"</span>, feature = <span class="string">"maelstrom"</span>))]
 <a href=#99 id=99 data-nosnippet>99</a>    </span><span class="kw">pub use </span>cargo_metadata;
 <a href=#100 id=100 data-nosnippet>100</a>    <span class="attr">#[cfg(any(feature = <span class="string">"sim"</span>))]
 <a href=#101 id=101 data-nosnippet>101</a>    </span><span class="kw">pub use </span>indenter;
@@ -272,7 +272,7 @@
 <a href=#272 id=272 data-nosnippet>272</a>                ],
 <a href=#273 id=273 data-nosnippet>273</a>            );
 <a href=#274 id=274 data-nosnippet>274</a>        }
-<a href=#275 id=275 data-nosnippet>275</a>        <span class="attr">#[cfg(any(feature = <span class="string">"sim"</span>))]
+<a href=#275 id=275 data-nosnippet>275</a>        <span class="attr">#[cfg(any(feature = <span class="string">"sim"</span>, feature = <span class="string">"maelstrom"</span>))]
 <a href=#276 id=276 data-nosnippet>276</a>        </span>{
 <a href=#277 id=277 data-nosnippet>277</a>            stageleft::internal::add_deps_reexport(
 <a href=#278 id=278 data-nosnippet>278</a>                <span class="macro">vec!</span>[<span class="string">"hydro_concurrent_cargo"</span>],
@@ -795,7 +795,7 @@
 <a href=#795 id=795 data-nosnippet>795</a>                ],
 <a href=#796 id=796 data-nosnippet>796</a>            );
 <a href=#797 id=797 data-nosnippet>797</a>        }
-<a href=#798 id=798 data-nosnippet>798</a>        <span class="attr">#[cfg(any(feature = <span class="string">"sim"</span>))]
+<a href=#798 id=798 data-nosnippet>798</a>        <span class="attr">#[cfg(any(feature = <span class="string">"sim"</span>, feature = <span class="string">"maelstrom"</span>))]
 <a href=#799 id=799 data-nosnippet>799</a>        </span>{
 <a href=#800 id=800 data-nosnippet>800</a>            stageleft::internal::add_deps_reexport(
 <a href=#801 id=801 data-nosnippet>801</a>                <span class="macro">vec!</span>[<span class="string">"cargo_metadata"</span>],
