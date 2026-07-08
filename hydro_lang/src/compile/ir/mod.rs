@@ -4073,6 +4073,11 @@ impl HydroNode {
                                     // This persist is only on the reference path, not the pipe
                                     // consumer path, preserving bounded into_stream() semantics.
                                     // See https://github.com/hydro-project/hydro/issues/3005
+                                    //
+                                    // NOTE: For mutable references (by_mut), this means mutations
+                                    // only affect the current tick's copy — the value resets to
+                                    // the original on the next tick. This is a broader semantic
+                                    // question tracked in https://github.com/hydro-project/hydro/issues/3010
                                     let needs_persist = metadata.location_id.is_top_level()
                                         && metadata.collection_kind.is_bounded()
                                         && matches!(kind, crate::handoff_ref::HandoffRefKind::Singleton);
