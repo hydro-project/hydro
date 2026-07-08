@@ -119,6 +119,35 @@ fn sim_source_singleton_by_ref_multi_send() {
     });
 }
 
+/// Verifies that a top-level bounded singleton's `into_stream()` emits its value
+/// only once, NOT on every tick. A bounded singleton represents an immutable value
+/// that is produced exactly once.
+///
+/// If the codegen uses `persist::<'static>()`, this could cause the singleton to
+/// replay its value every tick through the pipe consumer, violating bounded semantics.
+#[test]
+fn sim_source_singleton_into_stream_emits_once() {
+    let mut flow = FlowBuilder::new();
+    let process = flow.process::<()>();
+
+    // A bounded singleton created at the top level.
+    let my_singleton = process.singleton(q!(42u32));
+
+    // Convert to stream and output — should produce exactly one value total.
+    let out_port = my_singleton.into_stream().sim_output();
+
+    flow.sim().exhaustive(async || {
+        // Should receive the singleton value exactly once.
+        let result = out_port.next().await.unwrap();
+        assert_eq!(result, 42);
+
+        // After the singleton has been consumed, there should be nothing else.
+        // If persist causes replay, we'd get another 42 here.
+        let remaining: Vec<u32> = out_port.collect().await;
+        assert_eq!(remaining, Vec::<u32>::new(), "singleton into_stream() should emit only once, but got extra values: {:?}", remaining);
+    });
+}
+
 // Test is currently broken in nightly.
 #[cfg(not(nightly))]
 #[test]
