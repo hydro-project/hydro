@@ -1294,20 +1294,31 @@ where
 
     /// Executes the provided closure for every element in this stream.
     ///
-    /// Because the closure may have side effects, the stream must have deterministic order
-    /// ([`TotalOrder`]) and no retries ([`ExactlyOnce`]). If the side effects can tolerate
-    /// out-of-order or duplicate execution, use [`Stream::assume_ordering`] and
-    /// [`Stream::assume_retries`] with an explanation for why this is the case.
+    /// If the stream is unordered or has retries, the closure must demonstrate commutativity
+    /// and/or idempotence via annotations:
+    /// ```rust,ignore
+    /// stream.for_each(q!(
+    ///     |x| *flag_mut |= x,
+    ///     commutative = manual_proof!(/** boolean OR is commutative */),
+    ///     idempotent = manual_proof!(/** boolean OR is idempotent */)
+    /// ));
+    /// ```
     ///
-    /// The closure may capture singletons via `by_ref()` or `by_mut()`. No commutativity
-    /// or idempotence proofs are needed because the `TotalOrder + ExactlyOnce` requirements
-    /// already guarantee deterministic execution.
-    pub fn for_each<F: FnMut(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>)
-    where
-        O: IsOrdered,
-        R: IsExactlyOnce,
+    /// On a `TotalOrder + ExactlyOnce` stream, no annotations are needed.
+    ///
+    /// The closure may capture singletons via `by_ref()` or `by_mut()`.
+    pub fn for_each<F: FnMut(T) + 'a, C, I>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, I>>,
+    ) where
+        C: ValidCommutativityFor<O>,
+        I: ValidIdempotenceFor<R>,
     {
-        let f = crate::handoff_ref::with_ref_capture(|| f.splice_fnmut1_ctx(&self.location).into());
+        let f = crate::handoff_ref::with_ref_capture(|| {
+            let (f, proof) = f.splice_fnmut1_ctx_props(&self.location);
+            proof.register_proof(&f);
+            f.into()
+        });
         self.location
             .flow_state()
             .borrow_mut()
