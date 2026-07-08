@@ -63,7 +63,12 @@ fn sim_source_singleton_into_stream_emits_once() {
         // After the singleton has been consumed, there should be nothing else.
         // If persist causes replay, we'd get another 42 here.
         let remaining: Vec<u32> = out_port.collect().await;
-        assert_eq!(remaining, Vec::<u32>::new(), "singleton into_stream() should emit only once, but got extra values: {:?}", remaining);
+        assert_eq!(
+            remaining,
+            Vec::<u32>::new(),
+            "singleton into_stream() should emit only once, but got extra values: {:?}",
+            remaining
+        );
     });
 }
 
