@@ -65,6 +65,264 @@ pub mod m2m_broadcast {
 }
 
 #[cfg(all(test, feature = "test_embedded"))]
+mod flow_holder_tests {
+    //! Tests for [`hydro_lang::embedded_flow!`] holder structs built on top of the
+    //! generated embedded functions.
+
+    use dfir_rs::bytes::{Bytes, BytesMut};
+    use hydro_lang::location::MembershipEvent;
+    use hydro_lang::location::member_id::TaglessMemberId;
+
+    hydro_lang::embedded_flow! {
+        /// Holder driving the `capitalize` embedded flow (inputs + outputs).
+        pub struct CapitalizeFlow {
+            inputs { input: String }
+            outputs(crate::embedded::capitalize::EmbeddedOutputs as outputs) {
+                output: String,
+            }
+            build() {
+                crate::embedded::capitalize(input, outputs)
+            }
+        }
+    }
+
+    #[test]
+    fn test_flow_holder_capitalize() {
+        let flow = CapitalizeFlow::new();
+
+        // Items pushed before the first run are processed by it.
+        flow.input().push("hello".to_owned());
+        flow.input().push("world".to_owned());
+
+        let mut collected = vec![];
+        flow.run_with(&mut |s| collected.push(s));
+        assert_eq!(collected, vec!["HELLO", "WORLD"]);
+
+        // The holder can be run repeatedly.
+        flow.input().push("hydro".to_owned());
+        flow.run_with(&mut |s| collected.push(s));
+        assert_eq!(collected, vec!["HELLO", "WORLD", "HYDRO"]);
+
+        // Outputs emitted without a callback installed are dropped, not buffered.
+        flow.input().push("dropped".to_owned());
+        flow.run();
+        flow.run_with(&mut |s| collected.push(s));
+        assert_eq!(collected, vec!["HELLO", "WORLD", "HYDRO"]);
+    }
+
+    #[test]
+    fn test_flow_holder_reentrant_push_from_callback() {
+        let flow = CapitalizeFlow::new();
+        flow.input().push("first".to_owned());
+
+        // An output callback may re-enter the holder to push more input; the new input is
+        // processed within the same `run_with` call (the push wakes the flow again).
+        let mut collected = vec![];
+        {
+            let flow_ref = &flow;
+            let mut callback = |s: String| {
+                if s == "FIRST" {
+                    flow_ref.input().push("second".to_owned());
+                }
+                collected.push(s);
+            };
+            flow.run_with(&mut callback);
+        }
+        assert_eq!(collected, vec!["FIRST", "SECOND"]);
+    }
+
+    hydro_lang::embedded_flow! {
+        /// Holder driving `prefix_names` (a singleton input becomes a `build` parameter).
+        struct PrefixNamesFlow {
+            inputs { names: String }
+            outputs(crate::singleton_input::prefix_names::EmbeddedOutputs as outputs) {
+                output: String,
+            }
+            build(prefix: String) {
+                crate::singleton_input::prefix_names(prefix, names, outputs)
+            }
+        }
+    }
+
+    #[test]
+    fn test_flow_holder_singleton_input() {
+        let flow = PrefixNamesFlow::new("Hello".to_owned());
+        flow.names().push("Alice".to_owned());
+        flow.names().push("Bob".to_owned());
+
+        let mut collected = vec![];
+        flow.run_with(&mut |s| collected.push(s));
+        assert_eq!(collected, vec!["Hello Alice", "Hello Bob"]);
+    }
+
+    hydro_lang::embedded_flow! {
+        /// Sender side of the o2o echo network (inputs + network_out).
+        struct EchoSenderFlow {
+            inputs { input: String }
+            network_out(crate::echo_network::echo_sender::EmbeddedNetworkOut as net_out) {
+                messages: Bytes,
+            }
+            build() {
+                crate::echo_network::echo_sender(input, net_out)
+            }
+        }
+    }
+
+    hydro_lang::embedded_flow! {
+        /// Receiver side of the o2o echo network (network_in + outputs).
+        struct EchoReceiverFlow {
+            network_in(crate::echo_network::echo_receiver::EmbeddedNetworkIn as net_in) {
+                messages: Result<BytesMut, std::io::Error>,
+            }
+            outputs(crate::echo_network::echo_receiver::EmbeddedOutputs as outputs) {
+                output: String,
+            }
+            build() {
+                crate::echo_network::echo_receiver(outputs, net_in)
+            }
+        }
+    }
+
+    #[test]
+    fn test_flow_holder_echo_network() {
+        let sender = EchoSenderFlow::new();
+        let receiver = EchoReceiverFlow::new();
+
+        sender.input().push("hello".to_owned());
+        sender.input().push("world".to_owned());
+
+        // Wire the sender's network-out directly into the receiver's network-in.
+        sender.run_with(&mut |bytes: Bytes| {
+            receiver.messages().push(Ok(BytesMut::from(bytes.as_ref())));
+        });
+
+        let mut received = vec![];
+        receiver.run_with(&mut |s| received.push(s));
+        assert_eq!(received, vec!["HELLO", "WORLD"]);
+    }
+
+    hydro_lang::embedded_flow! {
+        /// Sender side of the o2m broadcast (membership + inputs + tagged network_out).
+        struct O2mSenderFlow {
+            membership(crate::o2m_broadcast::o2m_sender::EmbeddedMembershipStreams as membership) {
+                o2m_receiver,
+            }
+            inputs { input: String }
+            network_out(crate::o2m_broadcast::o2m_sender::EmbeddedNetworkOut as net_out) {
+                o2m_data: (TaglessMemberId, Bytes),
+            }
+            build() {
+                crate::o2m_broadcast::o2m_sender(membership, input, net_out)
+            }
+        }
+    }
+
+    hydro_lang::embedded_flow! {
+        /// Receiver side of the o2m broadcast (self_id + network_in + outputs).
+        struct O2mReceiverFlow {
+            self_id(self_id: TaglessMemberId);
+            network_in(crate::o2m_broadcast::o2m_receiver::EmbeddedNetworkIn as net_in) {
+                o2m_data: Result<BytesMut, std::io::Error>,
+            }
+            outputs(crate::o2m_broadcast::o2m_receiver::EmbeddedOutputs as outputs) {
+                output: String,
+            }
+            build() {
+                crate::o2m_broadcast::o2m_receiver(self_id, outputs, net_in)
+            }
+        }
+    }
+
+    #[test]
+    fn test_flow_holder_o2m_broadcast() {
+        let member_id = TaglessMemberId::from_raw_id(0);
+
+        let sender = O2mSenderFlow::new();
+        let receiver = O2mReceiverFlow::new(member_id.clone());
+
+        // The receiver joins the cluster before any data is sent.
+        sender
+            .o2m_receiver()
+            .push((member_id.clone(), MembershipEvent::Joined));
+        sender.run();
+
+        sender.input().push("hello".to_owned());
+        sender.input().push("world".to_owned());
+        sender.run_with(&mut |(id, bytes): (TaglessMemberId, Bytes)| {
+            assert_eq!(id, member_id);
+            receiver.o2m_data().push(Ok(BytesMut::from(bytes.as_ref())));
+        });
+
+        let mut received = vec![];
+        receiver.run_with(&mut |s| received.push(s));
+        assert_eq!(received, vec!["HELLO", "WORLD"]);
+    }
+
+    hydro_lang::embedded_flow! {
+        /// Sender side of the m2m broadcast (self_id + membership + inputs + network_out).
+        struct M2mSenderFlow {
+            self_id(self_id: TaglessMemberId);
+            membership(crate::m2m_broadcast::m2m_sender::EmbeddedMembershipStreams as membership) {
+                m2m_receiver,
+            }
+            inputs { input: String }
+            network_out(crate::m2m_broadcast::m2m_sender::EmbeddedNetworkOut as net_out) {
+                m2m_data: (TaglessMemberId, Bytes),
+            }
+            build() {
+                crate::m2m_broadcast::m2m_sender(self_id, membership, input, net_out)
+            }
+        }
+    }
+
+    hydro_lang::embedded_flow! {
+        /// Receiver side of the m2m broadcast (self_id + tagged network_in + outputs).
+        struct M2mReceiverFlow {
+            self_id(self_id: TaglessMemberId);
+            network_in(crate::m2m_broadcast::m2m_receiver::EmbeddedNetworkIn as net_in) {
+                m2m_data: Result<(TaglessMemberId, BytesMut), std::io::Error>,
+            }
+            outputs(crate::m2m_broadcast::m2m_receiver::EmbeddedOutputs as outputs) {
+                output: (
+                    hydro_lang::location::MemberId<hydro_test::embedded::m2m_broadcast::Src>,
+                    String,
+                ),
+            }
+            build() {
+                crate::m2m_broadcast::m2m_receiver(self_id, outputs, net_in)
+            }
+        }
+    }
+
+    #[test]
+    fn test_flow_holder_m2m_broadcast() {
+        let src_id = TaglessMemberId::from_raw_id(0);
+        let dst_id = TaglessMemberId::from_raw_id(1);
+
+        let sender = M2mSenderFlow::new(src_id.clone());
+        let receiver = M2mReceiverFlow::new(dst_id.clone());
+
+        sender
+            .m2m_receiver()
+            .push((dst_id.clone(), MembershipEvent::Joined));
+        sender.run();
+
+        sender.input().push("ping".to_owned());
+        sender.run_with(&mut |(id, bytes): (TaglessMemberId, Bytes)| {
+            assert_eq!(id, dst_id);
+            receiver
+                .m2m_data()
+                .push(Ok((src_id.clone(), BytesMut::from(bytes.as_ref()))));
+        });
+
+        let mut received = vec![];
+        receiver.run_with(&mut |item| received.push(item));
+        assert_eq!(received.len(), 1);
+        assert_eq!(received[0].1, "PING");
+    }
+}
+
+#[cfg(all(test, feature = "test_embedded"))]
 mod tests {
     use dfir_rs::bytes::{Bytes, BytesMut};
     use dfir_rs::futures::stream;
