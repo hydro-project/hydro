@@ -217,9 +217,12 @@ pub async fn test_singleton_reference_only_multi_tick() {
 
 /// Regression test for https://github.com/hydro-project/hydro/issues/3005
 ///
-/// A singleton() fed by source_iter (fires once) referenced via #var must work across
-/// multiple ticks. The fix ensures that top-level SingletonSource emits persist::<'static>()
-/// so the singleton buffer is refilled every tick.
+/// Demonstrates the workaround for singleton references across ticks at the DFIR level:
+/// explicitly adding `persist::<'static>()` before the `singleton()` handoff ensures
+/// the buffer stays populated. Without persist, the buffer would be None on tick 1+.
+///
+/// At the Hydro level, by_ref()/by_mut() on top-level bounded singletons is disallowed
+/// because the correct persist semantics are not yet resolved (see #3010).
 #[dfir_rs::test]
 pub async fn test_singleton_reference_no_persist_works_across_ticks() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();

@@ -4067,38 +4067,31 @@ impl HydroNode {
                                         Span::call_site(),
                                     );
 
-                                    // For top-level bounded singletons, the source only fires
-                                    // once (tick 0). We need persist so the handoff buffer stays
-                                    // populated on subsequent ticks for reference consumers.
-                                    // This persist is only on the reference path, not the pipe
-                                    // consumer path, preserving bounded into_stream() semantics.
+                                    // Top-level bounded references (by_ref/by_mut on a source
+                                    // singleton, optional, or stream) are not currently supported
+                                    // because the source only fires once and the handoff buffer
+                                    // would be empty on subsequent ticks. The semantics of
+                                    // persist-and-replay for references (especially mutable ones
+                                    // and stream refs) are subtle and not yet resolved.
                                     // See https://github.com/hydro-project/hydro/issues/3005
-                                    //
-                                    // NOTE: For mutable references (by_mut), this means mutations
-                                    // only affect the current tick's copy — the value resets to
-                                    // the original on the next tick. This is a broader semantic
-                                    // question tracked in https://github.com/hydro-project/hydro/issues/3010
-                                    let needs_persist = metadata.location_id.is_top_level()
+                                    // and https://github.com/hydro-project/hydro/issues/3010
+                                    if metadata.location_id.is_top_level()
                                         && metadata.collection_kind.is_bounded()
-                                        && matches!(kind, crate::handoff_ref::HandoffRefKind::Singleton);
-
-                                    if needs_persist {
-                                        graph_builders.add_dfir_at(
-                                            &out_location,
-                                            parse_quote! {
-                                                #ref_ident = #inner_ident -> persist::<'static>() -> #op_ident();
-                                            },
-                                            Some(&stmt_id.to_string()),
-                                        );
-                                    } else {
-                                        graph_builders.add_dfir_at(
-                                            &out_location,
-                                            parse_quote! {
-                                                #ref_ident = #inner_ident -> #op_ident();
-                                            },
-                                            Some(&stmt_id.to_string()),
+                                    {
+                                        panic!(
+                                            "by_ref()/by_mut() on a top-level bounded source is not yet supported. \
+                                             The handoff buffer would be empty after the first tick. \
+                                             See https://github.com/hydro-project/hydro/issues/3010 for details."
                                         );
                                     }
+
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
+                                        parse_quote! {
+                                            #ref_ident = #inner_ident -> #op_ident();
+                                        },
+                                        Some(&stmt_id.to_string()),
+                                    );
                                 }
                                 BuildersOrCallback::Callback(_, node_callback) => {
                                     node_callback(node, next_stmt_id);
