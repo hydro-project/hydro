@@ -12,84 +12,16 @@ mod trophies;
 
 /// Regression test for https://github.com/hydro-project/hydro/issues/3005
 ///
-/// `Singleton::by_ref()` on a top-level source singleton panics with `unwrap()` on `None`
-/// when the exhaustive simulator explores an interleaving where the stream consumer runs
-/// before the singleton's source operator has produced its value.
+/// `Singleton::by_ref()` on a top-level bounded source singleton is not supported because
+/// the source only fires once, leaving the handoff buffer empty on subsequent ticks.
+/// The correct semantics for persist-and-replay of references (especially mutable ones)
+/// are not yet resolved — see https://github.com/hydro-project/hydro/issues/3010.
 ///
-/// The generated DFIR code resolves the `SingletonRef` eagerly via
-/// `hoff_buf.as_ref().unwrap()`, which is `None` before the singleton source has run.
+/// This test verifies that attempting to use by_ref() on a top-level bounded singleton
+/// produces a clear panic at graph compilation time.
 #[test]
-fn sim_source_singleton_by_ref_in_map() {
-    let mut flow = FlowBuilder::new();
-    let process = flow.process::<()>();
-
-    // Source singleton: a bounded singleton created at the top level.
-    let my_singleton = process.singleton(q!(42u32));
-    let singleton_ref = my_singleton.by_ref();
-
-    // Stream input driven by the simulator.
-    let (in_port, input_stream) = process.sim_input::<u32, TotalOrder, ExactlyOnce>();
-
-    // Capture the singleton ref in a map over the input stream.
-    // Under some explored schedule, the map may be polled before the singleton source runs.
-    let out = input_stream.map(q!(move |x| x + *singleton_ref));
-    let out_port = out.sim_output();
-
-    // Consume the singleton so the graph is valid.
-    my_singleton.into_stream().for_each(q!(|_| {}));
-
-    flow.sim().exhaustive(async || {
-        in_port.send(1);
-        let result = out_port.next().await.unwrap();
-        assert_eq!(result, 43);
-    });
-}
-
-/// Same as above but on a cluster, which is the topology described in the bug report.
-///
-/// NOTE: This test currently aborts due to a pre-existing cluster sim infrastructure issue
-/// (TaglessMemberId::from_raw_id panics without deploy features). Once that is fixed, this
-/// test should verify the singleton by_ref behavior on clusters.
-#[test]
-#[ignore = "cluster sim infrastructure issue: TaglessMemberId::from_raw_id requires deploy features"]
-fn sim_source_singleton_by_ref_in_map_cluster() {
-    let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
-
-    // Source singleton: a bounded singleton created at the top level on a cluster.
-    let my_singleton = cluster.singleton(q!(42u32));
-    let singleton_ref = my_singleton.by_ref();
-
-    // Stream input driven by the simulator.
-    let (in_port, input_stream) = cluster.sim_input::<u32, TotalOrder, ExactlyOnce>();
-
-    // Capture the singleton ref in a map over the input stream.
-    let out = input_stream.map(q!(move |x| x + *singleton_ref));
-    let out_port = out.sim_cluster_output();
-
-    // Consume the singleton so the graph is valid.
-    my_singleton.into_stream().for_each(q!(|_| {}));
-
-    flow.sim()
-        .with_cluster_size(&cluster, 2)
-        .exhaustive(async || {
-            in_port.send(0, 1);
-            in_port.send(1, 2);
-            let r0 = out_port.next(0).await.unwrap();
-            let r1 = out_port.next(1).await.unwrap();
-            assert_eq!(r0, 43);
-            assert_eq!(r1, 44);
-        });
-}
-
-/// Variant where the singleton is NOT consumed by a pipe (only by_ref), and the stream
-/// sends multiple items across multiple ticks. After the singleton source fires once (tick 0),
-/// subsequent ticks have no producer output, so the buffer may be None if drained.
-///
-/// With the fix (persist::<'static>() on top-level SingletonSource), the singleton buffer
-/// is refilled every tick and the reference consumer works correctly.
-#[test]
-fn sim_source_singleton_by_ref_multi_send() {
+#[should_panic(expected = "by_ref()/by_mut() on a top-level bounded source is not yet supported")]
+fn sim_source_singleton_by_ref_panics() {
     let mut flow = FlowBuilder::new();
     let process = flow.process::<()>();
 
@@ -99,32 +31,19 @@ fn sim_source_singleton_by_ref_multi_send() {
     let (in_port, input_stream) = process.sim_input::<u32, TotalOrder, ExactlyOnce>();
 
     let out = input_stream.map(q!(move |x| x + *singleton_ref));
-    let out_port = out.sim_output();
+    let _out_port = out.sim_output();
 
-    // Consume the singleton value so the graph has a pipe consumer (this drains the buffer).
     my_singleton.into_stream().for_each(q!(|_| {}));
 
+    // This should panic during graph compilation (sim()) because by_ref() on a
+    // top-level bounded singleton is not supported.
     flow.sim().exhaustive(async || {
-        // First batch of input — should work fine (singleton source runs on same tick).
         in_port.send(1);
-        let r1 = out_port.next().await.unwrap();
-        assert_eq!(r1, 43);
-
-        // Second input — arrives on a later tick. The singleton source already fired on tick 0
-        // and the pipe consumer drained the buffer. If the reference consumer runs now,
-        // it will try `buf.as_ref().unwrap()` on `None`.
-        in_port.send(2);
-        let r2 = out_port.next().await.unwrap();
-        assert_eq!(r2, 44);
     });
 }
 
-/// Verifies that a top-level bounded singleton's `into_stream()` emits its value
-/// only once, NOT on every tick. A bounded singleton represents an immutable value
-/// that is produced exactly once.
-///
-/// If the codegen uses `persist::<'static>()`, this could cause the singleton to
-/// replay its value every tick through the pipe consumer, violating bounded semantics.
+/// Verifies that a top-level bounded singleton's `into_stream()` still works correctly
+/// (emits its value exactly once) — only by_ref/by_mut is disallowed.
 #[test]
 fn sim_source_singleton_into_stream_emits_once() {
     let mut flow = FlowBuilder::new();
