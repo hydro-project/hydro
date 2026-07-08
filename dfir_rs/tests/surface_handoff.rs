@@ -217,21 +217,17 @@ pub async fn test_singleton_reference_only_multi_tick() {
 
 /// Regression test for https://github.com/hydro-project/hydro/issues/3005
 ///
-/// A singleton() without persist (fires once) referenced via #var panics on the second tick
-/// when a stream consumer tries to read the singleton buffer via .as_ref().unwrap() but
-/// the buffer is None because the source only produced on tick 0.
-///
-/// This demonstrates that a source singleton's reference is not safe across multiple ticks
-/// unless the singleton is persisted or re-filled.
+/// A singleton() fed by source_iter (fires once) referenced via #var must work across
+/// multiple ticks. The fix ensures that top-level SingletonSource emits persist::<'static>()
+/// so the singleton buffer is refilled every tick.
 #[dfir_rs::test]
-#[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
-pub async fn test_singleton_reference_no_persist_panics_on_second_tick() {
+pub async fn test_singleton_reference_no_persist_works_across_ticks() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
     let output = std::rc::Rc::new(std::cell::RefCell::new(Vec::<i32>::new()));
     let out = output.clone();
     let mut flow = dfir_rs::dfir_syntax! {
-        // source_iter fires once, WITHOUT persist, so the singleton is only filled on tick 0
-        my_val = source_iter([42_i32]) -> singleton();
+        // source_iter fires once, but persist::<'static>() ensures the singleton is refilled
+        my_val = source_iter([42_i32]) -> persist::<'static>() -> singleton();
         source_stream(recv)
             -> map(|x| x + #my_val)
             -> for_each(|v: i32| out.borrow_mut().push(v));
@@ -241,11 +237,10 @@ pub async fn test_singleton_reference_no_persist_panics_on_second_tick() {
     // Tick 0 works fine: singleton has value 42
     assert_eq!(vec![43], *output.borrow());
 
-    // Tick 1: the singleton buffer was drained at end of tick 0, and source_iter doesn't
-    // fire again (it's exhausted). The singleton buffer is now None.
-    // When the map tries to read #my_val, it calls .as_ref().unwrap() on None → panic.
+    // Tick 1: with persist, the singleton is refilled so the reference works
     send.send(100).unwrap();
     flow.run_tick().await;
+    assert_eq!(vec![43, 142], *output.borrow());
 }
 
 /// Test: `singleton()` can be mutably referenced via `#mut var`.

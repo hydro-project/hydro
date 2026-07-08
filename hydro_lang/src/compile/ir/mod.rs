@@ -3927,10 +3927,9 @@ impl HydroNode {
                                     );
                                 }
 
-                                if *first_tick_only
-                                    || (metadata.location_id.is_top_level()
-                                        && metadata.collection_kind.is_bounded())
-                                {
+                                if *first_tick_only {
+                                    // Inside a tick, source_iter fires once per tick execution
+                                    // which is sufficient to fill the singleton buffer.
                                     graph_builders.add_dfir_at(
                                         &out_location,
                                         parse_quote! {
@@ -3939,6 +3938,11 @@ impl HydroNode {
                                         Some(&stmt_id.to_string()),
                                     );
                                 } else {
+                                    // At the top level, we need persist::<'static>() so the
+                                    // singleton buffer is refilled every tick. Without it,
+                                    // source_iter fires only on tick 0 and the buffer becomes
+                                    // None on subsequent ticks, causing panics in reference
+                                    // consumers (see #3005).
                                     graph_builders.add_dfir_at(
                                         &out_location,
                                         parse_quote! {
