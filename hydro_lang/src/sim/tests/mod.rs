@@ -47,12 +47,11 @@ fn sim_source_singleton_by_ref_in_map() {
 
 /// Same as above but on a cluster, which is the topology described in the bug report.
 ///
-/// This reproduces a separate aspect of #3005: on a cluster, the exhaustive simulator
-/// may schedule the consumer subgraph before the singleton source subgraph on the
-/// first tick. This is a simulator scheduling issue distinct from the codegen fix
-/// (which addresses the multi-tick problem).
+/// NOTE: This test currently aborts due to a pre-existing cluster sim infrastructure issue
+/// (TaglessMemberId::from_raw_id panics without deploy features). Once that is fixed, this
+/// test should verify the singleton by_ref behavior on clusters.
 #[test]
-#[ignore = "panics with SIGABRT due to https://github.com/hydro-project/hydro/issues/3005 (scheduler ordering)"]
+#[ignore = "cluster sim infrastructure issue: TaglessMemberId::from_raw_id requires deploy features"]
 fn sim_source_singleton_by_ref_in_map_cluster() {
     let mut flow = FlowBuilder::new();
     let cluster = flow.cluster::<()>();

@@ -887,9 +887,8 @@ impl DfirGraph {
                             .map(|v| v.0.to_string())
                             .unwrap_or_else(|| format!("{:?}", ref_node_id.data()));
                         let expect_msg = format!(
-                            "singleton `{}` was not populated. Its source operator must run \
-                             before any consumer reads from it. This likely indicates a \
-                             scheduling bug in the DFIR graph.",
+                            "singleton `{}` was not populated. Its input must re-populate the value on every tick;
+                            ensure the input is a stateful operator such as `fold()`, `reduce()`, `persist()`, etc.",
                             varname_str
                         );
                         if is_mut {
