@@ -1,5 +1,5 @@
 ## Getting Started
-This is a template for a Rust project that uses [Hydroflow](https://github.com/hydro-project/hydro) for
+This is a template for a Rust project that uses [DFIR](https://github.com/hydro-project/hydro) for
 distributed services. It implements a simple echo server and client over UDP.
 
 ## Using the Template
@@ -9,7 +9,8 @@ cargo generate gh:hydro-project/dfir-template
 
 You will be prompted to name your project. Once the command completes, you can `cd` into the project.
 
-Ensure the correct nightly version of rust is installed:
+Ensure the correct version of Rust is installed. The template pins its toolchain via
+`rust-toolchain.toml`, which `cargo` detects automatically:
 ```bash
 rustup update
 ```
@@ -44,18 +45,18 @@ The `src` directory contains the following files:
 |---------------|--------------------------------------------------------------------------------------------------------------------------------------|
 | `main.rs`     | Contains `main` entry-point function for both client and server. Performs command-line argument parsing.                             |
 | `protocol.rs` | Contains the `Message` enum that defines the messages that can be sent between instances.                                            |
-| `<role>.rs`   | Contains the service for the given role. Example implementations and skeletal hydroflow spec are provided for `server` and `client`. |
-| `helpers.rs`  | Contains helper functions that are invoked from Hydroflow code in multiple services.                                                 |
+| `<role>.rs`   | Contains the service for the given role. Example implementations and skeletal DFIR spec are provided for `server` and `client`.       |
+| `helpers.rs`  | Contains helper functions that are invoked from DFIR code in multiple services.                                                      |
 
 ## Communication Patterns
-No particular communication pattern is assumed by Hydroflow. The unmodified template application is designed to be used in a "star topology":
+No particular communication pattern is assumed by DFIR. The unmodified template application is designed to be used in a "star topology":
 multiple independent clients talking to a single server. However, the template can be easily modified to support other topologies.
-Additional examples are provided in the [hydroflow](https://github.com/hydro-project/hydro) repository in the `hydroflow/examples` directory.
+Additional examples are provided in the [hydro](https://github.com/hydro-project/hydro) repository in the `dfir_rs/examples` directory.
 
 ## Where do you go from here?
 This template is intended to be a starting point for your own project. You'll undoubtedly want to change it.
 
-In our experience, when starting a Hydroflow project we recommend a four-step approach:
+In our experience, when starting a DFIR project we recommend a four-step approach:
 
 1. **Roles**: Identify the roles that your services will play (in the `Opts` struct in `src/main.rs`)
 2. **Messages**: Define the basic message types that services will send to each other (in the `Message` enum in `src/protocol.rs`).
@@ -67,7 +68,7 @@ peppered throughout!
 Have fun!
 
 ## Print a Dataflow Graph
-The client and server can optionally print out a dataflow graph of their hydroflow code.
+The client and server can optionally print out a dataflow graph of their DFIR code.
 
 ### Mermaid
 #### Server

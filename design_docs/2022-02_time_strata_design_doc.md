@@ -1,4 +1,6 @@
 # Hydroflow Time & Strata Design Doc
+> **Historical design doc (February 2022).** This is a point-in-time snapshot from early development, when the project was named "Hydroflow." It is preserved for historical context and does **not** reflect the current architecture, terminology (the low-level IR is now "DFIR" and the high-level framework is "Hydro"), or APIs. For current documentation see https://hydro.run/docs.
+
 2022-02
 
 We need to figure out how to handle non-monotonic computation in Hydroflow’s execution model. This is necessary to run any Dedalus program with negation, including [David’s Paxos](https://github.com/davidchuyaya/bud-paxos/tree/b196358a5e34074f3ae57205bad8016ebb954792/dedalus-paxos).

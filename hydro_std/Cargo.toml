@@ -2,7 +2,7 @@
 name = "hydro_std"
 publish = true
 version = "0.17.0-alpha.3"
-documentation = "https://docs.rs/hydro_plus/"
+documentation = "https://docs.rs/hydro_std/"
 description = "Standard library of distributed systems building blocks for Hydro"
 edition = { workspace = true }
 repository = { workspace = true }
