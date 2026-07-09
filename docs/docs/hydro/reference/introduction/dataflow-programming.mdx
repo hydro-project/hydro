@@ -1,0 +1,21 @@
+---
+sidebar_position: 2
+---
+
+# Dataflow Programming
+Hydro uses a dataflow programming model, which will be familiar if you have used APIs like Rust iterators. Instead of using RPCs, async/await or actors to describe distributed computation, Hydro programs describe how to **transform** [live collections](./live-collections.md) using operators such as `map` (transforming elements one by one), `fold` (aggregating elements into a single value), or `join` (combining elements from multiple streams on matching keys).
+
+If you are familiar with Spark, Flink or Pandas, Hydro syntax will look familiar. But there is an important difference in purpose: those systems use dataflow for **bulk analytics** over large datasets, while Hydro uses dataflow to implement **traditional, long-running services**. In Hydro, a stream typically models the feed of requests arriving at a service, and the service's responses are just more streams. A request handler is not a callback or an RPC endpoint; it is a dataflow pipeline that transforms the request stream into a response stream:
+
+```rust,ignore
+// an "echo server" is a transformation over the stream of requests
+pub fn echo_server<'a>(
+    requests: Stream<String, Process<'a, EchoServer>>,
+) -> Stream<String, Process<'a, EchoServer>> {
+    requests.map(q!(|req| format!("echo: {}", req)))
+}
+```
+
+This service-oriented focus means the semantics of Hydro's asynchronous streams differ from bulk analytics systems. Hydro is designed to handle asynchronous streams of small, independent events very efficiently, and uses the type system to track properties that matter for services but not batch jobs: whether a collection is [bounded or unbounded](../correctness/bounded-unbounded.md) (finite data versus an endless feed of requests), whether elements have a deterministic order, and whether messages may be duplicated by retries.
+
+Dataflow also generalizes cleanly to state and coordination. Aggregations like `fold` produce [state](../state-management/index.md) that updates as new events arrive, and sending a live collection over the network moves the dataflow across machines. This lets a single dataflow program describe an entire distributed system — request handling, state management, and inter-service communication — while the Hydro compiler splits it into efficient per-machine binaries.

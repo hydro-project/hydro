@@ -124,7 +124,7 @@ on_worker.send(&p2, TCP.fail_stop().bincode())
 # }));
 ```
 
-This API requires a [non-determinism guard](../live-collections/determinism.md#unsafe-operations-in-hydro), because the set of cluster members may asynchronously change over time. Depending on when we are notified of membership changes, we will broadcast to different members. Under the hood, the `broadcast` API uses a list of members of the cluster provided by the deployment system. To manually access this list, you can use the `source_cluster_membership_stream` method to get a stream of membership events (cluster members joining or leaving):
+This API requires a [non-determinism guard](../correctness/nondet.md), because the set of cluster members may asynchronously change over time. Depending on when we are notified of membership changes, we will broadcast to different members. Under the hood, the `broadcast` API uses a list of members of the cluster provided by the deployment system. To manually access this list, you can use the `source_cluster_membership_stream` method to get a stream of membership events (cluster members joining or leaving):
 
 ```rust
 # use hydro_lang::prelude::*;

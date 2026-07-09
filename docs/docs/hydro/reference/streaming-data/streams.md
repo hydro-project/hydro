@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 # Streams
@@ -8,7 +8,7 @@ Streams are the most common type of live collection in Hydro; they can be used t
 Streams have several type parameters:
 - `T`: the type of elements in the stream
 - `L`: the location the stream is on (see [Locations](../locations/index.md))
-- `B`: indicates whether the stream is [bounded or unbounded](./bounded-unbounded.md)
+- `B`: indicates whether the stream is [bounded or unbounded](../correctness/bounded-unbounded.md)
 - `Order`: indicates whether the elements in the stream have a deterministic order or not
   - This type parameter is _optional_; by default the order is deterministic
 
@@ -94,7 +94,7 @@ let words_concat = all_words
 
 We use `values()` here to drop the member IDs which are included in `send`. See [Clusters](../locations/clusters.md) for more details.
 
-Running an aggregation (`fold`, `reduce`) converts a `Stream` into a `Singleton`, as we see in the type signature here. The `Singleton` type is still "live" in the sense of a [Live Collection](./index.md), so updates to the `Stream` input cause updates to the `Singleton` output. See [Singletons and Optionals](./singletons-optionals.md) for more information.
+Running an aggregation (`fold`, `reduce`) converts a `Stream` into a `Singleton`, as we see in the type signature here. The `Singleton` type is still "live" in the sense of a [Live Collection](../introduction/live-collections.md), so updates to the `Stream` input cause updates to the `Singleton` output. See [Singletons and Optionals](../state-management/singletons-optionals.md) for more information.
 
 :::
 
@@ -145,7 +145,7 @@ let first_arrival = unordered
     .first();
 ```
 
-The `nondet!` macro takes a doc comment explaining why the non-determinism is tolerable. This serves as inline documentation for anyone reading the code later, making it clear that the non-determinism is a deliberate choice rather than an oversight.
+The `nondet!` macro takes a doc comment explaining why the non-determinism is tolerable. This serves as inline documentation for anyone reading the code later, making it clear that the non-determinism is a deliberate choice rather than an oversight. See [Non-Determinism and `nondet!`](../correctness/nondet.md) for guidance on writing these explanations.
 
 :::caution
 
@@ -154,9 +154,4 @@ Use `assume_ordering` sparingly. Once you cast a stream to `TotalOrder`, the typ
 :::
 
 ## Bounded and Unbounded Streams
-
-:::caution
-
-The Hydro documentation is currently under active development! This is a placeholder for future content.
-
-:::
+Like all live collections, streams have a type parameter that tracks whether their contents are final (`Bounded`) or may continue to grow asynchronously (`Unbounded`). A stream created from a fixed in-memory collection with `source_iter` is bounded, while streams of network requests are unbounded. Several APIs — such as those that need to observe the _end_ of the stream — are only available on bounded streams. See [Bounded and Unbounded Types](../correctness/bounded-unbounded.md) for how boundedness is tracked and converted.

@@ -1,0 +1,184 @@
+---
+sidebar_position: 3
+---
+
+import KeyedSingletonRequestAnimation from './KeyedSingletonRequestAnimation';
+
+# Streaming Keyed Singletons
+A `KeyedSingleton<K, V>` is a live collection that captures key-value pairs with keys of type `K` and values of type `V`. You can view the full API documentation for Keyed Singletons [here](rust:hydro_lang::live_collections::KeyedSingleton).
+
+Keyed singletons refine the standard [bounded / unbounded](../correctness/bounded-unbounded.md) distinction with a bound that tracks the keys and values separately:
+
+| Bound | Keys | Values |
+|-------|------|--------|
+| `Bounded` | fixed | immutable |
+| `BoundedValue` | added asynchronously | immutable once present |
+| `MonotonicValue` | added asynchronously | only "grow" monotonically |
+| `MonotonicKeys` | added asynchronously | may change arbitrarily |
+| `Unbounded` | added **and removed** asynchronously | may change arbitrarily |
+
+While keyed singletons can model many kinds of keyed data, this page focuses on their most important streaming use: representing **one value per request key**. In a request/response service, each request has a unique key (a request ID, or a client ID paired with a sequence number) and produces exactly one response. A keyed singleton with the `BoundedValue` bound captures this shape precisely: new key-value pairs appear asynchronously as requests arrive, but only one entry will ever arrive for a given key.
+
+This means that for many request/response servers, you don't need a stream at all. The inputs and outputs of your service can both be keyed singletons:
+
+```rust,ignore
+use hydro_lang::live_collections::keyed_singleton::BoundedValue;
+
+pub fn my_service<'a>(
+    requests: KeyedSingleton<ReqId, Request, Process<'a, MyServer>, BoundedValue>,
+) -> KeyedSingleton<ReqId, Response, Process<'a, MyServer>, BoundedValue> {
+    requests.map(q!(|req| handle(req)))
+}
+```
+
+<KeyedSingletonRequestAnimation />
+
+Because each key's value is fixed, transforming a keyed singleton with `map` deterministically transforms each request into exactly one response, no matter when the requests arrive. Compare this to [Keyed Streams](./keyed-streams.mdx), which model *many* events per key (with ordering concerns within each key); keyed singletons eliminate that complexity when each key carries just one value.
+
+## Creating Keyed Singletons
+Network sources will often hand you a [keyed stream](./keyed-streams.mdx) of `(key, value)` events. When each key logically resolves to a single value, you can collapse a keyed stream into a keyed singleton.
+
+The simplest API is `first()`, which keeps the first value to arrive for each key. Since later values for a key are ignored, the result is `BoundedValue`: once a key's value is determined, it never changes.
+
+```rust
+# use hydro_lang::prelude::*;
+use hydro_lang::live_collections::keyed_singleton::BoundedValue;
+# use futures::StreamExt;
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+# let submissions = KeyedStream::<_, _, _, Unbounded>::from(process.source_iter(q!(vec![
+#     (42, "first draft"),
+#     (7, "hello"),
+#     (42, "late edit, ignored"),
+# ])).into_keyed());
+let submissions: KeyedStream<u32, &str, _, _> = // ...
+# submissions;
+
+// the first submission for each key wins; later ones are ignored
+let accepted: KeyedSingleton<u32, &str, _, BoundedValue> = submissions.first();
+// { 42: "first draft", 7: "hello" }
+# accepted.entries().map(q!(|(k, v)| (k, v.to_string())))
+# }, |mut stream| async move {
+# let mut results = vec![];
+# for _ in 0..2 { results.push(stream.next().await.unwrap()); }
+# results.sort();
+# assert_eq!(results, vec![(7, "hello".to_string()), (42, "first draft".to_string())]);
+# }));
+```
+
+For richer logic, `fold_early_stop` aggregates the values for each key *until the aggregation declares itself complete* by returning `true`. As soon as a key's aggregation completes, its (now immutable) result is released downstream, even if the input stream is unbounded. This is useful when a "request" is spread across several events, such as collecting a quorum of votes:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::keyed_singleton::BoundedValue;
+# use futures::StreamExt;
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+# let votes = KeyedStream::<_, _, _, Unbounded>::from(process.source_iter(q!(vec![
+#     ("proposal-1", "alice"),
+#     ("proposal-2", "bob"),
+#     ("proposal-1", "carol"),
+#     ("proposal-2", "dana"),
+# ])).into_keyed());
+let votes: KeyedStream<&str, &str, _, _> = // ...
+# votes;
+
+// each proposal completes once it receives two votes
+let quorums: KeyedSingleton<&str, usize, _, BoundedValue> = votes.fold_early_stop(
+    q!(|| 0),
+    q!(|count, _voter| {
+        *count += 1;
+        *count == 2 // true: this key is complete, release the result
+    }),
+);
+// { "proposal-1": 2, "proposal-2": 2 }
+# quorums.entries().map(q!(|(k, v)| (k.to_string(), v)))
+# }, |mut stream| async move {
+# let mut results = vec![];
+# for _ in 0..2 { results.push(stream.next().await.unwrap()); }
+# results.sort();
+# assert_eq!(results, vec![("proposal-1".to_string(), 2), ("proposal-2".to_string(), 2)]);
+# }));
+```
+
+Both `first()` and `fold_early_stop` require the input keyed stream to have deterministic ordering within each key (`TotalOrder`) and no retries (`ExactlyOnce`), since otherwise the resulting value for each key would be non-deterministic.
+
+:::info
+
+We are also working on higher-level sources that produce keyed singletons directly, such as an HTTP router that emits a `BoundedValue` keyed singleton of requests and expects a keyed singleton of responses, one per request key.
+
+:::
+
+## Transforming and Observing Values
+Keyed singletons support familiar per-value transformations: `map`, `filter`, `filter_map`, and `inspect`, along with `map_with_key` when the new value depends on the key. These all preserve the keyed structure, and transforming a `BoundedValue` keyed singleton produces another `BoundedValue` keyed singleton, which is exactly why a request/response service can be written as a `map`:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::keyed_singleton::BoundedValue;
+# use futures::StreamExt;
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+# let requests = KeyedStream::<_, _, _, Unbounded>::from(
+#     process.source_iter(q!(vec![(1u32, 10u32), (2, 20)])).into_keyed()
+# ).first();
+let requests: KeyedSingleton<u32, u32, _, BoundedValue> = // { 1: 10, 2: 20 }
+# requests;
+
+let responses: KeyedSingleton<u32, u32, _, BoundedValue> =
+    requests.map(q!(|amount| amount * 2));
+// { 1: 20, 2: 40 }
+# responses.entries()
+# }, |mut stream| async move {
+# let mut results = vec![];
+# for _ in 0..2 { results.push(stream.next().await.unwrap()); }
+# results.sort();
+# assert_eq!(results, vec![(1, 20), (2, 40)]);
+# }));
+```
+
+A keyed singleton can also be flattened back into streams: `entries()` emits `(K, V)` tuples, `values()` emits just the values, and `keys()` emits just the keys. As new keys arrive, they are streamed into the output. Like the corresponding [keyed stream APIs](./keyed-streams.mdx), these return `NoOrder` streams because keys complete in a non-deterministic order.
+
+You can also observe aggregate views: `key_count()` produces a `Singleton<usize>` that asynchronously tracks the number of keys, and `into_singleton()` produces a `Singleton<HashMap<K, V>>` with the full mapping.
+
+## Using Keyed Singletons with State
+Pure transformations like `map` cover services where each response depends only on its own request. When responses must consult service **state** (a counter, a table, etc.), you process the keyed singleton inside a [slice block](../state-management/slices.mdx). When you `use` a `BoundedValue` keyed singleton in a `sliced!` block, it is revealed as a **batch of newly-arrived entries**. Each request key appears in exactly one batch, so every request is handled exactly once:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::keyed_singleton::BoundedValue;
+# use futures::StreamExt;
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+# let orders = KeyedStream::<_, _, _, Unbounded>::from(
+#     process.source_iter(q!(vec![(1u32, 2u32), (2, 3)])).into_keyed()
+# ).first();
+let orders: KeyedSingleton<u32, u32, _, BoundedValue> = // { order 1: qty 2, order 2: qty 3 }
+# orders;
+let unit_price: Singleton<u32, _, _> = // computed elsewhere, may change over time
+# process.singleton(q!(10u32));
+
+let quotes = sliced! {
+    // the entries that arrived since the previous slice; each order appears exactly once
+    let new_orders = use(orders, nondet!(/** each order is quoted independently, exactly once */));
+    // a snapshot of the current price
+    let price = use(unit_price, nondet!(/** each order is quoted at the price when it is processed */));
+
+    new_orders
+        .into_keyed_stream()
+        .cross_singleton(price)
+        .map(q!(|(qty, price)| qty * price))
+        .entries()
+};
+// { 1: 20, 2: 30 }
+# quotes
+# }, |mut stream| async move {
+# let mut results = vec![];
+# for _ in 0..2 { results.push(stream.next().await.unwrap()); }
+# results.sort();
+# assert_eq!(results, vec![(1, 20), (2, 30)]);
+# }));
+```
+
+Inside a slice, batched keyed singletons also unlock relational APIs like `get`, `join_keyed_stream`, `join_keyed_singleton`, and `lookup_keyed_singleton` for combining keyed data. See [Slice Hooks](../state-management/slice-hooks.md) for the full semantics of slicing each collection type.
+
+:::caution
+
+The batch-of-new-entries semantics applies to `BoundedValue` keyed singletons. Slicing an `Unbounded` keyed singleton (mutable per-key state) instead reveals a **snapshot** of the current mapping; see [Keyed State](../state-management/keyed-state.md).
+
+:::
