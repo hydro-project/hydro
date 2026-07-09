@@ -1,4 +1,6 @@
 # Lattice Properties
+> **Historical design doc (July 2023).** This is a point-in-time snapshot from early development, when the project was named "Hydroflow." It is preserved for historical context and does **not** reflect the current architecture, terminology (the low-level IR is now "DFIR" and the high-level framework is "Hydro"), or APIs. For current documentation see https://hydro.run/docs.
+
 
 ## Goals
 

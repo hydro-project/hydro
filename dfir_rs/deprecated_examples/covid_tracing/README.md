@@ -2,6 +2,6 @@
 
 To run:
 ```
-cargo run -p hydroflow --example covid_tracing
+cargo run -p dfir_rs --example covid_tracing
 ```
 Tracing will run until you press `ctrl+c` to exit.
