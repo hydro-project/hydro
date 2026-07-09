@@ -72,17 +72,17 @@ item passed in.
 
 The DFIR surface syntax is merely a *specification*; it does not actually do anything
 until we run it.
-We can run this flow from within Rust via the [`run_available()` method](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir#method.run_available).
+We can run this flow from within Rust via the [`run_available_sync()` method](rust:dfir_rs::scheduled::context::Dfir::run_available_sync).
 
 <CodeBlock language="rust">{getLines(exampleCode, 'run')}</CodeBlock>
 
-Note that `run_available()` runs the DFIR graph until no more work is immediately
+Note that `run_available_sync()` runs the DFIR graph until no more work is immediately
 available. In this example flow, running the graph drains the iterator completely, so no
 more work will *ever* be available. In future examples we will use external inputs such as
 network ingress, in which case more work might appear at any time.
 
-In server applications that use network ingress for inputs, new work can appear at any time. In these application
-we may need a different method than `run_available()`, e.g. the [`run_async()`](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir.html#method.run_async) method, check [the networking examples](./example_7_networking.mdx) for more.
+In server applications that use network ingress for inputs, new work can appear at any time. In these applications
+we may need a different method than `run_available_sync()`, e.g. the [`run()`](rust:dfir_rs::scheduled::context::Dfir::run) method, check [the networking examples](./example_7_networking.mdx) for more.
 
 ### A Note on Project Structure
 The template project is intended to be a starting point for your own DFIR project, and you can add files and directories as you see fit. The only requirement is that the `src/main.rs` file exists and contains a `main()` function.
