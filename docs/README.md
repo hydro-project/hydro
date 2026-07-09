@@ -4,20 +4,20 @@ This website is built using [Docusaurus 2](https://docusaurus.io/), a modern sta
 You'll need Node installed to build the website. First, install the necessary dependencies:
 
 ```bash
-$ npm ci
+npm ci
 ```
 
 Finally, you can run the website locally:
 
 ```bash
-$ npm run start
+npm run start
 ```
 
 ## Building the DFIR docs
 `dfir/syntax/surface_ops_gen.md` is generated during the Rust build.
 If you have not built the Rust project yet, you may need to run this command generate or update it:
 ```bash
-$ cargo build -p dfir_macro -p dfir_lang
+cargo build -p dfir_macro -p dfir_lang
 ```
 (The `DFIR_GENERATE_DOCS` environment variable must be set for this, but `.cargo/config.toml` already does this for us).
 
@@ -25,30 +25,30 @@ $ cargo build -p dfir_macro -p dfir_lang
 By default, the DFIR / Datalog playgrounds are not loaded when launching the website. To build the playground, you'll need to follow a couple additional steps. This requires Rust and [wasm-pack](https://rustwasm.github.io/wasm-pack/):
 
 ```bash
-$ rustup target add wasm32-unknown-unknown
-$ cargo install wasm-pack
-$ cd ../website_playground
-$ RUSTFLAGS="--cfg procmacro2_semver_exempt --cfg super_unstable" wasm-pack build
+rustup target add wasm32-unknown-unknown
+cargo install wasm-pack
+cd ../website_playground
+RUSTFLAGS="--cfg procmacro2_semver_exempt --cfg super_unstable" rustup run nightly wasm-pack build
 ```
 
 ### Notes on building on macOS
 If you're building on macOS, you may need to install the `llvm` package with Homebrew (because the default toolchain has WASM support missing):
 
 ```bash
-$ brew install llvm
+brew install llvm
 ```
 
 Then, you'll need to set `TARGET_CC` and `TARGET_AR` environment variables when building the playground:
 
 ```bash
-$ TARGET_CC="$(brew --prefix)/opt/llvm/bin/clang" TARGET_AR="$(brew --prefix)/opt/llvm/bin/llvm-ar" RUSTFLAGS="--cfg procmacro2_semver_exempt --cfg super_unstable" wasm-pack build
+TARGET_CC="$(brew --prefix)/opt/llvm/bin/clang" TARGET_AR="$(brew --prefix)/opt/llvm/bin/llvm-ar" RUSTFLAGS="--cfg procmacro2_semver_exempt --cfg super_unstable" rustup run nightly wasm-pack build
 ```
 
 With the WASM portion built, we can launch the website with the playground loaded:
 
 ```bash
-$ cd ../docs
-$ LOAD_PLAYGROUND=1 npm run start
+cd ../docs
+LOAD_PLAYGROUND=1 npm run start
 ```
 
 ## Adding Papers
