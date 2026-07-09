@@ -2,6 +2,7 @@ import Link from "@docusaurus/Link";
 import Layout from "@theme/Layout";
 import Image from "@theme/IdealImage";
 
+import aanand from "./people-img/aanand.png";
 import akcheung from "./people-img/akcheung.jpeg";
 import conor from "./people-img/conor.jpeg";
 import david from "./people-img/david.jpeg";
@@ -95,7 +96,7 @@ export default function Home() {
                 name={"Aanand Kainth"}
                 role={"Engineer, AWS"}
                 url={"https://www.linkedin.com/in/akainth015"}
-                img={hydroTurtle}
+                img={aanand}
               ></PersonCard>
               <PersonCard
                 name={"Lucky Katahanas"}
