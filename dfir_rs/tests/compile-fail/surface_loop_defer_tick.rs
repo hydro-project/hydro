@@ -1,8 +1,12 @@
 fn main() {
     let mut df = dfir_rs::dfir_syntax! {
-        source_iter(0..10) -> batch();
+        inp = source_iter(0..10);
         loop {
-            batch() -> defer_tick() -> null();
+            inp -> batch() -> inner_data;
+            inner_data = identity();
+            loop {
+                inner_data -> batch() -> defer_tick() -> null();
+            };
         };
     };
     df.run_available_sync();

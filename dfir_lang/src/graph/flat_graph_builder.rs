@@ -1081,19 +1081,41 @@ impl FlatGraphBuilder {
                 ));
             }
 
-            // Ensure `defer_tick`/`defer_tick_lazy` (tick-boundary operators) are NOT inside a loop.
+            // Ensure `defer_tick`/`defer_tick_lazy` (tick-boundary operators) are NOT inside
+            // nested loops (those with a parent loop). They ARE allowed in root-level loops
+            // because root-level loops are fused with the tick (emit `if` not `while`).
             // (`defer_iteration`/`defer_iteration_lazy` outside a loop is already caught by the
             // FloType::NextIteration check below.)
             let delay_type =
                 (op_inst.op_constraints.input_delaytype_fn)(&PortIndexValue::Elided(None));
-            if let (Some(_loop_id), Some(DelayType::Tick | DelayType::TickLazy)) =
+            if let (Some(loop_id), Some(DelayType::Tick | DelayType::TickLazy)) =
                 (loop_opt, delay_type)
+            {
+                // Only error if this is a nested loop (has a parent).
+                if self.flat_graph.loop_parent(loop_id).is_some() {
+                    self.diagnostics.push(Diagnostic::spanned(
+                        node.span(),
+                        Level::Error,
+                        format!(
+                            "Operator `{}(...)` is not allowed within a nested `loop {{ ... }}` context. Use `defer_iteration()` or `defer_iteration_lazy()` instead.",
+                            op_inst.op_constraints.name
+                        ),
+                    ));
+                }
+            }
+
+            // Ensure `defer_iteration`/`defer_iteration_lazy` are NOT inside root-level loops.
+            // Root-level loops are fused with the tick (no re-fire within a tick), so
+            // `defer_tick`/`defer_tick_lazy` should be used instead.
+            if let (Some(loop_id), Some(FloType::NextIteration)) =
+                (loop_opt, op_inst.op_constraints.flo_type)
+                && self.flat_graph.loop_parent(loop_id).is_none()
             {
                 self.diagnostics.push(Diagnostic::spanned(
                     node.span(),
                     Level::Error,
                     format!(
-                        "Operator `{}(...)` is not allowed within a `loop {{ ... }}` context. Use `defer_iteration()` or `defer_iteration_lazy()` instead.",
+                        "Operator `{}(...)` is not allowed within a root-level `loop {{ ... }}` context (which is fused with the tick). Use `defer_tick()` or `defer_tick_lazy()` instead.",
                         op_inst.op_constraints.name
                     ),
                 ));
@@ -1196,29 +1218,46 @@ impl FlatGraphBuilder {
             }
         }
 
-        // Must be a DAG (excluding `defer_iteration()` / `defer_iteration_lazy()` operators).
+        // Must be a DAG (excluding back-edge operators).
+        // - For nested loops: exclude `defer_iteration()` / `defer_iteration_lazy()` operators.
+        // - For root-level loops: exclude `defer_tick()` / `defer_tick_lazy()` operators.
         // TODO(mingwei): Nested loop blocks should count as a single node.
         // But this doesn't cause any correctness issues because the nested loops are also DAGs.
         for (loop_id, loop_nodes) in self.flat_graph.loops() {
-            // Filter out `defer_iteration()` / `defer_iteration_lazy()` operators.
-            let filter_defer_iteration = |&node_id: &GraphNodeId| {
-                self.flat_graph
-                    .node_op_inst(node_id)
-                    .map(|op_inst| Some(FloType::NextIteration) != op_inst.op_constraints.flo_type)
-                    .unwrap_or(true)
+            let is_root_loop = self.flat_graph.loop_parent(loop_id).is_none();
+
+            // Filter out back-edge operators depending on loop level.
+            let filter_back_edges = |&node_id: &GraphNodeId| {
+                let Some(op_inst) = self.flat_graph.node_op_inst(node_id) else {
+                    return true;
+                };
+                if !is_root_loop {
+                    // Nested loops: filter out defer_iteration / defer_iteration_lazy
+                    Some(FloType::NextIteration) != op_inst.op_constraints.flo_type
+                } else {
+                    // Root-level loops: filter out defer_tick / defer_tick_lazy
+                    let delay_type =
+                        (op_inst.op_constraints.input_delaytype_fn)(&PortIndexValue::Elided(None));
+                    !matches!(delay_type, Some(DelayType::Tick | DelayType::TickLazy))
+                }
             };
 
             let topo_sort_result = graph_algorithms::topo_sort(
-                loop_nodes.iter().copied().filter(filter_defer_iteration),
+                loop_nodes.iter().copied().filter(filter_back_edges),
                 |dst| {
                     self.flat_graph
                         .node_predecessor_nodes(dst)
                         .filter(|&src| Some(loop_id) == self.flat_graph.node_loop(src))
-                        .filter(filter_defer_iteration)
+                        .filter(filter_back_edges)
                 },
             );
             if let Err(cycle) = topo_sort_result {
                 let len = cycle.len();
+                let suggestion = if is_root_loop {
+                    "defer_tick"
+                } else {
+                    DEFER_ITERATION.name
+                };
                 for (i, node_id) in cycle.into_iter().enumerate() {
                     let span = self.flat_graph.node(node_id).span();
                     self.diagnostics.push(Diagnostic::spanned(
@@ -1226,7 +1265,7 @@ impl FlatGraphBuilder {
                         Level::Error,
                         format!(
                             "Operator forms an illegal cycle within a `loop {{ ... }}` block. Use `{}()` to pass data across loop iterations. ({}/{})",
-                            DEFER_ITERATION.name,
+                            suggestion,
                             i + 1,
                             len,
                         ),

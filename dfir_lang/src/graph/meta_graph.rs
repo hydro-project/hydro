@@ -992,8 +992,14 @@ impl DfirGraph {
         false
     }
 
-    /// Emit a loop gate: wraps `child_body` in a `while` condition (or emits it directly
-    /// if there are no gate checks), and appends the result + swap code to `output`.
+    /// Emit a loop gate: wraps `child_body` in the appropriate control structure
+    /// and appends the result + swap code to `output`.
+    ///
+    /// - **Root-level loops** (no parent) are fused with the tick: they emit an `if`
+    ///   so the body runs at most once per tick when their entry condition is met.
+    /// - **Nested loops** (have a parent loop) emit a `while` so they can iterate
+    ///   until fixpoint (driven by `defer_iteration` back-edges).
+    /// - If there are no gate checks, the body is emitted unconditionally.
     fn emit_loop_gate(
         &self,
         loop_id: GraphLoopId,
@@ -1008,6 +1014,9 @@ impl DfirGraph {
             .get(&loop_id)
             .map(|v| v.as_slice())
             .unwrap_or(&[]);
+
+        // Root-level loops are fused with the tick: emit `if` instead of `while`.
+        let is_root_loop = self.loop_parent(loop_id).is_none();
 
         // Build the gate condition from entry handoffs (excluding lazy windowing operators).
         let entry_handoffs = loop_input_handoffs.get(loop_id).expect("loop missing");
@@ -1037,36 +1046,75 @@ impl DfirGraph {
             })
             .collect();
 
-        // Non-lazy defer_iteration back-buffers also contribute to the gate.
-        for (hoff_id, hoff) in self.nodes() {
-            if !matches!(hoff, GraphNode::Handoff { .. }) {
-                continue;
+        // Non-lazy defer_iteration back-buffers also contribute to the gate (nested loops only).
+        if !is_root_loop {
+            for (hoff_id, hoff) in self.nodes() {
+                if !matches!(hoff, GraphNode::Handoff { .. }) {
+                    continue;
+                }
+                let Some(delay_type) = self.handoff_delay_type(hoff_id) else {
+                    continue;
+                };
+                if delay_type != DelayType::Loop {
+                    continue;
+                }
+                // Check this handoff belongs to loop_id.
+                let hoff_loop = self
+                    .node_successors(hoff_id)
+                    .next()
+                    .and_then(|(_, succ)| self.node_subgraph(succ))
+                    .and_then(|sg| self.subgraph_loop(sg));
+                if hoff_loop != Some(loop_id) {
+                    continue;
+                }
+                let span = self.node(hoff_id).span();
+                let back_ident = self.hoff_back_ident(hoff_id, span);
+                gate_checks.push(quote_spanned! {span=> !#back_ident.is_empty() });
             }
-            let Some(delay_type) = self.handoff_delay_type(hoff_id) else {
-                continue;
-            };
-            if delay_type != DelayType::Loop {
-                continue;
+        }
+
+        // For root-level loops: non-lazy defer_tick back-buffers also contribute to the gate.
+        // This ensures the loop fires on the next tick when data was deferred via defer_tick.
+        if is_root_loop {
+            for (hoff_id, hoff) in self.nodes() {
+                if !matches!(hoff, GraphNode::Handoff { .. }) {
+                    continue;
+                }
+                let Some(delay_type) = self.handoff_delay_type(hoff_id) else {
+                    continue;
+                };
+                if delay_type != DelayType::Tick {
+                    continue;
+                }
+                // Check this handoff's consumer is inside this root-level loop.
+                let hoff_loop = self
+                    .node_successors(hoff_id)
+                    .next()
+                    .and_then(|(_, succ)| self.node_subgraph(succ))
+                    .and_then(|sg| self.subgraph_loop(sg));
+                if hoff_loop != Some(loop_id) {
+                    continue;
+                }
+                let span = self.node(hoff_id).span();
+                let back_ident = self.hoff_back_ident(hoff_id, span);
+                gate_checks.push(quote_spanned! {span=> !#back_ident.is_empty() });
             }
-            // Check this handoff belongs to loop_id.
-            let hoff_loop = self
-                .node_successors(hoff_id)
-                .next()
-                .and_then(|(_, succ)| self.node_subgraph(succ))
-                .and_then(|sg| self.subgraph_loop(sg));
-            if hoff_loop != Some(loop_id) {
-                continue;
-            }
-            let span = self.node(hoff_id).span();
-            let back_ident = self.hoff_back_ident(hoff_id, span);
-            gate_checks.push(quote_spanned! {span=> !#back_ident.is_empty() });
         }
 
         if gate_checks.is_empty() {
             // No entry handoffs — always run.
             output.extend(child_body);
             output.extend(quote! { #( #swap_code )* });
+        } else if is_root_loop {
+            // Root-level loop: fused with tick, fire at most once.
+            output.extend(quote! {
+                if false #( || #gate_checks )* {
+                    #child_body
+                    #( #swap_code )*
+                }
+            });
         } else {
+            // Nested loop: iterate until fixpoint.
             output.extend(quote! {
                 while false #( || #gate_checks )* {
                     #child_body
@@ -1203,11 +1251,29 @@ impl DfirGraph {
         // At the end of each tick, swap the regular buffer and back buffer so the
         // consumer reads last tick's data from the back buffer.
         // Only tick-level swaps go here; loop-level swaps are emitted inside the loop gate.
+        // IMPORTANT: For defer_tick handoffs whose consumer is inside a root-level loop,
+        // the swap is emitted inside the `if` gate (via loop_swap_code), not at tick level.
         let back_edge_swap_code = handoff_nodes
             .iter()
             .filter(|&&(node_id, _kind, _)| {
                 self.handoff_delay_type(node_id)
                     .is_some_and(|dt| matches!(dt, DelayType::Tick | DelayType::TickLazy))
+            })
+            .filter(|&&(hoff_id, _kind, _)| {
+                // Exclude handoffs whose consumer is inside a root-level loop.
+                // Those get their swap emitted inside the loop gate.
+                let consumer_loop = self
+                    .node_successors(hoff_id)
+                    .next()
+                    .and_then(|(_, succ)| self.node_subgraph(succ))
+                    .and_then(|sg| self.subgraph_loop(sg));
+                if let Some(loop_id) = consumer_loop {
+                    // If it's a root-level loop, don't include in tick-level swap.
+                    self.loop_parent(loop_id).is_some()
+                } else {
+                    // No loop context: emit at tick level (original behavior).
+                    true
+                }
             })
             .map(|&(hoff_id, _kind, _)| {
                 let span = self.nodes[hoff_id].span();
@@ -1219,7 +1285,8 @@ impl DfirGraph {
             })
             .collect::<Vec<_>>();
 
-        // Collect per-loop swap code for defer_iteration / defer_iteration_lazy handoffs.
+        // Collect per-loop swap code for defer_iteration / defer_iteration_lazy handoffs,
+        // AND defer_tick / defer_tick_lazy handoffs inside root-level loops.
         // Keyed by the loop ID of the consumer (successor) of the handoff.
         let mut loop_swap_code: std::collections::HashMap<GraphLoopId, Vec<TokenStream>> =
             std::collections::HashMap::new();
@@ -1227,9 +1294,6 @@ impl DfirGraph {
             let Some(delay_type) = self.handoff_delay_type(hoff_id) else {
                 continue;
             };
-            if !matches!(delay_type, DelayType::Loop | DelayType::LoopLazy) {
-                continue;
-            }
             // Find the loop this handoff belongs to (from its consumer's loop context).
             let loop_id = self
                 .node_successors(hoff_id)
@@ -1239,6 +1303,16 @@ impl DfirGraph {
             let Some(loop_id) = loop_id else {
                 continue;
             };
+            let include = match delay_type {
+                DelayType::Loop | DelayType::LoopLazy => true,
+                DelayType::Tick | DelayType::TickLazy => {
+                    // Only include in loop swap if this is a root-level loop.
+                    self.loop_parent(loop_id).is_none()
+                }
+            };
+            if !include {
+                continue;
+            }
             let span = self.nodes[hoff_id].span();
             let buf_ident = self.hoff_buf_ident(hoff_id, span);
             let back_ident = self.hoff_back_ident(hoff_id, span);
@@ -2036,11 +2110,37 @@ impl DfirGraph {
             .iter()
             .map(|(_, buf_ident, _)| buf_ident);
         // For checking if we should start the next tick (`schedule_subgraph`):
-        // check the regular (send) buffer for non-lazy defer_tick handoffs, since
-        // that's where the producer writes during this tick.
-        let non_lazy_buf_idents = back_buffer_idents_laziness
+        // Collect the ident to check for each non-lazy back-edge handoff.
+        // - For defer_tick handoffs in a root-level loop: check `back` (swap happened inside `if`)
+        // - For all others: check `buf` (original behavior; tick-level swap hasn't happened yet)
+        let non_lazy_schedule_idents: Vec<&Ident> = handoff_nodes
             .iter()
-            .filter_map(|(_, buf_ident, is_lazy)| (!is_lazy).then_some(buf_ident));
+            .filter_map(|&(hoff_id, _, _)| {
+                let delay_type = self.handoff_delay_type(hoff_id)?;
+                // Only non-lazy.
+                if matches!(delay_type, DelayType::TickLazy | DelayType::LoopLazy) {
+                    return None;
+                }
+                let span = self.nodes[hoff_id].span();
+                let expected_back_ident = self.hoff_back_ident(hoff_id, span);
+                let entry = back_buffer_idents_laziness
+                    .iter()
+                    .find(|(back_ident, _, _)| *back_ident == expected_back_ident)?;
+
+                // For defer_tick inside a root-level loop, check `back`.
+                if delay_type == DelayType::Tick {
+                    let consumer_loop = self
+                        .node_successors(hoff_id)
+                        .next()
+                        .and_then(|(_, succ)| self.node_subgraph(succ))
+                        .and_then(|sg| self.subgraph_loop(sg));
+                    if consumer_loop.is_some_and(|lid| self.loop_parent(lid).is_none()) {
+                        return Some(&entry.0); // back ident
+                    }
+                }
+                Some(&entry.1) // buf ident
+            })
+            .collect();
 
         // Prologues and buffer declarations persist across ticks (outside the closure).
         // Subgraph blocks run each tick (inside the closure).
@@ -2092,9 +2192,9 @@ impl DfirGraph {
 
                         #gated_subgraph_code
 
-                        // For non-lazy defer_tick: if any deferred buffer has data,
+                        // For non-lazy defer_tick/defer_iteration: if any deferred buffer has data,
                         // signal that another tick should run.
-                        if false #( || !#non_lazy_buf_idents.is_empty() )* {
+                        if false #( || !#non_lazy_schedule_idents.is_empty() )* {
                             #df.schedule_subgraph(true);
                         }
 
