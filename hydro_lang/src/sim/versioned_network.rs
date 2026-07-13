@@ -66,8 +66,8 @@ pub(crate) fn splice_versioned_networks(
             let taken = std::mem::replace(node, HydroNode::Placeholder);
             let HydroNode::Network {
                 input,
-                serialize_fn,
-                deserialize_fn,
+                serialize,
+                deserialize,
                 metadata,
                 ..
             } = taken
@@ -89,7 +89,7 @@ pub(crate) fn splice_versioned_networks(
             });
 
             if let HydroNode::VersionedNetworkFork { senders, .. } = &mut *fork_rc.borrow_mut() {
-                senders.push((version, input, serialize_fn));
+                senders.push((version, input, serialize));
             } else {
                 unreachable!("fork map only ever holds VersionedNetworkFork nodes");
             }
@@ -97,7 +97,7 @@ pub(crate) fn splice_versioned_networks(
             *node = HydroNode::VersionedNetwork {
                 fork: SharedNode(fork_rc.clone()),
                 version,
-                deserialize_fn,
+                deserialize,
                 metadata,
             };
         },

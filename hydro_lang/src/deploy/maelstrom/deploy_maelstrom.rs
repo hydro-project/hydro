@@ -54,6 +54,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _p2_port: &<Self::Process as Node>::Port,
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
+        _external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr) {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
@@ -75,6 +76,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _c2_port: &<Self::Cluster as Node>::Port,
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
+        _external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr) {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
@@ -96,6 +98,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _p2_port: &<Self::Process as Node>::Port,
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
+        _external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr) {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
@@ -117,6 +120,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _c2_port: &<Self::Cluster as Node>::Port,
         _name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
+        _external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr) {
         use crate::networking::{NetworkingInfo, TcpFault};
         match networking_info {

@@ -22,11 +22,21 @@ pub trait Deploy<'a> {
     type External: Node<Meta = Self::Meta, InstantiateEnv = Self::InstantiateEnv>
         + RegisterPort<'a, Self>;
 
+    /// Whether this deployment backend supports network channels that leave serialization to code
+    /// outside of Hydro (see [`crate::networking::Embedded`]). When `false`, attempting to use such
+    /// a channel will panic during instantiation.
+    const SUPPORTS_EXTERNAL_SERIALIZATION: bool = false;
+
     /// Generates the source and sink expressions when connecting a [`Self::Process`] to another
     /// [`Self::Process`].
     ///
     /// The [`Self::InstantiateEnv`] can be used to record metadata about the created channel. The
     /// provided `name` is the user-configured channel name from the network IR node.
+    ///
+    /// When `external_types` is [`Some`], the channel leaves serialization to code outside
+    /// of Hydro and the provided type is the raw element type that flows across the channel
+    /// unserialized.
+    #[expect(clippy::too_many_arguments, reason = "networking codegen")]
     fn o2o_sink_source(
         env: &mut Self::InstantiateEnv,
         p1: &Self::Process,
@@ -35,6 +45,7 @@ pub trait Deploy<'a> {
         p2_port: &<Self::Process as Node>::Port,
         name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
+        external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr);
 
     /// Performs any runtime wiring needed after code generation for a
@@ -55,6 +66,11 @@ pub trait Deploy<'a> {
     /// receiving cluster member. The [`Self::InstantiateEnv`] can be used to record metadata
     /// about the created channel. The provided `name` is the user-configured channel name
     /// from the network IR node.
+    ///
+    /// When `external_types` is [`Some`], the channel leaves serialization to code outside
+    /// of Hydro and the provided type is the raw element type that flows across the channel
+    /// unserialized.
+    #[expect(clippy::too_many_arguments, reason = "networking codegen")]
     fn o2m_sink_source(
         env: &mut Self::InstantiateEnv,
         p1: &Self::Process,
@@ -63,6 +79,7 @@ pub trait Deploy<'a> {
         c2_port: &<Self::Cluster as Node>::Port,
         name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
+        external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr);
 
     /// Performs any runtime wiring needed after code generation for a
@@ -83,6 +100,11 @@ pub trait Deploy<'a> {
     /// on the receiving process. The [`Self::InstantiateEnv`] can be used to record metadata
     /// about the created channel. The provided `name` is the user-configured channel name
     /// from the network IR node.
+    ///
+    /// When `external_types` is [`Some`], the channel leaves serialization to code outside
+    /// of Hydro and the provided type is the raw element type that flows across the channel
+    /// unserialized.
+    #[expect(clippy::too_many_arguments, reason = "networking codegen")]
     fn m2o_sink_source(
         env: &mut Self::InstantiateEnv,
         c1: &Self::Cluster,
@@ -91,6 +113,7 @@ pub trait Deploy<'a> {
         p2_port: &<Self::Process as Node>::Port,
         name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
+        external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr);
 
     /// Performs any runtime wiring needed after code generation for a
@@ -111,6 +134,11 @@ pub trait Deploy<'a> {
     /// on each receiving cluster member. The [`Self::InstantiateEnv`] can be used to record
     /// metadata about the created channel. The provided `name` is the user-configured channel
     /// name from the network IR node.
+    ///
+    /// When `external_types` is [`Some`], the channel leaves serialization to code outside
+    /// of Hydro and the provided type is the raw element type that flows across the channel
+    /// unserialized.
+    #[expect(clippy::too_many_arguments, reason = "networking codegen")]
     fn m2m_sink_source(
         env: &mut Self::InstantiateEnv,
         c1: &Self::Cluster,
@@ -119,6 +147,7 @@ pub trait Deploy<'a> {
         c2_port: &<Self::Cluster as Node>::Port,
         name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
+        external_types: Option<(&syn::Type, &syn::Type)>,
     ) -> (syn::Expr, syn::Expr);
 
     /// Performs any runtime wiring needed after code generation for a

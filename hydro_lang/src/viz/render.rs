@@ -1502,8 +1502,8 @@ impl HydroNode {
             }
 
             HydroNode::Network {
-                serialize_fn,
-                deserialize_fn,
+                serialize,
+                deserialize,
                 input,
                 metadata,
                 ..
@@ -1516,12 +1516,26 @@ impl HydroNode {
                 let to_location_type = root.location_type().unwrap();
                 structure.add_location(to_location_key, to_location_type);
 
+                let has_serialize = match serialize {
+                    crate::compile::ir::NetworkSend::Custom { serialize_fn } => {
+                        serialize_fn.is_some()
+                    }
+                    // Embedded channels still convert member-id tags on the send side.
+                    crate::compile::ir::NetworkSend::Embedded { .. } => true,
+                };
+                let has_deserialize = match deserialize {
+                    crate::compile::ir::NetworkRecv::Custom { deserialize_fn } => {
+                        deserialize_fn.is_some()
+                    }
+                    crate::compile::ir::NetworkRecv::Embedded { .. } => true,
+                };
+
                 let mut label = "network(".to_owned();
-                if serialize_fn.is_some() {
+                if has_serialize {
                     label.push_str("send");
                 }
-                if deserialize_fn.is_some() {
-                    if serialize_fn.is_some() {
+                if has_deserialize {
+                    if has_serialize {
                         label.push_str(" + ");
                     }
                     label.push_str("recv");

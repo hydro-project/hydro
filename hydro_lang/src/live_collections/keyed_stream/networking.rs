@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 use stageleft::{q, quote_type};
 
 use super::KeyedStream;
-use crate::compile::ir::{DebugInstantiate, HydroNode};
+use crate::compile::ir::{DebugInstantiate, HydroNode, NetworkRecv, NetworkSend};
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
 use crate::live_collections::stream::{MinOrder, Ordering, Retries, Stream};
 use crate::location::cluster::{Consistency, NoConsistency};
@@ -119,10 +119,6 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
-        let serialize_pipeline = Some(N::serialize_thunk(true));
-
-        let deserialize_pipeline = Some(N::deserialize_thunk(None));
-
         let name = via.name();
         if to.multiversioned() && name.is_none() {
             panic!(
@@ -130,14 +126,36 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
             );
         }
 
+        let (serialize, deserialize) = if N::is_embedded() {
+            (
+                NetworkSend::Embedded {
+                    tag: Some(quote_type::<L2>().into()),
+                    element_type: quote_type::<T>().into(),
+                },
+                NetworkRecv::Embedded {
+                    tag: None,
+                    element_type: quote_type::<T>().into(),
+                },
+            )
+        } else {
+            (
+                NetworkSend::Custom {
+                    serialize_fn: Some(N::serialize_thunk(true).into()),
+                },
+                NetworkRecv::Custom {
+                    deserialize_fn: Some(N::deserialize_thunk(None).into()),
+                },
+            )
+        };
+
         Stream::new(
             to.clone(),
             HydroNode::Network {
                 name: name.map(ToOwned::to_owned),
                 networking_info: N::networking_info(),
-                serialize_fn: serialize_pipeline.map(|e| e.into()),
+                serialize,
+                deserialize,
                 instantiate_fn: DebugInstantiate::Building,
-                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: to.new_node_metadata(Stream::<
                     T,
@@ -249,10 +267,6 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
-        let serialize_pipeline = Some(N::serialize_thunk(true));
-
-        let deserialize_pipeline = Some(N::deserialize_thunk(None));
-
         let name = via.name();
         if to.multiversioned() && name.is_none() {
             panic!(
@@ -260,14 +274,36 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
             );
         }
 
+        let (serialize, deserialize) = if N::is_embedded() {
+            (
+                NetworkSend::Embedded {
+                    tag: Some(quote_type::<L2>().into()),
+                    element_type: quote_type::<(K, T)>().into(),
+                },
+                NetworkRecv::Embedded {
+                    tag: None,
+                    element_type: quote_type::<(K, T)>().into(),
+                },
+            )
+        } else {
+            (
+                NetworkSend::Custom {
+                    serialize_fn: Some(N::serialize_thunk(true).into()),
+                },
+                NetworkRecv::Custom {
+                    deserialize_fn: Some(N::deserialize_thunk(None).into()),
+                },
+            )
+        };
+
         KeyedStream::new(
             to.clone(),
             HydroNode::Network {
                 name: name.map(ToOwned::to_owned),
                 networking_info: N::networking_info(),
-                serialize_fn: serialize_pipeline.map(|e| e.into()),
+                serialize,
+                deserialize,
                 instantiate_fn: DebugInstantiate::Building,
-                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(
                     self.entries()
                         .map(q!(|((id, k), v)| (id, (k, v))))
@@ -411,10 +447,6 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
-        let serialize_pipeline = Some(N::serialize_thunk(true));
-
-        let deserialize_pipeline = Some(N::deserialize_thunk(Some(&quote_type::<L>())));
-
         let name = via.name();
         if to.multiversioned() && name.is_none() {
             panic!(
@@ -422,14 +454,36 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
             );
         }
 
+        let (serialize, deserialize) = if N::is_embedded() {
+            (
+                NetworkSend::Embedded {
+                    tag: Some(quote_type::<L2>().into()),
+                    element_type: quote_type::<T>().into(),
+                },
+                NetworkRecv::Embedded {
+                    tag: Some(quote_type::<L>().into()),
+                    element_type: quote_type::<T>().into(),
+                },
+            )
+        } else {
+            (
+                NetworkSend::Custom {
+                    serialize_fn: Some(N::serialize_thunk(true).into()),
+                },
+                NetworkRecv::Custom {
+                    deserialize_fn: Some(N::deserialize_thunk(Some(&quote_type::<L>())).into()),
+                },
+            )
+        };
+
         KeyedStream::new(
             to.clone(),
             HydroNode::Network {
                 name: name.map(ToOwned::to_owned),
                 networking_info: N::networking_info(),
-                serialize_fn: serialize_pipeline.map(|e| e.into()),
+                serialize,
+                deserialize,
                 instantiate_fn: DebugInstantiate::Building,
-                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: to.new_node_metadata(KeyedStream::<
                     MemberId<L>,
@@ -584,16 +638,34 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         V: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
-        let serialize_pipeline = Some(N::serialize_thunk(false));
-
-        let deserialize_pipeline = Some(N::deserialize_thunk(Some(&quote_type::<L>())));
-
         let name = via.name();
         if to.multiversioned() && name.is_none() {
             panic!(
                 "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
             );
         }
+
+        let (serialize, deserialize) = if N::is_embedded() {
+            (
+                NetworkSend::Embedded {
+                    tag: None,
+                    element_type: quote_type::<(K, V)>().into(),
+                },
+                NetworkRecv::Embedded {
+                    tag: Some(quote_type::<L>().into()),
+                    element_type: quote_type::<(K, V)>().into(),
+                },
+            )
+        } else {
+            (
+                NetworkSend::Custom {
+                    serialize_fn: Some(N::serialize_thunk(false).into()),
+                },
+                NetworkRecv::Custom {
+                    deserialize_fn: Some(N::deserialize_thunk(Some(&quote_type::<L>())).into()),
+                },
+            )
+        };
 
         let raw_stream: Stream<
             (MemberId<L>, (K, V)),
@@ -606,9 +678,9 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
             HydroNode::Network {
                 name: name.map(ToOwned::to_owned),
                 networking_info: N::networking_info(),
-                serialize_fn: serialize_pipeline.map(|e| e.into()),
+                serialize,
+                deserialize,
                 instantiate_fn: DebugInstantiate::Building,
-                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: to.new_node_metadata(Stream::<
                     (MemberId<L>, (K, V)),

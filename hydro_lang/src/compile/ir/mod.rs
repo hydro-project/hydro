@@ -545,6 +545,7 @@ pub trait DfirBuilder {
         sink: syn::Expr,
         source: syn::Expr,
         deserialize: Option<&DebugExpr>,
+        external_element_type: Option<&syn::Type>,
         tag_id: StmtId,
         networking_info: &crate::networking::NetworkingInfo,
     );
@@ -605,9 +606,11 @@ pub trait DfirBuilder {
         channel_id: u32,
         dest: &LocationId,
         senders: Vec<(LocationId, syn::Ident, Option<DebugExpr>)>,
+        external_element_type: Option<&syn::Type>,
         tag_id: StmtId,
     );
 
+    #[expect(clippy::too_many_arguments, reason = "networking codegen")]
     fn create_versioned_network(
         &mut self,
         channel_id: u32,
@@ -615,6 +618,7 @@ pub trait DfirBuilder {
         dest: &LocationId,
         out_ident: &syn::Ident,
         deserialize: Option<&DebugExpr>,
+        external_element_type: Option<&syn::Type>,
         tag_id: StmtId,
     );
 }
@@ -775,6 +779,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         sink: syn::Expr,
         source: syn::Expr,
         deserialize: Option<&DebugExpr>,
+        _external_element_type: Option<&syn::Type>,
         tag_id: StmtId,
         _networking_info: &crate::networking::NetworkingInfo,
     ) {
@@ -925,6 +930,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         _channel_id: u32,
         _dest: &LocationId,
         _senders: Vec<(LocationId, syn::Ident, Option<DebugExpr>)>,
+        _external_element_type: Option<&syn::Type>,
         _tag_id: StmtId,
     ) {
         unreachable!(
@@ -940,6 +946,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         _dest: &LocationId,
         _out_ident: &syn::Ident,
         _deserialize: Option<&DebugExpr>,
+        _external_element_type: Option<&syn::Type>,
         _tag_id: StmtId,
     ) {
         unreachable!(
@@ -1182,10 +1189,19 @@ impl HydroRoot {
                     networking_info,
                     input,
                     instantiate_fn,
+                    serialize,
+                    deserialize,
                     metadata,
                     ..
                 } = n
                 {
+                    let external_types = match (
+                        serialize.external_element_type(),
+                        deserialize.external_element_type(),
+                    ) {
+                        (Some(input_type), Some(output_type)) => Some((input_type, output_type)),
+                        _ => None,
+                    };
                     let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
                         DebugInstantiate::Building => instantiate_network::<D>(
                             &mut refcell_env.borrow_mut(),
@@ -1195,6 +1211,7 @@ impl HydroRoot {
                             clusters,
                             name.as_deref(),
                             networking_info,
+                            external_types,
                         ),
 
                         DebugInstantiate::Finalized(_) => panic!("network already finalized"),
@@ -2441,6 +2458,121 @@ impl Hash for HydroIrOpMetadata {
     fn hash<H: Hasher>(&self, _: &mut H) {}
 }
 
+/// How a network channel's *sender* prepares each message before it is handed to the transport.
+///
+/// A channel's serialization is split into a send half ([`NetworkSend`]) and a receive half
+/// ([`NetworkRecv`]) so that the multi-version simulation merge can reason about each side
+/// independently (the sender fork and the receiver are separate IR nodes).
+#[derive(Debug, Clone, Hash, serde::Serialize)]
+pub enum NetworkSend {
+    /// Serialization is performed within the Hydro dataflow using the provided serialize
+    /// expression. This is how channels using [`crate::networking::Bincode`] are lowered.
+    Custom { serialize_fn: Option<DebugExpr> },
+    /// Serialization is left to code outside of Hydro (see [`crate::networking::Embedded`]). The
+    /// raw `element_type` is passed through unserialized; the only transformation is converting a
+    /// routing [`crate::location::MemberId`] (the destination cluster `tag`, when demuxing) into
+    /// the raw `TaglessMemberId` used by the transport. Only supported by the embedded backend.
+    ///
+    /// Stored as structured info (rather than a pre-baked expression) so that the code can be
+    /// synthesized in a post-IR codegen pass.
+    Embedded {
+        tag: Option<DebugType>,
+        element_type: DebugType,
+    },
+}
+
+/// How a network channel's *receiver* recovers each message from the transport. See
+/// [`NetworkSend`] for the sender half.
+#[derive(Debug, Clone, Hash, serde::Serialize)]
+pub enum NetworkRecv {
+    /// Deserialization is performed within the Hydro dataflow using the provided deserialize
+    /// expression. This is how channels using [`crate::networking::Bincode`] are lowered.
+    Custom { deserialize_fn: Option<DebugExpr> },
+    /// Deserialization is left to code outside of Hydro (see [`crate::networking::Embedded`]). The
+    /// raw `element_type` is delivered to the receiver directly, with no transport `Result` to
+    /// unwrap (the external code that produces the stream decides how to handle faults). The only
+    /// transformation is converting a `TaglessMemberId` back into a typed
+    /// [`crate::location::MemberId`] (the sender cluster `tag`, when the receiver is keyed by
+    /// sender). Only supported by the embedded backend.
+    Embedded {
+        tag: Option<DebugType>,
+        element_type: DebugType,
+    },
+}
+
+impl NetworkSend {
+    /// The raw payload type flowing across the channel when serialization is left to external code,
+    /// or [`None`] when the channel serializes internally.
+    pub(crate) fn external_element_type(&self) -> Option<&syn::Type> {
+        match self {
+            NetworkSend::Custom { .. } => None,
+            NetworkSend::Embedded { element_type, .. } => Some(&element_type.0),
+        }
+    }
+}
+
+impl NetworkRecv {
+    /// See [`NetworkSend::external_element_type`].
+    pub(crate) fn external_element_type(&self) -> Option<&syn::Type> {
+        match self {
+            NetworkRecv::Custom { .. } => None,
+            NetworkRecv::Embedded { element_type, .. } => Some(&element_type.0),
+        }
+    }
+}
+
+#[cfg(feature = "build")]
+impl NetworkSend {
+    /// The expression applied on the sender to prepare each message for the transport, if any.
+    pub(crate) fn pipeline(&self) -> Option<DebugExpr> {
+        match self {
+            NetworkSend::Custom { serialize_fn } => serialize_fn.clone(),
+            NetworkSend::Embedded { tag, element_type } => {
+                let root = crate::staging_util::get_this_crate();
+                let element_type = &element_type.0;
+                let expr: syn::Expr = if let Some(tag) = tag {
+                    let tag = &tag.0;
+                    parse_quote! {
+                        #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<#tag>, #element_type), _>(
+                            |(id, data)| (id.into_tagless(), data)
+                        )
+                    }
+                } else {
+                    parse_quote! {
+                        #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<#element_type, _>(
+                            |data| data
+                        )
+                    }
+                };
+                Some(expr.into())
+            }
+        }
+    }
+}
+
+#[cfg(feature = "build")]
+impl NetworkRecv {
+    /// The expression applied on the receiver to recover each message from the transport, if any.
+    pub(crate) fn pipeline(&self) -> Option<DebugExpr> {
+        match self {
+            NetworkRecv::Custom { deserialize_fn } => deserialize_fn.clone(),
+            // Embedded channels hand the raw payload to the receiver directly (no transport
+            // `Result`), so the developer's external code decides how to handle serialization
+            // faults. The only transformation is restoring the typed `MemberId` when the receiver
+            // is keyed by the sender.
+            NetworkRecv::Embedded { tag, .. } => {
+                let tag = tag.as_ref()?;
+                let root = crate::staging_util::get_this_crate();
+                let tag = &tag.0;
+                let expr: syn::Expr = parse_quote! {
+                    |(id, b)| (#root::__staged::location::MemberId::<#tag>::from_tagless(id as #root::__staged::location::TaglessMemberId), b)
+                };
+                Some(expr.into())
+            }
+        }
+    }
+}
+
 /// An intermediate node in a Hydro graph, which consumes data
 /// from upstream nodes and emits data to downstream nodes.
 #[derive(Debug, Hash, serde::Serialize)]
@@ -2698,9 +2830,9 @@ pub enum HydroNode {
     Network {
         name: Option<String>,
         networking_info: crate::networking::NetworkingInfo,
-        serialize_fn: Option<DebugExpr>,
+        serialize: NetworkSend,
+        deserialize: NetworkRecv,
         instantiate_fn: DebugInstantiate,
-        deserialize_fn: Option<DebugExpr>,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
@@ -2708,14 +2840,14 @@ pub enum HydroNode {
     VersionedNetworkFork {
         channel_id: u32,
         channel_name: String,
-        senders: Vec<(u32, Box<HydroNode>, Option<DebugExpr>)>,
+        senders: Vec<(u32, Box<HydroNode>, NetworkSend)>,
         metadata: HydroIrMetadata,
     },
 
     VersionedNetwork {
         fork: SharedNode,
         version: u32,
-        deserialize_fn: Option<DebugExpr>,
+        deserialize: NetworkRecv,
         metadata: HydroIrMetadata,
     },
 
@@ -3299,17 +3431,17 @@ impl HydroNode {
             HydroNode::Network {
                 name,
                 networking_info,
-                serialize_fn,
+                serialize,
+                deserialize,
                 instantiate_fn,
-                deserialize_fn,
                 input,
                 metadata,
             } => HydroNode::Network {
                 name: name.clone(),
                 networking_info: networking_info.clone(),
-                serialize_fn: serialize_fn.clone(),
+                serialize: serialize.clone(),
+                deserialize: deserialize.clone(),
                 instantiate_fn: instantiate_fn.clone(),
-                deserialize_fn: deserialize_fn.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -3368,7 +3500,7 @@ impl HydroNode {
             HydroNode::VersionedNetwork {
                 fork,
                 version,
-                deserialize_fn,
+                deserialize,
                 metadata,
             } => {
                 let cloned_fork = if let Some(transformed) = seen_tees.get(&fork.as_ptr()) {
@@ -3383,7 +3515,7 @@ impl HydroNode {
                 HydroNode::VersionedNetwork {
                     fork: cloned_fork,
                     version: *version,
-                    deserialize_fn: deserialize_fn.clone(),
+                    deserialize: deserialize.clone(),
                     metadata: metadata.clone(),
                 }
             }
@@ -5063,9 +5195,9 @@ impl HydroNode {
 
                     HydroNode::Network {
                         networking_info,
-                        serialize_fn: serialize_pipeline,
+                        serialize,
+                        deserialize,
                         instantiate_fn,
-                        deserialize_fn: deserialize_pipeline,
                         input,
                         ..
                     } => {
@@ -5074,6 +5206,11 @@ impl HydroNode {
                         let stmt_id = next_stmt_id.get_and_increment();
                         let receiver_stream_ident =
                             syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
+
+                        // For embedded (external) serialization, this synthesizes only the
+                        // member-id tag conversions (if any) and passes the raw payload through.
+                        let serialize_pipeline = serialize.pipeline();
+                        let deserialize_pipeline = deserialize.pipeline();
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -5097,6 +5234,7 @@ impl HydroNode {
                                     sink_expr,
                                     source_expr,
                                     deserialize_pipeline.as_ref(),
+                                    serialize.external_element_type(),
                                     stmt_id,
                                     networking_info,
                                 );
@@ -5191,6 +5329,11 @@ impl HydroNode {
 
                         let stmt_id = next_stmt_id.get_and_increment();
 
+                        // All senders share the channel, so the raw element type (for embedded
+                        // serialization) is read from the first sender.
+                        let external_element_type =
+                            senders.first().and_then(|(_, _, s)| s.external_element_type());
+
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
                                 let sender_args: Vec<(LocationId, syn::Ident, Option<DebugExpr>)> =
@@ -5201,7 +5344,7 @@ impl HydroNode {
                                             (
                                                 sender.metadata().location_id.clone(),
                                                 ident,
-                                                serialize.clone(),
+                                                serialize.pipeline(),
                                             )
                                         })
                                         .collect();
@@ -5209,6 +5352,7 @@ impl HydroNode {
                                     *channel_id,
                                     &metadata.location_id,
                                     sender_args,
+                                    external_element_type,
                                     stmt_id,
                                 );
                             }
@@ -5220,7 +5364,7 @@ impl HydroNode {
 
                     HydroNode::VersionedNetwork {
                         fork,
-                        deserialize_fn,
+                        deserialize,
                         metadata,
                         ..
                     } => {
@@ -5247,6 +5391,9 @@ impl HydroNode {
                             (*channel_id, source_loc)
                         };
 
+                        let deserialize_pipeline = deserialize.pipeline();
+                        let external_element_type = deserialize.external_element_type();
+
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
                                 graph_builders.create_versioned_network(
@@ -5254,7 +5401,8 @@ impl HydroNode {
                                     &source_loc,
                                     &metadata.location_id,
                                     &receiver_stream_ident,
-                                    deserialize_fn.as_ref(),
+                                    deserialize_pipeline.as_ref(),
+                                    external_element_type,
                                     stmt_id,
                                 );
                             }
@@ -5348,14 +5496,20 @@ impl HydroNode {
                 transform(&mut acc.expr);
             }
             HydroNode::Network {
-                serialize_fn,
-                deserialize_fn,
+                serialize,
+                deserialize,
                 ..
             } => {
-                if let Some(serialize_fn) = serialize_fn {
+                if let NetworkSend::Custom {
+                    serialize_fn: Some(serialize_fn),
+                } = serialize
+                {
                     transform(serialize_fn);
                 }
-                if let Some(deserialize_fn) = deserialize_fn {
+                if let NetworkRecv::Custom {
+                    deserialize_fn: Some(deserialize_fn),
+                } = deserialize
+                {
                     transform(deserialize_fn);
                 }
             }
@@ -5712,6 +5866,7 @@ impl HydroNode {
 }
 
 #[cfg(feature = "build")]
+#[expect(clippy::too_many_arguments, reason = "networking codegen")]
 fn instantiate_network<'a, D>(
     env: &mut D::InstantiateEnv,
     from_location: &LocationId,
@@ -5720,10 +5875,19 @@ fn instantiate_network<'a, D>(
     clusters: &SparseSecondaryMap<LocationKey, D::Cluster>,
     name: Option<&str>,
     networking_info: &crate::networking::NetworkingInfo,
+    external_types: Option<(&syn::Type, &syn::Type)>,
 ) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>)
 where
     D: Deploy<'a>,
 {
+    if external_types.is_some() && !D::SUPPORTS_EXTERNAL_SERIALIZATION {
+        panic!(
+            "`.embedded()` serialization leaves serialization to code outside of Hydro and is \
+             only supported by the embedded deployment backend. Use `.bincode()` (or another \
+             supported serialization backend) for this deployment target instead."
+        );
+    }
+
     let ((sink, source), connect_fn) = match (from_location, to_location) {
         (&LocationId::Process(from), &LocationId::Process(to)) => {
             let from_node = processes
@@ -5751,6 +5915,7 @@ where
                     &source_port,
                     name,
                     networking_info,
+                    external_types,
                 ),
                 D::o2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
@@ -5781,6 +5946,7 @@ where
                     &source_port,
                     name,
                     networking_info,
+                    external_types,
                 ),
                 D::o2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
@@ -5811,6 +5977,7 @@ where
                     &source_port,
                     name,
                     networking_info,
+                    external_types,
                 ),
                 D::m2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
@@ -5841,6 +6008,7 @@ where
                     &source_port,
                     name,
                     networking_info,
+                    external_types,
                 ),
                 D::m2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
