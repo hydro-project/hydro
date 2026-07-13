@@ -998,7 +998,7 @@ impl DfirGraph {
     /// - **Root-level loops** (no parent) are fused with the tick: they emit an `if`
     ///   so the body runs at most once per tick when their entry condition is met.
     /// - **Nested loops** (have a parent loop) emit a `while` so they can iterate
-    ///   until fixpoint (driven by `defer_iteration` back-edges).
+    ///   until fixpoint (driven by `defer_tick` back-edges).
     /// - If there are no gate checks, the body is emitted unconditionally.
     fn emit_loop_gate(
         &self,
@@ -1009,7 +1009,7 @@ impl DfirGraph {
         loop_swap_code: &std::collections::HashMap<GraphLoopId, Vec<TokenStream>>,
         output: &mut TokenStream,
     ) {
-        // Get swap code for this loop's defer_iteration handoffs.
+        // Get swap code for this loop's defer_tick handoffs.
         let swap_code = loop_swap_code
             .get(&loop_id)
             .map(|v| v.as_slice())
@@ -1046,7 +1046,7 @@ impl DfirGraph {
             })
             .collect();
 
-        // Non-lazy defer_iteration back-buffers also contribute to the gate (nested loops only).
+        // Non-lazy defer_tick back-buffers also contribute to the gate (nested loops only).
         if !is_root_loop {
             for (hoff_id, hoff) in self.nodes() {
                 if !matches!(hoff, GraphNode::Handoff { .. }) {
@@ -1285,7 +1285,7 @@ impl DfirGraph {
             })
             .collect::<Vec<_>>();
 
-        // Collect per-loop swap code for defer_iteration / defer_iteration_lazy handoffs,
+        // Collect per-loop swap code for defer_tick / defer_tick_lazy handoffs.
         // AND defer_tick / defer_tick_lazy handoffs inside root-level loops.
         // Keyed by the loop ID of the consumer (successor) of the handoff.
         let mut loop_swap_code: std::collections::HashMap<GraphLoopId, Vec<TokenStream>> =
@@ -2192,7 +2192,7 @@ impl DfirGraph {
 
                         #gated_subgraph_code
 
-                        // For non-lazy defer_tick/defer_iteration: if any deferred buffer has data,
+                        // For non-lazy defer_tick: if any deferred buffer has data,
                         // signal that another tick should run.
                         if false #( || !#non_lazy_schedule_idents.is_empty() )* {
                             #df.schedule_subgraph(true);

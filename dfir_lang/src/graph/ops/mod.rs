@@ -321,8 +321,6 @@ declare_ops![
     defer_signal::DEFER_SIGNAL,
     defer_tick::DEFER_TICK,
     defer_tick_lazy::DEFER_TICK_LAZY,
-    defer_iteration::DEFER_ITERATION,
-    defer_iteration_lazy::DEFER_ITERATION_LAZY,
     null::NULL,
     partition::PARTITION,
     persist::PERSIST,

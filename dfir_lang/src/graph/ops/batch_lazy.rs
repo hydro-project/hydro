@@ -6,7 +6,7 @@ use super::{
 /// Given an _unbounded_ input stream, emits values arbitrarily split into batches over multiple iterations in the same order.
 ///
 /// Unlike `batch()`, this operator does NOT cause the loop to fire. If the loop
-/// does not fire for another reason (e.g., a non-lazy `batch` or `defer_iteration`
+/// does not fire for another reason (e.g., a non-lazy `batch` or `defer_tick`
 /// has data), the lazy-batched data is available. If the loop never fires that
 /// tick, the data is simply dropped (reclaimed by the bump allocator at tick end).
 pub const BATCH_LAZY: OperatorConstraints = OperatorConstraints {

@@ -65,11 +65,11 @@ pub fn test_loop_independence() {
     assert_eq!(out_b, Vec::<&str>::new());
 }
 
-/// Test defer_iteration (non-lazy): data deferred in one firing is available on the next,
-/// and the non-empty defer_iteration buffer causes the loop to re-fire.
-/// Note: defer_iteration only works in nested loops (not root-level ones, which are fused with tick).
+/// Test defer_tick (non-lazy): data deferred in one firing is available on the next,
+/// and the non-empty defer_tick buffer causes the loop to re-fire.
+/// Note: defer_tick only works in nested loops (not root-level ones, which are fused with tick).
 #[multiplatform_test(test, wasm, env_tracing)]
-pub fn test_defer_iteration_basic() {
+pub fn test_defer_tick_basic() {
     let (in_send, in_recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
@@ -79,21 +79,21 @@ pub fn test_defer_iteration_basic() {
         loop {
             inp -> batch() -> root_data;
             root_data = identity();
-            // Nested loop: iterates via defer_iteration.
+            // Nested loop: iterates via defer_tick.
             loop {
                 merged = union() -> tee();
                 root_data -> batch() -> merged;
                 deferred -> merged;
                 merged -> for_each(|x| out_send.send(x).unwrap());
                 // Defer items < 100 back, multiplied by 10, to trigger re-fire.
-                merged -> filter(|&x| x < 100) -> map(|x| x * 10) -> defer_iteration() -> deferred;
+                merged -> filter(|&x| x < 100) -> map(|x| x * 10) -> defer_tick() -> deferred;
                 deferred = identity();
             };
         };
     };
 
     // Send 1. First firing: sees 1, defers 10.
-    // Second firing (triggered by defer_iteration): sees 10, defers 100.
+    // Second firing (triggered by defer_tick): sees 10, defers 100.
     // Third firing: sees 100 (>=100, no defer). Loop stops.
     in_send.send(1).unwrap();
     df.run_tick_sync();
@@ -103,11 +103,11 @@ pub fn test_defer_iteration_basic() {
     assert_eq!(out, vec![1, 10, 100]);
 }
 
-/// Test defer_iteration_lazy: data deferred is available next firing but does NOT
+/// Test defer_tick_lazy: data deferred is available next firing but does NOT
 /// cause re-fire on its own.
-/// Note: defer_iteration_lazy only works in nested loops.
+/// Note: defer_tick_lazy only works in nested loops.
 #[multiplatform_test(test, wasm, env_tracing)]
-pub fn test_defer_iteration_lazy() {
+pub fn test_defer_tick_lazy() {
     let (in_send, in_recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
@@ -117,14 +117,14 @@ pub fn test_defer_iteration_lazy() {
         loop {
             inp -> batch() -> root_data;
             root_data = identity();
-            // Nested loop: uses defer_iteration_lazy.
+            // Nested loop: uses defer_tick_lazy.
             loop {
                 merged = union() -> tee();
                 root_data -> batch() -> merged;
                 deferred -> merged;
                 merged -> for_each(|x| out_send.send(x).unwrap());
                 // Lazy defer: stash data but don't re-fire.
-                merged -> map(|x| x * 10) -> defer_iteration_lazy() -> deferred;
+                merged -> map(|x| x * 10) -> defer_tick_lazy() -> deferred;
                 deferred = identity();
             };
         };
@@ -194,7 +194,7 @@ pub fn test_batch_lazy() {
 
 /// Test all_iterations: collects output from all loop iterations and emits
 /// it outside the loop after the loop completes.
-/// Note: defer_iteration only works in nested loops, so we use a nested structure.
+/// Note: defer_tick only works in nested loops, so we use a nested structure.
 #[multiplatform_test(test, wasm, env_tracing)]
 pub fn test_all_iterations() {
     let (in_send, in_recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -206,13 +206,13 @@ pub fn test_all_iterations() {
         loop {
             inp -> batch() -> root_data;
             root_data = identity();
-            // Nested loop: iterates via defer_iteration.
+            // Nested loop: iterates via defer_tick.
             loop {
                 merged = union() -> tee();
                 root_data -> batch() -> merged;
                 deferred -> merged;
                 // Defer items < 100 back, multiplied by 10.
-                merged -> filter(|&x| x < 100) -> map(|x| x * 10) -> defer_iteration() -> deferred;
+                merged -> filter(|&x| x < 100) -> map(|x| x * 10) -> defer_tick() -> deferred;
                 deferred = identity();
                 // Send output outside the inner loop.
                 merged -> output;
@@ -247,7 +247,7 @@ pub fn test_batch_lazy_nested_no_stale_data() {
             lazy_inp -> batch_lazy() -> lazy_in_root;
             trigger_in_root = identity();
             lazy_in_root = identity();
-            // Middle loop: iterates via defer_iteration (1 -> 10 -> 100, stops).
+            // Middle loop: iterates via defer_tick (1 -> 10 -> 100, stops).
             loop {
                 outer_merged = union() -> tee();
                 trigger_in_root -> batch() -> outer_merged;
@@ -257,7 +257,7 @@ pub fn test_batch_lazy_nested_no_stale_data() {
                 outer_merged
                     -> filter(|&x: &i32| x < 100)
                     -> map(|x: i32| x * 10)
-                    -> defer_iteration()
+                    -> defer_tick()
                     -> outer_deferred;
                 outer_deferred = identity();
 
@@ -440,7 +440,7 @@ pub fn test_root_loop_independence() {
 }
 
 /// Test that `defer_tick` works in a nested loop (iteration semantics).
-/// Previously required `defer_iteration()` but now `defer_tick()` adapts to context.
+/// Previously required `defer_tick()` but now `defer_tick()` adapts to context.
 #[multiplatform_test(test, wasm, env_tracing)]
 pub fn test_nested_loop_defer_tick() {
     let (in_send, in_recv) = dfir_rs::util::unbounded_channel::<i32>();
