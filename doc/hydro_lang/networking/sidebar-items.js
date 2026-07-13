@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["TCP"],"enum":["Bincode","FailStop","Lossy","LossyDelayedForever","NetworkingInfo","NoSer","TcpFault"],"struct":["NetworkingConfig","Tcp"],"trait":["NetworkFor","TcpFailPolicy","TransportKind"]};
+window.SIDEBAR_ITEMS = {"constant":["TCP"],"enum":["Bincode","Embedded","FailStop","Lossy","LossyDelayedForever","NetworkingInfo","NoSer","TcpFault"],"struct":["NetworkingConfig","Tcp"],"trait":["NetworkFor","TcpFailPolicy","TransportKind"]};

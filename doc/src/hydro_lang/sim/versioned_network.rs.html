@@ -66,8 +66,8 @@
 <a href=#66 id=66 data-nosnippet>66</a>            <span class="kw">let </span>taken = std::mem::replace(node, HydroNode::Placeholder);
 <a href=#67 id=67 data-nosnippet>67</a>            <span class="kw">let </span>HydroNode::Network {
 <a href=#68 id=68 data-nosnippet>68</a>                input,
-<a href=#69 id=69 data-nosnippet>69</a>                serialize_fn,
-<a href=#70 id=70 data-nosnippet>70</a>                deserialize_fn,
+<a href=#69 id=69 data-nosnippet>69</a>                serialize,
+<a href=#70 id=70 data-nosnippet>70</a>                deserialize,
 <a href=#71 id=71 data-nosnippet>71</a>                metadata,
 <a href=#72 id=72 data-nosnippet>72</a>                ..
 <a href=#73 id=73 data-nosnippet>73</a>            } = taken
@@ -89,7 +89,7 @@
 <a href=#89 id=89 data-nosnippet>89</a>            });
 <a href=#90 id=90 data-nosnippet>90</a>
 <a href=#91 id=91 data-nosnippet>91</a>            <span class="kw">if let </span>HydroNode::VersionedNetworkFork { senders, .. } = <span class="kw-2">&amp;mut *</span>fork_rc.borrow_mut() {
-<a href=#92 id=92 data-nosnippet>92</a>                senders.push((version, input, serialize_fn));
+<a href=#92 id=92 data-nosnippet>92</a>                senders.push((version, input, serialize));
 <a href=#93 id=93 data-nosnippet>93</a>            } <span class="kw">else </span>{
 <a href=#94 id=94 data-nosnippet>94</a>                <span class="macro">unreachable!</span>(<span class="string">"fork map only ever holds VersionedNetworkFork nodes"</span>);
 <a href=#95 id=95 data-nosnippet>95</a>            }
@@ -97,7 +97,7 @@
 <a href=#97 id=97 data-nosnippet>97</a>            <span class="kw-2">*</span>node = HydroNode::VersionedNetwork {
 <a href=#98 id=98 data-nosnippet>98</a>                fork: SharedNode(fork_rc.clone()),
 <a href=#99 id=99 data-nosnippet>99</a>                version,
-<a href=#100 id=100 data-nosnippet>100</a>                deserialize_fn,
+<a href=#100 id=100 data-nosnippet>100</a>                deserialize,
 <a href=#101 id=101 data-nosnippet>101</a>                metadata,
 <a href=#102 id=102 data-nosnippet>102</a>            };
 <a href=#103 id=103 data-nosnippet>103</a>        },
