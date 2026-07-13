@@ -438,3 +438,35 @@ pub fn test_root_loop_independence() {
     assert_eq!(out_a, vec![42]);
     assert_eq!(out_b, Vec::<&str>::new());
 }
+
+/// Test that `defer_tick` works in a nested loop (iteration semantics).
+/// Previously required `defer_iteration()` but now `defer_tick()` adapts to context.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_nested_loop_defer_tick() {
+    let (in_send, in_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+
+    let mut df = dfir_syntax! {
+        inp = source_stream(in_recv);
+        loop {
+            inp -> batch() -> root_data;
+            root_data = identity();
+            // Nested loop: defer_tick() acts as iteration-boundary here.
+            loop {
+                merged = union() -> tee();
+                root_data -> batch() -> merged;
+                deferred -> merged;
+                merged -> for_each(|x| out_send.send(x).unwrap());
+                merged -> filter(|&x| x < 100) -> map(|x| x * 10) -> defer_tick() -> deferred;
+                deferred = identity();
+            };
+        };
+    };
+
+    in_send.send(1).unwrap();
+    df.run_tick_sync();
+
+    // Should iterate: 1 -> 10 -> 100 (stops at 100 because filter blocks >= 100).
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, vec![1, 10, 100]);
+}

@@ -6,7 +6,7 @@ use itertools::Itertools;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 
 use super::meta_graph::DfirGraph;
-use super::ops::{DelayType, FloType};
+use super::ops::DelayType;
 use super::{
     Color, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, HandoffKind,
 };
@@ -190,12 +190,6 @@ fn find_subgraph_unionfind(
 
             // Do not connect across loop contexts.
             if partitioned_graph.node_loop(src) != partitioned_graph.node_loop(dst) {
-                continue;
-            }
-            // Do not connect `defer_iteration()`.
-            if partitioned_graph.node_op_inst(dst).is_some_and(|op_inst| {
-                Some(FloType::NextIteration) == op_inst.op_constraints.flo_type
-            }) {
                 continue;
             }
 
@@ -409,6 +403,10 @@ fn can_connect_colorize(
 
 /// Marks tick-boundary (`defer_tick` / `defer_tick_lazy`) handoffs with their delay type
 /// for double-buffered codegen in `as_code`.
+///
+/// Also remaps `DelayType::Tick` → `DelayType::Loop` (and `TickLazy` → `LoopLazy`) for
+/// handoffs whose consumer is inside a nested loop. This allows a single `defer_tick()`
+/// operator to work in both tick-level and loop-iteration contexts.
 fn mark_tick_boundary_handoffs(
     partitioned_graph: &mut DfirGraph,
     tick_edges: &SecondaryMap<GraphEdgeId, DelayType>,
@@ -424,7 +422,28 @@ fn mark_tick_boundary_handoffs(
             }
             let (succ_edge, _) = partitioned_graph.node_successors(hoff_id).next().unwrap();
             let &delay_type = tick_edges.get(succ_edge)?;
-            Some((hoff_id, delay_type))
+
+            // Remap Tick/TickLazy → Loop/LoopLazy if the consumer is in a nested loop.
+            let consumer_loop = partitioned_graph
+                .node_successors(hoff_id)
+                .next()
+                .and_then(|(_, succ)| partitioned_graph.node_loop(succ));
+            let effective_delay_type = if let Some(loop_id) = consumer_loop {
+                if partitioned_graph.loop_parent(loop_id).is_some() {
+                    // Nested loop: remap to loop-level delay.
+                    match delay_type {
+                        DelayType::Tick => DelayType::Loop,
+                        DelayType::TickLazy => DelayType::LoopLazy,
+                        other => other,
+                    }
+                } else {
+                    delay_type
+                }
+            } else {
+                delay_type
+            };
+
+            Some((hoff_id, effective_delay_type))
         })
         .collect();
 

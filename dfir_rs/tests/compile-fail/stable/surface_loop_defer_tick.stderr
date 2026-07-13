@@ -1,5 +1,0 @@
-error: Operator `defer_tick(...)` is not allowed within a nested `loop { ... }` context. Use `defer_iteration()` or `defer_iteration_lazy()` instead.
- --> tests/compile-fail/stable/surface_loop_defer_tick.rs:8:42
-  |
-8 |                 inner_data -> batch() -> defer_tick() -> null();
-  |                                          ^^^^^^^^^^
