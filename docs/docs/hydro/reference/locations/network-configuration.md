@@ -66,7 +66,7 @@ let config = TCP.lossy_delayed_forever().bincode();
 
 With `lossy_delayed_forever`, messages may be **dropped**, but dropped messages are modeled as being **indefinitely delayed** rather than lost. This mode does **not** require a `nondet!` annotation because the output stream is unordered, so even if messages are lost the output will have a subset of the intended elements.
 
-The tradeoff is that the output stream has a [`NoOrder`](pathname:///rustdoc/hydro_lang/live_collections/stream/enum.NoOrder) guarantee, imposing stricter conditions on downstream consumers. For example, you cannot use order-dependent operators like `fold` without proving commutativity.
+The tradeoff is that the output stream has a [`NoOrder`](rust:hydro_lang::live_collections::stream::NoOrder) guarantee, imposing stricter conditions on downstream consumers. For example, you cannot use order-dependent operators like `fold` without proving commutativity.
 
 This is the **preferred** mode for protocols that tolerate message loss, because:
 - It does not require `nondet!`, making it easier to reason about correctness.

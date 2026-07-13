@@ -13,6 +13,37 @@ Finally, you can run the website locally:
 $ npm run start
 ```
 
+## Linking to rustdoc (`rust:` links)
+Markdown/MDX pages can link to API documentation with the `rust:` pseudo-scheme
+instead of hardcoding rustdoc URLs:
+
+```md
+[`Stream`](rust:hydro_lang::live_collections::Stream)
+[`Stream::fold`](rust:hydro_lang::live_collections::Stream::fold)
+[the `live_collections` module](rust:hydro_lang::live_collections)
+[`setup!`](rust:hydro_lang::setup!)
+```
+
+At build time these are resolved against the compiled rustdoc in
+`static/rustdoc` by `src/remark/rustdoc-links.js`. You write the full module
+path of the item but never the item kind (`struct.…`, `trait.…`) or the
+`.html` path — the resolver discovers those from the rustdoc output, follows
+rustdoc redirect pages for re-exports, and validates associated items
+(`Type::method`) against the anchors on the generated page, so stale links
+fail the production build instead of 404ing. In the rare case of a same-name
+collision, disambiguate rustdoc-style with a `kind@` prefix (`struct@`,
+`trait@`, `fn@`, `mod@`, ...) or a trailing `()` / `!`.
+
+In local dev, if `static/rustdoc` doesn't exist, `rust:` links degrade to
+rustdoc search URLs with a console warning. Production builds
+(`NODE_ENV=production`, as in `build_docs.bash`) require compiled rustdoc and
+fail on any unresolvable link. To resolve links properly during local dev:
+
+```bash
+$ cargo doc --no-deps --all-features   # at the repo root
+$ ln -sfn ../../target/doc static/rustdoc  # in this docs directory
+```
+
 ## Building the DFIR docs
 `dfir/syntax/surface_ops_gen.md` is generated during the Rust build.
 If you have not built the Rust project yet, you may need to run this command generate or update it:

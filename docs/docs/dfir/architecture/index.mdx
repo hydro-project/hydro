@@ -88,9 +88,9 @@ Alternatively, the _Core API_ allows you to interact with handoffs directly at a
 level. It doesn't provide any notion of chainable operators. You can use Rust `Iterator`s
 or any other arbitrary Rust code to implement the operators.
 
-The Core API lives in [`dfir_rs::scheduled`](https://hydro.run/rustdoc/dfir_rs/scheduled/index.html),
-mainly in methods on the [`DFIR` struct](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir.html).
-Compiled push-based iterators live in [`dfir_rs::compiled`](https://hydro.run/rustdoc/dfir_rs/compiled/index.html).
+The Core API lives in [`dfir_rs::scheduled`](rust:dfir_rs::scheduled),
+mainly in methods on the [`Dfir` struct](rust:dfir_rs::scheduled::context::Dfir).
+Compiled push-based iterators live in [`dfir_rs::compiled`](rust:dfir_rs::compiled).
 When working with DFIR, we intend users to use the Flow Syntax as it is much more friendly, but as
 DFIR is in active development some operators might not be available in
 the Flow Syntax, in which case the Core API can be used instead. If you find

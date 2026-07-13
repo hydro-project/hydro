@@ -60,7 +60,7 @@ of [in-out trees](../architecture/in-out_trees.md).
 Closures inside surface syntax operators have access to a special `context` object which provides
 access to scheduling, timing, and state APIs. The object is accessible as a shared reference
 (`&Context`) via the special name `context`.
-[Here is the full API documentation for `Context`](https://hydro.run/rustdoc/dfir_rs/scheduled/context/struct.Context.html).
+[Here is the full API documentation for `Context`](rust:dfir_rs::scheduled::context::Context).
 
 <CodeBlock language="rust">{getLines(example4Code, 5, 6)}</CodeBlock>
 

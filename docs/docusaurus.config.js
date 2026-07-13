@@ -6,6 +6,10 @@ import { themes } from "prism-react-renderer";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 
+// Resolves `rust:some_crate::SomeItem` links to compiled rustdoc pages
+// (see docs/src/remark/rustdoc-links.js for the syntax).
+const remarkRustdocLinks = require("./src/remark/rustdoc-links");
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: "Hydro",
@@ -66,6 +70,8 @@ const config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl: "https://github.com/hydro-project/hydro/tree/main/docs/",
+          // Resolve `rust:` links before Docusaurus' own link processing.
+          beforeDefaultRemarkPlugins: [remarkRustdocLinks],
           remarkPlugins: [remarkMath],
           rehypePlugins: [rehypeKatex],
           admonitions: {
@@ -80,6 +86,9 @@ const config = {
         //   editUrl:
         //     'https://github.com/hydro-project/hydro/tree/main/docs/',
         // },
+        pages: {
+          beforeDefaultRemarkPlugins: [remarkRustdocLinks],
+        },
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
         },

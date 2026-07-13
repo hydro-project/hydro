@@ -59,7 +59,6 @@ impl Wake for WakeState {
 /// Exposes methods that operator-generated code calls on both
 /// `df` (for prologues: `request_task`) and
 /// `context` (for iterators: `current_tick`, `schedule_subgraph`, etc.).
-#[doc(hidden)]
 #[derive(Default)]
 pub struct Context {
     /// Counter for number of ticks run.
@@ -89,7 +88,7 @@ impl Context {
 
     // --- Methods called as `df.xxx()` in operator prologues ---
 
-    /// Buffers an async task to be spawned later by [`Dfir::spawn_tasks`].
+    /// Buffers an async task to be spawned later by `Dfir::spawn_tasks`.
     ///
     /// Tasks are deferred because `write_prologue` runs during graph construction,
     /// which may occur before a tokio `LocalSet` is entered. Buffered tasks are
@@ -136,9 +135,10 @@ impl Context {
     }
 }
 
-/// A wrapper around an inline-codegen tick closure that provides [`Self::run`],
-/// [`Self::run_available`], and [`Self::run_tick`] methods — mirroring the [`Dfir`](super::context::Dfir)
-/// API.
+/// An executable DFIR dataflow, as created by
+/// [`dfir_syntax!`](crate::dfir_syntax). Provides the [`Self::run`],
+/// [`Self::run_available`], and [`Self::run_tick`] family of methods to
+/// execute the dataflow.
 ///
 /// # Design
 ///
@@ -157,7 +157,6 @@ impl Context {
 /// support type erasure via [`TickClosureErased`] / [`DfirErased`] for heterogeneous
 /// collections (e.g., the sim runtime storing multiple locations in a `Vec`). The concrete
 /// (non-erased) path used by trybuild and embedded has zero overhead.
-#[doc(hidden)]
 pub struct Dfir<Tick> {
     /// Async closure which runs a single tick when called.
     tick_closure: Tick,

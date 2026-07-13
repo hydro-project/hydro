@@ -8,6 +8,8 @@
 .docusaurus
 .cache-loader
 *_gen.md
+# Compiled rustdoc (copied/symlinked from target/doc, see build_docs.bash)
+/static/rustdoc
 
 # Misc
 .DS_Store
