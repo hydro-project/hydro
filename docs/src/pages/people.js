@@ -122,12 +122,6 @@ export default function Home() {
                 url={"https://github.com/MingweiSamuel"}
                 img={mingwei}
               ></PersonCard>
-              <PersonCard
-                name={"Ben Schofield"}
-                role={"Engineer, AWS"}
-                url={"https://www.linkedin.com/in/benjscho"}
-                img={ben}
-              ></PersonCard>
             </div>
 
             <div className={styles["subtitle"]}>
@@ -184,6 +178,12 @@ export default function Home() {
                 url={"https://www.linkedin.com/in/justinjaffray/"}
                 img={hydroTurtle}
               ></PersonCard>
+              <PersonCard
+                name={"Ben Schofield"}
+                role={"Engineer, AWS"}
+                url={"https://www.linkedin.com/in/benjscho"}
+                img={ben}
+              />
             </div>
           </div>
         </div>
