@@ -3,23 +3,26 @@
 <a href=#3 id=3 data-nosnippet>3</a>    RANGE_1,
 <a href=#4 id=4 data-nosnippet>4</a>};
 <a href=#5 id=5 data-nosnippet>5</a>
-<a href=#6 id=6 data-nosnippet>6</a><span class="doccomment">/// See `defer_tick`
-<a href=#7 id=7 data-nosnippet>7</a>/// This operator is identical to defer_tick except that it does not eagerly cause a new tick to be scheduled.
-<a href=#8 id=8 data-nosnippet>8</a></span><span class="kw">pub const </span>DEFER_TICK_LAZY: OperatorConstraints = OperatorConstraints {
-<a href=#9 id=9 data-nosnippet>9</a>    name: <span class="string">"defer_tick_lazy"</span>,
-<a href=#10 id=10 data-nosnippet>10</a>    categories: <span class="kw-2">&amp;</span>[OperatorCategory::Control],
-<a href=#11 id=11 data-nosnippet>11</a>    hard_range_inn: RANGE_1,
-<a href=#12 id=12 data-nosnippet>12</a>    soft_range_inn: RANGE_1,
-<a href=#13 id=13 data-nosnippet>13</a>    hard_range_out: RANGE_1,
-<a href=#14 id=14 data-nosnippet>14</a>    soft_range_out: RANGE_1,
-<a href=#15 id=15 data-nosnippet>15</a>    num_args: <span class="number">0</span>,
-<a href=#16 id=16 data-nosnippet>16</a>    persistence_args: RANGE_0,
-<a href=#17 id=17 data-nosnippet>17</a>    type_args: RANGE_0,
-<a href=#18 id=18 data-nosnippet>18</a>    is_external_input: <span class="bool-val">false</span>,
-<a href=#19 id=19 data-nosnippet>19</a>    flo_type: <span class="prelude-val">None</span>,
-<a href=#20 id=20 data-nosnippet>20</a>    ports_inn: <span class="prelude-val">None</span>,
-<a href=#21 id=21 data-nosnippet>21</a>    ports_out: <span class="prelude-val">None</span>,
-<a href=#22 id=22 data-nosnippet>22</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">Some</span>(DelayType::TickLazy),
-<a href=#23 id=23 data-nosnippet>23</a>    write_fn: IDENTITY_WRITE_FN,
-<a href=#24 id=24 data-nosnippet>24</a>};
+<a href=#6 id=6 data-nosnippet>6</a><span class="doccomment">/// See `defer_tick`.
+<a href=#7 id=7 data-nosnippet>7</a>///
+<a href=#8 id=8 data-nosnippet>8</a>/// This operator is identical to `defer_tick` except that it does not eagerly cause a new
+<a href=#9 id=9 data-nosnippet>9</a>/// tick or loop iteration to be scheduled. Data is buffered until the next tick/iteration fires
+<a href=#10 id=10 data-nosnippet>10</a>/// for another reason (e.g., external input arriving, or a non-lazy `defer_tick` triggering).
+<a href=#11 id=11 data-nosnippet>11</a></span><span class="kw">pub const </span>DEFER_TICK_LAZY: OperatorConstraints = OperatorConstraints {
+<a href=#12 id=12 data-nosnippet>12</a>    name: <span class="string">"defer_tick_lazy"</span>,
+<a href=#13 id=13 data-nosnippet>13</a>    categories: <span class="kw-2">&amp;</span>[OperatorCategory::Control],
+<a href=#14 id=14 data-nosnippet>14</a>    hard_range_inn: RANGE_1,
+<a href=#15 id=15 data-nosnippet>15</a>    soft_range_inn: RANGE_1,
+<a href=#16 id=16 data-nosnippet>16</a>    hard_range_out: RANGE_1,
+<a href=#17 id=17 data-nosnippet>17</a>    soft_range_out: RANGE_1,
+<a href=#18 id=18 data-nosnippet>18</a>    num_args: <span class="number">0</span>,
+<a href=#19 id=19 data-nosnippet>19</a>    persistence_args: RANGE_0,
+<a href=#20 id=20 data-nosnippet>20</a>    type_args: RANGE_0,
+<a href=#21 id=21 data-nosnippet>21</a>    is_external_input: <span class="bool-val">false</span>,
+<a href=#22 id=22 data-nosnippet>22</a>    flo_type: <span class="prelude-val">None</span>,
+<a href=#23 id=23 data-nosnippet>23</a>    ports_inn: <span class="prelude-val">None</span>,
+<a href=#24 id=24 data-nosnippet>24</a>    ports_out: <span class="prelude-val">None</span>,
+<a href=#25 id=25 data-nosnippet>25</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">Some</span>(DelayType::TickLazy),
+<a href=#26 id=26 data-nosnippet>26</a>    write_fn: IDENTITY_WRITE_FN,
+<a href=#27 id=27 data-nosnippet>27</a>};
 </code></pre></div></section></main></body></html>
