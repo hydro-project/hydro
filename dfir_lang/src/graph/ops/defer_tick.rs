@@ -3,7 +3,14 @@ use super::{
     RANGE_1,
 };
 
-/// Buffers all input items and releases them in the next tick.
+/// Buffers all input items and releases them at the next time boundary.
+///
+/// When used at the top level or inside a root-level `loop { }` block (which is fused with
+/// the tick), data is deferred to the next tick. When used inside a nested `loop { }` block,
+/// data is deferred to the next loop iteration.
+///
+/// The presence of buffered data will cause the next tick or loop iteration to fire (non-lazy).
+///
 /// See the [book discussion on time](../concepts/life_and_times) for details on ticks.
 ///
 /// `defer_tick` is sometimes needed to separate conflicting data across time,

@@ -12,8 +12,7 @@ use syn::{Error, Ident, ItemUse};
 
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::graph::meta_graph::ResolvedHandoffRef;
-use crate::graph::ops::next_iteration::NEXT_ITERATION;
-use crate::graph::ops::{FloType, Persistence, PortListSpec, RangeTrait};
+use crate::graph::ops::{DelayType, FloType, Persistence, PortListSpec, RangeTrait};
 use crate::graph::{
     DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, HandoffKind, PortIndexValue,
     graph_algorithms,
@@ -1135,7 +1134,7 @@ impl FlatGraphBuilder {
                         ));
                     }
                 }
-                Some(FloType::Windowing) => {
+                Some(FloType::Windowing | FloType::WindowingLazy) => {
                     if !is_input {
                         self.diagnostics.push(Diagnostic::spanned(
                             span,
@@ -1159,44 +1158,33 @@ impl FlatGraphBuilder {
                         ));
                     }
                 }
-                Some(FloType::NextIteration) => {
-                    // Must be in a loop context.
-                    if loop_id.is_none() {
-                        self.diagnostics.push(Diagnostic::spanned(
-                            span,
-                            Level::Error,
-                            format!(
-                                "Operator `{}(...)` must be within a `loop {{ ... }}` context.",
-                                op_inst.op_constraints.name
-                            ),
-                        ));
-                    }
-                }
                 Some(FloType::Source) => {
                     // Handled above.
                 }
             }
         }
 
-        // Must be a DAG (excluding `next_iteration()` operators).
+        // Must be a DAG (excluding back-edge operators like `defer_tick` / `defer_tick_lazy`).
         // TODO(mingwei): Nested loop blocks should count as a single node.
         // But this doesn't cause any correctness issues because the nested loops are also DAGs.
         for (loop_id, loop_nodes) in self.flat_graph.loops() {
-            // Filter out `next_iteration()` operators.
-            let filter_next_iteration = |&node_id: &GraphNodeId| {
-                self.flat_graph
-                    .node_op_inst(node_id)
-                    .map(|op_inst| Some(FloType::NextIteration) != op_inst.op_constraints.flo_type)
-                    .unwrap_or(true)
+            // Filter out defer_tick / defer_tick_lazy operators (they are back-edges).
+            let filter_back_edges = |&node_id: &GraphNodeId| {
+                let Some(op_inst) = self.flat_graph.node_op_inst(node_id) else {
+                    return true;
+                };
+                let delay_type =
+                    (op_inst.op_constraints.input_delaytype_fn)(&PortIndexValue::Elided(None));
+                !matches!(delay_type, Some(DelayType::Tick | DelayType::TickLazy))
             };
 
             let topo_sort_result = graph_algorithms::topo_sort(
-                loop_nodes.iter().copied().filter(filter_next_iteration),
+                loop_nodes.iter().copied().filter(filter_back_edges),
                 |dst| {
                     self.flat_graph
                         .node_predecessor_nodes(dst)
                         .filter(|&src| Some(loop_id) == self.flat_graph.node_loop(src))
-                        .filter(filter_next_iteration)
+                        .filter(filter_back_edges)
                 },
             );
             if let Err(cycle) = topo_sort_result {
@@ -1207,8 +1195,7 @@ impl FlatGraphBuilder {
                         span,
                         Level::Error,
                         format!(
-                            "Operator forms an illegal cycle within a `loop {{ ... }}` block. Use `{}()` to pass data across loop iterations. ({}/{})",
-                            NEXT_ITERATION.name,
+                            "Operator forms an illegal cycle within a `loop {{ ... }}` block. Use `defer_tick()` to pass data across loop iterations. ({}/{})",
                             i + 1,
                             len,
                         ),

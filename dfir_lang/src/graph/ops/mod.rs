@@ -27,6 +27,10 @@ pub enum DelayType {
     Tick,
     /// Input must be collected over the previous tick but also not cause a new tick to occur.
     TickLazy,
+    /// Input must be collected over the previous loop iteration. Causes the loop to re-fire.
+    Loop,
+    /// Input must be collected over the previous loop iteration. Does NOT cause the loop to re-fire.
+    LoopLazy,
 }
 
 /// Specification of the named (or unnamed) ports for an operator's inputs or outputs.
@@ -268,11 +272,11 @@ macro_rules! declare_ops {
 }
 declare_ops![
     all_iterations::ALL_ITERATIONS,
-    all_once::ALL_ONCE,
     anti_join::ANTI_JOIN,
     assert::ASSERT,
     assert_eq::ASSERT_EQ,
     batch::BATCH,
+    batch_lazy::BATCH_LAZY,
     chain::CHAIN,
     chain_first_n::CHAIN_FIRST_N,
     _counter::_COUNTER,
@@ -306,8 +310,6 @@ declare_ops![
     join_multiset_half::JOIN_MULTISET_HALF,
     fold_keyed::FOLD_KEYED,
     reduce_keyed::REDUCE_KEYED,
-    repeat_n::REPEAT_N,
-    // last_iteration::LAST_ITERATION,
     lattice_bimorphism::LATTICE_BIMORPHISM,
     _lattice_fold_batch::_LATTICE_FOLD_BATCH,
     lattice_fold::LATTICE_FOLD,
@@ -316,7 +318,6 @@ declare_ops![
     map::MAP,
     union::UNION,
     multiset_delta::MULTISET_DELTA,
-    next_iteration::NEXT_ITERATION,
     defer_signal::DEFER_SIGNAL,
     defer_tick::DEFER_TICK,
     defer_tick_lazy::DEFER_TICK_LAZY,
@@ -325,7 +326,6 @@ declare_ops![
     persist::PERSIST,
     persist_mut::PERSIST_MUT,
     persist_mut_keyed::PERSIST_MUT_KEYED,
-    prefix::PREFIX,
     resolve_futures::RESOLVE_FUTURES,
     resolve_futures_blocking::RESOLVE_FUTURES_BLOCKING,
     resolve_futures_blocking_ordered::RESOLVE_FUTURES_BLOCKING_ORDERED,
@@ -643,8 +643,9 @@ pub enum FloType {
     Source,
     /// A windowing operator, for moving data into a loop context.
     Windowing,
+    /// A lazy windowing operator — moves data into a loop context but does not trigger the loop.
+    /// Data is dropped if the loop does not fire that tick.
+    WindowingLazy,
     /// An un-windowing operator, for moving data out of a loop context.
     Unwindowing,
-    /// Moves data into the next loop iteration within a loop context.
-    NextIteration,
 }
