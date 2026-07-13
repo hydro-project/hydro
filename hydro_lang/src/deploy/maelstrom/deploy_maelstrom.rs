@@ -7,7 +7,7 @@
 use std::cell::RefCell;
 use std::future::Future;
 use std::io::{BufRead, BufReader, Error};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::process::Stdio;
 use std::rc::Rc;
@@ -505,6 +505,21 @@ impl MaelstromDeployment {
     pub fn run(self) -> Result<(), Error> {
         let binary_path = self.build()?;
 
+        // Warm up the binary before handing it to Maelstrom. On macOS, the
+        // first execution of a freshly written binary triggers a Gatekeeper /
+        // XProtect (`syspolicyd`) scan that can take several seconds on loaded
+        // CI machines. Maelstrom only waits 10 seconds for each node to answer
+        // the `init` RPC, so a cold first exec (multiplied across concurrently
+        // launched nodes) can cause spurious node-startup timeouts. The warmup
+        // invocation sees EOF on stdin and exits immediately, priming the
+        // system's first-exec caches for the real run.
+        std::process::Command::new(&binary_path)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()?
+            .wait()?;
+
         // Use a unique working directory per run to avoid conflicts with concurrent tests.
         let run_dir = tempfile::tempdir().map_err(Error::other)?;
 
@@ -547,6 +562,7 @@ impl MaelstromDeployment {
 
             if line.starts_with("Analysis invalid!") {
                 let path = run_dir.keep();
+                dump_node_logs(&path);
                 return Err(Error::other(format!(
                     "Analysis was invalid. Maelstrom store at: {}",
                     path.display()
@@ -559,6 +575,7 @@ impl MaelstromDeployment {
         }
 
         let path = run_dir.keep();
+        dump_node_logs(&path);
         Err(Error::other(format!(
             "Maelstrom produced an unexpected result. Store at: {}",
             path.display()
@@ -568,5 +585,47 @@ impl MaelstromDeployment {
     /// Get the path to the compiled binary, building it if necessary.
     pub fn binary_path(&self) -> Option<PathBuf> {
         self.build().ok()
+    }
+}
+
+/// Print the per-node logs from a Maelstrom run directory to stderr.
+///
+/// Maelstrom truncates node stderr in its own error messages (keeping only the
+/// tail), so when a node crashes the actual panic message is often cut off.
+/// The full logs live in `store/<workload>/<timestamp>/node-logs/*.log` under
+/// the run directory; dump them so failures are debuggable in CI, where the
+/// preserved store directory is not otherwise accessible.
+fn dump_node_logs(run_dir: &Path) {
+    fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            // Skip symlinks (e.g. `store/latest`) to avoid duplicates.
+            if path.is_symlink() || !path.is_dir() {
+                continue;
+            }
+            if path.file_name().is_some_and(|name| name == "node-logs") {
+                if let Ok(logs) = std::fs::read_dir(&path) {
+                    out.extend(logs.flatten().map(|e| e.path()));
+                }
+            } else {
+                collect(&path, out);
+            }
+        }
+    }
+
+    let mut log_files = Vec::new();
+    collect(&run_dir.join("store"), &mut log_files);
+    log_files.sort();
+
+    for log in log_files {
+        eprintln!("==== Maelstrom node log: {} ====", log.display());
+        match std::fs::read_to_string(&log) {
+            Ok(contents) => eprint!("{}", contents),
+            Err(e) => eprintln!("(failed to read log: {})", e),
+        }
+        eprintln!("==== end of node log: {} ====", log.display());
     }
 }

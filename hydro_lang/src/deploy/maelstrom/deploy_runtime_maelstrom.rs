@@ -92,17 +92,48 @@ pub fn maelstrom_init() -> MaelstromMeta {
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout();
 
-    // Read the init message
-    let mut line = String::new();
-    stdin
-        .lock()
-        .read_line(&mut line)
-        .expect("Failed to read init message");
+    // Read until the init message arrives. Maelstrom delivers node-to-node
+    // messages to a node's stdin as soon as the process starts, so a
+    // fast-starting peer may already be broadcasting `hydro_data` messages
+    // before the init RPC for this node is sent — the first line on stdin is
+    // not necessarily `init`. Such pre-init messages are dropped: inter-node
+    // channels in the Maelstrom backend are lossy, so dropped messages are
+    // handled the same as network loss.
+    let msg: MaelstromMessage<InitBody> = loop {
+        let mut line = String::new();
+        let bytes_read = stdin
+            .lock()
+            .read_line(&mut line)
+            .expect("Failed to read init message");
 
-    let msg: MaelstromMessage<InitBody> =
-        serde_json::from_str(&line).expect("Failed to parse init message");
+        if bytes_read == 0 {
+            // stdin reached EOF before an init message arrived. This happens when
+            // Maelstrom tears the node down (e.g. after an init timeout) or during
+            // a warmup invocation with no input. Exit cleanly instead of panicking
+            // so the node is not reported as "crashed", which would mask the real
+            // error (such as the init timeout).
+            eprintln!("stdin closed before an init message was received; exiting");
+            std::process::exit(0);
+        }
 
-    assert_eq!(msg.body.msg_type, "init", "First message must be init");
+        let parsed: MaelstromMessage<serde_json::Value> =
+            serde_json::from_str(&line).expect("Failed to parse message while waiting for init");
+
+        if parsed.body.get("type").and_then(|t| t.as_str()) == Some("init") {
+            let body: InitBody =
+                serde_json::from_value(parsed.body).expect("Failed to parse init message");
+            break MaelstromMessage {
+                src: parsed.src,
+                dest: parsed.dest,
+                body,
+            };
+        } else {
+            eprintln!(
+                "dropping message received before init (lossy channel): {}",
+                line.trim_end()
+            );
+        }
+    };
 
     // Set up broadcast channel for stdin lines
     let (stdin_tx, _) = tokio::sync::broadcast::channel::<String>(1024);
