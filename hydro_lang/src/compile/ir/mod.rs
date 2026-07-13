@@ -470,8 +470,37 @@ pub trait DfirBuilder {
     /// Whether the representation of singletons should include intermediate states.
     fn singleton_intermediates(&self) -> bool;
 
-    /// Gets the DFIR builder for the given location, creating it if necessary.
-    fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder;
+    /// Adds the DFIR statements to the graph for the given location.
+    ///
+    /// The location determines which DFIR graph the statements are placed in (for production,
+    /// the graph of the location's root; for simulation, either the fused async graph or the
+    /// tick's separate graph). In the future (#2902), production codegen will also use the
+    /// location to place tick-located statements inside the tick's `loop { ... }` context.
+    fn add_dfir_at(
+        &mut self,
+        location: &LocationId,
+        dfir: dfir_lang::parse::DfirCode,
+        operator_tag: Option<&str>,
+    );
+
+    /// The DFIR persistence lifetime for operator state scoped to a single tick, for an operator
+    /// at `op_location`.
+    ///
+    /// Returns `'tick`. In the future (#2902), production codegen will emit tick regions as DFIR
+    /// `loop { ... }` blocks, where this must instead be `'none` when `op_location` is a tick.
+    fn tick_state_lifetime(&self, _op_location: &LocationId) -> TokenStream {
+        quote!('tick)
+    }
+
+    /// The DFIR persistence lifetime for operator state that accumulates across ticks, for an
+    /// operator at `op_location`.
+    ///
+    /// Returns `'static`. In the future (#2902), production codegen will emit tick regions as
+    /// DFIR `loop { ... }` blocks, where this must instead be `'loop` when `op_location` is a
+    /// tick.
+    fn cross_tick_state_lifetime(&self, _op_location: &LocationId) -> TokenStream {
+        quote!('static)
+    }
 
     #[expect(clippy::too_many_arguments, reason = "TODO")]
     fn batch(
@@ -623,16 +652,43 @@ pub trait DfirBuilder {
     );
 }
 
+/// The production (deployment) DFIR builder: emits one DFIR graph per root location
+/// (process/cluster).
+///
+/// Tick and atomic locations are collapsed onto their root location's graph. In the future
+/// (#2902), this builder will additionally emit each (unified) tick as a root-level
+/// `loop {{ ... }}` context within its root location's graph.
 #[cfg(feature = "build")]
-impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
+#[derive(Default)]
+pub struct ProdDfirBuilder {
+    /// The DFIR graph builder for each root location.
+    pub graphs: SecondaryMap<LocationKey, FlatGraphBuilder>,
+}
+
+#[cfg(feature = "build")]
+impl ProdDfirBuilder {
+    /// Gets the DFIR builder for the given location's root, creating it if necessary.
+    fn graph_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
+        self.graphs
+            .entry(location.root().key())
+            .expect("location was removed")
+            .or_default()
+    }
+}
+
+#[cfg(feature = "build")]
+impl DfirBuilder for ProdDfirBuilder {
     fn singleton_intermediates(&self) -> bool {
         false
     }
 
-    fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
-        self.entry(location.root().key())
-            .expect("location was removed")
-            .or_default()
+    fn add_dfir_at(
+        &mut self,
+        location: &LocationId,
+        dfir: dfir_lang::parse::DfirCode,
+        operator_tag: Option<&str>,
+    ) {
+        self.graph_mut(location).add_dfir(dfir, None, operator_tag);
     }
 
     fn batch(
@@ -645,7 +701,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         _op_meta: &HydroIrOpMetadata,
         _fold_hooked_idents: &HashSet<String>,
     ) {
-        let builder = self.get_dfir_mut(in_location.root());
+        let builder = self.graph_mut(in_location.root());
         if in_kind.is_bounded()
             && matches!(
                 in_kind,
@@ -681,7 +737,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         out_ident: &syn::Ident,
         _out_location: &LocationId,
     ) {
-        let builder = self.get_dfir_mut(in_location.root());
+        let builder = self.graph_mut(in_location.root());
         builder.add_dfir(
             parse_quote! {
                 #out_ident = #in_ident;
@@ -700,7 +756,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         _out_location: &LocationId,
         _op_meta: &HydroIrOpMetadata,
     ) {
-        let builder = self.get_dfir_mut(in_location.root());
+        let builder = self.graph_mut(in_location.root());
         builder.add_dfir(
             parse_quote! {
                 #out_ident = #in_ident;
@@ -717,7 +773,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         _in_kind: &CollectionKind,
         out_ident: &syn::Ident,
     ) {
-        let builder = self.get_dfir_mut(in_location.root());
+        let builder = self.graph_mut(in_location.root());
         builder.add_dfir(
             parse_quote! {
                 #out_ident = #in_ident;
@@ -737,7 +793,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         _out_kind: &CollectionKind,
         _op_meta: &HydroIrOpMetadata,
     ) {
-        let builder = self.get_dfir_mut(location);
+        let builder = self.graph_mut(location);
         builder.add_dfir(
             parse_quote! {
                 #out_ident = #in_ident;
@@ -757,7 +813,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         _op_meta: &HydroIrOpMetadata,
         operator_tag: Option<&str>,
     ) {
-        let builder = self.get_dfir_mut(location);
+        let builder = self.graph_mut(location);
         builder.add_dfir(
             parse_quote! {
                 #out_ident = union();
@@ -783,7 +839,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         tag_id: StmtId,
         _networking_info: &crate::networking::NetworkingInfo,
     ) {
-        let sender_builder = self.get_dfir_mut(from);
+        let sender_builder = self.graph_mut(from);
         if let Some(serialize_pipeline) = serialize {
             sender_builder.add_dfir(
                 parse_quote! {
@@ -803,7 +859,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
             );
         }
 
-        let receiver_builder = self.get_dfir_mut(to);
+        let receiver_builder = self.graph_mut(to);
         if let Some(deserialize_pipeline) = deserialize {
             receiver_builder.add_dfir(
                 parse_quote! {
@@ -831,7 +887,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         deserialize: Option<&DebugExpr>,
         tag_id: StmtId,
     ) {
-        let receiver_builder = self.get_dfir_mut(on);
+        let receiver_builder = self.graph_mut(on);
         if let Some(deserialize_pipeline) = deserialize {
             receiver_builder.add_dfir(
                 parse_quote! {
@@ -859,7 +915,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         serialize: Option<&DebugExpr>,
         tag_id: StmtId,
     ) {
-        let sender_builder = self.get_dfir_mut(on);
+        let sender_builder = self.graph_mut(on);
         if let Some(serialize_fn) = serialize {
             sender_builder.add_dfir(
                 parse_quote! {
@@ -897,7 +953,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         in_ident: syn::Ident,
         out_ident: &syn::Ident,
     ) {
-        let builder = self.get_dfir_mut(location);
+        let builder = self.graph_mut(location);
         builder.add_dfir(
             parse_quote! {
                 #out_ident = #in_ident;
@@ -915,7 +971,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         out_ident: &syn::Ident,
         _op_meta: &HydroIrOpMetadata,
     ) {
-        let builder = self.get_dfir_mut(location);
+        let builder = self.graph_mut(location);
         builder.add_dfir(
             parse_quote! {
                 #out_ident = #in_ident;
@@ -1595,15 +1651,13 @@ impl HydroRoot {
 
                         let f_tokens = f.emit_tokens(&mut ident_stack);
 
-                        graph_builders
-                            .get_dfir_mut(&input.metadata().location_id)
-                            .add_dfir(
-                                parse_quote! {
-                                    #input_ident -> for_each(#f_tokens);
-                                },
-                                None,
-                                Some(&stmt_id.to_string()),
-                            );
+                        graph_builders.add_dfir_at(
+                            &input.metadata().location_id,
+                            parse_quote! {
+                                #input_ident -> for_each(#f_tokens);
+                            },
+                            Some(&stmt_id.to_string()),
+                        );
                     }
                     BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, next_stmt_id);
@@ -1667,15 +1721,13 @@ impl HydroRoot {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        graph_builders
-                            .get_dfir_mut(&input.metadata().location_id)
-                            .add_dfir(
-                                parse_quote! {
-                                    #input_ident -> dest_sink(#sink);
-                                },
-                                None,
-                                Some(&stmt_id.to_string()),
-                            );
+                        graph_builders.add_dfir_at(
+                            &input.metadata().location_id,
+                            parse_quote! {
+                                #input_ident -> dest_sink(#sink);
+                            },
+                            Some(&stmt_id.to_string()),
+                        );
                     }
                     BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, next_stmt_id);
@@ -1717,15 +1769,13 @@ impl HydroRoot {
                         };
 
                         let cycle_id_ident = cycle_id.as_ident();
-                        graph_builders
-                            .get_dfir_mut(&input.metadata().location_id)
-                            .add_dfir(
-                                parse_quote! {
-                                    #cycle_id_ident = #input_ident -> identity::<#elem_type>();
-                                },
-                                None,
-                                None,
-                            );
+                        graph_builders.add_dfir_at(
+                            &input.metadata().location_id,
+                            parse_quote! {
+                                #cycle_id_ident = #input_ident -> identity::<#elem_type>();
+                            },
+                            None,
+                        );
                     }
                     // No ID, no callback
                     BuildersOrCallback::Callback(_, _) => {}
@@ -1745,15 +1795,13 @@ impl HydroRoot {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        graph_builders
-                            .get_dfir_mut(&input.metadata().location_id)
-                            .add_dfir(
-                                parse_quote! {
-                                    #input_ident -> for_each(&mut #ident);
-                                },
-                                None,
-                                Some(&stmt_id.to_string()),
-                            );
+                        graph_builders.add_dfir_at(
+                            &input.metadata().location_id,
+                            parse_quote! {
+                                #input_ident -> for_each(&mut #ident);
+                            },
+                            Some(&stmt_id.to_string()),
+                        );
                     }
                     BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, next_stmt_id);
@@ -1774,15 +1822,13 @@ impl HydroRoot {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        graph_builders
-                            .get_dfir_mut(&input.metadata().location_id)
-                            .add_dfir(
-                                parse_quote! {
-                                    #input_ident -> for_each(|_| {});
-                                },
-                                None,
-                                Some(&stmt_id.to_string()),
-                            );
+                        graph_builders.add_dfir_at(
+                            &input.metadata().location_id,
+                            parse_quote! {
+                                #input_ident -> for_each(|_| {});
+                            },
+                            Some(&stmt_id.to_string()),
+                        );
                     }
                     BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, next_stmt_id);
@@ -1967,7 +2013,7 @@ pub fn unify_atomic_ticks(ir: &mut [HydroRoot]) {
 
 #[cfg(feature = "build")]
 pub fn emit(ir: &mut Vec<HydroRoot>) -> SecondaryMap<LocationKey, FlatGraphBuilder> {
-    let mut builders = SecondaryMap::new();
+    let mut builders = ProdDfirBuilder::default();
     let mut seen_tees = HashMap::new();
     let mut built_tees = HashMap::new();
     let mut next_stmt_id = crate::Counter::<StmtId>::default();
@@ -1981,7 +2027,7 @@ pub fn emit(ir: &mut Vec<HydroRoot>) -> SecondaryMap<LocationKey, FlatGraphBuild
             &mut fold_hooked_idents,
         );
     }
-    builders
+    builders.graphs
 }
 
 #[cfg(feature = "build")]
@@ -3567,21 +3613,19 @@ impl HydroNode {
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
                                 if graph_builders.singleton_intermediates() {
-                                    let builder = graph_builders.get_dfir_mut(&out_location);
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             #out_ident = #inner_ident;
                                         },
                                         None,
-                                        None,
                                     );
                                 } else {
-                                    let builder = graph_builders.get_dfir_mut(&out_location);
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             #out_ident = #inner_ident -> persist::<'static>();
                                         },
-                                        None,
                                         None,
                                     );
                                 }
@@ -3839,8 +3883,11 @@ impl HydroNode {
 
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(graph_builders) => {
-                                    let builder = graph_builders.get_dfir_mut(&out_location);
-                                    builder.add_dfir(source_stmt, None, Some(&stmt_id.to_string()));
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
+                                        source_stmt,
+                                        Some(&stmt_id.to_string()),
+                                    );
                                 }
                                 BuildersOrCallback::Callback(_, node_callback) => {
                                     node_callback(node, next_stmt_id);
@@ -3858,8 +3905,6 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-
                                 if *first_tick_only {
                                     assert!(
                                         !metadata.location_id.is_top_level(),
@@ -3871,19 +3916,19 @@ impl HydroNode {
                                     || (metadata.location_id.is_top_level()
                                         && metadata.collection_kind.is_bounded())
                                 {
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             #source_ident = source_iter([#value]);
                                         },
-                                        None,
                                         Some(&stmt_id.to_string()),
                                     );
                                 } else {
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             #source_ident = source_iter([#value]) -> persist::<'static>();
                                         },
-                                        None,
                                         Some(&stmt_id.to_string()),
                                     );
                                 }
@@ -3957,12 +4002,11 @@ impl HydroNode {
                                     if fold_hooked_idents.contains(&inner_ident.to_string()) {
                                         fold_hooked_idents.insert(tee_ident.to_string());
                                     }
-                                    let builder = graph_builders.get_dfir_mut(&out_location);
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             #tee_ident = #inner_ident -> tee();
                                         },
-                                        None,
                                         Some(&stmt_id.to_string()),
                                     );
                                 }
@@ -3999,7 +4043,6 @@ impl HydroNode {
 
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(graph_builders) => {
-                                    let builder = graph_builders.get_dfir_mut(&out_location);
                                     let op_ident = syn::Ident::new(
                                         match kind {
                                             crate::handoff_ref::HandoffRefKind::Singleton => "singleton",
@@ -4008,11 +4051,11 @@ impl HydroNode {
                                         },
                                         Span::call_site(),
                                     );
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             #ref_ident = #inner_ident -> #op_ident();
                                         },
-                                        None,
                                         Some(&stmt_id.to_string()),
                                     );
                                 }
@@ -4082,14 +4125,13 @@ impl HydroNode {
                             let stmt_id = next_stmt_id.get_and_increment();
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(graph_builders) => {
-                                    let builder = graph_builders.get_dfir_mut(&out_location);
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             #partition_ident = #inner_ident -> partition(|__item, __num_outputs| if (#f_tokens)(__item) { 0_usize } else { 1_usize });
                                             #true_ident = #partition_ident[0];
                                             #false_ident = #partition_ident[1];
                                         },
-                                        None,
                                         Some(&stmt_id.to_string()),
                                     );
                                 }
@@ -4115,14 +4157,13 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #chain_ident = chain();
                                         #first_ident -> [0]#chain_ident;
                                         #second_ident -> [1]#chain_ident;
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4172,14 +4213,13 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #chain_ident = chain_first_n(1);
                                         #first_ident -> [0]#chain_ident;
                                         #second_ident -> [1]#chain_ident;
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4201,28 +4241,28 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-
                                 if right.metadata().location_id.is_top_level()
                                     && right.metadata().collection_kind.is_bounded()
                                 {
-                                    builder.add_dfir(
+                                    let lifetime =
+                                        graph_builders.cross_tick_state_lifetime(&out_location);
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
-                                            #cross_ident = cross_singleton::<'static>();
+                                            #cross_ident = cross_singleton::<#lifetime>();
                                             #left_ident -> [input]#cross_ident;
                                             #right_ident -> [single]#cross_ident;
                                         },
-                                        None,
                                         Some(&stmt_id.to_string()),
                                     );
                                 } else {
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             #cross_ident = cross_singleton();
                                             #left_ident -> [input]#cross_ident;
                                             #right_ident -> [single]#cross_ident;
                                         },
-                                        None,
                                         Some(&stmt_id.to_string()),
                                     );
                                 }
@@ -4250,17 +4290,8 @@ impl HydroNode {
 
                         let is_top_level = left.metadata().location_id.is_top_level()
                             && right.metadata().location_id.is_top_level();
-                        let left_lifetime = if left.metadata().location_id.is_top_level() {
-                            quote!('static)
-                        } else {
-                            quote!('tick)
-                        };
-
-                        let right_lifetime = if right.metadata().location_id.is_top_level() {
-                            quote!('static)
-                        } else {
-                            quote!('tick)
-                        };
+                        let left_top_level = left.metadata().location_id.is_top_level();
+                        let right_top_level = right.metadata().location_id.is_top_level();
 
                         let right_ident = ident_stack.pop().unwrap();
                         let left_ident = ident_stack.pop().unwrap();
@@ -4271,8 +4302,20 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                let left_lifetime = if left_top_level {
+                                    graph_builders.cross_tick_state_lifetime(&out_location)
+                                } else {
+                                    graph_builders.tick_state_lifetime(&out_location)
+                                };
+
+                                let right_lifetime = if right_top_level {
+                                    graph_builders.cross_tick_state_lifetime(&out_location)
+                                } else {
+                                    graph_builders.tick_state_lifetime(&out_location)
+                                };
+
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     if is_top_level {
                                         // if both inputs are root, the output is expected to have streamy semantics, so we need
                                         // a multiset_delta() to negate the replay behavior
@@ -4287,9 +4330,7 @@ impl HydroNode {
                                             #left_ident -> [0]#stream_ident;
                                             #right_ident -> [1]#stream_ident;
                                         }
-                                    }
-                                    ,
-                                    None,
+                                    },
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4314,11 +4355,7 @@ impl HydroNode {
                             unreachable!()
                         };
 
-                        let neg_lifetime = if neg.metadata().location_id.is_top_level() {
-                            quote!('static)
-                        } else {
-                            quote!('tick)
-                        };
+                        let neg_top_level = neg.metadata().location_id.is_top_level();
 
                         let neg_ident = ident_stack.pop().unwrap();
                         let pos_ident = ident_stack.pop().unwrap();
@@ -4329,14 +4366,21 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                let neg_lifetime = if neg_top_level {
+                                    graph_builders.cross_tick_state_lifetime(&out_location)
+                                } else {
+                                    graph_builders.tick_state_lifetime(&out_location)
+                                };
+                                let pos_lifetime =
+                                    graph_builders.tick_state_lifetime(&out_location);
+
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
-                                        #stream_ident = #operator::<'tick, #neg_lifetime>();
+                                        #stream_ident = #operator::<#pos_lifetime, #neg_lifetime>();
                                         #pos_ident -> [pos]#stream_ident;
                                         #neg_ident -> [neg]#stream_ident;
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4359,11 +4403,7 @@ impl HydroNode {
                             right.metadata().collection_kind
                         );
 
-                        let build_lifetime = if right.metadata().location_id.is_top_level() {
-                            quote!('static)
-                        } else {
-                            quote!('tick)
-                        };
+                        let build_top_level = right.metadata().location_id.is_top_level();
 
                         let build_ident = ident_stack.pop().unwrap();
                         let probe_ident = ident_stack.pop().unwrap();
@@ -4374,14 +4414,21 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                let build_lifetime = if build_top_level {
+                                    graph_builders.cross_tick_state_lifetime(&out_location)
+                                } else {
+                                    graph_builders.tick_state_lifetime(&out_location)
+                                };
+                                let probe_lifetime =
+                                    graph_builders.tick_state_lifetime(&out_location);
+
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
-                                        #stream_ident = join_multiset_half::<#build_lifetime, 'tick>();
+                                        #stream_ident = join_multiset_half::<#build_lifetime, #probe_lifetime>();
                                         #probe_ident -> [probe]#stream_ident;
                                         #build_ident -> [build]#stream_ident;
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4402,12 +4449,11 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #futures_ident = #input_ident -> resolve_futures();
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4428,12 +4474,11 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #futures_ident = #input_ident -> resolve_futures_blocking();
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4454,12 +4499,11 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #futures_ident = #input_ident -> resolve_futures_ordered();
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4496,12 +4540,11 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #map_ident = #input_ident -> map(#f_tokens);
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4531,12 +4574,11 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #flat_map_ident = #input_ident -> flat_map(#f_tokens);
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4566,12 +4608,11 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #flat_map_stream_blocking_ident = #input_ident -> flat_map_stream_blocking(#f_tokens);
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4601,12 +4642,11 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #filter_ident = #input_ident -> filter(#f_tokens);
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4636,12 +4676,11 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #filter_map_ident = #input_ident -> filter_map(#f_tokens);
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4662,12 +4701,11 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #sort_ident = #input_ident -> sort();
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4688,12 +4726,11 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #defer_tick_ident = #input_ident -> defer_tick_lazy();
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4714,17 +4751,16 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
                                 let lifetime = if input.metadata().location_id.is_top_level() {
-                                    quote!('static)
+                                    graph_builders.cross_tick_state_lifetime(&out_location)
                                 } else {
-                                    quote!('tick)
+                                    graph_builders.tick_state_lifetime(&out_location)
                                 };
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #enumerate_ident = #input_ident -> enumerate::<#lifetime>();
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4754,12 +4790,11 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #inspect_ident = #input_ident -> inspect(#f_tokens);
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4780,18 +4815,17 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                let builder = graph_builders.get_dfir_mut(&out_location);
                                 let lifetime = if input.metadata().location_id.is_top_level() {
-                                    quote!('static)
+                                    graph_builders.cross_tick_state_lifetime(&out_location)
                                 } else {
-                                    quote!('tick)
+                                    graph_builders.tick_state_lifetime(&out_location)
                                 };
 
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #unique_ident = #input_ident -> unique::<#lifetime>();
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
@@ -4836,11 +4870,7 @@ impl HydroNode {
                             unreachable!()
                         };
 
-                        let lifetime = if input.metadata().location_id.is_top_level() {
-                            quote!('static)
-                        } else {
-                            quote!('tick)
-                        };
+                        let input_top_level = input.metadata().location_id.is_top_level();
 
                         let input_ident = ident_stack.pop().unwrap();
 
@@ -4861,6 +4891,12 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
+                                let lifetime = if input_top_level {
+                                    graph_builders.cross_tick_state_lifetime(&out_location)
+                                } else {
+                                    graph_builders.tick_state_lifetime(&out_location)
+                                };
+
                                 if matches!(node, HydroNode::Fold { .. })
                                     && node.metadata().location_id.is_top_level()
                                     && !(matches!(node.metadata().location_id, LocationId::Atomic(_)))
@@ -4900,14 +4936,13 @@ impl HydroNode {
                                         (&input_ident, acc)
                                     };
 
-                                    let builder = graph_builders.get_dfir_mut(&out_location);
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             source_iter([(#init_tokens)()]) -> [0]#fold_ident;
                                             #effective_input -> scan::<#lifetime>(#init_tokens, #wrapped_acc) -> [1]#fold_ident;
                                             #fold_ident = chain();
                                         },
-                                        None,
                                         Some(&stmt_id.to_string()),
                                     );
 
@@ -4927,7 +4962,6 @@ impl HydroNode {
                                         &input.metadata().collection_kind,
                                         &node.metadata().op,
                                     );
-                                    let builder = graph_builders.get_dfir_mut(&out_location);
 
                                     let wrapped_acc: syn::Expr = parse_quote!({
                                         let mut __init = #init_tokens;
@@ -4943,21 +4977,21 @@ impl HydroNode {
                                     });
 
                                     if let Some(hooked_input_ident) = hooked_input_ident {
-                                        builder.add_dfir(
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
                                             parse_quote! {
                                                 #fold_ident = #hooked_input_ident -> flatten() -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #wrapped_acc);
                                             },
-                                            None,
                                             Some(&stmt_id.to_string()),
                                         );
 
                                         fold_hooked_idents.insert(fold_ident.to_string());
                                     } else {
-                                        builder.add_dfir(
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
                                             parse_quote! {
                                                 #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #wrapped_acc);
                                             },
-                                            None,
                                             Some(&stmt_id.to_string()),
                                         );
                                     }
@@ -4979,21 +5013,19 @@ impl HydroNode {
                                     );
 
                                     let actual_input = hooked_input_ident.as_ref().unwrap_or(&input_ident);
-                                    let builder = graph_builders.get_dfir_mut(&out_location);
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             #fold_ident = #actual_input -> #operator::<#lifetime>(#init_tokens, #acc_tokens);
                                         },
-                                        None,
                                         Some(&stmt_id.to_string()),
                                     );
                                 } else {
-                                    let builder = graph_builders.get_dfir_mut(&out_location);
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             #fold_ident = #input_ident -> #operator::<#lifetime>(#init_tokens, #acc_tokens);
                                         },
-                                        None,
                                         Some(&stmt_id.to_string()),
                                     );
                                 }
@@ -5034,11 +5066,7 @@ impl HydroNode {
                             unreachable!()
                         };
 
-                        let lifetime = if input.metadata().location_id.is_top_level() {
-                            quote!('static)
-                        } else {
-                            quote!('tick)
-                        };
+                        let input_top_level = input.metadata().location_id.is_top_level();
 
                         let input_ident = ident_stack.pop().unwrap();
 
@@ -5055,6 +5083,12 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
+                                let lifetime = if input_top_level {
+                                    graph_builders.cross_tick_state_lifetime(&out_location)
+                                } else {
+                                    graph_builders.tick_state_lifetime(&out_location)
+                                };
+
                                 if matches!(node, HydroNode::Reduce { .. })
                                     && node.metadata().location_id.is_top_level()
                                     && !(matches!(node.metadata().location_id, LocationId::Atomic(_)))
@@ -5074,12 +5108,11 @@ impl HydroNode {
                                         "Reduce keyed with optional intermediates is not yet supported in simulator"
                                     );
                                 } else {
-                                    let builder = graph_builders.get_dfir_mut(&out_location);
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             #reduce_ident = #input_ident -> #operator::<#lifetime>(#f_tokens);
                                         },
-                                        None,
                                         Some(&stmt_id.to_string()),
                                     );
                                 }
@@ -5098,11 +5131,7 @@ impl HydroNode {
                         metadata,
                         ..
                     } => {
-                        let lifetime = if input.metadata().location_id.is_top_level() {
-                            quote!('static)
-                        } else {
-                            quote!('tick)
-                        };
+                        let input_top_level = input.metadata().location_id.is_top_level();
 
                         // watermark is processed second, so it's on top
                         let watermark_ident = ident_stack.pop().unwrap();
@@ -5128,6 +5157,12 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
+                                let lifetime = if input_top_level {
+                                    graph_builders.cross_tick_state_lifetime(&out_location)
+                                } else {
+                                    graph_builders.tick_state_lifetime(&out_location)
+                                };
+
                                 if metadata.location_id.is_top_level()
                                     && !(matches!(metadata.location_id, LocationId::Atomic(_)))
                                     && graph_builders.singleton_intermediates()
@@ -5137,8 +5172,8 @@ impl HydroNode {
                                         "Reduce keyed watermarked on a top-level bounded collection is not yet supported"
                                     )
                                 } else {
-                                    let builder = graph_builders.get_dfir_mut(&out_location);
-                                    builder.add_dfir(
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
                                         parse_quote! {
                                             #chain_ident = chain();
                                             #input_ident
@@ -5180,7 +5215,6 @@ impl HydroNode {
                                                 })
                                                 -> flat_map(|(map, _curr_watermark)| map);
                                         },
-                                        None,
                                         Some(&stmt_id.to_string()),
                                     );
                                 }
@@ -5300,12 +5334,11 @@ impl HydroNode {
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
                                 let arg = format!("{}({})", prefix, tag);
-                                let builder = graph_builders.get_dfir_mut(&out_location);
-                                builder.add_dfir(
+                                graph_builders.add_dfir_at(
+                                    &out_location,
                                     parse_quote! {
                                         #counter_ident = #input_ident -> _counter(#arg, #duration);
                                     },
-                                    None,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
