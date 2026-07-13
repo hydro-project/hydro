@@ -5,7 +5,6 @@ use super::{
     OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
     Persistence, PortListSpec, RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 /// List state operator, but with a closure to map the input to the state lattice and a factory
 /// function to initialize the internal data structure.
@@ -70,13 +69,12 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                    inputs: _,
                    outputs,
                    is_pull,
-                   op_name,
+                   op_name: _,
                    op_inst:
                        OperatorInstance {
                            generics:
                                OpInstGenerics {
                                    type_args,
-                                   persistence_args,
                                    ..
                                },
                            ..
@@ -90,19 +88,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
             .map(ToTokens::to_token_stream)
             .unwrap_or(quote_spanned!(op_span=> _));
 
-        let persistence = match persistence_args[..] {
-            [] => Persistence::Tick,
-            [Persistence::Mutable] => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    format!("{} does not support `'mut`.", op_name),
-                ));
-                Persistence::Tick
-            }
-            [a] => a,
-            _ => unreachable!(),
-        };
+        let [persistence] = wc.persistence_args(diagnostics);
 
         let state_ident = wc.make_ident("state");
         let factory_fn = &arguments[1];

@@ -50,7 +50,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         assert!(is_pull);
 
-        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
+        let persistences: [_; 2] = wc.persistence_args(diagnostics);
 
         let (lhs_prologue, lhs_tick_end, lhs_pre_write_iter, lhs_borrow) =
             make_joindata(wc, persistences[0], "lhs").map_err(|err| diagnostics.push(err))?;
@@ -63,7 +63,6 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
             Persistence::Static => quote_spanned! {op_span=>
                 let mut #rhs_joindata_ident = ::std::vec::Vec::new();
             },
-            Persistence::Mutable => unreachable!(),
         };
 
         let lhs = &inputs[0];
@@ -110,7 +109,6 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                     #root::dfir_pipes::pull::iter(iter)
                 };
             },
-            Persistence::Mutable => unreachable!(),
         };
 
         Ok(OperatorWriteOutput {

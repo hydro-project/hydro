@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use dfir_pipes::pull::HalfMultisetJoinState;
 use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::scheduled::ticks::TickInstant;
@@ -236,68 +234,4 @@ pub fn test_persist() {
 
     assert_eq!(&[1, 2, 3], &*collect_ready::<Vec<_>, _>(&mut pull_rx));
     assert_eq!(&[1, 2, 3], &*collect_ready::<Vec<_>, _>(&mut push_rx));
-}
-
-#[multiplatform_test]
-pub fn test_persist_mut() {
-    use dfir_rs::util::Persistence::*;
-
-    let (pull_tx, mut pull_rx) = dfir_rs::util::unbounded_channel::<usize>();
-    let (push_tx, mut push_rx) = dfir_rs::util::unbounded_channel::<usize>();
-
-    let mut df = dfir_rs::dfir_syntax! {
-
-        my_tee = source_iter([Persist(1), Persist(2), Persist(3), Persist(4), Delete(2)])
-            -> persist_mut::<'mutable>() // pull
-            -> tee();
-
-        my_tee
-            -> for_each(|v| pull_tx.send(v).unwrap());
-
-        my_tee
-            -> flat_map(|x| if x == 3 {vec![Persist(x), Delete(x)]} else {vec![Persist(x)]})
-            -> persist_mut::<'mutable>() // push
-            -> for_each(|v| push_tx.send(v).unwrap());
-    };
-    assert_graphvis_snapshots!(df);
-
-    df.run_available_sync();
-
-    assert_eq!(&[1, 3, 4], &*collect_ready::<Vec<_>, _>(&mut pull_rx));
-    assert_eq!(&[1, 4], &*collect_ready::<Vec<_>, _>(&mut push_rx));
-}
-
-#[multiplatform_test]
-pub fn test_persist_mut_keyed() {
-    use dfir_rs::util::PersistenceKeyed::*;
-
-    let (pull_tx, mut pull_rx) = dfir_rs::util::unbounded_channel::<usize>();
-    let (push_tx, mut push_rx) = dfir_rs::util::unbounded_channel::<usize>();
-
-    let mut df = dfir_rs::dfir_syntax! {
-
-        my_tee = source_iter([Persist(1, 1), Persist(2, 2), Persist(3, 3), Persist(4, 4), Delete(2)])
-            -> persist_mut_keyed::<'mutable>() // pull
-            -> tee();
-
-        my_tee
-            -> for_each(|(_k, v)| pull_tx.send(v).unwrap());
-
-        my_tee
-            -> flat_map(|(k, v)| if v == 3 {vec![Persist(k, v), Delete(k)]} else {vec![Persist(k, v)]})
-            -> persist_mut_keyed::<'mutable>() // push
-            -> for_each(|(_k, v)| push_tx.send(v).unwrap());
-    };
-    assert_graphvis_snapshots!(df);
-
-    df.run_available_sync();
-
-    assert_eq!(
-        HashSet::from_iter([1, 3, 4]),
-        collect_ready::<HashSet<_>, _>(&mut pull_rx)
-    );
-    assert_eq!(
-        HashSet::from_iter([1, 4]),
-        collect_ready::<HashSet<_>, _>(&mut push_rx)
-    );
 }

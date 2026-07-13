@@ -47,7 +47,7 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
                  diagnostics| {
         assert!(is_pull);
 
-        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
+        let persistences: [_; 2] = wc.persistence_args(diagnostics);
 
         let probe_ident = wc.make_ident("probe");
         let build_ident = wc.make_ident("build");
@@ -56,7 +56,6 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
         let probe_persist = match persistences[1] {
             Persistence::None | Persistence::Tick => false,
             Persistence::Loop | Persistence::Static => true,
-            Persistence::Mutable => unreachable!(),
         };
 
         let write_prologue_probe = probe_persist.then(|| {

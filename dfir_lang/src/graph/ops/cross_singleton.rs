@@ -2,7 +2,7 @@ use quote::quote_spanned;
 use syn::parse_quote;
 
 use super::{
-    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorCategory, OperatorConstraints,
     OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
@@ -47,21 +47,12 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
                    op_span,
                    inputs,
                    is_pull,
-                   op_inst:
-                       OperatorInstance {
-                           generics: OpInstGenerics { persistence_args, .. },
-                           ..
-                       },
                    ..
                },
-               _diagnostics| {
+               diagnostics| {
         assert!(is_pull);
 
-        let persistence = match persistence_args[..] {
-            [] => Persistence::Tick,
-            [p] => p,
-            _ => panic!(),
-        };
+        let [persistence] = wc.persistence_args(diagnostics);
 
         let item_stream = &inputs[0];
         let singleton_stream = &inputs[1];
