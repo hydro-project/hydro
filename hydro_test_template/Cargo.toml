@@ -19,7 +19,6 @@ stageleft.workspace = true
 stageleft_tool.workspace = true
 
 [dev-dependencies]
-ctor = "0.2"
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.17.0-alpha.2" }
 hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.3", features = [
     "deploy",
