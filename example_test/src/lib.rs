@@ -2,9 +2,34 @@ use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::process::{Child, Stdio};
 
-/// Calls [`ExampleChild::run_new`] with the package name and test name infered from the call site.
+#[doc(hidden)]
+pub use ctor;
+
+/// Environment variable used to signal that the current test binary should run the example's
+/// `main` instead of the test harness. Set to `"1"` by [`ExampleChild::run_new`].
+///
+/// Examples may also check this variable to detect that they are running under an example test.
+pub const RUN_MAIN_ENV_VAR: &str = "RUNNING_AS_EXAMPLE_TEST";
+
+/// Runs the current example's `main` in a child process, returning an [`ExampleChild`] handle.
 /// Only arguments need to be specified.
+///
+/// This must be invoked from within a `#[test]` inside an example (i.e. a file under
+/// `examples/`), and the example must have a `main` function at the crate root.
+///
+/// Rather than invoking `cargo run --example ...` (which may trigger recompilation, as feature
+/// flags often differ between `cargo test` and `cargo run`), this re-executes the
+/// already-running test binary ([`std::env::current_exe`]). The example's `main` is already
+/// compiled into the test binary, so no extra compilation is needed. A pre-main constructor
+/// (registered via [`ctor`]) detects the re-execution (via the [`RUN_MAIN_ENV_VAR`] environment
+/// variable) and calls `main` directly, before the test harness gets a chance to run. The
+/// child process receives the example's arguments as its real `argv`, so `main` can parse
+/// [`std::env::args`] normally (e.g. with `clap`).
 #[macro_export]
+#[expect(
+    clippy::crate_in_macro_def,
+    reason = "intentional: `crate::main` must refer to the *calling* example's `main`, not `example_test`"
+)]
 macro_rules! run_current_example {
     () => {
         $crate::run_current_example!(::std::iter::empty::<&str>())
@@ -12,13 +37,53 @@ macro_rules! run_current_example {
     ($args:literal) => {
         $crate::run_current_example!(str::split_whitespace($args))
     };
-    ($args:expr $(,)?) => {
-        $crate::ExampleChild::run_new(
-            &::std::env::var("CARGO_PKG_NAME").unwrap(),
-            &$crate::extract_example_name(file!()).expect("Failed to determine example name."),
-            $args,
-        )
-    };
+    ($args:expr $(,)?) => {{
+        // Register a pre-main constructor (in the test binary) which, when the test binary is
+        // re-executed by `ExampleChild::run_new`, runs the example's `main` and exits before the
+        // test harness runs. When the env var is not set (i.e. in the normal test run), this is
+        // a no-op. `priority = late` ensures this runs after other constructors (e.g. stageleft
+        // rewrite registration in dependencies), since bin crate ctors otherwise run first.
+        $crate::ctor::declarative::ctor! {
+            #[ctor(unsafe, priority = late)]
+            fn __example_test_run_main() {
+                $crate::run_example_main_if_child(|| crate::main());
+            }
+        }
+        $crate::ExampleChild::run_new($args)
+    }};
+}
+
+/// Used by [`run_current_example!`]; do not call directly.
+///
+/// If [`RUN_MAIN_ENV_VAR`] is set, runs `main_fn` and exits the process with an appropriate exit
+/// code. Otherwise does nothing.
+pub fn run_example_main_if_child<T: ExampleMainReturn>(main_fn: impl FnOnce() -> T) {
+    if std::env::var_os(RUN_MAIN_ENV_VAR).is_some_and(|value| value == "1") {
+        let exit_code = main_fn().into_exit_code();
+        std::process::exit(exit_code);
+    }
+}
+
+/// Return types allowed for an example `main` run via [`run_current_example!`].
+pub trait ExampleMainReturn {
+    /// Converts the return value of `main` into a process exit code.
+    fn into_exit_code(self) -> i32;
+}
+impl ExampleMainReturn for () {
+    fn into_exit_code(self) -> i32 {
+        0
+    }
+}
+impl<T: ExampleMainReturn, E: std::fmt::Debug> ExampleMainReturn for Result<T, E> {
+    fn into_exit_code(self) -> i32 {
+        match self {
+            Ok(inner) => inner.into_exit_code(),
+            Err(err) => {
+                eprintln!("Error: {:?}", err);
+                1
+            }
+        }
+    }
 }
 
 /// A wrapper around [`std::process::Child`] that allows us to wait for a specific outputs.
@@ -30,28 +95,14 @@ pub struct ExampleChild {
     output_len: usize,
 }
 impl ExampleChild {
-    pub fn run_new(
-        pkg_name: &str,
-        test_name: &str,
-        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
-    ) -> Self {
-        let mut cargo_cmd = std::process::Command::new("cargo");
-        cargo_cmd
-            .args(["run", "--frozen", "--no-default-features"])
-            .args(["-p", pkg_name, "--example", test_name]);
-        if let Some(features) = trybuild_internals_api::features::find()
-            && !features.is_empty()
-        {
-            cargo_cmd.args(["--features", &features.join(",")]);
-        }
-        cargo_cmd
-            .arg("--")
-            .args(args)
-            .env("RUNNING_AS_EXAMPLE_TEST", "1");
+    pub fn run_new(args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Self {
+        let current_exe = std::env::current_exe().expect("Failed to get current executable path.");
+        let mut cmd = std::process::Command::new(current_exe);
+        cmd.args(args).env(RUN_MAIN_ENV_VAR, "1");
 
-        log::info!("Running cargo command: {:?}", cargo_cmd);
+        log::info!("Re-executing test binary as example: {:?}", cmd);
 
-        let child = cargo_cmd
+        let child = cmd
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
@@ -126,14 +177,4 @@ impl Drop for ExampleChild {
 
         self.child.wait().unwrap();
     }
-}
-
-/// Extract the example name from the [`std::file!`] path, used by the [`run_current_example!`] macro.
-pub fn extract_example_name(file: &str) -> Option<String> {
-    let pathbuf = std::path::PathBuf::from(file);
-    let mut path = pathbuf.as_path();
-    while path.parent()?.file_name()? != "examples" {
-        path = path.parent().unwrap();
-    }
-    Some(path.file_stem()?.to_string_lossy().into_owned())
 }

@@ -9,8 +9,8 @@ license = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
+ctor = { version = "1", default-features = false, features = ["std", "priority"] }
 regex = "1.10.4"
-trybuild-internals-api = "1.0.0"
 log = "0.4"
 
 [lints]
