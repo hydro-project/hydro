@@ -85,12 +85,6 @@ async fn main() {
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
-    let rustflags = if args.gcp.is_some() || args.aws {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
-    } else {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
-    };
-
     let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
     let external = builder.external();
     let p1 = builder.process();
@@ -116,15 +110,11 @@ async fn main() {
     let nodes = optimized
         .with_process(
             &p1,
-            TrybuildHost::new(create_host(&mut deployment))
-                .rustflags(rustflags)
-                .features(["tokio"]),
+            TrybuildHost::new(create_host(&mut deployment)).features(["tokio"]),
         )
         .with_process(
             &p2,
-            TrybuildHost::new(create_host(&mut deployment))
-                .rustflags(rustflags)
-                .features(["tokio"]),
+            TrybuildHost::new(create_host(&mut deployment)).features(["tokio"]),
         )
         .with_external(&external, deployment.Localhost())
         .deploy(&mut deployment);

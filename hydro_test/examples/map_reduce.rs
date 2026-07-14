@@ -65,12 +65,6 @@ async fn main() {
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
-    let rustflags = if args.gcp.is_some() || args.aws {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
-    } else {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
-    };
-
     let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
     let (leader, cluster) = hydro_test::cluster::map_reduce::map_reduce(&mut builder);
 
@@ -89,13 +83,10 @@ async fn main() {
     let optimized = built.with_default_optimize();
 
     let _nodes = optimized
-        .with_process(
-            &leader,
-            TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
-        )
+        .with_process(&leader, TrybuildHost::new(create_host(&mut deployment)))
         .with_cluster(
             &cluster,
-            (0..2).map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+            (0..2).map(|_| TrybuildHost::new(create_host(&mut deployment))),
         )
         .deploy(&mut deployment);
 
