@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["extract_example_name"],"macro":[["run_current_example",1]],"struct":["ExampleChild"]};
+window.SIDEBAR_ITEMS = {"constant":["RUN_MAIN_ENV_VAR"],"fn":["run_example_main_if_child"],"macro":[["run_current_example",1]],"struct":["ExampleChild"],"trait":["ExampleMainReturn"]};
