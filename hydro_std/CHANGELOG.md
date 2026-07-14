@@ -1,6 +1,65 @@
 
 
+## v0.17.0-alpha.4 (2026-07-14)
+
+### Chore
+
+ - <csr-id-a892c50b865c9c7f635c194b5bec3184cb857531/> bump Stageleft version
+
+### Documentation
+
+ - <csr-id-36830afa7ecc5cf4627a6570649db2212f783186/> fix lots of small docs issues
+
+### New Features (BREAKING)
+
+ - <csr-id-dbdd2f110c63c2486af563b10b8fe0b19a729e5b/> place Tokio dependencies behind a feature flag
+   Breaking Changes:
+   - the `hydro_lang::telemetry::emf` module now requires the non-default
+   `telemetry_emf` feature
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
+ - 21 days passed between releases.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 3 unique issues were worked on: [#2960](https://github.com/hydro-project/hydro/issues/2960), [#3012](https://github.com/hydro-project/hydro/issues/3012), [#3025](https://github.com/hydro-project/hydro/issues/3025)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2960](https://github.com/hydro-project/hydro/issues/2960)**
+    - Place Tokio dependencies behind a feature flag ([`dbdd2f1`](https://github.com/hydro-project/hydro/commit/dbdd2f110c63c2486af563b10b8fe0b19a729e5b))
+ * **[#3012](https://github.com/hydro-project/hydro/issues/3012)**
+    - Fix lots of small docs issues ([`36830af`](https://github.com/hydro-project/hydro/commit/36830afa7ecc5cf4627a6570649db2212f783186))
+ * **[#3025](https://github.com/hydro-project/hydro/issues/3025)**
+    - Bump Stageleft version ([`a892c50`](https://github.com/hydro-project/hydro/commit/a892c50b865c9c7f635c194b5bec3184cb857531))
+</details>
+
 ## v0.17.0-alpha.3 (2026-06-22)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 3 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release dfir_macro v0.17.0-alpha.3, lattices v0.8.0-alpha.2, sinktools v0.2.0-alpha.3, hydro_deploy_integration v0.17.0-alpha.2, dfir_rs v0.17.0-alpha.3, hydro_deploy v0.17.0-alpha.2, hydro_lang v0.17.0-alpha.3, hydro_std v0.17.0-alpha.3 ([`295c0ec`](https://github.com/hydro-project/hydro/commit/295c0ec5d2d3f182598972d9a0c5511f5812c6ae))
+</details>
 
 ## v0.17.0-alpha.2 (2026-06-19)
 

@@ -1,7 +1,7 @@
 [package]
 name = "hydro_std"
 publish = true
-version = "0.17.0-alpha.3"
+version = "0.17.0-alpha.4"
 documentation = "https://docs.rs/hydro_std/"
 description = "Standard library of distributed systems building blocks for Hydro"
 edition = { workspace = true }
@@ -20,7 +20,7 @@ workspace = true
 all-features = true
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.3", default-features = false }
+hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.4", default-features = false }
 stageleft.workspace = true
 hdrhistogram = "7.5.4"
 serde = { version = "1", features = ["derive"] }
@@ -29,8 +29,8 @@ serde = { version = "1", features = ["derive"] }
 stageleft_tool.workspace = true
 
 [dev-dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.3", features = [
+hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.4", features = [
     "deploy",
     "sim",
 ] }
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.17.0-alpha.2" }
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.17.0-alpha.3" }

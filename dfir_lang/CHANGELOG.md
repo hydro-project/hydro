@@ -5,6 +5,228 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.17.0-alpha.3 (2026-07-14)
+
+### New Features
+
+ - <csr-id-1e136dffb781734b708a2cc3c17a994008dc8a32/> re-add loop scopes
+   Re-adds `loop { ... }` blocks in `dfir_syntax!` inline codegen with
+   loop-aware partitioning, hierarchical codegen, and proper operator
+   validation.
+   
+   WIP for #2902
+   
+   ## Operators
+   
+   **Loop ingress (windowing):**
+   - `batch()` — windows data into a loop, triggers the loop to fire
+   - `batch_lazy()` — windows data into a loop without triggering it; data
+   is dropped if the loop doesn't fire that tick
+   
+   **Cross-iteration/tick deferral:**
+   - `defer_tick()` — buffers data for the next time boundary. Adapts to
+   context: defers to the next tick at top-level or in root-level loops,
+   defers to the next loop iteration in nested loops. Non-lazy (causes
+   re-fire).
+   - `defer_tick_lazy()` — same as `defer_tick()` but lazy (does not cause
+   re-fire or schedule a new tick).
+   
+   **Loop egress (unwindowing):**
+   - `all_iterations()` — collects output from all loop iterations and
+   emits outside the loop
+   
+   ## Key implementation details
+   
+   **Partitioning & ordering:**
+   - `DelayType::{Loop, LoopLazy}` delay types used internally for
+   loop-boundary edges
+   - `mark_tick_boundary_handoffs` remaps `DelayType::Tick` → `Loop` when
+   the consumer is in a nested loop, so a single `defer_tick()` operator
+   works in all contexts
+   - `make_loops_contiguous`: a linear-time rearrangement pass that groups
+   loop subgraphs contiguously in the topological order
+   - Loop-exit handoff buffers are declared outside the `while` loop so
+   consumers can read accumulated data
+   
+   **Inline codegen (`meta_graph.rs`):**
+   - Stack-based hierarchical code generation builds loop structure
+   directly during subgraph iteration
+   - `emit_loop_gate` helper wraps loop bodies:
+     - Root-level loops: `if` gate (fire at most once per tick)
+   - Nested loops: `while` gate (iterate to fixpoint, conditioned on entry
+   handoff + non-lazy defer back-buffer data)
+   - Loop-exit handoffs are hoisted to the parent level for proper scoping
+   
+   **Validation (`flat_graph_builder.rs`):**
+   - Windowing operators must be at loop entry edges; unwindowing at loop
+   exit edges
+   - Loop bodies must be DAGs (excluding `defer_tick` back-edges)
+   - Sources must be at root level
+
+### Bug Fixes
+
+ - <csr-id-02630fc91afac17c7f3269319eee1f6dc1a5e333/> drain source_stream to register waker, fixing sim partitioning/panic sensitivity
+   The simulator was sensitive to tick DFIR subgraph partitioning because
+   `source_stream` didn't always register its waker with the underlying
+   tokio channel. When `cross_singleton` (or any downstream operator) only
+   pulled one item from the singleton stream without hitting Pending, the
+   waker was never registered. This meant subsequent `send()` calls from
+   hooks couldn't wake the tick DFIR, causing `run_tick()` to return false
+   and the simulator to terminate branches early via silent panic (fixed
+   in subsequent PR)
+   
+   The fix adds a `write_iterator_after` cleanup step to `source_stream`
+   (mirroring `source_iter`'s pattern) that drains remaining items from the
+   stream after the subgraph's main pipeline runs. This ensures `poll_next`
+   eventually returns Pending, registering the waker for future sends.
+   
+   ---------
+
+### Refactor
+
+ - <csr-id-5901045da164dbcb5d3796e82da0201cc33610bb/> remove `DelayType::Stratum`, `MonotoneAccum`
+   removes the variants and updates graph displaying, hence the snapshot
+   updates
+ - <csr-id-394ed2a0245ddcf41c8c40634bca6610ef9b2e38/> remove stratum from `cross_singleton`, `defer_signal`, `difference`, `zip_longest`
+ - <csr-id-62e86898c9991a2de4723f2466f7dd138958f121/> remove stratum for `anti_join`, `join_fused[_lhs/_rhs]`, `join_multiset_half`, `_lattice_join_fused_join`
+ - <csr-id-fd0ebc1b21312586b3dc6b9b73aa1509e8b223a0/> remove stratum, add push codegen for `lattice_fold`, `lattice_reduce`, `_lattice_fold_batch`
+ - <csr-id-a241ec46227cb48976cb71c196c83caf5911338b/> remove stratum, add push codegen, test `persist_mut`, `persist_mut_keyed`
+ - <csr-id-9303058383caa3f064259e8cf0cc3200553953d4/> remove stratum, add push codegen, test `sort`, `sort_by_key`
+ - <csr-id-4cad807fdffdb63c323806ac7ba987c27eb30bee/> remove stratum from `chain`, `chain_first_n`
+ - <csr-id-4b18fd7f799fcb1e27f53d182ad48813292e396b/> remove stratum, add push codegen, test `reduce`, `reduce_keyed`, `reduce_no_replay`
+ - <csr-id-7321ac2b4602cb5179a0ae405bde0272ff2e5a5a/> remove stratum, add push codegen, test `fold`, `fold_keyed`, `fold_no_replay`
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 11 commits contributed to the release over the course of 21 calendar days.
+ - 25 days passed between releases.
+ - 11 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 11 unique issues were worked on: [#2965](https://github.com/hydro-project/hydro/issues/2965), [#2966](https://github.com/hydro-project/hydro/issues/2966), [#2967](https://github.com/hydro-project/hydro/issues/2967), [#2968](https://github.com/hydro-project/hydro/issues/2968), [#2969](https://github.com/hydro-project/hydro/issues/2969), [#2970](https://github.com/hydro-project/hydro/issues/2970), [#2971](https://github.com/hydro-project/hydro/issues/2971), [#2972](https://github.com/hydro-project/hydro/issues/2972), [#2974](https://github.com/hydro-project/hydro/issues/2974), [#2977](https://github.com/hydro-project/hydro/issues/2977), [#2989](https://github.com/hydro-project/hydro/issues/2989)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2965](https://github.com/hydro-project/hydro/issues/2965)**
+    - Remove stratum, add push codegen, test `fold`, `fold_keyed`, `fold_no_replay` ([`7321ac2`](https://github.com/hydro-project/hydro/commit/7321ac2b4602cb5179a0ae405bde0272ff2e5a5a))
+ * **[#2966](https://github.com/hydro-project/hydro/issues/2966)**
+    - Remove stratum, add push codegen, test `reduce`, `reduce_keyed`, `reduce_no_replay` ([`4b18fd7`](https://github.com/hydro-project/hydro/commit/4b18fd7f799fcb1e27f53d182ad48813292e396b))
+ * **[#2967](https://github.com/hydro-project/hydro/issues/2967)**
+    - Remove stratum from `chain`, `chain_first_n` ([`4cad807`](https://github.com/hydro-project/hydro/commit/4cad807fdffdb63c323806ac7ba987c27eb30bee))
+ * **[#2968](https://github.com/hydro-project/hydro/issues/2968)**
+    - Remove stratum, add push codegen, test `sort`, `sort_by_key` ([`9303058`](https://github.com/hydro-project/hydro/commit/9303058383caa3f064259e8cf0cc3200553953d4))
+ * **[#2969](https://github.com/hydro-project/hydro/issues/2969)**
+    - Remove stratum, add push codegen, test `persist_mut`, `persist_mut_keyed` ([`a241ec4`](https://github.com/hydro-project/hydro/commit/a241ec46227cb48976cb71c196c83caf5911338b))
+ * **[#2970](https://github.com/hydro-project/hydro/issues/2970)**
+    - Remove stratum, add push codegen for `lattice_fold`, `lattice_reduce`, `_lattice_fold_batch` ([`fd0ebc1`](https://github.com/hydro-project/hydro/commit/fd0ebc1b21312586b3dc6b9b73aa1509e8b223a0))
+ * **[#2971](https://github.com/hydro-project/hydro/issues/2971)**
+    - Remove stratum for `anti_join`, `join_fused[_lhs/_rhs]`, `join_multiset_half`, `_lattice_join_fused_join` ([`62e8689`](https://github.com/hydro-project/hydro/commit/62e86898c9991a2de4723f2466f7dd138958f121))
+ * **[#2972](https://github.com/hydro-project/hydro/issues/2972)**
+    - Remove stratum from `cross_singleton`, `defer_signal`, `difference`, `zip_longest` ([`394ed2a`](https://github.com/hydro-project/hydro/commit/394ed2a0245ddcf41c8c40634bca6610ef9b2e38))
+ * **[#2974](https://github.com/hydro-project/hydro/issues/2974)**
+    - Remove `DelayType::Stratum`, `MonotoneAccum` ([`5901045`](https://github.com/hydro-project/hydro/commit/5901045da164dbcb5d3796e82da0201cc33610bb))
+ * **[#2977](https://github.com/hydro-project/hydro/issues/2977)**
+    - Drain source_stream to register waker, fixing sim partitioning/panic sensitivity ([`02630fc`](https://github.com/hydro-project/hydro/commit/02630fc91afac17c7f3269319eee1f6dc1a5e333))
+ * **[#2989](https://github.com/hydro-project/hydro/issues/2989)**
+    - Re-add loop scopes ([`1e136df`](https://github.com/hydro-project/hydro/commit/1e136dffb781734b708a2cc3c17a994008dc8a32))
+</details>
+
+## 0.17.0-alpha.2 (2026-06-19)
+
+### Bug Fixes
+
+ - <csr-id-ca45c19d739fc7ee2bf5e618713bc759a5c2b171/> `join_multiset_half` `CanPend`/`CanEnd` propagation, for `chain`/`union` compatibility
+   The probe_join helper function in join_multiset_half's codegen was
+   returning
+   `impl Pull<Item = ..., Meta = ()>` without specifying CanEnd/CanPend.
+   This
+   caused a type error when the output was used as the first input to
+   chain/union,
+   which requires `CanEnd = Yes` for Pull::fuse().
+   
+   Fixed by adding `CanPend = I::CanPend, CanEnd = I::CanEnd` to the return
+   type,
+   propagating the probe input's type-level guarantees through to the
+   output.
+ - <csr-id-a888553a853ed55d1e97ba975dbaa08cc2b5fa5e/> `write_graph` properly handle singleton refs, handoffs, `write_surface_syntax` fix idents and edge ports
+   Three issues fixed in `dfir_lang/src/graph/meta_graph.rs` `write_graph`:
+   
+   1. Panic on ref-only singletons with `no_handoffs: true`: When a
+   singleton has
+      0 successors (used only via `#ref`), the code previously hit
+   `assert_eq!(1, handoff_succs.len())`. Now it checks `len() == 0` and
+   skips
+   the edge entirely since the data dependency is captured by the reference
+   edge.
+   
+   2. Broken reference edges with `no_handoffs: true`: Reference edges
+   previously
+   pointed from the (undefined/skipped) singleton node. Now they resolve
+   through
+   to the singleton's predecessor (the actual writer node), producing valid
+      graph output.
+   
+   3. Removed dead `subgraph_handoffs` code: The variable was populated but
+   never
+      used in `write_graph`.
+   
+   Also collapsed a nested `if` per clippy suggestion.
+   
+   Tests updated:
+   - Removed `#[should_panic]` from
+   `test_singleton_reference_only_no_handoffs`
+     since the fix resolves the panic.
+   - Updated snapshot files to reflect the corrected output.
+   
+   Also update `write_surface_syntax` to use valid idents and include port
+   names in the output.
+ - <csr-id-6619282019086eb2ba68a9adad21fc02facebedf/> unify subgraph partitioning and topological sorting
+   Big refactor, unifies (1) subgraph partitioning, (2) subgraph toposort,
+   and (3) node toposort (from multiple places). This is unified under a
+   single data structure (`SubgraphMerge`) which maintains an on-line
+   subgraph + node topological sort and ensure that no subgraphs are merged
+   that could create a subgraph-level cycle.
+   
+   If you have a DAG, and do subgraph partitioning (make a _quotient
+   graph_), it turns out that if those subgraphs are in-out trees, then the
+   quotient graph will also be a DAG. Our old greedy edge-merging code
+   secretly relied on this interesting mathematical fact (proof left as
+   exercise). However, now we have reference edges, and we do not care if
+   they obey the in-out tree property (since Rust pull/push ownership does
+   not apply to them), so we could now create quotient graphs that are not
+   DAGs!
+   
+   ---------
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release over the course of 7 calendar days.
+ - 7 days passed between releases.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 3 unique issues were worked on: [#2931](https://github.com/hydro-project/hydro/issues/2931), [#2935](https://github.com/hydro-project/hydro/issues/2935), [#2957](https://github.com/hydro-project/hydro/issues/2957)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2931](https://github.com/hydro-project/hydro/issues/2931)**
+    - `write_graph` properly handle singleton refs, handoffs, `write_surface_syntax` fix idents and edge ports ([`a888553`](https://github.com/hydro-project/hydro/commit/a888553a853ed55d1e97ba975dbaa08cc2b5fa5e))
+ * **[#2935](https://github.com/hydro-project/hydro/issues/2935)**
+    - Unify subgraph partitioning and topological sorting ([`6619282`](https://github.com/hydro-project/hydro/commit/6619282019086eb2ba68a9adad21fc02facebedf))
+ * **[#2957](https://github.com/hydro-project/hydro/issues/2957)**
+    - `join_multiset_half` `CanPend`/`CanEnd` propagation, for `chain`/`union` compatibility ([`ca45c19`](https://github.com/hydro-project/hydro/commit/ca45c19d739fc7ee2bf5e618713bc759a5c2b171))
+ * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.2, dfir_pipes v0.1.0-alpha.2, sinktools v0.2.0-alpha.2, hydro_deploy_integration v0.17.0-alpha.1, dfir_rs v0.17.0-alpha.2, hydro_deploy v0.17.0-alpha.1, hydro_lang v0.17.0-alpha.2, hydro_std v0.17.0-alpha.2 ([`faa7a90`](https://github.com/hydro-project/hydro/commit/faa7a90d1d9524d1870360d4701a8746c804c10c))
+</details>
+
 ## 0.17.0-alpha.1 (2026-06-11)
 
 ### Chore
@@ -21,7 +243,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    - Add `#![cfg_attr(not(feature = "std"), no_std)]` to `lib.rs`
    - Make `serde` optional (only needed for `slotmap` key serialization,
-     pulled in by `codegen` feature)
+   pulled in by `codegen` feature)
    - Set `slotmap` to `default-features = false`
    - `codegen` feature implies `std` + `serde`
  - <csr-id-f4605f58b45220266b0a5c5a9a5bc283404b5f26/> Add `optional()` handoff, migrate `reduce()` tests, all `has_singleton_output` are `false`
@@ -282,10 +504,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    Key implementation details:
    - `state_by` uses a custom inline `StatePush` struct implementing the
    `Push` trait
-     to handle both outputs in a single push combinator
+   to handle both outputs in a single push combinator
    - Items are filtered to `[items]` on each `start_send`; state is emitted
    to `[state]`
-     during `poll_finalize`
+   during `poll_finalize`
    - `ports_out` is set to `Fixed(parse_quote!(items, state))` enforcing
    both ports
    - `has_singleton_output: true` is kept so the old `#var` reference
@@ -312,8 +534,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 25 commits contributed to the release.
- - 40 days passed between releases.
+ - 26 commits contributed to the release.
+ - 41 days passed between releases.
  - 24 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 23 unique issues were worked on: [#2801](https://github.com/hydro-project/hydro/issues/2801), [#2810](https://github.com/hydro-project/hydro/issues/2810), [#2811](https://github.com/hydro-project/hydro/issues/2811), [#2829](https://github.com/hydro-project/hydro/issues/2829), [#2834](https://github.com/hydro-project/hydro/issues/2834), [#2835](https://github.com/hydro-project/hydro/issues/2835), [#2836](https://github.com/hydro-project/hydro/issues/2836), [#2842](https://github.com/hydro-project/hydro/issues/2842), [#2853](https://github.com/hydro-project/hydro/issues/2853), [#2859](https://github.com/hydro-project/hydro/issues/2859), [#2861](https://github.com/hydro-project/hydro/issues/2861), [#2862](https://github.com/hydro-project/hydro/issues/2862), [#2878](https://github.com/hydro-project/hydro/issues/2878), [#2883](https://github.com/hydro-project/hydro/issues/2883), [#2884](https://github.com/hydro-project/hydro/issues/2884), [#2892](https://github.com/hydro-project/hydro/issues/2892), [#2894](https://github.com/hydro-project/hydro/issues/2894), [#2901](https://github.com/hydro-project/hydro/issues/2901), [#2911](https://github.com/hydro-project/hydro/issues/2911), [#2912](https://github.com/hydro-project/hydro/issues/2912), [#2913](https://github.com/hydro-project/hydro/issues/2913), [#2923](https://github.com/hydro-project/hydro/issues/2923), [#2928](https://github.com/hydro-project/hydro/issues/2928)
 
@@ -370,6 +592,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#2928](https://github.com/hydro-project/hydro/issues/2928)**
     - Slightly more detailed error when cycle is detected ([`aab1516`](https://github.com/hydro-project/hydro/commit/aab1516fa017bf9bc35d7f344c0e5b55f1d15ad9))
  * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.1, dfir_macro v0.17.0-alpha.1, variadics v0.2.0-alpha.1, variadics_macro v0.8.0-alpha.1, lattices v0.8.0-alpha.1, dfir_pipes v0.1.0-alpha.1, sinktools v0.2.0-alpha.1, dfir_rs v0.17.0-alpha.1, hydro_lang v0.17.0-alpha.1, hydro_std v0.17.0-alpha.1 ([`2035d2e`](https://github.com/hydro-project/hydro/commit/2035d2e29fabae26c069bb01aefbed58b631742c))
     - Revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version ([`e70eab6`](https://github.com/hydro-project/hydro/commit/e70eab6a0c793ef095e2cd747220d5419f7bf1a4))
     - Release hydro_build_utils v0.1.1-alpha.0, dfir_lang v1.0.0-alpha.0, dfir_macro v0.17.0-alpha.0, variadics v1.0.0-alpha.0, variadics_macro v0.8.0-alpha.0, lattices v0.8.0-alpha.0, dfir_pipes v0.1.0-alpha.0, sinktools v0.2.0-alpha.0, hydro_deploy_integration v0.17.0-alpha.0, dfir_rs v0.17.0-alpha.0, hydro_deploy v0.17.0-alpha.0, hydro_lang v0.17.0-alpha.0, hydro_std v0.17.0-alpha.0, safety bump 10 crates ([`12e7666`](https://github.com/hydro-project/hydro/commit/12e76666f7104f81b48de5ddf397b8e72c8a6711))
 </details>
@@ -1076,9 +1299,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Release hydro_build_utils v0.0.1, dfir_lang v0.15.0, dfir_macro v0.15.0, variadics v0.0.10, sinktools v0.0.1, hydro_deploy_integration v0.15.0, lattices_macro v0.5.11, variadics_macro v0.6.2, lattices v0.6.2, multiplatform_test v0.6.0, dfir_rs v0.15.0, copy_span v0.1.0, hydro_deploy v0.15.0, hydro_lang v0.15.0, hydro_std v0.15.0, safety bump 5 crates ([`092de25`](https://github.com/hydro-project/hydro/commit/092de252238dfb9fa6b01e777c6dd8bf9db93398))
     - Ensure `hydro_build_utils` is published in the correct order ([`806a623`](https://github.com/hydro-project/hydro/commit/806a6239a649e24fe10c3c90dd30bd18debd41d2))
 </details>
-
-<csr-unknown>
-Pull Request OverviewThis PR refactors the dfir_rs library by removing the demux operatorand replacing its usage with the demux_enum operator, which providesbetter type safety and ergonomics.<csr-unknown/>
 
 ## 0.14.0 (2025-07-30)
 

@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.8.0-alpha.3 (2026-07-14)
+
+### Documentation
+
+ - <csr-id-36830afa7ecc5cf4627a6570649db2212f783186/> fix lots of small docs issues
+
+### New Features (BREAKING)
+
+ - <csr-id-dbdd2f110c63c2486af563b10b8fe0b19a729e5b/> place Tokio dependencies behind a feature flag
+   Breaking Changes:
+   - the `hydro_lang::telemetry::emf` module now requires the non-default
+   `telemetry_emf` feature
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 21 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 2 unique issues were worked on: [#2960](https://github.com/hydro-project/hydro/issues/2960), [#3012](https://github.com/hydro-project/hydro/issues/3012)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2960](https://github.com/hydro-project/hydro/issues/2960)**
+    - Place Tokio dependencies behind a feature flag ([`dbdd2f1`](https://github.com/hydro-project/hydro/commit/dbdd2f110c63c2486af563b10b8fe0b19a729e5b))
+ * **[#3012](https://github.com/hydro-project/hydro/issues/3012)**
+    - Fix lots of small docs issues ([`36830af`](https://github.com/hydro-project/hydro/commit/36830afa7ecc5cf4627a6570649db2212f783186))
+</details>
+
+## 0.8.0-alpha.2 (2026-06-22)
+
+### Chore
+
+ - <csr-id-f969499a05816960255642c8fa8d95a89a002b13/> update to rust 1.96.0
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 10 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#2961](https://github.com/hydro-project/hydro/issues/2961)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2961](https://github.com/hydro-project/hydro/issues/2961)**
+    - Update to rust 1.96.0 ([`f969499`](https://github.com/hydro-project/hydro/commit/f969499a05816960255642c8fa8d95a89a002b13))
+ * **Uncategorized**
+    - Release dfir_macro v0.17.0-alpha.3, lattices v0.8.0-alpha.2, sinktools v0.2.0-alpha.3, hydro_deploy_integration v0.17.0-alpha.2, dfir_rs v0.17.0-alpha.3, hydro_deploy v0.17.0-alpha.2, hydro_lang v0.17.0-alpha.3, hydro_std v0.17.0-alpha.3 ([`295c0ec`](https://github.com/hydro-project/hydro/commit/295c0ec5d2d3f182598972d9a0c5511f5812c6ae))
+</details>
+
 ## 0.8.0-alpha.1 (2026-06-11)
 
 ### Chore
@@ -15,7 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -26,6 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.1, dfir_macro v0.17.0-alpha.1, variadics v0.2.0-alpha.1, variadics_macro v0.8.0-alpha.1, lattices v0.8.0-alpha.1, dfir_pipes v0.1.0-alpha.1, sinktools v0.2.0-alpha.1, dfir_rs v0.17.0-alpha.1, hydro_lang v0.17.0-alpha.1, hydro_std v0.17.0-alpha.1 ([`2035d2e`](https://github.com/hydro-project/hydro/commit/2035d2e29fabae26c069bb01aefbed58b631742c))
     - Revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version ([`e70eab6`](https://github.com/hydro-project/hydro/commit/e70eab6a0c793ef095e2cd747220d5419f7bf1a4))
 </details>
 
@@ -66,14 +128,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    ├─ stable/
    │  └─ *.stderr   # expected errors for stable rustc
    └─ nightly/
-      └─ *.stderr   # expected errors for nightly rustc
+   └─ *.stderr   # expected errors for nightly rustc
    ```
    
    **Usage in each test file:**
    ```rust
    #[test]
    fn test_all() {
-       hydro_build_utils::trybuild_compile_fail!("surface_*.rs"); // or "*.rs"
+   hydro_build_utils::trybuild_compile_fail!("surface_*.rs"); // or "*.rs"
    }
    ```
    

@@ -5,19 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.7.0 (2026-05-01)
+## 0.7.1-alpha.0 (2026-07-14)
 
-<csr-id-ed38dd72aaeec449e35c4324d96ffef55cedf0a4/>
+### Documentation
 
-### Refactor
-
- - <csr-id-ed38dd72aaeec449e35c4324d96ffef55cedf0a4/> convert pull from Iterator to Stream to support async yielding [ci-bench]
+ - <csr-id-36830afa7ecc5cf4627a6570649db2212f783186/> fix lots of small docs issues
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 1 commit contributed to the release.
+ - 73 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#3012](https://github.com/hydro-project/hydro/issues/3012)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#3012](https://github.com/hydro-project/hydro/issues/3012)**
+    - Fix lots of small docs issues ([`36830af`](https://github.com/hydro-project/hydro/commit/36830afa7ecc5cf4627a6570649db2212f783186))
+</details>
+
+## 0.7.0 (2026-05-01)
+
+<csr-id-ed38dd72aaeec449e35c4324d96ffef55cedf0a4/>
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
  - 156 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#2338](https://github.com/hydro-project/hydro/issues/2338)
@@ -31,16 +52,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#2338](https://github.com/hydro-project/hydro/issues/2338)**
     - Convert pull from Iterator to Stream to support async yielding [ci-bench] ([`ed38dd7`](https://github.com/hydro-project/hydro/commit/ed38dd72aaeec449e35c4324d96ffef55cedf0a4))
  * **Uncategorized**
+    - Release dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0 ([`118b356`](https://github.com/hydro-project/hydro/commit/118b356447d92e778313d72a351e5a8d2814aa1a))
     - Release hydro_build_utils v0.1.0, dfir_lang v0.16.0, dfir_macro v0.16.0, variadics v0.1.0, dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0, safety bump 13 crates ([`c20757a`](https://github.com/hydro-project/hydro/commit/c20757ae0e9e10463b2a499de4b7d37ab02269d0))
 </details>
 
 ## 0.6.0 (2025-11-25)
 
 <csr-id-e5d90803ae16993ac3db24a7795d0864abc4ac52/>
-
-### Chore
-
- - <csr-id-e5d90803ae16993ac3db24a7795d0864abc4ac52/> update wasm
 
 ### Commit Statistics
 
@@ -71,34 +89,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-3f76e91766a0bd9e61f11f9013d76f688467fb5e/>
 <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
 
-### Chore
-
- - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
-
-### Style
-
- - <csr-id-3f76e91766a0bd9e61f11f9013d76f688467fb5e/> fix all unexpected cfgs
-   Testing in https://github.com/MingweiSamuel/hydroflow
-
-### Chore
-
- - <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
-
-### Style
-
- - <csr-id-8b3b60812d9f561cb7f59120993fbf2e23191e2b/> fix all unexpected cfgs
-   Testing in https://github.com/MingweiSamuel/hydroflow
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -127,36 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/>
 <csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/>
 
-### Chore
-
- - <csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/> Rename Hydroflow -> DFIR
-   Work In Progress:
-   - [x] hydroflow_macro
-   - [x] hydroflow_datalog_core
-   - [x] hydroflow_datalog
-   - [x] hydroflow_lang
-   - [x] hydroflow
-
-### Chore
-
- - <csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/> Rename Hydroflow -> DFIR
-   Work In Progress:
-   - [x] hydroflow_macro
-   - [x] hydroflow_datalog_core
-   - [x] hydroflow_datalog
-   - [x] hydroflow_lang
-   - [x] hydroflow
-
 ### Documentation
 
- - <csr-id-28cd220c68e3660d9ebade113949a2346720cd04/> add `repository` field to `Cargo.toml`s, fix #1452
-   #1452 
-   
-   Will trigger new releases of the following:
-   `unchanged = 'hydroflow_deploy_integration', 'variadics',
-   'variadics_macro', 'pusherator'`
-   
-   (All other crates already have changes, so would be released anyway)
  - <csr-id-204bd117ca3a8845b4986539efb91a0c612dfa05/> add `repository` field to `Cargo.toml`s, fix #1452
    #1452 
    
@@ -194,14 +156,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-d5677604e93c07a5392f4229af94a0b736eca382/>
 <csr-id-014ebb2628b5b80ea1b6426b58c4d62706edb9ef/>
 
-### Chore
-
- - <csr-id-d5677604e93c07a5392f4229af94a0b736eca382/> update pinned rust version, clippy lints, remove some dead code
-
-### Chore
-
- - <csr-id-014ebb2628b5b80ea1b6426b58c4d62706edb9ef/> update pinned rust version, clippy lints, remove some dead code
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -227,20 +181,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-11af32828bab6e4a4264d2635ff71a12bb0bb778/>
 <csr-id-2c04f51f1ec44f7898307b6610371dcb490ea686/>
-
-### Chore
-
- - <csr-id-11af32828bab6e4a4264d2635ff71a12bb0bb778/> lower min dependency versions where possible, update `Cargo.lock`
-   Moved from #1418
-   
-   ---------
-
-### Chore
-
- - <csr-id-2c04f51f1ec44f7898307b6610371dcb490ea686/> lower min dependency versions where possible, update `Cargo.lock`
-   Moved from #1418
-   
-   ---------
 
 ### Commit Statistics
 
@@ -274,43 +214,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-e5c5fcb25616ba00be955b318299c1cdf02bc241/>
 <csr-id-dd270adee8ed4d29a20628c4082b0f29cfd6ebac/>
 
-### Chore
-
- - <csr-id-720c8a0095fc7593366b3f6c59365b4f6c245a9d/> fix clippy warning on latest nightly, fix docs
- - <csr-id-f19eccc79d6d7c88de7ba1ef6a0abf1caaef377f/> bump proc-macro2 min version to 1.0.63
- - <csr-id-f60053f70da3071c54de4a0eabb059a143aa2ccc/> fix lint, format errors for latest nightly version (without updated pinned)
-   For nightly version (d9c13cd45 2023-07-05)
-
-### Style
-
- - <csr-id-f28237376a2479fb042d68bd27aad71f357bdbb1/> fix imports
-
-### Chore
-
- - <csr-id-a83b39c47e2acdb8909fb864454d90ab82581d6e/> fix clippy warning on latest nightly, fix docs
- - <csr-id-e5c5fcb25616ba00be955b318299c1cdf02bc241/> bump proc-macro2 min version to 1.0.63
- - <csr-id-dd270adee8ed4d29a20628c4082b0f29cfd6ebac/> fix lint, format errors for latest nightly version (without updated pinned)
-   For nightly version (d9c13cd45 2023-07-05)
-
 ### Bug Fixes
 
- - <csr-id-8d3494b5afee858114a602a3e23077bb6d24dd77/> update proc-macro2, use new span location API where possible
-   requires latest* rust nightly version
-   
-   *latest = 2023-06-28 or something
  - <csr-id-1ce417c4b2c9a3855cd2f51dfa3cf318c054f32b/> update proc-macro2, use new span location API where possible
    requires latest* rust nightly version
    
    *latest = 2023-06-28 or something
 
-### Style
-
- - <csr-id-b391447ec13f1f79c99142f296dc2fa8640034f4/> fix imports
-
 ### New Features (BREAKING)
 
- - <csr-id-c1b028089ea9d76ab71cd9cb4eaaaf16aa4b65a6/> `hydroflow`, `logging`/`tracing` features
-   * Adds `tokio` for `#[tokio::test]`.
 * Adds `async_std` for `#[async_std::test]`.
 * Adds `hydroflow` for `#[hydroflow::test]`.
 * Adds `env_logging` for `env_logger` registering.

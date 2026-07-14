@@ -1,7 +1,7 @@
 [package]
 name = "dfir_lang"
 publish = true
-version = "0.17.0-alpha.2"
+version = "0.17.0-alpha.3"
 documentation = "https://docs.rs/dfir_lang/"
 description = "Hydro's Dataflow Intermediate Representation (DFIR) implementation"
 edition = { workspace = true }

@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.2 (2026-07-14)
+
+### New Features (BREAKING)
+
+ - <csr-id-dbdd2f110c63c2486af563b10b8fe0b19a729e5b/> place Tokio dependencies behind a feature flag
+   Breaking Changes:
+   - the `hydro_lang::telemetry::emf` module now requires the non-default
+   `telemetry_emf` feature
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 32 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#2960](https://github.com/hydro-project/hydro/issues/2960)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2960](https://github.com/hydro-project/hydro/issues/2960)**
+    - Place Tokio dependencies behind a feature flag ([`dbdd2f1`](https://github.com/hydro-project/hydro/commit/dbdd2f110c63c2486af563b10b8fe0b19a729e5b))
+</details>
+
 ## 0.2.0-alpha.1 (2026-06-11)
 
 ### Chore
@@ -36,14 +64,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    ├─ stable/
    │  └─ *.stderr   # expected errors for stable rustc
    └─ nightly/
-      └─ *.stderr   # expected errors for nightly rustc
+   └─ *.stderr   # expected errors for nightly rustc
    ```
    
    **Usage in each test file:**
    ```rust
    #[test]
    fn test_all() {
-       hydro_build_utils::trybuild_compile_fail!("surface_*.rs"); // or "*.rs"
+   hydro_build_utils::trybuild_compile_fail!("surface_*.rs"); // or "*.rs"
    }
    ```
    
@@ -64,8 +92,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 6 commits contributed to the release.
- - 40 days passed between releases.
+ - 7 commits contributed to the release.
+ - 41 days passed between releases.
  - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#2869](https://github.com/hydro-project/hydro/issues/2869), [#2870](https://github.com/hydro-project/hydro/issues/2870), [#2878](https://github.com/hydro-project/hydro/issues/2878), [#2893](https://github.com/hydro-project/hydro/issues/2893)
 
@@ -84,6 +112,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#2893](https://github.com/hydro-project/hydro/issues/2893)**
     - `#[no_std]` support ([`dcef67d`](https://github.com/hydro-project/hydro/commit/dcef67d9572055f7eeb64f92fa95fa4babebd6c8))
  * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.1, dfir_macro v0.17.0-alpha.1, variadics v0.2.0-alpha.1, variadics_macro v0.8.0-alpha.1, lattices v0.8.0-alpha.1, dfir_pipes v0.1.0-alpha.1, sinktools v0.2.0-alpha.1, dfir_rs v0.17.0-alpha.1, hydro_lang v0.17.0-alpha.1, hydro_std v0.17.0-alpha.1 ([`2035d2e`](https://github.com/hydro-project/hydro/commit/2035d2e29fabae26c069bb01aefbed58b631742c))
     - Revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version ([`e70eab6`](https://github.com/hydro-project/hydro/commit/e70eab6a0c793ef095e2cd747220d5419f7bf1a4))
     - Release hydro_build_utils v0.1.1-alpha.0, dfir_lang v1.0.0-alpha.0, dfir_macro v0.17.0-alpha.0, variadics v1.0.0-alpha.0, variadics_macro v0.8.0-alpha.0, lattices v0.8.0-alpha.0, dfir_pipes v0.1.0-alpha.0, sinktools v0.2.0-alpha.0, hydro_deploy_integration v0.17.0-alpha.0, dfir_rs v0.17.0-alpha.0, hydro_deploy v0.17.0-alpha.0, hydro_lang v0.17.0-alpha.0, hydro_std v0.17.0-alpha.0, safety bump 10 crates ([`12e7666`](https://github.com/hydro-project/hydro/commit/12e76666f7104f81b48de5ddf397b8e72c8a6711))
 </details>

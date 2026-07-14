@@ -5,7 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.17.0-alpha.3 (2026-07-14)
+
+### New Features
+
+ - <csr-id-c128c2293c7b5c780e1c892d5a44505781b5a211/> parallel compilation with per-job target dirs and shared artifact symlinks [ci-full]
+   Each compilation job gets its own `--target-dir` (under
+   `{target}/jobs/{name}`) to
+   avoid cargo's global artifact-dir lock, while sharing compiled artifacts
+   via symlinks
+   to `.fingerprint`, `build`, and `deps` in the shared target dir.
+   
+   A prebuild step compiles the dylib crate (or --lib for non-dylib) into
+   the shared
+   target dir before the parallel final builds start, ensuring all
+   dependencies are ready.
+   
+   Also adds feature forwarding to the generated dylib crate's Cargo.toml.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release over the course of 17 calendar days.
+ - 21 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#2975](https://github.com/hydro-project/hydro/issues/2975)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2975](https://github.com/hydro-project/hydro/issues/2975)**
+    - Parallel compilation with per-job target dirs and shared artifact symlinks [ci-full] ([`c128c22`](https://github.com/hydro-project/hydro/commit/c128c2293c7b5c780e1c892d5a44505781b5a211))
+</details>
+
 ## 0.17.0-alpha.2 (2026-06-22)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 3 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release dfir_macro v0.17.0-alpha.3, lattices v0.8.0-alpha.2, sinktools v0.2.0-alpha.3, hydro_deploy_integration v0.17.0-alpha.2, dfir_rs v0.17.0-alpha.3, hydro_deploy v0.17.0-alpha.2, hydro_lang v0.17.0-alpha.3, hydro_std v0.17.0-alpha.3 ([`295c0ec`](https://github.com/hydro-project/hydro/commit/295c0ec5d2d3f182598972d9a0c5511f5812c6ae))
+</details>
 
 ## 0.17.0-alpha.1 (2026-06-19)
 
@@ -845,6 +901,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
    * #1395
    * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
 
 ### Refactor (BREAKING)
 
@@ -1117,65 +1181,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
    * #1395
    * __->__ #1394
-
-### Refactor (BREAKING)
-
-<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/>
-
- - <csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
-   ---
-   [//]: # (BEGIN SAPLING FOOTER)
-   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
-   with
-   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
-   * #1395
-   * __->__ #1394
-   * #1395
-   * __->__ #1394
-   * #1395
-   * __->__ #1394
-   * #1395
-   * __->__ #1394
-   * #1395
-   * __->__ #1394
-   * #1395
-   * __->__ #1394
-   * #1395
-   * __->__ #1394
-   * #1395
-   * __->__ #1394
-   * #1395
-   * __->__ #1394
-   * #1395
-   * __->__ #1394
-   * #1395
-   * __->__ #1394
-   * #1395
-   * __->__ #1394
- - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
-   ---
-   [//]: # (BEGIN SAPLING FOOTER)
-   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
-   with
-   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
-   * #1395
-   * __->__ #1394
- - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
-   ---
-   [//]: # (BEGIN SAPLING FOOTER)
-   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
-   with
-   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
-   * #1395
-   * __->__ #1394
- - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
-   ---
-   [//]: # (BEGIN SAPLING FOOTER)
-   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
-   with
-   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
-   * #1395
-   * __->__ #1394
  - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
    ---
    [//]: # (BEGIN SAPLING FOOTER)
@@ -1219,6 +1224,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * __->__ #1394
    * #1395
    * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
    * #1395
    * __->__ #1394
  - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
@@ -1290,6 +1301,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * __->__ #1394
    * #1395
    * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+### Refactor (BREAKING)
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/>
+
+ - <csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+   * #1395
+   * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
    * #1395
    * __->__ #1394
  - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
@@ -1393,6 +1489,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * __->__ #1394
    * #1395
    * __->__ #1394
+   * #1395
+   * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
    * #1395
    * __->__ #1394
  - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs

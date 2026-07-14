@@ -1,5 +1,59 @@
 
 
+## v0.1.0-alpha.3 (2026-07-14)
+
+### New Features
+
+ - <csr-id-79f7aa68b7f5af64506129af1d1d5c7d14042756/> add push accum operators (fold, reduce, etc)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release over the course of 21 calendar days.
+ - 25 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#2962](https://github.com/hydro-project/hydro/issues/2962)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2962](https://github.com/hydro-project/hydro/issues/2962)**
+    - Add push accum operators (fold, reduce, etc) ([`79f7aa6`](https://github.com/hydro-project/hydro/commit/79f7aa68b7f5af64506129af1d1d5c7d14042756))
+ * **Uncategorized**
+    - Release dfir_macro v0.17.0-alpha.3, lattices v0.8.0-alpha.2, sinktools v0.2.0-alpha.3, hydro_deploy_integration v0.17.0-alpha.2, dfir_rs v0.17.0-alpha.3, hydro_deploy v0.17.0-alpha.2, hydro_lang v0.17.0-alpha.3, hydro_std v0.17.0-alpha.3 ([`295c0ec`](https://github.com/hydro-project/hydro/commit/295c0ec5d2d3f182598972d9a0c5511f5812c6ae))
+</details>
+
+## v0.1.0-alpha.2 (2026-06-19)
+
+### Chore
+
+ - <csr-id-1c980fe272b0f8641d04b14b10837366e42531d2/> raise clippy type-complexity-threshold
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 7 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#2947](https://github.com/hydro-project/hydro/issues/2947)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2947](https://github.com/hydro-project/hydro/issues/2947)**
+    - Raise clippy type-complexity-threshold ([`1c980fe`](https://github.com/hydro-project/hydro/commit/1c980fe272b0f8641d04b14b10837366e42531d2))
+ * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.2, dfir_pipes v0.1.0-alpha.2, sinktools v0.2.0-alpha.2, hydro_deploy_integration v0.17.0-alpha.1, dfir_rs v0.17.0-alpha.2, hydro_deploy v0.17.0-alpha.1, hydro_lang v0.17.0-alpha.2, hydro_std v0.17.0-alpha.2 ([`faa7a90`](https://github.com/hydro-project/hydro/commit/faa7a90d1d9524d1870360d4701a8746c804c10c))
+</details>
+
 ## v0.1.0-alpha.1 (2026-06-11)
 
 ### Chore
@@ -10,7 +64,7 @@
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -21,6 +75,7 @@
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.1, dfir_macro v0.17.0-alpha.1, variadics v0.2.0-alpha.1, variadics_macro v0.8.0-alpha.1, lattices v0.8.0-alpha.1, dfir_pipes v0.1.0-alpha.1, sinktools v0.2.0-alpha.1, dfir_rs v0.17.0-alpha.1, hydro_lang v0.17.0-alpha.1, hydro_std v0.17.0-alpha.1 ([`2035d2e`](https://github.com/hydro-project/hydro/commit/2035d2e29fabae26c069bb01aefbed58b631742c))
     - Revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version ([`e70eab6`](https://github.com/hydro-project/hydro/commit/e70eab6a0c793ef095e2cd747220d5419f7bf1a4))
 </details>
 
@@ -70,10 +125,10 @@
    Key implementation details:
    - `state_by` uses a custom inline `StatePush` struct implementing the
    `Push` trait
-     to handle both outputs in a single push combinator
+   to handle both outputs in a single push combinator
    - Items are filtered to `[items]` on each `start_send`; state is emitted
    to `[state]`
-     during `poll_finalize`
+   during `poll_finalize`
    - `ports_out` is set to `Fixed(parse_quote!(items, state))` enforcing
    both ports
    - `has_singleton_output: true` is kept so the old `#var` reference
