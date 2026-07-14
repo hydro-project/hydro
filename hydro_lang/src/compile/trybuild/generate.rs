@@ -698,7 +698,16 @@ pub fn create_trybuild()
         }
     });
 
-    let mut features = features::find();
+    // When the example is re-executed from a test binary by `example_test` (signaled via this
+    // env var), skip feature discovery: it would pick up the *test* binary's features (e.g.
+    // test-only harness features). A real `cargo run --example` invocation has no fingerprint
+    // hash in `argv[0]`, so discovery finds nothing there; emulating that here ensures the test
+    // exercises the example the same way it actually runs.
+    let mut features = if std::env::var("RUNNING_AS_EXAMPLE_TEST").is_ok_and(|v| v == "1") {
+        None
+    } else {
+        features::find()
+    };
 
     let path_dependencies = source_manifest
         .dependencies

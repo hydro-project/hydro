@@ -1635,6 +1635,9 @@ name = "ctor"
 version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb22e947478ccf9dc44d8922042c677a63fbb88f2cb468521d1145816e5087cb"
+dependencies = [
+ "link-section",
+]
 
 [[package]]
 name = "ctr"
@@ -2076,9 +2079,9 @@ dependencies = [
 name = "example_test"
 version = "0.0.1"
 dependencies = [
+ "ctor",
  "log",
  "regex",
- "trybuild-internals-api",
 ]
 
 [[package]]
@@ -3323,6 +3326,12 @@ name = "linear-map"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfae20f6b19ad527b550c223fddc3077a547fc70cda94b9b566575423fd303ee"
+
+[[package]]
+name = "link-section"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e333fe507b738576d6da5bb3f1a7d7a1c80307ed9ef31624c057d844c19c93e9"
 
 [[package]]
 name = "linux-perf-data"
