@@ -7,5 +7,8 @@ edition = { workspace = true }
 repository = { workspace = true }
 license = { workspace = true }
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 parking_lot = "0.12"
