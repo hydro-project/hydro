@@ -1632,29 +1632,9 @@ dependencies = [
 
 [[package]]
 name = "ctor"
-version = "0.2.9"
+version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32a2785755761f3ddc1492979ce1e48d2c00d09311c39e4466429188f3dd6501"
-dependencies = [
- "quote",
- "syn 2.0.111",
-]
-
-[[package]]
-name = "ctor"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec09e802f5081de6157da9a75701d6c713d8dc3ba52571fd4bd25f412644e8a6"
-dependencies = [
- "ctor-proc-macro",
- "dtor",
-]
-
-[[package]]
-name = "ctor-proc-macro"
-version = "0.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2931af7e13dc045d8e9d26afccc6fa115d64e115c9c84b1166288b46f6782c2"
+checksum = "fb22e947478ccf9dc44d8922042c677a63fbb88f2cb468521d1145816e5087cb"
 
 [[package]]
 name = "ctr"
@@ -1920,21 +1900,6 @@ dependencies = [
  "strum",
  "syn 2.0.111",
 ]
-
-[[package]]
-name = "dtor"
-version = "0.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97cbdf2ad6846025e8e25df05171abfb30e3ababa12ee0a0e44b9bbe570633a8"
-dependencies = [
- "dtor-proc-macro",
-]
-
-[[package]]
-name = "dtor-proc-macro"
-version = "0.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7454e41ff9012c00d53cf7f475c5e3afa3b91b7c90568495495e8d9bf47a1055"
 
 [[package]]
 name = "dunce"
@@ -2691,7 +2656,7 @@ dependencies = [
  "clap",
  "colored 3.1.1",
  "copy_span",
- "ctor 0.2.9",
+ "ctor",
  "dfir_lang",
  "dfir_rs",
  "futures",
@@ -2738,7 +2703,6 @@ dependencies = [
 name = "hydro_std"
 version = "0.17.0-alpha.3"
 dependencies = [
- "ctor 0.2.9",
  "hdrhistogram",
  "hydro_deploy",
  "hydro_lang",
@@ -2754,7 +2718,6 @@ dependencies = [
  "bytes",
  "clap",
  "colored 3.1.1",
- "ctor 0.2.9",
  "dfir_lang",
  "dfir_rs",
  "example_test",
@@ -2794,7 +2757,6 @@ dependencies = [
 name = "hydro_test_template"
 version = "0.0.0"
 dependencies = [
- "ctor 0.2.9",
  "example_test",
  "futures",
  "hydro_deploy",
@@ -5423,11 +5385,11 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "stageleft"
-version = "0.14.3"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d8156ecd2518e9673c86d543bdd5f0d707583e38035b104d1bee27f54403684"
+checksum = "5525642086d3b7d902687aec7a3671ab163412e83200ae82251e4669fabe6e47"
 dependencies = [
- "ctor 0.4.3",
+ "ctor",
  "parking_lot",
  "proc-macro-crate 3.4.0",
  "proc-macro2",
@@ -5438,9 +5400,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_macro"
-version = "0.14.3"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a85d588af6900c0bc44e17c1c7449bc0c2ae671f652c3543fe0377fb738d3a62"
+checksum = "7b5b7837bc7433600c0383b3ce2f0c56af945cc347fbc737e7013ed2ed3b4fbc"
 dependencies = [
  "proc-macro-crate 3.4.0",
  "proc-macro2",
@@ -5451,9 +5413,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_tool"
-version = "0.14.3"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e6dac004fa52c2d1b662de438d3cde0b94e83cd7a84202a796683703ce79a57"
+checksum = "08eac826cb2f7db961325c9cec981e9cfd8bceb8be706d1fbb0909aea2305670"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.4.0",

@@ -33,6 +33,8 @@ pub mod runtime_support {
 #[doc(hidden)]
 pub mod macro_support {
     pub use copy_span;
+    #[cfg(feature = "trybuild")]
+    pub use ctor;
 }
 
 pub mod prelude {
@@ -62,6 +64,7 @@ pub mod prelude {
     pub use crate::nondet::{NonDet, nondet};
     pub use crate::properties::{ConsistencyProof, ManualProof, manual_proof};
 
+    #[cfg(feature = "trybuild")]
     /// A macro to set up a Hydro crate.
     #[macro_export]
     macro_rules! setup {
@@ -70,11 +73,22 @@ pub mod prelude {
 
             #[cfg(test)]
             mod test_init {
-                #[ctor::ctor]
-                fn init() {
-                    $crate::compile::init_test();
-                }
+                $crate::macro_support::ctor::declarative::ctor!(
+                    #[ctor(unsafe)]
+                    fn init() {
+                        $crate::compile::init_test();
+                    }
+                );
             }
+        };
+    }
+
+    #[cfg(not(feature = "trybuild"))]
+    /// A macro to set up a Hydro crate.
+    #[macro_export]
+    macro_rules! setup {
+        () => {
+            stageleft::stageleft_no_entry_crate!();
         };
     }
 }
@@ -132,25 +146,29 @@ mod staging_util;
 pub mod test_util;
 
 #[cfg(feature = "build")]
-#[ctor::ctor]
-fn init_rewrites() {
-    stageleft::add_private_reexport(
-        vec!["tokio_util", "codec", "lines_codec"],
-        vec!["tokio_util", "codec"],
-    );
-    // TODO: remove once stabilized
-    stageleft::add_private_reexport(
-        vec!["core", "io", "error", "Error"],
-        vec!["std", "io", "Error"],
-    );
-}
+ctor::declarative::ctor!(
+    #[ctor(unsafe)]
+    fn init_rewrites() {
+        stageleft::add_private_reexport(
+            vec!["tokio_util", "codec", "lines_codec"],
+            vec!["tokio_util", "codec"],
+        );
+        // TODO: remove once stabilized
+        stageleft::add_private_reexport(
+            vec!["core", "io", "error", "Error"],
+            vec!["std", "io", "Error"],
+        );
+    }
+);
 
 #[cfg(all(test, feature = "trybuild"))]
 mod test_init {
-    #[ctor::ctor]
-    fn init() {
-        crate::compile::init_test();
-    }
+    ctor::declarative::ctor!(
+        #[ctor(unsafe)]
+        fn init() {
+            crate::compile::init_test();
+        }
+    );
 }
 
 /// Creates a newtype wrapper around an integer type.

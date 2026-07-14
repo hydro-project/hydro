@@ -22,7 +22,6 @@ stageleft.workspace = true
 rand = "0.8.0"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0"
-ctor = "0.2.9"
 colored = "3.0.0"
 palette = "0.7.6"
 tokio = { version = "1.29.0", optional = true }
@@ -43,7 +42,6 @@ hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0" 
 
 [dev-dependencies]
 clap = { version = "4.4", features = ["derive"] }
-ctor = "0.2"
 dfir_lang = { path = "../dfir_lang", version = "^0.17.0-alpha.2" }
 example_test = { path = "../example_test", version = "^0.0.1" }
 futures = "0.3.0"

@@ -130,7 +130,7 @@ chrono = "0.4.42"
 clap = { version = "4.0", features = ["derive"], optional = true }
 colored = { version = "3" }
 copy_span = { path = "../copy_span", version = "^0.1.1" }
-ctor = { version = "0.2", optional = true }
+ctor = { version = "1", default-features = false, features = ["std"], optional = true }
 dfir_lang = { path = "../dfir_lang", version = "^0.17.0-alpha.2", optional = true }
 dfir_rs = { path = "../dfir_rs", version = "^0.17.0-alpha.3", default-features = false, optional = true }
 futures = "0.3.0"
@@ -204,7 +204,7 @@ stageleft_tool.workspace = true
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0" }
 
 [dev-dependencies]
-ctor = "0.2"
+ctor = { version = "1", default-features = false, features = ["std"] }
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0", features = ["insta", "trybuild"] }
 tokio-test = "0.4.4"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
