@@ -28,12 +28,7 @@ note: function defined here
    |
    | pub fn default<T>(t: T, nondet: NonDet) -> Default<T> {
    |        ^^^^^^^
-help: provide the argument
-  --> src/live_collections/sliced/mod.rs
-   |
-   -             @uses [$($uses)* { $name, $crate::macro_support::copy_span::copy_span!($($args,)* default)($($args),*), $($args),* }]
-   +             @uses [$($uses)* { $name, (input, /* NonDet */), $($args),* }]
-   |
+   = note: this error originates in the macro `$crate::__sliced_parse_uses__` which comes from the expansion of the macro `sliced` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> tests/compile-fail/nightly/sliced_missing_arg.rs:10:22

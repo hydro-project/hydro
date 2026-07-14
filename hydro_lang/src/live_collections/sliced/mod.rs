@@ -86,9 +86,24 @@ macro_rules! __sliced_parse_uses__ {
                 $($use_name,)+
             ) = __sliced;
 
-            // Create all cycles and pack handles/values into tuples
+            // Create all cycles and pack handles/values into tuples.
+            //
+            // The `copy_span!` wrapper re-spans the macro-generated tokens (the style function
+            // path and the `build` call) to the user's tokens, so that errors arising from the
+            // state creation (e.g. an initializer that is not general enough over lifetimes) are
+            // attributed to the originating `use` statement instead of the entire `sliced!`
+            // invocation. The `$state_ty` and `$state_arg` fragments are passed through untouched
+            // (as interpolated fragments), preserving the precise spans of errors within the
+            // user-provided argument.
+            //
+            // Each state borrows its own clone of the tick (created inside the `copy_span!`
+            // target and spanned to the style name, e.g. `state`), so lifetime errors caused
+            // by a bad initializer point at the originating `use` statement rather than the
+            // shared `__tick` local, whose span covers the entire macro invocation.
             let (__handles, __states) = $crate::live_collections::sliced::unzip_cycles((
-                $($crate::live_collections::sliced::style::$state_style$(::<$state_ty, _>)?(& __tick, $($state_arg)?),)*
+                $($crate::macro_support::copy_span::copy_span!($state_style, {
+                    $crate::live_collections::sliced::style::$state_style$(::<$state_ty, _>)?(& __tick.clone()).build($($state_arg)?)
+                }),)*
             ));
 
             // Unpack mutable state values
