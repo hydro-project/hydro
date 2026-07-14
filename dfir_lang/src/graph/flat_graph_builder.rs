@@ -144,6 +144,9 @@ impl FlatGraphBuilder {
     ///
     /// The returned [`GraphLoopId`] can be passed as the `current_loop` argument of
     /// [`Self::add_dfir`] / [`Self::append_assign_pipeline`] to place statements inside the loop,
+    ///
+    /// # Panics
+    /// Panics if `parent_loop` is a loop not belonging to this instance.
     /// across multiple calls. This is the programmatic equivalent of a
     /// [`DfirStatement::Loop`] block in the surface syntax, but allows the loop body to be built
     /// up incrementally.
@@ -1259,8 +1262,9 @@ mod test {
 
         // One root loop, containing the `batch()` and `for_each()` (but not `source_iter()`).
         assert_eq!(1, flat_graph.loops().count());
-        let (loop_id, _) = flat_graph.loops().next().unwrap();
-        assert_eq!(None, flat_graph.loop_parent(loop_id));
+        let (built_loop_id, _) = flat_graph.loops().next().unwrap();
+        assert_eq!(loop_id, built_loop_id);
+        assert_eq!(None, flat_graph.loop_parent(built_loop_id));
 
         for (node_id, _node) in flat_graph.nodes() {
             let Some(op_inst) = flat_graph.node_op_inst(node_id) else {
@@ -1268,7 +1272,7 @@ mod test {
             };
             let expected_loop = match op_inst.op_constraints.name {
                 "source_iter" => None,
-                "batch" | "for_each" => Some(loop_id),
+                "batch" | "for_each" => Some(built_loop_id),
                 other => panic!("Unexpected operator: {}", other),
             };
             assert_eq!(
