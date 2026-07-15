@@ -98,7 +98,7 @@ impl TcpFailPolicy for FailStop {
     }
 }
 
-/// A TCP failure policy that allows messages to be lost.
+/// A failure policy that allows messages to be lost.
 pub enum Lossy {}
 #[sealed::sealed]
 impl TcpFailPolicy for Lossy {
@@ -109,7 +109,7 @@ impl TcpFailPolicy for Lossy {
     }
 }
 
-/// A TCP failure policy that treats dropped messages as indefinitely delayed.
+/// A failure policy that treats dropped messages as indefinitely delayed.
 ///
 /// Unlike [`Lossy`], this does not require a [`NonDet`] annotation because the output
 /// stream is always lower in the partial order than the ideal stream (dropped messages
@@ -117,9 +117,9 @@ impl TcpFailPolicy for Lossy {
 /// guarantees, imposing stricter conditions on downstream consumers.
 ///
 /// When using this mode in the Hydro simulator, you must call
-/// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) because the
-/// simulator models dropped messages as indefinitely delayed, which only tests safety
-/// properties (not liveness).
+/// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only): the simulator
+/// will not actually drop packets—it delays "dropped" messages until the end of the
+/// execution, which catches safety bugs but cannot test liveness.
 pub enum LossyDelayedForever {}
 #[sealed::sealed]
 impl TcpFailPolicy for LossyDelayedForever {
@@ -127,6 +127,33 @@ impl TcpFailPolicy for LossyDelayedForever {
 
     fn tcp_fault() -> TcpFault {
         TcpFault::LossyDelayedForever
+    }
+}
+
+#[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "UDP transport requires a failure policy. For example, `UDP.lossy_delayed_forever()` treats dropped messages as indefinitely delayed."
+)]
+/// A failure policy for UDP channels, determining how the transport handles
+/// message loss. Because UDP provides no ordering guarantees, all policies
+/// produce [`NoOrder`] output streams, and there is no `fail_stop` option
+/// (UDP is connectionless, so there is no connection to fail).
+pub trait UdpFailPolicy {
+    /// Returns the [`UdpFault`] variant for this failure policy.
+    fn udp_fault() -> UdpFault;
+}
+
+#[sealed::sealed]
+impl UdpFailPolicy for Lossy {
+    fn udp_fault() -> UdpFault {
+        UdpFault::Lossy
+    }
+}
+
+#[sealed::sealed]
+impl UdpFailPolicy for LossyDelayedForever {
+    fn udp_fault() -> UdpFault {
+        UdpFault::LossyDelayedForever
     }
 }
 
@@ -142,6 +169,22 @@ impl<F: TcpFailPolicy> TransportKind for Tcp<F> {
     fn networking_info() -> NetworkingInfo {
         NetworkingInfo::Tcp {
             fault: F::tcp_fault(),
+        }
+    }
+}
+
+/// Send items across a UDP channel, which does not guarantee delivery or ordering.
+pub struct Udp<F> {
+    _phantom: PhantomData<F>,
+}
+
+#[sealed::sealed]
+impl<F: UdpFailPolicy> TransportKind for Udp<F> {
+    type OrderingGuarantee = NoOrder;
+
+    fn networking_info() -> NetworkingInfo {
+        NetworkingInfo::Udp {
+            fault: F::udp_fault(),
         }
     }
 }
@@ -185,6 +228,18 @@ pub enum TcpFault {
     LossyDelayedForever,
 }
 
+/// The fault model for a UDP channel.
+///
+/// UDP is connectionless and never guarantees delivery, so there is no
+/// `FailStop` variant — messages can always be dropped.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
+pub enum UdpFault {
+    /// Messages may be lost (e.g. due to network partitions or congestion).
+    Lossy,
+    /// Dropped messages are treated as indefinitely delayed.
+    LossyDelayedForever,
+}
+
 /// Describes the networking configuration for a network channel at the IR level.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 pub enum NetworkingInfo {
@@ -192,6 +247,11 @@ pub enum NetworkingInfo {
     Tcp {
         /// The fault model for this TCP connection.
         fault: TcpFault,
+    },
+    /// A UDP-based network channel with a specific fault model.
+    Udp {
+        /// The fault model for this UDP channel.
+        fault: UdpFault,
     },
 }
 
@@ -282,10 +342,50 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     /// without running into fairness issues.
     ///
     /// When using this mode in the Hydro simulator, you must call
-    /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) to opt in,
-    /// because the simulator models dropped messages as indefinitely delayed, which only
-    /// tests safety properties (not liveness).
+    /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) to opt in:
+    /// the simulator will not actually drop packets—it delays "dropped" messages until
+    /// the end of the execution, which catches safety bugs but cannot test liveness.
     pub const fn lossy_delayed_forever(self) -> NetworkingConfig<Tcp<LossyDelayedForever>, S> {
+        NetworkingConfig {
+            name: self.name,
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
+}
+
+impl<S: ?Sized> NetworkingConfig<Udp<()>, S> {
+    /// Configures the UDP transport to allow messages to be lost.
+    ///
+    /// UDP never guarantees delivery or ordering, so unlike TCP there is no `fail_stop`
+    /// policy — messages may always be dropped and the output stream always has
+    /// [`NoOrder`] guarantees.
+    ///
+    /// # Non-Determinism
+    /// A lossy UDP channel will non-deterministically drop messages during execution.
+    pub const fn lossy(self, nondet: NonDet) -> NetworkingConfig<Udp<Lossy>, S> {
+        let _ = nondet;
+        NetworkingConfig {
+            name: self.name,
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
+
+    /// Configures the UDP transport to treat dropped messages as indefinitely delayed.
+    ///
+    /// UDP never guarantees delivery or ordering, so unlike TCP there is no `fail_stop`
+    /// policy. Unlike [`Self::lossy`], this does *not* require a [`NonDet`] annotation
+    /// because the output is always lower in the partial order than the ideal stream
+    /// (dropped messages are modeled as infinite delays). The output stream has
+    /// [`NoOrder`] guarantees, imposing stricter conditions on downstream consumers.
+    ///
+    /// Unlike [`Self::lossy`], this mode can easily be simulated in exhaustive mode
+    /// without running into fairness issues.
+    ///
+    /// When using this mode in the Hydro simulator, you must call
+    /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) to opt in:
+    /// the simulator will not actually drop packets—it delays "dropped" messages until
+    /// the end of the execution, which catches safety bugs but cannot test liveness.
+    pub const fn lossy_delayed_forever(self) -> NetworkingConfig<Udp<LossyDelayedForever>, S> {
         NetworkingConfig {
             name: self.name,
             _phantom: (PhantomData, PhantomData),
@@ -353,6 +453,27 @@ where
 
 /// A network channel that uses length-delimited TCP for transport.
 pub const TCP: NetworkingConfig<Tcp<()>, NoSer> = NetworkingConfig {
+    name: None,
+    _phantom: (PhantomData, PhantomData),
+};
+
+/// A network channel that uses UDP for transport.
+///
+/// Unlike [`TCP`], UDP does not guarantee delivery or ordering, so output streams
+/// always have [`NoOrder`] guarantees. Because UDP is connectionless, there is no
+/// `fail_stop` policy; only [`lossy`](NetworkingConfig::lossy) and
+/// [`lossy_delayed_forever`](NetworkingConfig::lossy_delayed_forever) are available.
+///
+/// # Availability
+/// UDP is **not yet available** in "deploy" deployment mode (via Hydro Deploy,
+/// including Docker and ECS deployments); attempting to deploy a UDP channel there
+/// will panic at compile time. Both UDP modes are available for embedded
+/// deployments (the only production deployment option) and Maelstrom testing. In
+/// the Hydro simulator, only `lossy_delayed_forever` is supported, and it requires
+/// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only): the
+/// simulator will not actually drop packets—it delays "dropped" messages until the
+/// end of the execution, which catches safety bugs but cannot test liveness.
+pub const UDP: NetworkingConfig<Udp<()>, NoSer> = NetworkingConfig {
     name: None,
     _phantom: (PhantomData, PhantomData),
 };

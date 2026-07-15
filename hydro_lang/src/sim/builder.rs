@@ -1429,7 +1429,7 @@ impl DfirBuilder for SimBuilder {
         tag_id: StmtId,
         networking_info: &crate::networking::NetworkingInfo,
     ) {
-        use crate::networking::{NetworkingInfo, TcpFault};
+        use crate::networking::{NetworkingInfo, TcpFault, UdpFault};
         match networking_info {
             NetworkingInfo::Tcp { fault } => match fault {
                 TcpFault::FailStop => {}
@@ -1445,6 +1445,18 @@ impl DfirBuilder for SimBuilder {
                 _ => todo!(
                     "SimBuilder only supports fail-stop and lossy-delayed-forever TCP networking"
                 ),
+            },
+            NetworkingInfo::Udp { fault } => match fault {
+                UdpFault::LossyDelayedForever => {
+                    assert!(
+                        self.test_safety_only,
+                        "Simulating `lossy_delayed_forever` requires `.test_safety_only()` on the \
+                         SimFlow because the simulator models dropped messages as indefinitely \
+                         delayed, which only tests safety (not liveness). Call \
+                         `.sim().test_safety_only()` to opt in."
+                    );
+                }
+                _ => todo!("SimBuilder only supports lossy-delayed-forever UDP networking"),
             },
         }
 

@@ -135,6 +135,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
                 }
                 (TcpFault::FailStop, Some(_)) => {} // other nemeses are fine with fail_stop
             },
+            NetworkingInfo::Udp { .. } => {} // UDP is always lossy, which is always allowed
         }
         deploy_maelstrom_m2m(RuntimeData::new("__hydro_lang_maelstrom_meta"))
     }
