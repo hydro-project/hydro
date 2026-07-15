@@ -42,6 +42,27 @@ pub struct SimBuilder {
 }
 
 impl SimBuilder {
+    /// Gets the DFIR builder for the given location, creating it if necessary.
+    ///
+    /// Unlike production codegen, the simulator emits a separate DFIR graph for each tick
+    /// location, in addition to the fused async graph for each root location.
+    fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
+        match location {
+            LocationId::Process(_) => self.process_graphs.entry(location.clone()).or_default(),
+            LocationId::Cluster(_) => self.cluster_graphs.entry(location.clone()).or_default(),
+            LocationId::Atomic(tick) => self.get_dfir_mut(tick.as_ref()),
+            LocationId::Tick(_, l) => match l.root() {
+                LocationId::Process(_) => {
+                    self.process_tick_dfirs.entry(location.clone()).or_default()
+                }
+                LocationId::Cluster(_) => {
+                    self.cluster_tick_dfirs.entry(location.clone()).or_default()
+                }
+                _ => unreachable!(),
+            },
+        }
+    }
+
     fn add_extra_stmt_internal(&mut self, location: &LocationId, stmt: syn::Stmt) {
         match location {
             LocationId::Process(_) => {
@@ -279,21 +300,14 @@ impl DfirBuilder for SimBuilder {
         true
     }
 
-    fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
-        match location {
-            LocationId::Process(_) => self.process_graphs.entry(location.clone()).or_default(),
-            LocationId::Cluster(_) => self.cluster_graphs.entry(location.clone()).or_default(),
-            LocationId::Atomic(tick) => self.get_dfir_mut(tick.as_ref()),
-            LocationId::Tick(_, l) => match l.root() {
-                LocationId::Process(_) => {
-                    self.process_tick_dfirs.entry(location.clone()).or_default()
-                }
-                LocationId::Cluster(_) => {
-                    self.cluster_tick_dfirs.entry(location.clone()).or_default()
-                }
-                _ => unreachable!(),
-            },
-        }
+    fn add_dfir_at(
+        &mut self,
+        location: &LocationId,
+        dfir: dfir_lang::parse::DfirCode,
+        operator_tag: Option<&str>,
+    ) {
+        self.get_dfir_mut(location)
+            .add_dfir(dfir, None, operator_tag);
     }
 
     fn batch(
