@@ -11,3 +11,12 @@ fn main() {
     let output = &*dfir_rs::util::collect_ready::<String, _>(&mut output_recv);
     assert_eq!(output, "HELLO WORLD");
 }
+
+#[cfg(not(nightly))]
+#[test]
+fn test() {
+    use example_test::run_current_example;
+
+    let output = run_current_example!().read_to_end();
+    hydro_build_utils::assert_snapshot!("example_syntax_output", output);
+}
