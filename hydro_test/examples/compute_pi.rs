@@ -65,12 +65,28 @@ async fn main() {
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
-    let rustflags = if std::env::var("RUNNING_AS_EXAMPLE_TEST").is_ok_and(|v| v == "1") {
-        ""
+    // Since this example measures throughput, use optimized builds, except when running as an
+    // example test where skipping custom rustflags preserves the fast shared-prebuild /
+    // dynamic-linking build path.
+    let rustflags: Option<&str> = if std::env::var("RUNNING_AS_EXAMPLE_TEST")
+        .is_ok_and(|v| v == "1")
+    {
+        None
     } else if args.gcp.is_some() || args.aws {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
+        Some(
+            "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment",
+        )
     } else {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
+        Some("-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off")
+    };
+
+    let create_trybuild_host = |host: Arc<dyn Host>| {
+        let tbh = TrybuildHost::new(host).features(["tokio"]);
+        if let Some(rustflags) = rustflags {
+            tbh.rustflags(rustflags)
+        } else {
+            tbh
+        }
     };
 
     let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
@@ -90,19 +106,10 @@ async fn main() {
 
     let _nodes = built
         .with_default_optimize()
-        .with_process(
-            &leader,
-            TrybuildHost::new(create_host(&mut deployment))
-                .rustflags(rustflags)
-                .features(["tokio"]),
-        )
+        .with_process(&leader, create_trybuild_host(create_host(&mut deployment)))
         .with_cluster(
             &cluster,
-            (0..8).map(|_| {
-                TrybuildHost::new(create_host(&mut deployment))
-                    .rustflags(rustflags)
-                    .features(["tokio"])
-            }),
+            (0..8).map(|_| create_trybuild_host(create_host(&mut deployment))),
         )
         .deploy(&mut deployment);
 

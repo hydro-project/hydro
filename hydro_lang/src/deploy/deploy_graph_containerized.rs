@@ -68,7 +68,7 @@ pub struct DockerDeployProcess {
 
     docker_container_name: Rc<RefCell<Option<String>>>,
 
-    compilation_options: Option<String>,
+    rustflags: Option<String>,
 
     config: Vec<String>,
 
@@ -155,7 +155,7 @@ pub struct DockerDeployCluster {
 
     docker_container_name: Rc<RefCell<Vec<String>>>,
 
-    compilation_options: Option<String>,
+    rustflags: Option<String>,
 
     config: Vec<String>,
 
@@ -629,18 +629,18 @@ async fn create_and_start_container(
 #[instrument(level = "trace", skip_all, fields(%image_name))]
 async fn build_and_create_image(
     rust_crate: &Rc<RefCell<Option<RustCrate>>>,
-    compilation_options: Option<&str>,
+    rustflags: Option<&str>,
     config: &[String],
     exposed_ports: &[u16],
     image_name: &str,
     base_image: Option<&str>,
     linux_compile_type: LinuxCompileType,
 ) -> Result<(), anyhow::Error> {
-    let mut rust_crate = rust_crate
-        .borrow_mut()
-        .take()
-        .unwrap()
-        .rustflags(compilation_options.unwrap_or_default());
+    let mut rust_crate = rust_crate.borrow_mut().take().unwrap();
+
+    if let Some(rustflags) = rustflags {
+        rust_crate = rust_crate.rustflags(rustflags);
+    }
 
     for cfg in config {
         rust_crate = rust_crate.config(cfg);
@@ -780,11 +780,11 @@ impl DockerDeploy {
     /// Add an internal docker service to the deployment.
     pub fn add_localhost_docker(
         &mut self,
-        compilation_options: Option<String>,
+        rustflags: Option<String>,
         config: Vec<String>,
     ) -> DockerDeployProcessSpec {
         let process = DockerDeployProcessSpec {
-            compilation_options,
+            rustflags,
             config,
             network: self.network.clone(),
             deployment_instance: self.deployment_instance.clone(),
@@ -801,12 +801,12 @@ impl DockerDeploy {
     /// Add an internal docker cluster to the deployment.
     pub fn add_localhost_docker_cluster(
         &mut self,
-        compilation_options: Option<String>,
+        rustflags: Option<String>,
         config: Vec<String>,
         count: usize,
     ) -> DockerDeployClusterSpec {
         let cluster = DockerDeployClusterSpec {
-            compilation_options,
+            rustflags,
             config,
             count,
             deployment_instance: self.deployment_instance.clone(),
@@ -838,7 +838,7 @@ impl DockerDeploy {
 
             build_and_create_image(
                 &process.rust_crate,
-                process.compilation_options.as_deref(),
+                process.rustflags.as_deref(),
                 &process.config,
                 &exposed_ports,
                 &process.name,
@@ -852,7 +852,7 @@ impl DockerDeploy {
             let exposed_ports = cluster.exposed_ports.borrow().clone();
             build_and_create_image(
                 &cluster.rust_crate,
-                cluster.compilation_options.as_deref(),
+                cluster.rustflags.as_deref(),
                 &cluster.config,
                 &exposed_ports,
                 &cluster.name,
@@ -1381,7 +1381,7 @@ fn get_docker_container_name(image_name: &str, instance: Option<usize>) -> Strin
 /// Represents a Process running in a docker container
 #[derive(Clone)]
 pub struct DockerDeployProcessSpec {
-    compilation_options: Option<String>,
+    rustflags: Option<String>,
     config: Vec<String>,
     network: DockerNetwork,
     deployment_instance: String,
@@ -1404,7 +1404,7 @@ impl<'a> ProcessSpec<'a, DockerDeploy> for DockerDeployProcessSpec {
 
             docker_container_name: Rc::new(RefCell::new(None)),
 
-            compilation_options: self.compilation_options,
+            rustflags: self.rustflags,
             config: self.config,
 
             network: self.network.clone(),
@@ -1419,7 +1419,7 @@ impl<'a> ProcessSpec<'a, DockerDeploy> for DockerDeployProcessSpec {
 /// Represents a Cluster running across `count` docker containers.
 #[derive(Clone)]
 pub struct DockerDeployClusterSpec {
-    compilation_options: Option<String>,
+    rustflags: Option<String>,
     config: Vec<String>,
     count: usize,
     deployment_instance: String,
@@ -1442,7 +1442,7 @@ impl<'a> ClusterSpec<'a, DockerDeploy> for DockerDeployClusterSpec {
 
             docker_container_name: Rc::new(RefCell::new(Vec::new())),
 
-            compilation_options: self.compilation_options,
+            rustflags: self.rustflags,
             config: self.config,
 
             count: self.count,
