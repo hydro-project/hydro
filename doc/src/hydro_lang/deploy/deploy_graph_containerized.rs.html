@@ -68,7 +68,7 @@
 <a href=#68 id=68 data-nosnippet>68</a>
 <a href=#69 id=69 data-nosnippet>69</a>    docker_container_name: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;&gt;,
 <a href=#70 id=70 data-nosnippet>70</a>
-<a href=#71 id=71 data-nosnippet>71</a>    compilation_options: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#71 id=71 data-nosnippet>71</a>    rustflags: <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#72 id=72 data-nosnippet>72</a>
 <a href=#73 id=73 data-nosnippet>73</a>    config: Vec&lt;String&gt;,
 <a href=#74 id=74 data-nosnippet>74</a>
@@ -155,7 +155,7 @@
 <a href=#155 id=155 data-nosnippet>155</a>
 <a href=#156 id=156 data-nosnippet>156</a>    docker_container_name: Rc&lt;RefCell&lt;Vec&lt;String&gt;&gt;&gt;,
 <a href=#157 id=157 data-nosnippet>157</a>
-<a href=#158 id=158 data-nosnippet>158</a>    compilation_options: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#158 id=158 data-nosnippet>158</a>    rustflags: <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#159 id=159 data-nosnippet>159</a>
 <a href=#160 id=160 data-nosnippet>160</a>    config: Vec&lt;String&gt;,
 <a href=#161 id=161 data-nosnippet>161</a>
@@ -629,18 +629,18 @@
 <a href=#629 id=629 data-nosnippet>629</a><span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%image_name))]
 <a href=#630 id=630 data-nosnippet>630</a></span><span class="kw">async fn </span>build_and_create_image(
 <a href=#631 id=631 data-nosnippet>631</a>    rust_crate: <span class="kw-2">&amp;</span>Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;RustCrate&gt;&gt;&gt;,
-<a href=#632 id=632 data-nosnippet>632</a>    compilation_options: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+<a href=#632 id=632 data-nosnippet>632</a>    rustflags: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
 <a href=#633 id=633 data-nosnippet>633</a>    config: <span class="kw-2">&amp;</span>[String],
 <a href=#634 id=634 data-nosnippet>634</a>    exposed_ports: <span class="kw-2">&amp;</span>[u16],
 <a href=#635 id=635 data-nosnippet>635</a>    image_name: <span class="kw-2">&amp;</span>str,
 <a href=#636 id=636 data-nosnippet>636</a>    base_image: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
 <a href=#637 id=637 data-nosnippet>637</a>    linux_compile_type: LinuxCompileType,
 <a href=#638 id=638 data-nosnippet>638</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), anyhow::Error&gt; {
-<a href=#639 id=639 data-nosnippet>639</a>    <span class="kw">let </span><span class="kw-2">mut </span>rust_crate = rust_crate
-<a href=#640 id=640 data-nosnippet>640</a>        .borrow_mut()
-<a href=#641 id=641 data-nosnippet>641</a>        .take()
-<a href=#642 id=642 data-nosnippet>642</a>        .unwrap()
-<a href=#643 id=643 data-nosnippet>643</a>        .rustflags(compilation_options.unwrap_or_default());
+<a href=#639 id=639 data-nosnippet>639</a>    <span class="kw">let </span><span class="kw-2">mut </span>rust_crate = rust_crate.borrow_mut().take().unwrap();
+<a href=#640 id=640 data-nosnippet>640</a>
+<a href=#641 id=641 data-nosnippet>641</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(rustflags) = rustflags {
+<a href=#642 id=642 data-nosnippet>642</a>        rust_crate = rust_crate.rustflags(rustflags);
+<a href=#643 id=643 data-nosnippet>643</a>    }
 <a href=#644 id=644 data-nosnippet>644</a>
 <a href=#645 id=645 data-nosnippet>645</a>    <span class="kw">for </span>cfg <span class="kw">in </span>config {
 <a href=#646 id=646 data-nosnippet>646</a>        rust_crate = rust_crate.config(cfg);
@@ -780,11 +780,11 @@
 <a href=#780 id=780 data-nosnippet>780</a>    <span class="doccomment">/// Add an internal docker service to the deployment.
 <a href=#781 id=781 data-nosnippet>781</a>    </span><span class="kw">pub fn </span>add_localhost_docker(
 <a href=#782 id=782 data-nosnippet>782</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#783 id=783 data-nosnippet>783</a>        compilation_options: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#783 id=783 data-nosnippet>783</a>        rustflags: <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#784 id=784 data-nosnippet>784</a>        config: Vec&lt;String&gt;,
 <a href=#785 id=785 data-nosnippet>785</a>    ) -&gt; DockerDeployProcessSpec {
 <a href=#786 id=786 data-nosnippet>786</a>        <span class="kw">let </span>process = DockerDeployProcessSpec {
-<a href=#787 id=787 data-nosnippet>787</a>            compilation_options,
+<a href=#787 id=787 data-nosnippet>787</a>            rustflags,
 <a href=#788 id=788 data-nosnippet>788</a>            config,
 <a href=#789 id=789 data-nosnippet>789</a>            network: <span class="self">self</span>.network.clone(),
 <a href=#790 id=790 data-nosnippet>790</a>            deployment_instance: <span class="self">self</span>.deployment_instance.clone(),
@@ -801,12 +801,12 @@
 <a href=#801 id=801 data-nosnippet>801</a>    <span class="doccomment">/// Add an internal docker cluster to the deployment.
 <a href=#802 id=802 data-nosnippet>802</a>    </span><span class="kw">pub fn </span>add_localhost_docker_cluster(
 <a href=#803 id=803 data-nosnippet>803</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#804 id=804 data-nosnippet>804</a>        compilation_options: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#804 id=804 data-nosnippet>804</a>        rustflags: <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#805 id=805 data-nosnippet>805</a>        config: Vec&lt;String&gt;,
 <a href=#806 id=806 data-nosnippet>806</a>        count: usize,
 <a href=#807 id=807 data-nosnippet>807</a>    ) -&gt; DockerDeployClusterSpec {
 <a href=#808 id=808 data-nosnippet>808</a>        <span class="kw">let </span>cluster = DockerDeployClusterSpec {
-<a href=#809 id=809 data-nosnippet>809</a>            compilation_options,
+<a href=#809 id=809 data-nosnippet>809</a>            rustflags,
 <a href=#810 id=810 data-nosnippet>810</a>            config,
 <a href=#811 id=811 data-nosnippet>811</a>            count,
 <a href=#812 id=812 data-nosnippet>812</a>            deployment_instance: <span class="self">self</span>.deployment_instance.clone(),
@@ -838,7 +838,7 @@
 <a href=#838 id=838 data-nosnippet>838</a>
 <a href=#839 id=839 data-nosnippet>839</a>            build_and_create_image(
 <a href=#840 id=840 data-nosnippet>840</a>                <span class="kw-2">&amp;</span>process.rust_crate,
-<a href=#841 id=841 data-nosnippet>841</a>                process.compilation_options.as_deref(),
+<a href=#841 id=841 data-nosnippet>841</a>                process.rustflags.as_deref(),
 <a href=#842 id=842 data-nosnippet>842</a>                <span class="kw-2">&amp;</span>process.config,
 <a href=#843 id=843 data-nosnippet>843</a>                <span class="kw-2">&amp;</span>exposed_ports,
 <a href=#844 id=844 data-nosnippet>844</a>                <span class="kw-2">&amp;</span>process.name,
@@ -852,7 +852,7 @@
 <a href=#852 id=852 data-nosnippet>852</a>            <span class="kw">let </span>exposed_ports = cluster.exposed_ports.borrow().clone();
 <a href=#853 id=853 data-nosnippet>853</a>            build_and_create_image(
 <a href=#854 id=854 data-nosnippet>854</a>                <span class="kw-2">&amp;</span>cluster.rust_crate,
-<a href=#855 id=855 data-nosnippet>855</a>                cluster.compilation_options.as_deref(),
+<a href=#855 id=855 data-nosnippet>855</a>                cluster.rustflags.as_deref(),
 <a href=#856 id=856 data-nosnippet>856</a>                <span class="kw-2">&amp;</span>cluster.config,
 <a href=#857 id=857 data-nosnippet>857</a>                <span class="kw-2">&amp;</span>exposed_ports,
 <a href=#858 id=858 data-nosnippet>858</a>                <span class="kw-2">&amp;</span>cluster.name,
@@ -1381,7 +1381,7 @@
 <a href=#1381 id=1381 data-nosnippet>1381</a><span class="doccomment">/// Represents a Process running in a docker container
 <a href=#1382 id=1382 data-nosnippet>1382</a></span><span class="attr">#[derive(Clone)]
 <a href=#1383 id=1383 data-nosnippet>1383</a></span><span class="kw">pub struct </span>DockerDeployProcessSpec {
-<a href=#1384 id=1384 data-nosnippet>1384</a>    compilation_options: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#1384 id=1384 data-nosnippet>1384</a>    rustflags: <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1385 id=1385 data-nosnippet>1385</a>    config: Vec&lt;String&gt;,
 <a href=#1386 id=1386 data-nosnippet>1386</a>    network: DockerNetwork,
 <a href=#1387 id=1387 data-nosnippet>1387</a>    deployment_instance: String,
@@ -1404,7 +1404,7 @@
 <a href=#1404 id=1404 data-nosnippet>1404</a>
 <a href=#1405 id=1405 data-nosnippet>1405</a>            docker_container_name: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
 <a href=#1406 id=1406 data-nosnippet>1406</a>
-<a href=#1407 id=1407 data-nosnippet>1407</a>            compilation_options: <span class="self">self</span>.compilation_options,
+<a href=#1407 id=1407 data-nosnippet>1407</a>            rustflags: <span class="self">self</span>.rustflags,
 <a href=#1408 id=1408 data-nosnippet>1408</a>            config: <span class="self">self</span>.config,
 <a href=#1409 id=1409 data-nosnippet>1409</a>
 <a href=#1410 id=1410 data-nosnippet>1410</a>            network: <span class="self">self</span>.network.clone(),
@@ -1419,7 +1419,7 @@
 <a href=#1419 id=1419 data-nosnippet>1419</a><span class="doccomment">/// Represents a Cluster running across `count` docker containers.
 <a href=#1420 id=1420 data-nosnippet>1420</a></span><span class="attr">#[derive(Clone)]
 <a href=#1421 id=1421 data-nosnippet>1421</a></span><span class="kw">pub struct </span>DockerDeployClusterSpec {
-<a href=#1422 id=1422 data-nosnippet>1422</a>    compilation_options: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#1422 id=1422 data-nosnippet>1422</a>    rustflags: <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1423 id=1423 data-nosnippet>1423</a>    config: Vec&lt;String&gt;,
 <a href=#1424 id=1424 data-nosnippet>1424</a>    count: usize,
 <a href=#1425 id=1425 data-nosnippet>1425</a>    deployment_instance: String,
@@ -1442,7 +1442,7 @@
 <a href=#1442 id=1442 data-nosnippet>1442</a>
 <a href=#1443 id=1443 data-nosnippet>1443</a>            docker_container_name: Rc::new(RefCell::new(Vec::new())),
 <a href=#1444 id=1444 data-nosnippet>1444</a>
-<a href=#1445 id=1445 data-nosnippet>1445</a>            compilation_options: <span class="self">self</span>.compilation_options,
+<a href=#1445 id=1445 data-nosnippet>1445</a>            rustflags: <span class="self">self</span>.rustflags,
 <a href=#1446 id=1446 data-nosnippet>1446</a>            config: <span class="self">self</span>.config,
 <a href=#1447 id=1447 data-nosnippet>1447</a>
 <a href=#1448 id=1448 data-nosnippet>1448</a>            count: <span class="self">self</span>.count,
