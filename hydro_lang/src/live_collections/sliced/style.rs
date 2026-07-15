@@ -3,6 +3,9 @@
 //! This module provides wrapper types that store both a collection and its associated
 //! non-determinism guard, allowing the nondet to be properly passed through during slicing.
 
+#[cfg(stageleft_runtime)]
+use std::marker::PhantomData;
+
 use super::Slicable;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
@@ -58,45 +61,88 @@ pub fn atomic<T>(t: T, nondet: NonDet) -> Atomic<T> {
 
 /// Creates a stateful cycle with an initial value for use in `sliced!`.
 ///
+/// The tick (which is the source of truth for lifetimes) is bound first, returning a
+/// [`StateBuilder`] which accepts the user-provided initializer via [`StateBuilder::build`].
+/// This two-step layout ensures that type errors caused by a bad initializer are attributed
+/// to the initializer argument rather than the tick or the entire macro invocation.
+///
 /// The initial value is computed from a closure that receives the location
 /// for the body of the slice.
 ///
 /// The initial value is used on the first iteration, and subsequent iterations receive
 /// the value assigned to the mutable binding at the end of the previous iteration.
 #[cfg(stageleft_runtime)]
-#[expect(
-    private_bounds,
-    reason = "only Hydro collections can implement CycleCollectionWithInitial"
-)]
-pub fn state<
-    'a,
-    S: CycleCollectionWithInitial<'a, TickCycle, Location = Tick<L::DropConsistency>>,
-    L: Location<'a>,
->(
-    tick: &Tick<L>,
-    initial_fn: impl FnOnce(&Tick<L>) -> S,
-) -> (TickCycleHandle<'a, S>, S) {
-    let initial = initial_fn(tick);
-    initial.location().clone().cycle_with_initial(initial)
+pub fn state<'t, S, L>(tick: &'t Tick<L>) -> StateBuilder<'t, S, L> {
+    StateBuilder {
+        tick,
+        _phantom: PhantomData,
+    }
+}
+
+/// Builder returned by [`state`], which accepts the user-provided initializer.
+#[cfg(stageleft_runtime)]
+pub struct StateBuilder<'t, S, L> {
+    tick: &'t Tick<L>,
+    _phantom: PhantomData<fn() -> S>,
+}
+
+#[cfg(stageleft_runtime)]
+impl<'t, 'a, S, L: Location<'a>> StateBuilder<'t, S, L> {
+    /// Supplies the initializer closure and creates the stateful cycle.
+    ///
+    /// The initializer takes the tick at the builder's `'t` lifetime (rather than a
+    /// higher-ranked `for<'x>` bound), since the builder already stores the tick reference.
+    /// This way, an initializer that requires a specific tick reference lifetime produces a
+    /// borrow error directly on the tick, instead of a confusing "implementation of `Fn` is
+    /// not general enough" error that blames an unrelated variable.
+    #[expect(
+        private_bounds,
+        reason = "only Hydro collections can implement CycleCollectionWithInitial"
+    )]
+    pub fn build(self, initial_fn: impl FnOnce(&'t Tick<L>) -> S) -> (TickCycleHandle<'a, S>, S)
+    where
+        S: CycleCollectionWithInitial<'a, TickCycle, Location = Tick<L::DropConsistency>>,
+    {
+        let initial = initial_fn(self.tick);
+        initial.location().clone().cycle_with_initial(initial)
+    }
 }
 
 /// Creates a stateful cycle without an initial value for use in `sliced!`.
 ///
+/// The tick (which is the source of truth for lifetimes) is bound first, returning a
+/// [`StateNullBuilder`] which creates the cycle via [`StateNullBuilder::build`].
+///
 /// On the first iteration, the state will be null/empty. Subsequent iterations receive
 /// the value assigned to the mutable binding at the end of the previous iteration.
 #[cfg(stageleft_runtime)]
-#[expect(
-    private_bounds,
-    reason = "only Hydro collections can implement CycleCollection"
-)]
-pub fn state_null<
-    'a,
-    S: CycleCollection<'a, TickCycle, Location = Tick<L::DropConsistency>> + DeferTick,
-    L: Location<'a>,
->(
-    tick: &Tick<L>,
-) -> (TickCycleHandle<'a, S>, S) {
-    tick.cycle::<S, _>()
+pub fn state_null<'t, S, L>(tick: &'t Tick<L>) -> StateNullBuilder<'t, S, L> {
+    StateNullBuilder {
+        tick,
+        _phantom: PhantomData,
+    }
+}
+
+/// Builder returned by [`state_null`], which creates the cycle.
+#[cfg(stageleft_runtime)]
+pub struct StateNullBuilder<'t, S, L> {
+    tick: &'t Tick<L>,
+    _phantom: PhantomData<fn() -> S>,
+}
+
+#[cfg(stageleft_runtime)]
+impl<'t, 'a, S, L: Location<'a>> StateNullBuilder<'t, S, L> {
+    /// Creates the stateful cycle, which starts as null/empty on the first iteration.
+    #[expect(
+        private_bounds,
+        reason = "only Hydro collections can implement CycleCollection"
+    )]
+    pub fn build(self) -> (TickCycleHandle<'a, S>, S)
+    where
+        S: CycleCollection<'a, TickCycle, Location = Tick<L::DropConsistency>> + DeferTick,
+    {
+        self.tick.cycle::<S, _>()
+    }
 }
 
 // ============================================================================

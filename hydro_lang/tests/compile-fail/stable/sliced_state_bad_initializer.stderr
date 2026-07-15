@@ -1,0 +1,26 @@
+error[E0716]: temporary value dropped while borrowed
+  --> tests/compile-fail/stable/sliced_state_bad_initializer.rs:30:28
+   |
+21 | fn test<'a>(input: Stream<u32, Process<'a, P1>>) {
+   |         -- lifetime `'a` defined here
+22 |     let clock = Clock {
+23 |         initializer: |l: &Tick<Process<'a, P1>>| l.singleton(q!(0)),
+   |                      ---------------------------------------------- this usage requires that borrow lasts for `'a`
+...
+30 |         let mut bad = use::state(&clock.initializer);
+   |                            ^^^^-
+   |                            |   |
+   |                            |   temporary value is freed at the end of this statement
+   |                            creates a temporary value which is freed while still in use
+   |
+note: requirements that the value outlives `'a` introduced here
+  --> tests/compile-fail/stable/sliced_state_bad_initializer.rs:15:18
+   |
+15 |     Initializer: Fn(&'a Tick<Process<'a, Tag>>) -> Singleton<u32, Tick<Process<'a, Tag>>, Bounded>,
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: src/live_collections/sliced/style.rs
+   |
+   |     pub fn build(self, initial_fn: impl FnOnce(&'t Tick<L>) -> S) -> (TickCycleHandle<'a, S>, S)
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `$crate::__sliced_parse_uses__` which comes from the expansion of the macro `sliced` (in Nightly builds, run with -Z macro-backtrace for more info)

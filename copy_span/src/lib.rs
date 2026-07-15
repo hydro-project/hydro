@@ -26,6 +26,14 @@ impl syn::parse::Parse for CopySpanInput {
 
 fn recursively_set_span(token: &mut proc_macro2::TokenTree, span: proc_macro2::Span) {
     match token {
+        proc_macro2::TokenTree::Group(group)
+            if group.delimiter() == proc_macro2::Delimiter::None =>
+        {
+            // None-delimited groups wrap interpolated metavariable fragments (e.g. `$arg:expr`
+            // passed through a `macro_rules!` transcriber). Leave them untouched so that the
+            // fragment's original spans are preserved, both for precise error attribution
+            // within the fragment and to keep the hygiene of its tokens intact.
+        }
         proc_macro2::TokenTree::Group(group) => {
             let new_stream = group
                 .stream()
@@ -40,7 +48,10 @@ fn recursively_set_span(token: &mut proc_macro2::TokenTree, span: proc_macro2::S
             new_group.set_span(span);
             *group = new_group;
         }
-        proc_macro2::TokenTree::Ident(i) if *i == "$crate" => {
+        proc_macro2::TokenTree::Ident(_) => {
+            // Move the ident's location to the target span, but keep its original
+            // resolution context so that hygiene (e.g. for `$crate` or local variables
+            // introduced by a `macro_rules!` expansion) is preserved.
             token.set_span(span.resolved_at(token.span()));
         }
         _ => {
