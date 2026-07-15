@@ -139,6 +139,21 @@ impl FlatGraphBuilder {
         self.add_statement_internal(stmt, None, None);
     }
 
+    /// Programmatically create a new `loop { ... }` context, with the given parent loop context
+    /// (or `None` for a root-level loop).
+    ///
+    /// The returned [`GraphLoopId`] can be passed as the `current_loop` argument of
+    /// [`Self::add_dfir`] / [`Self::append_assign_pipeline`] to place statements inside the loop,
+    ///
+    /// # Panics
+    /// Panics if `parent_loop` is a loop not belonging to this instance.
+    /// across multiple calls. This is the programmatic equivalent of a
+    /// [`DfirStatement::Loop`] block in the surface syntax, but allows the loop body to be built
+    /// up incrementally.
+    pub fn insert_loop(&mut self, parent_loop: Option<GraphLoopId>) -> GraphLoopId {
+        self.flat_graph.insert_loop(parent_loop)
+    }
+
     /// Add a single [`DfirStatement`] line to this [`DfirGraph`] with given configuration.
     ///
     /// Optional configuration:
@@ -1203,5 +1218,143 @@ impl FlatGraphBuilder {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use syn::parse_quote;
+
+    use super::*;
+
+    /// Test that [`FlatGraphBuilder::insert_loop`] can be used to programmatically build a loop
+    /// context, with statements added across multiple [`FlatGraphBuilder::add_dfir`] calls.
+    #[test]
+    fn test_insert_loop_programmatic() {
+        let mut builder = FlatGraphBuilder::new();
+        builder.add_dfir(
+            parse_quote! {
+                inp = source_iter([1, 2, 3]);
+            },
+            None,
+            None,
+        );
+        let loop_id = builder.insert_loop(None);
+        builder.add_dfir(
+            parse_quote! {
+                batched = inp -> batch();
+            },
+            Some(loop_id),
+            None,
+        );
+        builder.add_dfir(
+            parse_quote! {
+                batched -> for_each(std::mem::drop);
+            },
+            Some(loop_id),
+            None,
+        );
+
+        let output = builder.build().unwrap_or_else(|diagnostics| {
+            panic!("Should build without errors, got: {:?}", diagnostics);
+        });
+        let flat_graph = output.flat_graph;
+
+        // One root loop, containing the `batch()` and `for_each()` (but not `source_iter()`).
+        assert_eq!(1, flat_graph.loops().count());
+        let (built_loop_id, _) = flat_graph.loops().next().unwrap();
+        assert_eq!(loop_id, built_loop_id);
+        assert_eq!(None, flat_graph.loop_parent(built_loop_id));
+
+        for (node_id, _node) in flat_graph.nodes() {
+            let Some(op_inst) = flat_graph.node_op_inst(node_id) else {
+                continue;
+            };
+            let expected_loop = match op_inst.op_constraints.name {
+                "source_iter" => None,
+                "batch" | "for_each" => Some(built_loop_id),
+                other => panic!("Unexpected operator: {}", other),
+            };
+            assert_eq!(
+                expected_loop,
+                flat_graph.node_loop(node_id),
+                "Wrong loop context for operator `{}`.",
+                op_inst.op_constraints.name,
+            );
+        }
+    }
+
+    /// Test that programmatically-built nested loops have the correct parent relationship.
+    #[test]
+    fn test_insert_loop_nested() {
+        let mut builder = FlatGraphBuilder::new();
+        let outer_loop = builder.insert_loop(None);
+        let inner_loop = builder.insert_loop(Some(outer_loop));
+
+        builder.add_dfir(
+            parse_quote! {
+                inp = source_iter([1, 2, 3]);
+            },
+            None,
+            None,
+        );
+        builder.add_dfir(
+            parse_quote! {
+                outer = inp -> batch();
+            },
+            Some(outer_loop),
+            None,
+        );
+        builder.add_dfir(
+            parse_quote! {
+                outer -> batch() -> for_each(std::mem::drop);
+            },
+            Some(inner_loop),
+            None,
+        );
+
+        let output = builder.build().unwrap_or_else(|diagnostics| {
+            panic!("Should build without errors, got: {:?}", diagnostics);
+        });
+        let flat_graph = output.flat_graph;
+
+        assert_eq!(2, flat_graph.loops().count());
+        assert_eq!(None, flat_graph.loop_parent(outer_loop));
+        assert_eq!(Some(outer_loop), flat_graph.loop_parent(inner_loop));
+    }
+
+    /// Test that loop validation (windowing operator required at loop entry) applies to
+    /// programmatically-created loop contexts, same as parsed `loop { ... }` blocks.
+    #[test]
+    fn test_insert_loop_requires_windowing() {
+        let mut builder = FlatGraphBuilder::new();
+        builder.add_dfir(
+            parse_quote! {
+                inp = source_iter([1, 2, 3]);
+            },
+            None,
+            None,
+        );
+        let loop_id = builder.insert_loop(None);
+        // `map` is not a windowing operator, so this should fail to build.
+        builder.add_dfir(
+            parse_quote! {
+                inp -> map(|x: usize| x) -> for_each(std::mem::drop);
+            },
+            Some(loop_id),
+            None,
+        );
+
+        let Err(diagnostics) = builder.build() else {
+            panic!("Should fail to build due to missing windowing operator.");
+        };
+        assert!(
+            diagnostics.iter().any(|diagnostic| {
+                Level::Error == diagnostic.level
+                    && diagnostic.message.contains("windowing operator")
+            }),
+            "Expected a windowing operator error, got: {:?}",
+            diagnostics,
+        );
     }
 }
