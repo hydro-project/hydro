@@ -76,10 +76,6 @@ pub struct CargoBuildLock {
 
 impl CargoBuildLock {
     pub fn lock_shared(lock_path: &Path) -> Self {
-        eprintln!(
-            "[hydro-build] acquiring .cargo-build-lock shared: {}",
-            lock_path.display()
-        );
         let file = fs::OpenOptions::new()
             .read(true)
             .write(true)
@@ -88,7 +84,6 @@ impl CargoBuildLock {
             .open(lock_path)
             .unwrap();
         file.lock_shared().unwrap();
-        eprintln!("[hydro-build] acquired .cargo-build-lock shared");
         CargoBuildLock { _file: file }
     }
 }
@@ -120,10 +115,6 @@ impl PrebuildGuard {
     /// Acquire an upgradable lock (in-process upgradable read + file shared).
     /// When `features_hash` is Some, uses a per-hash lock (for `__CARGO_DEFAULT_LIB_METADATA` mode).
     pub fn lock_upgradable(lock_path: &Path, features_hash: Option<&str>) -> Self {
-        eprintln!(
-            "[hydro-build] acquiring prebuild upgradable lock: {}",
-            lock_path.display()
-        );
         let rw_guard = get_dep_lock(features_hash).upgradable_read();
         let lock_dir = lock_path.parent().unwrap().to_owned();
         let file = fs::OpenOptions::new()
@@ -134,7 +125,6 @@ impl PrebuildGuard {
             .open(lock_path)
             .unwrap();
         file.lock_shared().unwrap();
-        eprintln!("[hydro-build] acquired prebuild upgradable lock");
         PrebuildGuard {
             _rw_guard: RwGuard::Upgradable(rw_guard),
             _global_guard: None,
@@ -146,7 +136,6 @@ impl PrebuildGuard {
 
     /// Upgrade to exclusive (in-process write + file exclusive + global locks).
     pub fn upgrade(self) -> Self {
-        eprintln!("[hydro-build] upgrading prebuild lock to exclusive");
         let file = self._file;
         let rw_guard = match self._rw_guard {
             RwGuard::Upgradable(u) => parking_lot::RwLockUpgradableReadGuard::upgrade(u),
@@ -155,7 +144,6 @@ impl PrebuildGuard {
         // Release per-feature shared lock before acquiring global exclusive
         // to avoid deadlock (other processes hold per-feature shared and wait for global).
         file.unlock().unwrap();
-        eprintln!("[hydro-build] acquiring global prebuild file lock");
         let global_guard = GLOBAL_PREBUILD_LOCK.write();
         let global_file = fs::OpenOptions::new()
             .read(true)
@@ -165,9 +153,7 @@ impl PrebuildGuard {
             .open(self.lock_dir.join(".global-prebuild.lock"))
             .unwrap();
         global_file.lock().unwrap();
-        eprintln!("[hydro-build] acquiring exclusive on per-feature lock");
         file.lock().unwrap();
-        eprintln!("[hydro-build] acquired prebuild exclusive lock");
         PrebuildGuard {
             _rw_guard: RwGuard::Write(rw_guard),
             _global_guard: Some(global_guard),

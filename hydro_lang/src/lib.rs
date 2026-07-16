@@ -167,6 +167,9 @@ mod test_init {
         #[ctor(unsafe)]
         fn init() {
             crate::compile::init_test();
+            // Install a tracing subscriber so diagnostics (e.g. the `hydro_build` build-timing
+            // events used by scripts/bench_trybuild.sh) can be enabled via RUST_LOG.
+            crate::telemetry::initialize_tracing();
         }
     );
 }

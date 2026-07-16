@@ -165,58 +165,16 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                             |prebuild_target| {
                                 set_msg("building dependencies".to_owned());
 
-                                let mut dep_cmd = Command::new("cargo");
-                                dep_cmd.current_dir(src.join("..").join("dylib"));
-                                dep_cmd.args(["build", "--locked"]);
-
-                                if let Some(profile) = profile.as_ref() {
-                                    dep_cmd.args(["--profile", profile]);
-                                }
-
-                                match target_type {
-                                    HostTargetType::Local => {}
-                                    HostTargetType::Linux(crate::LinuxCompileType::Glibc) => {
-                                        dep_cmd.args(["--target", "x86_64-unknown-linux-gnu"]);
-                                    }
-                                    HostTargetType::Linux(crate::LinuxCompileType::Musl) => {
-                                        dep_cmd.args(["--target", "x86_64-unknown-linux-musl"]);
-                                    }
-                                }
-
-                                if no_default_features {
-                                    dep_cmd.arg("--no-default-features");
-                                }
-
-                                if !features_for_closure.is_empty() {
-                                    dep_cmd.args(["--features", &features_for_closure.join(",")]);
-                                }
-
-                                for c in &config {
-                                    dep_cmd.args(["--config", c]);
-                                }
-
-                                dep_cmd.args(["--target-dir", prebuild_target.to_str().unwrap()]);
-
-                                if let Some(rustflags) = rustflags.as_ref() {
-                                    dep_cmd.env("RUSTFLAGS", rustflags);
-                                }
-
-                                for (k, v) in &build_env {
-                                    dep_cmd.env(k, v);
-                                }
-
-                                eprintln!("[hydro-build] starting deploy prebuild child cargo");
-                                let status = dep_cmd
-                                    .stdin(Stdio::null())
-                                    .status()
-                                    .unwrap();
-                                eprintln!("[hydro-build] deploy prebuild child cargo finished, success={}", status.success());
-                                if !status.success() {
-                                    panic!("dep prebuild failed");
-                                }
-
-                                // Also prebuild the dylib-examples lib.
-                                eprintln!("[hydro-build] starting deploy prebuild dylib-examples lib");
+                                // Prebuild the dylib-examples lib (`src` in dylib mode), which
+                                // transitively builds the trybuild dylib *as a dependency*.
+                                // This matters: cargo passes `-C prefer-dynamic` to dylib
+                                // crates when they are built as dependencies (linking libstd
+                                // dynamically), but *not* when they are the primary build
+                                // target — and the two variants share a cargo fingerprint. If
+                                // the dylib were prebuilt as a primary target, the cached
+                                // variant would statically link libstd and the final example
+                                // builds would fail to link ("cannot satisfy dependencies so
+                                // `std` only shows up once").
                                 let mut lib_cmd = Command::new("cargo");
                                 lib_cmd.current_dir(&src);
                                 lib_cmd.args(["build", "--locked", "--lib"]);
@@ -253,7 +211,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     .status()
                                     .unwrap();
                                 if !lib_status.success() {
-                                    panic!("dylib-examples lib prebuild failed");
+                                    panic!("dep prebuild failed");
                                 }
                             },
                         );
