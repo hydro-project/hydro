@@ -272,7 +272,7 @@ impl OpInstGenerics {
 /// Gets the generic arguments for the operator.
 ///
 /// This helper method is useful due to the special handling of persistence lifetimes (`'static`,
-/// `'tick`, `'mutable`) which must come before other generic parameters.
+/// `'tick`) which must come before other generic parameters.
 pub fn get_operator_generics(diagnostics: &mut Diagnostics, operator: &Operator) -> OpInstGenerics {
     // Generic arguments.
     let generic_args = operator.type_arguments().cloned();
@@ -283,12 +283,11 @@ pub fn get_operator_generics(diagnostics: &mut Diagnostics, operator: &Operator)
                     "loop" => Some(Persistence::Loop),
                     "tick" => Some(Persistence::Tick),
                     "static" => Some(Persistence::Static),
-                    "mutable" => Some(Persistence::Mutable),
                     _ => {
                         diagnostics.push(Diagnostic::spanned(
                             generic_arg.span(),
                             Level::Error,
-                            format!("Unknown lifetime generic argument `'{}`, expected `'none`, `'loop`, `'tick`, `'static`, or `'mutable`.", lifetime.ident),
+                            format!("Unknown lifetime generic argument `'{}`, expected `'none`, `'loop`, `'tick`, or `'static`.", lifetime.ident),
                         ));
                         // TODO(mingwei): should really keep going and not short circuit?
                         None

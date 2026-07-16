@@ -44,7 +44,7 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
                    ..
                },
                diagnostics| {
-        let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
+        let [persistence] = wc.persistence_args(diagnostics);
 
         let input = &inputs[0];
         let output = &outputs[0];

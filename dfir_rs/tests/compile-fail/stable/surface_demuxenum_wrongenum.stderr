@@ -88,10 +88,10 @@ error[E0277]: the trait bound `impl dfir_rs::dfir_pipes::push::Push<std::option:
              `Accumulate<State, Next>` implements `dfir_rs::dfir_pipes::push::Push<<State as AccumState>::Input, ()>`
              `DemuxEnum<Outputs>` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
              `FoldKeyed<&mut HashMap<K, Acc, S>, InitFn, CombFn, Next, K, V, Acc>` implements `dfir_rs::dfir_pipes::push::Push<(K, V), ()>`
+             `Persist<Psh, Buf>` implements `dfir_rs::dfir_pipes::push::Push<Item, ()>`
              `ReduceKeyed<&mut HashMap<K, V, S>, ReduceFn, Next, K, V>` implements `dfir_rs::dfir_pipes::push::Push<(K, V), ()>`
              `ResolveFutures<Psh, Queue, QueueInner>` implements `dfir_rs::dfir_pipes::push::Push<Fut, ()>`
              `Sort<Item, Next>` implements `dfir_rs::dfir_pipes::push::Push<Item, ()>`
-             `StatePush<'a, Item, MappingFn, ItemsPsh, StatePsh, Lat>` implements `dfir_rs::dfir_pipes::push::Push<Item, ()>`
            and $N others
 note: required by a bound in `pivot_run_sg_1v1`
   --> tests/compile-fail/stable/surface_demuxenum_wrongenum.rs:17:15

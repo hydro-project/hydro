@@ -49,7 +49,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         assert!(is_pull);
 
-        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
+        let persistences: [_; 2] = wc.persistence_args(diagnostics);
 
         let pos_ident = wc.make_ident("pos");
         let neg_ident = wc.make_ident("neg");
@@ -57,7 +57,6 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
         let pos_persist = match persistences[0] {
             Persistence::None | Persistence::Tick => false,
             Persistence::Loop | Persistence::Static => true,
-            Persistence::Mutable => unreachable!(),
         };
 
         let write_prologue_pos = pos_persist.then(|| {

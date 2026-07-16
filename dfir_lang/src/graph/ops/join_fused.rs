@@ -123,7 +123,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         assert!(is_pull);
 
-        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
+        let persistences: [_; 2] = wc.persistence_args(diagnostics);
 
         let (lhs_prologue, lhs_tick_end, lhs_pre_write_iter, lhs_borrow) =
             make_joindata(wc, persistences[0], "lhs").map_err(|err| diagnostics.push(err))?;
@@ -225,6 +225,5 @@ pub(crate) fn make_joindata(
                 borrow_ident
             )
         }
-        Persistence::Mutable => panic!(),
     })
 }

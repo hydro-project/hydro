@@ -86,7 +86,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                    ..
                },
                diagnostics| {
-        let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
+        let [persistence] = wc.persistence_args(diagnostics);
 
         let generic_type_args = [
             type_args
@@ -141,7 +141,6 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                             )
                         )
                 },
-                Persistence::Mutable => unreachable!(),
             };
 
             quote_spanned! {op_span=>

@@ -324,8 +324,6 @@ declare_ops![
     null::NULL,
     partition::PARTITION,
     persist::PERSIST,
-    persist_mut::PERSIST_MUT,
-    persist_mut_keyed::PERSIST_MUT_KEYED,
     resolve_futures::RESOLVE_FUTURES,
     resolve_futures_blocking::RESOLVE_FUTURES_BLOCKING,
     resolve_futures_blocking_ordered::RESOLVE_FUTURES_BLOCKING_ORDERED,
@@ -438,8 +436,9 @@ impl WriteContextArgs<'_> {
         )
     }
 
-    /// Returns the given number of persistence arguments, disallowing mutable lifetimes.
-    pub fn persistence_args_disallow_mutable<const N: usize>(
+    /// Returns the given number of persistence arguments, with loop-context-aware defaults
+    /// (`'none` within a `loop { ... }` context, `'tick` otherwise) when not specified.
+    pub fn persistence_args<const N: usize>(
         &self,
         diagnostics: &mut Diagnostics,
     ) -> [Persistence; N] {
@@ -469,21 +468,6 @@ impl WriteContextArgs<'_> {
             .cycle() // Re-use the first element for both persistences.
             .take(N)
             .enumerate()
-            .filter(|&(_i, p)| {
-                if p == Persistence::Mutable {
-                    diagnostics.push(Diagnostic::spanned(
-                        self.op_span,
-                        Level::Error,
-                        format!(
-                            "An implementation of `'{}` does not exist",
-                            p.to_str_lowercase()
-                        ),
-                    ));
-                    false
-                } else {
-                    true
-                }
-            })
             .for_each(|(i, p)| {
                 out[i] = p;
             });
@@ -556,7 +540,7 @@ where
     }
 }
 
-/// Persistence lifetimes: `'none`, `'tick`, `'static`, or `'mutable`.
+/// Persistence lifetimes: `'none`, `'loop`, `'tick`, or `'static`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Persistence {
     /// No persistence, for within a loop iteration.
@@ -567,8 +551,6 @@ pub enum Persistence {
     Tick,
     /// Persistence across all ticks.
     Static,
-    /// The static lifetime but allowing non-monotonic mutability.
-    Mutable,
 }
 impl Persistence {
     /// Returns a lowercase string for the persistence type.
@@ -578,7 +560,6 @@ impl Persistence {
             Persistence::Tick => "tick",
             Persistence::Loop => "loop",
             Persistence::Static => "static",
-            Persistence::Mutable => "mutable",
         }
     }
 }

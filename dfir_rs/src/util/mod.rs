@@ -5,7 +5,6 @@
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]
 pub mod demux_enum;
 pub mod multiset;
-pub mod sparse_vec;
 #[cfg(feature = "tokio")]
 pub mod unsync;
 
@@ -38,24 +37,6 @@ use serde::ser::Serialize;
 #[cfg(feature = "tokio")]
 #[cfg(unix)]
 pub use socket::*;
-
-/// Persist or delete tuples
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Persistence<T> {
-    /// Persist T values
-    Persist(T),
-    /// Delete all values that exactly match
-    Delete(T),
-}
-
-/// Persist or delete key-value pairs
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum PersistenceKeyed<K, V> {
-    /// Persist key-value pairs
-    Persist(K, V),
-    /// Delete all tuples that have the key K
-    Delete(K),
-}
 
 /// Returns a channel as a (1) unbounded sender and (2) unbounded receiver `Stream` for use in DFIR.
 #[cfg(feature = "tokio")]

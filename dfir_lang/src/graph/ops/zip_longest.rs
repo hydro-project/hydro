@@ -2,7 +2,7 @@ use quote::quote_spanned;
 use syn::parse_quote;
 
 use super::{
-    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorCategory, OperatorConstraints,
     OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
@@ -40,36 +40,27 @@ pub const ZIP_LONGEST: OperatorConstraints = OperatorConstraints {
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { 0, 1 })),
     ports_out: None,
     input_delaytype_fn: |_| None,
-    write_fn: |&WriteContextArgs {
+    write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
                    ident,
                    is_pull,
                    inputs,
                    op_name,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    ..
                },
                diagnostics| {
         assert!(is_pull);
 
-        let persistence = match persistence_args[..] {
-            [] => Persistence::Tick,
-            [a] => a,
-            _ => unreachable!(),
-        };
-        if Persistence::Tick != persistence {
+        let [persistence] = wc.persistence_args(diagnostics);
+        if !matches!(persistence, Persistence::None | Persistence::Tick) {
             diagnostics.push(Diagnostic::spanned(
                 op_span,
                 Level::Error,
-                format!("`{}()` can only have `'tick` persistence.", op_name),
+                format!(
+                    "`{}()` can only have `'none` or `'tick` persistence.",
+                    op_name
+                ),
             ));
             // Fall-thru to still generate code.
         }

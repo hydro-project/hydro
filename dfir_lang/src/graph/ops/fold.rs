@@ -69,7 +69,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             (#initializer_func_ident)()
         };
 
-        let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
+        let [persistence] = wc.persistence_args(diagnostics);
 
         let input = &inputs[0];
         let accumulator_ident = wc.make_ident("accumulator");

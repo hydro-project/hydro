@@ -92,7 +92,6 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                        OperatorInstance {
                            generics:
                                OpInstGenerics {
-                                   persistence_args,
                                    type_args,
                                    ..
                                },
@@ -101,12 +100,8 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                    arguments,
                    ..
                },
-               _| {
-        let persistence = match persistence_args[..] {
-            [] => Persistence::Tick,
-            [a] => a,
-            _ => unreachable!(),
-        };
+               diagnostics| {
+        let [persistence] = wc.persistence_args(diagnostics);
 
         let generic_type_args = [
             type_args
@@ -142,10 +137,6 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
         };
 
         let write_iterator = if !is_pull {
-            assert!(
-                Persistence::Mutable != persistence,
-                "fold_keyed::<'mutable> on push side is not supported ('mutable is being removed)"
-            );
             let output = &outputs[0];
             quote_spanned! {op_span=>
                 let #ident = #root::dfir_pipes::push::FoldKeyed::new(
@@ -154,48 +145,6 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     #aggfn,
                     #output,
                 );
-            }
-        } else if Persistence::Mutable == persistence {
-            quote_spanned! {op_span=>
-                #assign_hashtable_ident
-
-                {
-                    #[inline(always)]
-                    fn check_input<St, K, V>(st: St) -> impl #root::futures::stream::Stream<Item = #root::util::PersistenceKeyed::<K, V>>
-                    where
-                        St: #root::futures::stream::Stream<Item = #root::util::PersistenceKeyed::<K, V>>,
-                        K: ::std::clone::Clone,
-                        V: ::std::clone::Clone,
-                    {
-                        st
-                    }
-
-                    /// A: accumulator type
-                    /// T: iterator item type
-                    #[inline(always)]
-                    fn call_comb_type<A, T>(a: &mut A, t: T, f: impl Fn(&mut A, T)) {
-                        let () = (f)(a, t);
-                    }
-
-                    let fut = #root::dfir_pipes::pull::Pull::for_each(check_input(#input), |item| {
-                        match item {
-                            #root::util::PersistenceKeyed::Persist(k, v) => {
-                                let entry = #hashtable_ident.entry(k).or_insert_with(#initfn);
-                                call_comb_type(entry, v, #aggfn);
-                            },
-                            #root::util::PersistenceKeyed::Delete(k) => {
-                                #hashtable_ident.remove(&k);
-                            },
-                        }
-                    });
-                    let () = #work_fn_async(fut).await;
-                }
-
-                #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-                let #ident = #hashtable_ident
-                    .iter()
-                    .map(#[allow(suspicious_double_ref_op, clippy::clone_on_copy)] |(k, v)| (k.clone(), v.clone()));
-                let #ident = #root::dfir_pipes::pull::iter(#ident);
             }
         } else {
             let iter_expr = match persistence {
@@ -222,7 +171,6 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                             )
                         )
                 },
-                Persistence::Mutable => unreachable!(),
             };
 
             quote_spanned! {op_span=>

@@ -58,7 +58,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
                    ..
                },
                diagnostics| {
-        let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
+        let [persistence] = wc.persistence_args(diagnostics);
 
         let singleton_output_ident = wc.make_ident("singleton_output");
 

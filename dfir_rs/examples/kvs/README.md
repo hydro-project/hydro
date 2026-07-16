@@ -15,7 +15,6 @@ Commands are case-insensitive. All keys and values are treated as `String`s.
 
 This KVS actually stores all values written to a key because deleting old values, in the general case,
 is not monotonic. So therefore a read on a particular key will receive all previous writes to that key.
-For a more traditional, and non-monotonic KVS, see the `kvs_mut` example.
 
 The implementation difference can be found in `server.rs`. This implementation uses a `join()`
 with `'static` persistence on the write side. Every written value is persisted.

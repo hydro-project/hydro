@@ -50,7 +50,7 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
 
-        let [lhs_persistence, rhs_persistence] = wc.persistence_args_disallow_mutable(diagnostics);
+        let [lhs_persistence, rhs_persistence] = wc.persistence_args(diagnostics);
 
         let lhs_state = wc.make_ident("lhs_state");
         let rhs_state = wc.make_ident("rhs_state");

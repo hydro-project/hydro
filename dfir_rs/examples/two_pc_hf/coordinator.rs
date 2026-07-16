@@ -23,8 +23,14 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         //   1. coordinator sends PREPARE, subordinates vote COMMIT/ABORT
         //   2. coordinator send final decision, subordinates ACK
         //   3. coordinate sends END, subordinates respond with ENDED
-        // After phase 3 we delete the xid from the phase_map
-        phase_map = union() -> persist_mut_keyed::<'mutable>();
+        // After phase 3 we set the xid's phase to None (a tombstone).
+        // Inputs are (xid, Some(phase)) upserts and (xid, None) deletes; the accumulator keeps
+        // the latest value per xid ("last write wins") and tombstoned xids are filtered out.
+        // XXX Tombstoned xids are retained forever; a real implementation would need logic to
+        // garbage-collect completed transactions.
+        phase_map = union()
+            -> fold_keyed::<'static, u16, Option<u32>>(|| None, |acc: &mut Option<u32>, val: Option<u32>| *acc = val)
+            -> filter_map(|(xid, phase)| phase.map(|p| (xid, p)));
 
         // set up channels
         outbound_chan = tee();
@@ -37,7 +43,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         errs = union() -> for_each(|m| println!("Received unexpected message type: {:?}", m));
 
         msgs[Ended]
-            -> map(|(xid,)| dfir_rs::util::PersistenceKeyed::Delete(xid))
+            -> map(|(xid,)| (xid, None))
             -> defer_tick()
             -> phase_map;
 
@@ -58,7 +64,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
             -> filter_map(|l: Result<std::string::String, std::io::Error>| parse_out(l.unwrap()))
             -> tee();
         initiate
-            -> flat_map(|xid: u16| [dfir_rs::util::PersistenceKeyed::Delete(xid), dfir_rs::util::PersistenceKeyed::Persist(xid, 1)])
+            -> map(|xid: u16| (xid, Some(1)))
             -> phase_map;
         initiate
             -> map(|xid: u16| Msg::Prepare(xid))
@@ -69,7 +75,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         // We'll respond to each abort message: this is redundant but correct (and monotone)
         abort_p1s = msgs[Abort] -> tee();
         abort_p1s
-            -> flat_map(|(xid,)| [dfir_rs::util::PersistenceKeyed::Delete(xid), dfir_rs::util::PersistenceKeyed::Persist(xid, 2)])
+            -> map(|(xid,)| (xid, Some(2)))
             -> defer_tick()
             -> phase_map;
         abort_p1s
@@ -78,7 +84,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
 
         // count commit votes
         // XXX This fold_keyed accumulates xids without bound.
-        // Should be replaced with a persist_mut_keyed and logic to manage it.
+        // A real implementation would need logic to garbage-collect completed transactions.
         commit_votes = msgs[Commit]
             -> map(|(xid,)| (xid, 1))
             -> fold_keyed::<'static, u16, u32>(|| 0, |acc: &mut _, val| *acc += val);
@@ -103,7 +109,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
             -> tee();
         // update the phase_map
         check_committed
-            -> flat_map(|xid| [dfir_rs::util::PersistenceKeyed::Delete(xid), dfir_rs::util::PersistenceKeyed::Persist(xid, 2)])
+            -> map(|xid| (xid, Some(2)))
             -> defer_tick()
             -> phase_map;
         // broadcast the P2 commit message
@@ -114,7 +120,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         // Handle p2 acknowledgments by sending an End message
         ack_p2s = msgs[AckP2] -> tee();
         ack_p2s
-            -> flat_map(|(xid,)| [dfir_rs::util::PersistenceKeyed::Delete(xid), dfir_rs::util::PersistenceKeyed::Persist(xid, 3)])
+            -> map(|(xid,)| (xid, Some(3)))
             -> defer_tick()
             -> phase_map;
         ack_p2s

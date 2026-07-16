@@ -47,7 +47,7 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         assert!(is_pull);
 
-        let [lhs_persistence, rhs_persistence] = wc.persistence_args_disallow_mutable(diagnostics);
+        let [lhs_persistence, rhs_persistence] = wc.persistence_args(diagnostics);
 
         let lhs_ident = wc.make_ident("lhs");
         let rhs_ident = wc.make_ident("rhs");
