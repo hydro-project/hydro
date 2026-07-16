@@ -50,7 +50,7 @@ pub fn single_client_counter_service<'a>(
 
 ## Maintaining State with Singleton
 
-To track the counter value, you need to accumulate state across incoming requests. Hydro provides the [`Singleton`](../../reference/live-collections/singletons-optionals.md) live collection for storing a single value that can be updated over time.
+To track the counter value, you need to accumulate state across incoming requests. Hydro provides the [`Singleton`](../../reference/state-management/singletons-optionals.md) live collection for storing a single value that can be updated over time.
 
 You can create a singleton by counting the number of increment requests:
 
@@ -90,7 +90,7 @@ The `sliced!` macro takes multiple `use` statements, using syntax inspired by Re
 - `count_snapshot` is the current value of the counter at the time this batch is processed (a `Singleton<usize>`)
 
 :::info
-You'll notice the `nondet!` macro in each `use` statement. Hydro guarantees [**eventual determinism**](../../reference/live-collections/determinism.md): given the same inputs, your program will eventually produce the same outputs. However, some operations involve inherent non-determinism, such the boundaries of a batch or which snapshot of asynchronous state is observed.
+You'll notice the `nondet!` macro in each `use` statement. Hydro's type system is focused on [**eventual determinism**](../../reference/correctness/determinism.md): all safe APIs guarantee that given the same inputs, your program will eventually produce the same outputs. However, some operations involve inherent non-determinism, such the boundaries of a batch or which snapshot of asynchronous state is observed.
 
 The `nondet!` macro serves two purposes:
 1. It marks points where non-determinism occurs, making them explicit in your code

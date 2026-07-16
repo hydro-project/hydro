@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 import KeyedStreamAnimation from './KeyedStreamAnimation';
@@ -124,12 +124,15 @@ let purchases = process.source_iter(q!(vec![
     ("alice", 3)
 ])).into_keyed();
 
-// Batch the stream and calculate total spending per user
+// Calculate total spending per user
 # let purchases = KeyedStream::<_, _, _, Unbounded>::from(purchases);
 # let out =
 purchases.fold(q!(|| 0), q!(|acc, amount| *acc += amount))
 # ;
-# out.snapshot(&process.tick(), nondet!(/** test */)).entries().all_ticks().map(q!(|(k, v)| (k.to_string(), v)))
+# sliced! {
+#     let snap = use(out, nondet!(/** test */));
+#     snap.entries()
+# }.map(q!(|(k, v)| (k.to_string(), v)))
 # }, |mut stream| async move {
 // { "alice": 28, "bob": 13 }
 # let mut results = vec![];
@@ -143,14 +146,14 @@ purchases.fold(q!(|| 0), q!(|acc, amount| *acc += amount))
 
 <KeyedStreamFoldAnimation />
 
+The result of a keyed aggregation is a [`KeyedSingleton`](./keyed-singletons.mdx): a single (updating) value per key, rather than a stream of elements per key.
+
 Like with streams, operators like `fold` or `reduce` on keyed streams may require property annotations for commutativity or idempotence depending on the upstream guarantees:
 
 ```rust
 # use hydro_lang::prelude::*;
 # use futures::StreamExt;
 # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-let tick = process.tick();
-
 let health_checks =
 # Stream::<_, _>::from(process.source_iter(q!(vec![
 #     ("server1", false),
@@ -172,7 +175,10 @@ health_checks.fold(
     )
 )
 # ;
-# out.snapshot(&process.tick(), nondet!(/** test */)).entries().all_ticks().map(q!(|(k, v)| (k.to_string(), v)))
+# sliced! {
+#     let snap = use(out, nondet!(/** test */));
+#     snap.entries()
+# }.map(q!(|(k, v)| (k.to_string(), v)))
 # }, |mut stream| async move {
 // { "server1": true, "server2": false }
 # let mut results = vec![];
@@ -185,3 +191,6 @@ health_checks.fold(
 ```
 
 This makes keyed streams particularly well-suited for distributed aggregations where you need to handle the realities of network communication - messages may arrive out of order or be duplicated, but you still need correct results.
+
+## Collapsing to One Value Per Key
+Keyed streams model *many* events per key. When each key should instead resolve to a *single* value — such as one response per request — you can collapse a keyed stream into a [Keyed Singleton](./keyed-singletons.mdx) using APIs like `first()` (take the first value for each key) or `fold_early_stop` (aggregate each key's values until the aggregation declares itself complete). See [Keyed Singletons](./keyed-singletons.mdx) for details.

@@ -73,7 +73,7 @@ pub fn echo_capitalize<'a>(
 ) -> Stream<String, Process<'a, EchoServer>> {
 `)}</CodeBlock>
 
-Let's dive into the parameters of this function. The input is a [`Stream`](../../reference/live-collections/streams.md), a [**Live Collection**](../../reference/live-collections/index.md) where new incoming requests arrive over time. The first type parameter, `String`, tells us that each incoming request will appear as a `String` element.
+Let's dive into the parameters of this function. The input is a [`Stream`](../../reference/streaming-data/streams.md), a [**Live Collection**](../../reference/introduction/live-collections.md) where new incoming requests arrive over time. The first type parameter, `String`, tells us that each incoming request will appear as a `String` element.
 
 The second type parameter identifies the [**`Location`**](../../reference/locations/index.md) for the live collection. Hydro provides two types of locations: [`Process`](../../reference/locations/processes.md) (a single machine) or [`Cluster`](../../reference/locations/clusters.md) (a set of machines). All locations in a Hydro program have the same lifetime `'a`, which is used to enforce borrowing constraints. By writing code that involves several locations, you can create a distributed system!
 

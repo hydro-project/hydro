@@ -30,7 +30,7 @@ Create a new file `src/concurrent_clients.rs` and add `mod concurrent_clients;` 
 
 :::
 
-Hydro provides [`KeyedStream`](../../reference/live-collections/keyed-streams.mdx) for exactly this purpose. A `KeyedStream<K, V>` is like a `Stream<V>`, but each element is associated with a key of type `K`. The key maintains independent ordering per key while allowing different keys to interleave. The key will be the client ID (type `u32`):
+Hydro provides [`KeyedStream`](../../reference/streaming-data/keyed-streams.mdx) for exactly this purpose. A `KeyedStream<K, V>` is like a `Stream<V>`, but each element is associated with a key of type `K`. The key maintains independent ordering per key while allowing different keys to interleave. The key will be the client ID (type `u32`):
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
