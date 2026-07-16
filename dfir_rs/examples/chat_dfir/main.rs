@@ -78,9 +78,10 @@ fn test() {
     client1.read_regex("Client is live!");
     client2.read_regex("Client is live!");
 
-    // wait 100ms so we don't drop a packet
-    let hundo_millis = web_time::Duration::from_millis(100);
-    std::thread::sleep(hundo_millis);
+    // Wait for the server to ack both connect requests, so we know the server has registered
+    // both clients before any chat message is sent (otherwise the message would be dropped).
+    client1.read_string("Connected to server!");
+    client2.read_string("Connected to server!");
 
     client1.write_line("Hello");
     client2.read_regex(".*, .* client1: Hello");
@@ -106,9 +107,10 @@ fn test_gossip() {
     client1.read_string("Client is live!");
     client2.read_string("Client is live!");
 
-    // wait 100ms so we don't drop a packet
-    let hundo_millis = web_time::Duration::from_millis(100);
-    std::thread::sleep(hundo_millis);
+    // Wait for the servers to ack the connect requests, so we know each server has registered
+    // its client before any chat message is sent (otherwise the messages would be dropped).
+    client1.read_string("Connected to server!");
+    client2.read_string("Connected to server!");
 
     // Since gossiping has a small probability of a message not being received (maybe more so with
     // 2 servers), we define success as any one of these messages reaching.

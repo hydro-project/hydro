@@ -31,7 +31,9 @@ impl KvsMessageWithAddr {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct KvsResponse {
-    pub key: String,
-    pub value: String,
+pub enum KvsResponse {
+    /// Acknowledgement that a `Put` has been received and applied by the server.
+    PutAck { key: String },
+    /// Response to a `Get`, containing a value for the requested key.
+    GetResult { key: String, value: String },
 }

@@ -1,7 +1,8 @@
 Simple single-node key-value store example based on a join of PUTs and GETs.
 
 Current semantics are:
-- PUTs are appended: we remember them all forever
+- PUTs are appended: we remember them all forever, and they are acknowledged with a `PutAck`
+  response.
 - GETs are only remembered for the current tick, which may not be monotone depending on how they
   are consumed.
 - GETs for empty keys get no acknowledgement.

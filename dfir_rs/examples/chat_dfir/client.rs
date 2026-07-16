@@ -54,7 +54,10 @@ pub(crate) async fn run_client(opts: Opts) {
                     message: l.unwrap(),
                     ts: Utc::now()})
           -> [input]msg_send;
-        inbound_chan[ConnectResponse] -> persist::<'static>() -> [signal]msg_send;
+        inbound_chan[ConnectResponse]
+            -> inspect(|&()| println!("Connected to server!"))
+            -> persist::<'static>()
+            -> [signal]msg_send;
         msg_send = defer_signal() -> map(|msg| (msg, server_addr)) -> [1]outbound_chan;
 
         // receive and print messages
