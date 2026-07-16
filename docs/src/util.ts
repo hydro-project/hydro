@@ -116,7 +116,7 @@ export function highlightLines(code: string, lines: number[]): string {
     .join("\n");
 }
 
-/// Extract the output from the stdout snapshots created by `surface_examples.rs`.
+/// Extract the output from the stdout snapshots created by the tests in `dfir_rs/examples/`.
 ///
 /// This hides the graph output. Use `extractMermaid` to extract the graph output.
 ///
@@ -143,7 +143,7 @@ cargo run
 ${stdOut}`;
 }
 
-/// Extract the mermaid graph logged to stdout from the snapshots created by `surface_examples.rs`.
+/// Extract the mermaid graph logged to stdout from the snapshots created by the tests in `dfir_rs/examples/`.
 export function extractMermaid(output: string): string {
   const outputLines = output.split("\n");
   // Delete the first four lines, which are the snapshot front matter.

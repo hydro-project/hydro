@@ -155,6 +155,26 @@ impl ExampleChild {
         }
     }
 
+    /// Reads the child process's stdout until the child exits, returning the complete output
+    /// (including any output already consumed by [`Self::read_string`] or [`Self::read_regex`]).
+    ///
+    /// Panics if the child exits with a non-success exit status.
+    pub fn read_to_end(&mut self) -> String {
+        let stdout = self.child.stdout.as_mut().unwrap();
+        self.output_buffer.truncate(self.output_len);
+        stdout.read_to_end(&mut self.output_buffer).unwrap();
+        self.output_len = self.output_buffer.len();
+
+        let status = self.child.wait().unwrap();
+        assert!(
+            status.success(),
+            "Child process exited unsuccessfully: {}",
+            status
+        );
+
+        String::from_utf8_lossy(&self.output_buffer[..self.output_len]).into_owned()
+    }
+
     /// Writes a line to the child process stdin. A newline is automatically appended and should not be included in `line`.
     pub fn write_line(&mut self, line: &str) {
         let stdin = self.child.stdin.as_mut().unwrap();
@@ -170,10 +190,10 @@ impl ExampleChild {
 /// terminate the child and wait for it to terminate. This does that for us.
 impl Drop for ExampleChild {
     fn drop(&mut self) {
-        #[cfg(target_family = "windows")]
-        let _ = self.child.kill(); // Windows throws `PermissionDenied` if the process has already exited.
-        #[cfg(not(target_family = "windows"))]
-        self.child.kill().unwrap();
+        // `kill` errors if the process has already exited (e.g. Windows throws
+        // `PermissionDenied`, and all platforms throw `InvalidInput` if the child has already
+        // been `wait`ed on, e.g. by `Self::read_to_end`).
+        let _ = self.child.kill();
 
         self.child.wait().unwrap();
     }

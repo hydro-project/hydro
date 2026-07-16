@@ -1,5 +1,5 @@
 ---
-source: dfir_rs/tests/surface_examples.rs
+source: dfir_rs/examples/example_4_neighbors.rs
 expression: output
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
@@ -12,36 +12,25 @@ linkStyle default stroke:#aaa
 2v1[\"(2v1) <code>source_stream(edges_recv)</code>"/]:::pullClass
 3v1[\"(3v1) <code>map(|v| (v, ()))</code>"/]:::pullClass
 4v1[\"(4v1) <code>join()</code>"/]:::pullClass
-5v1[\"(5v1) <code>flat_map(|(src, ((), dst))| [src, dst])</code>"/]:::pullClass
-6v1[/"(6v1) <code>tee()</code>"\]:::pushClass
-7v1[\"(7v1) <code>union()</code>"/]:::pullClass
-8v1[/"(8v1) <code>unique()</code>"\]:::pushClass
-9v1[/"(9v1) <code>for_each(|x| println!(&quot;Reached: {}&quot;, x))</code>"\]:::pushClass
-10v1["(10v1) <code>handoff</code>"]:::otherClass
+5v1[\"(5v1) <code>flat_map(|(src, (_, dst))| [src, dst])</code>"/]:::pullClass
+6v1[\"(6v1) <code>unique()</code>"/]:::pullClass
+7v1[/"(7v1) <code>for_each(|n| println!(&quot;Reached: {}&quot;, n))</code>"\]:::pushClass
 3v1-->|0|4v1
-7v1-->3v1
+1v1-->3v1
 2v1-->|1|4v1
-5v1-->6v1
 4v1-->5v1
-1v1-->|base|7v1
-6v1-->10v1
-8v1-->9v1
-6v1-->|print|8v1
-10v1-->|cycle|7v1
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
+6v1-->7v1
+5v1-->6v1
+subgraph sg_1v1 ["sg_1v1"]
     3v1
-    8v1
-    9v1
-    subgraph sg_1v1_var_my_join_tee ["var <tt>my_join_tee</tt>"]
+    6v1
+    7v1
+    subgraph sg_1v1_var_my_join ["var <tt>my_join</tt>"]
         4v1
         5v1
-        6v1
     end
     subgraph sg_1v1_var_origin ["var <tt>origin</tt>"]
         1v1
-    end
-    subgraph sg_1v1_var_reached_vertices ["var <tt>reached_vertices</tt>"]
-        7v1
     end
     subgraph sg_1v1_var_stream_of_edges ["var <tt>stream_of_edges</tt>"]
         2v1
@@ -51,5 +40,3 @@ end
 Reached: 0
 Reached: 1
 Reached: 3
-Reached: 2
-Reached: 4

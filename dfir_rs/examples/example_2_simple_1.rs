@@ -12,3 +12,12 @@ pub fn main() {
 
     flow.run_available_sync();
 }
+
+#[cfg(not(nightly))]
+#[test]
+fn test() {
+    use example_test::run_current_example;
+
+    let output = run_current_example!().read_to_end();
+    hydro_build_utils::assert_snapshot!("example_2_simple_1", output);
+}

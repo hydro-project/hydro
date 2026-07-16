@@ -1,5 +1,5 @@
 ---
-source: dfir_rs/tests/surface_examples.rs
+source: dfir_rs/examples/example_6_unreachability.rs.disabled
 expression: output
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
