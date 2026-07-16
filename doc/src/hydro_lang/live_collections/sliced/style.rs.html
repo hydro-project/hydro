@@ -83,7 +83,7 @@
 <a href=#83 id=83 data-nosnippet>83</a></span><span class="attr">#[cfg(stageleft_runtime)]
 <a href=#84 id=84 data-nosnippet>84</a></span><span class="kw">pub struct </span>StateBuilder&lt;<span class="lifetime">'t</span>, S, L&gt; {
 <a href=#85 id=85 data-nosnippet>85</a>    tick: <span class="kw-2">&amp;</span><span class="lifetime">'t </span>Tick&lt;L&gt;,
-<a href=#86 id=86 data-nosnippet>86</a>    _phantom: PhantomData&lt;<span class="kw">fn</span>() -&gt; S&gt;,
+<a href=#86 id=86 data-nosnippet>86</a>    _phantom: PhantomData&lt;S&gt;,
 <a href=#87 id=87 data-nosnippet>87</a>}
 <a href=#88 id=88 data-nosnippet>88</a>
 <a href=#89 id=89 data-nosnippet>89</a><span class="attr">#[cfg(stageleft_runtime)]
@@ -127,7 +127,7 @@
 <a href=#127 id=127 data-nosnippet>127</a></span><span class="attr">#[cfg(stageleft_runtime)]
 <a href=#128 id=128 data-nosnippet>128</a></span><span class="kw">pub struct </span>StateNullBuilder&lt;<span class="lifetime">'t</span>, S, L&gt; {
 <a href=#129 id=129 data-nosnippet>129</a>    tick: <span class="kw-2">&amp;</span><span class="lifetime">'t </span>Tick&lt;L&gt;,
-<a href=#130 id=130 data-nosnippet>130</a>    _phantom: PhantomData&lt;<span class="kw">fn</span>() -&gt; S&gt;,
+<a href=#130 id=130 data-nosnippet>130</a>    _phantom: PhantomData&lt;S&gt;,
 <a href=#131 id=131 data-nosnippet>131</a>}
 <a href=#132 id=132 data-nosnippet>132</a>
 <a href=#133 id=133 data-nosnippet>133</a><span class="attr">#[cfg(stageleft_runtime)]
