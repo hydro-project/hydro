@@ -92,7 +92,7 @@
 <a href=#92 id=92 data-nosnippet>92</a>    //! application. To pass a non-determinism guard, you must invoke `nondet!()` with an explanation
 <a href=#93 id=93 data-nosnippet>93</a>    //! for how the non-determinism affects the application.
 <a href=#94 id=94 data-nosnippet>94</a>    //!
-<a href=#95 id=95 data-nosnippet>95</a>    //! See the [Hydro docs](https://hydro.run/docs/hydro/reference/live-collections/determinism) for more.
+<a href=#95 id=95 data-nosnippet>95</a>    //! See the [Hydro docs](https://hydro.run/docs/hydro/reference/correctness/nondet) for more.
 <a href=#96 id=96 data-nosnippet>96</a>    </span><span class="kw">pub use </span><span class="kw">crate</span>::nondet::NonDet;
 <a href=#97 id=97 data-nosnippet>97</a>    <span class="attr">#[doc(inline)]
 <a href=#98 id=98 data-nosnippet>98</a>    </span><span class="kw">pub use </span><span class="kw">crate</span>::__staged::__nondet__ <span class="kw">as </span>nondet;
@@ -113,7 +113,7 @@
 <a href=#113 id=113 data-nosnippet>113</a>    //! handled via live collections, so the majority of application logic written with Hydro will involve
 <a href=#114 id=114 data-nosnippet>114</a>    //! manipulating live collections.
 <a href=#115 id=115 data-nosnippet>115</a>    //!
-<a href=#116 id=116 data-nosnippet>116</a>    //! See the [Hydro docs](https://hydro.run/docs/hydro/reference/live-collections) for more.
+<a href=#116 id=116 data-nosnippet>116</a>    //! See the [Hydro docs](https://hydro.run/docs/hydro/reference/introduction/live-collections) for more.
 <a href=#117 id=117 data-nosnippet>117</a>    </span><span class="kw">pub mod </span>boundedness {
 <a href=#118 id=118 data-nosnippet>118</a>        <span class="doccomment">//! Type declarations for boundedness markers, which indicate whether a live collection is finite
 <a href=#119 id=119 data-nosnippet>119</a>        //! and immutable ([`Bounded`]) or asynchronously arriving over time ([`Unbounded`]).
