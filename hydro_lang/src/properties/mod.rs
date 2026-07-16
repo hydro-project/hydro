@@ -28,6 +28,9 @@ pub trait IdempotentProof {
 }
 
 /// A trait for proof mechanisms that can validate monotonicity.
+///
+/// Monotonicity means the aggregation function only increases the accumulator value.
+/// Used via `monotone = manual_proof!(/** ... */)` inside `q!()` closures passed to `fold`.
 #[sealed::sealed]
 pub trait MonotoneProof {
     /// Registers the expression with the proof mechanism.
@@ -37,6 +40,9 @@ pub trait MonotoneProof {
 }
 
 /// A trait for proof mechanisms that can validate order-preservation (monotonicity of a map function).
+///
+/// Order-preservation means if input grows, output also grows.
+/// Used via `order_preserving = manual_proof!(/** ... */)` inside `q!()` closures passed to `.map()` on singletons.
 #[sealed::sealed]
 pub trait OrderPreservingProof {
     /// Registers the expression with the proof mechanism.
@@ -119,6 +125,18 @@ pub enum Proved {}
 
 /// Algebraic properties for an aggregation function of type (T, &mut A) -> ().
 ///
+/// These properties are declared via annotations inside `q!()` closures:
+///
+/// ```rust,ignore
+/// stream.fold(
+///     q!(|| initial),
+///     q!(|acc, v| { /* ... */ },
+///         commutative = manual_proof!(/** why order doesn't matter */),
+///         monotone = manual_proof!(/** why accumulator only grows */)
+///     ),
+/// )
+/// ```
+///
 /// Commutativity:
 /// ```rust,ignore
 /// let mut state = ???;
@@ -134,6 +152,10 @@ pub enum Proved {}
 /// f(a, &mut state);
 /// // state1 must be equal to state
 /// ```
+///
+/// Monotonicity: applying the function to any input only increases (or maintains) the
+/// accumulator's value according to `PartialOrd`. When proved, the resulting singleton
+/// from [`Stream::fold`] is promoted to [`Monotonic`](crate::live_collections::singleton::Monotonic).
 pub struct AggFuncAlgebra<Commutative = NotProved, Idempotent = NotProved, Monotone = NotProved>(
     Option<Box<dyn CommutativeProof>>,
     Option<Box<dyn IdempotentProof>>,
@@ -186,7 +208,15 @@ impl<C, I, M> Property for AggFuncAlgebra<C, I, M> {
 
 /// Algebraic properties for a singleton map function of type T -> U.
 ///
-/// Order-preserving means that if the input grows monotonically, the output also grows monotonically.
+/// Order-preserving means that if the input grows monotonically, the output also grows
+/// monotonically (i.e. `a <= b` implies `f(a) <= f(b)`).
+///
+/// When proved, mapping a [`Monotonic`](crate::live_collections::singleton::Monotonic) singleton
+/// preserves the `Monotonic` bound. Without this proof, the output is demoted to `Unbounded`.
+///
+/// ```rust,ignore
+/// monotonic_singleton.map(q!(|x| x * 2, order_preserving = manual_proof!(/** ... */)))
+/// ```
 pub struct SingletonMapFuncAlgebra<
     OrderPreserving = NotProved,
     Commutative = NotProved,

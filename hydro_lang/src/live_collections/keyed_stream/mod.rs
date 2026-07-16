@@ -1960,6 +1960,21 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// Depending on the input stream guarantees, the closure may need to be commutative
     /// (for unordered streams) or idempotent (for streams with non-deterministic duplicates).
     ///
+    /// # Monotonicity
+    /// If the `comb` closure is annotated with `monotone = manual_proof!(/** ... */)` inside
+    /// `q!()`, the resulting keyed singleton will be [`MonotonicValue`](crate::live_collections::keyed_singleton::MonotonicValue)
+    /// (when the input stream is `Unbounded`). This enables downstream use of
+    /// [`KeyedSingleton::threshold_greater_or_equal`] and
+    /// [`KeyedSingleton::threshold_greater_or_equal_uniform`].
+    ///
+    /// ```rust,ignore
+    /// // Produces KeyedSingleton<K, usize, _, MonotonicValue>
+    /// keyed_stream.fold(
+    ///     q!(|| 0usize),
+    ///     q!(|acc, _| *acc += 1, monotone = manual_proof!(/** += 1 is monotone */)),
+    /// )
+    /// ```
+    ///
     /// If the input and output value types are the same and do not require initialization then use
     /// [`KeyedStream::reduce`].
     ///

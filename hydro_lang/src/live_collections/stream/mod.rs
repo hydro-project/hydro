@@ -1396,6 +1396,20 @@ where
     /// Depending on the input stream guarantees, the closure may need to be commutative
     /// (for unordered streams) or idempotent (for streams with non-deterministic duplicates).
     ///
+    /// # Monotonicity
+    /// If the `comb` closure is annotated with `monotone = manual_proof!(/** ... */)` inside
+    /// `q!()`, the resulting singleton will be [`Monotonic`](crate::live_collections::singleton::Monotonic)
+    /// (when the input stream is `Unbounded`). This enables downstream use of
+    /// [`Singleton::threshold_greater_or_equal`] for deterministic threshold detection.
+    ///
+    /// ```rust,ignore
+    /// // Produces Singleton<usize, _, Monotonic>
+    /// stream.fold(
+    ///     q!(|| 0usize),
+    ///     q!(|acc, _| *acc += 1, monotone = manual_proof!(/** += 1 is monotone */)),
+    /// )
+    /// ```
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
