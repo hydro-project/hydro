@@ -25,14 +25,20 @@ pub(crate) async fn run_server(opts: Opts) {
 
     let mut flow = dfir_syntax! {
         // Setup network channels.
-        network_send = dest_sink_serde(outbound);
+        network_send = union() -> dest_sink_serde(outbound);
         network_recv = source_stream_serde(inbound)
             -> map(Result::unwrap)
             -> inspect(|(msg, addr)| println!("Message received {:?} from {:?}", msg, addr))
             -> map(|(msg, addr)| KvsMessageWithAddr::from_message(msg, addr))
             -> demux_enum::<KvsMessageWithAddr>();
-        puts = network_recv[Put];
+        puts = network_recv[Put] -> tee();
         gets = network_recv[Get];
+
+        // Acknowledge PUTs back to the sending client, so clients can tell when their PUT has
+        // been received and applied by the server.
+        puts
+            -> map(|(key, _value, addr): (String, String, _)| (KvsResponse::PutAck { key }, addr))
+            -> network_send;
 
         /* DIFFERENCE HERE: SEE README.md */
         // Join PUTs and GETs by key, persisting the PUTs.
@@ -43,7 +49,7 @@ pub(crate) async fn run_server(opts: Opts) {
         // Send GET responses back to the client address.
         lookup
             -> inspect(|tup| println!("Found a match: {:?}", tup))
-            -> map(|(key, (value, client_addr))| (KvsResponse { key, value }, client_addr))
+            -> map(|(key, (value, client_addr))| (KvsResponse::GetResult { key, value }, client_addr))
             -> network_send;
     };
 

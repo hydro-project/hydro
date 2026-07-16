@@ -79,6 +79,8 @@ fn test() {
     );
 
     client1.write_line("PUT a,7");
+    // Wait for the ack, so we know the server has applied the PUT before issuing GETs.
+    client1.read_string(r#"Got a Response: PutAck { key: "a" }"#);
 
     let mut client2 = run_current_example!("--role client --address 127.0.0.1:2051");
     client2.read_regex(
@@ -86,12 +88,13 @@ fn test() {
     );
 
     client2.write_line("GET a");
-    client2.read_string(r#"Got a Response: KvsResponse { key: "a", value: "7" }"#);
+    client2.read_string(r#"Got a Response: GetResult { key: "a", value: "7" }"#);
 
     client1.write_line("PUT a,8");
+    client1.read_string(r#"Got a Response: PutAck { key: "a" }"#);
     client1.write_line("GET a");
     client1.read_string(
-        r#"Got a Response: KvsResponse { key: "a", value: "7" }
-Got a Response: KvsResponse { key: "a", value: "8" }"#,
+        r#"Got a Response: GetResult { key: "a", value: "7" }
+Got a Response: GetResult { key: "a", value: "8" }"#,
     );
 }
