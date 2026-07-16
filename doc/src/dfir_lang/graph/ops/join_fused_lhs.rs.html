@@ -50,7 +50,7 @@
 <a href=#50 id=50 data-nosnippet>50</a>               diagnostics| {
 <a href=#51 id=51 data-nosnippet>51</a>        <span class="macro">assert!</span>(is_pull);
 <a href=#52 id=52 data-nosnippet>52</a>
-<a href=#53 id=53 data-nosnippet>53</a>        <span class="kw">let </span>persistences: [<span class="kw">_</span>; <span class="number">2</span>] = wc.persistence_args_disallow_mutable(diagnostics);
+<a href=#53 id=53 data-nosnippet>53</a>        <span class="kw">let </span>persistences: [<span class="kw">_</span>; <span class="number">2</span>] = wc.persistence_args(diagnostics);
 <a href=#54 id=54 data-nosnippet>54</a>
 <a href=#55 id=55 data-nosnippet>55</a>        <span class="kw">let </span>(lhs_prologue, lhs_tick_end, lhs_pre_write_iter, lhs_borrow) =
 <a href=#56 id=56 data-nosnippet>56</a>            make_joindata(wc, persistences[<span class="number">0</span>], <span class="string">"lhs"</span>).map_err(|err| diagnostics.push(err))<span class="question-mark">?</span>;
@@ -63,65 +63,63 @@
 <a href=#63 id=63 data-nosnippet>63</a>            Persistence::Static =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#64 id=64 data-nosnippet>64</a>                <span class="kw">let </span><span class="kw-2">mut </span>#rhs_joindata_ident = ::std::vec::Vec::new();
 <a href=#65 id=65 data-nosnippet>65</a>            },
-<a href=#66 id=66 data-nosnippet>66</a>            Persistence::Mutable =&gt; <span class="macro">unreachable!</span>(),
-<a href=#67 id=67 data-nosnippet>67</a>        };
-<a href=#68 id=68 data-nosnippet>68</a>
-<a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">let </span>lhs = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
-<a href=#70 id=70 data-nosnippet>70</a>        <span class="kw">let </span>rhs = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
-<a href=#71 id=71 data-nosnippet>71</a>
-<a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span>lhs_accum = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
-<a href=#73 id=73 data-nosnippet>73</a>
-<a href=#74 id=74 data-nosnippet>74</a>        <span class="kw">let </span>write_iterator = <span class="kw">match </span>persistences[<span class="number">1</span>] {
-<a href=#75 id=75 data-nosnippet>75</a>            Persistence::None | Persistence::Loop | Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#76 id=76 data-nosnippet>76</a>                #lhs_pre_write_iter
-<a href=#77 id=77 data-nosnippet>77</a>
-<a href=#78 id=78 data-nosnippet>78</a>                <span class="kw">let </span>#ident = {
-<a href=#79 id=79 data-nosnippet>79</a>                    <span class="kw">let </span>() = #work_fn_async(
-<a href=#80 id=80 data-nosnippet>80</a>                        #root::dfir_pipes::pull::accumulate_all(<span class="kw-2">&amp;mut </span>#lhs_accum, <span class="kw-2">&amp;mut *</span>#lhs_borrow, #lhs),
-<a href=#81 id=81 data-nosnippet>81</a>                    ).<span class="kw">await</span>;
-<a href=#82 id=82 data-nosnippet>82</a>
-<a href=#83 id=83 data-nosnippet>83</a>                    <span class="attr">#[allow(clippy::clone_on_copy)]
-<a href=#84 id=84 data-nosnippet>84</a>                    </span>#root::dfir_pipes::pull::Pull::filter_map(#rhs, |(k, v2)| #lhs_borrow.get(<span class="kw-2">&amp;</span>k).map(|v1| (k, (v1.clone(), v2.clone()))))
-<a href=#85 id=85 data-nosnippet>85</a>                };
-<a href=#86 id=86 data-nosnippet>86</a>            },
-<a href=#87 id=87 data-nosnippet>87</a>            Persistence::Static =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#88 id=88 data-nosnippet>88</a>                #lhs_pre_write_iter
-<a href=#89 id=89 data-nosnippet>89</a>                <span class="kw">let </span>#rhs_borrow_ident = <span class="kw-2">&amp;mut </span>#rhs_joindata_ident;
-<a href=#90 id=90 data-nosnippet>90</a>
-<a href=#91 id=91 data-nosnippet>91</a>                <span class="kw">let </span>#ident = {
-<a href=#92 id=92 data-nosnippet>92</a>                    <span class="comment">// Accumulate LHS.
-<a href=#93 id=93 data-nosnippet>93</a>                    </span><span class="kw">let </span>() = #work_fn_async(
-<a href=#94 id=94 data-nosnippet>94</a>                        #root::dfir_pipes::pull::accumulate_all(<span class="kw-2">&amp;mut </span>#lhs_accum, <span class="kw-2">&amp;mut *</span>#lhs_borrow, #lhs),
-<a href=#95 id=95 data-nosnippet>95</a>                    ).<span class="kw">await</span>;
-<a href=#96 id=96 data-nosnippet>96</a>
-<a href=#97 id=97 data-nosnippet>97</a>                    <span class="comment">// Accumulate RHS.
-<a href=#98 id=98 data-nosnippet>98</a>                    </span><span class="kw">let </span>() = #work_fn_async(
-<a href=#99 id=99 data-nosnippet>99</a>                        #root::dfir_pipes::pull::Pull::for_each(#rhs, |kv| {
-<a href=#100 id=100 data-nosnippet>100</a>                            #rhs_borrow_ident.push(kv);
-<a href=#101 id=101 data-nosnippet>101</a>                        }),
-<a href=#102 id=102 data-nosnippet>102</a>                    ).<span class="kw">await</span>;
+<a href=#66 id=66 data-nosnippet>66</a>        };
+<a href=#67 id=67 data-nosnippet>67</a>
+<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>lhs = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
+<a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">let </span>rhs = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
+<a href=#70 id=70 data-nosnippet>70</a>
+<a href=#71 id=71 data-nosnippet>71</a>        <span class="kw">let </span>lhs_accum = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
+<a href=#72 id=72 data-nosnippet>72</a>
+<a href=#73 id=73 data-nosnippet>73</a>        <span class="kw">let </span>write_iterator = <span class="kw">match </span>persistences[<span class="number">1</span>] {
+<a href=#74 id=74 data-nosnippet>74</a>            Persistence::None | Persistence::Loop | Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#75 id=75 data-nosnippet>75</a>                #lhs_pre_write_iter
+<a href=#76 id=76 data-nosnippet>76</a>
+<a href=#77 id=77 data-nosnippet>77</a>                <span class="kw">let </span>#ident = {
+<a href=#78 id=78 data-nosnippet>78</a>                    <span class="kw">let </span>() = #work_fn_async(
+<a href=#79 id=79 data-nosnippet>79</a>                        #root::dfir_pipes::pull::accumulate_all(<span class="kw-2">&amp;mut </span>#lhs_accum, <span class="kw-2">&amp;mut *</span>#lhs_borrow, #lhs),
+<a href=#80 id=80 data-nosnippet>80</a>                    ).<span class="kw">await</span>;
+<a href=#81 id=81 data-nosnippet>81</a>
+<a href=#82 id=82 data-nosnippet>82</a>                    <span class="attr">#[allow(clippy::clone_on_copy)]
+<a href=#83 id=83 data-nosnippet>83</a>                    </span>#root::dfir_pipes::pull::Pull::filter_map(#rhs, |(k, v2)| #lhs_borrow.get(<span class="kw-2">&amp;</span>k).map(|v1| (k, (v1.clone(), v2.clone()))))
+<a href=#84 id=84 data-nosnippet>84</a>                };
+<a href=#85 id=85 data-nosnippet>85</a>            },
+<a href=#86 id=86 data-nosnippet>86</a>            Persistence::Static =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#87 id=87 data-nosnippet>87</a>                #lhs_pre_write_iter
+<a href=#88 id=88 data-nosnippet>88</a>                <span class="kw">let </span>#rhs_borrow_ident = <span class="kw-2">&amp;mut </span>#rhs_joindata_ident;
+<a href=#89 id=89 data-nosnippet>89</a>
+<a href=#90 id=90 data-nosnippet>90</a>                <span class="kw">let </span>#ident = {
+<a href=#91 id=91 data-nosnippet>91</a>                    <span class="comment">// Accumulate LHS.
+<a href=#92 id=92 data-nosnippet>92</a>                    </span><span class="kw">let </span>() = #work_fn_async(
+<a href=#93 id=93 data-nosnippet>93</a>                        #root::dfir_pipes::pull::accumulate_all(<span class="kw-2">&amp;mut </span>#lhs_accum, <span class="kw-2">&amp;mut *</span>#lhs_borrow, #lhs),
+<a href=#94 id=94 data-nosnippet>94</a>                    ).<span class="kw">await</span>;
+<a href=#95 id=95 data-nosnippet>95</a>
+<a href=#96 id=96 data-nosnippet>96</a>                    <span class="comment">// Accumulate RHS.
+<a href=#97 id=97 data-nosnippet>97</a>                    </span><span class="kw">let </span>() = #work_fn_async(
+<a href=#98 id=98 data-nosnippet>98</a>                        #root::dfir_pipes::pull::Pull::for_each(#rhs, |kv| {
+<a href=#99 id=99 data-nosnippet>99</a>                            #rhs_borrow_ident.push(kv);
+<a href=#100 id=100 data-nosnippet>100</a>                        }),
+<a href=#101 id=101 data-nosnippet>101</a>                    ).<span class="kw">await</span>;
+<a href=#102 id=102 data-nosnippet>102</a>
 <a href=#103 id=103 data-nosnippet>103</a>
-<a href=#104 id=104 data-nosnippet>104</a>
-<a href=#105 id=105 data-nosnippet>105</a>                    <span class="attr">#[allow(clippy::clone_on_copy)]
-<a href=#106 id=106 data-nosnippet>106</a>                    #[allow(suspicious_double_ref_op)]
-<a href=#107 id=107 data-nosnippet>107</a>                </span><span class="kw">let </span>iter = #rhs_borrow_ident
-<a href=#108 id=108 data-nosnippet>108</a>                    .iter()
-<a href=#109 id=109 data-nosnippet>109</a>                    .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))));
-<a href=#110 id=110 data-nosnippet>110</a>                    #root::dfir_pipes::pull::iter(iter)
-<a href=#111 id=111 data-nosnippet>111</a>                };
-<a href=#112 id=112 data-nosnippet>112</a>            },
-<a href=#113 id=113 data-nosnippet>113</a>            Persistence::Mutable =&gt; <span class="macro">unreachable!</span>(),
-<a href=#114 id=114 data-nosnippet>114</a>        };
-<a href=#115 id=115 data-nosnippet>115</a>
-<a href=#116 id=116 data-nosnippet>116</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#117 id=117 data-nosnippet>117</a>            write_prologue: <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#118 id=118 data-nosnippet>118</a>                #lhs_prologue
-<a href=#119 id=119 data-nosnippet>119</a>                #rhs_prologue
-<a href=#120 id=120 data-nosnippet>120</a>            },
-<a href=#121 id=121 data-nosnippet>121</a>            write_iterator,
-<a href=#122 id=122 data-nosnippet>122</a>            write_iterator_after: Default::default(),
-<a href=#123 id=123 data-nosnippet>123</a>            write_tick_end: lhs_tick_end,
-<a href=#124 id=124 data-nosnippet>124</a>        })
-<a href=#125 id=125 data-nosnippet>125</a>    },
-<a href=#126 id=126 data-nosnippet>126</a>};
+<a href=#104 id=104 data-nosnippet>104</a>                    <span class="attr">#[allow(clippy::clone_on_copy)]
+<a href=#105 id=105 data-nosnippet>105</a>                    #[allow(suspicious_double_ref_op)]
+<a href=#106 id=106 data-nosnippet>106</a>                </span><span class="kw">let </span>iter = #rhs_borrow_ident
+<a href=#107 id=107 data-nosnippet>107</a>                    .iter()
+<a href=#108 id=108 data-nosnippet>108</a>                    .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))));
+<a href=#109 id=109 data-nosnippet>109</a>                    #root::dfir_pipes::pull::iter(iter)
+<a href=#110 id=110 data-nosnippet>110</a>                };
+<a href=#111 id=111 data-nosnippet>111</a>            },
+<a href=#112 id=112 data-nosnippet>112</a>        };
+<a href=#113 id=113 data-nosnippet>113</a>
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#115 id=115 data-nosnippet>115</a>            write_prologue: <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#116 id=116 data-nosnippet>116</a>                #lhs_prologue
+<a href=#117 id=117 data-nosnippet>117</a>                #rhs_prologue
+<a href=#118 id=118 data-nosnippet>118</a>            },
+<a href=#119 id=119 data-nosnippet>119</a>            write_iterator,
+<a href=#120 id=120 data-nosnippet>120</a>            write_iterator_after: Default::default(),
+<a href=#121 id=121 data-nosnippet>121</a>            write_tick_end: lhs_tick_end,
+<a href=#122 id=122 data-nosnippet>122</a>        })
+<a href=#123 id=123 data-nosnippet>123</a>    },
+<a href=#124 id=124 data-nosnippet>124</a>};
 </code></pre></div></section></main></body></html>
