@@ -83,7 +83,7 @@ pub fn state<'t, S, L>(tick: &'t Tick<L>) -> StateBuilder<'t, S, L> {
 #[cfg(stageleft_runtime)]
 pub struct StateBuilder<'t, S, L> {
     tick: &'t Tick<L>,
-    _phantom: PhantomData<fn() -> S>,
+    _phantom: PhantomData<S>,
 }
 
 #[cfg(stageleft_runtime)]
@@ -127,7 +127,7 @@ pub fn state_null<'t, S, L>(tick: &'t Tick<L>) -> StateNullBuilder<'t, S, L> {
 #[cfg(stageleft_runtime)]
 pub struct StateNullBuilder<'t, S, L> {
     tick: &'t Tick<L>,
-    _phantom: PhantomData<fn() -> S>,
+    _phantom: PhantomData<S>,
 }
 
 #[cfg(stageleft_runtime)]
