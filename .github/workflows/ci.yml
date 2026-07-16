@@ -25,7 +25,7 @@ defaults:
 
 jobs:
   pre_job:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
@@ -294,7 +294,7 @@ jobs:
 
   test-all:
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     name: Test Suite Result (Full Matrix)
     needs: [test]
     steps:
@@ -355,7 +355,7 @@ jobs:
 
   test-wasm-all:
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     name: Test Suite Result (WebAssembly Full Matrix)
     needs: [test-wasm]
     steps:
