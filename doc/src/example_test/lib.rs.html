@@ -155,27 +155,47 @@
 <a href=#155 id=155 data-nosnippet>155</a>        }
 <a href=#156 id=156 data-nosnippet>156</a>    }
 <a href=#157 id=157 data-nosnippet>157</a>
-<a href=#158 id=158 data-nosnippet>158</a>    <span class="doccomment">/// Writes a line to the child process stdin. A newline is automatically appended and should not be included in `line`.
-<a href=#159 id=159 data-nosnippet>159</a>    </span><span class="kw">pub fn </span>write_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: <span class="kw-2">&amp;</span>str) {
-<a href=#160 id=160 data-nosnippet>160</a>        <span class="kw">let </span>stdin = <span class="self">self</span>.child.stdin.as_mut().unwrap();
-<a href=#161 id=161 data-nosnippet>161</a>        stdin.write_all(line.as_bytes()).unwrap();
-<a href=#162 id=162 data-nosnippet>162</a>        stdin.write_all(<span class="string">b"\n"</span>).unwrap();
-<a href=#163 id=163 data-nosnippet>163</a>        stdin.flush().unwrap();
-<a href=#164 id=164 data-nosnippet>164</a>    }
-<a href=#165 id=165 data-nosnippet>165</a>}
-<a href=#166 id=166 data-nosnippet>166</a>
-<a href=#167 id=167 data-nosnippet>167</a><span class="doccomment">/// Terminates the inner [`Child`] process when dropped.
-<a href=#168 id=168 data-nosnippet>168</a>///
-<a href=#169 id=169 data-nosnippet>169</a>/// When a `Child` is dropped normally nothing happens but in unit tests you usually want to
-<a href=#170 id=170 data-nosnippet>170</a>/// terminate the child and wait for it to terminate. This does that for us.
-<a href=#171 id=171 data-nosnippet>171</a></span><span class="kw">impl </span>Drop <span class="kw">for </span>ExampleChild {
-<a href=#172 id=172 data-nosnippet>172</a>    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#173 id=173 data-nosnippet>173</a>        <span class="attr">#[cfg(target_family = <span class="string">"windows"</span>)]
-<a href=#174 id=174 data-nosnippet>174</a>        </span><span class="kw">let _ </span>= <span class="self">self</span>.child.kill(); <span class="comment">// Windows throws `PermissionDenied` if the process has already exited.
-<a href=#175 id=175 data-nosnippet>175</a>        </span><span class="attr">#[cfg(not(target_family = <span class="string">"windows"</span>))]
-<a href=#176 id=176 data-nosnippet>176</a>        </span><span class="self">self</span>.child.kill().unwrap();
+<a href=#158 id=158 data-nosnippet>158</a>    <span class="doccomment">/// Reads the child process's stdout until the child exits, returning the complete output
+<a href=#159 id=159 data-nosnippet>159</a>    /// (including any output already consumed by [`Self::read_string`] or [`Self::read_regex`]).
+<a href=#160 id=160 data-nosnippet>160</a>    ///
+<a href=#161 id=161 data-nosnippet>161</a>    /// Panics if the child exits with a non-success exit status.
+<a href=#162 id=162 data-nosnippet>162</a>    </span><span class="kw">pub fn </span>read_to_end(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; String {
+<a href=#163 id=163 data-nosnippet>163</a>        <span class="kw">let </span>stdout = <span class="self">self</span>.child.stdout.as_mut().unwrap();
+<a href=#164 id=164 data-nosnippet>164</a>        <span class="self">self</span>.output_buffer.truncate(<span class="self">self</span>.output_len);
+<a href=#165 id=165 data-nosnippet>165</a>        stdout.read_to_end(<span class="kw-2">&amp;mut </span><span class="self">self</span>.output_buffer).unwrap();
+<a href=#166 id=166 data-nosnippet>166</a>        <span class="self">self</span>.output_len = <span class="self">self</span>.output_buffer.len();
+<a href=#167 id=167 data-nosnippet>167</a>
+<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">let </span>status = <span class="self">self</span>.child.wait().unwrap();
+<a href=#169 id=169 data-nosnippet>169</a>        <span class="macro">assert!</span>(
+<a href=#170 id=170 data-nosnippet>170</a>            status.success(),
+<a href=#171 id=171 data-nosnippet>171</a>            <span class="string">"Child process exited unsuccessfully: {}"</span>,
+<a href=#172 id=172 data-nosnippet>172</a>            status
+<a href=#173 id=173 data-nosnippet>173</a>        );
+<a href=#174 id=174 data-nosnippet>174</a>
+<a href=#175 id=175 data-nosnippet>175</a>        String::from_utf8_lossy(<span class="kw-2">&amp;</span><span class="self">self</span>.output_buffer[..<span class="self">self</span>.output_len]).into_owned()
+<a href=#176 id=176 data-nosnippet>176</a>    }
 <a href=#177 id=177 data-nosnippet>177</a>
-<a href=#178 id=178 data-nosnippet>178</a>        <span class="self">self</span>.child.wait().unwrap();
-<a href=#179 id=179 data-nosnippet>179</a>    }
-<a href=#180 id=180 data-nosnippet>180</a>}
+<a href=#178 id=178 data-nosnippet>178</a>    <span class="doccomment">/// Writes a line to the child process stdin. A newline is automatically appended and should not be included in `line`.
+<a href=#179 id=179 data-nosnippet>179</a>    </span><span class="kw">pub fn </span>write_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: <span class="kw-2">&amp;</span>str) {
+<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">let </span>stdin = <span class="self">self</span>.child.stdin.as_mut().unwrap();
+<a href=#181 id=181 data-nosnippet>181</a>        stdin.write_all(line.as_bytes()).unwrap();
+<a href=#182 id=182 data-nosnippet>182</a>        stdin.write_all(<span class="string">b"\n"</span>).unwrap();
+<a href=#183 id=183 data-nosnippet>183</a>        stdin.flush().unwrap();
+<a href=#184 id=184 data-nosnippet>184</a>    }
+<a href=#185 id=185 data-nosnippet>185</a>}
+<a href=#186 id=186 data-nosnippet>186</a>
+<a href=#187 id=187 data-nosnippet>187</a><span class="doccomment">/// Terminates the inner [`Child`] process when dropped.
+<a href=#188 id=188 data-nosnippet>188</a>///
+<a href=#189 id=189 data-nosnippet>189</a>/// When a `Child` is dropped normally nothing happens but in unit tests you usually want to
+<a href=#190 id=190 data-nosnippet>190</a>/// terminate the child and wait for it to terminate. This does that for us.
+<a href=#191 id=191 data-nosnippet>191</a></span><span class="kw">impl </span>Drop <span class="kw">for </span>ExampleChild {
+<a href=#192 id=192 data-nosnippet>192</a>    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#193 id=193 data-nosnippet>193</a>        <span class="comment">// `kill` errors if the process has already exited (e.g. Windows throws
+<a href=#194 id=194 data-nosnippet>194</a>        // `PermissionDenied`, and all platforms throw `InvalidInput` if the child has already
+<a href=#195 id=195 data-nosnippet>195</a>        // been `wait`ed on, e.g. by `Self::read_to_end`).
+<a href=#196 id=196 data-nosnippet>196</a>        </span><span class="kw">let _ </span>= <span class="self">self</span>.child.kill();
+<a href=#197 id=197 data-nosnippet>197</a>
+<a href=#198 id=198 data-nosnippet>198</a>        <span class="self">self</span>.child.wait().unwrap();
+<a href=#199 id=199 data-nosnippet>199</a>    }
+<a href=#200 id=200 data-nosnippet>200</a>}
 </code></pre></div></section></main></body></html>
