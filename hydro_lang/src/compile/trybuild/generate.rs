@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use dfir_lang::diagnostic::Diagnostics;
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use dfir_lang::graph::DfirGraph;
+#[cfg(any(feature = "sim", feature = "maelstrom"))]
+use hydro_concurrent_cargo::final_rustc;
 use sha2::{Digest, Sha256};
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use stageleft::internal::quote;
@@ -379,6 +381,12 @@ fn rustc_target_libdir() -> Option<String> {
 /// using the shared parallel-compilation machinery (per-job target dirs with
 /// symlinked shared artifacts, plus a prebuild of the dylib dependencies).
 ///
+/// The first build after a prebuild goes through `cargo rustc` and captures the exact
+/// rustc invocation cargo issues for the example (see [`build_rustc_template`]). Later
+/// builds replay that invocation directly with per-test substitutions, skipping cargo's
+/// fixed per-invocation overhead (lockfile/fingerprint work, target-dir locking) and the
+/// per-job target dir population entirely.
+///
 /// Returns the path to a temporary copy of the built artifact (a `cdylib` for
 /// the simulator, or an executable for Maelstrom). The copy allows the caller
 /// to hold onto the artifact independently of the shared target directory.
@@ -408,12 +416,9 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
         path!(trybuild.project_dir / "dylib-examples")
     };
 
-    let (final_target_dir, _prebuild_guard, _cargo_lock) = if !has_custom_rustflags {
+    let (mut prebuild_guard, _cargo_lock) = if !has_custom_rustflags {
         let prebuild_span =
             tracing::debug_span!(target: "hydro_build", "prebuild", bin_name = %bin_name).entered();
-        let shared_debug = trybuild.target_dir.join("debug");
-        let jobs_dir = trybuild.target_dir.join("jobs");
-        let per_job = hydro_concurrent_cargo::setup_job_dir(&jobs_dir, &bin_name, &shared_debug);
 
         let mut features: Vec<String> = trybuild.features.clone().unwrap_or_default();
         features.push(runtime_feature.to_owned());
@@ -471,9 +476,116 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
         // entire final build, but the prebuild phase (freshness check + possible dep build)
         // ends here.
         drop(prebuild_span);
-        (per_job, Some(guard), Some(cargo_lock))
+        (Some(guard), Some(cargo_lock))
     } else {
-        (trybuild.target_dir.clone(), None, None)
+        (None, None)
+    };
+
+    // The crate name and (cwd-relative) source path of the example to compile, as cargo
+    // passes them to rustc. rustc runs from the compiled crate's *workspace* root, which
+    // for both the dylib-examples crate and the base trybuild crate is the project dir.
+    let example_crate_name = example_name.replace('-', "_");
+    let example_source_path = format!(
+        "{}/examples/{}.rs",
+        crate_to_compile
+            .strip_prefix(&trybuild.project_dir)
+            .ok()
+            .and_then(|p| p.to_str())
+            .unwrap_or_default(),
+        example_name
+    )
+    .trim_start_matches('/')
+    .to_owned();
+
+    // Fast path: replay the rustc invocation captured from a previous cargo final build
+    // against this same prebuild, skipping cargo entirely (see the `final_rustc` module
+    // in `hydro_concurrent_cargo`). Skipped in fuzz mode, which uses a different crate
+    // layout and extra linker flags.
+    let (prebuild_stamp, template_path) = match (&mut prebuild_guard, is_fuzz) {
+        (Some(guard), false) => (
+            Some(guard.read_stamp()),
+            Some(final_rustc::template_path(guard.lock_path())),
+        ),
+        _ => (None, None),
+    };
+
+    if let (Some(stamp), Some(template_path)) = (&prebuild_stamp, &template_path)
+        && let Some(template) = final_rustc::load(template_path, stamp)
+    {
+        // Serialize concurrent builds of the same job (e.g. two tests compiling an
+        // identical flow) without populating the per-job cargo target dir.
+        let jobs_dir = trybuild.target_dir.join("jobs");
+        let _job_guard = hydro_concurrent_cargo::lock_job_dir(&jobs_dir, &bin_name);
+
+        let final_rustc_span =
+            tracing::debug_span!(target: "hydro_build", "final_rustc", bin_name = %bin_name)
+                .entered();
+
+        // Unique symbol metadata per (test, runtime feature): multiple compiled examples
+        // can be dlopen'ed into a single process, so their symbol hashes must differ.
+        let metadata = format!(
+            "{:X}",
+            Sha256::digest(format!("{bin_name}\t{runtime_feature}"))
+        )
+        .chars()
+        .take(16)
+        .collect::<String>();
+
+        let mut envs = vec![(
+            "STAGELEFT_TRYBUILD_BUILD_STAGED".to_owned(),
+            std::ffi::OsString::from("1"),
+        )];
+        // Override the cargo-set vars inherited from the *test binary's* build so
+        // compile-time env lookups in the example see its own crate, not ours.
+        envs.push((
+            "CARGO_MANIFEST_DIR".to_owned(),
+            crate_to_compile.clone().into_os_string(),
+        ));
+        envs.push((
+            "CARGO_CRATE_NAME".to_owned(),
+            std::ffi::OsString::from(&example_crate_name),
+        ));
+        if set_trybuild_lib_name {
+            envs.push((
+                "TRYBUILD_LIB_NAME".to_owned(),
+                std::ffi::OsString::from(&bin_name),
+            ));
+        }
+
+        let replayed = final_rustc::replay(
+            &template,
+            final_rustc::ReplayParams {
+                crate_name: &example_crate_name,
+                source_path: &example_source_path,
+                out_dir: &path!(jobs_dir / bin_name / "out"),
+                metadata: &metadata,
+                envs,
+            },
+        );
+        drop(final_rustc_span);
+
+        match replayed {
+            Ok(artifact) => {
+                let out_file = tempfile::NamedTempFile::new().unwrap().into_temp_path();
+                fs::copy(&artifact, &out_file).unwrap();
+                return Ok(out_file);
+            }
+            Err(message) => {
+                tracing::debug!(
+                    target: "hydro_build",
+                    "final rustc replay failed, falling back to cargo: {message}"
+                );
+                let _ = fs::remove_file(template_path);
+            }
+        }
+    }
+
+    let final_target_dir = if !has_custom_rustflags {
+        let shared_debug = trybuild.target_dir.join("debug");
+        let jobs_dir = trybuild.target_dir.join("jobs");
+        hydro_concurrent_cargo::setup_job_dir(&jobs_dir, &bin_name, &shared_debug)
+    } else {
+        trybuild.target_dir.clone()
     };
 
     // Populate per-job build/ dir right before final build. Hold guard for entire build.
@@ -505,6 +617,9 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
         } else {
             "--frozen"
         },
+        // Verbose output includes the exact rustc invocation, which we capture as a
+        // template so subsequent builds can replay it without cargo (see `final_rustc`).
+        "-v",
     ]);
     command.args(["--example", &example_name]);
     command.args(["--target-dir", final_target_dir.to_str().unwrap()]);
@@ -673,6 +788,28 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
 
     if out.is_err() {
         panic!("final build failed to produce binary.\nstderr:\n{stderr_output}");
+    }
+
+    // Capture the rustc invocation cargo just used as a replay template for subsequent
+    // final builds against this same prebuild.
+    if let (Some(stamp), Some(template_path)) = (&prebuild_stamp, &template_path)
+        && let Some(argv) = final_rustc::extract_rustc_command(&stderr_output, &example_crate_name)
+        && let Some(argv) = final_rustc::build_template(
+            argv,
+            &example_crate_name,
+            &example_name,
+            &final_target_dir,
+            &trybuild.target_dir,
+        )
+    {
+        let _ = final_rustc::store(
+            template_path,
+            &final_rustc::RustcTemplate {
+                stamp: stamp.clone(),
+                cwd: trybuild.project_dir.clone(),
+                argv,
+            },
+        );
     }
 
     let out_file = tempfile::NamedTempFile::new().unwrap().into_temp_path();

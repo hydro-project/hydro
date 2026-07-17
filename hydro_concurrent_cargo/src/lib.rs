@@ -4,6 +4,8 @@
 //! builds concurrently against a shared target directory using per-job symlinked
 //! directories.
 
+pub mod final_rustc;
+
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write as _;
@@ -99,6 +101,7 @@ pub struct PrebuildGuard {
     _global_file: Option<fs::File>,
     _file: fs::File,
     lock_dir: PathBuf,
+    lock_path: PathBuf,
 }
 
 #[expect(
@@ -131,6 +134,7 @@ impl PrebuildGuard {
             _global_file: None,
             _file: file,
             lock_dir,
+            lock_path: lock_path.to_owned(),
         }
     }
 
@@ -160,6 +164,7 @@ impl PrebuildGuard {
             _global_file: Some(global_file),
             _file: file,
             lock_dir: self.lock_dir,
+            lock_path: self.lock_path,
         }
     }
 
@@ -180,12 +185,32 @@ impl PrebuildGuard {
             _global_file: None,
             _file: file,
             lock_dir: self.lock_dir,
+            lock_path: self.lock_path,
         }
     }
 
     /// Get mutable access to the underlying file (for writing timestamps).
     pub fn file_mut(&mut self) -> &mut fs::File {
         &mut self._file
+    }
+
+    /// The path of the prebuild lock/stamp file this guard holds.
+    pub fn lock_path(&self) -> &Path {
+        &self.lock_path
+    }
+
+    /// Read the current prebuild stamp (`features_hash:timestamp`) from the lock file.
+    ///
+    /// The stamp changes every time the prebuild is (re)run, so it can be used as a
+    /// freshness key for artifacts derived from a particular prebuild (e.g. captured
+    /// rustc command templates). Must be called while the guard is held.
+    pub fn read_stamp(&mut self) -> String {
+        use std::io::{Read, Seek};
+        let file = &mut self._file;
+        file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+        contents.trim().to_owned()
     }
 }
 
@@ -245,6 +270,28 @@ pub fn symlink_prebuild_build_dir(prebuild_target: &Path, shared_debug: &Path) {
 pub struct JobBuildGuard {
     _mutex_guard: std::sync::MutexGuard<'static, ()>,
     _file: fs::File,
+}
+
+/// Acquire the per-job lock (in-process mutex + cross-process file lock) for a job
+/// directory, without populating anything. Used by the direct-rustc replay path, which
+/// doesn't need the symlinked cargo target dir but still must serialize concurrent
+/// builds of the same job (e.g. two tests compiling an identical flow).
+pub fn lock_job_dir(jobs_dir: &Path, name: &str) -> JobBuildGuard {
+    let job_dir = jobs_dir.join(name);
+    let mutex_guard = get_job_dir_lock(&job_dir).lock().unwrap();
+    fs::create_dir_all(&job_dir).unwrap();
+    let job_lock_file = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(job_dir.join(".job.lock"))
+        .unwrap();
+    job_lock_file.lock().unwrap();
+    JobBuildGuard {
+        _mutex_guard: mutex_guard,
+        _file: job_lock_file,
+    }
 }
 
 /// Populate the per-job build/ directory from the shared build/ directory.

@@ -2584,6 +2584,8 @@ name = "hydro_concurrent_cargo"
 version = "0.1.0-alpha.0"
 dependencies = [
  "parking_lot",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

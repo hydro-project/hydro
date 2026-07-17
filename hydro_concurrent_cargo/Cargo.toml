@@ -12,3 +12,5 @@ all-features = true
 
 [dependencies]
 parking_lot = "0.12"
+serde_json = "1"
+tracing = "0.1"

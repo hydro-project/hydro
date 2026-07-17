@@ -18,8 +18,11 @@
 #   update_lockfile     Cargo.lock regen (only when manifests change)
 #   write_generated_sources  writing the example + __staged.rs
 #   prebuild            freshness check (+ dep build when stale)
-#   populate_job_dir    symlinking the per-job build dir
-#   final_build         the final `cargo rustc` of the generated example
+#   populate_job_dir    symlinking the per-job build dir (cargo-path builds only)
+#   final_build         the final `cargo rustc` of the generated example (first build after
+#                       a prebuild; captures a rustc command template)
+#   final_rustc         direct rustc replay of the captured template (all later builds;
+#                       skips cargo and the per-job dir population entirely)
 #   load_dylib          dlopen of the built cdylib
 #   sim_compiled        total of all of the above (sim only)
 #   sim_exhaustive      running the exhaustive simulation itself

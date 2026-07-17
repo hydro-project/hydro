@@ -6,6 +6,7 @@ use std::process::{Command, ExitStatus, Stdio};
 use std::sync::OnceLock;
 
 use cargo_metadata::diagnostic::Diagnostic;
+use hydro_concurrent_cargo::final_rustc;
 use memo_map::MemoMap;
 use tokio::sync::OnceCell;
 
@@ -136,7 +137,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     // Only use prebuild + per-job target dirs for dylib mode.
                     // Without dylib, build directly into the base target dir.
-                    let (per_job_target_dir, _prebuild_guard, _cargo_lock) = if params.is_dylib {
+                    let (per_job_target_dir, mut prebuild_guard, _cargo_lock) = if params.is_dylib {
                         let shared_debug = base_target_dir.join("debug");
                         let jobs_dir = base_target_dir.join("jobs");
                         let per_job = hydro_concurrent_cargo::setup_job_dir(&jobs_dir, job_name, &shared_debug);
@@ -223,6 +224,106 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     hydro_concurrent_cargo::log_build_event(&base_target_dir, "deploy: starting final build");
 
+                    // Fast path: replay the rustc invocation captured from a previous cargo
+                    // final build against this same prebuild, skipping cargo entirely (see
+                    // `hydro_concurrent_cargo::final_rustc`). Only for local dylib example
+                    // builds with default profile/rustflags — the same conditions under
+                    // which deploy_graph enables dynamic linking for trybuild crates.
+                    let use_final_rustc_template = params.is_dylib
+                        && params.example.is_some()
+                        && params.profile.is_none()
+                        && params.rustflags.is_none()
+                        && matches!(params.target_type, HostTargetType::Local);
+
+                    let (prebuild_stamp, template_path) = if use_final_rustc_template {
+                        let guard = prebuild_guard.as_mut().unwrap();
+                        (
+                            Some(guard.read_stamp()),
+                            Some(final_rustc::template_path(guard.lock_path())),
+                        )
+                    } else {
+                        (None, None)
+                    };
+
+                    let example_crate_name = params.example.as_deref().map(|e| e.replace('-', "_"));
+                    let example_source_path = params.example.as_deref().map(|example| {
+                        format!(
+                            "{}/examples/{}.rs",
+                            params
+                                .src
+                                .strip_prefix(&params.workspace_root)
+                                .ok()
+                                .and_then(|p| p.to_str())
+                                .unwrap_or_default(),
+                            example
+                        )
+                        .trim_start_matches('/')
+                        .to_owned()
+                    });
+
+                    if let (Some(stamp), Some(template_path)) = (&prebuild_stamp, &template_path)
+                        && let Some(template) = final_rustc::load(template_path, stamp)
+                    {
+                        // Serialize concurrent builds of the same job without populating the
+                        // per-job cargo target dir.
+                        let jobs_dir = base_target_dir.join("jobs");
+                        let _job_guard = hydro_concurrent_cargo::lock_job_dir(&jobs_dir, job_name);
+
+                        // Unique symbol metadata per example (multiple built examples may be
+                        // loaded/run side by side).
+                        let metadata = format!("{}", blake3::hash(job_name.as_bytes()).to_hex())
+                            .chars()
+                            .take(16)
+                            .collect::<String>();
+
+                        let mut envs: Vec<(String, std::ffi::OsString)> = params
+                            .build_env
+                            .iter()
+                            .map(|(k, v)| (k.clone(), std::ffi::OsString::from(v)))
+                            .collect();
+                        // Override the cargo-set vars inherited from the *test binary's* build
+                        // so compile-time env lookups in the example see its own crate.
+                        envs.push((
+                            "CARGO_MANIFEST_DIR".to_owned(),
+                            params.src.clone().into_os_string(),
+                        ));
+                        envs.push((
+                            "CARGO_CRATE_NAME".to_owned(),
+                            std::ffi::OsString::from(example_crate_name.as_deref().unwrap()),
+                        ));
+
+                        let replayed = final_rustc::replay(
+                            &template,
+                            final_rustc::ReplayParams {
+                                crate_name: example_crate_name.as_deref().unwrap(),
+                                source_path: example_source_path.as_deref().unwrap(),
+                                out_dir: &jobs_dir.join(job_name).join("out"),
+                                metadata: &metadata,
+                                envs,
+                            },
+                        );
+
+                        match replayed {
+                            Ok(artifact) => {
+                                let data = std::fs::read(&artifact).unwrap();
+                                return Ok(BuildOutput {
+                                    bin_data: data,
+                                    bin_path: artifact,
+                                    shared_library_path: Some(
+                                        base_target_dir.join("debug").join("deps"),
+                                    ),
+                                });
+                            }
+                            Err(message) => {
+                                hydro_concurrent_cargo::log_build_event(
+                                    &base_target_dir,
+                                    &format!("deploy: final rustc replay failed, falling back to cargo: {message}"),
+                                );
+                                let _ = std::fs::remove_file(template_path);
+                            }
+                        }
+                    }
+
                     // Populate per-job build/ dir. Hold guard for entire final build.
                     let _job_build_guard = if params.is_dylib {
                         let shared_debug = base_target_dir.join("debug");
@@ -233,6 +334,9 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     let mut command = Command::new("cargo");
                     command.args(["build", if params.is_dylib { "--frozen" } else { "--locked" }]);
+                    // Verbose output includes the exact rustc invocation, which we capture as
+                    // a template so subsequent builds can replay it without cargo.
+                    command.arg("-v");
 
                     if let Some(profile) = params.profile.as_ref() {
                         command.args(["--profile", profile]);
@@ -335,6 +439,32 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     }
 
                                     assert!(exit_status.success(), "deploy final build failed:\n{}", stderr_lines.join("\n"));
+
+                                    // Capture the rustc invocation cargo just used as a replay
+                                    // template for subsequent final builds against this prebuild.
+                                    if let (Some(stamp), Some(template_path)) =
+                                        (&prebuild_stamp, &template_path)
+                                        && let Some(argv) = final_rustc::extract_rustc_command(
+                                            &stderr_lines.join("\n"),
+                                            example_crate_name.as_deref().unwrap(),
+                                        )
+                                        && let Some(argv) = final_rustc::build_template(
+                                            argv,
+                                            example_crate_name.as_deref().unwrap(),
+                                            params.example.as_deref().unwrap(),
+                                            &per_job_target_dir,
+                                            &base_target_dir,
+                                        )
+                                    {
+                                        let _ = final_rustc::store(
+                                            template_path,
+                                            &final_rustc::RustcTemplate {
+                                                stamp: stamp.clone(),
+                                                cwd: params.workspace_root.clone(),
+                                                argv,
+                                            },
+                                        );
+                                    }
 
                                     return Ok(BuildOutput {
                                         bin_data: data,

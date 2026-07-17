@@ -9,6 +9,11 @@
 # generated example is the dominant remaining per-test cost. This script measures exactly that
 # step so we can iterate on flags / linking strategies without rerunning the tests themselves.
 #
+# Note: in the steady state only the *first* final build after a prebuild goes through cargo;
+# subsequent tests replay the captured rustc invocation directly (see the `final_rustc` module
+# in hydro_concurrent_cargo). This script measures the cargo variant, which is also where the
+# rustc command template gets captured from.
+#
 # For a breakdown of *all* per-test phases (staged codegen, cargo metadata, prebuild, final
 # build, sim execution, ...), use scripts/profile_test_phases.sh instead.
 #
@@ -107,6 +112,9 @@ touch_examples() {
     for d in "$TARGET_DIR"/hydro_trybuild/*/dylib-examples/examples "$TARGET_DIR"/hydro_trybuild/*/examples; do
         [[ -d "$d" ]] && find "$d" -name '*.rs' -exec touch {} + || true
     done
+    # Remove captured rustc templates so tests take the cargo path (which logs the
+    # "final build command" lines this script replays) instead of direct-rustc replay.
+    rm -f "$TARGET_DIR"/.prebuild*.lock.rustc-cmd
 }
 
 strip_ansi() {
