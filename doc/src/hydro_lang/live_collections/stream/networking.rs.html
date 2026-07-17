@@ -1754,67 +1754,122 @@
 <a href=#1754 id=1754 data-nosnippet>1754</a>
 <a href=#1755 id=1755 data-nosnippet>1755</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#1756 id=1756 data-nosnippet>1756</a>    #[test]
-<a href=#1757 id=1757 data-nosnippet>1757</a>    </span><span class="kw">fn </span>sim_broadcast_closed_o2m() {
-<a href=#1758 id=1758 data-nosnippet>1758</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#1759 id=1759 data-nosnippet>1759</a>        <span class="kw">let </span>cluster = flow.cluster::&lt;()&gt;();
-<a href=#1760 id=1760 data-nosnippet>1760</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#1761 id=1761 data-nosnippet>1761</a>
-<a href=#1762 id=1762 data-nosnippet>1762</a>        <span class="kw">let </span>input = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">123</span>, <span class="number">456</span>]));
-<a href=#1763 id=1763 data-nosnippet>1763</a>
-<a href=#1764 id=1764 data-nosnippet>1764</a>        <span class="kw">let </span>out_recv = input
-<a href=#1765 id=1765 data-nosnippet>1765</a>            .broadcast_closed(<span class="kw-2">&amp;</span>cluster, TCP.fail_stop().bincode())
-<a href=#1766 id=1766 data-nosnippet>1766</a>            .send(<span class="kw-2">&amp;</span>node, TCP.fail_stop().bincode())
-<a href=#1767 id=1767 data-nosnippet>1767</a>            .entries()
-<a href=#1768 id=1768 data-nosnippet>1768</a>            .sim_output();
-<a href=#1769 id=1769 data-nosnippet>1769</a>
-<a href=#1770 id=1770 data-nosnippet>1770</a>        flow.sim()
-<a href=#1771 id=1771 data-nosnippet>1771</a>            .with_cluster_size(<span class="kw-2">&amp;</span>cluster, <span class="number">2</span>)
-<a href=#1772 id=1772 data-nosnippet>1772</a>            .exhaustive(<span class="kw">async </span>|| {
-<a href=#1773 id=1773 data-nosnippet>1773</a>                out_recv
-<a href=#1774 id=1774 data-nosnippet>1774</a>                    .assert_yields_only_unordered(<span class="macro">vec!</span>[
-<a href=#1775 id=1775 data-nosnippet>1775</a>                        (MemberId::from_raw_id(<span class="number">0</span>), <span class="number">123</span>),
-<a href=#1776 id=1776 data-nosnippet>1776</a>                        (MemberId::from_raw_id(<span class="number">0</span>), <span class="number">456</span>),
-<a href=#1777 id=1777 data-nosnippet>1777</a>                        (MemberId::from_raw_id(<span class="number">1</span>), <span class="number">123</span>),
-<a href=#1778 id=1778 data-nosnippet>1778</a>                        (MemberId::from_raw_id(<span class="number">1</span>), <span class="number">456</span>),
-<a href=#1779 id=1779 data-nosnippet>1779</a>                    ])
-<a href=#1780 id=1780 data-nosnippet>1780</a>                    .<span class="kw">await
-<a href=#1781 id=1781 data-nosnippet>1781</a>            </span>});
-<a href=#1782 id=1782 data-nosnippet>1782</a>    }
-<a href=#1783 id=1783 data-nosnippet>1783</a>
-<a href=#1784 id=1784 data-nosnippet>1784</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#1785 id=1785 data-nosnippet>1785</a>    #[test]
-<a href=#1786 id=1786 data-nosnippet>1786</a>    </span><span class="kw">fn </span>sim_broadcast_closed_m2m() {
-<a href=#1787 id=1787 data-nosnippet>1787</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#1788 id=1788 data-nosnippet>1788</a>        <span class="kw">let </span>source = flow.cluster::&lt;()&gt;();
-<a href=#1789 id=1789 data-nosnippet>1789</a>        <span class="kw">let </span>dest: <span class="kw">crate</span>::location::Cluster&lt;<span class="lifetime">'_</span>, ()&gt; = flow.cluster::&lt;()&gt;();
-<a href=#1790 id=1790 data-nosnippet>1790</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#1791 id=1791 data-nosnippet>1791</a>
-<a href=#1792 id=1792 data-nosnippet>1792</a>        <span class="kw">let </span>input = source.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">123</span>]));
-<a href=#1793 id=1793 data-nosnippet>1793</a>
-<a href=#1794 id=1794 data-nosnippet>1794</a>        <span class="comment">// Broadcast from source cluster to dest cluster, then collect at a process.
-<a href=#1795 id=1795 data-nosnippet>1795</a>        </span><span class="kw">let </span>out_recv = input
-<a href=#1796 id=1796 data-nosnippet>1796</a>            .broadcast_closed(<span class="kw-2">&amp;</span>dest, TCP.fail_stop().bincode())
-<a href=#1797 id=1797 data-nosnippet>1797</a>            .entries()
-<a href=#1798 id=1798 data-nosnippet>1798</a>            .send(<span class="kw-2">&amp;</span>node, TCP.fail_stop().bincode())
-<a href=#1799 id=1799 data-nosnippet>1799</a>            .entries()
-<a href=#1800 id=1800 data-nosnippet>1800</a>            .sim_output();
-<a href=#1801 id=1801 data-nosnippet>1801</a>
-<a href=#1802 id=1802 data-nosnippet>1802</a>        flow.sim()
-<a href=#1803 id=1803 data-nosnippet>1803</a>            .with_cluster_size(<span class="kw-2">&amp;</span>source, <span class="number">2</span>)
-<a href=#1804 id=1804 data-nosnippet>1804</a>            .with_cluster_size(<span class="kw-2">&amp;</span>dest, <span class="number">2</span>)
-<a href=#1805 id=1805 data-nosnippet>1805</a>            .exhaustive(<span class="kw">async </span>|| {
-<a href=#1806 id=1806 data-nosnippet>1806</a>                <span class="comment">// Each source member (0, 1) broadcasts 123 to each dest member (0, 1).
-<a href=#1807 id=1807 data-nosnippet>1807</a>                // The dest members then send to the process keyed by dest member id.
-<a href=#1808 id=1808 data-nosnippet>1808</a>                // Each dest member receives (source_0, 123) and (source_1, 123).
-<a href=#1809 id=1809 data-nosnippet>1809</a>                </span>out_recv
-<a href=#1810 id=1810 data-nosnippet>1810</a>                    .assert_yields_only_unordered(<span class="macro">vec!</span>[
-<a href=#1811 id=1811 data-nosnippet>1811</a>                        (MemberId::from_raw_id(<span class="number">0</span>), (MemberId::from_raw_id(<span class="number">0</span>), <span class="number">123</span>)),
-<a href=#1812 id=1812 data-nosnippet>1812</a>                        (MemberId::from_raw_id(<span class="number">0</span>), (MemberId::from_raw_id(<span class="number">1</span>), <span class="number">123</span>)),
-<a href=#1813 id=1813 data-nosnippet>1813</a>                        (MemberId::from_raw_id(<span class="number">1</span>), (MemberId::from_raw_id(<span class="number">0</span>), <span class="number">123</span>)),
-<a href=#1814 id=1814 data-nosnippet>1814</a>                        (MemberId::from_raw_id(<span class="number">1</span>), (MemberId::from_raw_id(<span class="number">1</span>), <span class="number">123</span>)),
-<a href=#1815 id=1815 data-nosnippet>1815</a>                    ])
-<a href=#1816 id=1816 data-nosnippet>1816</a>                    .<span class="kw">await
-<a href=#1817 id=1817 data-nosnippet>1817</a>            </span>});
-<a href=#1818 id=1818 data-nosnippet>1818</a>    }
-<a href=#1819 id=1819 data-nosnippet>1819</a>}
+<a href=#1757 id=1757 data-nosnippet>1757</a>    </span><span class="kw">fn </span>sim_udp_lossy_delayed_forever_o2o() {
+<a href=#1758 id=1758 data-nosnippet>1758</a>        <span class="kw">use </span>std::collections::HashSet;
+<a href=#1759 id=1759 data-nosnippet>1759</a>
+<a href=#1760 id=1760 data-nosnippet>1760</a>        <span class="kw">use </span><span class="kw">crate</span>::networking::UDP;
+<a href=#1761 id=1761 data-nosnippet>1761</a>        <span class="kw">use </span><span class="kw">crate</span>::properties::manual_proof;
+<a href=#1762 id=1762 data-nosnippet>1762</a>
+<a href=#1763 id=1763 data-nosnippet>1763</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#1764 id=1764 data-nosnippet>1764</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#1765 id=1765 data-nosnippet>1765</a>        <span class="kw">let </span>node2 = flow.process::&lt;()&gt;();
+<a href=#1766 id=1766 data-nosnippet>1766</a>
+<a href=#1767 id=1767 data-nosnippet>1767</a>        <span class="kw">let </span>received = node
+<a href=#1768 id=1768 data-nosnippet>1768</a>            .source_iter(<span class="macro">q!</span>(<span class="number">0</span>..<span class="number">3_u32</span>))
+<a href=#1769 id=1769 data-nosnippet>1769</a>            .send(<span class="kw-2">&amp;</span>node2, UDP.lossy_delayed_forever().bincode())
+<a href=#1770 id=1770 data-nosnippet>1770</a>            .fold(
+<a href=#1771 id=1771 data-nosnippet>1771</a>                <span class="macro">q!</span>(|| std::collections::HashSet::&lt;u32&gt;::new()),
+<a href=#1772 id=1772 data-nosnippet>1772</a>                <span class="macro">q!</span>(
+<a href=#1773 id=1773 data-nosnippet>1773</a>                    |set, v| {
+<a href=#1774 id=1774 data-nosnippet>1774</a>                        set.insert(v);
+<a href=#1775 id=1775 data-nosnippet>1775</a>                    },
+<a href=#1776 id=1776 data-nosnippet>1776</a>                    commutative = <span class="macro">manual_proof!</span>(<span class="doccomment">/** set insert is commutative */</span>)
+<a href=#1777 id=1777 data-nosnippet>1777</a>                ),
+<a href=#1778 id=1778 data-nosnippet>1778</a>            );
+<a href=#1779 id=1779 data-nosnippet>1779</a>
+<a href=#1780 id=1780 data-nosnippet>1780</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
+<a href=#1781 id=1781 data-nosnippet>1781</a>            <span class="kw">let </span>snapshot = <span class="kw">use</span>(received, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#1782 id=1782 data-nosnippet>1782</a>            snapshot.into_stream()
+<a href=#1783 id=1783 data-nosnippet>1783</a>        }
+<a href=#1784 id=1784 data-nosnippet>1784</a>        .sim_output();
+<a href=#1785 id=1785 data-nosnippet>1785</a>
+<a href=#1786 id=1786 data-nosnippet>1786</a>        <span class="kw">let </span><span class="kw-2">mut </span>saw_non_contiguous = <span class="bool-val">false</span>;
+<a href=#1787 id=1787 data-nosnippet>1787</a>
+<a href=#1788 id=1788 data-nosnippet>1788</a>        flow.sim().test_safety_only().exhaustive(<span class="kw">async </span>|| {
+<a href=#1789 id=1789 data-nosnippet>1789</a>            <span class="kw">let </span>snapshots = out_recv.collect::&lt;Vec&lt;HashSet&lt;u32&gt;&gt;&gt;().<span class="kw">await</span>;
+<a href=#1790 id=1790 data-nosnippet>1790</a>
+<a href=#1791 id=1791 data-nosnippet>1791</a>            <span class="comment">// Check each individual snapshot for a non-contiguous subset.
+<a href=#1792 id=1792 data-nosnippet>1792</a>            </span><span class="kw">for </span>set <span class="kw">in </span><span class="kw-2">&amp;</span>snapshots {
+<a href=#1793 id=1793 data-nosnippet>1793</a>                <span class="attr">#[expect(clippy::disallowed_methods, reason = <span class="string">"min / max are deterministic"</span>)]
+<a href=#1794 id=1794 data-nosnippet>1794</a>                </span><span class="kw">if </span>set.len() &gt;= <span class="number">2 </span>&amp;&amp; set.len() &lt; <span class="number">3 </span>{
+<a href=#1795 id=1795 data-nosnippet>1795</a>                    <span class="kw">let </span>min = <span class="kw-2">*</span>set.iter().min().unwrap();
+<a href=#1796 id=1796 data-nosnippet>1796</a>                    <span class="kw">let </span>max = <span class="kw-2">*</span>set.iter().max().unwrap();
+<a href=#1797 id=1797 data-nosnippet>1797</a>                    <span class="kw">if </span>set.len() &lt; (max - min + <span class="number">1</span>) <span class="kw">as </span>usize {
+<a href=#1798 id=1798 data-nosnippet>1798</a>                        saw_non_contiguous = <span class="bool-val">true</span>;
+<a href=#1799 id=1799 data-nosnippet>1799</a>                    }
+<a href=#1800 id=1800 data-nosnippet>1800</a>                }
+<a href=#1801 id=1801 data-nosnippet>1801</a>            }
+<a href=#1802 id=1802 data-nosnippet>1802</a>        });
+<a href=#1803 id=1803 data-nosnippet>1803</a>
+<a href=#1804 id=1804 data-nosnippet>1804</a>        <span class="macro">assert!</span>(
+<a href=#1805 id=1805 data-nosnippet>1805</a>            saw_non_contiguous,
+<a href=#1806 id=1806 data-nosnippet>1806</a>            <span class="string">"Expected at least one execution with a non-contiguous subset of inputs"
+<a href=#1807 id=1807 data-nosnippet>1807</a>        </span>);
+<a href=#1808 id=1808 data-nosnippet>1808</a>    }
+<a href=#1809 id=1809 data-nosnippet>1809</a>
+<a href=#1810 id=1810 data-nosnippet>1810</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#1811 id=1811 data-nosnippet>1811</a>    #[test]
+<a href=#1812 id=1812 data-nosnippet>1812</a>    </span><span class="kw">fn </span>sim_broadcast_closed_o2m() {
+<a href=#1813 id=1813 data-nosnippet>1813</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#1814 id=1814 data-nosnippet>1814</a>        <span class="kw">let </span>cluster = flow.cluster::&lt;()&gt;();
+<a href=#1815 id=1815 data-nosnippet>1815</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#1816 id=1816 data-nosnippet>1816</a>
+<a href=#1817 id=1817 data-nosnippet>1817</a>        <span class="kw">let </span>input = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">123</span>, <span class="number">456</span>]));
+<a href=#1818 id=1818 data-nosnippet>1818</a>
+<a href=#1819 id=1819 data-nosnippet>1819</a>        <span class="kw">let </span>out_recv = input
+<a href=#1820 id=1820 data-nosnippet>1820</a>            .broadcast_closed(<span class="kw-2">&amp;</span>cluster, TCP.fail_stop().bincode())
+<a href=#1821 id=1821 data-nosnippet>1821</a>            .send(<span class="kw-2">&amp;</span>node, TCP.fail_stop().bincode())
+<a href=#1822 id=1822 data-nosnippet>1822</a>            .entries()
+<a href=#1823 id=1823 data-nosnippet>1823</a>            .sim_output();
+<a href=#1824 id=1824 data-nosnippet>1824</a>
+<a href=#1825 id=1825 data-nosnippet>1825</a>        flow.sim()
+<a href=#1826 id=1826 data-nosnippet>1826</a>            .with_cluster_size(<span class="kw-2">&amp;</span>cluster, <span class="number">2</span>)
+<a href=#1827 id=1827 data-nosnippet>1827</a>            .exhaustive(<span class="kw">async </span>|| {
+<a href=#1828 id=1828 data-nosnippet>1828</a>                out_recv
+<a href=#1829 id=1829 data-nosnippet>1829</a>                    .assert_yields_only_unordered(<span class="macro">vec!</span>[
+<a href=#1830 id=1830 data-nosnippet>1830</a>                        (MemberId::from_raw_id(<span class="number">0</span>), <span class="number">123</span>),
+<a href=#1831 id=1831 data-nosnippet>1831</a>                        (MemberId::from_raw_id(<span class="number">0</span>), <span class="number">456</span>),
+<a href=#1832 id=1832 data-nosnippet>1832</a>                        (MemberId::from_raw_id(<span class="number">1</span>), <span class="number">123</span>),
+<a href=#1833 id=1833 data-nosnippet>1833</a>                        (MemberId::from_raw_id(<span class="number">1</span>), <span class="number">456</span>),
+<a href=#1834 id=1834 data-nosnippet>1834</a>                    ])
+<a href=#1835 id=1835 data-nosnippet>1835</a>                    .<span class="kw">await
+<a href=#1836 id=1836 data-nosnippet>1836</a>            </span>});
+<a href=#1837 id=1837 data-nosnippet>1837</a>    }
+<a href=#1838 id=1838 data-nosnippet>1838</a>
+<a href=#1839 id=1839 data-nosnippet>1839</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#1840 id=1840 data-nosnippet>1840</a>    #[test]
+<a href=#1841 id=1841 data-nosnippet>1841</a>    </span><span class="kw">fn </span>sim_broadcast_closed_m2m() {
+<a href=#1842 id=1842 data-nosnippet>1842</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#1843 id=1843 data-nosnippet>1843</a>        <span class="kw">let </span>source = flow.cluster::&lt;()&gt;();
+<a href=#1844 id=1844 data-nosnippet>1844</a>        <span class="kw">let </span>dest: <span class="kw">crate</span>::location::Cluster&lt;<span class="lifetime">'_</span>, ()&gt; = flow.cluster::&lt;()&gt;();
+<a href=#1845 id=1845 data-nosnippet>1845</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#1846 id=1846 data-nosnippet>1846</a>
+<a href=#1847 id=1847 data-nosnippet>1847</a>        <span class="kw">let </span>input = source.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">123</span>]));
+<a href=#1848 id=1848 data-nosnippet>1848</a>
+<a href=#1849 id=1849 data-nosnippet>1849</a>        <span class="comment">// Broadcast from source cluster to dest cluster, then collect at a process.
+<a href=#1850 id=1850 data-nosnippet>1850</a>        </span><span class="kw">let </span>out_recv = input
+<a href=#1851 id=1851 data-nosnippet>1851</a>            .broadcast_closed(<span class="kw-2">&amp;</span>dest, TCP.fail_stop().bincode())
+<a href=#1852 id=1852 data-nosnippet>1852</a>            .entries()
+<a href=#1853 id=1853 data-nosnippet>1853</a>            .send(<span class="kw-2">&amp;</span>node, TCP.fail_stop().bincode())
+<a href=#1854 id=1854 data-nosnippet>1854</a>            .entries()
+<a href=#1855 id=1855 data-nosnippet>1855</a>            .sim_output();
+<a href=#1856 id=1856 data-nosnippet>1856</a>
+<a href=#1857 id=1857 data-nosnippet>1857</a>        flow.sim()
+<a href=#1858 id=1858 data-nosnippet>1858</a>            .with_cluster_size(<span class="kw-2">&amp;</span>source, <span class="number">2</span>)
+<a href=#1859 id=1859 data-nosnippet>1859</a>            .with_cluster_size(<span class="kw-2">&amp;</span>dest, <span class="number">2</span>)
+<a href=#1860 id=1860 data-nosnippet>1860</a>            .exhaustive(<span class="kw">async </span>|| {
+<a href=#1861 id=1861 data-nosnippet>1861</a>                <span class="comment">// Each source member (0, 1) broadcasts 123 to each dest member (0, 1).
+<a href=#1862 id=1862 data-nosnippet>1862</a>                // The dest members then send to the process keyed by dest member id.
+<a href=#1863 id=1863 data-nosnippet>1863</a>                // Each dest member receives (source_0, 123) and (source_1, 123).
+<a href=#1864 id=1864 data-nosnippet>1864</a>                </span>out_recv
+<a href=#1865 id=1865 data-nosnippet>1865</a>                    .assert_yields_only_unordered(<span class="macro">vec!</span>[
+<a href=#1866 id=1866 data-nosnippet>1866</a>                        (MemberId::from_raw_id(<span class="number">0</span>), (MemberId::from_raw_id(<span class="number">0</span>), <span class="number">123</span>)),
+<a href=#1867 id=1867 data-nosnippet>1867</a>                        (MemberId::from_raw_id(<span class="number">0</span>), (MemberId::from_raw_id(<span class="number">1</span>), <span class="number">123</span>)),
+<a href=#1868 id=1868 data-nosnippet>1868</a>                        (MemberId::from_raw_id(<span class="number">1</span>), (MemberId::from_raw_id(<span class="number">0</span>), <span class="number">123</span>)),
+<a href=#1869 id=1869 data-nosnippet>1869</a>                        (MemberId::from_raw_id(<span class="number">1</span>), (MemberId::from_raw_id(<span class="number">1</span>), <span class="number">123</span>)),
+<a href=#1870 id=1870 data-nosnippet>1870</a>                    ])
+<a href=#1871 id=1871 data-nosnippet>1871</a>                    .<span class="kw">await
+<a href=#1872 id=1872 data-nosnippet>1872</a>            </span>});
+<a href=#1873 id=1873 data-nosnippet>1873</a>    }
+<a href=#1874 id=1874 data-nosnippet>1874</a>}
 </code></pre></div></section></main></body></html>
