@@ -1754,6 +1754,61 @@ mod tests {
 
     #[cfg(feature = "sim")]
     #[test]
+    fn sim_udp_lossy_delayed_forever_o2o() {
+        use std::collections::HashSet;
+
+        use crate::networking::UDP;
+        use crate::properties::manual_proof;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
+
+        let received = node
+            .source_iter(q!(0..3_u32))
+            .send(&node2, UDP.lossy_delayed_forever().bincode())
+            .fold(
+                q!(|| std::collections::HashSet::<u32>::new()),
+                q!(
+                    |set, v| {
+                        set.insert(v);
+                    },
+                    commutative = manual_proof!(/** set insert is commutative */)
+                ),
+            );
+
+        let out_recv = sliced! {
+            let snapshot = use(received, nondet!(/** test */));
+            snapshot.into_stream()
+        }
+        .sim_output();
+
+        let mut saw_non_contiguous = false;
+
+        flow.sim().test_safety_only().exhaustive(async || {
+            let snapshots = out_recv.collect::<Vec<HashSet<u32>>>().await;
+
+            // Check each individual snapshot for a non-contiguous subset.
+            for set in &snapshots {
+                #[expect(clippy::disallowed_methods, reason = "min / max are deterministic")]
+                if set.len() >= 2 && set.len() < 3 {
+                    let min = *set.iter().min().unwrap();
+                    let max = *set.iter().max().unwrap();
+                    if set.len() < (max - min + 1) as usize {
+                        saw_non_contiguous = true;
+                    }
+                }
+            }
+        });
+
+        assert!(
+            saw_non_contiguous,
+            "Expected at least one execution with a non-contiguous subset of inputs"
+        );
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
     fn sim_broadcast_closed_o2m() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
