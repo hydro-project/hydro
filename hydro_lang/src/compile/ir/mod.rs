@@ -1631,8 +1631,6 @@ impl HydroRoot {
                     input_ident
                 };
 
-                let stmt_id = next_stmt_id.get_and_increment();
-
                 // Emit each captured handoff reference (deduplicated via `built_tees` in the
                 // `HydroNode::Reference` arm), so that references captured *only* by this
                 // `for_each` closure are still materialized. This mirrors how node-level
@@ -1653,6 +1651,12 @@ impl HydroRoot {
                         fold_hooked_idents,
                     ));
                 }
+
+                // Mint the root's statement ID only after emitting the captured refs, so that
+                // statement IDs follow emission order and (in the Callback path) the callback
+                // observes this root's ID as the most recently allocated one, consistent with
+                // the other `HydroRoot` variants.
+                let stmt_id = next_stmt_id.get_and_increment();
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {

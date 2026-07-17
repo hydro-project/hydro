@@ -554,23 +554,26 @@ mod tests {
     #[cfg(feature = "deploy")]
     #[test]
     fn singleton_by_ref_for_each_sole_consumer_emits() {
+        use crate::live_collections::sliced::sliced;
         use crate::nondet::nondet;
 
         let mut flow = FlowBuilder::new();
         let node = flow.process::<P1>();
-        let tick = node.tick();
 
-        let my_count = node
-            .source_iter(q!(0..5i32))
-            .batch(&tick, nondet!(/** test */))
-            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
-        let count_ref = my_count.by_ref();
+        let items = node.source_iter(q!(1..=3i32));
 
-        // The for_each closure is the ONLY consumer of `my_count` — no other operator
-        // emits the reference node before this root is processed.
-        node.source_iter(q!(1..=3i32))
-            .batch(&tick, nondet!(/** test */))
-            .for_each(q!(|x| println!("{}", x + *count_ref)));
+        sliced! {
+            let items = use(items, nondet!(/** test */));
+            let my_count = items
+                .location()
+                .source_iter(q!(0..5i32))
+                .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+            let count_ref = my_count.by_ref();
+
+            // The for_each closure is the ONLY consumer of `my_count` — no other operator
+            // emits the reference node before this root is processed.
+            items.for_each(q!(|x| println!("{}", x + *count_ref)));
+        };
 
         let _ = flow
             .finalize()
@@ -584,24 +587,27 @@ mod tests {
     #[cfg(feature = "deploy")]
     #[test]
     fn singleton_by_mut_for_each_sole_consumer_emits() {
+        use crate::live_collections::sliced::sliced;
         use crate::nondet::nondet;
 
         let mut flow = FlowBuilder::new();
         let node = flow.process::<P1>();
-        let tick = node.tick();
 
-        let my_count = node
-            .source_iter(q!(0..5i32))
-            .batch(&tick, nondet!(/** test */))
-            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
-        let count_mut = my_count.by_mut();
+        let items = node.source_iter(q!(1..=3i32));
 
-        // The for_each closure is the ONLY consumer of `my_count`.
-        node.source_iter(q!(1..=3i32))
-            .batch(&tick, nondet!(/** test */))
-            .for_each(q!(|x| {
+        sliced! {
+            let items = use(items, nondet!(/** test */));
+            let my_count = items
+                .location()
+                .source_iter(q!(0..5i32))
+                .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+            let count_mut = my_count.by_mut();
+
+            // The for_each closure is the ONLY consumer of `my_count`.
+            items.for_each(q!(|x| {
                 *count_mut += x;
             }));
+        };
 
         let _ = flow
             .finalize()
