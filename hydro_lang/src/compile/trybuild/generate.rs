@@ -393,6 +393,23 @@ pub struct ExampleBuildConfig<'a> {
     pub allow_fuzz: bool,
 }
 
+/// Returns the toolchain's target libdir (where the shared `libstd` lives), memoized.
+#[cfg(any(feature = "sim", feature = "maelstrom"))]
+fn rustc_target_libdir() -> Option<String> {
+    static LIBDIR: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    LIBDIR
+        .get_or_init(|| {
+            let rustc = std::env::var("RUSTC").unwrap_or_else(|_| "rustc".to_owned());
+            std::process::Command::new(rustc)
+                .args(["--print", "target-libdir"])
+                .output()
+                .ok()
+                .filter(|out| out.status.success())
+                .map(|out| String::from_utf8(out.stdout).unwrap().trim().to_owned())
+        })
+        .clone()
+}
+
 /// Compiles a generated trybuild example against the prebuilt dylib crate,
 /// using the shared parallel-compilation machinery (per-job target dirs with
 /// symlinked shared artifacts, plus a prebuild of the dylib dependencies).
@@ -427,6 +444,8 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
     };
 
     let (final_target_dir, _prebuild_guard, _cargo_lock) = if !has_custom_rustflags {
+        let prebuild_span =
+            tracing::debug_span!(target: "hydro_build", "prebuild", bin_name = %bin_name).entered();
         let shared_debug = trybuild.target_dir.join("debug");
         let jobs_dir = trybuild.target_dir.join("jobs");
         let per_job = hydro_concurrent_cargo::setup_job_dir(&jobs_dir, &bin_name, &shared_debug);
@@ -452,47 +471,41 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
             |prebuild_target| {
                 let features_str = features_for_closure.join(",");
 
-                let dylib_crate = path!(project_dir / "dylib");
-                let mut dep_cmd = Command::new("cargo");
-                dep_cmd.current_dir(&dylib_crate);
-                dep_cmd.args(["build", "--locked"]);
-                dep_cmd.args(["--target-dir", prebuild_target.to_str().unwrap()]);
-                dep_cmd.arg("--no-default-features");
-                dep_cmd.args(["--features", &features_str]);
-                dep_cmd.args(["--config", "build.incremental = false"]);
-                dep_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
-                eprintln!("[hydro-build] starting prebuild child cargo");
-                let status = dep_cmd.stdin(Stdio::null()).status().unwrap();
-                eprintln!(
-                    "[hydro-build] prebuild child cargo finished, success={}",
-                    status.success()
-                );
+                // Prebuild the lib that final builds will link against, which transitively
+                // builds the trybuild dylib *as a dependency*. This matters: cargo passes
+                // `-C prefer-dynamic` to dylib crates when they are built as dependencies
+                // (linking libstd dynamically), but *not* when they are the primary build
+                // target — and the two variants share a cargo fingerprint, so whichever is
+                // built first wins. Building the dylib as a primary target would poison the
+                // cache with a statically-linked-std variant that later fails to link into
+                // examples ("cannot satisfy dependencies so `std` only shows up once").
+                //
+                // In fuzz mode, examples are compiled from the base trybuild crate directly
+                // (no dylib-examples), so prebuild the base crate's lib instead.
+                let prebuild_crate = if is_fuzz_for_closure {
+                    project_dir.clone()
+                } else {
+                    path!(project_dir / "dylib-examples")
+                };
+                let mut lib_cmd = Command::new("cargo");
+                lib_cmd.current_dir(&prebuild_crate);
+                lib_cmd.args(["build", "--locked", "--lib"]);
+                lib_cmd.args(["--target-dir", prebuild_target.to_str().unwrap()]);
+                lib_cmd.arg("--no-default-features");
+                lib_cmd.args(["--features", &features_str]);
+                lib_cmd.args(["--config", "build.incremental = false"]);
+                lib_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
+                let status = lib_cmd.stdin(Stdio::null()).status().unwrap();
                 if !status.success() {
                     panic!("dep prebuild failed");
-                }
-
-                // Also prebuild the dylib-examples lib so concurrent final builds
-                // don't race on compiling it. Skip in fuzz mode since fuzzing
-                // compiles from the base trybuild crate directly (no dylib-examples).
-                if !is_fuzz_for_closure {
-                    eprintln!("[hydro-build] starting prebuild dylib-examples lib");
-                    let dylib_examples_crate = path!(project_dir / "dylib-examples");
-                    let mut lib_cmd = Command::new("cargo");
-                    lib_cmd.current_dir(&dylib_examples_crate);
-                    lib_cmd.args(["build", "--locked", "--lib"]);
-                    lib_cmd.args(["--target-dir", prebuild_target.to_str().unwrap()]);
-                    lib_cmd.arg("--no-default-features");
-                    lib_cmd.args(["--features", &features_str]);
-                    lib_cmd.args(["--config", "build.incremental = false"]);
-                    lib_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
-                    let lib_status = lib_cmd.stdin(Stdio::null()).status().unwrap();
-                    if !lib_status.success() {
-                        panic!("dylib-examples lib prebuild failed");
-                    }
                 }
             },
         );
 
+        // Close the prebuild span before returning the guards: the guards are held for the
+        // entire final build, but the prebuild phase (freshness check + possible dep build)
+        // ends here.
+        drop(prebuild_span);
         (per_job, Some(guard), Some(cargo_lock))
     } else {
         (trybuild.target_dir.clone(), None, None)
@@ -500,15 +513,24 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
 
     // Populate per-job build/ dir right before final build. Hold guard for entire build.
     let _job_build_guard = if !has_custom_rustflags {
+        let populate_span =
+            tracing::debug_span!(target: "hydro_build", "populate_job_dir", bin_name = %bin_name)
+                .entered();
         let shared_debug = trybuild.target_dir.join("debug");
-        Some(hydro_concurrent_cargo::populate_job_build_dir(
+        let guard = hydro_concurrent_cargo::populate_job_build_dir(
             &final_target_dir.join("debug"),
             &shared_debug,
-        ))
+        );
+        // Close the populate span here: the returned guard is held until the final build
+        // finishes, but the population work itself ends here.
+        drop(populate_span);
+        Some(guard)
     } else {
         None
     };
 
+    let final_build_span =
+        tracing::debug_span!(target: "hydro_build", "final_build", bin_name = %bin_name).entered();
     let mut command = Command::new("cargo");
     command.current_dir(&crate_to_compile);
     command.args([
@@ -551,19 +573,35 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
 
     command.arg("--");
 
-    if cfg!(target_os = "linux") {
+    if cfg!(any(target_os = "linux", target_os = "macos")) {
         let debug_path = if let Ok(target) = std::env::var("CARGO_BUILD_TARGET") {
             path!(final_target_dir / target / "debug")
         } else {
             path!(final_target_dir / "debug")
         };
 
-        command.args([&format!(
-            "-Clink-arg=-Wl,-rpath,{}",
-            debug_path.to_str().unwrap()
-        )]);
+        // The built example links the trybuild dylib dynamically. Bake rpath entries for
+        // where cargo places it (debug/ and debug/deps/) and for the toolchain's shared
+        // libstd, so the artifact can be loaded/run without LD_LIBRARY_PATH.
+        let mut rpaths = vec![debug_path.clone(), path!(debug_path / "deps")];
+        if let Some(libdir) = rustc_target_libdir() {
+            rpaths.push(PathBuf::from(libdir));
+        }
+        for rpath in rpaths {
+            if cfg!(target_os = "macos") {
+                // On macOS rustc may invoke the linker directly (`rust-lld -flavor darwin`),
+                // which rejects `-Wl,`-wrapped arguments. Use raw ld64 syntax (`-rpath <path>`
+                // as two arguments), which the clang driver also forwards to the linker.
+                command.args([
+                    "-Clink-arg=-rpath".to_owned(),
+                    format!("-Clink-arg={}", rpath.to_str().unwrap()),
+                ]);
+            } else {
+                command.args([format!("-Clink-arg=-Wl,-rpath,{}", rpath.to_str().unwrap())]);
+            }
+        }
 
-        if cfg!(target_env = "gnu") {
+        if cfg!(all(target_os = "linux", target_env = "gnu")) {
             command.arg(
                 // https://github.com/rust-lang/rust/issues/91979
                 "-Clink-args=-Wl,-z,nodelete",
@@ -586,6 +624,13 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
             }
         }
     }
+
+    tracing::debug!(
+        target: "hydro_build",
+        "final build command (cwd={}): {:?}",
+        crate_to_compile.display(),
+        command
+    );
 
     let mut spawned = command
         .stdout(Stdio::piped())
@@ -647,6 +692,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
 
     spawned.wait().unwrap();
     let stderr_output = stderr_thread.join().unwrap();
+    drop(final_build_span);
 
     // Check for unexpected recompilations — only dylib-examples should be compiled.
     // (Only relevant when prebuild is active, i.e. no custom RUSTFLAGS.)
@@ -832,11 +878,21 @@ pub fn create_trybuild()
             proc_macro2::Span::call_site(),
         );
         write_atomic(
-            prettyplease::unparse(&syn::parse_quote! {
-                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case, unexpected_cfgs, unfulfilled_lint_expectations)]
-                pub use #trybuild_crate_name_ident::*;
-            })
-            .as_bytes(),
+            // The leading comment busts cargo's fingerprint for caches where the dylib was
+            // built as a *primary* target (statically linking libstd); it must be built as a
+            // dependency (with `-C prefer-dynamic`) for examples to link against it. The
+            // linkage variant is not part of cargo's fingerprint, so a content change is
+            // needed to force old caches to rebuild.
+            [
+                "// v2: dylib must be built as a dependency (prefer-dynamic).\n".as_bytes(),
+                prettyplease::unparse(&syn::parse_quote! {
+                    #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case, unexpected_cfgs, unfulfilled_lint_expectations)]
+                    pub use #trybuild_crate_name_ident::*;
+                })
+                .as_bytes(),
+            ]
+            .concat()
+            .as_slice(),
             &path!(dylib_dir / "src" / "lib.rs"),
         )?;
 
@@ -888,23 +944,32 @@ crate-type = ["{}"]
             &path!(dylib_examples_dir / "src" / "lib.rs"),
         )?;
 
-        // Build feature forwarding for dylib-examples - forward to both base and dylib crates
+        // Build feature forwarding for dylib-examples - forward through the (renamed) dylib crate
         let features_section = feature_names
             .iter()
-            .map(|f| format!("{f} = [\"{project_name}/{f}\", \"{project_name}-dylib/{f}\"]"))
+            .map(|f| format!("{f} = [\"{project_name}/{f}\"]"))
             .collect::<Vec<_>>()
             .join("\n");
 
-        // Dylib-examples crate Cargo.toml - has base crate and dylib as dev-dependencies
+        // Dylib-examples crate Cargo.toml - depends *only* on the dylib crate, renamed to the
+        // base crate's package name so that generated examples referencing
+        // `{crate}_hydro_trybuild` resolve to the dylib. This is what makes dynamic linking
+        // actually kick in: if the base crate were also a direct dependency, rustc would
+        // statically link its rlib (and the entire dependency graph) into every example,
+        // making the per-example "final compile" link take several seconds. With only the
+        // dylib in scope, examples link against the prebuilt shared library instead.
+        //
+        // The dylib is a regular dependency (not a dev-dependency) so that prebuilding this
+        // crate's (empty) lib builds the dylib as a dependency, which is required for cargo
+        // to pass `-C prefer-dynamic` (see the prebuild in `compile_trybuild_example`).
         let dylib_examples_manifest = format!(
             r#"[package]
 name = "{project_name}-dylib-examples"
 version = "0.0.0"
 {}
 
-[dev-dependencies]
-{project_name} = {{ path = "..", default-features = false }}
-{project_name}-dylib = {{ path = "../dylib", default-features = false }}
+[dependencies]
+{project_name} = {{ package = "{project_name}-dylib", path = "../dylib", default-features = false }}
 
 [features]
 {features_section}
@@ -951,11 +1016,18 @@ members = ["dylib", "dylib-examples"]
             &path!(project.dir / "Cargo.toml"),
         )?;
 
-        // Compute hash for cache invalidation (dylib and dylib-examples are functions of workspace_manifest)
-        let manifest_hash = format!("{:X}", Sha256::digest(&workspace_manifest))
-            .chars()
-            .take(8)
-            .collect::<String>();
+        // Compute hash for cache invalidation, covering all generated manifests (the dylib and
+        // dylib-examples manifests affect Cargo.lock, so they must participate in the hash)
+        let manifest_hash = {
+            let mut hasher = Sha256::new();
+            hasher.update(&workspace_manifest);
+            hasher.update(&dylib_manifest);
+            hasher.update(&dylib_examples_manifest);
+            format!("{:X}", hasher.finalize())
+                .chars()
+                .take(8)
+                .collect::<String>()
+        };
 
         let workspace_cargo_lock = path!(project.workspace / "Cargo.lock");
         let workspace_cargo_lock_contents_and_hash = if workspace_cargo_lock.exists() {
