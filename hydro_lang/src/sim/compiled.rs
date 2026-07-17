@@ -346,6 +346,8 @@ impl CompiledSim {
         let mut count = 0;
         let count_mut = &mut count;
 
+        let _span = tracing::debug_span!(target: "hydro_build", "sim_exhaustive").entered();
+
         self.with_instantiator(
             |instantiator| {
                 bolero::test(bolero::TargetLocation {

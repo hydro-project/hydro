@@ -127,48 +127,15 @@ pub fn create_graph_trybuild(
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
-    let generated_code =
-        compile_graph_trybuild(graph, extra_stmts, sidecars, &crate_name, deploy_mode);
-
-    let inlined_staged = if is_test {
-        let raw_toml_manifest = toml::from_str::<toml::Value>(
-            &fs::read_to_string(path!(source_dir / "Cargo.toml")).unwrap(),
-        )
-        .unwrap();
-
-        let maybe_custom_lib_path = raw_toml_manifest
-            .get("lib")
-            .and_then(|lib| lib.get("path"))
-            .and_then(|path| path.as_str());
-
-        let mut gen_staged = stageleft_tool::gen_staged_trybuild(
-            &maybe_custom_lib_path
-                .map(|s| path!(source_dir / s))
-                .unwrap_or_else(|| path!(source_dir / "src" / "lib.rs")),
-            &path!(source_dir / "Cargo.toml"),
-            &crate_name,
-            Some("hydro___test".to_owned()),
-        );
-
-        gen_staged.attrs.insert(
-            0,
-            syn::parse_quote! {
-                #![allow(
-                    unused,
-                    ambiguous_glob_reexports,
-                    clippy::suspicious_else_formatting,
-                    unexpected_cfgs,
-                    reason = "generated code"
-                )]
-            },
-        );
-
-        Some(prettyplease::unparse(&gen_staged))
-    } else {
-        None
+    let generated_code = {
+        let _span = tracing::debug_span!(target: "hydro_build", "graph_codegen").entered();
+        compile_graph_trybuild(graph, extra_stmts, sidecars, &crate_name, deploy_mode)
     };
 
-    let source = prettyplease::unparse(&generated_code);
+    let source = {
+        let _span = tracing::debug_span!(target: "hydro_build", "unparse_source").entered();
+        prettyplease::unparse(&generated_code)
+    };
 
     let hash = format!("{:X}", Sha256::digest(&source))
         .chars()
@@ -195,16 +162,14 @@ pub fn create_graph_trybuild(
 
     let out_path = path!(examples_dir / format!("{bin_name}.rs"));
     {
+        let _span =
+            tracing::debug_span!(target: "hydro_build", "write_generated_sources").entered();
         let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
         write_atomic(source.as_ref(), &out_path).unwrap();
     }
 
-    if let Some(inlined_staged) = inlined_staged {
-        let staged_path = path!(project_dir / "src" / "__staged.rs");
-        {
-            let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
-            write_atomic(inlined_staged.as_bytes(), &staged_path).unwrap();
-        }
+    if is_test {
+        write_staged_source_cached(source_dir.as_ref(), &crate_name, &project_dir);
     }
 
     if is_test {
@@ -715,13 +680,117 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
     Ok(out_file)
 }
 
+/// Generates the inlined `__staged.rs` source for the source crate and writes it into the
+/// trybuild project, caching the (expensive) generation across test processes.
+///
+/// The staged source is a pure function of the source crate's files, and cargo rebuilds the
+/// test executable whenever those change, so the identity (path + mtime) of
+/// [`std::env::current_exe`] is a sound freshness proxy. All tests in a run share the same
+/// executable, so only the first test per test binary pays the ~1s `syn` parse +
+/// `prettyplease` unparse; the rest hit the cache. The stamp holds a single entry — the last
+/// executable to write `__staged.rs` — so a different test binary of the same crate
+/// regenerates on its first test (a no-op rewrite when sources are unchanged). Keeping old
+/// entries around would risk a stale match (e.g. an executable restored with an old mtime
+/// after another binary regenerated `__staged.rs` from different sources).
+pub(crate) fn write_staged_source_cached(source_dir: &Path, crate_name: &str, project_dir: &Path) {
+    let _span = tracing::debug_span!(target: "hydro_build", "gen_staged").entered();
+
+    let staged_path = path!(project_dir / "src" / "__staged.rs");
+    let stamp_path = path!(project_dir / ".hydro-staged-stamp");
+
+    let exe_stamp = std::env::current_exe().ok().and_then(|exe| {
+        let mtime = fs::metadata(&exe)
+            .ok()?
+            .modified()
+            .ok()?
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .ok()?
+            .as_nanos();
+        Some(format!("{}\t{}", exe.display(), mtime))
+    });
+
+    let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
+
+    fs::create_dir_all(path!(project_dir / "src")).unwrap();
+
+    // Hold an exclusive lock on the stamp file for the entire check + generate: when many
+    // test processes start concurrently with a cold cache, the first one generates while the
+    // others block here and then hit the cache, instead of all doing the expensive work.
+    let mut stamp_file = File::options()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&stamp_path)
+        .unwrap();
+    stamp_file.lock().unwrap();
+
+    let mut existing_stamp = String::new();
+    if stamp_file.read_to_string(&mut existing_stamp).is_err() {
+        existing_stamp.clear();
+    }
+
+    if let Some(stamp) = &exe_stamp
+        && existing_stamp == *stamp
+        && staged_path.exists()
+    {
+        return;
+    }
+
+    let raw_toml_manifest = toml::from_str::<toml::Value>(
+        &fs::read_to_string(path!(source_dir / "Cargo.toml")).unwrap(),
+    )
+    .unwrap();
+
+    let maybe_custom_lib_path = raw_toml_manifest
+        .get("lib")
+        .and_then(|lib| lib.get("path"))
+        .and_then(|path| path.as_str());
+
+    let mut gen_staged = stageleft_tool::gen_staged_trybuild(
+        &maybe_custom_lib_path
+            .map(|s| path!(source_dir / s))
+            .unwrap_or_else(|| path!(source_dir / "src" / "lib.rs")),
+        &path!(source_dir / "Cargo.toml"),
+        crate_name,
+        Some("hydro___test".to_owned()),
+    );
+
+    gen_staged.attrs.insert(
+        0,
+        syn::parse_quote! {
+            #![allow(
+                unused,
+                ambiguous_glob_reexports,
+                clippy::suspicious_else_formatting,
+                unexpected_cfgs,
+                reason = "generated code"
+            )]
+        },
+    );
+
+    let inlined_staged = prettyplease::unparse(&gen_staged);
+
+    write_atomic(inlined_staged.as_bytes(), &staged_path).unwrap();
+
+    if let Some(stamp) = exe_stamp {
+        stamp_file.set_len(0).unwrap();
+        stamp_file.seek(SeekFrom::Start(0)).unwrap();
+        stamp_file.write_all(stamp.as_bytes()).unwrap();
+    }
+}
+
 pub fn create_trybuild()
 -> Result<(PathBuf, PathBuf, Option<Vec<String>>), trybuild_internals_api::error::Error> {
+    let _span = tracing::debug_span!(target: "hydro_build", "create_trybuild").entered();
     let Metadata {
         target_directory: target_dir,
         workspace_root: workspace,
         packages,
-    } = cargo::metadata()?;
+    } = {
+        let _span = tracing::debug_span!(target: "hydro_build", "cargo_metadata").entered();
+        cargo::metadata()?
+    };
 
     let source_dir = cargo::manifest_dir()?;
     let mut source_manifest = dependencies::get_manifest(&source_dir)?;
@@ -833,6 +902,7 @@ pub fn create_trybuild()
     };
 
     {
+        let _span = tracing::debug_span!(target: "hydro_build", "write_project_files").entered();
         let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
 
         let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
@@ -1058,6 +1128,7 @@ members = ["dylib", "dylib-examples"]
         )
         .is_ok_and(|b| b)
         {
+            let _span = tracing::debug_span!(target: "hydro_build", "update_lockfile").entered();
             // this is expensive, so we only do it if the manifest changed
             if let Some((cargo_lock_contents, _)) = workspace_cargo_lock_contents_and_hash {
                 // only overwrite when the hash changed, because writing Cargo.lock must be

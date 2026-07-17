@@ -132,6 +132,9 @@ impl<'a> SimFlow<'a> {
     pub fn compiled(mut self) -> CompiledSim {
         use dfir_lang::graph::{eliminate_extra_unions_tees, partition_graph};
 
+        let compiled_span = tracing::debug_span!(target: "hydro_build", "sim_compiled").entered();
+        let flow_build_span = tracing::debug_span!(target: "hydro_build", "flow_build").entered();
+
         let is_multi_version = self.location_version.values().any(|&v| v > 0);
 
         let mut sim_emit = SimBuilder {
@@ -226,6 +229,7 @@ impl<'a> SimFlow<'a> {
         }
 
         let (cluster_max_sizes, cluster_member_ids) = self.cluster_sizing();
+        drop(flow_build_span);
 
         let (bin, trybuild) = create_sim_graph_trybuild(
             process_graphs,
@@ -239,7 +243,11 @@ impl<'a> SimFlow<'a> {
         );
 
         let out = compile_sim(bin, trybuild).unwrap();
-        let lib = unsafe { Library::new(&out).unwrap() };
+        let lib = {
+            let _span = tracing::debug_span!(target: "hydro_build", "load_dylib").entered();
+            unsafe { Library::new(&out).unwrap() }
+        };
+        drop(compiled_span);
 
         CompiledSim {
             _path: out,
