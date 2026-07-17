@@ -1633,21 +1633,32 @@ impl HydroRoot {
 
                 let stmt_id = next_stmt_id.get_and_increment();
 
+                // Emit each captured handoff reference (deduplicated via `built_tees` in the
+                // `HydroNode::Reference` arm), so that references captured *only* by this
+                // `for_each` closure are still materialized. This mirrors how node-level
+                // operators (e.g. `map`) emit their closures' captured references as part of
+                // their bottom-up traversal. This is done in both the Builders and Callback
+                // paths so that statement IDs stay consistent between them.
+                let mut ref_idents = Vec::new();
+                for (ref_node, _is_mut) in f.singleton_refs.iter_mut() {
+                    assert!(
+                        matches!(ref_node, HydroNode::Reference { .. }),
+                        "singleton_refs should only contain HydroNode::Reference"
+                    );
+                    ref_idents.push(ref_node.emit_core(
+                        builders_or_callback,
+                        seen_tees,
+                        built_tees,
+                        next_stmt_id,
+                        fold_hooked_idents,
+                    ));
+                }
+
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let mut ident_stack: Vec<syn::Ident> = Vec::new();
-
-                        // Look up each captured ref's ident from built_tees
-                        for (ref_node, _is_mut) in f.singleton_refs.iter() {
-                            let HydroNode::Reference { inner, .. } = ref_node else {
-                                panic!("singleton_refs should only contain HydroNode::Reference");
-                            };
-                            let ptr = inner.0.as_ref() as *const RefCell<HydroNode>;
-                            let idents = built_tees.get(&ptr).expect(
-                                "ForEach singleton ref not found in built_tees — ref node was not emitted",
-                            );
-                            ident_stack.push(idents[0].clone());
-                        }
+                        // The refs' idents are in `singleton_refs` order, matching what
+                        // `emit_tokens` expects on the ident stack.
+                        let mut ident_stack: Vec<syn::Ident> = ref_idents;
 
                         let f_tokens = f.emit_tokens(&mut ident_stack);
 
