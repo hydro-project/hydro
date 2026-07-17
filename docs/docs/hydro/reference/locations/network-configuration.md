@@ -34,7 +34,35 @@ Serialization configures how data is encoded and decoded when sent over the netw
 
 ### Bincode
 
-The `.bincode()` API configures the channel to use the [`bincode`](https://docs.rs/bincode) crate for serialization and deserialization. The types being sent must implement `Serialize` and `DeserializeOwned`. This is currently the only supported serialization backend.
+The `.bincode()` API configures the channel to use the [`bincode`](https://docs.rs/bincode) crate for serialization and deserialization. The types being sent must implement `Serialize` and `DeserializeOwned`. Bincode is currently the only built-in wire format — the one where Hydro performs the encoding and decoding for you — and it works on all deployment backends.
+
+### Embedded
+
+The `.embedded()` API configures the channel to leave serialization to code **outside of Hydro**. Instead of Hydro serializing elements to bytes, the raw element type `T` is exposed at the network boundary: the generated sender side hands you `T` values directly, and the receiver side accepts a stream of `T` values. You are then responsible for encoding, transporting, and decoding the elements yourself—for example with a custom wire format, a specialized transport like DPDK or shared memory, or an existing messaging layer.
+
+```rust,no_run
+# use hydro_lang::prelude::*;
+let config = TCP.fail_stop().embedded().name("messages");
+```
+
+Embedded serialization works with any transport configuration, including [UDP](#udp):
+
+```rust,no_run
+# use hydro_lang::prelude::*;
+let config = UDP.lossy_delayed_forever().embedded().name("messages");
+```
+
+Note that with embedded serialization, the transport and fault policy describe a **contract** rather than an implementation: since your external code carries the data, *you* must ensure your transport upholds the declared guarantees (e.g. in-order, prefix delivery for `TCP.fail_stop()`; for `UDP` channels, messages may be dropped or reordered, and Hydro's type system will treat the received stream accordingly, as `NoOrder`).
+
+Because there is no transport managed by Hydro, the receiving side gets the raw payload with no transport `Result` to unwrap—your external code decides how to handle serialization and delivery faults before feeding elements into the receiver.
+
+:::caution
+
+Embedded serialization is only supported in [embedded deployments](../deploy/embedded.mdx) (where you wire up network channels manually) and the Hydro simulator (where raw values are carried directly through in-memory channels). Attempting to use `.embedded()` with other deployment backends, such as Hydro Deploy or Maelstrom, will panic at compile time; use `.bincode()` there instead.
+
+:::
+
+See [Embedded Mode: Embedded Serialization](../deploy/embedded.mdx#embedded-serialization) for details on the generated code.
 
 ## TCP
 
