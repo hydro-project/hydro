@@ -2,8 +2,28 @@
 slow-timeout = { terminate-after = 10 } # terminate after 10 intervals of (default: `period = "60s"`).
 default-filter = "not (package(hydro_test) & kind(bench))"
 
+# "Heavy" tests internally invoke `cargo` (trybuild compile-fail tests, the `cargo sim` fuzzer,
+# Maelstrom deployments), which recompiles many dependencies and takes the target directory lock.
+# CI runs these on a separate machine using the `ci-heavy` profile, and excludes them from the main
+# test job using the `ci-main` profile. Both profiles start from the same base filter as
+# `profile.default` above; `ci-heavy` then restricts to the heavy condition while `ci-main`
+# excludes it. To mark a test as heavy, add it to the heavy condition in both filters below and in
+# the `heavy` test group override.
+[profile.ci-heavy]
+default-filter = "not (package(hydro_test) & kind(bench)) & (binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | (package(hydro_test) & test(maelstrom::)))"
+
+[profile.ci-main]
+default-filter = "not (package(hydro_test) & kind(bench)) & not (binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | (package(hydro_test) & test(maelstrom::)))"
+
 [test-groups]
 serial-integration = { max-threads = 1 }
+heavy = { max-threads = 1 }
+
+# Heavy tests run serially: each invokes `cargo` internally, so running them concurrently would
+# just contend on the target directory lock. Keep this filter in sync with the profiles above.
+[[profile.default.overrides]]
+filter = 'binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | (package(hydro_test) & test(maelstrom::))'
+test-group = 'heavy'
 
 # TODO(inline): deadlock_detector disabled (intra-tick cycles)
 # [[profile.default.overrides]]
