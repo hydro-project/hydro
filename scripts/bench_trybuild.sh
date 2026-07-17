@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
 #
-# Benchmark the per-test "final compile" of trybuild-generated binaries.
+# Benchmark the per-test "final compile" of trybuild-generated binaries, and experiment with
+# cargo/rustc flags for it.
 #
 # Hydro tests (sim, maelstrom, localhost deploy) generate a Rust source file per test and
 # compile it as a cargo `--example` against a prebuilt dylib of the trybuild project. With a
 # fully warm cache (e.g. CI with `__CARGO_DEFAULT_LIB_METADATA=1`), the *final compile* of each
-# generated example is the remaining per-test cost (~6s in CI). This script measures exactly
-# that step so we can iterate on flags / linking strategies.
+# generated example is the dominant remaining per-test cost. This script measures exactly that
+# step so we can iterate on flags / linking strategies without rerunning the tests themselves.
+#
+# For a breakdown of *all* per-test phases (staged codegen, cargo metadata, prebuild, final
+# build, sim execution, ...), use scripts/profile_test_phases.sh instead.
 #
 # How it works:
 #   1. "Warm" phase: runs a couple of hydro_lang sim tests via nextest (twice: once to populate
 #      caches / run prebuilds, once to capture logs with everything cached). The build phases in
 #      `hydro_lang::compile::trybuild::generate` are instrumented with `tracing` spans (target
 #      `hydro_build`); this script enables them via RUST_LOG and captures the exact final
-#      `cargo rustc` command and per-phase span timings (`time.busy` on span close).
+#      `cargo rustc` command.
 #   2. "Measure" phase: replays each captured final-compile command directly, N times, touching
 #      the generated example sources before each run to force a recompile (this mimics CI, where
 #      every commit produces fresh generated sources but the dependency cache is warm).
@@ -21,7 +25,6 @@
 # Usage:
 #   ./scripts/bench_trybuild.sh                 # warm (if needed) + measure
 #   ./scripts/bench_trybuild.sh --rewarm        # force re-running the warm phase
-#   ./scripts/bench_trybuild.sh --nextest       # measure end-to-end via nextest instead of replay
 #
 # Env knobs:
 #   ITERS=5                    number of measured iterations per test (default 5)
@@ -57,11 +60,9 @@ BENCH_DIR="$TARGET_DIR/bench-trybuild"
 WARM_LOG="$BENCH_DIR/warm.log"
 mkdir -p "$BENCH_DIR"
 
-MODE="replay"
 REWARM=0
 for arg in "$@"; do
     case "$arg" in
-        --nextest) MODE="nextest" ;;
         --rewarm) REWARM=1 ;;
         *) echo "unknown argument: $arg" >&2; exit 1 ;;
     esac
@@ -126,37 +127,7 @@ if [[ "$REWARM" == 1 || ! -s "$WARM_LOG" ]] || ! grep -q "final build command" "
     warm
 fi
 
-if [[ "$MODE" == "nextest" ]]; then
-    echo "==> measuring end-to-end via nextest ($ITERS iterations)"
-    : > "$BENCH_DIR/nextest-times.txt"
-    for ((i=1; i<=ITERS; i++)); do
-        touch_examples
-        run_tests > "$BENCH_DIR/nextest-run$i.log" || {
-            tail -50 "$BENCH_DIR/nextest-run$i.log"; exit 1
-        }
-        # Span-close lines look like: `... final_build{bin_name=XXXX}: ... time.busy=1.23s time.idle=...`
-        # (strip ANSI styling emitted by the tracing formatter before parsing)
-        strip_ansi < "$BENCH_DIR/nextest-run$i.log" \
-            | grep -o 'final_build{bin_name=[^}]*}.*time\.busy=[^ ]*' \
-            | awk '{
-                bin=$0; sub(/.*bin_name=/, "", bin); sub(/}.*/, "", bin)
-                busy=$0; sub(/.*time\.busy=/, "", busy)
-                print bin, busy
-              }' | tee -a "$BENCH_DIR/nextest-times.txt"
-    done
-    echo "==> final-build stats (all tests pooled, time.busy of the final_build span):"
-    awk '{
-        v=$2; match(v, /^[0-9.]+/); num=substr(v, RSTART, RLENGTH)+0
-        if (v ~ /ns$/) ms=num/1000000
-        else if (v ~ /µs$/ || v ~ /us$/) ms=num/1000
-        else if (v ~ /ms$/) ms=num
-        else ms=num*1000
-        print ms
-    }' "$BENCH_DIR/nextest-times.txt" | stats
-    exit 0
-fi
-
-# --- replay mode ---
+# --- measure: replay the captured final-compile commands ---
 # Extract the captured final-compile commands from the `hydro_build` tracing events. Each
 # event's message looks like:
 #   final build command (cwd=/path/to/dylib-examples): VAR="1" ... "cargo" "rustc" ...

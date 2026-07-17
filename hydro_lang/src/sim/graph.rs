@@ -19,7 +19,7 @@ use crate::compile::deploy_provider::{Deploy, DynSourceSink, Node, RegisterPort}
 use crate::compile::trybuild::generate::LinkingMode;
 use crate::compile::trybuild::generate::{
     CONCURRENT_TEST_LOCK, ExampleBuildConfig, IS_TEST, TrybuildConfig, compile_trybuild_example,
-    create_trybuild, write_atomic,
+    create_trybuild, write_atomic, write_staged_source_cached,
 };
 use crate::deploy::deploy_runtime::cluster_membership_stream;
 use crate::location::dynamic::LocationId;
@@ -463,57 +463,25 @@ pub(super) fn create_sim_graph_trybuild(
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
-    let generated_code = compile_sim_graph_trybuild(
-        process_graphs,
-        cluster_graphs,
-        cluster_max_sizes,
-        cluster_member_ids,
-        process_tick_graphs,
-        cluster_tick_graphs,
-        extra_stmts_global,
-        extra_stmts_cluster,
-        &crate_name,
-    );
-
-    let inlined_staged = if is_test {
-        let raw_toml_manifest = toml::from_str::<toml::Value>(
-            &fs::read_to_string(path!(source_dir / "Cargo.toml")).unwrap(),
-        )
-        .unwrap();
-
-        let maybe_custom_lib_path = raw_toml_manifest
-            .get("lib")
-            .and_then(|lib| lib.get("path"))
-            .and_then(|path| path.as_str());
-
-        let mut gen_staged = stageleft_tool::gen_staged_trybuild(
-            &maybe_custom_lib_path
-                .map(|s| path!(source_dir / s))
-                .unwrap_or_else(|| path!(source_dir / "src" / "lib.rs")),
-            &path!(source_dir / "Cargo.toml"),
+    let generated_code = {
+        let _span = tracing::debug_span!(target: "hydro_build", "sim_codegen").entered();
+        compile_sim_graph_trybuild(
+            process_graphs,
+            cluster_graphs,
+            cluster_max_sizes,
+            cluster_member_ids,
+            process_tick_graphs,
+            cluster_tick_graphs,
+            extra_stmts_global,
+            extra_stmts_cluster,
             &crate_name,
-            Some("hydro___test".to_owned()),
-        );
-
-        gen_staged.attrs.insert(
-            0,
-            syn::parse_quote! {
-                #![allow(
-                    unused,
-                    ambiguous_glob_reexports,
-                    clippy::suspicious_else_formatting,
-                    unexpected_cfgs,
-                    reason = "generated code"
-                )]
-            },
-        );
-
-        Some(prettyplease::unparse(&gen_staged))
-    } else {
-        None
+        )
     };
 
-    let source = prettyplease::unparse(&generated_code);
+    let source = {
+        let _span = tracing::debug_span!(target: "hydro_build", "unparse_source").entered();
+        prettyplease::unparse(&generated_code)
+    };
 
     let hash = format!("{:X}", Sha256::digest(&source))
         .chars()
@@ -540,16 +508,14 @@ pub(super) fn create_sim_graph_trybuild(
 
     let out_path = path!(examples_dir / format!("{bin_name}.rs"));
     {
+        let _span =
+            tracing::debug_span!(target: "hydro_build", "write_generated_sources").entered();
         let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
         write_atomic(source.as_ref(), &out_path).unwrap();
     }
 
-    if let Some(inlined_staged) = inlined_staged {
-        let staged_path = path!(project_dir / "src" / "__staged.rs");
-        {
-            let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
-            write_atomic(inlined_staged.as_bytes(), &staged_path).unwrap();
-        }
+    if is_test {
+        write_staged_source_cached(source_dir.as_ref(), &crate_name, &project_dir);
     }
 
     if is_test {
