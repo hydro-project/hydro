@@ -26,6 +26,7 @@ members = [
     "variadics_macro",
     "variadics",
     "website_playground",
+    "kvs",
 ]
 exclude = ["template"]
 

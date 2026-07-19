@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+// The client-facing gRPC interface to the quorum key-value store. A client
+// speaks this protocol to a router's sidecar (see `kvs::sidecar`); the sidecar
+// translates each call into the internal dataflow request/response types,
+// generating the internal `req_id` used to correlate a reply back to its call.
+// The `req_id` is therefore never part of this wire format.
+package kvs;
+
+// The key-value store: two unary RPCs.
+service KvStore {
+  // Store `value` under `key`. The store is a grow-only set per key, so
+  // repeated puts of different values under the same key accumulate.
+  rpc Put(PutRequest) returns (PutReply);
+  // Look up every value ever stored under `key` (the union across replicas).
+  rpc Get(GetRequest) returns (GetReply);
+}
+
+message PutRequest {
+  string key = 1;
+  string value = 2;
+}
+
+// A put is acknowledged once a quorum of replicas has applied it to in-memory
+// state. The reply carries no payload.
+message PutReply {}
+
+message GetRequest {
+  string key = 1;
+}
+
+message GetReply {
+  // The set of values stored under the key (unordered, no duplicates). Empty if
+  // the key was never written.
+  repeated string values = 1;
+}
