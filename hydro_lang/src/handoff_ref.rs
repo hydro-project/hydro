@@ -543,6 +543,78 @@ mod tests {
         let _built = flow.finalize();
     }
 
+    /// Regression test: a handoff reference whose *only* consumer is a `for_each` closure
+    /// must still be materialized during DFIR emission.
+    ///
+    /// `HydroRoot::ForEach` used to only *look up* captured refs in `built_tees`, assuming
+    /// some node-level operator had already emitted them, and panicked with "ForEach
+    /// singleton ref not found in built_tees" when the `for_each` closure was the sole
+    /// capturer. This test drives the flow through full DFIR emission (which
+    /// `flow.finalize()` alone does not) to cover that path.
+    #[cfg(feature = "deploy")]
+    #[test]
+    fn singleton_by_ref_for_each_sole_consumer_emits() {
+        use crate::live_collections::sliced::sliced;
+        use crate::nondet::nondet;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let items = node.source_iter(q!(1..=3i32));
+
+        sliced! {
+            let items = use(items, nondet!(/** test */));
+            let my_count = items
+                .location()
+                .source_iter(q!(0..5i32))
+                .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+            let count_ref = my_count.by_ref();
+
+            // The for_each closure is the ONLY consumer of `my_count` — no other operator
+            // emits the reference node before this root is processed.
+            items.for_each(q!(|x| println!("{}", x + *count_ref)));
+        };
+
+        let _ = flow
+            .finalize()
+            .with_default_optimize::<crate::deploy::HydroDeploy>()
+            .preview_compile();
+    }
+
+    /// Regression test: same as [`singleton_by_ref_for_each_sole_consumer_emits`], but for
+    /// a mutable reference (`by_mut`) — the common accumulator pattern
+    /// `stream.for_each(q!(|x| *acc_mut += x))`.
+    #[cfg(feature = "deploy")]
+    #[test]
+    fn singleton_by_mut_for_each_sole_consumer_emits() {
+        use crate::live_collections::sliced::sliced;
+        use crate::nondet::nondet;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let items = node.source_iter(q!(1..=3i32));
+
+        sliced! {
+            let items = use(items, nondet!(/** test */));
+            let my_count = items
+                .location()
+                .source_iter(q!(0..5i32))
+                .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+            let count_mut = my_count.by_mut();
+
+            // The for_each closure is the ONLY consumer of `my_count`.
+            items.for_each(q!(|x| {
+                *count_mut += x;
+            }));
+        };
+
+        let _ = flow
+            .finalize()
+            .with_default_optimize::<crate::deploy::HydroDeploy>()
+            .preview_compile();
+    }
+
     /// Compile-only test: singleton by_ref inside scan closures.
     #[test]
     fn singleton_by_ref_scan() {
