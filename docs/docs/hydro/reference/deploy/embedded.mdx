@@ -249,7 +249,7 @@ let code = flow
 
 ## Networking
 
-When your Hydro program uses `.send()` between locations, the generated functions get extra parameters so you can wire up the transport yourself. Hydro automatically handles serialization — just shuttle the raw bytes between sender and receiver. You must ensure that you are preserving any guarantees of the network protocol specified in the Hydro program. For example, if the channel uses `TCP`, you must ensure that your networking mechanism preserves ordering and exactly-once delivery.
+When your Hydro program uses `.send()` between locations, the generated functions get extra parameters so you can wire up the transport yourself. By default (with `.bincode()` serialization), Hydro automatically handles serialization — just shuttle the raw bytes between sender and receiver. Alternatively, [`.embedded()` serialization](#embedded-serialization) exposes the raw element type instead of bytes, so you can perform serialization yourself. In either case, you must ensure that you are preserving any guarantees of the network protocol specified in the Hydro program. For example, if the channel uses `TCP`, you must ensure that your networking mechanism preserves ordering and exactly-once delivery.
 
 Network channels in embedded mode **must be named**. Use `.name()` on the networking config:
 
@@ -366,4 +366,51 @@ pub mod m2m_receiver {
 ```
 
 Your transport layer must handle both directions: route outgoing `(target_id, bytes)` to the correct destination member, and tag incoming messages with the `source_id` of the sender.
+
+### Embedded Serialization
+
+By default, network channels use `.bincode()` serialization: Hydro serializes each element to `Bytes` before handing it to your transport, and deserializes the `BytesMut` your transport delivers on the other side. If you want to control the wire format yourself — for example to use a zero-copy encoding, integrate with an existing protocol, or hand off to a transport that carries typed messages — configure the channel with [`.embedded()` serialization](../locations/network-configuration.md#embedded) instead:
+
+```rust,ignore
+input.send(receiver, TCP.fail_stop().embedded().name("messages"))
+```
+
+With `.embedded()`, the generated network parameters expose the **raw element type** `T` instead of bytes:
+
+- The sender's `EmbeddedNetworkOut` field becomes `FnMut(T)` (or `FnMut((TaglessMemberId, T))` when tagged with a destination member).
+- The receiver's `EmbeddedNetworkIn` field becomes `Stream<Item = T>` (or `Stream<Item = (TaglessMemberId, T)>` when tagged with a source member).
+
+Note that unlike bincode channels, there is **no transport `Result` wrapper** on the receiving side: since your external code performs serialization and transport, it decides how to handle serialization and delivery faults before feeding elements into the stream.
+
+:::tip
+
+If you want to surface transport or deserialization faults *inside* the dataflow, you can make faults part of the element type itself: declare the channel's element type as `Result<T, E>`, send `Ok(...)` values from the Hydro program, and have your transport inject `Err(...)` elements on the receiving side. The element type is symmetric — the same `Result<T, E>` flows out of the sender and into the receiver — which is also what allows the Hydro simulator to pass elements through its in-memory channels unchanged.
+
+:::
+
+For example, the `echo_sender` / `echo_receiver` pair from the [o2o example above](#process-to-process-o2o) would instead be generated as:
+
+```rust,no_run
+# fn main() {}
+pub mod echo_sender {
+    pub struct EmbeddedNetworkOut<F: FnMut(String)> {
+        pub messages: F,
+    }
+}
+
+pub mod echo_receiver {
+    # use dfir_rs::futures::Stream;
+    pub struct EmbeddedNetworkIn<S: Stream<Item = String> + Unpin> {
+        pub messages: S,
+    }
+}
+```
+
+Embedded serialization can be combined with any transport configuration, including `UDP`. As with all embedded-mode networking, the transport and fault policy declared in the Hydro program describe a contract your wiring must uphold: a `TCP.fail_stop()` embedded channel requires your transport to deliver an in-order prefix of the sent elements, while a `UDP` embedded channel permits drops and reordering (and the received stream is typed as `NoOrder` accordingly).
+
+:::note
+
+`.embedded()` serialization is only supported in embedded mode and the Hydro simulator; other deployment backends (Hydro Deploy, Maelstrom) will panic at compile time since Hydro manages the transport there and must serialize the data itself.
+
+:::
 
