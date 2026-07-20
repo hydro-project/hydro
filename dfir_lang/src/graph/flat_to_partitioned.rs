@@ -119,6 +119,67 @@ fn find_subgraph_unionfind(
         all_preds.entry(dst).unwrap().or_default().push(src);
     }
 
+    // Loop-ingress ordering constraints.
+    //
+    // `make_loops_contiguous` (run later) gathers *all* of a loop's subgraphs to the
+    // flat-order position of the loop's *first* subgraph. That is only sound if every
+    // subgraph feeding into the loop from *outside* is already ordered before the loop's
+    // earliest subgraph. Otherwise an ingress "receiver" inside the loop can be hoisted
+    // ahead of its external "sender", violating topological order (which then produces a
+    // handoff-buffer "use before declaration" compile error downstream).
+    //
+    // To guarantee this, we require: for each forward (non-tick) edge `src -> dst` where
+    // `dst` lies inside a loop that does not contain `src`, `src` must precede *every*
+    // node inside the outermost such loop (i.e. the whole top-level loop block that will
+    // be gathered). If the loop also has a dependency running the other way
+    // (`loop -> external -> loop`), the loop genuinely cannot be made contiguous and this
+    // manifests as a cycle, which is reported like any other intra-tick cycle.
+    {
+        let node_loop_ancestors = |node: GraphNodeId| -> Vec<GraphLoopId> {
+            // Innermost -> outermost.
+            let mut ancestors = Vec::new();
+            let mut current = partitioned_graph.node_loop(node);
+            while let Some(loop_id) = current {
+                ancestors.push(loop_id);
+                current = partitioned_graph.loop_parent(loop_id);
+            }
+            ancestors
+        };
+
+        // Transitive loop membership: loop -> all nodes nested within it (at any depth).
+        let mut loop_members: std::collections::HashMap<GraphLoopId, Vec<GraphNodeId>> =
+            std::collections::HashMap::new();
+        for node_id in partitioned_graph.node_ids() {
+            for loop_id in node_loop_ancestors(node_id) {
+                loop_members.entry(loop_id).or_default().push(node_id);
+            }
+        }
+
+        for (edge_id, (src, dst)) in partitioned_graph.edges() {
+            // Skip cross-tick / back-edges — they are not forward ingress.
+            if tick_edges.contains_key(edge_id) {
+                continue;
+            }
+            let src_ancestors = node_loop_ancestors(src);
+            // Outermost loop ancestor of `dst` that does *not* contain `src`.
+            let Some(&target_loop) = node_loop_ancestors(dst)
+                .iter()
+                .rev()
+                .find(|loop_id| !src_ancestors.contains(loop_id))
+            else {
+                // `dst` is in the same loop context as `src` (or `src` is deeper): not
+                // loop ingress from outside.
+                continue;
+            };
+            // `src` must precede every node inside the gathered loop block.
+            for &member in loop_members.get(&target_loop).into_iter().flatten() {
+                if member != src {
+                    all_preds.entry(member).unwrap().or_default().push(src);
+                }
+            }
+        }
+    }
+
     // Build enemies: all node pairs that must not be in the same subgraph.
     let enemies = edge_barrier_pairs
         .iter()
@@ -277,9 +338,63 @@ fn make_subgraphs(
 
     // Rearrange the flat toposort to make loop subgraphs contiguous.
     let subgraph_toposort = make_loops_contiguous(partitioned_graph, &flat_toposort);
+
+    // Defensive check: the contiguous order must still respect every forward (non-tick)
+    // handoff edge, i.e. each handoff's producer subgraph precedes its consumer subgraph.
+    // A violation here indicates a bug in the ordering/contiguity logic.
+    debug_assert!(
+        subgraph_toposort_respects_handoffs(partitioned_graph, &subgraph_toposort, tick_edges),
+        "subgraph toposort violates a forward handoff dependency (loop-contiguity bug)"
+    );
+
     partitioned_graph.set_subgraph_toposort(subgraph_toposort);
 
     Ok(())
+}
+
+/// Checks that `subgraph_toposort` places each forward (non-tick) handoff's producer
+/// subgraph before its consumer subgraph. Used as a defensive assertion after
+/// [`make_loops_contiguous`].
+fn subgraph_toposort_respects_handoffs(
+    graph: &DfirGraph,
+    subgraph_toposort: &[GraphSubgraphId],
+    tick_edges: &SecondaryMap<GraphEdgeId, DelayType>,
+) -> bool {
+    let position: SparseSecondaryMap<GraphSubgraphId, usize> = subgraph_toposort
+        .iter()
+        .enumerate()
+        .map(|(i, &sg)| (sg, i))
+        .collect();
+
+    for (hoff_id, node) in graph.nodes() {
+        if !matches!(node, GraphNode::Handoff { .. }) {
+            continue;
+        }
+        let Some((succ_edge, consumer)) = graph.node_successors(hoff_id).next() else {
+            continue;
+        };
+        // Skip cross-tick / back-edge handoffs, which may point "backwards".
+        if tick_edges.contains_key(succ_edge) {
+            continue;
+        }
+        let Some((_, producer)) = graph.node_predecessors(hoff_id).next() else {
+            continue;
+        };
+        let (Some(producer_sg), Some(consumer_sg)) =
+            (graph.node_subgraph(producer), graph.node_subgraph(consumer))
+        else {
+            continue;
+        };
+        let (Some(&producer_pos), Some(&consumer_pos)) =
+            (position.get(producer_sg), position.get(consumer_sg))
+        else {
+            continue;
+        };
+        if producer_pos > consumer_pos {
+            return false;
+        }
+    }
+    true
 }
 
 /// Rearranges a flat topological order of subgraphs so that all subgraphs within
@@ -478,6 +593,104 @@ pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
 mod tests {
     use super::*;
     use crate::graph::GraphNode;
+
+    /// Regression test for a loop-contiguity toposort bug.
+    ///
+    /// [`make_loops_contiguous`] gathers every subgraph of a loop at the position of the
+    /// loop's *first* subgraph in the flat order. If an external subgraph that *feeds into*
+    /// the loop (loop ingress) happens to sit — in the flat topological order — after the
+    /// loop's first subgraph but before a later loop subgraph, then gathering the loop
+    /// pulls that later (ingress-receiving) subgraph *ahead* of its producer.
+    ///
+    /// Concretely, the flat order `[S1, loopA, S2, loopB]` (valid, since `S2 -> loopB`)
+    /// would become `[S1, loopA, loopB, S2]`, so the loop-ingress *receiver* `loopB` would
+    /// be emitted before its *sender* `S2`. Downstream this produces a handoff-buffer "use
+    /// before declaration" compile error (and, logically, a drained-but-never-filled
+    /// buffer).
+    ///
+    /// The fix adds loop-ingress ordering constraints so every ingress sender precedes the
+    /// entire loop block, keeping gather-at-first sound.
+    #[test]
+    fn test_make_loops_contiguous_ingress_toposort() {
+        use crate::graph::{FlatGraphBuilder, FlatGraphBuilderOutput};
+
+        let mut builder = FlatGraphBuilder::new();
+        // External source #1 (feeds the loop's first ingress).
+        builder.add_dfir(
+            syn::parse_quote! {
+                inp1 = source_iter([1, 2, 3]);
+            },
+            None,
+            None,
+        );
+        let loop_id = builder.insert_loop(None);
+        // Loop ingress A — independent of `inp2`, so the flat toposort can place it before
+        // `inp2`.
+        builder.add_dfir(
+            syn::parse_quote! {
+                inp1 -> batch() -> for_each(std::mem::drop);
+            },
+            Some(loop_id),
+            None,
+        );
+        // External source #2 — the loop-ingress "sender", defined after loop ingress A so
+        // the flat toposort interleaves it: `[inp1, loopA, inp2, loopB]`.
+        builder.add_dfir(
+            syn::parse_quote! {
+                inp2 = source_iter([4, 5, 6]);
+            },
+            None,
+            None,
+        );
+        // Loop ingress B — the "receiver" of `inp2`.
+        builder.add_dfir(
+            syn::parse_quote! {
+                inp2 -> batch() -> for_each(std::mem::drop);
+            },
+            Some(loop_id),
+            None,
+        );
+
+        let FlatGraphBuilderOutput { flat_graph, .. } =
+            builder.build().expect("should build without errors");
+        let partitioned = partition_graph(flat_graph).expect("should partition without errors");
+
+        // Verify: every forward (non-delay) handoff has its producer subgraph *before* its
+        // consumer subgraph in the final `subgraph_toposort`.
+        let order = partitioned.subgraph_toposort();
+        let pos: std::collections::HashMap<_, _> =
+            order.iter().enumerate().map(|(i, &sg)| (sg, i)).collect();
+
+        for (hoff_id, node) in partitioned.nodes() {
+            if !matches!(node, GraphNode::Handoff { .. }) {
+                continue;
+            }
+            // Skip delay (back-edge) handoffs, which are allowed to point "backwards".
+            if partitioned.handoff_delay_type(hoff_id).is_some() {
+                continue;
+            }
+            let Some((_, pred)) = partitioned.node_predecessors(hoff_id).next() else {
+                continue;
+            };
+            let Some((_, succ)) = partitioned.node_successors(hoff_id).next() else {
+                continue;
+            };
+            let (Some(pred_sg), Some(succ_sg)) = (
+                partitioned.node_subgraph(pred),
+                partitioned.node_subgraph(succ),
+            ) else {
+                continue;
+            };
+            let (Some(&pp), Some(&sp)) = (pos.get(&pred_sg), pos.get(&succ_sg)) else {
+                continue;
+            };
+            assert!(
+                pp < sp,
+                "toposort violated: producer subgraph {pred_sg:?} (pos {pp}) emitted after \
+                 consumer subgraph {succ_sg:?} (pos {sp}) via handoff {hoff_id:?}; order = {order:?}",
+            );
+        }
+    }
 
     fn make_op_node(graph: &mut DfirGraph, loop_ctx: Option<GraphLoopId>) -> GraphNodeId {
         let operator: crate::parse::Operator = syn::parse_quote! { identity() };

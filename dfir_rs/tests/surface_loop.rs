@@ -33,6 +33,52 @@ pub fn test_loop_gating_basic() {
     assert_eq!(out, Vec::<i32>::new());
 }
 
+/// Regression test for a loop-contiguity toposort bug.
+///
+/// A single loop has two ingress points, but the sources feeding them are declared
+/// *after* the loop (forward references). This causes the source that feeds the second
+/// ingress to be inserted late, so the flat toposort interleaves as
+/// `[source1, loopA, source2, loopB]`. Previously `make_loops_contiguous` would gather
+/// the loop to `loopA`'s position (`[source1, loopA, loopB, source2]`), hoisting the
+/// ingress *receiver* `loopB` ahead of its *sender* `source2` — producing a
+/// handoff-buffer "use before declaration" compile error (and, if it compiled, an
+/// empty/stale batch).
+///
+/// With the fix, ingress senders are ordered before the whole loop block, so this both
+/// compiles and delivers all data.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_loop_ingress_forward_ref_sources() {
+    let (in1_send, in1_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (in2_send, in2_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out1_send, mut out1_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out2_send, mut out2_recv) = dfir_rs::util::unbounded_channel::<i32>();
+
+    let mut df = dfir_syntax! {
+        loop {
+            inp1 -> batch() -> for_each(|x| out1_send.send(x).unwrap());
+            inp2 -> batch() -> for_each(|x| out2_send.send(x).unwrap());
+        };
+        // Sources declared *after* the loop, so their nodes are inserted late.
+        inp1 = source_stream(in1_recv);
+        inp2 = source_stream(in2_recv);
+    };
+
+    in1_send.send(1).unwrap();
+    in1_send.send(2).unwrap();
+    in2_send.send(10).unwrap();
+    in2_send.send(20).unwrap();
+    df.run_tick_sync();
+
+    let mut out1: Vec<i32> = dfir_rs::util::collect_ready(&mut out1_recv);
+    let mut out2: Vec<i32> = dfir_rs::util::collect_ready(&mut out2_recv);
+    out1.sort_unstable();
+    out2.sort_unstable();
+
+    // Both ingress points must receive their data (no stale/empty batches).
+    assert_eq!(out1, vec![1, 2]);
+    assert_eq!(out2, vec![10, 20]);
+}
+
 /// Test that two independent loops do not trigger each other.
 /// Data arriving for loop A should not cause loop B to fire.
 #[multiplatform_test(test, wasm, env_tracing)]
