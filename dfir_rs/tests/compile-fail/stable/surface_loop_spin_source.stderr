@@ -1,0 +1,5 @@
+error: Source operator `spin(...)` must be at the root level, not within any `loop { ... }` contexts.
+ --> tests/compile-fail/stable/surface_loop_spin_source.rs:4:13
+  |
+4 |             spin() -> null();
+  |             ^^^^

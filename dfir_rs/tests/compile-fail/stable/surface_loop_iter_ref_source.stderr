@@ -1,0 +1,5 @@
+error: Source operator `iter_ref(...)` must be at the root level, not within any `loop { ... }` contexts.
+ --> tests/compile-fail/stable/surface_loop_iter_ref_source.rs:6:13
+  |
+6 |             iter_ref(#my_buf) -> null();
+  |             ^^^^^^^^
