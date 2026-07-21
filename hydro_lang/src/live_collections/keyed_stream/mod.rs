@@ -67,7 +67,7 @@ pub struct KeyedStream<
     Retry: Retries = ExactlyOnce,
 > {
     pub(crate) location: Loc,
-    pub(crate) ir_node: RefCell<HydroNode>,
+    pub(crate) ir_node: Rc<RefCell<HydroNode>>,
     pub(crate) flow_state: FlowState,
 
     _phantom: PhantomData<(K, V, Loc, Bound, Order, Retry)>,
@@ -95,13 +95,17 @@ where
             .location
             .new_node_metadata(KeyedStream::<K, V, L, Unbounded, O, R>::collection_kind());
 
+        let flow_state = stream.flow_state.clone();
         KeyedStream {
             location: stream.location.clone(),
-            flow_state: stream.flow_state.clone(),
-            ir_node: RefCell::new(HydroNode::Cast {
-                inner: Box::new(stream.ir_node.replace(HydroNode::Placeholder)),
-                metadata: new_meta,
-            }),
+            ir_node: crate::live_collections::tracked_ir_node(
+                &flow_state,
+                HydroNode::Cast {
+                    inner: Box::new(stream.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: new_meta,
+                },
+            ),
+            flow_state,
             _phantom: PhantomData,
         }
     }
@@ -134,15 +138,19 @@ where
     type Location = Tick<L>;
 
     fn create_source(cycle_id: CycleId, location: Tick<L>) -> Self {
+        let flow_state = location.flow_state().clone();
         KeyedStream {
-            flow_state: location.flow_state().clone(),
-            location: location.clone(),
-            ir_node: RefCell::new(HydroNode::CycleSource {
-                cycle_id,
-                metadata: location.new_node_metadata(
-                    KeyedStream::<K, V, Tick<L>, Bounded, O, R>::collection_kind(),
-                ),
-            }),
+            ir_node: crate::live_collections::tracked_ir_node(
+                &flow_state,
+                HydroNode::CycleSource {
+                    cycle_id,
+                    metadata: location.new_node_metadata(
+                        KeyedStream::<K, V, Tick<L>, Bounded, O, R>::collection_kind(),
+                    ),
+                },
+            ),
+            flow_state,
+            location,
             _phantom: PhantomData,
         }
     }
@@ -179,14 +187,18 @@ where
     type Location = L;
 
     fn create_source(cycle_id: CycleId, location: L) -> Self {
+        let flow_state = location.flow_state().clone();
         KeyedStream {
-            flow_state: location.flow_state().clone(),
-            location: location.clone(),
-            ir_node: RefCell::new(HydroNode::CycleSource {
-                cycle_id,
-                metadata: location
-                    .new_node_metadata(KeyedStream::<K, V, L, B, O, R>::collection_kind()),
-            }),
+            ir_node: crate::live_collections::tracked_ir_node(
+                &flow_state,
+                HydroNode::CycleSource {
+                    cycle_id,
+                    metadata: location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O, R>::collection_kind()),
+                },
+            ),
+            flow_state,
+            location,
             _phantom: PhantomData,
         }
     }
@@ -230,11 +242,13 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order: Order
             KeyedStream {
                 location: self.location.clone(),
                 flow_state: self.flow_state.clone(),
-                ir_node: HydroNode::Tee {
-                    inner: SharedNode(inner.0.clone()),
-                    metadata: metadata.clone(),
-                }
-                .into(),
+                ir_node: crate::live_collections::tracked_ir_node(
+                    &self.flow_state,
+                    HydroNode::Tee {
+                        inner: SharedNode(inner.0.clone()),
+                        metadata: metadata.clone(),
+                    },
+                ),
                 _phantom: PhantomData,
             }
         } else {
@@ -264,10 +278,11 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
 
         let flow_state = location.flow_state().clone();
+        let ir_node = crate::live_collections::tracked_ir_node(&flow_state, ir_node);
         KeyedStream {
             location,
             flow_state,
-            ir_node: RefCell::new(ir_node),
+            ir_node,
             _phantom: PhantomData,
         }
     }

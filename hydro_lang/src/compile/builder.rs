@@ -1,7 +1,7 @@
 use std::any::type_name;
 use std::cell::RefCell;
 use std::marker::PhantomData;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use slotmap::{SecondaryMap, SlotMap};
 
@@ -11,7 +11,9 @@ use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 #[cfg(feature = "build")]
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
-use super::ir::HydroRoot;
+#[cfg(feature = "build")]
+use super::ir::HydroIrOpMetadata;
+use super::ir::{HydroNode, HydroRoot};
 use crate::location::{Cluster, External, LocationKey, LocationType, Process};
 
 /// A compile-time directive to spawn a future on a location's `LocalSet`
@@ -98,6 +100,13 @@ pub(crate) struct FlowStateInner {
     /// Compile-time sidecar directives. Processed during compilation,
     /// not part of the dataflow IR.
     pub sidecars: Vec<Sidecar>,
+
+    /// Weak references to the IR nodes of all live collections (streams, singletons, ...)
+    /// created against this flow. When the flow is finalized, any collection that is still
+    /// alive (its `Rc` has not been dropped) has its IR yanked and registered as a root,
+    /// so that dataflow with side effects (e.g. `inspect`) is not silently lost just
+    /// because the collection was dropped after finalization.
+    pub(crate) live_collection_nodes: Vec<Weak<RefCell<HydroNode>>>,
 }
 
 impl FlowStateInner {
@@ -204,6 +213,7 @@ impl<'a> FlowBuilder<'a> {
                 next_clock_id: crate::Counter::default(),
                 next_sidecar_id: crate::Counter::default(),
                 sidecars: Vec::new(),
+                live_collection_nodes: Vec::new(),
             })),
             locations: SlotMap::with_key(),
             location_names: SecondaryMap::new(),
@@ -286,6 +296,23 @@ impl<'a> FlowBuilder<'a> {
         self.finalized = true;
 
         let mut flow_state = self.flow_state.borrow_mut();
+
+        // Yank the IR from any live collections (streams, singletons, ...) that are still
+        // alive, since their `Drop` will run after finalization and would otherwise
+        // silently fail to register their dataflow as a root.
+        let live_collection_nodes = std::mem::take(&mut flow_state.live_collection_nodes);
+        for node_cell in live_collection_nodes {
+            if let Some(node_cell) = node_cell.upgrade() {
+                let ir_node = node_cell.replace(HydroNode::Placeholder);
+                if !matches!(ir_node, HydroNode::Placeholder) && !ir_node.is_shared_with_others() {
+                    flow_state.push_root(HydroRoot::Null {
+                        input: Box::new(ir_node),
+                        op_metadata: HydroIrOpMetadata::new(),
+                    });
+                }
+            }
+        }
+
         let mut ir = flow_state.roots.take().unwrap();
         let sidecars = std::mem::take(&mut flow_state.sidecars);
         drop(flow_state);
@@ -383,6 +410,7 @@ impl<'a> FlowBuilder<'a> {
                 next_clock_id: crate::Counter::default(),
                 next_sidecar_id: crate::Counter::default(),
                 sidecars: Vec::new(),
+                live_collection_nodes: Vec::new(),
             })),
             locations: built.locations.clone(),
             location_names: built.location_names.clone(),

@@ -112,7 +112,7 @@ impl<B: IsBounded> IsMonotonic for B {}
 /// - `Bound`: tracks whether the value is [`Bounded`] (fixed) or [`Unbounded`] (changing asynchronously)
 pub struct Singleton<Type, Loc, Bound: SingletonBound> {
     pub(crate) location: Loc,
-    pub(crate) ir_node: RefCell<HydroNode>,
+    pub(crate) ir_node: Rc<RefCell<HydroNode>>,
     pub(crate) flow_state: FlowState,
 
     _phantom: PhantomData<(Type, Loc, Bound)>,
@@ -252,11 +252,13 @@ where
             Singleton {
                 location: self.location.clone(),
                 flow_state: self.flow_state.clone(),
-                ir_node: HydroNode::Tee {
-                    inner: SharedNode(inner.0.clone()),
-                    metadata: metadata.clone(),
-                }
-                .into(),
+                ir_node: super::tracked_ir_node(
+                    &self.flow_state,
+                    HydroNode::Tee {
+                        inner: SharedNode(inner.0.clone()),
+                        metadata: metadata.clone(),
+                    },
+                ),
                 _phantom: PhantomData,
             }
         } else {
@@ -282,10 +284,11 @@ where
         debug_assert_eq!(ir_node.metadata().location_id, Location::id(&location));
         debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
         let flow_state = location.flow_state().clone();
+        let ir_node = super::tracked_ir_node(&flow_state, ir_node);
         Singleton {
             location,
             flow_state,
-            ir_node: RefCell::new(ir_node),
+            ir_node,
             _phantom: PhantomData,
         }
     }
@@ -1332,7 +1335,6 @@ where
         )
     }
 
-    #[expect(clippy::result_large_err, reason = "internal use only")]
     fn try_make_bounded(self) -> Result<Singleton<T, L, Bounded>, Singleton<T, L, B>> {
         if B::UnderlyingBound::BOUNDED {
             Ok(Singleton::new(

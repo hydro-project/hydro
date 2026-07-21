@@ -40,3 +40,18 @@ pub mod sliced;
 
 #[doc(hidden)]
 pub mod batch_atomic;
+
+/// Wraps a freshly-created live collection IR node in an `Rc<RefCell<...>>` and registers it
+/// with the flow state, so that the [`crate::compile::builder::FlowBuilder`] can yank the IR
+/// of collections that are still alive when the flow is finalized (see hydro-project/hydro#3051).
+pub(crate) fn tracked_ir_node(
+    flow_state: &crate::compile::builder::FlowState,
+    ir_node: crate::compile::ir::HydroNode,
+) -> std::rc::Rc<std::cell::RefCell<crate::compile::ir::HydroNode>> {
+    let cell = std::rc::Rc::new(std::cell::RefCell::new(ir_node));
+    flow_state
+        .borrow_mut()
+        .live_collection_nodes
+        .push(std::rc::Rc::downgrade(&cell));
+    cell
+}
