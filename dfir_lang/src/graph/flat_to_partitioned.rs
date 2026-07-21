@@ -332,7 +332,7 @@ fn make_subgraphs(
             }
         )
         .is_ok(),
-        "bug: toposort is invalid after `make_loop_contiguous`.",
+        "bug: toposort is invalid after `make_loops_contiguous`.",
     );
 
     partitioned_graph.set_subgraph_toposort(subgraph_toposort);
@@ -346,7 +346,7 @@ fn make_subgraphs(
 /// PRECONDITION: The first member of a loop MUST COME AFTER all outer subgraphs which send into the loop. Subgraphs
 /// from different loop contexts that appear interleaved in the flat order have no dependency between them **EXCEPT**
 /// ingress (from outer to inner loop) or egress (from inner to outer). This method hoists all members of a loop to the
-/// **first** subgraph of the loop in the flat order, hense the correctness requirement only on the ingress side.
+/// **first** subgraph of the loop in the flat order, hence the correctness requirement only on the ingress side.
 ///
 /// https://github.com/hydro-project/hydro/issues/3048
 fn make_loops_contiguous(
