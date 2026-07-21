@@ -1,6 +1,6 @@
 //! General graph algorithm utility functions
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
 use slotmap::{Key, SecondaryMap, SparseSecondaryMap};
@@ -69,6 +69,37 @@ where
     }
 
     Ok(order)
+}
+
+/// Validates the topo sort.
+///
+/// Returns `Ok(())` if it is valid. Returns `Err((pred, succ))` where `pred` comes after `succ` when the sort is
+/// invalid. Panics if a node returned by the `pred_fn` is missing from the sort.
+pub fn validate_topo_sort<Id, PredsIter>(
+    topo_sort: impl IntoIterator<Item = Id>,
+    mut preds_fn: impl FnMut(Id) -> PredsIter,
+) -> Result<(), (Id, Id)>
+where
+    Id: Copy + Eq + Ord,
+    PredsIter: IntoIterator<Item = Id>,
+{
+    let indexed = topo_sort
+        .into_iter()
+        .enumerate()
+        .map(|(i, n)| (n, i))
+        .collect::<BTreeMap<_, _>>();
+    for (&succ, &succ_idx) in indexed.iter() {
+        for pred in (preds_fn)(succ) {
+            let Some(&pred_idx) = indexed.get(&pred) else {
+                panic!("predecessor not in topo sort");
+            };
+            if succ_idx <= pred_idx {
+                // Violation in topo sort.
+                return Err((pred, succ));
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Datastructure for merging subgraphs while maintaining topological sort order.
@@ -437,6 +468,74 @@ mod test {
                 permutation
             );
         }
+    }
+
+    #[test]
+    pub fn test_validate_topo_sort_valid() {
+        // Simple linear chain: A -> B -> C -> D
+        // Valid topo sort: [A, B, C, D]
+        let edges: &[(i32, i32)] = &[(1, 2), (2, 3), (3, 4)];
+
+        let result = validate_topo_sort([1, 2, 3, 4], |v| {
+            edges
+                .iter()
+                .filter(move |&&(_src, dst)| v == dst)
+                .map(|&(src, _)| src)
+        });
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_validate_topo_sort_invalid() {
+        // Edges: A -> B -> C -> D
+        // Invalid topo sort: [A, C, B, D] (C appears before B, but B is a predecessor of C)
+        let edges: &[(i32, i32)] = &[(1, 2), (2, 3), (3, 4)];
+
+        let result = validate_topo_sort([1, 3, 2, 4], |v| {
+            edges
+                .iter()
+                .filter(move |&&(_src, dst)| v == dst)
+                .map(|&(src, _)| src)
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    pub fn test_validate_topo_sort_diamond() {
+        // Diamond graph:
+        //     1
+        //    / \
+        //   2   3
+        //    \ /
+        //     4
+        let edges: &[(i32, i32)] = &[(1, 2), (1, 3), (2, 4), (3, 4)];
+
+        // Valid sort: [1, 2, 3, 4]
+        let result = validate_topo_sort([1, 2, 3, 4], |v| {
+            edges
+                .iter()
+                .filter(move |&&(_src, dst)| v == dst)
+                .map(|&(src, _)| src)
+        });
+        assert_eq!(result, Ok(()));
+
+        // Also valid: [1, 3, 2, 4]
+        let result = validate_topo_sort([1, 3, 2, 4], |v| {
+            edges
+                .iter()
+                .filter(move |&&(_src, dst)| v == dst)
+                .map(|&(src, _)| src)
+        });
+        assert_eq!(result, Ok(()));
+
+        // Invalid: [4, 1, 2, 3] (4 appears before its predecessors)
+        let result = validate_topo_sort([4, 1, 2, 3], |v| {
+            edges
+                .iter()
+                .filter(move |&&(_src, dst)| v == dst)
+                .map(|&(src, _)| src)
+        });
+        assert!(result.is_err());
     }
 
     #[test]

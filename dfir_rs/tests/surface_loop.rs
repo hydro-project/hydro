@@ -34,6 +34,7 @@ pub fn test_loop_gating_basic() {
 }
 
 /// Regression test for a loop-contiguity toposort bug.
+/// https://github.com/hydro-project/hydro/issues/3048
 ///
 /// A single loop has two ingress points, but the sources feeding them are declared
 /// *after* the loop (forward references). This causes the source that feeds the second

@@ -2616,6 +2616,11 @@ impl DfirGraph {
         self.loop_nodes.iter()
     }
 
+    /// Get a loop's member nodes.
+    pub fn loop_nodes(&self, loop_id: GraphLoopId) -> &[GraphNodeId] {
+        self.loop_nodes.get(loop_id).unwrap()
+    }
+
     /// Create a new loop context, with the given parent loop (or `None`).
     pub fn insert_loop(&mut self, parent_loop: Option<GraphLoopId>) -> GraphLoopId {
         let loop_id = self.loop_nodes.insert(Vec::new());
