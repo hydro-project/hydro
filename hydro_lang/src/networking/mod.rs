@@ -7,6 +7,7 @@ use serde::de::DeserializeOwned;
 
 use crate::live_collections::stream::networking::{deserialize_bincode, serialize_bincode};
 use crate::live_collections::stream::{NoOrder, TotalOrder};
+use crate::location::cluster::{Consistency, EventualConsistency, NoConsistency};
 use crate::nondet::NonDet;
 
 #[sealed::sealed]
@@ -69,6 +70,10 @@ pub trait TransportKind {
     /// The ordering guarantee provided by this transport.
     type OrderingGuarantee: crate::live_collections::stream::Ordering;
 
+    /// The consistency guarantee this transport can preserve for replicated outputs
+    /// (see [`NetworkFor::ConsistencyGuarantee`]).
+    type ConsistencyGuarantee: Consistency;
+
     /// Returns the [`NetworkingInfo`] describing this transport's configuration.
     fn networking_info() -> NetworkingInfo;
 }
@@ -83,6 +88,10 @@ pub trait TcpFailPolicy {
     /// The ordering guarantee provided by this failure policy.
     type OrderingGuarantee: crate::live_collections::stream::Ordering;
 
+    /// The consistency guarantee this failure policy can preserve for replicated outputs
+    /// (see [`NetworkFor::ConsistencyGuarantee`]).
+    type ConsistencyGuarantee: Consistency;
+
     /// Returns the [`TcpFault`] variant for this failure policy.
     fn tcp_fault() -> TcpFault;
 }
@@ -92,6 +101,11 @@ pub enum FailStop {}
 #[sealed::sealed]
 impl TcpFailPolicy for FailStop {
     type OrderingGuarantee = TotalOrder;
+
+    // A failed connection stops *all* future deliveries to that recipient, which models the
+    // recipient as having failed. Consistency guarantees only apply to live members, so
+    // eventual consistency of replicated outputs is preserved.
+    type ConsistencyGuarantee = EventualConsistency;
 
     fn tcp_fault() -> TcpFault {
         TcpFault::FailStop
@@ -103,6 +117,10 @@ pub enum Lossy {}
 #[sealed::sealed]
 impl TcpFailPolicy for Lossy {
     type OrderingGuarantee = TotalOrder;
+
+    // A lossy channel can drop an arbitrary message for one recipient while continuing to
+    // deliver later messages, so replicated outputs can diverge across members forever.
+    type ConsistencyGuarantee = NoConsistency;
 
     fn tcp_fault() -> TcpFault {
         TcpFault::Lossy
@@ -125,6 +143,11 @@ pub enum LossyDelayedForever {}
 impl TcpFailPolicy for LossyDelayedForever {
     type OrderingGuarantee = NoOrder;
 
+    // Dropped messages are modeled as indefinitely delayed, so the output on each member is
+    // always a lower bound of the ideal stream that is eventually delivered in full; replicated
+    // outputs therefore remain eventually consistent.
+    type ConsistencyGuarantee = EventualConsistency;
+
     fn tcp_fault() -> TcpFault {
         TcpFault::LossyDelayedForever
     }
@@ -139,12 +162,20 @@ impl TcpFailPolicy for LossyDelayedForever {
 /// produce [`NoOrder`] output streams, and there is no `fail_stop` option
 /// (UDP is connectionless, so there is no connection to fail).
 pub trait UdpFailPolicy {
+    /// The consistency guarantee this failure policy can preserve for replicated outputs
+    /// (see [`NetworkFor::ConsistencyGuarantee`]).
+    type ConsistencyGuarantee: Consistency;
+
     /// Returns the [`UdpFault`] variant for this failure policy.
     fn udp_fault() -> UdpFault;
 }
 
 #[sealed::sealed]
 impl UdpFailPolicy for Lossy {
+    // A lossy channel can drop an arbitrary message for one recipient while continuing to
+    // deliver later messages, so replicated outputs can diverge across members forever.
+    type ConsistencyGuarantee = NoConsistency;
+
     fn udp_fault() -> UdpFault {
         UdpFault::Lossy
     }
@@ -152,6 +183,11 @@ impl UdpFailPolicy for Lossy {
 
 #[sealed::sealed]
 impl UdpFailPolicy for LossyDelayedForever {
+    // Dropped messages are modeled as indefinitely delayed, so the output on each member is
+    // always a lower bound of the ideal stream that is eventually delivered in full; replicated
+    // outputs therefore remain eventually consistent.
+    type ConsistencyGuarantee = EventualConsistency;
+
     fn udp_fault() -> UdpFault {
         UdpFault::LossyDelayedForever
     }
@@ -165,6 +201,8 @@ pub struct Tcp<F> {
 #[sealed::sealed]
 impl<F: TcpFailPolicy> TransportKind for Tcp<F> {
     type OrderingGuarantee = F::OrderingGuarantee;
+
+    type ConsistencyGuarantee = F::ConsistencyGuarantee;
 
     fn networking_info() -> NetworkingInfo {
         NetworkingInfo::Tcp {
@@ -182,6 +220,8 @@ pub struct Udp<F> {
 impl<F: UdpFailPolicy> TransportKind for Udp<F> {
     type OrderingGuarantee = NoOrder;
 
+    type ConsistencyGuarantee = F::ConsistencyGuarantee;
+
     fn networking_info() -> NetworkingInfo {
         NetworkingInfo::Udp {
             fault: F::udp_fault(),
@@ -196,6 +236,19 @@ pub trait NetworkFor<T: ?Sized> {
     /// When combined with an input stream's ordering `O`, the output ordering
     /// will be `<O as MinOrder<Self::OrderingGuarantee>>::Min`.
     type OrderingGuarantee: crate::live_collections::stream::Ordering;
+
+    /// The consistency guarantee this network configuration can preserve when the same data is
+    /// replicated to several recipients (e.g. via
+    /// [`Stream::broadcast_closed`](crate::live_collections::stream::Stream::broadcast_closed)).
+    ///
+    /// Failure policies that guarantee each recipient eventually observes the full stream of
+    /// sent messages, or that model failures as the recipient stopping entirely (such as
+    /// `fail_stop` or `lossy_delayed_forever`), preserve
+    /// [`EventualConsistency`]. Plain `lossy`
+    /// channels can silently drop individual messages for some recipients while others receive
+    /// them, so replicated outputs can permanently diverge and only
+    /// [`NoConsistency`] is guaranteed.
+    type ConsistencyGuarantee: Consistency;
 
     /// Generates serialization logic for sending `T`.
     fn serialize_thunk(is_demux: bool) -> syn::Expr;
@@ -401,6 +454,8 @@ where
 {
     type OrderingGuarantee = Tr::OrderingGuarantee;
 
+    type ConsistencyGuarantee = Tr::ConsistencyGuarantee;
+
     fn serialize_thunk(is_demux: bool) -> syn::Expr {
         S::serialize_thunk(is_demux)
     }
@@ -429,6 +484,8 @@ where
     S: SerKind<T>,
 {
     type OrderingGuarantee = Tr::OrderingGuarantee;
+
+    type ConsistencyGuarantee = Tr::ConsistencyGuarantee;
 
     fn serialize_thunk(is_demux: bool) -> syn::Expr {
         S::serialize_thunk(is_demux)
