@@ -1,0 +1,10 @@
+error[E0308]: mismatched types
+  --> tests/compile-fail/nightly/broadcast_closed_lossy_not_consistent.rs:15:9
+   |
+14 |     let _: Stream<_, Cluster<'a, Workers, EventualConsistency>, _, _, _> =
+   |            ------------------------------------------------------------- expected due to this
+15 |         numbers.broadcast_closed(workers, TCP.lossy(nondet!(/** test */)).bincode());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Stream<_, ..., _, _, _>`, found `Stream<{integer}, Cluster<'_, Workers>>`
+   |
+   = note: expected struct `Stream<_, Cluster<'a, Workers, hydro_lang::location::cluster::EventualConsistency>, _, _, _>`
+              found struct `hydro_lang::prelude::Stream<{integer}, hydro_lang::prelude::Cluster<'_, Workers>>`

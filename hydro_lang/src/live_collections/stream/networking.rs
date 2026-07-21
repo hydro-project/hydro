@@ -18,7 +18,7 @@ use crate::live_collections::sliced::sliced;
 use crate::live_collections::stream::Retries;
 #[cfg(feature = "sim")]
 use crate::location::LocationKey;
-use crate::location::cluster::{ClusterIds, Consistency, EventualConsistency, NoConsistency};
+use crate::location::cluster::{ClusterIds, Consistency, NoConsistency};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::external_process::ExternalBincodeStream;
@@ -344,6 +344,15 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// `Bounded` stream. The cross-product of data × members is fully
     /// deterministic.
     ///
+    /// The consistency guarantee of the output depends on the network's failure policy
+    /// ([`NetworkFor::ConsistencyGuarantee`]). Policies like `fail_stop` and
+    /// `lossy_delayed_forever` guarantee that every live member eventually materializes the same
+    /// elements, so the output is
+    /// [`EventualConsistency`](crate::location::cluster::EventualConsistency). A plain `lossy`
+    /// policy can drop individual messages for some members while delivering them to others, so
+    /// replicas may permanently diverge and the output only has
+    /// [`NoConsistency`].
+    ///
     /// This is only available in deployment targets with static cluster
     /// membership (legacy Hydro Deploy and simulation). There are no late
     /// joiners in that context, so broadcast receivers are guaranteed to
@@ -378,7 +387,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         via: N,
     ) -> Stream<
         T,
-        Cluster<'a, L2, EventualConsistency>,
+        Cluster<'a, L2, N::ConsistencyGuarantee>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         R,
@@ -401,7 +410,11 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             .map(q!(|(data, member_id)| (member_id, data)))
             .into_keyed()
             .demux(to, via)
-            .assert_has_consistency_of_trusted(manual_proof!(/** closed broadcast will materialze the same elements on each member */))
+            .assert_has_consistency_of_trusted(manual_proof!(
+                /// With a network whose failure policy delivers the same messages to every live
+                /// member (tracked by `NetworkFor::ConsistencyGuarantee`), a closed broadcast
+                /// will materialize the same elements on each member.
+            ))
     }
 
     /// Sends the elements of this stream to an external (non-Hydro) process, using [`bincode`]
@@ -1234,9 +1247,16 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     ///
     /// Unlike [`Stream::broadcast`], this does not require a [`NonDet`] guard.
     /// The membership set is obtained from deploy metadata via [`ClusterIds`], making the
-    /// broadcast fully deterministic. Since all source members send to all destination members
-    /// and membership is fixed, every destination member receives the same set of elements
-    /// from each source, guaranteeing [`EventualConsistency`].
+    /// broadcast fully deterministic.
+    ///
+    /// The consistency guarantee of the output depends on the network's failure policy
+    /// ([`NetworkFor::ConsistencyGuarantee`]). Policies like `fail_stop` and
+    /// `lossy_delayed_forever` guarantee that every live destination member eventually
+    /// materializes the same elements from each source, so the output is
+    /// [`EventualConsistency`](crate::location::cluster::EventualConsistency). A plain `lossy`
+    /// policy can drop individual messages for some
+    /// members while delivering them to others, so replicas may permanently diverge and the
+    /// output only has [`NoConsistency`].
     ///
     /// This is only available in deployment targets with static cluster membership
     /// (legacy Hydro Deploy and simulation). On dynamic targets, use [`Stream::broadcast`].
@@ -1247,7 +1267,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     ) -> KeyedStream<
         MemberId<L>,
         T,
-        Cluster<'a, L2, EventualConsistency>,
+        Cluster<'a, L2, N::ConsistencyGuarantee>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         R,
@@ -1275,7 +1295,9 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
             .demux(to, via)
             .assert_has_consistency_of_trusted(manual_proof!(
                 /// Closed broadcast with fixed membership: every source member sends to every
-                /// destination member, so all destinations materialize the same elements.
+                /// destination member, and the network's failure policy (tracked by
+                /// `NetworkFor::ConsistencyGuarantee`) delivers the same messages to every live
+                /// member, so all destinations materialize the same elements.
             ))
     }
 
@@ -1870,5 +1892,52 @@ mod tests {
                     ])
                     .await
             });
+    }
+
+    /// Compile-time check that the consistency guarantee of `broadcast_closed` output tracks
+    /// the network's failure policy: `fail_stop` and `lossy_delayed_forever` preserve
+    /// [`EventualConsistency`], while plain `lossy` only provides [`NoConsistency`].
+    #[cfg(feature = "sim")]
+    #[test]
+    fn broadcast_closed_consistency_tracks_failure_policy() {
+        use crate::live_collections::keyed_stream::KeyedStream;
+        use crate::live_collections::stream::Stream;
+        use crate::location::Cluster;
+        use crate::location::cluster::{EventualConsistency, NoConsistency};
+
+        let mut flow = FlowBuilder::new();
+        let cluster = flow.cluster::<()>();
+        let source = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        // `fail_stop` models a failed connection as the recipient having failed, preserving
+        // eventual consistency across live members.
+        let _: Stream<u32, Cluster<'_, (), EventualConsistency>, _, _, _> = node
+            .source_iter(q!(vec![1u32]))
+            .broadcast_closed(&cluster, TCP.fail_stop().bincode());
+
+        // `lossy_delayed_forever` models drops as indefinite delays, preserving eventual
+        // consistency.
+        let _: Stream<u32, Cluster<'_, (), EventualConsistency>, _, _, _> = node
+            .source_iter(q!(vec![1u32]))
+            .broadcast_closed(&cluster, TCP.lossy_delayed_forever().bincode());
+
+        // Plain `lossy` can drop messages for some members while delivering them to others,
+        // so replicas may permanently diverge.
+        let _: Stream<u32, Cluster<'_, (), NoConsistency>, _, _, _> = node
+            .source_iter(q!(vec![1u32]))
+            .broadcast_closed(&cluster, TCP.lossy(nondet!(/** test */)).bincode());
+
+        // The same applies to cluster-to-cluster closed broadcasts.
+        let _: KeyedStream<MemberId<()>, u32, Cluster<'_, (), EventualConsistency>, _, _, _> =
+            source
+                .source_iter(q!(vec![1u32]))
+                .broadcast_closed(&cluster, TCP.fail_stop().bincode());
+
+        let _: KeyedStream<MemberId<()>, u32, Cluster<'_, (), NoConsistency>, _, _, _> = source
+            .source_iter(q!(vec![1u32]))
+            .broadcast_closed(&cluster, TCP.lossy(nondet!(/** test */)).bincode());
+
+        let _ = flow.finalize();
     }
 }
