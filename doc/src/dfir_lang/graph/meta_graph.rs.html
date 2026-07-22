@@ -2616,106 +2616,111 @@
 <a href=#2616 id=2616 data-nosnippet>2616</a>        <span class="self">self</span>.loop_nodes.iter()
 <a href=#2617 id=2617 data-nosnippet>2617</a>    }
 <a href=#2618 id=2618 data-nosnippet>2618</a>
-<a href=#2619 id=2619 data-nosnippet>2619</a>    <span class="doccomment">/// Create a new loop context, with the given parent loop (or `None`).
-<a href=#2620 id=2620 data-nosnippet>2620</a>    </span><span class="kw">pub fn </span>insert_loop(<span class="kw-2">&amp;mut </span><span class="self">self</span>, parent_loop: <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt;) -&gt; GraphLoopId {
-<a href=#2621 id=2621 data-nosnippet>2621</a>        <span class="kw">let </span>loop_id = <span class="self">self</span>.loop_nodes.insert(Vec::new());
-<a href=#2622 id=2622 data-nosnippet>2622</a>        <span class="self">self</span>.loop_children.insert(loop_id, Vec::new());
-<a href=#2623 id=2623 data-nosnippet>2623</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(parent_loop) = parent_loop {
-<a href=#2624 id=2624 data-nosnippet>2624</a>            <span class="self">self</span>.loop_parent.insert(loop_id, parent_loop);
-<a href=#2625 id=2625 data-nosnippet>2625</a>            <span class="self">self</span>.loop_children
-<a href=#2626 id=2626 data-nosnippet>2626</a>                .get_mut(parent_loop)
-<a href=#2627 id=2627 data-nosnippet>2627</a>                .unwrap()
-<a href=#2628 id=2628 data-nosnippet>2628</a>                .push(loop_id);
-<a href=#2629 id=2629 data-nosnippet>2629</a>        } <span class="kw">else </span>{
-<a href=#2630 id=2630 data-nosnippet>2630</a>            <span class="self">self</span>.root_loops.push(loop_id);
-<a href=#2631 id=2631 data-nosnippet>2631</a>        }
-<a href=#2632 id=2632 data-nosnippet>2632</a>        loop_id
-<a href=#2633 id=2633 data-nosnippet>2633</a>    }
-<a href=#2634 id=2634 data-nosnippet>2634</a>
-<a href=#2635 id=2635 data-nosnippet>2635</a>    <span class="doccomment">/// Get a node's loop context (or `None` for root).
-<a href=#2636 id=2636 data-nosnippet>2636</a>    </span><span class="kw">pub fn </span>node_loop(<span class="kw-2">&amp;</span><span class="self">self</span>, node_id: GraphNodeId) -&gt; <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt; {
-<a href=#2637 id=2637 data-nosnippet>2637</a>        <span class="self">self</span>.node_loops.get(node_id).copied()
+<a href=#2619 id=2619 data-nosnippet>2619</a>    <span class="doccomment">/// Get a loop's member nodes.
+<a href=#2620 id=2620 data-nosnippet>2620</a>    </span><span class="kw">pub fn </span>loop_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>, loop_id: GraphLoopId) -&gt; <span class="kw-2">&amp;</span>[GraphNodeId] {
+<a href=#2621 id=2621 data-nosnippet>2621</a>        <span class="self">self</span>.loop_nodes.get(loop_id).unwrap()
+<a href=#2622 id=2622 data-nosnippet>2622</a>    }
+<a href=#2623 id=2623 data-nosnippet>2623</a>
+<a href=#2624 id=2624 data-nosnippet>2624</a>    <span class="doccomment">/// Create a new loop context, with the given parent loop (or `None`).
+<a href=#2625 id=2625 data-nosnippet>2625</a>    </span><span class="kw">pub fn </span>insert_loop(<span class="kw-2">&amp;mut </span><span class="self">self</span>, parent_loop: <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt;) -&gt; GraphLoopId {
+<a href=#2626 id=2626 data-nosnippet>2626</a>        <span class="kw">let </span>loop_id = <span class="self">self</span>.loop_nodes.insert(Vec::new());
+<a href=#2627 id=2627 data-nosnippet>2627</a>        <span class="self">self</span>.loop_children.insert(loop_id, Vec::new());
+<a href=#2628 id=2628 data-nosnippet>2628</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(parent_loop) = parent_loop {
+<a href=#2629 id=2629 data-nosnippet>2629</a>            <span class="self">self</span>.loop_parent.insert(loop_id, parent_loop);
+<a href=#2630 id=2630 data-nosnippet>2630</a>            <span class="self">self</span>.loop_children
+<a href=#2631 id=2631 data-nosnippet>2631</a>                .get_mut(parent_loop)
+<a href=#2632 id=2632 data-nosnippet>2632</a>                .unwrap()
+<a href=#2633 id=2633 data-nosnippet>2633</a>                .push(loop_id);
+<a href=#2634 id=2634 data-nosnippet>2634</a>        } <span class="kw">else </span>{
+<a href=#2635 id=2635 data-nosnippet>2635</a>            <span class="self">self</span>.root_loops.push(loop_id);
+<a href=#2636 id=2636 data-nosnippet>2636</a>        }
+<a href=#2637 id=2637 data-nosnippet>2637</a>        loop_id
 <a href=#2638 id=2638 data-nosnippet>2638</a>    }
 <a href=#2639 id=2639 data-nosnippet>2639</a>
-<a href=#2640 id=2640 data-nosnippet>2640</a>    <span class="doccomment">/// Get a subgraph's loop context (or `None` for root).
-<a href=#2641 id=2641 data-nosnippet>2641</a>    </span><span class="kw">pub fn </span>subgraph_loop(<span class="kw-2">&amp;</span><span class="self">self</span>, subgraph_id: GraphSubgraphId) -&gt; <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt; {
-<a href=#2642 id=2642 data-nosnippet>2642</a>        <span class="kw">let </span><span class="kw-2">&amp;</span>node_id = <span class="self">self</span>.subgraph(subgraph_id).first().unwrap();
-<a href=#2643 id=2643 data-nosnippet>2643</a>        <span class="kw">let </span>out = <span class="self">self</span>.node_loop(node_id);
-<a href=#2644 id=2644 data-nosnippet>2644</a>        <span class="macro">debug_assert!</span>(
-<a href=#2645 id=2645 data-nosnippet>2645</a>            <span class="self">self</span>.subgraph(subgraph_id)
-<a href=#2646 id=2646 data-nosnippet>2646</a>                .iter()
-<a href=#2647 id=2647 data-nosnippet>2647</a>                .all(|<span class="kw-2">&amp;</span>node_id| <span class="self">self</span>.node_loop(node_id) == out),
-<a href=#2648 id=2648 data-nosnippet>2648</a>            <span class="string">"Subgraph nodes should all have the same loop context."
-<a href=#2649 id=2649 data-nosnippet>2649</a>        </span>);
-<a href=#2650 id=2650 data-nosnippet>2650</a>        out
-<a href=#2651 id=2651 data-nosnippet>2651</a>    }
-<a href=#2652 id=2652 data-nosnippet>2652</a>
-<a href=#2653 id=2653 data-nosnippet>2653</a>    <span class="doccomment">/// Get a loop context's parent loop context (or `None` for root).
-<a href=#2654 id=2654 data-nosnippet>2654</a>    </span><span class="kw">pub fn </span>loop_parent(<span class="kw-2">&amp;</span><span class="self">self</span>, loop_id: GraphLoopId) -&gt; <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt; {
-<a href=#2655 id=2655 data-nosnippet>2655</a>        <span class="self">self</span>.loop_parent.get(loop_id).copied()
+<a href=#2640 id=2640 data-nosnippet>2640</a>    <span class="doccomment">/// Get a node's loop context (or `None` for root).
+<a href=#2641 id=2641 data-nosnippet>2641</a>    </span><span class="kw">pub fn </span>node_loop(<span class="kw-2">&amp;</span><span class="self">self</span>, node_id: GraphNodeId) -&gt; <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt; {
+<a href=#2642 id=2642 data-nosnippet>2642</a>        <span class="self">self</span>.node_loops.get(node_id).copied()
+<a href=#2643 id=2643 data-nosnippet>2643</a>    }
+<a href=#2644 id=2644 data-nosnippet>2644</a>
+<a href=#2645 id=2645 data-nosnippet>2645</a>    <span class="doccomment">/// Get a subgraph's loop context (or `None` for root).
+<a href=#2646 id=2646 data-nosnippet>2646</a>    </span><span class="kw">pub fn </span>subgraph_loop(<span class="kw-2">&amp;</span><span class="self">self</span>, subgraph_id: GraphSubgraphId) -&gt; <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt; {
+<a href=#2647 id=2647 data-nosnippet>2647</a>        <span class="kw">let </span><span class="kw-2">&amp;</span>node_id = <span class="self">self</span>.subgraph(subgraph_id).first().unwrap();
+<a href=#2648 id=2648 data-nosnippet>2648</a>        <span class="kw">let </span>out = <span class="self">self</span>.node_loop(node_id);
+<a href=#2649 id=2649 data-nosnippet>2649</a>        <span class="macro">debug_assert!</span>(
+<a href=#2650 id=2650 data-nosnippet>2650</a>            <span class="self">self</span>.subgraph(subgraph_id)
+<a href=#2651 id=2651 data-nosnippet>2651</a>                .iter()
+<a href=#2652 id=2652 data-nosnippet>2652</a>                .all(|<span class="kw-2">&amp;</span>node_id| <span class="self">self</span>.node_loop(node_id) == out),
+<a href=#2653 id=2653 data-nosnippet>2653</a>            <span class="string">"Subgraph nodes should all have the same loop context."
+<a href=#2654 id=2654 data-nosnippet>2654</a>        </span>);
+<a href=#2655 id=2655 data-nosnippet>2655</a>        out
 <a href=#2656 id=2656 data-nosnippet>2656</a>    }
 <a href=#2657 id=2657 data-nosnippet>2657</a>
-<a href=#2658 id=2658 data-nosnippet>2658</a>    <span class="doccomment">/// Get a loop context's child loops.
-<a href=#2659 id=2659 data-nosnippet>2659</a>    </span><span class="kw">pub fn </span>loop_children(<span class="kw-2">&amp;</span><span class="self">self</span>, loop_id: GraphLoopId) -&gt; <span class="kw-2">&amp;</span>Vec&lt;GraphLoopId&gt; {
-<a href=#2660 id=2660 data-nosnippet>2660</a>        <span class="self">self</span>.loop_children.get(loop_id).unwrap()
+<a href=#2658 id=2658 data-nosnippet>2658</a>    <span class="doccomment">/// Get a loop context's parent loop context (or `None` for root).
+<a href=#2659 id=2659 data-nosnippet>2659</a>    </span><span class="kw">pub fn </span>loop_parent(<span class="kw-2">&amp;</span><span class="self">self</span>, loop_id: GraphLoopId) -&gt; <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt; {
+<a href=#2660 id=2660 data-nosnippet>2660</a>        <span class="self">self</span>.loop_parent.get(loop_id).copied()
 <a href=#2661 id=2661 data-nosnippet>2661</a>    }
 <a href=#2662 id=2662 data-nosnippet>2662</a>
-<a href=#2663 id=2663 data-nosnippet>2663</a>    <span class="doccomment">/// Get root-level loops (those with no parent loop).
-<a href=#2664 id=2664 data-nosnippet>2664</a>    </span><span class="kw">pub fn </span>root_loops(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[GraphLoopId] {
-<a href=#2665 id=2665 data-nosnippet>2665</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.root_loops
+<a href=#2663 id=2663 data-nosnippet>2663</a>    <span class="doccomment">/// Get a loop context's child loops.
+<a href=#2664 id=2664 data-nosnippet>2664</a>    </span><span class="kw">pub fn </span>loop_children(<span class="kw-2">&amp;</span><span class="self">self</span>, loop_id: GraphLoopId) -&gt; <span class="kw-2">&amp;</span>Vec&lt;GraphLoopId&gt; {
+<a href=#2665 id=2665 data-nosnippet>2665</a>        <span class="self">self</span>.loop_children.get(loop_id).unwrap()
 <a href=#2666 id=2666 data-nosnippet>2666</a>    }
-<a href=#2667 id=2667 data-nosnippet>2667</a>}
-<a href=#2668 id=2668 data-nosnippet>2668</a>
-<a href=#2669 id=2669 data-nosnippet>2669</a><span class="doccomment">/// Configuration for writing graphs.
-<a href=#2670 id=2670 data-nosnippet>2670</a></span><span class="attr">#[derive(Clone, Debug, Default)]
-<a href=#2671 id=2671 data-nosnippet>2671</a>#[cfg_attr(feature = <span class="string">"clap-derive"</span>, derive(clap::Args))]
-<a href=#2672 id=2672 data-nosnippet>2672</a></span><span class="kw">pub struct </span>WriteConfig {
-<a href=#2673 id=2673 data-nosnippet>2673</a>    <span class="doccomment">/// Subgraphs will not be rendered if set.
-<a href=#2674 id=2674 data-nosnippet>2674</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
-<a href=#2675 id=2675 data-nosnippet>2675</a>    </span><span class="kw">pub </span>no_subgraphs: bool,
-<a href=#2676 id=2676 data-nosnippet>2676</a>    <span class="doccomment">/// Variable names will not be rendered if set.
-<a href=#2677 id=2677 data-nosnippet>2677</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
-<a href=#2678 id=2678 data-nosnippet>2678</a>    </span><span class="kw">pub </span>no_varnames: bool,
-<a href=#2679 id=2679 data-nosnippet>2679</a>    <span class="doccomment">/// Will not render pull/push shapes if set.
-<a href=#2680 id=2680 data-nosnippet>2680</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
-<a href=#2681 id=2681 data-nosnippet>2681</a>    </span><span class="kw">pub </span>no_pull_push: bool,
-<a href=#2682 id=2682 data-nosnippet>2682</a>    <span class="doccomment">/// Will not render handoffs if set.
-<a href=#2683 id=2683 data-nosnippet>2683</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
-<a href=#2684 id=2684 data-nosnippet>2684</a>    </span><span class="kw">pub </span>no_handoffs: bool,
-<a href=#2685 id=2685 data-nosnippet>2685</a>    <span class="doccomment">/// Will not render singleton references if set.
-<a href=#2686 id=2686 data-nosnippet>2686</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
-<a href=#2687 id=2687 data-nosnippet>2687</a>    </span><span class="kw">pub </span>no_references: bool,
-<a href=#2688 id=2688 data-nosnippet>2688</a>    <span class="doccomment">/// Will not render loops if set.
-<a href=#2689 id=2689 data-nosnippet>2689</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
-<a href=#2690 id=2690 data-nosnippet>2690</a>    </span><span class="kw">pub </span>no_loops: bool,
-<a href=#2691 id=2691 data-nosnippet>2691</a>
-<a href=#2692 id=2692 data-nosnippet>2692</a>    <span class="doccomment">/// Op text will only be their name instead of the whole source.
-<a href=#2693 id=2693 data-nosnippet>2693</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
-<a href=#2694 id=2694 data-nosnippet>2694</a>    </span><span class="kw">pub </span>op_short_text: bool,
-<a href=#2695 id=2695 data-nosnippet>2695</a>    <span class="doccomment">/// Op text will exclude any line that starts with "use".
-<a href=#2696 id=2696 data-nosnippet>2696</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
-<a href=#2697 id=2697 data-nosnippet>2697</a>    </span><span class="kw">pub </span>op_text_no_imports: bool,
-<a href=#2698 id=2698 data-nosnippet>2698</a>}
-<a href=#2699 id=2699 data-nosnippet>2699</a>
-<a href=#2700 id=2700 data-nosnippet>2700</a><span class="doccomment">/// Enum for choosing between mermaid and dot graph writing.
-<a href=#2701 id=2701 data-nosnippet>2701</a></span><span class="attr">#[derive(Copy, Clone, Debug)]
-<a href=#2702 id=2702 data-nosnippet>2702</a>#[cfg_attr(feature = <span class="string">"clap-derive"</span>, derive(clap::Parser, clap::ValueEnum))]
-<a href=#2703 id=2703 data-nosnippet>2703</a></span><span class="kw">pub enum </span>WriteGraphType {
-<a href=#2704 id=2704 data-nosnippet>2704</a>    <span class="doccomment">/// Mermaid graphs.
-<a href=#2705 id=2705 data-nosnippet>2705</a>    </span>Mermaid,
-<a href=#2706 id=2706 data-nosnippet>2706</a>    <span class="doccomment">/// Dot (Graphviz) graphs.
-<a href=#2707 id=2707 data-nosnippet>2707</a>    </span>Dot,
-<a href=#2708 id=2708 data-nosnippet>2708</a>}
-<a href=#2709 id=2709 data-nosnippet>2709</a>
-<a href=#2710 id=2710 data-nosnippet>2710</a><span class="doccomment">/// [`itertools::Itertools::into_group_map`], but for `BTreeMap`.
-<a href=#2711 id=2711 data-nosnippet>2711</a></span><span class="kw">fn </span>into_group_map&lt;K, V&gt;(iter: <span class="kw">impl </span>IntoIterator&lt;Item = (K, V)&gt;) -&gt; BTreeMap&lt;K, Vec&lt;V&gt;&gt;
-<a href=#2712 id=2712 data-nosnippet>2712</a><span class="kw">where
-<a href=#2713 id=2713 data-nosnippet>2713</a>    </span>K: Ord,
-<a href=#2714 id=2714 data-nosnippet>2714</a>{
-<a href=#2715 id=2715 data-nosnippet>2715</a>    <span class="kw">let </span><span class="kw-2">mut </span>out: BTreeMap&lt;<span class="kw">_</span>, Vec&lt;<span class="kw">_</span>&gt;&gt; = BTreeMap::new();
-<a href=#2716 id=2716 data-nosnippet>2716</a>    <span class="kw">for </span>(k, v) <span class="kw">in </span>iter {
-<a href=#2717 id=2717 data-nosnippet>2717</a>        out.entry(k).or_default().push(v);
-<a href=#2718 id=2718 data-nosnippet>2718</a>    }
-<a href=#2719 id=2719 data-nosnippet>2719</a>    out
-<a href=#2720 id=2720 data-nosnippet>2720</a>}
+<a href=#2667 id=2667 data-nosnippet>2667</a>
+<a href=#2668 id=2668 data-nosnippet>2668</a>    <span class="doccomment">/// Get root-level loops (those with no parent loop).
+<a href=#2669 id=2669 data-nosnippet>2669</a>    </span><span class="kw">pub fn </span>root_loops(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[GraphLoopId] {
+<a href=#2670 id=2670 data-nosnippet>2670</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.root_loops
+<a href=#2671 id=2671 data-nosnippet>2671</a>    }
+<a href=#2672 id=2672 data-nosnippet>2672</a>}
+<a href=#2673 id=2673 data-nosnippet>2673</a>
+<a href=#2674 id=2674 data-nosnippet>2674</a><span class="doccomment">/// Configuration for writing graphs.
+<a href=#2675 id=2675 data-nosnippet>2675</a></span><span class="attr">#[derive(Clone, Debug, Default)]
+<a href=#2676 id=2676 data-nosnippet>2676</a>#[cfg_attr(feature = <span class="string">"clap-derive"</span>, derive(clap::Args))]
+<a href=#2677 id=2677 data-nosnippet>2677</a></span><span class="kw">pub struct </span>WriteConfig {
+<a href=#2678 id=2678 data-nosnippet>2678</a>    <span class="doccomment">/// Subgraphs will not be rendered if set.
+<a href=#2679 id=2679 data-nosnippet>2679</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
+<a href=#2680 id=2680 data-nosnippet>2680</a>    </span><span class="kw">pub </span>no_subgraphs: bool,
+<a href=#2681 id=2681 data-nosnippet>2681</a>    <span class="doccomment">/// Variable names will not be rendered if set.
+<a href=#2682 id=2682 data-nosnippet>2682</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
+<a href=#2683 id=2683 data-nosnippet>2683</a>    </span><span class="kw">pub </span>no_varnames: bool,
+<a href=#2684 id=2684 data-nosnippet>2684</a>    <span class="doccomment">/// Will not render pull/push shapes if set.
+<a href=#2685 id=2685 data-nosnippet>2685</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
+<a href=#2686 id=2686 data-nosnippet>2686</a>    </span><span class="kw">pub </span>no_pull_push: bool,
+<a href=#2687 id=2687 data-nosnippet>2687</a>    <span class="doccomment">/// Will not render handoffs if set.
+<a href=#2688 id=2688 data-nosnippet>2688</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
+<a href=#2689 id=2689 data-nosnippet>2689</a>    </span><span class="kw">pub </span>no_handoffs: bool,
+<a href=#2690 id=2690 data-nosnippet>2690</a>    <span class="doccomment">/// Will not render singleton references if set.
+<a href=#2691 id=2691 data-nosnippet>2691</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
+<a href=#2692 id=2692 data-nosnippet>2692</a>    </span><span class="kw">pub </span>no_references: bool,
+<a href=#2693 id=2693 data-nosnippet>2693</a>    <span class="doccomment">/// Will not render loops if set.
+<a href=#2694 id=2694 data-nosnippet>2694</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
+<a href=#2695 id=2695 data-nosnippet>2695</a>    </span><span class="kw">pub </span>no_loops: bool,
+<a href=#2696 id=2696 data-nosnippet>2696</a>
+<a href=#2697 id=2697 data-nosnippet>2697</a>    <span class="doccomment">/// Op text will only be their name instead of the whole source.
+<a href=#2698 id=2698 data-nosnippet>2698</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
+<a href=#2699 id=2699 data-nosnippet>2699</a>    </span><span class="kw">pub </span>op_short_text: bool,
+<a href=#2700 id=2700 data-nosnippet>2700</a>    <span class="doccomment">/// Op text will exclude any line that starts with "use".
+<a href=#2701 id=2701 data-nosnippet>2701</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"clap-derive"</span>, arg(long))]
+<a href=#2702 id=2702 data-nosnippet>2702</a>    </span><span class="kw">pub </span>op_text_no_imports: bool,
+<a href=#2703 id=2703 data-nosnippet>2703</a>}
+<a href=#2704 id=2704 data-nosnippet>2704</a>
+<a href=#2705 id=2705 data-nosnippet>2705</a><span class="doccomment">/// Enum for choosing between mermaid and dot graph writing.
+<a href=#2706 id=2706 data-nosnippet>2706</a></span><span class="attr">#[derive(Copy, Clone, Debug)]
+<a href=#2707 id=2707 data-nosnippet>2707</a>#[cfg_attr(feature = <span class="string">"clap-derive"</span>, derive(clap::Parser, clap::ValueEnum))]
+<a href=#2708 id=2708 data-nosnippet>2708</a></span><span class="kw">pub enum </span>WriteGraphType {
+<a href=#2709 id=2709 data-nosnippet>2709</a>    <span class="doccomment">/// Mermaid graphs.
+<a href=#2710 id=2710 data-nosnippet>2710</a>    </span>Mermaid,
+<a href=#2711 id=2711 data-nosnippet>2711</a>    <span class="doccomment">/// Dot (Graphviz) graphs.
+<a href=#2712 id=2712 data-nosnippet>2712</a>    </span>Dot,
+<a href=#2713 id=2713 data-nosnippet>2713</a>}
+<a href=#2714 id=2714 data-nosnippet>2714</a>
+<a href=#2715 id=2715 data-nosnippet>2715</a><span class="doccomment">/// [`itertools::Itertools::into_group_map`], but for `BTreeMap`.
+<a href=#2716 id=2716 data-nosnippet>2716</a></span><span class="kw">fn </span>into_group_map&lt;K, V&gt;(iter: <span class="kw">impl </span>IntoIterator&lt;Item = (K, V)&gt;) -&gt; BTreeMap&lt;K, Vec&lt;V&gt;&gt;
+<a href=#2717 id=2717 data-nosnippet>2717</a><span class="kw">where
+<a href=#2718 id=2718 data-nosnippet>2718</a>    </span>K: Ord,
+<a href=#2719 id=2719 data-nosnippet>2719</a>{
+<a href=#2720 id=2720 data-nosnippet>2720</a>    <span class="kw">let </span><span class="kw-2">mut </span>out: BTreeMap&lt;<span class="kw">_</span>, Vec&lt;<span class="kw">_</span>&gt;&gt; = BTreeMap::new();
+<a href=#2721 id=2721 data-nosnippet>2721</a>    <span class="kw">for </span>(k, v) <span class="kw">in </span>iter {
+<a href=#2722 id=2722 data-nosnippet>2722</a>        out.entry(k).or_default().push(v);
+<a href=#2723 id=2723 data-nosnippet>2723</a>    }
+<a href=#2724 id=2724 data-nosnippet>2724</a>    out
+<a href=#2725 id=2725 data-nosnippet>2725</a>}
 </code></pre></div></section></main></body></html>

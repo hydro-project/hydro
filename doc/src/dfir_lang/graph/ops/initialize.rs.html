@@ -25,16 +25,23 @@
 <a href=#25 id=25 data-nosnippet>25</a>    persistence_args: RANGE_0,
 <a href=#26 id=26 data-nosnippet>26</a>    type_args: RANGE_0,
 <a href=#27 id=27 data-nosnippet>27</a>    is_external_input: <span class="bool-val">false</span>,
-<a href=#28 id=28 data-nosnippet>28</a>    flo_type: <span class="prelude-val">None</span>,
-<a href=#29 id=29 data-nosnippet>29</a>    ports_inn: <span class="prelude-val">None</span>,
-<a href=#30 id=30 data-nosnippet>30</a>    ports_out: <span class="prelude-val">None</span>,
-<a href=#31 id=31 data-nosnippet>31</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
-<a href=#32 id=32 data-nosnippet>32</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs { op_span, .. }, diagnostics| {
-<a href=#33 id=33 data-nosnippet>33</a>        <span class="kw">let </span>wc = WriteContextArgs {
-<a href=#34 id=34 data-nosnippet>34</a>            arguments: <span class="kw-2">&amp;</span><span class="macro">parse_quote_spanned!</span>(op_span=&gt; [()]),
-<a href=#35 id=35 data-nosnippet>35</a>            ..wc.clone()
-<a href=#36 id=36 data-nosnippet>36</a>        };
-<a href=#37 id=37 data-nosnippet>37</a>        (<span class="kw">super</span>::source_iter::SOURCE_ITER.write_fn)(<span class="kw-2">&amp;</span>wc, diagnostics)
-<a href=#38 id=38 data-nosnippet>38</a>    },
-<a href=#39 id=39 data-nosnippet>39</a>};
+<a href=#28 id=28 data-nosnippet>28</a>    <span class="comment">// NOTE: `initialize` is deliberately NOT `FloType::Source`, even though it is categorized as a
+<a href=#29 id=29 data-nosnippet>29</a>    // source. Unlike external/timing sources (`source_stream`, `source_interval`, `spin`, ...) it
+<a href=#30 id=30 data-nosnippet>30</a>    // is a pure, deterministic, one-shot generator, so it is permitted *inside* `loop { ... }`
+<a href=#31 id=31 data-nosnippet>31</a>    // contexts where it serves as a loop-local seed (e.g. `initialize() -&gt; persist::&lt;'loop&gt;()` to
+<a href=#32 id=32 data-nosnippet>32</a>    // materialize a held "absent" marker once per loop execution). Do not "fix" this to
+<a href=#33 id=33 data-nosnippet>33</a>    // `FloType::Source`: that would ban it from loops via `check_loop_errors` and break held-state
+<a href=#34 id=34 data-nosnippet>34</a>    // constructions.
+<a href=#35 id=35 data-nosnippet>35</a>    </span>flo_type: <span class="prelude-val">None</span>,
+<a href=#36 id=36 data-nosnippet>36</a>    ports_inn: <span class="prelude-val">None</span>,
+<a href=#37 id=37 data-nosnippet>37</a>    ports_out: <span class="prelude-val">None</span>,
+<a href=#38 id=38 data-nosnippet>38</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
+<a href=#39 id=39 data-nosnippet>39</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs { op_span, .. }, diagnostics| {
+<a href=#40 id=40 data-nosnippet>40</a>        <span class="kw">let </span>wc = WriteContextArgs {
+<a href=#41 id=41 data-nosnippet>41</a>            arguments: <span class="kw-2">&amp;</span><span class="macro">parse_quote_spanned!</span>(op_span=&gt; [()]),
+<a href=#42 id=42 data-nosnippet>42</a>            ..wc.clone()
+<a href=#43 id=43 data-nosnippet>43</a>        };
+<a href=#44 id=44 data-nosnippet>44</a>        (<span class="kw">super</span>::source_iter::SOURCE_ITER.write_fn)(<span class="kw-2">&amp;</span>wc, diagnostics)
+<a href=#45 id=45 data-nosnippet>45</a>    },
+<a href=#46 id=46 data-nosnippet>46</a>};
 </code></pre></div></section></main></body></html>
