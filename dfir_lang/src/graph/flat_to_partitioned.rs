@@ -11,7 +11,7 @@ use super::{
     Color, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, HandoffKind,
 };
 use crate::diagnostic::{Diagnostic, Level};
-use crate::graph::graph_algorithms::SubgraphMerge;
+use crate::graph::graph_algorithms::{SubgraphMerge, validate_topo_sort};
 
 /// Find edge barriers: edges whose destination operator declares an input delay type.
 ///
@@ -119,6 +119,40 @@ fn find_subgraph_unionfind(
         all_preds.entry(dst).unwrap().or_default().push(src);
     }
 
+    // Loop-ingress ordering constraints.
+    // Fix https://github.com/hydro-project/hydro/issues/3048
+    //
+    // `make_loops_contiguous` (run later) gathers *all* of a loop's subgraphs to the
+    // flat-order position of the loop's *first* subgraph. That is only sound if every
+    // subgraph feeding into the loop from *outside* is already ordered before the loop's
+    // earliest subgraph. Otherwise an ingress "receiver" inside the loop can be hoisted
+    // ahead of its external "sender", violating topological order (which then produces a
+    // handoff-buffer "use before declaration" compile error downstream).
+    //
+    // To guarantee this, we require: for each forward (non-tick) edge `src -> dst` where
+    // `dst` lies inside a loop that does not contain `src`, `src` must precede *every*
+    // node directly inside such loop.
+    {
+        for (edge_id, (src_id, dst_id)) in partitioned_graph.edges() {
+            if tick_edges.contains_key(edge_id) {
+                continue;
+            }
+            let src_loop = partitioned_graph.node_loop(src_id);
+            let dst_loop = partitioned_graph.node_loop(dst_id);
+            if let Some(dst_loop_some) = dst_loop
+                && src_loop == partitioned_graph.loop_parent(dst_loop_some)
+            {
+                for &inside_dst_id in partitioned_graph.loop_nodes(dst_loop_some) {
+                    all_preds
+                        .entry(inside_dst_id)
+                        .unwrap()
+                        .or_default()
+                        .push(src_id);
+                }
+            }
+        }
+    }
+
     // Build enemies: all node pairs that must not be in the same subgraph.
     let enemies = edge_barrier_pairs
         .iter()
@@ -215,14 +249,6 @@ fn make_subgraphs(
     edge_barrier_pairs: &[(GraphNodeId, GraphNodeId)],
     access_group_pairs: &[(GraphNodeId, GraphNodeId)],
 ) -> Result<(), Diagnostic> {
-    // Algorithm:
-    // 1. Each node begins as its own subgraph.
-    // 2. Collect edges. (Future optimization: sort so edges which should not be split across a handoff come first).
-    // 3. For each edge, try to join `(to, from)` into the same subgraph.
-
-    // TODO(mingwei):
-    // self.partitioned_graph.assert_valid();
-
     let (subgraph_merge, handoff_edges) = find_subgraph_unionfind(
         partitioned_graph,
         tick_edges,
@@ -256,7 +282,7 @@ fn make_subgraphs(
         }
     }
 
-    // Register subgraphs. SubgraphMerge maintains operators in topo-sorted order per subgraph.
+    // Register subgraphs. `SubgraphMerge` maintains operators in topo-sorted order per subgraph.
     // Filter out handoff nodes — they are not part of any subgraph.
     // Collect subgraph IDs in flat topological order.
     let mut flat_toposort = Vec::new();
@@ -277,23 +303,52 @@ fn make_subgraphs(
 
     // Rearrange the flat toposort to make loop subgraphs contiguous.
     let subgraph_toposort = make_loops_contiguous(partitioned_graph, &flat_toposort);
+
+    // Defensive check: the toposort must still be valid after making loops contiguous.
+    // A violation here indicates a bug in the ordering/contiguity logic.
+    assert!(
+        validate_topo_sort(
+            subgraph_toposort
+                .iter()
+                .flat_map(|&sg_id| partitioned_graph.subgraph(sg_id))
+                .copied(),
+            |succ_id| {
+                partitioned_graph
+                    .node_predecessors(succ_id)
+                    .filter_map(|(edge_id, pred_id)| {
+                        (!tick_edges.contains_key(edge_id)).then_some(pred_id)
+                    })
+                    .map(|pred_id| {
+                        // Jump over handoff nodes.
+                        if matches!(partitioned_graph.node(pred_id), GraphNode::Handoff { .. }) {
+                            partitioned_graph
+                                .node_predecessor_nodes(pred_id)
+                                .next()
+                                .unwrap()
+                        } else {
+                            pred_id
+                        }
+                    })
+            }
+        )
+        .is_ok(),
+        "bug: toposort is invalid after `make_loops_contiguous`.",
+    );
+
     partitioned_graph.set_subgraph_toposort(subgraph_toposort);
 
     Ok(())
 }
 
-/// Rearranges a flat topological order of subgraphs so that all subgraphs within
-/// a loop are contiguous, while preserving the relative topological order.
+/// Rearranges a flat topological order of subgraphs so that all subgraphs within a loop are contiguous, while
+/// preserving the relative topological order.
 ///
-/// Pre-computes for each loop the set of descendant subgraphs (in flat-order),
-/// then recurses through the loop hierarchy. At each level, subgraphs directly
-/// at that level are emitted in place; when a child loop is first encountered,
-/// all of its descendants are emitted recursively.
+/// PRECONDITION: The first member of a loop MUST COME AFTER all outer subgraphs which send into the loop. Subgraphs
+/// from different loop contexts that appear interleaved in the flat order have no dependency between them **EXCEPT**
+/// ingress (from outer to inner loop) or egress (from inner to outer). This method hoists all members of a loop to the
+/// **first** subgraph of the loop in the flat order, hence the correctness requirement only on the ingress side.
 ///
-/// Correctness: subgraphs from different loop contexts that appear interleaved in
-/// the flat order have no dependency between them (data can only enter/exit a loop
-/// via windowing/unwindowing operators, never between siblings), so reordering them
-/// for contiguity preserves the topological invariant.
+/// https://github.com/hydro-project/hydro/issues/3048
 fn make_loops_contiguous(
     graph: &DfirGraph,
     flat_order: &[GraphSubgraphId],
@@ -478,6 +533,105 @@ pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
 mod tests {
     use super::*;
     use crate::graph::GraphNode;
+
+    /// Regression test for a loop-contiguity toposort bug.
+    /// https://github.com/hydro-project/hydro/issues/3048
+    ///
+    /// [`make_loops_contiguous`] gathers every subgraph of a loop at the position of the
+    /// loop's *first* subgraph in the flat order. If an external subgraph that *feeds into*
+    /// the loop (loop ingress) happens to sit — in the flat topological order — after the
+    /// loop's first subgraph but before a later loop subgraph, then gathering the loop
+    /// pulls that later (ingress-receiving) subgraph *ahead* of its producer.
+    ///
+    /// Concretely, the flat order `[S1, loopA, S2, loopB]` (valid, since `S2 -> loopB`)
+    /// would become `[S1, loopA, loopB, S2]`, so the loop-ingress *receiver* `loopB` would
+    /// be emitted before its *sender* `S2`. Downstream this produces a handoff-buffer "use
+    /// before declaration" compile error (and, logically, a drained-but-never-filled
+    /// buffer).
+    ///
+    /// The fix adds loop-ingress ordering constraints so every ingress sender precedes the
+    /// entire loop block, keeping gather-at-first sound.
+    #[test]
+    fn test_make_loops_contiguous_ingress_toposort() {
+        use crate::graph::{FlatGraphBuilder, FlatGraphBuilderOutput};
+
+        let mut builder = FlatGraphBuilder::new();
+        // External source #1 (feeds the loop's first ingress).
+        builder.add_dfir(
+            syn::parse_quote! {
+                inp1 = source_iter([1, 2, 3]);
+            },
+            None,
+            None,
+        );
+        let loop_id = builder.insert_loop(None);
+        // Loop ingress A — independent of `inp2`, so the flat toposort can place it before
+        // `inp2`.
+        builder.add_dfir(
+            syn::parse_quote! {
+                inp1 -> batch() -> for_each(std::mem::drop);
+            },
+            Some(loop_id),
+            None,
+        );
+        // External source #2 — the loop-ingress "sender", defined after loop ingress A so
+        // the flat toposort interleaves it: `[inp1, loopA, inp2, loopB]`.
+        builder.add_dfir(
+            syn::parse_quote! {
+                inp2 = source_iter([4, 5, 6]);
+            },
+            None,
+            None,
+        );
+        // Loop ingress B — the "receiver" of `inp2`.
+        builder.add_dfir(
+            syn::parse_quote! {
+                inp2 -> batch() -> for_each(std::mem::drop);
+            },
+            Some(loop_id),
+            None,
+        );
+
+        let FlatGraphBuilderOutput { flat_graph, .. } =
+            builder.build().expect("should build without errors");
+        let partitioned = partition_graph(flat_graph).expect("should partition without errors");
+
+        // Verify: every forward (non-delay) handoff has its producer subgraph *before* its
+        // consumer subgraph in the final `subgraph_toposort`.
+        let order = partitioned.subgraph_toposort();
+        let pos: std::collections::HashMap<_, _> =
+            order.iter().enumerate().map(|(i, &sg)| (sg, i)).collect();
+
+        for (hoff_id, node) in partitioned.nodes() {
+            if !matches!(node, GraphNode::Handoff { .. }) {
+                continue;
+            }
+            // Skip delay (back-edge) handoffs, which are allowed to point "backwards".
+            if partitioned.handoff_delay_type(hoff_id).is_some() {
+                continue;
+            }
+            let Some((_, pred)) = partitioned.node_predecessors(hoff_id).next() else {
+                continue;
+            };
+            let Some((_, succ)) = partitioned.node_successors(hoff_id).next() else {
+                continue;
+            };
+            let (Some(pred_sg), Some(succ_sg)) = (
+                partitioned.node_subgraph(pred),
+                partitioned.node_subgraph(succ),
+            ) else {
+                continue;
+            };
+            let (Some(&pp), Some(&sp)) = (pos.get(&pred_sg), pos.get(&succ_sg)) else {
+                continue;
+            };
+            assert!(
+                pp < sp,
+                "toposort violated: producer subgraph {pred_sg:?} (pos {pp}) emitted after \
+                 consumer subgraph {succ_sg:?} (pos {sp}) via handoff {hoff_id:?}; order = {order:?}",
+            );
+        }
+    }
 
     fn make_op_node(graph: &mut DfirGraph, loop_ctx: Option<GraphLoopId>) -> GraphNodeId {
         let operator: crate::parse::Operator = syn::parse_quote! { identity() };

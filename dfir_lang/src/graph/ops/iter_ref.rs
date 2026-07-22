@@ -1,7 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
+    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// > 0 input streams, 1 output stream
@@ -32,7 +33,10 @@ pub const ITER_REF: OperatorConstraints = OperatorConstraints {
     persistence_args: RANGE_0,
     type_args: RANGE_0,
     is_external_input: false,
-    flo_type: None,
+    // `iter_ref` is a source (0 pipe inputs): it reads a referenced handoff buffer. Like other
+    // `FloType::Source` operators it must live at the root level, not inside a `loop { ... }`
+    // context.
+    flo_type: Some(FloType::Source),
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
