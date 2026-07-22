@@ -5197,18 +5197,18 @@ impl HydroNode {
                                             #watermark_ident
                                                 -> map(|watermark| (None, Some(watermark)))
                                                 -> [1]#chain_ident;
-
                                             #fold_ident = #chain_ident
-                                                -> #agg_operator::<#lifetime>(|| (::std::collections::HashMap::new(), None), {
-                                                    let __reduce_keyed_fn = #f_tokens;
-                                                    move |(map, opt_curr_watermark), (opt_payload, opt_watermark)| {
+                                                -> #agg_operator::<#lifetime>(|| (::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::HashMap::new())), None), {
+                                                    let __reduce_keyed_fn = #f;
+                                                    move |(map, opt_curr_watermark): &mut (::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<_, _>>>, _), (opt_payload, opt_watermark)| {
                                                         if let Some((k, v)) = opt_payload {
-                                                            if let Some(curr_watermark) = *opt_curr_watermark {
-                                                                if k < curr_watermark {
+                                                            if let Some(ref curr_watermark) = *opt_curr_watermark {
+                                                                if k < *curr_watermark {
                                                                     return;
                                                                 }
                                                             }
-                                                            match map.entry(k) {
+                                                            let mut map_ref = map.borrow_mut();
+                                                            match map_ref.entry(k) {
                                                                 ::std::collections::hash_map::Entry::Vacant(e) => {
                                                                     e.insert(v);
                                                                 }
@@ -5218,17 +5218,19 @@ impl HydroNode {
                                                             }
                                                         } else {
                                                             let watermark = opt_watermark.unwrap();
-                                                            if let Some(curr_watermark) = *opt_curr_watermark {
-                                                                if watermark <= curr_watermark {
+                                                            if let Some(ref curr_watermark) = *opt_curr_watermark {
+                                                                if watermark <= *curr_watermark {
                                                                     return;
                                                                 }
                                                             }
-                                                            map.retain(|k, _| *k >= watermark);
+                                                            map.borrow_mut().retain(|k, _| *k >= watermark);
                                                             *opt_curr_watermark = Some(watermark);
                                                         }
                                                     }
                                                 })
-                                                -> flat_map(|(map, _curr_watermark)| map);
+                                                -> flat_map(|(map, _curr_watermark): (::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<_, _>>>, _)| {
+                                                    map.borrow().clone().into_iter()
+                                                });
                                         },
                                         Some(&stmt_id.to_string()),
                                     );
