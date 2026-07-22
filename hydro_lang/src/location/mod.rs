@@ -764,6 +764,7 @@ pub trait Location<'a>: DynLocation {
             input: Box::new(to_sink.ir_node.replace(HydroNode::Placeholder)),
             op_metadata: HydroIrOpMetadata::new(),
         });
+        drop(flow_state_borrow);
 
         let raw_stream: Stream<
             Result<<Codec as Decoder>::Item, <Codec as Decoder>::Error>,
@@ -856,6 +857,7 @@ pub trait Location<'a>: DynLocation {
             input: Box::new(to_sink.ir_node.replace(HydroNode::Placeholder)),
             op_metadata: HydroIrOpMetadata::new(),
         });
+        drop(flow_state_borrow);
 
         let in_t_type = quote_type::<InT>();
 
@@ -953,6 +955,7 @@ pub trait Location<'a>: DynLocation {
             NoOrder,
             ExactlyOnce,
         >>();
+        let to_sink_input = Box::new(to_sink.entries().ir_node.replace(HydroNode::Placeholder));
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
         flow_state_borrow.push_root(HydroRoot::SendExternal {
@@ -962,9 +965,10 @@ pub trait Location<'a>: DynLocation {
             unpaired: false,
             serialize_fn: None,
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(to_sink.entries().ir_node.replace(HydroNode::Placeholder)),
+            input: to_sink_input,
             op_metadata: HydroIrOpMetadata::new(),
         });
+        drop(flow_state_borrow);
 
         let raw_stream: Stream<
             Result<(u64, <Codec as Decoder>::Item), <Codec as Decoder>::Error>,
@@ -1094,6 +1098,7 @@ pub trait Location<'a>: DynLocation {
             NoOrder,
             ExactlyOnce,
         >>();
+        let to_sink_input = Box::new(to_sink.entries().ir_node.replace(HydroNode::Placeholder));
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
         let root = get_this_crate();
@@ -1112,9 +1117,10 @@ pub trait Location<'a>: DynLocation {
             unpaired: false,
             serialize_fn: Some(ser_fn.into()),
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(to_sink.entries().ir_node.replace(HydroNode::Placeholder)),
+            input: to_sink_input,
             op_metadata: HydroIrOpMetadata::new(),
         });
+        drop(flow_state_borrow);
 
         let in_t_type = quote_type::<InT>();
 

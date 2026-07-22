@@ -185,7 +185,7 @@ impl<B: IsBounded + KeyedSingletonBound> IsKeyedMonotonic for B {}
 ///     - [`BoundedValue`] (asynchronous with immutable values for each key and no removals)
 pub struct KeyedSingleton<K, V, Loc, Bound: KeyedSingletonBound> {
     pub(crate) location: Loc,
-    pub(crate) ir_node: RefCell<HydroNode>,
+    pub(crate) ir_node: Rc<RefCell<HydroNode>>,
     pub(crate) flow_state: FlowState,
 
     _phantom: PhantomData<(K, V, Loc, Bound)>,
@@ -219,11 +219,13 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: KeyedSingletonBound> Clon
             KeyedSingleton {
                 location: self.location.clone(),
                 flow_state: self.flow_state.clone(),
-                ir_node: HydroNode::Tee {
-                    inner: SharedNode(inner.0.clone()),
-                    metadata: metadata.clone(),
-                }
-                .into(),
+                ir_node: super::tracked_ir_node(
+                    &self.flow_state,
+                    HydroNode::Tee {
+                        inner: SharedNode(inner.0.clone()),
+                        metadata: metadata.clone(),
+                    },
+                ),
                 _phantom: PhantomData,
             }
         } else {
@@ -240,13 +242,17 @@ where
     type Location = L;
 
     fn create_source(cycle_id: CycleId, location: L) -> Self {
+        let flow_state = location.flow_state().clone();
         KeyedSingleton {
-            flow_state: location.flow_state().clone(),
-            location: location.clone(),
-            ir_node: RefCell::new(HydroNode::CycleSource {
-                cycle_id,
-                metadata: location.new_node_metadata(Self::collection_kind()),
-            }),
+            ir_node: super::tracked_ir_node(
+                &flow_state,
+                HydroNode::CycleSource {
+                    cycle_id,
+                    metadata: location.new_node_metadata(Self::collection_kind()),
+                },
+            ),
+            flow_state,
+            location,
             _phantom: PhantomData,
         }
     }
@@ -327,10 +333,11 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
 
         let flow_state = location.flow_state().clone();
+        let ir_node = super::tracked_ir_node(&flow_state, ir_node);
         KeyedSingleton {
             location,
             flow_state,
-            ir_node: RefCell::new(ir_node),
+            ir_node,
             _phantom: PhantomData,
         }
     }
@@ -599,7 +606,10 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
                 location: self.location.clone(),
                 flow_state: self.flow_state.clone(),
-                ir_node: RefCell::new(self.ir_node.replace(HydroNode::Placeholder)),
+                ir_node: super::tracked_ir_node(
+                    &self.flow_state,
+                    self.ir_node.replace(HydroNode::Placeholder),
+                ),
                 _phantom: PhantomData,
             };
 
@@ -657,7 +667,10 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
                 location: self.location.clone(),
                 flow_state: self.flow_state.clone(),
-                ir_node: RefCell::new(self.ir_node.replace(HydroNode::Placeholder)),
+                ir_node: super::tracked_ir_node(
+                    &self.flow_state,
+                    self.ir_node.replace(HydroNode::Placeholder),
+                ),
                 _phantom: PhantomData,
             };
 

@@ -203,7 +203,7 @@ pub struct Stream<
     Retry: Retries = ExactlyOnce,
 > {
     pub(crate) location: Loc,
-    pub(crate) ir_node: RefCell<HydroNode>,
+    pub(crate) ir_node: Rc<RefCell<HydroNode>>,
     pub(crate) flow_state: FlowState,
 
     _phantom: PhantomData<(Type, Loc, Bound, Order, Retry)>,
@@ -231,13 +231,17 @@ where
             .location
             .new_node_metadata(Stream::<T, L, Unbounded, O, R>::collection_kind());
 
+        let flow_state = stream.flow_state.clone();
         Stream {
             location: stream.location.clone(),
-            flow_state: stream.flow_state.clone(),
-            ir_node: RefCell::new(HydroNode::Cast {
-                inner: Box::new(stream.ir_node.replace(HydroNode::Placeholder)),
-                metadata: new_meta,
-            }),
+            ir_node: super::tracked_ir_node(
+                &flow_state,
+                HydroNode::Cast {
+                    inner: Box::new(stream.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: new_meta,
+                },
+            ),
+            flow_state,
             _phantom: PhantomData,
         }
     }
@@ -399,11 +403,13 @@ where
         Stream {
             location: self.location.clone(),
             flow_state: self.flow_state.clone(),
-            ir_node: HydroNode::Tee {
-                inner: SharedNode(inner.0.clone()),
-                metadata: metadata.clone(),
-            }
-            .into(),
+            ir_node: super::tracked_ir_node(
+                &self.flow_state,
+                HydroNode::Tee {
+                    inner: SharedNode(inner.0.clone()),
+                    metadata: metadata.clone(),
+                },
+            ),
             _phantom: PhantomData,
         }
     }
@@ -418,10 +424,11 @@ where
         debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
 
         let flow_state = location.flow_state().clone();
+        let ir_node = super::tracked_ir_node(&flow_state, ir_node);
         Stream {
             location,
             flow_state,
-            ir_node: RefCell::new(ir_node),
+            ir_node,
             _phantom: PhantomData,
         }
     }
@@ -4122,6 +4129,51 @@ mod tests {
         // The return value of .inspect() is intentionally dropped.
         // Before the Null-root fix, this would silently do nothing.
         node.source_iter(q!(0..5))
+            .inspect(q!(|x| println!("inspect: {}", x)));
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut stdout = nodes.get_process(&node).stdout();
+
+        deployment.start().await.unwrap();
+
+        let mut lines = Vec::new();
+        for _ in 0..5 {
+            lines.push(stdout.recv().await.unwrap());
+        }
+        lines.sort();
+        assert_eq!(
+            lines,
+            vec![
+                "inspect: 0",
+                "inspect: 1",
+                "inspect: 2",
+                "inspect: 3",
+                "inspect: 4",
+            ]
+        );
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn unconsumed_inspect_alive_at_deploy_still_runs() {
+        use crate::deploy::DeployCrateWrapper;
+
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        // The return value of .inspect() is bound to a variable that is still alive
+        // when the flow is finalized by `deploy` below, so its `Drop` runs too late
+        // to register a root the usual way. The FlowBuilder must yank the IR from
+        // still-live collections when finalizing.
+        let _inspected = node
+            .source_iter(q!(0..5))
             .inspect(q!(|x| println!("inspect: {}", x)));
 
         let nodes = flow
