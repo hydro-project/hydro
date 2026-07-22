@@ -483,6 +483,36 @@ pub trait DfirBuilder {
         operator_tag: Option<&str>,
     );
 
+    /// Emits a source operator (e.g. `source_iter(...)`) that logically lives inside a tick.
+    ///
+    /// `source_rhs` is the source pipeline (the right-hand side of the `=` assignment, e.g.
+    /// `source_iter([123])`). `replay_each_tick` selects whether the value is re-emitted on every
+    /// tick/firing (persisted) or delivered only on the first tick/firing.
+    ///
+    /// The default (simulation) emission places the source directly in the tick's own graph.
+    /// Production overrides this since DFIR sources must be at the root level, outside of the
+    /// tick's `loop { ... }` context: it emits the source at the root and windows it into the
+    /// loop.
+    fn add_tick_source(
+        &mut self,
+        location: &LocationId,
+        source_rhs: TokenStream,
+        out_ident: &syn::Ident,
+        replay_each_tick: bool,
+        operator_tag: Option<&str>,
+    ) {
+        let dfir = if replay_each_tick {
+            parse_quote! {
+                #out_ident = #source_rhs -> persist::<'static>();
+            }
+        } else {
+            parse_quote! {
+                #out_ident = #source_rhs;
+            }
+        };
+        self.add_dfir_at(location, dfir, operator_tag);
+    }
+
     /// The DFIR persistence lifetime for operator state scoped to a single tick, for an operator
     /// at `op_location`.
     ///
@@ -663,6 +693,12 @@ pub trait DfirBuilder {
 pub struct ProdDfirBuilder {
     /// The DFIR graph builder for each root location.
     pub graphs: SecondaryMap<LocationKey, FlatGraphBuilder>,
+    /// The `loop { ... }` context emitted for each (unified) tick location. Keyed by the tick's
+    /// [`LocationId`] (which carries the `ClockId`), so multiple ticks on the same root location
+    /// each get their own sibling root-level loop within that root's graph.
+    tick_loops: HashMap<LocationId, dfir_lang::graph::GraphLoopId>,
+    /// Counter for generating unique intermediate idents at loop boundaries.
+    next_intermediate_id: usize,
 }
 
 #[cfg(feature = "build")]
@@ -674,6 +710,52 @@ impl ProdDfirBuilder {
             .expect("location was removed")
             .or_default()
     }
+
+    /// Returns the (unified) tick location that `location` belongs to: the location itself for
+    /// tick locations, the wrapped tick for atomic locations, and `None` for root (top-level)
+    /// locations.
+    ///
+    /// Note this is distinct from the module-level `tick_of` (which extracts a raw [`ClockId`]);
+    /// here we need the full [`LocationId`] so it can be used as the loop-map key.
+    fn tick_of(location: &LocationId) -> Option<&LocationId> {
+        match location {
+            LocationId::Tick(_, _) => Some(location),
+            LocationId::Atomic(tick) => Self::tick_of(tick),
+            LocationId::Process(_) | LocationId::Cluster(_) => None,
+        }
+    }
+
+    /// Returns the `loop { ... }` context for the given location, creating it (as a root-level
+    /// loop in the location's root graph) if necessary. Returns `None` for top-level locations.
+    fn loop_context(&mut self, location: &LocationId) -> Option<dfir_lang::graph::GraphLoopId> {
+        let tick_location = Self::tick_of(location)?.clone();
+        if let Some(&loop_id) = self.tick_loops.get(&tick_location) {
+            return Some(loop_id);
+        }
+        let loop_id = self.graph_mut(location).insert_loop(None);
+        self.tick_loops.insert(tick_location, loop_id);
+        Some(loop_id)
+    }
+
+    /// Adds the DFIR statements to the graph for the given location, inside the tick's loop
+    /// context if the location is a tick or atomic location (otherwise at the root level).
+    fn add_dfir_in(
+        &mut self,
+        location: &LocationId,
+        dfir: dfir_lang::parse::DfirCode,
+        operator_tag: Option<&str>,
+    ) {
+        let loop_context = self.loop_context(location);
+        self.graph_mut(location)
+            .add_dfir(dfir, loop_context, operator_tag);
+    }
+
+    /// Generates a unique intermediate identifier for loop-boundary plumbing.
+    fn intermediate_ident(&mut self) -> syn::Ident {
+        let id = self.next_intermediate_id;
+        self.next_intermediate_id += 1;
+        syn::Ident::new(&format!("__loop_boundary_{}", id), Span::call_site())
+    }
 }
 
 #[cfg(feature = "build")]
@@ -682,13 +764,37 @@ impl DfirBuilder for ProdDfirBuilder {
         false
     }
 
+    /// The DFIR persistence lifetime for tick-scoped operator state. Inside a tick's
+    /// `loop { ... }` context (`'none`), state resets each loop execution (== each tick);
+    /// at the top level (`'tick`), it resets each tick.
+    fn tick_state_lifetime(&self, op_location: &LocationId) -> TokenStream {
+        if Self::tick_of(op_location).is_some() {
+            quote!('none)
+        } else {
+            quote!('tick)
+        }
+    }
+
+    /// The DFIR persistence lifetime for cross-tick operator state. Inside a tick's
+    /// `loop { ... }` context (`'loop`), state persists across loop executions (== across ticks);
+    /// at the top level (`'static`), it persists forever.
+    fn cross_tick_state_lifetime(&self, op_location: &LocationId) -> TokenStream {
+        if Self::tick_of(op_location).is_some() {
+            quote!('loop)
+        } else {
+            quote!('static)
+        }
+    }
+
     fn add_dfir_at(
         &mut self,
         location: &LocationId,
         dfir: dfir_lang::parse::DfirCode,
         operator_tag: Option<&str>,
     ) {
-        self.graph_mut(location).add_dfir(dfir, None, operator_tag);
+        // Place tick/atomic-located statements inside the tick's loop context; everything else
+        // at the root level.
+        self.add_dfir_in(location, dfir, operator_tag);
     }
 
     fn batch(
@@ -697,35 +803,73 @@ impl DfirBuilder for ProdDfirBuilder {
         in_location: &LocationId,
         in_kind: &CollectionKind,
         out_ident: &syn::Ident,
-        _out_location: &LocationId,
+        out_location: &LocationId,
         _op_meta: &HydroIrOpMetadata,
         _fold_hooked_idents: &HashSet<String>,
     ) {
-        let builder = self.graph_mut(in_location.root());
-        if in_kind.is_bounded()
-            && matches!(
-                in_kind,
-                CollectionKind::Singleton { .. }
-                    | CollectionKind::Optional { .. }
-                    | CollectionKind::KeyedSingleton { .. }
-            )
-        {
-            assert!(in_location.is_top_level());
-            builder.add_dfir(
-                parse_quote! {
-                    #out_ident = #in_ident -> persist::<'static>();
-                },
-                None,
-                None,
-            );
-        } else {
-            builder.add_dfir(
-                parse_quote! {
-                    #out_ident = #in_ident;
-                },
-                None,
-                None,
-            );
+        let is_singleton_like = matches!(
+            in_kind,
+            CollectionKind::Singleton { .. }
+                | CollectionKind::Optional { .. }
+                | CollectionKind::KeyedSingleton { .. }
+        );
+
+        match (Self::tick_of(in_location), Self::tick_of(out_location)) {
+            (Some(in_tick), Some(out_tick)) => {
+                // Within the same (unified) tick, e.g. entering the tick from its associated
+                // atomic region: both sides live in the same loop.
+                assert_eq!(
+                    in_tick, out_tick,
+                    "batch between distinct ticks should have been unified"
+                );
+                // TODO(#2902 phase 2/3): a bounded singleton-like value produced once inside the
+                // loop (e.g. by `fold_no_replay` in an atomic region) needs to be held across
+                // firings. `persist` is not permitted inside a loop, so this is left as identity
+                // for now (value semantics fixed in a later phase).
+                self.add_dfir_in(
+                    out_location,
+                    parse_quote! {
+                        #out_ident = #in_ident;
+                    },
+                    None,
+                );
+            }
+            (None, Some(_)) => {
+                // Entering the tick's loop from the top level: emit a windowing operator.
+                if is_singleton_like && in_kind.is_bounded() {
+                    // The bounded value is produced exactly once. Persist it at the root (a
+                    // `loop { ... }` context cannot contain `persist`) so it remains available,
+                    // then window it into the loop on each firing.
+                    let persisted_ident = self.intermediate_ident();
+                    self.graph_mut(in_location).add_dfir(
+                        parse_quote! {
+                            #persisted_ident = #in_ident -> persist::<'static>();
+                        },
+                        None,
+                        None,
+                    );
+                    self.add_dfir_in(
+                        out_location,
+                        parse_quote! {
+                            #out_ident = #persisted_ident -> batch();
+                        },
+                        None,
+                    );
+                } else {
+                    // TODO(#2902 phase 3/5): unbounded singleton snapshots and same-tick-feedback
+                    // streams should route through `batch_lazy()` (value-only, no trigger).
+                    self.add_dfir_in(
+                        out_location,
+                        parse_quote! {
+                            #out_ident = #in_ident -> batch();
+                        },
+                        None,
+                    );
+                }
+            }
+            (Some(_), None) | (None, None) => {
+                unreachable!("batch must target a tick location");
+            }
         }
     }
 
@@ -737,10 +881,14 @@ impl DfirBuilder for ProdDfirBuilder {
         out_ident: &syn::Ident,
         _out_location: &LocationId,
     ) {
-        let builder = self.graph_mut(in_location.root());
-        builder.add_dfir(
+        // Exit the tick's loop back to the top level. `in_ident` is produced inside the loop;
+        // `all_iterations()` is the un-windowing operator, emitted at the root level.
+        //
+        // TODO(#2902 phase 2): singleton/optional yields need held-state semantics (observe the
+        // latest value *between* firings), not plain event semantics.
+        self.graph_mut(in_location).add_dfir(
             parse_quote! {
-                #out_ident = #in_ident;
+                #out_ident = #in_ident -> all_iterations();
             },
             None,
             None,
@@ -753,17 +901,31 @@ impl DfirBuilder for ProdDfirBuilder {
         in_location: &LocationId,
         _in_kind: &CollectionKind,
         out_ident: &syn::Ident,
-        _out_location: &LocationId,
+        out_location: &LocationId,
         _op_meta: &HydroIrOpMetadata,
     ) {
-        let builder = self.graph_mut(in_location.root());
-        builder.add_dfir(
-            parse_quote! {
-                #out_ident = #in_ident;
-            },
-            None,
-            None,
-        );
+        // An atomic region is fused with (runs synchronously inside) its tick's loop. Entering it
+        // from the top level windows data in; entering from within the same tick is identity.
+        match (Self::tick_of(in_location), Self::tick_of(out_location)) {
+            (None, Some(_)) => {
+                self.add_dfir_in(
+                    out_location,
+                    parse_quote! {
+                        #out_ident = #in_ident -> batch();
+                    },
+                    None,
+                );
+            }
+            _ => {
+                self.add_dfir_in(
+                    out_location,
+                    parse_quote! {
+                        #out_ident = #in_ident;
+                    },
+                    None,
+                );
+            }
+        }
     }
 
     fn end_atomic(
@@ -773,12 +935,44 @@ impl DfirBuilder for ProdDfirBuilder {
         _in_kind: &CollectionKind,
         out_ident: &syn::Ident,
     ) {
-        let builder = self.graph_mut(in_location.root());
-        builder.add_dfir(
+        // Exit the atomic region (and thus the tick's loop) back to the top level.
+        self.graph_mut(in_location).add_dfir(
             parse_quote! {
-                #out_ident = #in_ident;
+                #out_ident = #in_ident -> all_iterations();
             },
             None,
+            None,
+        );
+    }
+
+    fn add_tick_source(
+        &mut self,
+        location: &LocationId,
+        source_rhs: TokenStream,
+        out_ident: &syn::Ident,
+        replay_each_tick: bool,
+        operator_tag: Option<&str>,
+    ) {
+        // DFIR sources must be at the root level, not inside a `loop { ... }` context. Emit the
+        // source at the root (persisting it there when it should replay every tick, since
+        // `persist` is not permitted inside a loop), then window it into the tick's loop.
+        let source_ident = self.intermediate_ident();
+        let source_stmt = if replay_each_tick {
+            parse_quote! {
+                #source_ident = #source_rhs -> persist::<'static>();
+            }
+        } else {
+            parse_quote! {
+                #source_ident = #source_rhs;
+            }
+        };
+        self.graph_mut(location)
+            .add_dfir(source_stmt, None, operator_tag);
+        self.add_dfir_in(
+            location,
+            parse_quote! {
+                #out_ident = #source_ident -> batch();
+            },
             None,
         );
     }
@@ -3823,6 +4017,11 @@ impl HydroNode {
                             let source_ident =
                                 syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
+                            // For tick-located sources, holds the source pipeline (RHS) so that
+                            // production codegen can hoist it to the root and window it into the
+                            // tick's loop (DFIR sources may not live inside a `loop { ... }`).
+                            let mut tick_source_rhs: Option<TokenStream> = None;
+
                             let source_stmt = match source {
                                 HydroSource::Stream(expr) => {
                                     debug_assert!(metadata.location_id.is_top_level());
@@ -3842,6 +4041,7 @@ impl HydroNode {
                                         }
                                     } else {
                                         // TODO(shadaj): a more natural semantics would be to to re-evaluate the expression on each tick
+                                        tick_source_rhs = Some(quote! { source_iter(#expr) });
                                         parse_quote! {
                                             #source_ident = source_iter(#expr) -> persist::<'static>();
                                         }
@@ -3898,11 +4098,21 @@ impl HydroNode {
 
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(graph_builders) => {
-                                    graph_builders.add_dfir_at(
-                                        &out_location,
-                                        source_stmt,
-                                        Some(&stmt_id.to_string()),
-                                    );
+                                    if let Some(source_rhs) = tick_source_rhs {
+                                        graph_builders.add_tick_source(
+                                            &out_location,
+                                            source_rhs,
+                                            &source_ident,
+                                            true,
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    } else {
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
+                                            source_stmt,
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    }
                                 }
                                 BuildersOrCallback::Callback(_, node_callback) => {
                                     node_callback(node, next_stmt_id);
@@ -3925,25 +4135,40 @@ impl HydroNode {
                                         !metadata.location_id.is_top_level(),
                                         "first_tick_only SingletonSource must be inside a tick"
                                     );
-                                }
-
-                                if *first_tick_only
-                                    || (metadata.location_id.is_top_level()
-                                        && metadata.collection_kind.is_bounded())
-                                {
-                                    graph_builders.add_dfir_at(
+                                    // Delivered only on the first execution of the tick region.
+                                    graph_builders.add_tick_source(
                                         &out_location,
-                                        parse_quote! {
-                                            #source_ident = source_iter([#value]);
-                                        },
+                                        quote! { source_iter([#value]) },
+                                        &source_ident,
+                                        false,
                                         Some(&stmt_id.to_string()),
                                     );
+                                } else if metadata.location_id.is_top_level() {
+                                    if metadata.collection_kind.is_bounded() {
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
+                                            parse_quote! {
+                                                #source_ident = source_iter([#value]);
+                                            },
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    } else {
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
+                                            parse_quote! {
+                                                #source_ident = source_iter([#value]) -> persist::<'static>();
+                                            },
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    }
                                 } else {
-                                    graph_builders.add_dfir_at(
+                                    // A tick-located singleton source that yields its value on
+                                    // every tick.
+                                    graph_builders.add_tick_source(
                                         &out_location,
-                                        parse_quote! {
-                                            #source_ident = source_iter([#value]) -> persist::<'static>();
-                                        },
+                                        quote! { source_iter([#value]) },
+                                        &source_ident,
+                                        true,
                                         Some(&stmt_id.to_string()),
                                     );
                                 }
