@@ -53,15 +53,18 @@ pub struct TracingOptions {
 
 /// A command to run on Debian-based systems to set up `perf` for tracing.
 ///
-/// Uses `apt` to install `linux-perf` and `binutils`, sets kernel parameters to allow tracing, and disables `kptr_restrict`.
-pub const DEBIAN_PERF_SETUP_COMMAND: &str = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
+/// Uses `apt` to install `linux-perf` and `binutils`, installs `stackcollapse-perf.pl` for remote
+/// folding, sets kernel parameters to allow tracing, and disables `kptr_restrict`.
+pub const DEBIAN_PERF_SETUP_COMMAND: &str = "sudo sh -c 'apt update && apt install -y linux-perf binutils perl curl && ([ -x /usr/local/bin/stackcollapse-perf.pl ] || (curl -fsSL https://raw.githubusercontent.com/brendangregg/FlameGraph/master/stackcollapse-perf.pl -o /usr/local/bin/stackcollapse-perf.pl && chmod +x /usr/local/bin/stackcollapse-perf.pl)) && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
 
 /// A command to run on Amazon Linux 2 (AL2) systems to set up `perf` for tracing.
 ///
-/// Uses `yum` to install `perf`, sets kernel parameters to allow tracing, and disables `kptr_restrict`.
-pub const AL2_PERF_SETUP_COMMAND: &str = "sudo sh -c 'yum install -y perf && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
+/// Uses `yum` to install `perf`, installs `stackcollapse-perf.pl` for remote folding, sets kernel
+/// parameters to allow tracing, and disables `kptr_restrict`.
+pub const AL2_PERF_SETUP_COMMAND: &str = "sudo sh -c 'yum install -y perf perl && ([ -x /usr/local/bin/stackcollapse-perf.pl ] || (curl -fsSL https://raw.githubusercontent.com/brendangregg/FlameGraph/master/stackcollapse-perf.pl -o /usr/local/bin/stackcollapse-perf.pl && chmod +x /usr/local/bin/stackcollapse-perf.pl)) && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
 
 /// A command to run on Amazon Linux 2023 to set up `perf` for tracing.
 ///
-/// Uses `dnf` to install `perf`, sets kernel parameters to allow tracing, and disables `kptr_restrict`.
-pub const AL2023_PERF_SETUP_COMMAND: &str = "sudo sh -c 'dnf update -y && dnf install perf -y && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
+/// Uses `dnf` to install `perf`, installs `stackcollapse-perf.pl` for remote folding, sets kernel
+/// parameters to allow tracing, and disables `kptr_restrict`.
+pub const AL2023_PERF_SETUP_COMMAND: &str = "sudo sh -c 'dnf update -y && dnf install perf perl -y && ([ -x /usr/local/bin/stackcollapse-perf.pl ] || (curl -fsSL https://raw.githubusercontent.com/brendangregg/FlameGraph/master/stackcollapse-perf.pl -o /usr/local/bin/stackcollapse-perf.pl && chmod +x /usr/local/bin/stackcollapse-perf.pl)) && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
