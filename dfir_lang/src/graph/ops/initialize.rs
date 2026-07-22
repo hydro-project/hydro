@@ -25,6 +25,13 @@ pub const INITIALIZE: OperatorConstraints = OperatorConstraints {
     persistence_args: RANGE_0,
     type_args: RANGE_0,
     is_external_input: false,
+    // NOTE: `initialize` is deliberately NOT `FloType::Source`, even though it is categorized as a
+    // source. Unlike external/timing sources (`source_stream`, `source_interval`, `spin`, ...) it
+    // is a pure, deterministic, one-shot generator, so it is permitted *inside* `loop { ... }`
+    // contexts where it serves as a loop-local seed (e.g. `initialize() -> persist::<'loop>()` to
+    // materialize a held "absent" marker once per loop execution). Do not "fix" this to
+    // `FloType::Source`: that would ban it from loops via `check_loop_errors` and break held-state
+    // constructions.
     flo_type: None,
     ports_inn: None,
     ports_out: None,
