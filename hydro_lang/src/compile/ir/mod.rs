@@ -5199,7 +5199,7 @@ impl HydroNode {
                                                 -> [1]#chain_ident;
                                             #fold_ident = #chain_ident
                                                 -> #agg_operator::<#lifetime>(|| (::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::HashMap::new())), None), {
-                                                    let __reduce_keyed_fn = #f;
+                                                    let __reduce_keyed_fn = #f_tokens;
                                                     move |(map, opt_curr_watermark): &mut (::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<_, _>>>, _), (opt_payload, opt_watermark)| {
                                                         if let Some((k, v)) = opt_payload {
                                                             if let Some(ref curr_watermark) = *opt_curr_watermark {
