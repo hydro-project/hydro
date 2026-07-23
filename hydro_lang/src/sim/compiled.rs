@@ -92,6 +92,84 @@ struct SimConnections {
         HashMap<SimExternalPort, HashMap<u32, Rc<Mutex<UnboundedReceiverStream<Bytes>>>>>,
     external_registered: HashMap<ExternalPortId, SimExternalPort>,
     quiescence: Rc<QuiescenceState>,
+    log: bool,
+}
+
+/// Implementation detail of [`crate::sim::assume!`](crate::assume); do not call directly.
+///
+/// If `condition` is false, aborts the current simulation instance by panicking with a special
+/// payload ([`bolero::generator::bolero_generator::any::Error`]) that bolero recognizes as an
+/// "invalid input" marker: the instance is discarded (not treated as a test failure, and never
+/// recorded as a reproducer) and exploration moves on to the next instance. If logging is
+/// enabled for the current instance, the failed assumption is logged first.
+#[doc(hidden)]
+#[track_caller]
+pub fn assume_impl(condition: bool, message: fmt::Arguments<'_>) {
+    if condition {
+        return;
+    }
+
+    let log = CURRENT_SIM_CONNECTIONS
+        .try_with(|connections| connections.borrow().log)
+        .unwrap_or(true);
+    if log {
+        eprintln!(
+            "{}",
+            render_assume_failure(std::panic::Location::caller(), message)
+        );
+    }
+
+    // Panics with `bolero_generator::any::Error`, which bolero's engines treat as an invalid
+    // input rather than a test failure. Both this function and bolero's `assume` are
+    // `#[track_caller]`, so the recorded location is the user's `assume!` call site.
+    bolero::generator::bolero_generator::any::assume(false, "simulation assumption failed");
+}
+
+/// Renders the log message for a failed assumption, echoing the source line with a caret
+/// pointing at the `assume!` call site, in the same style as the other simulator logs.
+fn render_assume_failure(
+    location: &std::panic::Location<'_>,
+    message: fmt::Arguments<'_>,
+) -> String {
+    use std::fmt::Write;
+
+    // `Location::file()` is relative to the directory the crate was compiled from (e.g. the
+    // workspace root), which may not match the current working directory (e.g. the crate
+    // root when running `cargo test`), so walk up from the current directory to find it.
+    let source_line = std::env::current_dir()
+        .ok()
+        .and_then(|cwd| {
+            cwd.ancestors()
+                .find_map(|base| std::fs::read_to_string(base.join(location.file())).ok())
+        })
+        .and_then(|content| {
+            content
+                .lines()
+                .nth((location.line() as usize).saturating_sub(1))
+                .map(|line| line.to_owned())
+        })
+        .unwrap_or_default();
+
+    let caret_indent = " ".repeat((location.column() as usize).saturating_sub(1));
+
+    let mut out = String::new();
+    let _ = writeln!(
+        out,
+        "\n{}",
+        "Assumption failed (discarding simulation instance):"
+            .color(colored::Color::Yellow)
+            .bold()
+    );
+    let _ = writeln!(out, "{} {}", "-->".color(colored::Color::Blue), location);
+    let _ = writeln!(out, " {}{}", "|".color(colored::Color::Blue), source_line);
+    let _ = write!(
+        out,
+        " {}{}{}",
+        "|".color(colored::Color::Blue),
+        caret_indent,
+        format!("^ {}", message).color(colored::Color::Yellow)
+    );
+    out
 }
 
 tokio::task_local! {
@@ -187,7 +265,7 @@ impl CompiledSim {
     /// When running the test with `cargo test` (such as in CI), if a reproducer is found it will
     /// be executed, and if no reproducer is found a small number of random executions will be
     /// performed.
-    pub fn fuzz(&self, mut thunk: impl AsyncFn() + RefUnwindSafe) {
+    pub fn fuzz(&self, mut thunk: impl AsyncFnMut() + RefUnwindSafe) {
         let caller_fn = crate::compile::ir::backtrace::Backtrace::get_backtrace(0)
             .elements()
             .into_iter()
@@ -310,19 +388,40 @@ impl CompiledSim {
         bytes: Vec<u8>,
         thunk: impl AsyncFnOnce(CompiledSimInstance) + RefUnwindSafe,
     ) {
-        self.with_instance(|instance| {
-            bolero::bolero_engine::any::scope::with(
-                Box::new(bolero::bolero_engine::driver::object::Object(
-                    bolero::bolero_engine::driver::bytes::Driver::new(bytes, &Default::default()),
-                )),
-                || {
-                    tokio::runtime::Builder::new_current_thread()
-                        .build()
-                        .unwrap()
-                        .block_on(async { instance.run_without_launching(thunk).await })
-                },
-            )
-        });
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.with_instance(|instance| {
+                bolero::bolero_engine::any::scope::with(
+                    Box::new(bolero::bolero_engine::driver::object::Object(
+                        bolero::bolero_engine::driver::bytes::Driver::new(
+                            bytes,
+                            &Default::default(),
+                        ),
+                    )),
+                    || {
+                        tokio::runtime::Builder::new_current_thread()
+                            .build()
+                            .unwrap()
+                            .block_on(async { instance.run_without_launching(thunk).await })
+                    },
+                )
+            })
+        }));
+
+        if let Err(payload) = result {
+            if payload
+                .downcast_ref::<bolero::generator::bolero_generator::any::Error>()
+                .is_some()
+            {
+                // An `assume!` failed (or the driver ran out of entropy) while replaying the
+                // recorded bytes. Instances that fail an assumption are never recorded as
+                // failures, so this means the reproducer is stale or does not correspond to
+                // this program.
+                panic!(
+                    "simulation assumption failed while replaying recorded fuzz decisions; the reproducer may be stale or may not correspond to this program"
+                );
+            }
+            std::panic::resume_unwind(payload);
+        }
     }
 
     /// Exhaustively searches all possible executions of the simulation. The provided
@@ -504,6 +603,7 @@ impl<'a> CompiledSimInstance<'a> {
                     cluster_output_receivers,
                     external_registered: self.externals_port_registry.registered.clone(),
                     quiescence: quiescence.clone(),
+                    log: self.log,
                 }),
                 async move {
                     thunk(self).await;

@@ -1,0 +1,8 @@
+---
+source: hydro_lang/tests/sim_fuzzer.rs
+expression: "lines[block_start..block_start + 4].join(\"\\n\")"
+---
+Assumption failed (discarding simulation instance):
+--> hydro_lang/src/sim/tests/mod.rs:1013:9
+ |        crate::sim::assume!(
+ |        ^ first batch was a singleton

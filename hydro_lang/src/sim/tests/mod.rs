@@ -881,3 +881,171 @@ fn sim_unbounded_optional_rejected_snapshot() {
 
     hydro_build_utils::assert_snapshot!(panic_msg);
 }
+
+/// `assume!` should discard instances that fail the assumption (rather than failing the test),
+/// while instances that satisfy it continue executing. Covers the exhaustive engine.
+#[test]
+fn sim_assume_discards_instances_exhaustive() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (in_send, input) = node.sim_input();
+    let tick = node.tick();
+    let out_recv = input
+        .batch(&tick, nondet!(/** test */))
+        .count()
+        .all_ticks()
+        .sim_output();
+
+    let mut accepted = 0;
+    let total = flow.sim().exhaustive(async || {
+        in_send.send(1);
+        in_send.send(2);
+        let counts: Vec<usize> = out_recv.collect().await;
+        // Only consider executions where both values landed in the first batch.
+        crate::sim::assume!(counts.first() == Some(&2), "first batch was {:?}", counts);
+        accepted += 1;
+        assert_eq!(counts, vec![2]);
+    });
+
+    assert!(
+        accepted >= 1,
+        "at least one execution should satisfy the assumption"
+    );
+    assert!(
+        accepted < total,
+        "some executions should be discarded by the assumption (accepted: {}, total: {})",
+        accepted,
+        total
+    );
+}
+
+/// Same as above, but covers the RNG-based fuzz engine used by `cargo test`.
+#[test]
+fn sim_assume_discards_instances_fuzz() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (in_send, input) = node.sim_input();
+    let tick = node.tick();
+    let out_recv = input
+        .batch(&tick, nondet!(/** test */))
+        .count()
+        .all_ticks()
+        .sim_output();
+
+    let mut accepted = 0;
+    let mut discarded = 0;
+    flow.sim().fuzz(async || {
+        in_send.send(1);
+        in_send.send(2);
+        let counts: Vec<usize> = out_recv.collect().await;
+        if counts.first() != Some(&2) {
+            discarded += 1;
+        }
+        crate::sim::assume!(counts.first() == Some(&2), "first batch was {:?}", counts);
+        accepted += 1;
+        assert_eq!(counts, vec![2]);
+    });
+
+    assert!(
+        accepted >= 1,
+        "at least one execution should satisfy the assumption"
+    );
+    assert!(
+        discarded >= 1,
+        "some executions should be discarded by the assumption"
+    );
+}
+
+/// A failing assertion after a passing `assume!` must still fail the test, and discarded
+/// instances must not mask it (or pollute its error message).
+#[test]
+#[should_panic]
+fn sim_assume_does_not_mask_failures() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (in_send, input) = node.sim_input();
+    let tick = node.tick();
+    let out_recv = input
+        .batch(&tick, nondet!(/** test */))
+        .count()
+        .all_ticks()
+        .sim_output();
+
+    flow.sim().exhaustive(async || {
+        in_send.send(1);
+        in_send.send(2);
+        let counts: Vec<usize> = out_recv.collect().await;
+        crate::sim::assume!(counts.first() == Some(&2), "first batch was {:?}", counts);
+        panic!("boom");
+    });
+}
+
+/// A crash that is only reachable behind a passing `assume!`. Used by the
+/// `fuzz_with_cargo_sim_assume` harness test (in `tests/sim_fuzzer.rs`) to verify that under
+/// the libfuzzer engine, instances failing the assumption are discarded (counted as invalid)
+/// without stopping the fuzzer, which must still find the real crash behind the assumption.
+#[test]
+#[should_panic]
+fn sim_crash_behind_assume() {
+    // run as PATH="$PATH:." cargo sim -p hydro_lang --features sim -- sim_crash_behind_assume
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (in_send, input) = node.sim_input();
+    let tick = node.tick();
+    let out_recv = input
+        .batch(&tick, nondet!(/** test */))
+        .count()
+        .all_ticks()
+        .sim_output();
+
+    flow.sim().fuzz(async || {
+        in_send.send(1);
+        in_send.send(2);
+        in_send.send(3);
+        let counts: Vec<usize> = out_recv.collect().await;
+        // Discard instances where the first batch is a singleton; roughly half of random
+        // batchings will fail this, exercising the discard path under the fuzzer. The message
+        // is deterministic so that `fuzz_with_cargo_sim_assume` can snapshot the logged output.
+        crate::sim::assume!(
+            counts.first().is_some_and(|c| *c >= 2),
+            "first batch was a singleton"
+        );
+        if counts.first() == Some(&3) {
+            // Only reachable in instances that passed the assumption.
+            panic!("boom");
+        }
+    });
+}
+
+/// An `assume!` failure during `fuzz_repro` indicates a stale reproducer and should produce a
+/// clear error message.
+#[test]
+#[should_panic(expected = "assumption failed while replaying")]
+fn sim_assume_failure_in_fuzz_repro_is_reported() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (in_send, input) = node.sim_input::<i32, _, _>();
+    let out_recv = input.sim_output();
+
+    flow.sim()
+        .compiled()
+        .fuzz_repro(vec![0; 64], async |compiled| {
+            let schedule = compiled.schedule_with_logger(std::io::sink());
+            let rest = async move {
+                in_send.send(1);
+                let _: Vec<i32> = out_recv.collect().await;
+                crate::sim::assume!(false, "always fails");
+            };
+
+            tokio::select! {
+                biased;
+                _ = rest => {},
+                _ = schedule => {},
+            };
+        });
+}

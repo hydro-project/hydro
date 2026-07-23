@@ -110,7 +110,7 @@ impl<'a> SimFlow<'a> {
     /// When running the test with `cargo test` (such as in CI), if a reproducer is found it will
     /// be executed, and if no reproducer is found a small number of random executions will be
     /// performed.
-    pub fn fuzz(self, thunk: impl AsyncFn() + RefUnwindSafe) {
+    pub fn fuzz(self, thunk: impl AsyncFnMut() + RefUnwindSafe) {
         self.compiled().fuzz(thunk)
     }
 

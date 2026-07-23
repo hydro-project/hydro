@@ -59,5 +59,46 @@ pub(crate) mod versioned_network;
 #[doc(hidden)]
 pub mod runtime;
 
+#[cfg(stageleft_runtime)]
+#[doc(hidden)]
+pub use compiled::assume_impl;
+
+/// Assumes that a condition holds in the current simulation instance, discarding the instance
+/// if the condition is false.
+///
+/// This is useful inside simulation tests ([`crate::sim::flow::SimFlow::fuzz`],
+/// [`crate::sim::flow::SimFlow::exhaustive`], and the corresponding
+/// [`crate::sim::compiled::CompiledSim`] APIs) to restrict exploration to executions that
+/// satisfy some precondition, similar to `prop_assume!` in proptest. When the condition is
+/// false, the current instance is stopped and discarded: it is **not** treated as a test
+/// failure (and will never be recorded as a fuzzing reproducer), and the fuzzer / exhaustive
+/// search simply moves on to the next instance. If logging is enabled (always during replays,
+/// or when `HYDRO_SIM_LOG=1`), the failed assumption is logged.
+///
+/// Like the standard `assert!` macro, an optional custom message with format arguments can be
+/// provided.
+///
+/// ```rust,ignore
+/// flow.sim().fuzz(async || {
+///     in_send.send_many([1, 2]);
+///     let all: Vec<u32> = out_recv.collect().await;
+///     hydro_lang::sim::assume!(all.len() == 2, "expected both values in one batch, got {:?}", all);
+///     // ... assertions that only make sense when the assumption holds ...
+/// });
+/// ```
+#[doc(hidden)]
+#[macro_export]
+macro_rules! assume {
+    ($cond:expr $(,)?) => {
+        $crate::sim::assume_impl($cond, ::core::format_args!("{}", ::core::stringify!($cond)))
+    };
+    ($cond:expr, $($arg:tt)+) => {
+        $crate::sim::assume_impl($cond, ::core::format_args!($($arg)+))
+    };
+}
+
+#[doc(inline)]
+pub use crate::assume;
+
 #[cfg(test)]
 mod tests;
