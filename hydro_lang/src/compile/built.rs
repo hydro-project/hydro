@@ -73,6 +73,15 @@ impl<'a> BuiltFlow<'a> {
         &self.location_names
     }
 
+    /// Analyze consistency labels for all observable sinks using forward analysis.
+    ///
+    /// Derives labels from sink output types (ordering + retry) and checks for
+    /// untrusted nondeterminism upstream. Equivalent to coord-analysis but operates
+    /// directly on the in-memory IR (no serialization needed).
+    pub fn analyze_consistency(&self) -> Vec<super::consistency_label::SinkConsistency> {
+        super::consistency_label::analyze_sink_labels(&self.ir)
+    }
+
     /// Get a GraphApi instance for this built flow
     #[cfg(stageleft_runtime)]
     #[cfg(feature = "viz")]
