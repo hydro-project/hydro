@@ -4036,7 +4036,7 @@ impl HydroNode {
                         ident_stack.push(ret_ident);
                     }
 
-                    HydroNode::Reference { inner, kind, .. } => {
+                    HydroNode::Reference { inner, kind, metadata, .. } => {
                         // we consume a stmt id regardless of if we emit the operator,
                         // so that during rewrites we touch all recipients
                         let stmt_id = next_stmt_id.get_and_increment();
@@ -4066,6 +4066,25 @@ impl HydroNode {
                                         },
                                         Span::call_site(),
                                     );
+
+                                    // Top-level bounded references (by_ref/by_mut on a source
+                                    // singleton, optional, or stream) are not currently supported
+                                    // because the source only fires once and the handoff buffer
+                                    // would be empty on subsequent ticks. The semantics of
+                                    // persist-and-replay for references (especially mutable ones
+                                    // and stream refs) are subtle and not yet resolved.
+                                    // See https://github.com/hydro-project/hydro/issues/3005
+                                    // and https://github.com/hydro-project/hydro/issues/3010
+                                    if metadata.location_id.is_top_level()
+                                        && metadata.collection_kind.is_bounded()
+                                    {
+                                        panic!(
+                                            "by_ref()/by_mut() on a top-level bounded source is not yet supported. \
+                                             The handoff buffer would be empty after the first tick. \
+                                             See https://github.com/hydro-project/hydro/issues/3010 for details."
+                                        );
+                                    }
+
                                     graph_builders.add_dfir_at(
                                         &out_location,
                                         parse_quote! {

@@ -10,6 +10,68 @@ use crate::sim::{SimReceiver, SimSender};
 
 mod trophies;
 
+/// Regression test for https://github.com/hydro-project/hydro/issues/3005
+///
+/// `Singleton::by_ref()` on a top-level bounded source singleton is not supported because
+/// the source only fires once, leaving the handoff buffer empty on subsequent ticks.
+/// The correct semantics for persist-and-replay of references (especially mutable ones)
+/// are not yet resolved — see https://github.com/hydro-project/hydro/issues/3010.
+///
+/// This test verifies that attempting to use by_ref() on a top-level bounded singleton
+/// produces a clear panic at graph compilation time.
+#[test]
+#[should_panic(expected = "by_ref()/by_mut() on a top-level bounded source is not yet supported")]
+fn sim_source_singleton_by_ref_panics() {
+    let mut flow = FlowBuilder::new();
+    let process = flow.process::<()>();
+
+    let my_singleton = process.singleton(q!(42u32));
+    let singleton_ref = my_singleton.by_ref();
+
+    let (in_port, input_stream) = process.sim_input::<u32, TotalOrder, ExactlyOnce>();
+
+    let out = input_stream.map(q!(move |x| x + *singleton_ref));
+    let _out_port = out.sim_output();
+
+    my_singleton.into_stream().for_each(q!(|_| {}));
+
+    // This should panic during graph compilation (sim()) because by_ref() on a
+    // top-level bounded singleton is not supported.
+    flow.sim().exhaustive(async || {
+        in_port.send(1);
+    });
+}
+
+/// Verifies that a top-level bounded singleton's `into_stream()` still works correctly
+/// (emits its value exactly once) — only by_ref/by_mut is disallowed.
+#[test]
+fn sim_source_singleton_into_stream_emits_once() {
+    let mut flow = FlowBuilder::new();
+    let process = flow.process::<()>();
+
+    // A bounded singleton created at the top level.
+    let my_singleton = process.singleton(q!(42u32));
+
+    // Convert to stream and output — should produce exactly one value total.
+    let out_port = my_singleton.into_stream().sim_output();
+
+    flow.sim().exhaustive(async || {
+        // Should receive the singleton value exactly once.
+        let result = out_port.next().await.unwrap();
+        assert_eq!(result, 42);
+
+        // After the singleton has been consumed, there should be nothing else.
+        // If persist causes replay, we'd get another 42 here.
+        let remaining: Vec<u32> = out_port.collect().await;
+        assert_eq!(
+            remaining,
+            Vec::<u32>::new(),
+            "singleton into_stream() should emit only once, but got extra values: {:?}",
+            remaining
+        );
+    });
+}
+
 // Test is currently broken in nightly.
 #[cfg(not(nightly))]
 #[test]

@@ -882,10 +882,19 @@ impl DfirGraph {
                         ..
                     } => {
                         let buf_ident = self.hoff_buf_ident(ref_node_id, span);
+                        let varname_str = self
+                            .node_varname(ref_node_id)
+                            .map(|v| v.0.to_string())
+                            .unwrap_or_else(|| format!("{:?}", ref_node_id.data()));
+                        let expect_msg = format!(
+                            "singleton `{}` was not populated. Its input must re-populate the value on every tick;
+                            ensure the input is a stateful operator such as `fold()`, `reduce()`, `persist()`, etc.",
+                            varname_str
+                        );
                         if is_mut {
-                            quote_spanned! {span=> #buf_ident.as_mut().unwrap() }
+                            quote_spanned! {span=> #buf_ident.as_mut().expect(#expect_msg) }
                         } else {
-                            quote_spanned! {span=> #buf_ident.as_ref().unwrap() }
+                            quote_spanned! {span=> #buf_ident.as_ref().expect(#expect_msg) }
                         }
                     }
                     GraphNode::Handoff {
