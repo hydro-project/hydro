@@ -164,7 +164,7 @@ pub fn paxos_core<'a, P: PaxosPayload>(
     let (a_log_complete_cycle, a_log_forward_reference) =
         acceptor_tick.forward_ref::<Singleton<_, _, _>>();
 
-    let (p_ballot, p_is_leader, p_relevant_p1bs, a_max_ballot) = leader_election(
+    let (p_ballot, p_is_leader, p_relevant_p1bs, a_max_ballot, a_p1a) = leader_election(
         proposers,
         acceptors,
         &proposer_tick,
@@ -208,6 +208,7 @@ pub fn paxos_core<'a, P: PaxosPayload>(
         &proposer_tick,
         &acceptor_tick,
         c_to_proposers,
+        a_p1a,
         a_checkpoint,
         p_ballot.clone(),
         p_is_leader,
@@ -262,6 +263,7 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
     Singleton<bool, Tick<Cluster<'a, Proposer>>, Bounded>,
     Stream<(Option<usize>, L), Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
     Singleton<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded>,
+    Stream<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded, NoOrder>,
 ) {
     let (p1b_fail_complete, p1b_fail) =
         proposers.forward_ref::<Stream<Ballot, _, Unbounded, NoOrder>>();
@@ -310,17 +312,14 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
 
     p_to_proposers_i_am_leader_complete_cycle.complete(p_to_proposers_i_am_leader);
 
-    let p_to_acceptors_p1a = p_ballot
+    let a_p1a = p_ballot
         .clone()
         .filter_if(p_trigger_election)
         .all_ticks()
         .inspect(q!(|_| println!("Proposer leader expired, sending P1a")))
         .broadcast(acceptors, TCP.fail_stop().bincode(), nondet!(/** TODO */))
-        .values();
-
-    let (a_max_ballot, a_to_proposers_p1b) = acceptor_p1(
-        acceptor_tick,
-        p_to_acceptors_p1a.batch(
+        .values()
+        .batch(
             acceptor_tick,
             nondet!(
                 /// Non-deterministic batching may result in different payloads being rejected
@@ -328,10 +327,10 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
                 /// But as documented, payloads may be non-deterministically dropped during leader election.
                 nondet_acceptor_ballot
             ),
-        ),
-        a_log,
-        proposers,
-    );
+        );
+
+    let (a_max_ballot, a_to_proposers_p1b) =
+        acceptor_p1(acceptor_tick, a_p1a.clone(), a_log, proposers);
 
     let (p_is_leader, p_accepted_values, fail_ballots) = p_p1b(
         proposer_tick,
@@ -344,7 +343,13 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
     p_is_leader_complete_cycle.complete(p_is_leader.clone());
     p1b_fail_complete.complete(fail_ballots);
 
-    (p_ballot, p_is_leader, p_accepted_values, a_max_ballot)
+    (
+        p_ballot,
+        p_is_leader,
+        p_accepted_values,
+        a_max_ballot,
+        a_p1a,
+    )
 }
 
 // Proposer logic to calculate the next ballot number. Expects p_received_max_ballot, the largest ballot received so far. Outputs streams: ballot_num, and has_largest_ballot, which only contains a value if we have the largest ballot.
@@ -671,6 +676,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     proposer_tick: &Tick<Cluster<'a, Proposer>>,
     acceptor_tick: &Tick<Cluster<'a, Acceptor>>,
     c_to_proposers: Stream<P, Cluster<'a, Proposer>, Unbounded>,
+    a_p1a: Stream<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded, NoOrder>,
     a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
 
     p_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
@@ -729,6 +735,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     let (a_log, a_to_proposers_p2b) = acceptor_p2(
         acceptor_tick,
         a_max_ballot.clone(),
+        a_p1a,
         payloads_to_send
             .clone()
             .end_atomic()
@@ -802,6 +809,7 @@ pub fn index_payloads<'a, L: Location<'a>, P: PaxosPayload>(
 pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
     acceptor_tick: &Tick<Cluster<'a, Acceptor>>,
     a_max_ballot: Singleton<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded>,
+    a_p1a: Stream<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded, NoOrder>,
     p_to_acceptors_p2a: Stream<P2a<P, S>, Cluster<'a, Acceptor>, Unbounded, NoOrder>,
     a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
     proposers: &Cluster<'a, S>,
@@ -859,7 +867,9 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
             }, commutative = manual_proof!(/** max by ballot (TODO: not if two entries with same ballot, need assume) */)),
         )
     });
-    let a_log_snapshot = a_log.entries().fold(
+    let a_log_snapshot = a_log.entries()
+        .filter_if(!a_p1a.is_empty()) // Don't populate unless there is a p1a
+        .fold(
         q!(|| HashMap::new()),
         q!(
             |map, (slot, entry)| {

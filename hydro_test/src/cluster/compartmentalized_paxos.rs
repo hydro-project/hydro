@@ -135,7 +135,7 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
     let (a_log_complete_cycle, a_log_forward_reference) =
         acceptor_tick.forward_ref::<Singleton<_, _, _>>();
 
-    let (p_ballot, p_is_leader, p_relevant_p1bs, a_max_ballot) = leader_election(
+    let (p_ballot, p_is_leader, p_relevant_p1bs, a_max_ballot, a_p1a) = leader_election(
         proposers,
         acceptors,
         &proposer_tick,
@@ -180,6 +180,7 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
         &proxy_leader_tick,
         &acceptor_tick,
         c_to_proposers,
+        a_p1a,
         a_checkpoint,
         p_ballot.clone(),
         p_is_leader,
@@ -225,6 +226,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     proxy_leader_tick: &Tick<Cluster<'a, ProxyLeader>>,
     acceptor_tick: &Tick<Cluster<'a, Acceptor>>,
     c_to_proposers: Stream<P, Cluster<'a, Proposer>, Unbounded>,
+    a_p1a: Stream<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded, NoOrder>,
     a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
 
     p_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
@@ -312,6 +314,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     let (a_log, a_to_proxy_leaders_p2b) = acceptor_p2(
         acceptor_tick,
         a_max_ballot.clone(),
+        a_p1a,
         pl_to_acceptors_p2a_thrifty,
         a_checkpoint,
         proxy_leaders,
