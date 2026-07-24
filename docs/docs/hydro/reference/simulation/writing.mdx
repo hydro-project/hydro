@@ -44,6 +44,24 @@ For ordered streams, use `send()` to send a single message or `send_many()` to s
 
 The `exhaustive()` method explores *all* possible executions. This is feasible when the inputs are finite and the number of `nondet!` decision points is manageable. For complex protocols, use `fuzz()` instead (see [Coverage-Guided Simulation](./fuzzing.mdx) for details).
 
+### Restricting Explored Executions with `assume!`
+
+Sometimes an assertion only makes sense for a subset of executions—for example, when the property you want to check only holds if certain messages happened to arrive in the same batch. The `hydro_lang::sim::assume!` macro lets you express such preconditions: if the condition is false, the current simulation instance is stopped and discarded (it is *not* a test failure), and exploration moves on to the next execution.
+
+```rust
+use hydro_lang::sim::assume;
+
+flow.sim().fuzz(async || {
+    in_send.send_many([1, 2]);
+    let batch_sizes: Vec<usize> = out_recv.collect().await;
+    // only check executions where both messages landed in the first batch
+    assume!(batch_sizes.first() == Some(&2), "first batch was {:?}", batch_sizes);
+    // ... assertions that rely on the assumption ...
+});
+```
+
+Like `assert!`, `assume!` accepts an optional message with format arguments. Discarded instances are never recorded as fuzzing reproducers, and when logging is enabled (`HYDRO_SIM_LOG=1` or during replays), the failed assumption is logged along with its location. Take care not to make assumptions too restrictive—if most executions are discarded, the simulator wastes time exploring executions that are never checked.
+
 When a test fails, the simulator prints a trace showing the decisions it made:
 
 ```text

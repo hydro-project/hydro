@@ -184,7 +184,7 @@ base64 = { version = "0.21.0", optional = true }
 regex = { version = "1.12.2", optional = true }
 
 # For the simulator
-bolero = { package = "bolero-hydro", version = "0.13.5", optional = true }
+bolero = { package = "bolero-hydro", version = "0.13.7", optional = true }
 cargo_metadata = { version = "0.18.0", optional = true }
 indenter = { version = "0.3", optional = true }
 libloading = { version = "0.8", optional = true }
