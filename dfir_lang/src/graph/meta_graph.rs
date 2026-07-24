@@ -1108,6 +1108,7 @@ impl DfirGraph {
         } else if is_root_loop {
             // Root-level loop: fused with tick, fire at most once.
             output.extend(quote! {
+                #[allow(clippy::nonminimal_bool, reason = "codegen")]
                 if false #( || #gate_checks )* {
                     #child_body
                     #( #swap_code )*
@@ -1116,6 +1117,7 @@ impl DfirGraph {
         } else {
             // Nested loop: iterate until fixpoint.
             output.extend(quote! {
+                #[allow(clippy::nonminimal_bool, reason = "codegen")]
                 while false #( || #gate_checks )* {
                     #child_body
                     #( #swap_code )*
@@ -2194,6 +2196,7 @@ impl DfirGraph {
 
                         // For non-lazy defer_tick: if any deferred buffer has data,
                         // signal that another tick should run.
+                        #[allow(clippy::nonminimal_bool, reason = "codegen")]
                         if false #( || !#non_lazy_schedule_idents.is_empty() )* {
                             #df.schedule_subgraph(true);
                         }
