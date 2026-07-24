@@ -3348,6 +3348,8 @@ mod tests {
         });
 
         assert_eq!(instances, 8);
+        // (final quiescence checks are free here: the simulation settles deterministically
+        // once all expected messages have been observed, so no extra instances are explored)
         // - three cases: all three in a separate tick (pick where (2, 3) is)
         // - two cases: (1, 1) and (1, 2) together, (2, 3) before or after
         // - two cases: (1, 1) and (1, 2) separate, (2, 3) grouped with one of them

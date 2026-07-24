@@ -953,7 +953,7 @@ mod tests {
 
             let mut next_expected = 0;
             for i in 1..=4 {
-                let (next_slot, v) = out_recv.next().await.unwrap();
+                let (next_slot, v) = out_recv.next().await;
                 assert_eq!(v, i);
 
                 if next_expected < 123 {

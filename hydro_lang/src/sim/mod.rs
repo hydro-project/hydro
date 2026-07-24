@@ -62,6 +62,8 @@ pub mod runtime;
 #[cfg(stageleft_runtime)]
 #[doc(hidden)]
 pub use compiled::continue_if_impl;
+#[cfg(stageleft_runtime)]
+pub use compiled::quiesce;
 
 /// Continues the current simulation instance only if the given condition holds, otherwise
 /// stopping and discarding the instance.

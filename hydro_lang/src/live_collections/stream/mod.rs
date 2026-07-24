@@ -3742,7 +3742,7 @@ mod tests {
             in_send.send(());
             in_send.send(());
 
-            assert_eq!(out_recv.next().await.unwrap(), 3); // fails with nondet batching
+            assert_eq!(out_recv.next().await, 3); // fails with nondet batching
         });
     }
 

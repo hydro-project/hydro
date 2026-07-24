@@ -1,5 +1,61 @@
 //! Interfaces for compiled Hydro simulators and concrete simulation instances.
 //!
+//! # Quiescence and observation soundness
+//!
+//! The scheduler distinguishes two kinds of simulation work:
+//! - **Deterministic work**: running the top-level async dataflows, which simply propagate
+//!   whatever data is already in flight. This makes no `nondet!` decisions, so running it can
+//!   never change which executions are explored.
+//! - **Nondeterministic work**: running ticks and observations, whose behavior depends on
+//!   decisions drawn from the bolero driver (batch boundaries, snapshot versions, message
+//!   orderings). Each decision forks the space of possible executions.
+//!
+//! The simulation is **quiescent** when neither kind of work can make progress without new
+//! external input. Test-side observations (the methods on [`SimReceiver`] /
+//! [`SimClusterReceiver`]) interact with the scheduler while waiting, and the key soundness
+//! question is: *when is it okay for an observation to let nondeterministic work run?*
+//!
+//! **Waiting for a message is always sound.** If the message eventually arrives, the work
+//! that ran was necessary to produce it (schedules that run *extra* work are also valid
+//! executions and are explored separately). If the simulation instead quiesces without
+//! producing the message, the assertion fails and the instance ends, so nothing can observe
+//! the overrun. This is why [`SimReceiver::next`], [`SimReceiver::collect_n`], and the
+//! `assert_yields*` prefix checks are safe to use in the middle of a test.
+//!
+//! **Observing the *absence* of a message is dangerous.** Proving that "no more messages can
+//! arrive" requires driving the simulation all the way to quiescence, running *all* pending
+//! nondeterministic work. A later assertion may have needed to observe a state where that
+//! work had not yet run — e.g., `assert_yields_only([1, 2])` followed by reading a counter
+//! must be able to see the counter *before* the ticks that count `1` and `2` have fired.
+//! Forcing quiescence at the first assertion would make some executions unobservable, and
+//! extra messages produced by the forced work could surface at a *later* assertion,
+//! misattributing the failure. Absence-observing APIs therefore proceed in phases:
+//!
+//! 1. **Settle** (see `SettlePauseGuard::poll_settle`): the scheduler runs only deterministic work, pausing
+//!    just before nondeterministic work. If the simulation reaches quiescence this way, the
+//!    end-of-stream check is *free* — no decision was forced, no execution was cut off — and
+//!    the test simply continues.
+//! 2. If nondeterministic work is pending, the check would overrun. What happens next depends
+//!    on the API and engine:
+//!    - The assertion APIs ([`SimReceiver::assert_no_more`], `assert_yields_only*`,
+//!      `collect_n_only`) under [`CompiledSim::exhaustive`] **fork** the search on a bolero
+//!      decision: one instance performs the check and then ends (via a discard panic, like
+//!      `sim::continue_if!`), while sibling instances skip the check entirely and continue. The
+//!      exhaustive driver enumerates the checking instance *first*, so a failing check is
+//!      found before any instance runs past it — with a decision trace that leads exactly to
+//!      the failing assertion. Since nothing after the check runs in the checking instance,
+//!      the overrun it performs is unobservable, and the continuing instances never quiesce,
+//!      so every downstream state remains reachable.
+//!    - Otherwise (fuzz / RNG / replay engines, or the drain-everything APIs
+//!      [`SimReceiver::try_next`], [`SimReceiver::collect`], and `collect_sorted` in every
+//!      mode), the pending work runs and the instance is **tainted**
+//!      (`QuiescenceState::tainted`). Reads of the now-quiescent state remain sound (they
+//!      observe a fully-drained simulation that can no longer advance), so tests may drain
+//!      multiple output ports at the end. But once new input is sent, the instance is
+//!      **poisoned** (`QuiescenceState::poisoned`): any further receive panics (see
+//!      `guard_not_poisoned`), because a failure observed after the forced overrun could
+//!      have been caused by it and attributed to the wrong assertion.
+//!
 //! NOTE: This module runs inside bolero's `catch_unwind` scope, which silently
 //! swallows panics. Internal invariant checks should use `abort_assert!`
 //! rather than `panic!`/`assert!`.
@@ -27,13 +83,13 @@ use std::panic::RefUnwindSafe;
 use std::path::Path;
 use std::pin::{Pin, pin};
 use std::rc::Rc;
-use std::task::ready;
+use std::task::{Poll, ready};
 
 use bytes::Bytes;
 use colored::Colorize;
 use dfir_rs::scheduled::context::DfirErased;
 use dfir_rs::util::unsync::mpsc::{Receiver as UnsyncReceiver, Sender as UnsyncSender};
-use futures::{Stream, StreamExt};
+use futures::StreamExt;
 use libloading::Library;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -55,11 +111,34 @@ struct QuiescenceState {
     quiescence_notify: Notify,
     /// Notified when new input is sent, signaling the scheduler to resume.
     resume_notify: Notify,
+    /// When nonzero, the scheduler must not start nondeterministic work (ticks /
+    /// observations): once only such work remains, it sets `nondet_pending` and pauses until
+    /// resumed. Used by receivers to query whether the simulation can quiesce
+    /// deterministically. This is a count (not a bool) because multiple settling futures can
+    /// be in flight at once (e.g. `select!`/`join!` between two receiver awaits): the
+    /// scheduler must stay paused until *every* one of them has finished settling.
+    pause_nondet: Cell<usize>,
+    /// Set while the scheduler is paused because nondeterministic work is ready to run but
+    /// `pause_nondet` is set.
+    nondet_pending: Cell<bool>,
+    /// Wakers for test-side tasks waiting for the scheduler to settle (either quiesce or set
+    /// `nondet_pending`) while `pause_nondet` is set.
+    settle_wakers: RefCell<Vec<std::task::Waker>>,
+    /// Set when an observation *forced* the simulation to quiesce (running pending
+    /// nondeterministic work) outside of exhaustive mode's forking. Further observations of
+    /// the quiescent state remain sound, but once new input is sent (see `poisoned`), later
+    /// observations could misattribute failures caused by the forced overrun.
+    tainted: Cell<bool>,
+    /// Set when new input is sent after `tainted`; all further receives panic.
+    poisoned: Cell<bool>,
 }
 
 impl QuiescenceState {
     /// Signal that new input has been sent, waking the scheduler if it was quiescent.
     fn resume(&self) {
+        if self.tainted.get() {
+            self.poisoned.set(true);
+        }
         self.quiescent.set(false);
         self.resume_notify.notify_waiters();
     }
@@ -74,13 +153,209 @@ impl QuiescenceState {
         self.quiescence_notify.notified()
     }
 
+    /// Wakes test-side tasks waiting for the scheduler to settle.
+    fn wake_settled(&self) {
+        for waker in self.settle_wakers.borrow_mut().drain(..) {
+            waker.wake();
+        }
+    }
+
     /// Enter quiescence and wait for new input before continuing.
     async fn wait_for_resume(&self) {
         self.quiescent.set(true);
         self.quiescence_notify.notify_waiters();
+        self.wake_settled();
         self.resume_notify.notified().await;
         self.quiescent.set(false);
     }
+}
+
+/// Tracks a pending "settle" pause request to the scheduler (see
+/// [`QuiescenceState::pause_nondet`]), releasing it if the requesting future is dropped
+/// mid-settle (e.g. by `select!`) so the scheduler is not left paused forever. Pause
+/// requests are counted, so concurrent settling futures each hold their own request.
+struct SettlePauseGuard {
+    quiescence: Rc<QuiescenceState>,
+    active: bool,
+}
+
+impl SettlePauseGuard {
+    fn new(quiescence: Rc<QuiescenceState>) -> Self {
+        SettlePauseGuard {
+            quiescence,
+            active: false,
+        }
+    }
+
+    fn acquire(&mut self) {
+        abort_assert!(!self.active, "settle pause acquired twice");
+        self.quiescence
+            .pause_nondet
+            .set(self.quiescence.pause_nondet.get() + 1);
+        self.active = true;
+    }
+
+    fn release(&mut self) {
+        abort_assert!(self.active, "settle pause released without being acquired");
+        self.active = false;
+        self.quiescence
+            .pause_nondet
+            .set(self.quiescence.pause_nondet.get() - 1);
+    }
+
+    /// Polls the "settle" handshake with the scheduler: deterministic (non-tick) work is
+    /// allowed to run, but the scheduler pauses instead of starting nondeterministic work
+    /// (ticks / observations). Resolves to `true` if the simulation reached quiescence
+    /// deterministically, or `false` if nondeterministic work is pending (in which case the
+    /// scheduler is resumed).
+    fn poll_settle(&mut self, cx: &mut std::task::Context<'_>) -> Poll<bool> {
+        let quiescence = self.quiescence.clone();
+        if !self.active {
+            if quiescence.is_quiescent() {
+                return Poll::Ready(true);
+            }
+            self.acquire();
+        }
+
+        if quiescence.is_quiescent() {
+            self.release();
+            Poll::Ready(true)
+        } else if quiescence.nondet_pending.get() {
+            self.release();
+            quiescence.resume_notify.notify_waiters();
+            Poll::Ready(false)
+        } else {
+            // This may push a duplicate waker if we are re-polled without an intervening
+            // `wake_settled` (e.g. a `join!` sibling waking the shared task), but duplicates
+            // are harmless (waking is idempotent) and are cleared at the next `wake_settled`,
+            // so deduplicating here isn't worth the scan on every poll.
+            quiescence
+                .settle_wakers
+                .borrow_mut()
+                .push(cx.waker().clone());
+            Poll::Pending
+        }
+    }
+}
+
+impl Drop for SettlePauseGuard {
+    fn drop(&mut self) {
+        if self.active {
+            self.release();
+            // Resume the scheduler in case this was the last pause request (otherwise it
+            // would stay parked forever with nobody left to resume it). If other settlers
+            // still hold requests, this wakeup is spurious but harmless: the scheduler
+            // re-checks `pause_nondet > 0` before starting any nondeterministic work, so it
+            // immediately re-parks without running anything.
+            self.quiescence.resume_notify.notify_waiters();
+        }
+    }
+}
+
+/// Panics if the simulation has been poisoned: an earlier observation forced the simulation
+/// to quiesce (running pending nondeterministic work), and new input has been sent since, so
+/// further observations could misattribute failures caused by the forced overrun.
+fn guard_not_poisoned(quiescence: &QuiescenceState) {
+    if quiescence.poisoned.get() {
+        panic!(
+            "cannot receive more simulator output: an earlier observation (such as `try_next`, `collect`, or a quiescence assertion outside exhaustive mode) forced the simulation to quiesce by running pending nondeterministic work, and new input has been sent since. Failures observed now could be misattributed, so either restructure the test to make quiescence-forcing observations its last step, or insert an explicit `sim::quiesce().await` phase barrier before sending more input."
+        );
+    }
+}
+
+/// Runs the simulation to quiescence, as an explicit *phase barrier* between rounds of a
+/// multi-phase test.
+///
+/// All pending nondeterministic work (ticks / observations) is forced to run until no more
+/// progress is possible without new input. This deliberately narrows the explored executions:
+/// inputs sent after the barrier will never interleave with work from before it, modeling
+/// scenarios where new stimuli (such as timer ticks) arrive long after the system settles.
+/// Pair such tests with a separate barrier-free test if interleaved executions should also be
+/// explored.
+///
+/// Because the barrier is explicit, observations after it are *intended* to see the fully
+/// settled state, so — unlike [`SimReceiver::try_next`] / [`SimReceiver::collect`] forcing
+/// quiescence implicitly — it does not restrict what the test may do afterwards: receives
+/// after the barrier observe only buffered output (plus whatever later input produces), and
+/// failures cannot be misattributed across it.
+pub async fn quiesce() {
+    let quiescence =
+        CURRENT_SIM_CONNECTIONS.with(|connections| connections.borrow().quiescence.clone());
+    guard_not_poisoned(&quiescence);
+
+    let mut notified_fut = pin!(None);
+    std::future::poll_fn(|cx| {
+        if quiescence.is_quiescent() {
+            return Poll::Ready(());
+        }
+        // Registered before the scheduler can run (single-threaded), so the quiescence
+        // notification cannot be missed.
+        if notified_fut.is_none() {
+            notified_fut.set(Some(quiescence.notified()));
+        }
+        let () = ready!(notified_fut.as_mut().as_pin_mut().unwrap().poll(cx));
+        Poll::Ready(())
+    })
+    .await;
+
+    // The barrier subsumes any quiescence forced by earlier observations in this phase:
+    // everything before it has fully settled, and the test has explicitly opted into
+    // observing only post-quiescence states from here on.
+    quiescence.tainted.set(false);
+}
+
+/// Receives the next message from `receiver` while trying not to overrun the simulation:
+/// first the simulation *settles* (deterministic work runs, but the scheduler pauses before
+/// nondeterministic work). If a message arrives, it is returned; if the simulation settles to
+/// quiescence, returns `None` without having run any nondeterministic work. Otherwise the
+/// scheduler is resumed and pending nondeterministic work runs until a message arrives or the
+/// simulation quiesces; quiescing this way *taints* the simulation (see
+/// [`QuiescenceState::tainted`]).
+async fn try_next_bytes(
+    receiver: &Mutex<UnsyncReceiver<Bytes>>,
+    quiescence: &Rc<QuiescenceState>,
+) -> Option<Bytes> {
+    guard_not_poisoned(quiescence);
+
+    let mut receiver_stream = receiver.lock().await;
+    let mut settle_guard = SettlePauseGuard::new(quiescence.clone());
+    // `Some` once the settle phase has concluded that nondeterministic work is pending and
+    // we have started forcing it to run.
+    let mut notified_fut = pin!(None);
+
+    std::future::poll_fn(|cx| {
+        // A message may become available at any point (including from deterministic work
+        // while settling), so always check the stream first.
+        match receiver_stream.poll_next_unpin(cx) {
+            Poll::Ready(Some(bytes)) => return Poll::Ready(Some(bytes)),
+            Poll::Ready(None) => return Poll::Ready(None),
+            Poll::Pending => {}
+        }
+
+        if notified_fut.is_none() {
+            match settle_guard.poll_settle(cx) {
+                // Deterministically quiescent: no more messages, and nothing was overrun.
+                Poll::Ready(true) => return Poll::Ready(None),
+                // Nondeterministic work is pending; start forcing it to run. The `Notified`
+                // is created here and polled (registered) below in this same synchronous
+                // poll — before the scheduler can run — and the simulation is not currently
+                // quiescent, so the quiescence notification cannot be missed.
+                Poll::Ready(false) => notified_fut.set(Some(quiescence.notified())),
+                Poll::Pending => return Poll::Pending,
+            }
+        }
+
+        // Let the scheduler run nondeterministic work until a message arrives or the
+        // simulation quiesces. Note that merely entering this phase does not taint: if a
+        // message arrives (the `Some` exit at the top), waiting was sound for the same
+        // reason as `SimReceiver::next` — the work that ran was needed to produce it. Only
+        // *observing quiescence* after forcing the pending work taints, since that is the
+        // overrun a later observation could misattribute.
+        let () = ready!(notified_fut.as_mut().as_pin_mut().unwrap().poll(cx));
+        quiescence.tainted.set(true);
+        Poll::Ready(None)
+    })
+    .await
 }
 
 struct SimConnections {
@@ -92,6 +367,10 @@ struct SimConnections {
     external_registered: HashMap<ExternalPortId, SimExternalPort>,
     quiescence: Rc<QuiescenceState>,
     log: bool,
+    /// Whether this instance is being executed by the exhaustive engine (see
+    /// [`CompiledSim::exhaustive`]), which affects how `assert_yields_only` explores
+    /// quiescence checks.
+    exhaustive: bool,
 }
 
 /// Implementation detail of [`crate::sim::continue_if!`](crate::continue_if); do not call directly.
@@ -250,6 +529,7 @@ impl CompiledSim {
                 externals_port_registry: self.externals_port_registry.clone(),
                 dylib_result: None,
                 log,
+                exhaustive: false,
             }),
         )
     }
@@ -476,6 +756,7 @@ impl CompiledSim {
                     *count_mut += 1;
 
                     let mut instance = instantiator();
+                    instance.exhaustive = true;
                     if instance.log {
                         eprintln!(
                             "{}",
@@ -517,6 +798,7 @@ pub struct CompiledSimInstance<'a> {
     externals_port_registry: SimExternalPortRegistry,
     dylib_result: Option<DylibResult>,
     log: bool,
+    exhaustive: bool,
 }
 
 impl<'a> CompiledSimInstance<'a> {
@@ -565,6 +847,11 @@ impl<'a> CompiledSimInstance<'a> {
             quiescent: Cell::new(false),
             quiescence_notify: Notify::new(),
             resume_notify: Notify::new(),
+            pause_nondet: Cell::new(0),
+            nondet_pending: Cell::new(false),
+            settle_wakers: RefCell::new(vec![]),
+            tainted: Cell::new(false),
+            poisoned: Cell::new(false),
         });
 
         let mut input_senders = HashMap::new();
@@ -611,6 +898,7 @@ impl<'a> CompiledSimInstance<'a> {
                     external_registered: self.externals_port_registry.registered.clone(),
                     quiescence: quiescence.clone(),
                     log: self.log,
+                    exhaustive: self.exhaustive,
                 }),
                 async move {
                     thunk(self).await;
@@ -694,79 +982,275 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> Clone for SimRece
 
 impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> Copy for SimReceiver<T, O, R> {}
 
+/// How a [`QuiescenceCheckFuture`] resolves the "did the stream end?" check of
+/// `assert_no_more`. Decided once the simulation has settled (run out of deterministic
+/// work).
+#[derive(Clone, Copy)]
+enum QuiescenceBranch {
+    /// Skip the check and continue the test. Only taken in exhaustive mode, where a
+    /// sibling instance performs the check instead.
+    Continue,
+    /// Perform the check, then end this simulation instance (exhaustive mode), letting
+    /// sibling instances continue past this point without forcing quiescence.
+    CheckThenEnd,
+    /// Perform the check and keep running. Taken when the simulation is already quiescent
+    /// (the check is free) and in non-exhaustive modes.
+    CheckAndKeepRunning,
+}
+
+/// Decides how to run the quiescence check when the simulation has pending nondeterministic
+/// work (ticks / observations) that the check would force to run.
+fn decide_quiescence_branch() -> QuiescenceBranch {
+    let (exhaustive, log) = CURRENT_SIM_CONNECTIONS.with(|connections| {
+        let connections = connections.borrow();
+        (connections.exhaustive, connections.log)
+    });
+
+    if !exhaustive {
+        return QuiescenceBranch::CheckAndKeepRunning;
+    }
+
+    // In exhaustive mode, fork the search on a bolero decision. The exhaustive driver
+    // enumerates `false` first, so the instance that performs the quiescence check is
+    // explored *before* any instance that continues past this assertion. This ensures that
+    // if the stream has extra output, the failure is attributed to this assertion (with a
+    // decision trace leading exactly to the check) rather than leaking the extra messages
+    // into a later assertion.
+    let continue_without_check: bool = bolero::any();
+    if continue_without_check {
+        if log {
+            eprintln!(
+                "\n{}",
+                "Continuing past quiescence assertion without checking (checked by an earlier instance)"
+                    .color(colored::Color::Cyan)
+                    .bold()
+            );
+        }
+        QuiescenceBranch::Continue
+    } else {
+        if log {
+            eprintln!(
+                "\n{}",
+                "Checking that no more messages arrive (this instance will end after the check)"
+                    .color(colored::Color::Cyan)
+                    .bold()
+            );
+        }
+        QuiescenceBranch::CheckThenEnd
+    }
+}
+
+/// Ends the current simulation instance after a passing quiescence check, by panicking with
+/// [`bolero::generator::bolero_generator::any::Error`], which bolero's engines treat as an
+/// invalid input rather than a test failure. The instance has verified everything up to and
+/// including the quiescence check; sibling instances continue past the check instead.
+fn end_instance_after_quiescence_check() -> ! {
+    bolero::generator::bolero_generator::any::assume(
+        false,
+        "simulation instance ended after quiescence check",
+    );
+    unreachable!()
+}
+
+pin_project_lite::pin_project! {
+    // The "and then the stream ends" half of `assert_no_more` (and thus of
+    // `assert_yields_only*` / `collect_n_only`). First lets the simulation *settle* (see
+    // `poll_settle`): if it settles to quiescence, the check is free and the test simply
+    // continues. Otherwise, in exhaustive mode the search forks into a checking instance and
+    // continuing instances (see `SimReceiver::assert_no_more` and
+    // `decide_quiescence_branch`); in non-exhaustive modes the check runs, forcing the
+    // pending work (which taints the simulation, via `try_next_bytes`).
+    //
+    // See [`FutureTrackingCaller`] for why `poll` is `#[track_caller]`.
+    struct QuiescenceCheckFuture<F: Future<Output = ()>> {
+        #[pin]
+        check: F,
+        settle: SettlePauseGuard,
+        branch: Option<QuiescenceBranch>,
+    }
+}
+
+impl<F: Future<Output = ()>> QuiescenceCheckFuture<F> {
+    fn new(check: F) -> Self {
+        QuiescenceCheckFuture {
+            check,
+            settle: SettlePauseGuard::new(
+                CURRENT_SIM_CONNECTIONS.with(|connections| connections.borrow().quiescence.clone()),
+            ),
+            branch: None,
+        }
+    }
+}
+
+impl<F: Future<Output = ()>> Future for QuiescenceCheckFuture<F> {
+    type Output = ();
+
+    #[track_caller]
+    fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project();
+
+        if this.branch.is_none() {
+            *this.branch = Some(if ready!(this.settle.poll_settle(cx)) {
+                // Settled to quiescence deterministically, so the check is free.
+                QuiescenceBranch::CheckAndKeepRunning
+            } else {
+                // The check would force nondeterministic work to run.
+                decide_quiescence_branch()
+            });
+        }
+
+        match this.branch.unwrap() {
+            QuiescenceBranch::Continue => Poll::Ready(()),
+            QuiescenceBranch::CheckAndKeepRunning => this.check.poll(cx),
+            QuiescenceBranch::CheckThenEnd => {
+                ready!(this.check.poll(cx));
+                end_instance_after_quiescence_check()
+            }
+        }
+    }
+}
+
 impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimReceiver<T, O, R> {
-    async fn with_stream<Out>(
-        &self,
-        thunk: impl AsyncFnOnce(&mut Pin<&mut dyn Stream<Item = T>>) -> Out,
-    ) -> Out {
-        let (receiver, quiescence) = CURRENT_SIM_CONNECTIONS.with(|connections| {
+    fn connections(&self) -> (Rc<Mutex<UnsyncReceiver<Bytes>>>, Rc<QuiescenceState>) {
+        CURRENT_SIM_CONNECTIONS.with(|connections| {
             let connections = connections.borrow();
             let port = connections.external_registered.get(&self.0).unwrap();
             (
                 connections.output_receivers.get(port).unwrap().clone(),
                 connections.quiescence.clone(),
             )
-        });
+        })
+    }
 
-        let mut receiver_stream = receiver.lock().await;
-        let mut notified_fut = pin!(quiescence.notified());
-        let mut quiescence_aware = futures::stream::poll_fn(|cx| {
-            use std::task::Poll;
-            match receiver_stream.poll_next_unpin(cx) {
-                Poll::Ready(Some(bytes)) => {
-                    return Poll::Ready(Some(bincode::deserialize(&bytes).unwrap()));
-                }
-                Poll::Ready(None) => return Poll::Ready(None),
-                Poll::Pending => {}
-            }
-            if quiescence.is_quiescent() {
-                return Poll::Ready(None);
-            }
-            let () = ready!(notified_fut.as_mut().poll(cx));
-            notified_fut.set(quiescence.notified());
-            Poll::Ready(None)
-        });
-        thunk(&mut pin!(&mut quiescence_aware)).await
+    /// See [`try_next_bytes`].
+    async fn try_next_impl(&self) -> Option<T> {
+        let (receiver, quiescence) = self.connections();
+        try_next_bytes(&receiver, &quiescence)
+            .await
+            .map(|bytes| bincode::deserialize(&bytes).unwrap())
     }
 
     /// Asserts that the stream has ended and no more messages can possibly arrive.
+    ///
+    /// If the check cannot be answered without running pending nondeterministic work (such
+    /// as ticks with buffered inputs):
+    /// - Under [`CompiledSim::exhaustive`], the search forks: one instance performs the
+    ///   check and ends there, while sibling instances skip the check and continue.
+    /// - In other modes, the pending work runs; afterwards, sending more input and then
+    ///   attempting to receive output will panic.
     pub fn assert_no_more(self) -> impl Future<Output = ()>
     where
         T: Debug,
     {
-        FutureTrackingCaller {
+        QuiescenceCheckFuture::new(FutureTrackingCaller {
             future: async move {
-                self.with_stream(async |stream| {
-                    if let Some(next) = stream.next().await {
-                        return Err(format!(
-                            "Stream yielded unexpected message: {:?}, expected termination",
-                            next
-                        ));
-                    }
-                    Ok(())
-                })
-                .await
+                if let Some(next) = self.try_next_impl().await {
+                    return Err(format!(
+                        "Stream yielded unexpected message: {:?}, expected termination",
+                        next
+                    ));
+                }
+                Ok(())
             },
-        }
+        })
     }
 }
 
 impl<T: Serialize + DeserializeOwned> SimReceiver<T, TotalOrder, ExactlyOnce> {
-    /// Receives the next message from the external bincode stream. This will wait until a message
-    /// is available, or return `None` if no more messages can possibly arrive.
-    pub async fn next(&self) -> Option<T> {
-        self.with_stream(async |stream| stream.next().await).await
+    /// Receives the next message from the external bincode stream, waiting (and letting the
+    /// scheduler run any pending simulation work) until one is available. If the simulation
+    /// becomes quiescent without producing a message, the test fails.
+    ///
+    /// This is safe to use in the middle of a test; to observe the *absence* of a message,
+    /// use [`Self::try_next`] or [`Self::assert_no_more`].
+    pub fn next(&self) -> impl use<'_, T> + Future<Output = T> {
+        // Waiting for a message never "overruns" the simulation, even though the scheduler
+        // may run nondeterministic ticks while we wait: if a message arrives, some pending
+        // work was necessary to produce it (schedules that run *extra* work are also valid
+        // executions, explored separately), and if the simulation quiesces instead, the test
+        // fails right here — so no later observation can be affected by the overrun (the
+        // taint set by `try_next_impl` is unobservable). See the module docs for the full
+        // soundness reasoning.
+        FutureTrackingCaller {
+            future: async move {
+                self.try_next_impl().await.ok_or_else(|| {
+                    "Stream ended (simulation quiescent), but another message was expected"
+                        .to_owned()
+                })
+            },
+        }
     }
 
-    /// Collects all remaining messages from the external bincode stream into a collection. This
-    /// will wait until no more messages can possibly arrive.
+    /// Receives the next message from the external bincode stream, or returns `None` if no
+    /// more messages can possibly arrive.
+    ///
+    /// If answering requires forcing pending nondeterministic work to run, then afterwards,
+    /// sending more input and then attempting to receive output will panic. Prefer
+    /// [`Self::next`] (or [`Self::assert_no_more`]) when possible.
+    pub async fn try_next(&self) -> Option<T> {
+        self.try_next_impl().await
+    }
+
+    /// Receives the next `n` messages from the external bincode stream, waiting (and letting
+    /// the scheduler run any pending simulation work) until they are available. If the
+    /// simulation becomes quiescent before `n` messages arrive, the test fails.
+    ///
+    /// Like [`Self::next`], this is safe to use in the middle of a test. It does not check
+    /// that the stream ends afterwards; use [`Self::collect_n_only`] for that.
+    pub fn collect_n<C: Default + Extend<T>>(
+        &self,
+        n: usize,
+    ) -> impl use<'_, T, C> + Future<Output = C> {
+        FutureTrackingCaller {
+            future: async move {
+                let mut out = C::default();
+                for i in 0..n {
+                    // Like `next`, waiting for each message is safe mid-test; the taint on a
+                    // forced `None` is unobservable because the test fails below.
+                    if let Some(v) = self.try_next_impl().await {
+                        out.extend([v]);
+                    } else {
+                        return Err(format!(
+                            "Stream ended (simulation quiescent) after {} messages, but {} were expected",
+                            i, n
+                        ));
+                    }
+                }
+                Ok(out)
+            },
+        }
+    }
+
+    /// Receives the next `n` messages (like [`Self::collect_n`]) and then asserts that the
+    /// stream ends (like [`Self::assert_no_more`], forking the search in exhaustive mode).
+    pub async fn collect_n_only<C: Default + Extend<T>>(self, n: usize) -> C
+    where
+        T: Debug,
+    {
+        let out = self.collect_n(n).await;
+        self.assert_no_more().await;
+        out
+    }
+
+    /// Collects all remaining messages from the external bincode stream into a collection,
+    /// waiting until no more messages can possibly arrive.
+    ///
+    /// If this has to force pending nondeterministic work to run, it should be the last
+    /// observation of the test: afterwards, sending more input and then attempting to
+    /// receive output will panic. When the number of expected messages is known, prefer
+    /// [`Self::collect_n`] / [`Self::collect_n_only`].
     pub async fn collect<C: Default + Extend<T>>(self) -> C {
-        self.with_stream(async |stream| stream.collect().await)
-            .await
+        let mut out = C::default();
+        while let Some(v) = self.try_next_impl().await {
+            out.extend([v]);
+        }
+        out
     }
 
     /// Asserts that the stream yields exactly the expected sequence of messages, in order.
     /// This does not check that the stream ends, use [`Self::assert_yields_only`] for that.
+    ///
+    /// Like [`Self::next`], this is safe to use in the middle of a test.
     pub fn assert_yields<T2: Debug, I: IntoIterator<Item = T2>>(
         &self,
         expected: I,
@@ -779,7 +1263,9 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, TotalOrder, ExactlyOnce> {
                 let mut expected: VecDeque<T2> = expected.into_iter().collect();
 
                 while !expected.is_empty() {
-                    if let Some(next) = self.next().await {
+                    // Like `next`, waiting for each expected message is safe mid-test; the
+                    // taint on a forced `None` is unobservable because the test fails below.
+                    if let Some(next) = self.try_next_impl().await {
                         let next_expected = expected.pop_front().unwrap();
                         if next != next_expected {
                             return Err(format!(
@@ -801,7 +1287,7 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, TotalOrder, ExactlyOnce> {
     }
 
     /// Asserts that the stream yields only the expected sequence of messages, in order,
-    /// and then ends.
+    /// and then ends (like [`Self::assert_no_more`], forking the search in exhaustive mode).
     pub fn assert_yields_only<T2: Debug, I: IntoIterator<Item = T2>>(
         &self,
         expected: I,
@@ -827,22 +1313,19 @@ pin_project_lite::pin_project! {
     // create these concrete future types that (1) have `#[track_caller]` on their `poll()`
     // method and (2) have the `panic!` triggered in their `poll()` method (or in a directly
     // nested concrete future).
-    struct FutureTrackingCaller<F: Future<Output = Result<(), String>>> {
+    struct FutureTrackingCaller<F> {
         #[pin]
         future: F,
     }
 }
 
-impl<F: Future<Output = Result<(), String>>> Future for FutureTrackingCaller<F> {
-    type Output = ();
+impl<T, F: Future<Output = Result<T, String>>> Future for FutureTrackingCaller<F> {
+    type Output = T;
 
     #[track_caller]
-    fn poll(
-        mut self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         match ready!(self.as_mut().project().future.poll(cx)) {
-            Ok(()) => std::task::Poll::Ready(()),
+            Ok(v) => Poll::Ready(v),
             Err(e) => panic!("{}", e),
         }
     }
@@ -865,10 +1348,7 @@ impl<F1: Future<Output = ()>, F2: Future<Output = ()>> Future for ChainedFuture<
     type Output = ();
 
     #[track_caller]
-    fn poll(
-        mut self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         if !self.first_done {
             ready!(self.as_mut().project().first.poll(cx));
             *self.as_mut().project().first_done = true;
@@ -879,22 +1359,60 @@ impl<F1: Future<Output = ()>, F2: Future<Output = ()>> Future for ChainedFuture<
 }
 
 impl<T: Serialize + DeserializeOwned> SimReceiver<T, NoOrder, ExactlyOnce> {
+    /// Receives the next `n` messages, sorted, waiting (and letting the scheduler run any
+    /// pending simulation work) until they are available. If the simulation becomes quiescent
+    /// before `n` messages arrive, the test fails.
+    ///
+    /// Like [`SimReceiver::next`], this is safe to use in the middle of a test.
+    pub fn collect_n_sorted<C: Default + Extend<T> + AsMut<[T]>>(
+        &self,
+        n: usize,
+    ) -> impl use<'_, T, C> + Future<Output = C>
+    where
+        T: Ord,
+    {
+        FutureTrackingCaller {
+            future: async move {
+                let mut out = C::default();
+                for i in 0..n {
+                    // Like `next`, waiting for each message is safe mid-test; the taint on a
+                    // forced `None` is unobservable because the test fails below.
+                    if let Some(v) = self.try_next_impl().await {
+                        out.extend([v]);
+                    } else {
+                        return Err(format!(
+                            "Stream ended (simulation quiescent) after {} messages, but {} were expected",
+                            i, n
+                        ));
+                    }
+                }
+                out.as_mut().sort();
+                Ok(out)
+            },
+        }
+    }
+
     /// Collects all remaining messages from the external bincode stream into a collection,
     /// sorting them. This will wait until no more messages can possibly arrive.
+    ///
+    /// If this has to force pending nondeterministic work to run, it should be the last
+    /// observation of the test; see [`collect`](SimReceiver::collect).
     pub async fn collect_sorted<C: Default + Extend<T> + AsMut<[T]>>(self) -> C
     where
         T: Ord,
     {
-        self.with_stream(async |stream| {
-            let mut collected: C = stream.collect().await;
-            collected.as_mut().sort();
-            collected
-        })
-        .await
+        let mut collected = C::default();
+        while let Some(v) = self.try_next_impl().await {
+            collected.extend([v]);
+        }
+        collected.as_mut().sort();
+        collected
     }
 
     /// Asserts that the stream yields exactly the expected sequence of messages, in some order.
     /// This does not check that the stream ends, use [`Self::assert_yields_only_unordered`] for that.
+    ///
+    /// Like [`SimReceiver::next`], this is safe to use in the middle of a test.
     pub fn assert_yields_unordered<T2: Debug, I: IntoIterator<Item = T2>>(
         &self,
         expected: I,
@@ -904,37 +1422,33 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, NoOrder, ExactlyOnce> {
     {
         FutureTrackingCaller {
             future: async {
-                self.with_stream(async |stream| {
-                    let mut expected: Vec<T2> = expected.into_iter().collect();
+                let mut expected: Vec<T2> = expected.into_iter().collect();
 
-                    while !expected.is_empty() {
-                        if let Some(next) = stream.next().await {
-                            let idx = expected.iter().enumerate().find(|(_, e)| &next == *e);
-                            if let Some((i, _)) = idx {
-                                expected.swap_remove(i);
-                            } else {
-                                return Err(format!(
-                                    "Stream yielded unexpected message: {:?}",
-                                    next
-                                ));
-                            }
+                while !expected.is_empty() {
+                    // Like `next`, waiting for each expected message is safe mid-test; the
+                    // taint on a forced `None` is unobservable because the test fails below.
+                    if let Some(next) = self.try_next_impl().await {
+                        let idx = expected.iter().enumerate().find(|(_, e)| &next == *e);
+                        if let Some((i, _)) = idx {
+                            expected.swap_remove(i);
                         } else {
-                            return Err(format!(
-                                "Stream ended early, still expected: {:?}",
-                                expected
-                            ));
+                            return Err(format!("Stream yielded unexpected message: {:?}", next));
                         }
+                    } else {
+                        return Err(format!(
+                            "Stream ended early, still expected: {:?}",
+                            expected
+                        ));
                     }
+                }
 
-                    Ok(())
-                })
-                .await
+                Ok(())
             },
         }
     }
 
     /// Asserts that the stream yields only the expected sequence of messages, in some order,
-    /// and then ends.
+    /// and then ends (like [`Self::assert_no_more`], forking the search in exhaustive mode).
     pub fn assert_yields_only_unordered<T2: Debug, I: IntoIterator<Item = T2>>(
         &self,
         expected: I,
@@ -1017,12 +1531,11 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> Copy
 }
 
 impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterReceiver<T, O, R> {
-    async fn with_member_stream<Out>(
+    fn member_connections(
         &self,
         member_id: u32,
-        thunk: impl AsyncFnOnce(&mut Pin<&mut dyn Stream<Item = T>>) -> Out,
-    ) -> Out {
-        let (receiver, quiescence) = CURRENT_SIM_CONNECTIONS.with(|connections| {
+    ) -> (Rc<Mutex<UnsyncReceiver<Bytes>>>, Rc<QuiescenceState>) {
+        CURRENT_SIM_CONNECTIONS.with(|connections| {
             let connections = connections.borrow();
             let port = connections.external_registered.get(&self.0).unwrap();
             let receivers = connections.cluster_output_receivers.get(port).unwrap();
@@ -1030,56 +1543,113 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterReceive
                 receivers[&member_id].clone(),
                 connections.quiescence.clone(),
             )
-        });
+        })
+    }
 
-        let mut lock = receiver.lock().await;
-        let mut notified_fut = pin!(quiescence.notified());
-        let mut quiescence_aware = futures::stream::poll_fn(|cx| {
-            use std::task::Poll;
-            match lock.poll_next_unpin(cx) {
-                Poll::Ready(Some(bytes)) => {
-                    return Poll::Ready(Some(bincode::deserialize(&bytes).unwrap()));
-                }
-                Poll::Ready(None) => return Poll::Ready(None),
-                Poll::Pending => {}
-            }
-            if quiescence.is_quiescent() {
-                return Poll::Ready(None);
-            }
-            let () = ready!(notified_fut.as_mut().poll(cx));
-            notified_fut.set(quiescence.notified());
-            Poll::Ready(None)
-        });
-        thunk(&mut pin!(&mut quiescence_aware)).await
+    /// See [`try_next_bytes`].
+    async fn try_next_impl(&self, member_id: u32) -> Option<T> {
+        let (receiver, quiescence) = self.member_connections(member_id);
+        try_next_bytes(&receiver, &quiescence)
+            .await
+            .map(|bytes| bincode::deserialize(&bytes).unwrap())
     }
 }
 
 impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, TotalOrder, ExactlyOnce> {
-    /// Receives the next value from a specific cluster member.
-    pub async fn next(&self, member_id: u32) -> Option<T> {
-        self.with_member_stream(member_id, async |stream| stream.next().await)
-            .await
+    /// Receives the next value from a specific cluster member, waiting (and letting the
+    /// scheduler run any pending simulation work) until one is available. If the simulation
+    /// becomes quiescent without producing a value, the test fails.
+    ///
+    /// This is safe to use in the middle of a test; to observe the *absence* of a value,
+    /// use [`Self::try_next`].
+    pub fn next(&self, member_id: u32) -> impl use<'_, T> + Future<Output = T> {
+        // See `SimReceiver::next` for why waiting for a value never "overruns" the
+        // simulation.
+        FutureTrackingCaller {
+            future: async move {
+                self.try_next_impl(member_id).await.ok_or_else(|| {
+                    "Stream ended (simulation quiescent), but another message was expected"
+                        .to_owned()
+                })
+            },
+        }
     }
 
-    /// Collects all remaining values from a specific cluster member into a collection.
+    /// Receives the next value from a specific cluster member, or returns `None` if no more
+    /// values can possibly arrive.
+    ///
+    /// If answering requires forcing pending nondeterministic work to run, then afterwards,
+    /// sending more input and then attempting to receive output will panic. Prefer
+    /// [`Self::next`] when possible.
+    pub async fn try_next(&self, member_id: u32) -> Option<T> {
+        self.try_next_impl(member_id).await
+    }
+
+    /// Collects all remaining values from a specific cluster member into a collection,
+    /// waiting until no more values can possibly arrive.
+    ///
+    /// If this has to force pending nondeterministic work to run, it should be the last
+    /// observation of the test; see [`SimReceiver::collect`].
     pub async fn collect<C: Default + Extend<T>>(self, member_id: u32) -> C {
-        self.with_member_stream(member_id, async |stream| stream.collect().await)
-            .await
+        let mut out = C::default();
+        while let Some(v) = self.try_next_impl(member_id).await {
+            out.extend([v]);
+        }
+        out
     }
 }
 
 impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, NoOrder, ExactlyOnce> {
-    /// Collects all remaining values from a specific cluster member, sorted.
+    /// Receives the next `n` values from a specific cluster member, sorted, waiting (and
+    /// letting the scheduler run any pending simulation work) until they are available. If
+    /// the simulation becomes quiescent before `n` values arrive, the test fails.
+    ///
+    /// Like [`SimReceiver::next`], this is safe to use in the middle of a test.
+    pub fn collect_n_sorted<C: Default + Extend<T> + AsMut<[T]>>(
+        &self,
+        member_id: u32,
+        n: usize,
+    ) -> impl use<'_, T, C> + Future<Output = C>
+    where
+        T: Ord,
+    {
+        FutureTrackingCaller {
+            future: async move {
+                let mut out = C::default();
+                for i in 0..n {
+                    // Like `SimReceiver::next`, waiting for each message is safe mid-test;
+                    // the taint on a forced `None` is unobservable because the test fails
+                    // below.
+                    if let Some(v) = self.try_next_impl(member_id).await {
+                        out.extend([v]);
+                    } else {
+                        return Err(format!(
+                            "Stream ended (simulation quiescent) after {} messages, but {} were expected",
+                            i, n
+                        ));
+                    }
+                }
+                out.as_mut().sort();
+                Ok(out)
+            },
+        }
+    }
+
+    /// Collects all remaining values from a specific cluster member, sorted, waiting until no
+    /// more values can possibly arrive.
+    ///
+    /// If this has to force pending nondeterministic work to run, it should be the last
+    /// observation of the test; see [`SimReceiver::collect`].
     pub async fn collect_sorted<C: Default + Extend<T> + AsMut<[T]>>(self, member_id: u32) -> C
     where
         T: Ord,
     {
-        self.with_member_stream(member_id, async |stream| {
-            let mut collected: C = stream.collect().await;
-            collected.as_mut().sort();
-            collected
-        })
-        .await
+        let mut collected = C::default();
+        while let Some(v) = self.try_next_impl(member_id).await {
+            collected.extend([v]);
+        }
+        collected.as_mut().sort();
+        collected
     }
 }
 
@@ -1276,6 +1846,15 @@ impl<W: std::io::Write> LaunchedSim<W> {
 
                     // Signal quiescence and wait for new input.
                     self.quiescence.wait_for_resume().await;
+                } else if self.quiescence.pause_nondet.get() > 0 {
+                    // The test is querying whether the simulation can quiesce without
+                    // nondeterministic work (see `QuiescenceCheckFuture`). Report that
+                    // ticks/observations are pending and pause until the test decides how
+                    // to proceed.
+                    self.quiescence.nondet_pending.set(true);
+                    self.quiescence.wake_settled();
+                    self.quiescence.resume_notify.notified().await;
+                    self.quiescence.nondet_pending.set(false);
                 } else {
                     let next_tick_or_obs = (0..(self.possibly_ready_ticks.len()
                         + self.possibly_ready_observation.len()))

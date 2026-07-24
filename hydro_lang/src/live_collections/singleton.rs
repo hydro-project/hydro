@@ -1692,7 +1692,7 @@ mod tests {
         let out_recv = batch.all_ticks().sim_output();
 
         flow.sim().exhaustive(async || {
-            assert_eq!(out_recv.next().await.unwrap(), 10);
+            assert_eq!(out_recv.next().await, 10);
         });
     }
 
@@ -1736,11 +1736,11 @@ mod tests {
         let out_recv = batch.all_ticks().sim_output();
 
         flow.sim().exhaustive(async || {
-            assert_eq!(out_recv.next().await.unwrap(), 0);
+            assert_eq!(out_recv.next().await, 0);
 
             in_port.send(123);
 
-            assert_eq!(out_recv.next().await.unwrap(), 123);
+            assert_eq!(out_recv.next().await, 123);
         });
     }
 
@@ -1764,8 +1764,7 @@ mod tests {
         let out_recv = batch.all_ticks().sim_output();
 
         flow.sim().exhaustive(async || {
-            if out_recv.next().await.unwrap() == (1, 3) && out_recv.next().await.unwrap() == (2, 3)
-            {
+            if out_recv.next().await == (1, 3) && out_recv.next().await == (2, 3) {
                 panic!("repeated snapshot");
             }
         });
