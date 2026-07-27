@@ -836,25 +836,35 @@ impl DfirBuilder for ProdDfirBuilder {
             }
             (None, Some(_)) => {
                 // Entering the tick's loop from the top level: emit a windowing operator.
-                if is_singleton_like && in_kind.is_bounded() {
-                    // The bounded value is produced exactly once. Persist it at the root (a
-                    // `loop { ... }` context cannot contain `persist`) so it remains available,
-                    // then window it into the loop on each firing.
-                    let persisted_ident = self.intermediate_ident();
-                    self.graph_mut(in_location).add_dfir(
-                        parse_quote! {
-                            #persisted_ident = #in_ident -> persist::<'static>();
-                        },
-                        None,
-                        None,
-                    );
-                    self.add_dfir_in(
-                        out_location,
-                        parse_quote! {
-                            #out_ident = #persisted_ident -> batch();
-                        },
-                        None,
-                    );
+                if is_singleton_like {
+                    if in_kind.is_bounded() {
+                        // The bounded value is produced exactly once. Persist it at the root (a
+                        // `loop { ... }` context cannot contain `persist`) so it remains available,
+                        // then window it into the loop on each firing.
+                        let persisted_ident = self.intermediate_ident();
+                        self.add_dfir_in(
+                            in_location,
+                            parse_quote! {
+                                #persisted_ident = #in_ident -> persist::<'static>();
+                            },
+                            None,
+                        );
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #persisted_ident -> batch_lazy();
+                            },
+                            None,
+                        );
+                    } else {
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #in_ident -> batch_lazy();
+                            },
+                            None,
+                        );
+                    }
                 } else {
                     // TODO(#2902 phase 3/5): unbounded singleton snapshots and same-tick-feedback
                     // streams should route through `batch_lazy()` (value-only, no trigger).

@@ -12,170 +12,146 @@ linkStyle default stroke:#aaa
 2v1["<div style=text-align:center>(2v1)</div> <code><br>source_stream(DUMMY)</code>"]:::otherClass
 3v1["<div style=text-align:center>(3v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_LINE_COL!(<br>        [] [| (k, v) | (MemberId::from_tagless(k), v)]<br>    )<br>})</code>"]:::otherClass
 4v1["<div style=text-align:center>(4v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL!(<br>            [] [| | false]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL!(<br>            [] [| present, event | { match event { MembershipEvent::Joined =&gt; *<br>            present = true, MembershipEvent::Left =&gt; * present = false, } }]<br>        )<br>    },<br>)</code>"]:::otherClass
-5v1["<div style=text-align:center>(5v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-6v1["<div style=text-align:center>(6v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
-7v1["<div style=text-align:center>(7v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
-8v1["<div style=text-align:center>(8v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;(u32, i32)&gt;(&amp;b).unwrap(),<br>    )<br>})</code>"]:::otherClass
-9v1["<div style=text-align:center>(9v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-10v1["<div style=text-align:center>(10v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
-11v1["<div style=text-align:center>(11v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
-12v1["<div style=text-align:center>(12v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
-13v1["<div style=text-align:center>(13v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc::Participant,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            (<br>                hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                    hydro_test::__staged::cluster::two_pc_bench::Client,<br>                &gt;,<br>                (u32, i32),<br>            ),<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
-14v1["<div style=text-align:center>(14v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_stream_mod_rs_LINE_COL!(<br>        [] [| (_, v) | v]<br>    )<br>})</code>"]:::otherClass
-15v1["<div style=text-align:center>(15v1)</div> <code><br>map({<br>    crate::__staged::__stageleft_quote_src_cluster_two_pc_rs_LINE_COL!(<br>        [] [| kv | (kv, Ok:: &lt; (), () &gt; (()))]<br>    )<br>})</code>"]:::otherClass
-16v1["<div style=text-align:center>(16v1)</div> <code><br>tee()</code>"]:::otherClass
-17v1["<div style=text-align:center>(17v1)</div> <code><br>chain()</code>"]:::otherClass
-18v1["<div style=text-align:center>(18v1)</div> <code><br>tee()</code>"]:::otherClass
-19v1["<div style=text-align:center>(19v1)</div> <code><br>fold_keyed::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!([] [move | | (0, 0)])<br>    },<br>    {<br>        hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!(<br>            [] [move | accum, value | { if value.is_ok() { accum.0 += 1; } else {<br>            accum.1 += 1; } }]<br>        )<br>    },<br>)</code>"]:::otherClass
-21v1["<div style=text-align:center>(21v1)</div> <code><br>filter_map({<br>    hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!(<br>        [min__free = 3usize,] [move | (key, (success, _error)) | if success &gt;=<br>        min__free { Some(key) } else { None }]<br>    )<br>})</code>"]:::otherClass
+5v1["<div style=text-align:center>(5v1)</div> <code><br>batch_lazy()</code>"]:::otherClass
+6v1["<div style=text-align:center>(6v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+7v1["<div style=text-align:center>(7v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+8v1["<div style=text-align:center>(8v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
+9v1["<div style=text-align:center>(9v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;(u32, i32)&gt;(&amp;b).unwrap(),<br>    )<br>})</code>"]:::otherClass
+10v1["<div style=text-align:center>(10v1)</div> <code><br>batch()</code>"]:::otherClass
+11v1["<div style=text-align:center>(11v1)</div> <code><br>cross_join_multiset::&lt;'none, 'none&gt;()</code>"]:::otherClass
+12v1["<div style=text-align:center>(12v1)</div> <code><br>all_iterations()</code>"]:::otherClass
+13v1["<div style=text-align:center>(13v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
+14v1["<div style=text-align:center>(14v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
+15v1["<div style=text-align:center>(15v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
+16v1["<div style=text-align:center>(16v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc::Participant,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            (<br>                hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                    hydro_test::__staged::cluster::two_pc_bench::Client,<br>                &gt;,<br>                (u32, i32),<br>            ),<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
+17v1["<div style=text-align:center>(17v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_stream_mod_rs_LINE_COL!(<br>        [] [| (_, v) | v]<br>    )<br>})</code>"]:::otherClass
+18v1["<div style=text-align:center>(18v1)</div> <code><br>map({<br>    crate::__staged::__stageleft_quote_src_cluster_two_pc_rs_LINE_COL!(<br>        [] [| kv | (kv, Ok:: &lt; (), () &gt; (()))]<br>    )<br>})</code>"]:::otherClass
+19v1["<div style=text-align:center>(19v1)</div> <code><br>tee()</code>"]:::otherClass
+20v1["<div style=text-align:center>(20v1)</div> <code><br>batch()</code>"]:::otherClass
+21v1["<div style=text-align:center>(21v1)</div> <code><br>chain()</code>"]:::otherClass
 22v1["<div style=text-align:center>(22v1)</div> <code><br>tee()</code>"]:::otherClass
-23v1["<div style=text-align:center>(23v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-24v1["<div style=text-align:center>(24v1)</div> <code><br>identity::&lt;<br>    (<br>        (<br>            hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                hydro_test::__staged::cluster::two_pc_bench::Client,<br>            &gt;,<br>            (u32, i32),<br>        ),<br>        core::result::Result&lt;(), ()&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
-25v1["<div style=text-align:center>(25v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
-26v1["<div style=text-align:center>(26v1)</div> <code><br>identity::&lt;<br>    (<br>        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;,<br>        (u32, i32),<br>    ),<br>&gt;()</code>"]:::otherClass
-27v1["<div style=text-align:center>(27v1)</div> <code><br>filter_map({<br>    hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!(<br>        [] [move | (key, res) | match res { Ok(_) =&gt; None, Err(e) =&gt; Some((key, e)),<br>        }]<br>    )<br>})</code>"]:::otherClass
-28v1["<div style=text-align:center>(28v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
+23v1["<div style=text-align:center>(23v1)</div> <code><br>fold_keyed::&lt;<br>    'none,<br>&gt;(<br>    {<br>        hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!([] [move | | (0, 0)])<br>    },<br>    {<br>        hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!(<br>            [] [move | accum, value | { if value.is_ok() { accum.0 += 1; } else {<br>            accum.1 += 1; } }]<br>        )<br>    },<br>)</code>"]:::otherClass
+25v1["<div style=text-align:center>(25v1)</div> <code><br>filter_map({<br>    hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!(<br>        [min__free = 3usize,] [move | (key, (success, _error)) | if success &gt;=<br>        min__free { Some(key) } else { None }]<br>    )<br>})</code>"]:::otherClass
+26v1["<div style=text-align:center>(26v1)</div> <code><br>tee()</code>"]:::otherClass
+27v1["<div style=text-align:center>(27v1)</div> <code><br>anti_join::&lt;'none, 'none&gt;()</code>"]:::otherClass
+28v1["<div style=text-align:center>(28v1)</div> <code><br>identity::&lt;<br>    (<br>        (<br>            hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                hydro_test::__staged::cluster::two_pc_bench::Client,<br>            &gt;,<br>            (u32, i32),<br>        ),<br>        core::result::Result&lt;(), ()&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
 29v1["<div style=text-align:center>(29v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
-30v1["<div style=text-align:center>(30v1)</div> <code><br>source_stream(DUMMY)</code>"]:::otherClass
-31v1["<div style=text-align:center>(31v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_LINE_COL!(<br>        [] [| (k, v) | (MemberId::from_tagless(k), v)]<br>    )<br>})</code>"]:::otherClass
-32v1["<div style=text-align:center>(32v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL!(<br>            [] [| | false]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL!(<br>            [] [| present, event | { match event { MembershipEvent::Joined =&gt; *<br>            present = true, MembershipEvent::Left =&gt; * present = false, } }]<br>        )<br>    },<br>)</code>"]:::otherClass
-33v1["<div style=text-align:center>(33v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
-34v1["<div style=text-align:center>(34v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
-35v1["<div style=text-align:center>(35v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-36v1["<div style=text-align:center>(36v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
-37v1["<div style=text-align:center>(37v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
-38v1["<div style=text-align:center>(38v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
-39v1["<div style=text-align:center>(39v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc::Participant,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            (<br>                hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                    hydro_test::__staged::cluster::two_pc_bench::Client,<br>                &gt;,<br>                (u32, i32),<br>            ),<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
-40v1["<div style=text-align:center>(40v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_stream_mod_rs_LINE_COL!(<br>        [] [| (_, v) | v]<br>    )<br>})</code>"]:::otherClass
-41v1["<div style=text-align:center>(41v1)</div> <code><br>map({<br>    crate::__staged::__stageleft_quote_src_cluster_two_pc_rs_LINE_COL!(<br>        [] [| kv | (kv, Ok:: &lt; (), () &gt; (()))]<br>    )<br>})</code>"]:::otherClass
-42v1["<div style=text-align:center>(42v1)</div> <code><br>tee()</code>"]:::otherClass
-43v1["<div style=text-align:center>(43v1)</div> <code><br>chain()</code>"]:::otherClass
-44v1["<div style=text-align:center>(44v1)</div> <code><br>tee()</code>"]:::otherClass
-45v1["<div style=text-align:center>(45v1)</div> <code><br>fold_keyed::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!([] [move | | (0, 0)])<br>    },<br>    {<br>        hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!(<br>            [] [move | accum, value | { if value.is_ok() { accum.0 += 1; } else {<br>            accum.1 += 1; } }]<br>        )<br>    },<br>)</code>"]:::otherClass
-47v1["<div style=text-align:center>(47v1)</div> <code><br>filter_map({<br>    hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!(<br>        [min__free = 3usize,] [move | (key, (success, _error)) | if success &gt;=<br>        min__free { Some(key) } else { None }]<br>    )<br>})</code>"]:::otherClass
-48v1["<div style=text-align:center>(48v1)</div> <code><br>tee()</code>"]:::otherClass
-49v1["<div style=text-align:center>(49v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-50v1["<div style=text-align:center>(50v1)</div> <code><br>identity::&lt;<br>    (<br>        (<br>            hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                hydro_test::__staged::cluster::two_pc_bench::Client,<br>            &gt;,<br>            (u32, i32),<br>        ),<br>        core::result::Result&lt;(), ()&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
-51v1["<div style=text-align:center>(51v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
-52v1["<div style=text-align:center>(52v1)</div> <code><br>identity::&lt;<br>    (<br>        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;,<br>        (u32, i32),<br>    ),<br>&gt;()</code>"]:::otherClass
-53v1["<div style=text-align:center>(53v1)</div> <code><br>filter_map({<br>    hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!(<br>        [] [move | (key, res) | match res { Ok(_) =&gt; None, Err(e) =&gt; Some((key, e)),<br>        }]<br>    )<br>})</code>"]:::otherClass
-54v1["<div style=text-align:center>(54v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
-55v1["<div style=text-align:center>(55v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
-56v1["<div style=text-align:center>(56v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
-24v1--o1v1; linkStyle 0 stroke:red
+30v1["<div style=text-align:center>(30v1)</div> <code><br>identity::&lt;<br>    (<br>        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;,<br>        (u32, i32),<br>    ),<br>&gt;()</code>"]:::otherClass
+31v1["<div style=text-align:center>(31v1)</div> <code><br>filter_map({<br>    hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!(<br>        [] [move | (key, res) | match res { Ok(_) =&gt; None, Err(e) =&gt; Some((key, e)),<br>        }]<br>    )<br>})</code>"]:::otherClass
+32v1["<div style=text-align:center>(32v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
+33v1["<div style=text-align:center>(33v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+34v1["<div style=text-align:center>(34v1)</div> <code><br>source_stream(DUMMY)</code>"]:::otherClass
+35v1["<div style=text-align:center>(35v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_LINE_COL!(<br>        [] [| (k, v) | (MemberId::from_tagless(k), v)]<br>    )<br>})</code>"]:::otherClass
+36v1["<div style=text-align:center>(36v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL!(<br>            [] [| | false]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL!(<br>            [] [| present, event | { match event { MembershipEvent::Joined =&gt; *<br>            present = true, MembershipEvent::Left =&gt; * present = false, } }]<br>        )<br>    },<br>)</code>"]:::otherClass
+37v1["<div style=text-align:center>(37v1)</div> <code><br>batch_lazy()</code>"]:::otherClass
+38v1["<div style=text-align:center>(38v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL!(<br>        [f__free = stageleft::runtime_support::fn1_borrow_type_hint:: &lt; bool, bool &gt;<br>        ({ use hydro_lang::__staged::__deps:: *; use<br>        hydro_lang::__staged::live_collections::stream::networking:: *;<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL!([]<br>        [| b | * b]) }),] [{ let orig = f__free; move | t : &amp; (_, _) | orig(&amp; t.1) }]<br>    )<br>})</code>"]:::otherClass
+39v1["<div style=text-align:center>(39v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL!(<br>        [] [| (k, _) | k]<br>    )<br>})</code>"]:::otherClass
+40v1["<div style=text-align:center>(40v1)</div> <code><br>all_iterations()</code>"]:::otherClass
+41v1["<div style=text-align:center>(41v1)</div> <code><br>batch()</code>"]:::otherClass
+42v1["<div style=text-align:center>(42v1)</div> <code><br>cross_join_multiset::&lt;'none, 'none&gt;()</code>"]:::otherClass
+43v1["<div style=text-align:center>(43v1)</div> <code><br>all_iterations()</code>"]:::otherClass
+44v1["<div style=text-align:center>(44v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
+45v1["<div style=text-align:center>(45v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
+46v1["<div style=text-align:center>(46v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
+47v1["<div style=text-align:center>(47v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc::Participant,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            (<br>                hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                    hydro_test::__staged::cluster::two_pc_bench::Client,<br>                &gt;,<br>                (u32, i32),<br>            ),<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
+48v1["<div style=text-align:center>(48v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_keyed_stream_mod_rs_LINE_COL!(<br>        [] [| (_, v) | v]<br>    )<br>})</code>"]:::otherClass
+49v1["<div style=text-align:center>(49v1)</div> <code><br>map({<br>    crate::__staged::__stageleft_quote_src_cluster_two_pc_rs_LINE_COL!(<br>        [] [| kv | (kv, Ok:: &lt; (), () &gt; (()))]<br>    )<br>})</code>"]:::otherClass
+50v1["<div style=text-align:center>(50v1)</div> <code><br>tee()</code>"]:::otherClass
+51v1["<div style=text-align:center>(51v1)</div> <code><br>batch()</code>"]:::otherClass
+52v1["<div style=text-align:center>(52v1)</div> <code><br>chain()</code>"]:::otherClass
+53v1["<div style=text-align:center>(53v1)</div> <code><br>tee()</code>"]:::otherClass
+54v1["<div style=text-align:center>(54v1)</div> <code><br>fold_keyed::&lt;<br>    'none,<br>&gt;(<br>    {<br>        hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!([] [move | | (0, 0)])<br>    },<br>    {<br>        hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!(<br>            [] [move | accum, value | { if value.is_ok() { accum.0 += 1; } else {<br>            accum.1 += 1; } }]<br>        )<br>    },<br>)</code>"]:::otherClass
+56v1["<div style=text-align:center>(56v1)</div> <code><br>filter_map({<br>    hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!(<br>        [min__free = 3usize,] [move | (key, (success, _error)) | if success &gt;=<br>        min__free { Some(key) } else { None }]<br>    )<br>})</code>"]:::otherClass
+57v1["<div style=text-align:center>(57v1)</div> <code><br>tee()</code>"]:::otherClass
+58v1["<div style=text-align:center>(58v1)</div> <code><br>anti_join::&lt;'none, 'none&gt;()</code>"]:::otherClass
+59v1["<div style=text-align:center>(59v1)</div> <code><br>identity::&lt;<br>    (<br>        (<br>            hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                hydro_test::__staged::cluster::two_pc_bench::Client,<br>            &gt;,<br>            (u32, i32),<br>        ),<br>        core::result::Result&lt;(), ()&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
+60v1["<div style=text-align:center>(60v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+61v1["<div style=text-align:center>(61v1)</div> <code><br>identity::&lt;<br>    (<br>        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;,<br>        (u32, i32),<br>    ),<br>&gt;()</code>"]:::otherClass
+62v1["<div style=text-align:center>(62v1)</div> <code><br>filter_map({<br>    hydro_std::__stageleft_quote_src_quorum_rs_LINE_COL!(<br>        [] [move | (key, res) | match res { Ok(_) =&gt; None, Err(e) =&gt; Some((key, e)),<br>        }]<br>    )<br>})</code>"]:::otherClass
+63v1["<div style=text-align:center>(63v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
+64v1["<div style=text-align:center>(64v1)</div> <code><br>all_iterations()</code>"]:::otherClass
+65v1["<div style=text-align:center>(65v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
+66v1["<div style=text-align:center>(66v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
+28v1--o1v1; linkStyle 0 stroke:red
 2v1-->3v1
 3v1-->4v1
 4v1-->5v1
 5v1-->6v1
-7v1-->8v1
-6v1-->|0|9v1
-8v1-->|1|9v1
-10v1-->11v1
+6v1-->7v1
+8v1-->9v1
 9v1-->10v1
-12v1-->13v1
+7v1-->|0|11v1
+10v1-->|1|11v1
+11v1-->12v1
 13v1-->14v1
-14v1-->15v1
+12v1-->13v1
 15v1-->16v1
-1v1-->|0|17v1
-16v1-->|1|17v1
+16v1-->17v1
 17v1-->18v1
 18v1-->19v1
-19v1-->21v1
+19v1-->20v1
+1v1-->|0|21v1
+20v1-->|1|21v1
 21v1-->22v1
-18v1-->|pos|23v1
-22v1-->|neg|23v1
-23v1-->24v1
-26v1--o25v1; linkStyle 23 stroke:red
+22v1-->23v1
+23v1-->25v1
 25v1-->26v1
-16v1-->27v1
+22v1-->|pos|27v1
+26v1-->|neg|27v1
 27v1-->28v1
-50v1--o29v1; linkStyle 27 stroke:red
-30v1-->31v1
+30v1--o29v1; linkStyle 27 stroke:red
+29v1-->30v1
+19v1-->31v1
 31v1-->32v1
-32v1-->33v1
-33v1-->34v1
-34v1-->|0|35v1
-22v1-->|1|35v1
-36v1-->37v1
+59v1--o33v1; linkStyle 31 stroke:red
+34v1-->35v1
 35v1-->36v1
+36v1-->37v1
+37v1-->38v1
 38v1-->39v1
-39v1-->40v1
+26v1-->40v1
 40v1-->41v1
-41v1-->42v1
-29v1-->|0|43v1
-42v1-->|1|43v1
-43v1-->44v1
+39v1-->|0|42v1
+41v1-->|1|42v1
+42v1-->43v1
 44v1-->45v1
-45v1-->47v1
+43v1-->44v1
+46v1-->47v1
 47v1-->48v1
-44v1-->|pos|49v1
-48v1-->|neg|49v1
+48v1-->49v1
 49v1-->50v1
-52v1--o51v1; linkStyle 49 stroke:red
-51v1-->52v1
-42v1-->53v1
+50v1-->51v1
+33v1-->|0|52v1
+51v1-->|1|52v1
+52v1-->53v1
 53v1-->54v1
-55v1-->56v1
-48v1-->55v1
-28v1
-10v1
-11v1
-54v1
-55v1
-56v1
-36v1
-37v1
-subgraph var_cycle_2 ["var <tt>cycle_2</tt>"]
-    style var_cycle_2 fill:transparent
-    24v1
-end
-subgraph var_cycle_3 ["var <tt>cycle_3</tt>"]
-    style var_cycle_3 fill:transparent
-    26v1
-end
-subgraph var_cycle_4 ["var <tt>cycle_4</tt>"]
-    style var_cycle_4 fill:transparent
-    50v1
-end
-subgraph var_cycle_5 ["var <tt>cycle_5</tt>"]
-    style var_cycle_5 fill:transparent
-    52v1
-end
-subgraph var_stream_101 ["var <tt>stream_101</tt>"]
-    style var_stream_101 fill:transparent
-    43v1
-end
-subgraph var_stream_102 ["var <tt>stream_102</tt>"]
-    style var_stream_102 fill:transparent
-    44v1
-end
-subgraph var_stream_105 ["var <tt>stream_105</tt>"]
-    style var_stream_105 fill:transparent
-    45v1
-end
-subgraph var_stream_109 ["var <tt>stream_109</tt>"]
-    style var_stream_109 fill:transparent
-    47v1
-end
-subgraph var_stream_110 ["var <tt>stream_110</tt>"]
-    style var_stream_110 fill:transparent
-    48v1
-end
-subgraph var_stream_111 ["var <tt>stream_111</tt>"]
-    style var_stream_111 fill:transparent
-    49v1
-end
-subgraph var_stream_113 ["var <tt>stream_113</tt>"]
-    style var_stream_113 fill:transparent
-    51v1
-end
+54v1-->56v1
+56v1-->57v1
+53v1-->|pos|58v1
+57v1-->|neg|58v1
+58v1-->59v1
+61v1--o60v1; linkStyle 58 stroke:red
+60v1-->61v1
+50v1-->62v1
+62v1-->63v1
+57v1-->64v1
+65v1-->66v1
+64v1-->65v1
+13v1
+14v1
+32v1
+44v1
+45v1
+63v1
+65v1
+66v1
 subgraph var_stream_115 ["var <tt>stream_115</tt>"]
     style var_stream_115 fill:transparent
-    53v1
+    62v1
 end
-subgraph var_stream_23 ["var <tt>stream_23</tt>"]
-    style var_stream_23 fill:transparent
-    1v1
+subgraph var_stream_118 ["var <tt>stream_118</tt>"]
+    style var_stream_118 fill:transparent
+    64v1
 end
 subgraph var_stream_24 ["var <tt>stream_24</tt>"]
     style var_stream_24 fill:transparent
@@ -189,114 +165,206 @@ subgraph var_stream_27 ["var <tt>stream_27</tt>"]
     style var_stream_27 fill:transparent
     4v1
 end
-subgraph var_stream_29 ["var <tt>stream_29</tt>"]
-    style var_stream_29 fill:transparent
-    5v1
-end
-subgraph var_stream_32 ["var <tt>stream_32</tt>"]
-    style var_stream_32 fill:transparent
-    6v1
-end
 subgraph var_stream_44 ["var <tt>stream_44</tt>"]
     style var_stream_44 fill:transparent
-    7v1
     8v1
-end
-subgraph var_stream_48 ["var <tt>stream_48</tt>"]
-    style var_stream_48 fill:transparent
     9v1
+end
+subgraph var_stream_50 ["var <tt>stream_50</tt>"]
+    style var_stream_50 fill:transparent
+    12v1
 end
 subgraph var_stream_52 ["var <tt>stream_52</tt>"]
     style var_stream_52 fill:transparent
-    12v1
-    13v1
+    15v1
+    16v1
 end
 subgraph var_stream_55 ["var <tt>stream_55</tt>"]
     style var_stream_55 fill:transparent
-    14v1
+    17v1
 end
 subgraph var_stream_56 ["var <tt>stream_56</tt>"]
     style var_stream_56 fill:transparent
-    15v1
+    18v1
 end
 subgraph var_stream_57 ["var <tt>stream_57</tt>"]
     style var_stream_57 fill:transparent
-    16v1
-end
-subgraph var_stream_59 ["var <tt>stream_59</tt>"]
-    style var_stream_59 fill:transparent
-    17v1
-end
-subgraph var_stream_60 ["var <tt>stream_60</tt>"]
-    style var_stream_60 fill:transparent
-    18v1
-end
-subgraph var_stream_63 ["var <tt>stream_63</tt>"]
-    style var_stream_63 fill:transparent
     19v1
-end
-subgraph var_stream_67 ["var <tt>stream_67</tt>"]
-    style var_stream_67 fill:transparent
-    21v1
-end
-subgraph var_stream_68 ["var <tt>stream_68</tt>"]
-    style var_stream_68 fill:transparent
-    22v1
-end
-subgraph var_stream_69 ["var <tt>stream_69</tt>"]
-    style var_stream_69 fill:transparent
-    23v1
-end
-subgraph var_stream_71 ["var <tt>stream_71</tt>"]
-    style var_stream_71 fill:transparent
-    25v1
 end
 subgraph var_stream_73 ["var <tt>stream_73</tt>"]
     style var_stream_73 fill:transparent
-    27v1
-end
-subgraph var_stream_76 ["var <tt>stream_76</tt>"]
-    style var_stream_76 fill:transparent
-    29v1
+    31v1
 end
 subgraph var_stream_77 ["var <tt>stream_77</tt>"]
     style var_stream_77 fill:transparent
-    30v1
+    34v1
 end
 subgraph var_stream_78 ["var <tt>stream_78</tt>"]
     style var_stream_78 fill:transparent
-    31v1
+    35v1
 end
 subgraph var_stream_80 ["var <tt>stream_80</tt>"]
     style var_stream_80 fill:transparent
-    32v1
+    36v1
 end
-subgraph var_stream_82 ["var <tt>stream_82</tt>"]
-    style var_stream_82 fill:transparent
-    33v1
+subgraph var_stream_88 ["var <tt>stream_88</tt>"]
+    style var_stream_88 fill:transparent
+    40v1
 end
-subgraph var_stream_85 ["var <tt>stream_85</tt>"]
-    style var_stream_85 fill:transparent
-    34v1
-end
-subgraph var_stream_90 ["var <tt>stream_90</tt>"]
-    style var_stream_90 fill:transparent
-    35v1
+subgraph var_stream_92 ["var <tt>stream_92</tt>"]
+    style var_stream_92 fill:transparent
+    43v1
 end
 subgraph var_stream_94 ["var <tt>stream_94</tt>"]
     style var_stream_94 fill:transparent
-    38v1
-    39v1
+    46v1
+    47v1
 end
 subgraph var_stream_97 ["var <tt>stream_97</tt>"]
     style var_stream_97 fill:transparent
-    40v1
+    48v1
 end
 subgraph var_stream_98 ["var <tt>stream_98</tt>"]
     style var_stream_98 fill:transparent
-    41v1
+    49v1
 end
 subgraph var_stream_99 ["var <tt>stream_99</tt>"]
     style var_stream_99 fill:transparent
-    42v1
+    50v1
+end
+subgraph loop_1v1 ["loop_1v1"]
+    subgraph var_cycle_2 ["var <tt>cycle_2</tt>"]
+        style var_cycle_2 fill:transparent
+        28v1
+    end
+    subgraph var_cycle_3 ["var <tt>cycle_3</tt>"]
+        style var_cycle_3 fill:transparent
+        30v1
+    end
+    subgraph var_stream_23 ["var <tt>stream_23</tt>"]
+        style var_stream_23 fill:transparent
+        1v1
+    end
+    subgraph var_stream_58 ["var <tt>stream_58</tt>"]
+        style var_stream_58 fill:transparent
+        20v1
+    end
+    subgraph var_stream_59 ["var <tt>stream_59</tt>"]
+        style var_stream_59 fill:transparent
+        21v1
+    end
+    subgraph var_stream_60 ["var <tt>stream_60</tt>"]
+        style var_stream_60 fill:transparent
+        22v1
+    end
+    subgraph var_stream_63 ["var <tt>stream_63</tt>"]
+        style var_stream_63 fill:transparent
+        23v1
+    end
+    subgraph var_stream_67 ["var <tt>stream_67</tt>"]
+        style var_stream_67 fill:transparent
+        25v1
+    end
+    subgraph var_stream_68 ["var <tt>stream_68</tt>"]
+        style var_stream_68 fill:transparent
+        26v1
+    end
+    subgraph var_stream_69 ["var <tt>stream_69</tt>"]
+        style var_stream_69 fill:transparent
+        27v1
+    end
+    subgraph var_stream_71 ["var <tt>stream_71</tt>"]
+        style var_stream_71 fill:transparent
+        29v1
+    end
+end
+subgraph loop_2v1 ["loop_2v1"]
+    subgraph var_stream_28 ["var <tt>stream_28</tt>"]
+        style var_stream_28 fill:transparent
+        5v1
+    end
+    subgraph var_stream_29 ["var <tt>stream_29</tt>"]
+        style var_stream_29 fill:transparent
+        6v1
+    end
+    subgraph var_stream_32 ["var <tt>stream_32</tt>"]
+        style var_stream_32 fill:transparent
+        7v1
+    end
+    subgraph var_stream_47 ["var <tt>stream_47</tt>"]
+        style var_stream_47 fill:transparent
+        10v1
+    end
+    subgraph var_stream_48 ["var <tt>stream_48</tt>"]
+        style var_stream_48 fill:transparent
+        11v1
+    end
+end
+subgraph loop_3v1 ["loop_3v1"]
+    subgraph var_cycle_4 ["var <tt>cycle_4</tt>"]
+        style var_cycle_4 fill:transparent
+        59v1
+    end
+    subgraph var_cycle_5 ["var <tt>cycle_5</tt>"]
+        style var_cycle_5 fill:transparent
+        61v1
+    end
+    subgraph var_stream_100 ["var <tt>stream_100</tt>"]
+        style var_stream_100 fill:transparent
+        51v1
+    end
+    subgraph var_stream_101 ["var <tt>stream_101</tt>"]
+        style var_stream_101 fill:transparent
+        52v1
+    end
+    subgraph var_stream_102 ["var <tt>stream_102</tt>"]
+        style var_stream_102 fill:transparent
+        53v1
+    end
+    subgraph var_stream_105 ["var <tt>stream_105</tt>"]
+        style var_stream_105 fill:transparent
+        54v1
+    end
+    subgraph var_stream_109 ["var <tt>stream_109</tt>"]
+        style var_stream_109 fill:transparent
+        56v1
+    end
+    subgraph var_stream_110 ["var <tt>stream_110</tt>"]
+        style var_stream_110 fill:transparent
+        57v1
+    end
+    subgraph var_stream_111 ["var <tt>stream_111</tt>"]
+        style var_stream_111 fill:transparent
+        58v1
+    end
+    subgraph var_stream_113 ["var <tt>stream_113</tt>"]
+        style var_stream_113 fill:transparent
+        60v1
+    end
+    subgraph var_stream_76 ["var <tt>stream_76</tt>"]
+        style var_stream_76 fill:transparent
+        33v1
+    end
+end
+subgraph loop_4v1 ["loop_4v1"]
+    subgraph var_stream_81 ["var <tt>stream_81</tt>"]
+        style var_stream_81 fill:transparent
+        37v1
+    end
+    subgraph var_stream_82 ["var <tt>stream_82</tt>"]
+        style var_stream_82 fill:transparent
+        38v1
+    end
+    subgraph var_stream_85 ["var <tt>stream_85</tt>"]
+        style var_stream_85 fill:transparent
+        39v1
+    end
+    subgraph var_stream_89 ["var <tt>stream_89</tt>"]
+        style var_stream_89 fill:transparent
+        41v1
+    end
+    subgraph var_stream_90 ["var <tt>stream_90</tt>"]
+        style var_stream_90 fill:transparent
+        42v1
+    end
 end
