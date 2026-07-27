@@ -1206,53 +1206,12 @@ where
             },
         )
     }
-
-    /// Returns this singleton back into a top-level, asynchronous execution context where updates
-    /// to the value will be asynchronously propagated.
-    pub fn end_atomic(self) -> Singleton<T, L, B> {
-        Singleton::new(
-            self.location.tick.l.clone(),
-            HydroNode::EndAtomic {
-                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .tick
-                    .l
-                    .new_node_metadata(Singleton::<T, L, B>::collection_kind()),
-            },
-        )
-    }
 }
 
 impl<'a, T, L, B: SingletonBound> Singleton<T, L, B>
 where
     L: Location<'a>,
 {
-    /// Shifts this singleton into an atomic context, which guarantees that any downstream logic
-    /// will observe the same version of the value and will be executed synchronously before any
-    /// outputs are yielded (in [`Optional::end_atomic`]).
-    ///
-    /// This is useful to enforce local consistency constraints, such as ensuring that several readers
-    /// see a consistent version of local state (since otherwise each [`Singleton::snapshot`] may pick
-    /// a different version).
-    pub fn atomic(self) -> Singleton<T, Atomic<L>, B> {
-        let id = self.location.flow_state().borrow_mut().next_clock_id();
-        let out_location = Atomic {
-            tick: Tick {
-                id,
-                l: self.location.clone(),
-            },
-        };
-        Singleton::new(
-            out_location.clone(),
-            HydroNode::BeginAtomic {
-                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: out_location
-                    .new_node_metadata(Singleton::<T, Atomic<L>, B>::collection_kind()),
-            },
-        )
-    }
-
     /// Given a tick, returns a singleton value corresponding to a snapshot of the singleton
     /// as of that tick. The snapshot at tick `t + 1` is guaranteed to include at least all
     /// relevant data that contributed to the snapshot at tick `t`.
