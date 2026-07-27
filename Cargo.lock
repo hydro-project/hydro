@@ -2718,6 +2718,7 @@ dependencies = [
 name = "hydro_test"
 version = "0.0.0"
 dependencies = [
+ "bincode",
  "bytes",
  "clap",
  "colored 3.1.1",
