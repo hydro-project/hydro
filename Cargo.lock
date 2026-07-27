@@ -908,9 +908,9 @@ dependencies = [
 
 [[package]]
 name = "bolero-engine-hydro"
-version = "0.13.5"
+version = "0.13.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "691790fb2d24fe4984eebd9ef3eb0afc8598a0530471f4d5de499d379e504fc5"
+checksum = "19657f169ff31a26958c45c29e8ec379c303bb9d04a4418b6cecbfb49984a3df"
 dependencies = [
  "anyhow",
  "bolero-generator-hydro",
@@ -966,9 +966,9 @@ dependencies = [
 
 [[package]]
 name = "bolero-hydro"
-version = "0.13.5"
+version = "0.13.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef7956e385b91a5aee997d23d40c65ff65af698e71f49ba5f3d87ee99ea4b6f5"
+checksum = "0db4ec15d8e0d09f866480eb4efb1c5b944b5304f545cc69f889507c3b75f2fa"
 dependencies = [
  "bolero-afl",
  "bolero-engine-hydro",
