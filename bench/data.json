@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1785135936871,
+  "lastUpdate": 1785219912295,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -300927,6 +300927,208 @@
             "name": "paxos_bench",
             "value": 175060,
             "range": "± 11416.23",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "4c8086cad5ac0024b26c49e5e463e53d52026f30",
+          "message": "feat(hydro_lang): add `sim::continue_if!` macro for discarding simulation instances in sim tests (#3072)\n\nFixes #2176\n\nAdds `hydro_lang::sim::continue_if!(cond, ...)`, which can be invoked\ninside sim test\nclosures (`fuzz`, `exhaustive`, `fuzz_repro`). If the condition fails,\nthe current\nsimulation instance is stopped and discarded — it is *not* a test\nfailure, is never\nrecorded as a fuzzing reproducer, and exploration moves on to the next\ninstance. This is\nthe same concept as `assume` in verification tools and property-based\ntesting libraries\n(e.g. `kani::assume`, proptest's `prop_assume!`). If sim logging is\nenabled\n(`HYDRO_SIM_LOG=1` or during replays), the failed condition is logged in\nthe same style\nas other simulator logs: the call-site location (via `#[track_caller]`)\nwith the source\nline echoed and a caret pointing at the `continue_if!` invocation:\n\n```\nCondition failed (discarding simulation instance):\n--> hydro_lang/src/sim/tests/mod.rs:1013:9\n |        crate::sim::continue_if!(\n |        ^ first batch was a singleton\n```\n\nMechanism: instead of a custom panic-catch layer, the macro reuses\nbolero's built-in\n`any::assume`, which panics with the special\n`bolero_generator::any::Error` payload that\nbolero's engines classify as an \"invalid input\" (`Ok(false)`), so all\nthree engines\n(exhaustive, RNG fuzz under `cargo test`, libfuzzer under `cargo sim`)\nskip the instance\nuniformly and never replay/shrink onto failing inputs.\n\nThis relies on a fix in bolero-hydro 0.13.7\n(hydro-project/bolero@9f03f8f): `panic::catch`\npreviously consulted the panic hook's stored error (`take_panic()`)\nbefore checking for\nthe `any::Error` payload, and since the engines' panic hook stores every\npanic, assume\nfailures were misclassified as test failures (which would also have\nincorrectly triggered\nreplay-on-failure). The check is now reordered, and the hook-stored\nerror for the assume\npanic is discarded so it cannot leak into a later, unrelated failure's\nreport.\n\nChanges:\n- `sim/mod.rs`: new `continue_if!` macro (`#[macro_export]` +\n`#[doc(hidden)]` at the\ncrate root, documented canonically as `hydro_lang::sim::continue_if!`\nvia an inlined\n  re-export).\n- `sim/compiled.rs`:\n- `continue_if_impl` helper: logs the failed condition to stderr\n(respecting the\ninstance's log flag, now threaded into `SimConnections`) and triggers\nbolero's\nassume panic; `render_continue_if_failure` locates the source file\n(walking up from\nthe cwd since `Location::file()` is workspace-relative) and echoes the\noffending\n    line with a caret.\n- `fuzz_repro` now catches `any::Error` panics and reports a clear\n\"reproducer may be\n    stale\" error instead of an opaque `Box<dyn Any>` panic.\n- `CompiledSim::fuzz` / `SimFlow::fuzz` relaxed from `AsyncFn` to\n`AsyncFnMut`\n(matching `exhaustive`), so tests can mutate captured state without\natomics.\n- `hydro_lang/Cargo.toml`: bump bolero-hydro to 0.13.7 (contains the\nclassification fix).\n- Tests covering all engine modes and the log format:\n- `sim_continue_if_discards_instances_exhaustive`: accepted < total, ≥1\naccepted.\n- `sim_continue_if_discards_instances_fuzz`: RNG fuzz mode discards +\naccepts.\n- `sim_continue_if_does_not_mask_failures` (`#[should_panic]`): real\nfailure behind a\npassing condition still fails (and stale hook errors from discarded\ninstances can't\n    pollute it).\n- `sim_continue_if_failure_in_fuzz_repro_is_reported`\n(`#[should_panic]`): stale-repro\n    message.\n- `sim_crash_behind_continue_if` (`#[should_panic]`): crash only\nreachable behind a\npassing condition, found in RNG mode (uses a fixed message so its log is\n    snapshot-stable).\n- `tests/sim_fuzzer.rs::fuzz_with_cargo_sim_continue_if`: end-to-end\nlibfuzzer run via\n`cargo sim` that snapshots the condition-failure log block extracted\nfrom the\nfuzzer's stderr (verifying the reported location, echoed `continue_if!`\nsource line,\nand caret — proving `#[track_caller]` propagation through the macro),\nand asserts\nthe fuzzer still finds the real crash behind the condition. Snapshot\nstored in\n    `tests/snapshots{,-nightly}/`.\n- Docs: new \"Restricting Explored Executions with `continue_if!`\"\nsection in\n`docs/docs/hydro/reference/simulation/writing.mdx`, noting the\nequivalence to `assume`\nin verification / property-testing libraries. The example is a\ncompile-checked doctest\n(`rust,no_run` with hidden setup lines, since the sim's staged\ncompilation cannot run\n  inside a doctest).\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-07-27T21:45:30Z",
+          "url": "https://github.com/hydro-project/hydro/commit/4c8086cad5ac0024b26c49e5e463e53d52026f30"
+        },
+        "date": 1785219912244,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 351350,
+            "range": "± 549",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 7378801,
+            "range": "± 7606",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 7768371,
+            "range": "± 102692",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 43919,
+            "range": "± 1932",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 9603901,
+            "range": "± 109202",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1106178,
+            "range": "± 19626",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1159939,
+            "range": "± 10144",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 46651566,
+            "range": "± 1045040",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 7682904,
+            "range": "± 12096",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 12290204,
+            "range": "± 1514941",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 7378038,
+            "range": "± 44415",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 7889031,
+            "range": "± 12679",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 43924618,
+            "range": "± 303533",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 4193,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 24810,
+            "range": "± 113",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4383,
+            "range": "± 184",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 7275,
+            "range": "± 52",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 421271,
+            "range": "± 2233",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 60812,
+            "range": "± 302",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 45270,
+            "range": "± 403",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 18246,
+            "range": "± 140",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 7218,
+            "range": "± 46",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7506,
+            "range": "± 44",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 78362,
+            "range": "± 493",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 99437,
+            "range": "± 508",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7742,
+            "range": "± 210",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 16816,
+            "range": "± 120",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 61821,
+            "range": "± 2513",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 6151,
+            "range": "± 103",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 216000,
+            "range": "± 729.38",
             "unit": "ops/s"
           }
         ]
