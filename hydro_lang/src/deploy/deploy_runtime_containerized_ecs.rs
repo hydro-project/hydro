@@ -271,6 +271,62 @@ pub fn cluster_membership_stream<'a>(
         >)
 }
 
+/// Builds the ECS clients used for peer discovery: `(region, client)` pairs
+/// with each client bound to its region. With `REGIONS` set (comma-separated,
+/// e.g. `us-west-2,eu-west-1`), one pair per listed region (geo-distributed
+/// setup); otherwise a single `(None, client)` pair for the task's own region.
+///
+/// Contract for multi-region setups: every region listed in `REGIONS` must
+/// have an ECS cluster named `CLUSTER_NAME` in the *same account*, and the
+/// task role must be allowed to call `ecs:ListTasks`/`ecs:DescribeTasks`
+/// cross-region.
+async fn discovery_clients() -> Vec<(Option<String>, aws_sdk_ecs::Client)> {
+    let mut seen = std::collections::HashSet::new();
+    let regions: Vec<String> = std::env::var("REGIONS")
+        .map(|spec| {
+            spec.split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                // Dedupe while preserving order; duplicate regions would
+                // discover the same tasks twice and emit duplicate events.
+                .filter(|s| seen.insert(s.to_string()))
+                .map(String::from)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let clients = if regions.is_empty() {
+        let config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+        vec![(None, aws_sdk_ecs::Client::new(&config))]
+    } else {
+        futures::future::join_all(regions.into_iter().map(|region| async move {
+            let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+                .region(aws_sdk_ecs::config::Region::new(region.clone()))
+                .load()
+                .await;
+            (Some(region), aws_sdk_ecs::Client::new(&config))
+        }))
+        .await
+    };
+
+    clients
+}
+
+/// Known limitations of the current polling design:
+///
+/// - **A permanently failing region stalls all membership updates.** Each poll
+///   round is all-or-nothing (see the `round_ok` gate below): if any region's
+///   API calls keep failing — unreachable region, typo'd region name in
+///   `REGIONS`, missing cluster, denied ECS permissions — no events are ever
+///   emitted, including Joins for healthy regions. The gate is deliberate for
+///   *transient* errors (a failed read must not be mistaken for "all tasks
+///   left"), but there is no escape hatch for persistent ones. A future fix is
+///   to track tasks per region and diff each region independently, freezing
+///   only the failing region's view.
+/// - **Failures are only logged at `trace!` level**, so the stall above is
+///   invisible at normal log levels. A future fix is to escalate to `warn!`
+///   after several consecutive failures, and immediately for errors unlikely
+///   to self-heal, e.g. access denied.
 #[instrument(skip_all, fields(%cluster_name, %location_key))]
 fn ecs_membership_stream(
     cluster_name: String,
@@ -289,31 +345,44 @@ fn ecs_membership_stream(
     let task_definition_arn_parser =
         regex::Regex::new(r#"arn:aws:ecs:(?<region>.*):(?<account_id>.*):task-definition\/(?<container_id>hy-(?<type>[^-]+)-loc(?<location_idx>[0-9]+)v(?<location_version>[0-9]+)(?:-(?<instance_id>.*))?):.*"#).unwrap();
 
+    // Clients are built on the first poll round and reused afterwards;
+    // the cell is owned by this stream.
+    let ecs_clients_cell = std::sync::Arc::new(tokio::sync::OnceCell::new());
+
     let poll_stream = futures::stream::unfold(
         (HashSet::<String>::new(), cluster_name, location_key),
         move |(known_tasks, cluster_name, location_key)| {
             let task_definition_arn_parser = task_definition_arn_parser.clone();
+            let ecs_clients_cell = ecs_clients_cell.clone();
 
             async move {
-                let config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
-                let ecs_client = aws_sdk_ecs::Client::new(&config);
-
-                let tasks = match ecs_client.list_tasks().cluster(&cluster_name).send().await {
-                    Ok(tasks) => tasks,
-                    Err(e) => {
-                        trace!(name: "list_tasks_error", error = %e);
-                        tokio::time::sleep(Duration::from_secs(2)).await;
-                        return Some((Vec::new(), (known_tasks, cluster_name, location_key)));
-                    }
-                };
-
-                let task_arns: Vec<String> =
-                    tasks.task_arns().iter().map(|s| s.to_string()).collect();
+                let ecs_clients = ecs_clients_cell.get_or_init(discovery_clients).await;
 
                 let mut events = Vec::new();
                 let mut current_tasks = HashSet::<String>::new();
+                let mut round_ok = true;
 
-                if !task_arns.is_empty() {
+                for (region, ecs_client) in ecs_clients {
+                    // TODO: `list_tasks` returns at most 100 ARNs per page (no
+                    // pagination handled here) and `describe_tasks` accepts at
+                    // most 100 entries, so clusters with >100 tasks per region
+                    // will see truncated discovery and possibly errors.
+                    let tasks = match ecs_client.list_tasks().cluster(&cluster_name).send().await {
+                        Ok(tasks) => tasks,
+                        Err(e) => {
+                            trace!(name: "list_tasks_error", ?region, error = %e);
+                            round_ok = false;
+                            break;
+                        }
+                    };
+
+                    let task_arns: Vec<String> =
+                        tasks.task_arns().iter().map(|s| s.to_string()).collect();
+
+                    if task_arns.is_empty() {
+                        continue;
+                    }
+
                     let task_details = match ecs_client
                         .describe_tasks()
                         .cluster(&cluster_name)
@@ -323,9 +392,9 @@ fn ecs_membership_stream(
                     {
                         Ok(details) => details,
                         Err(e) => {
-                            trace!(name: "describe_tasks_error", error = %e);
-                            tokio::time::sleep(Duration::from_secs(2)).await;
-                            return Some((Vec::new(), (known_tasks, cluster_name, location_key)));
+                            trace!(name: "describe_tasks_error", ?region, error = %e);
+                            round_ok = false;
+                            break;
                         }
                     };
 
@@ -386,6 +455,16 @@ fn ecs_membership_stream(
                     }
                 }
 
+                if !round_ok {
+                    // A regional API call failed; skip this round entirely so we
+                    // don't emit spurious Left events for unreachable regions.
+                    // Note: a *persistently* failing region therefore stalls
+                    // membership updates for all regions — see the limitations
+                    // on `ecs_membership_stream`.
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                    return Some((Vec::new(), (known_tasks, cluster_name, location_key)));
+                }
+
                 #[expect(
                     clippy::disallowed_methods,
                     reason = "nondeterministic iteration order, container events are not deterministically ordered"
@@ -416,59 +495,56 @@ fn ecs_membership_stream(
 /// Resolve a task ID to its private IP address via ECS API.
 async fn resolve_task_ip(task_id: &str) -> String {
     let cluster_name = std::env::var("CLUSTER_NAME").unwrap();
-
-    let config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
-    let ecs_client = aws_sdk_ecs::Client::new(&config);
+    let ecs_clients = discovery_clients().await;
 
     loop {
-        let tasks = match ecs_client.list_tasks().cluster(&cluster_name).send().await {
-            Ok(t) => t,
-            Err(e) => {
-                trace!(name: "resolve_ip_list_error", %task_id, error = %e);
-                tokio::time::sleep(Duration::from_secs(1)).await;
-                continue;
-            }
-        };
-
-        let task_arns: Vec<_> = tasks.task_arns().to_vec();
-        if task_arns.is_empty() {
-            trace!(name: "resolve_ip_no_tasks", %task_id);
-            tokio::time::sleep(Duration::from_secs(1)).await;
-            continue;
-        }
-
-        let task_details = match ecs_client
-            .describe_tasks()
-            .cluster(&cluster_name)
-            .set_tasks(Some(task_arns))
-            .send()
-            .await
-        {
-            Ok(d) => d,
-            Err(e) => {
-                trace!(name: "resolve_ip_describe_error", %task_id, error = %e);
-                tokio::time::sleep(Duration::from_secs(1)).await;
-                continue;
-            }
-        };
-
-        // Find the task with matching task ID
-        for task in task_details.tasks() {
-            let Some(task_arn) = task.task_arn() else {
-                continue;
+        for (region, ecs_client) in &ecs_clients {
+            let tasks = match ecs_client.list_tasks().cluster(&cluster_name).send().await {
+                Ok(t) => t,
+                Err(e) => {
+                    trace!(name: "resolve_ip_list_error", %task_id, ?region, error = %e);
+                    continue;
+                }
             };
-            let current_task_id = task_arn.rsplit('/').next().unwrap_or_default();
 
-            if current_task_id == task_id
-                && let Some(ip) = task
-                    .attachments()
-                    .iter()
-                    .flat_map(|a| a.details())
-                    .find(|d| d.name() == Some("privateIPv4Address"))
-                    .and_then(|d| d.value())
+            let task_arns: Vec<_> = tasks.task_arns().to_vec();
+            if task_arns.is_empty() {
+                trace!(name: "resolve_ip_no_tasks", %task_id, ?region);
+                continue;
+            }
+
+            let task_details = match ecs_client
+                .describe_tasks()
+                .cluster(&cluster_name)
+                .set_tasks(Some(task_arns))
+                .send()
+                .await
             {
-                trace!(name: "resolved_ip", %task_id, %ip);
-                return ip.to_owned();
+                Ok(d) => d,
+                Err(e) => {
+                    trace!(name: "resolve_ip_describe_error", %task_id, ?region, error = %e);
+                    continue;
+                }
+            };
+
+            // Find the task with matching task ID
+            for task in task_details.tasks() {
+                let Some(task_arn) = task.task_arn() else {
+                    continue;
+                };
+                let current_task_id = task_arn.rsplit('/').next().unwrap_or_default();
+
+                if current_task_id == task_id
+                    && let Some(ip) = task
+                        .attachments()
+                        .iter()
+                        .flat_map(|a| a.details())
+                        .find(|d| d.name() == Some("privateIPv4Address"))
+                        .and_then(|d| d.value())
+                {
+                    trace!(name: "resolved_ip", %task_id, ?region, %ip);
+                    return ip.to_owned();
+                }
             }
         }
 
@@ -481,40 +557,39 @@ async fn resolve_task_ip(task_id: &str) -> String {
 /// Used for process-to-process connections where the target is known by task family at compile time.
 async fn resolve_task_family_to_task_id(task_family: &str) -> String {
     let cluster_name = std::env::var("CLUSTER_NAME").unwrap();
-
-    let config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
-    let ecs_client = aws_sdk_ecs::Client::new(&config);
+    let ecs_clients = discovery_clients().await;
 
     loop {
-        let tasks = match ecs_client
-            .list_tasks()
-            .cluster(&cluster_name)
-            .family(task_family)
-            .send()
-            .await
-        {
-            Ok(t) => t,
-            Err(e) => {
-                trace!(name: "resolve_family_list_error", %task_family, error = %e);
-                tokio::time::sleep(Duration::from_secs(1)).await;
+        for (region, ecs_client) in &ecs_clients {
+            let tasks = match ecs_client
+                .list_tasks()
+                .cluster(&cluster_name)
+                .family(task_family)
+                .send()
+                .await
+            {
+                Ok(t) => t,
+                Err(e) => {
+                    trace!(name: "resolve_family_list_error", %task_family, ?region, error = %e);
+                    continue;
+                }
+            };
+
+            let Some(task_arn) = tasks.task_arns().first() else {
+                trace!(name: "resolve_family_no_task", %task_family, ?region);
                 continue;
+            };
+
+            // Extract task ID from ARN
+            let task_id = task_arn.rsplit('/').next().unwrap_or_default();
+            if !task_id.is_empty() {
+                trace!(name: "resolved_task_id", %task_family, ?region, %task_id);
+                return task_id.to_owned();
             }
-        };
 
-        let Some(task_arn) = tasks.task_arns().first() else {
-            trace!(name: "resolve_family_no_task", %task_family);
-            tokio::time::sleep(Duration::from_secs(1)).await;
-            continue;
-        };
-
-        // Extract task ID from ARN
-        let task_id = task_arn.rsplit('/').next().unwrap_or_default();
-        if !task_id.is_empty() {
-            trace!(name: "resolved_task_id", %task_family, %task_id);
-            return task_id.to_owned();
+            trace!(name: "resolve_family_invalid_arn", %task_family, ?region, %task_arn);
         }
 
-        trace!(name: "resolve_family_invalid_arn", %task_family, %task_arn);
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
