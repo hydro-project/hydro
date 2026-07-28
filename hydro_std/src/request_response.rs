@@ -19,7 +19,7 @@ pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<
     sliced! {
         let mut remaining_to_join = use::state_null::<Stream<(K, M), _, _, NoOrder>>();
 
-        let response_batch = use(responses, nondet!(
+        let response_batch = use::batch(responses, nondet!(
             /// Because we persist the metadata, delays resulting from
             /// batching boundaries do not affect the output contents.
         ));

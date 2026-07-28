@@ -118,8 +118,8 @@ let get_requests = // ... stream of get requests
 let current_count = increments.count();
 
 let get_response = sliced! {
-    let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
-    let count_snapshot = use(current_count, nondet!(/** each request observes some valid version of the count */));
+    let request_batch = use::batch(get_requests, nondet!(/** we never observe batch boundaries */));
+    let count_snapshot = use::snapshot(current_count, nondet!(/** each request observes some valid version of the count */));
 
     let count_ref = count_snapshot.by_ref();
     request_batch.map(q!(|_| *count_ref))

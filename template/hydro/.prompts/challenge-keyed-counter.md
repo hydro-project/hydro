@@ -61,7 +61,7 @@ pub fn keyed_counter_service<'a, L: Location<'a>>(
         .into_keyed();
 
     let get_lookup = sliced! {
-        let request_batch = use(requests_regrouped, nondet!(/** we never observe batch boundaries */));
+        let request_batch = use::batch(requests_regrouped, nondet!(/** we never observe batch boundaries */));
         let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
 
         request_batch.join_keyed_singleton(count_snapshot)

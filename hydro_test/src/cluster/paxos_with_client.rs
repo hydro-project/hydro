@@ -69,8 +69,8 @@ pub trait PaxosLike<'a>: Sized {
                 let payloads_at_proposer = sliced! {
                     let mut unsent_payloads = use::state_null::<Stream<_, _, _, TotalOrder>>();
 
-                    let payload_batch = use(payloads, nondet!(/** see below */));
-                    let latest_leader = use(cur_leader_id,
+                    let payload_batch = use::batch(payloads, nondet!(/** see below */));
+                    let latest_leader = use::snapshot(cur_leader_id,
                         nondet!(
                             /// the risk here is that we send a batch of requests
                             /// with a stale leader ID, but because the leader ID comes from the

@@ -79,7 +79,7 @@ pub fn paxos_bench<'a>(
                     ));
 
                 sliced! {
-                    let snapshot = use(a_checkpoint_largest_seqs, nondet!(
+                    let snapshot = use::snapshot(a_checkpoint_largest_seqs, nondet!(
                         /// even though we batch the checkpoint messages, because we reduce over the entire history,
                         /// the final min checkpoint is deterministic
                     ));

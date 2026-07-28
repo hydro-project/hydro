@@ -63,7 +63,7 @@ pub fn paxos_log_bench<'a>(
             // Compute checkpoints on the leader
             let nondet_log_holes = nondet!(/** Current max log sequence number dpeends on when the commit is confirmed */);
             let p_checkpoint = sliced! {
-                let new_slots = use(sequenced_payloads.into_keyed().keys(), nondet_log_holes);
+                let new_slots = use::batch(sequenced_payloads.into_keyed().keys(), nondet_log_holes);
                 let mut log_holes = use::state_null::<Stream<usize, Tick<_>, Bounded, NoOrder>>();
                 let mut prev_checkpoint_slot = use::state::<Singleton<usize, Tick<_>, Bounded>>(|l| l.singleton(q!(0)));
 

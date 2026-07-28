@@ -1056,9 +1056,9 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 );
 
                 let result = sliced! {
-                    let snapshot = use(me, nondet!(/** thresholds are deterministic */));
+                    let snapshot = use::snapshot(me, nondet!(/** thresholds are deterministic */));
                     let thresh_snapshot =
-                        use(thresholds, nondet!(/** thresholds are deterministic */));
+                        use::batch(thresholds, nondet!(/** thresholds are deterministic */));
                     let mut already_crossed =
                         use::state_null::<Stream<K, Tick<_>, Bounded, NoOrder>>();
 
@@ -1086,9 +1086,9 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 );
 
                 let result = sliced! {
-                    let snapshot = use(me, nondet!(/** thresholds are deterministic */));
+                    let snapshot = use::batch(me, nondet!(/** thresholds are deterministic */));
                     let thresh_snapshot =
-                        use(thresholds, nondet!(/** thresholds are deterministic */));
+                        use::batch(thresholds, nondet!(/** thresholds are deterministic */));
                     let mut already_crossed =
                         use::state_null::<Stream<K, Tick<_>, Bounded, NoOrder>>();
 
@@ -1187,7 +1187,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 );
 
                 let result = sliced! {
-                    let snapshot = use(me, nondet!(/** thresholds are deterministic */));
+                    let snapshot = use::snapshot(me, nondet!(/** thresholds are deterministic */));
                     let mut already_crossed =
                         use::state_null::<Stream<K, Tick<_>, Bounded, NoOrder>>();
 
@@ -1224,7 +1224,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 );
 
                 let result = sliced! {
-                    let snapshot = use(me, nondet!(/** thresholds are deterministic */));
+                    let snapshot = use::batch(me, nondet!(/** thresholds are deterministic */));
                     let mut already_crossed =
                         use::state_null::<Stream<K, Tick<_>, Bounded, NoOrder>>();
 

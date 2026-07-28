@@ -14,8 +14,8 @@ pub fn single_counter_service_buggy<'a>(
     let increment_ack = increment_requests;
 
     let get_response = sliced! {
-        let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
-        let count_snapshot = use(current_count, nondet!(/** intentional, based on when the request came in */));
+        let request_batch = use::batch(get_requests, nondet!(/** we never observe batch boundaries */));
+        let count_snapshot = use::snapshot(current_count, nondet!(/** intentional, based on when the request came in */));
 
         request_batch.cross_singleton(count_snapshot).map(q!(|(_, count)| count))
     };

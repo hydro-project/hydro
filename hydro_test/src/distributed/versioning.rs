@@ -62,8 +62,8 @@ where
             .source_cluster_membership_stream(to, nondet_membership),
     );
     let (filtered, members_out) = sliced! {
-        let members_snapshot = use(ids, nondet_membership);
-        let elements = use(requests, nondet_membership);
+        let members_snapshot = use::snapshot(ids, nondet_membership);
+        let elements = use::batch(requests, nondet_membership);
 
         let current_members = members_snapshot
             .filter(q!(|b| *b))

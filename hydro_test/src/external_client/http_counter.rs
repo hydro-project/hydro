@@ -86,7 +86,7 @@ pub fn http_counter_server<'a, P>(
         .value_counts();
 
     let lookup_result = sliced! {
-        let batch_get_requests = use(get_stream, nondet!(/** batch get requests */));
+        let batch_get_requests = use::batch(get_stream, nondet!(/** batch get requests */));
         let cur_counters = use::atomic(counters, nondet!(/** intentional non-determinism for get timing */));
 
         batch_get_requests.lookup_keyed_singleton(cur_counters).into_keyed_stream()

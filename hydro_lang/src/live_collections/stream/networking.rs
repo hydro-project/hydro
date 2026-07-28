@@ -326,8 +326,8 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             nondet!(/** dropped prefixes don't affect broadcast */),
         ));
         sliced! {
-            let members_snapshot = use(ids, nondet_membership);
-            let elements = use(self, nondet_membership);
+            let members_snapshot = use::snapshot(ids, nondet_membership);
+            let elements = use::batch(self, nondet_membership);
 
             let current_members = members_snapshot.filter(q!(|b| *b));
             elements.repeat_with_keys(current_members)
@@ -740,8 +740,8 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
             nondet!(/** dropped prefixes don't affect broadcast */),
         ));
         sliced! {
-            let members_snapshot = use(ids, nondet_membership);
-            let elements = use(self.enumerate(), nondet_membership);
+            let members_snapshot = use::snapshot(ids, nondet_membership);
+            let elements = use::batch(self.enumerate(), nondet_membership);
 
             let current_members = members_snapshot
                 .filter(q!(|b| *b))
@@ -888,8 +888,8 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
             nondet!(/** dropped prefixes don't affect broadcast */),
         ));
         sliced! {
-            let members_snapshot = use(ids, nondet_membership);
-            let elements = use(self.enumerate(), nondet_membership);
+            let members_snapshot = use::snapshot(ids, nondet_membership);
+            let elements = use::batch(self.enumerate(), nondet_membership);
 
             let current_members = members_snapshot
                 .filter(q!(|b| *b))
@@ -1233,8 +1233,8 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
             nondet!(/** dropped prefixes don't affect broadcast */),
         ));
         sliced! {
-            let members_snapshot = use(ids, nondet_membership);
-            let elements = use(self, nondet_membership);
+            let members_snapshot = use::snapshot(ids, nondet_membership);
+            let elements = use::batch(self, nondet_membership);
 
             let current_members = members_snapshot.filter(q!(|b| *b));
             elements.repeat_with_keys(current_members)
@@ -1745,7 +1745,7 @@ mod tests {
             );
 
         let out_recv = sliced! {
-            let snapshot = use(received, nondet!(/** test */));
+            let snapshot = use::snapshot(received, nondet!(/** test */));
             snapshot.into_stream()
         }
         .sim_output();
@@ -1800,7 +1800,7 @@ mod tests {
             );
 
         let out_recv = sliced! {
-            let snapshot = use(received, nondet!(/** test */));
+            let snapshot = use::snapshot(received, nondet!(/** test */));
             snapshot.into_stream()
         }
         .sim_output();

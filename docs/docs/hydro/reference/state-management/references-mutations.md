@@ -54,8 +54,8 @@ let highest_bid: Optional<i32, _, _> = process
     .max();
 
 let responses = sliced! {
-    let request_batch = use(get_requests, nondet!(/** each request is handled independently */));
-    let bid_snapshot = use(highest_bid, nondet!(/** each request observes the highest bid at the time it is processed */));
+    let request_batch = use::batch(get_requests, nondet!(/** each request is handled independently */));
+    let bid_snapshot = use::snapshot(highest_bid, nondet!(/** each request observes the highest bid at the time it is processed */));
     let bid_ref = bid_snapshot.by_ref();
     request_batch.map(q!(|req| (req, bid_ref.unwrap_or(0))))
 };
@@ -80,7 +80,7 @@ Mutable references shine inside slice blocks, combined with [state hooks](./slic
 let deposits = process.source_iter(q!(vec![10, 20, 30]));
 
 let running_balance = sliced! {
-    let batch = use(deposits, nondet!(/** running totals are unaffected by batch boundaries */));
+    let batch = use::batch(deposits, nondet!(/** running totals are unaffected by batch boundaries */));
     let mut balance = use::state(|l| l.singleton(q!(0)));
     let balance_mut = balance.by_mut();
 
@@ -111,7 +111,7 @@ When a collection is accessed by several closures — especially when some of th
 let input = process.source_iter(q!(vec![3]));
 
 let out = sliced! {
-    let batch = use(input, nondet!(/** single input element, so batching is not observable */));
+    let batch = use::batch(input, nondet!(/** single input element, so batching is not observable */));
     let mut total = use::state(|l| l.singleton(q!(0)));
     let total_mut = total.by_mut();
 
@@ -150,8 +150,8 @@ The most important use of mutable references is state that must be **read and wr
 # let deposits = process.source_iter(q!(vec![10, 20]));
 # let balance_reads = process.source_iter(q!(vec![()]));
 let (deposit_acks, read_responses) = sliced! {
-    let deposit_batch = use(deposits, nondet!(/** deposits are commutative, so batch boundaries don't affect the balance */));
-    let read_batch = use(balance_reads, nondet!(/** each read observes the balance at the time it is processed */));
+    let deposit_batch = use::batch(deposits, nondet!(/** deposits are commutative, so batch boundaries don't affect the balance */));
+    let read_batch = use::batch(balance_reads, nondet!(/** each read observes the balance at the time it is processed */));
     let mut balance = use::state(|l| l.singleton(q!(0)));
 
     // Writes are declared first: apply all deposits in this batch...

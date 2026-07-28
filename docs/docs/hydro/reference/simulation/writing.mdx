@@ -75,16 +75,16 @@ When a test fails, the simulator prints a trace showing the decisions it made:
 
 ```text
 Running Tick
-  | let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
-  |                        ^ releasing no items
+  | let request_batch = use::batch(get_requests, nondet!(/** we never observe batch boundaries */));
+  |                         ^ releasing no items
   | let count_snapshot = use::atomic(current_count, nondet!(/** intentional, based on when the request came in */));
-  |                                 ^ releasing snapshot: 0
+  |                          ^ releasing snapshot: 0
 
 Running Tick
-  | let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
-  |                        ^ releasing items: [()]
+  | let request_batch = use::batch(get_requests, nondet!(/** we never observe batch boundaries */));
+  |                         ^ releasing items: [()]
   | let count_snapshot = use::atomic(current_count, nondet!(/** intentional, based on when the request came in */));
-  |                                 ^ releasing unchanged snapshot: 0
+  |                          ^ releasing unchanged snapshot: 0
 
 thread ... panicked at src/single_client_counter.rs:50:
 Stream yielded unexpected message: 0
@@ -107,7 +107,7 @@ When you call `sliced!` with a `use` statement, the simulator makes a decision f
 
 ```rust,ignore
 let get_response = sliced! {
-    let request_batch = use(get_requests, nondet!(/** ... */));
+    let request_batch = use::batch(get_requests, nondet!(/** ... */));
     // ...
 };
 ```
@@ -121,7 +121,7 @@ If three requests arrive and `get_requests` is an ordered stream, the simulator 
 Similarly, when snapshotting a `Singleton`, the simulator decides which version to observe:
 
 ```rust,ignore
-let count_snapshot = use(current_count, nondet!(/** ... */));
+let count_snapshot = use::snapshot(current_count, nondet!(/** ... */));
 ```
 
 If the count has progressed through values 0 → 1 → 2, the simulator might snapshot any of these values. It can also re-release the same snapshot multiple times, simulating the case where state updates haven't propagated yet.

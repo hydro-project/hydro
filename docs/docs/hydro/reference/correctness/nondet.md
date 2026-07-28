@@ -173,10 +173,10 @@ Compare:
 
 ```rust,ignore
 // ❌ restates that non-determinism exists, but justifies nothing
-let batch = use(requests, nondet!(/** batching is non-deterministic, that's fine */));
+let batch = use::batch(requests, nondet!(/** batching is non-deterministic, that's fine */));
 
 // ✅ states why the result is insensitive to the non-deterministic choice
-let batch = use(requests, nondet!(
+let batch = use::batch(requests, nondet!(
     /// each request is answered using only its own contents and the current
     /// snapshot, so batch boundaries are never observable in the responses
 ));

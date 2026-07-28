@@ -35,8 +35,8 @@ pub fn chat_server<'a, P>(
     nondet_user_arrival_broadcast: NonDet,
 ) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, NoOrder> {
     sliced! {
-        let msg_batch = use(in_stream, nondet_user_arrival_broadcast);
-        let members = use(track_membership(membership), nondet_user_arrival_broadcast);
+        let msg_batch = use::batch(in_stream, nondet_user_arrival_broadcast);
+        let members = use::snapshot(track_membership(membership), nondet_user_arrival_broadcast);
 
         let current_members = members.filter(q!(|b| *b)).keys();
         current_members.cross_product(msg_batch.entries()).into_keyed()

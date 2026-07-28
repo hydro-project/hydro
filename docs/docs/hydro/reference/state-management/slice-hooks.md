@@ -9,7 +9,7 @@ Every [slice block](./slices.mdx) begins with one or more **hooks**: `use` state
 ```rust,ignore
 let output = sliced! {
     // hooks come first...
-    let batch = use(requests, nondet!(/** ... */));
+    let batch = use::batch(requests, nondet!(/** ... */));
     let snapshot = use::atomic(current_count, nondet!(/** ... */));
     let mut buffer = use::state_null::<Stream<_, _, _, TotalOrder>>();
 
@@ -20,18 +20,24 @@ let output = sliced! {
 
 All hooks must appear before the body of the slice, and all collections consumed by hooks must live at the same [location](../locations/index.md).
 
-## The Default Hook: `use`
+## Batches and Snapshots: `use::batch` and `use::snapshot`
 
-The default hook, `use(collection, nondet!(...))`, reveals a **bounded** version of the collection: either a *batch* of new elements or a *snapshot* of the current value, depending on the collection type.
+The two fundamental hooks reveal a **bounded** version of a collection: `use::batch(collection, nondet!(...))` reveals a *batch* of new elements for stream-like collections, and `use::snapshot(collection, nondet!(...))` reveals a *snapshot* of the current value for singleton-like collections.
 
-| Input collection | Revealed as |
-|---|---|
-| `Stream` | **Batch** of elements that arrived since the last slice |
-| `Singleton` | **Snapshot** of the current value |
-| `Optional` | **Snapshot** of the current value (possibly absent) |
-| `KeyedStream` | **Batch** of new elements, grouped per key |
-| `KeyedSingleton` (unbounded values) | **Snapshot** of the current entries |
-| `KeyedSingleton` (`BoundedValue`) | **Batch** of newly arrived entries |
+| Input collection | Hook | Revealed as |
+|---|---|---|
+| `Stream` | `use::batch` | **Batch** of elements that arrived since the last slice |
+| `Singleton` | `use::snapshot` | **Snapshot** of the current value |
+| `Optional` | `use::snapshot` | **Snapshot** of the current value (possibly absent) |
+| `KeyedStream` | `use::batch` | **Batch** of new elements, grouped per key |
+| `KeyedSingleton` (unbounded values) | `use::snapshot` | **Snapshot** of the current entries |
+| `KeyedSingleton` (`BoundedValue`) | `use::batch` | **Batch** of newly arrived entries |
+
+:::note
+
+The style-less `use(collection, nondet!(...))` hook, which picked between batching and snapshotting automatically based on the collection type, is deprecated in favor of the explicit `use::batch` and `use::snapshot` hooks.
+
+:::
 
 In all cases, the revealed collection is [`Bounded`](../correctness/bounded-unbounded.md): its contents are frozen for the duration of the slice, so you can safely observe it in its entirety (including with [reference handles](./references-mutations.md)).
 
@@ -45,8 +51,8 @@ let requests = process.source_iter(q!(vec![1, 2, 3]));
 let scale = process.singleton(q!(10));
 
 let scaled = sliced! {
-    let batch = use(requests, nondet!(/** batch boundaries don't affect per-element results */));
-    let scale_snapshot = use(scale, nondet!(/** the scale is constant, so all snapshots are identical */));
+    let batch = use::batch(requests, nondet!(/** batch boundaries don't affect per-element results */));
+    let scale_snapshot = use::snapshot(scale, nondet!(/** the scale is constant, so all snapshots are identical */));
     batch.cross_singleton(scale_snapshot).map(q!(|(x, s)| x * s))
 };
 // 10, 20, 30
@@ -59,7 +65,7 @@ let scaled = sliced! {
 # }));
 ```
 
-A [`KeyedSingleton`](../streaming-data/keyed-singletons.mdx) with the `BoundedValue` bound gets special treatment. Because each key's value is immutable once it appears, there is no need to re-observe existing entries: the hook reveals a batch containing only the *newly arrived* entries, and each entry is revealed in exactly one slice. This makes `BoundedValue` keyed singletons behave like a stream of request/response entries:
+A [`KeyedSingleton`](../streaming-data/keyed-singletons.mdx) with the `BoundedValue` bound gets special treatment. Because each key's value is immutable once it appears, there is no need to re-observe existing entries: `use::batch` reveals a batch containing only the *newly arrived* entries, and each entry is revealed in exactly one slice. This makes `BoundedValue` keyed singletons behave like a stream of request/response entries:
 
 ```rust
 # use hydro_lang::prelude::*;
@@ -71,7 +77,7 @@ let events: Stream<(&str, i32), _, Unbounded> = process
 let first_events = events.into_keyed().first(); // KeyedSingleton<&str, i32, _, BoundedValue>
 
 let processed = sliced! {
-    let new_entries = use(first_events, nondet!(/** each entry is handled independently, so batching is not observable */));
+    let new_entries = use::batch(first_events, nondet!(/** each entry is handled independently, so batching is not observable */));
     new_entries.entries()
 };
 // ("alice", 1), ("bob", 2) in some order
@@ -96,7 +102,7 @@ Because batch boundaries and snapshot timing remain non-deterministic, every `us
 
 ## Atomic Hooks: `use::atomic`
 
-By default, a snapshot may lag arbitrarily behind outputs your program has already released, which can violate guarantees like read-after-write consistency. The `use::atomic(collection, nondet!(...))` hook strengthens the default hook for collections in an atomic context (created with `.atomic()`): the revealed batch or snapshot is guaranteed to be **consistent with respect to** the outputs released via `end_atomic()` on that same atomic context.
+By default, a snapshot may lag arbitrarily behind outputs your program has already released, which can violate guarantees like read-after-write consistency. The `use::atomic(collection, nondet!(...))` hook strengthens the batching and snapshotting hooks for collections in an atomic context (created with `.atomic()`): the revealed batch or snapshot is guaranteed to be **consistent with respect to** the outputs released via `end_atomic()` on that same atomic context.
 
 ```rust,ignore
 let increment_request_processing = increment_requests.atomic();
@@ -104,7 +110,7 @@ let current_count = increment_request_processing.clone().count();
 let increment_ack = increment_request_processing.end_atomic();
 
 let get_response = sliced! {
-    let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
+    let request_batch = use::batch(get_requests, nondet!(/** we never observe batch boundaries */));
     let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
     let count_ref = count_snapshot.by_ref();
     request_batch.map(q!(|_| *count_ref))
@@ -125,7 +131,7 @@ Use `use::state(|l| initial)` when the state has a known initial value. The clos
 # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
 # let input_stream = process.source_iter(q!(vec![1, 2, 3]));
 let running_count = sliced! {
-    let batch = use(input_stream, nondet!(/** batch boundaries don't affect the final count */));
+    let batch = use::batch(input_stream, nondet!(/** batch boundaries don't affect the final count */));
     let mut counter = use::state(|l| l.singleton(q!(0)));
 
     // Increment the counter by the number of items in this batch
@@ -147,8 +153,8 @@ Use `use::state_null::<Type>()` when the state should start out null: an empty `
 let payloads_with_leader = sliced! {
     let mut unsent_payloads = use::state_null::<Stream<_, _, _, TotalOrder>>();
 
-    let payload_batch = use(payloads, nondet!(/** ... */));
-    let latest_leader = use(leader_id, nondet!(/** ... */));
+    let payload_batch = use::batch(payloads, nondet!(/** ... */));
+    let latest_leader = use::snapshot(leader_id, nondet!(/** ... */));
 
     // Combine buffered and new payloads
     let all_payloads = unsent_payloads.chain(payload_batch);
@@ -165,12 +171,12 @@ Instead of reassigning the state binding, you can also mutate state in place wit
 
 ### State Hooks vs. Sliced Singletons
 
-State hooks differ from singletons consumed with `use` in an important way:
+State hooks differ from singletons consumed with `use::snapshot` in an important way:
 
 - **Sliced singletons** observe *external* state that is derived deterministically (e.g. by `fold`) and updates independently of the slice.
 - **State hooks** are *internal* to the slice and hold values you compute between iterations.
 
-Prefer deriving state with deterministic APIs and observing it via `use` when possible; the type system provides stronger guarantees for such state. Reach for state hooks when the update logic fundamentally depends on the slice structure (buffering, batched accumulation, multi-input mutation).
+Prefer deriving state with deterministic APIs and observing it via `use::snapshot` when possible; the type system provides stronger guarantees for such state. Reach for state hooks when the update logic fundamentally depends on the slice structure (buffering, batched accumulation, multi-input mutation).
 
 ## Unslicing: Returning Values from a Slice
 

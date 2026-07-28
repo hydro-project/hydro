@@ -1043,7 +1043,7 @@ where
             }
             Err(me) => {
                 let uncasted = sliced! {
-                    let me = use(me, nondet!(/** thresholds are deterministic */));
+                    let me = use::snapshot(me, nondet!(/** thresholds are deterministic */));
                     let mut remaining_threshold = use::state(|l| {
                         let as_option: Optional<_, _, _> = threshold.clone_into_tick(l).into();
                         as_option
@@ -1248,7 +1248,7 @@ where
         nondet: NonDet,
     ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce> {
         sliced! {
-            let snapshot = use(self, nondet);
+            let snapshot = use::snapshot(self, nondet);
             snapshot.into_stream()
         }
         .weaken_retries()
@@ -1274,8 +1274,8 @@ where
     {
         let samples = self.location.source_interval(interval);
         sliced! {
-            let snapshot = use(self, nondet);
-            let sample_batch = use(samples, nondet);
+            let snapshot = use::snapshot(self, nondet);
+            let sample_batch = use::batch(samples, nondet);
 
             snapshot.filter_if(sample_batch.first().is_some()).into_stream()
         }
@@ -1868,7 +1868,7 @@ mod tests {
         let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
 
         let out_recv = sliced! {
-            let v = use(folded, nondet!(/** test */));
+            let v = use::snapshot(folded, nondet!(/** test */));
             v.clone().zip(v).into_stream()
         }
         .sim_output();
@@ -1950,7 +1950,7 @@ mod tests {
         let source = node.source_iter(q!(vec![1i32, 2, 3]));
 
         let (first, second) = sliced! {
-            let batch = use(source, nondet!(/** test */));
+            let batch = use::batch(source, nondet!(/** test */));
             let mut total = use::state(|l| l.singleton(q!(0i32)));
             let total_mut = total.by_mut();
 
@@ -1991,7 +1991,7 @@ mod tests {
         let source = node.source_iter(q!(vec![3i32]));
 
         let out_recv = sliced! {
-            let batch = use(source, nondet!(/** test */));
+            let batch = use::batch(source, nondet!(/** test */));
             let mut total = use::state(|l| l.singleton(q!(0i32)));
             let total_mut = total.by_mut();
 

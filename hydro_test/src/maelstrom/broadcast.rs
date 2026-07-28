@@ -44,8 +44,8 @@ fn broadcast_core<'a, C: 'a>(
         cluster.forward_ref::<Stream<_, _, Unbounded, NoOrder, AtLeastOnce>>();
 
     let cur_state = sliced! {
-        let new_writes = use(writes, nondet!(/** TODO */));
-        let recv_broadcast = use(broadcasted, nondet!(/** TODO */));
+        let new_writes = use::batch(writes, nondet!(/** TODO */));
+        let recv_broadcast = use::batch(broadcasted, nondet!(/** TODO */));
         let mut local_state = use::state_null::<Stream<_, _, _, NoOrder>>();
 
         local_state = local_state.chain(new_writes).weaken_retries::<AtLeastOnce>()
@@ -102,8 +102,8 @@ pub fn broadcast_server<'a, C: 'a>(
     }));
 
     let read_response = sliced! {
-        let req = use(read_requests, nondet!(/** batching of requests does not matter */));
-        let data = use(
+        let req = use::batch(read_requests, nondet!(/** batching of requests does not matter */));
+        let data = use::snapshot(
             current_state,
             nondet!(/** we only guarantee eventual consistency */)
         );

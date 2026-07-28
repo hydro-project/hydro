@@ -25,7 +25,7 @@ fn test<'a>(input: Stream<u32, Process<'a, P1>>) {
     };
 
     sliced! {
-        let s = use(input, nondet!(/** test */));
+        let s = use::batch(input, nondet!(/** test */));
 
         let mut bad = use::state(&clock.initializer);
 

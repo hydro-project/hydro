@@ -20,8 +20,8 @@ let current_count = increment_requests.clone().count();
 let increment_ack = increment_requests.map(q!(|_| "ok"));
 
 let get_response = sliced! {
-    let request_batch = use(get_requests, nondet!(/** ... */));
-    let count_snapshot = use(current_count, nondet!(/** ... */));
+    let request_batch = use::batch(get_requests, nondet!(/** ... */));
+    let count_snapshot = use::snapshot(current_count, nondet!(/** ... */));
     request_batch.cross_singleton(count_snapshot)
 };
 ```
@@ -60,7 +60,7 @@ Now, when you snapshot the count with `use::atomic`, you're guaranteed to observ
 
 ```rust,ignore
 let get_response = sliced! {
-    let request_batch = use(get_requests, nondet!(/** ... */));
+    let request_batch = use::batch(get_requests, nondet!(/** ... */));
     let count_snapshot = use::atomic(current_count, nondet!(/** ... */));
     request_batch.cross_singleton(count_snapshot)
 };
@@ -76,7 +76,7 @@ The `sliced!` macro supports two styles of snapshots:
 
 | Style | Syntax | Guarantee |
 |-------|--------|-----------|
-| Non-atomic | `use(collection, nondet!(...))` | Snapshot is at least as recent as the previous snapshot |
+| Non-atomic | `use::snapshot(collection, nondet!(...))` | Snapshot is at least as recent as the previous snapshot |
 | Atomic | `use::atomic(collection, nondet!(...))` | Same as above **and** reflects all updates released by `end_atomic` |
 
 Use non-atomic snapshots when:

@@ -21,8 +21,8 @@ State derived from asynchronous inputs is `Unbounded`: its value changes over ti
 
 ```rust,ignore
 let get_response = sliced! {
-    let request_batch = use(get_requests, nondet!(/** batch boundaries are not observable */));
-    let count_snapshot = use(current_count, nondet!(/** requests may see any valid version of the count */));
+    let request_batch = use::batch(get_requests, nondet!(/** batch boundaries are not observable */));
+    let count_snapshot = use::snapshot(current_count, nondet!(/** requests may see any valid version of the count */));
 
     let count_ref = count_snapshot.by_ref();
     request_batch.map(q!(|_| *count_ref))
@@ -42,8 +42,8 @@ Some state cannot be expressed as an aggregation of a single stream, such as whe
 
 ```rust,ignore
 let results = sliced! {
-    let deposit_batch = use(deposits, nondet!(/** ... */));
-    let withdrawal_batch = use(withdrawals, nondet!(/** ... */));
+    let deposit_batch = use::batch(deposits, nondet!(/** ... */));
+    let withdrawal_batch = use::batch(withdrawals, nondet!(/** ... */));
     let mut balance = use::state(|l| l.singleton(q!(0)));
 
     let balance_mut = balance.by_mut();

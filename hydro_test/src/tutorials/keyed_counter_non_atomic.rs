@@ -25,8 +25,8 @@ pub fn keyed_counter_service_buggy<'a, L: Location<'a>, O: Ordering>(
         .into_keyed();
 
     let get_lookup = sliced! {
-        let request_batch = use(requests_regrouped, nondet!(/** we never observe batch boundaries */));
-        let count_snapshot = use(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
+        let request_batch = use::batch(requests_regrouped, nondet!(/** we never observe batch boundaries */));
+        let count_snapshot = use::snapshot(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
 
         request_batch.join_keyed_singleton(count_snapshot)
     };

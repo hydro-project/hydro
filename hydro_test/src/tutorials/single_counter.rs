@@ -14,7 +14,7 @@ pub fn single_counter_service<'a>(
     let increment_ack = increment_request_processing.end_atomic();
 
     let get_response = sliced! {
-        let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
+        let request_batch = use::batch(get_requests, nondet!(/** we never observe batch boundaries */));
         let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
 
         request_batch.cross_singleton(count_snapshot).map(q!(|(_, count)| count))

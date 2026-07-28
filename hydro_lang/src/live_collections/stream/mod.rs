@@ -3509,8 +3509,8 @@ mod tests {
             node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
 
         let out = sliced! {
-            let input = use(input, nondet!(/** test */));
-            let v = use(node.source_iter(q!(vec![1, 2, 3])).reduce(q!(|acc, v| *acc += v)), nondet!(/** test */));
+            let input = use::batch(input, nondet!(/** test */));
+            let v = use::snapshot(node.source_iter(q!(vec![1, 2, 3])).reduce(q!(|acc, v| *acc += v)), nondet!(/** test */));
             input.cross_singleton(v.into_stream().count())
         }
         .send_bincode_external(&external);
@@ -3547,8 +3547,8 @@ mod tests {
             node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
 
         let out = sliced! {
-            let input = use(input, nondet!(/** test */));
-            let v = use(node.source_iter(q!(vec![1, 2, 3])).reduce(q!(|acc, v| *acc += v)).into_singleton(), nondet!(/** test */));
+            let input = use::batch(input, nondet!(/** test */));
+            let v = use::snapshot(node.source_iter(q!(vec![1, 2, 3])).reduce(q!(|acc, v| *acc += v)).into_singleton(), nondet!(/** test */));
             input.cross_singleton(v.into_stream().count())
         }
         .send_bincode_external(&external);
@@ -4916,7 +4916,7 @@ mod tests {
         let (trigger_send, trigger) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
 
         let out_recv = sliced! {
-            let batch = use(trigger, nondet!(/** test */));
+            let batch = use::batch(trigger, nondet!(/** test */));
             let counter = batch.location().source_iter(q!(vec![0i32]))
                 .fold(q!(|| 0i32), q!(|acc, v| *acc += v));
             let counter_mut = counter.by_mut();
@@ -4958,7 +4958,7 @@ mod tests {
         let (trigger_send, trigger) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
 
         let out_recv = sliced! {
-            let batch = use(trigger, nondet!(/** test */));
+            let batch = use::batch(trigger, nondet!(/** test */));
             let offset = batch
                 .location()
                 .source_iter(q!(vec![10i32]))

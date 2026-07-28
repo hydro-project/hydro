@@ -109,7 +109,7 @@ This swaps the key and value: `(client_id, key_name)` becomes `(key_name, client
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
 } showLineNumbers={28}>{getLines(keyedCounterSrc, 28, 34, `
 let get_lookup = sliced! {
-    let request_batch = use(requests_regrouped, nondet!(/** we never observe batch boundaries */));
+    let request_batch = use::batch(requests_regrouped, nondet!(/** we never observe batch boundaries */));
     let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
     request_batch.join_keyed_singleton(count_snapshot)
 };

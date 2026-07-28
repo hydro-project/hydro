@@ -10,6 +10,31 @@ error[E0425]: cannot find value `fake` in this scope
 14 |         let f = use::atomic(fake, nondet!(/** test */));
    |                             ^^^^ not found in this scope
 
+warning: use of deprecated function `hydro_lang::live_collections::sliced::style::default`: use `use::batch(...)` for stream-like collections or `use::snapshot(...)` for singleton-like collections instead
+ --> tests/compile-fail/stable/sliced_missing_arg.rs:9:21
+  |
+9 |         let a = use(input);
+  |                     ^^^^^
+  |
+  = note: `#[warn(deprecated)]` on by default
+  = note: this warning originates in the macro `$crate::__sliced_parse_uses__` which comes from the expansion of the macro `sliced` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: use of deprecated function `hydro_lang::live_collections::sliced::style::default`: use `use::batch(...)` for stream-like collections or `use::snapshot(...)` for singleton-like collections instead
+  --> tests/compile-fail/stable/sliced_missing_arg.rs:11:21
+   |
+11 |         let c = use(input, 123);
+   |                     ^^^^^
+   |
+   = note: this warning originates in the macro `$crate::__sliced_parse_uses__` which comes from the expansion of the macro `sliced` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: use of deprecated function `hydro_lang::live_collections::sliced::style::default`: use `use::batch(...)` for stream-like collections or `use::snapshot(...)` for singleton-like collections instead
+  --> tests/compile-fail/stable/sliced_missing_arg.rs:13:21
+   |
+13 |         let e = use(fake, nondet!(/** test */));
+   |                     ^^^^
+   |
+   = note: this warning originates in the macro `$crate::__sliced_parse_uses__` which comes from the expansion of the macro `sliced` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> tests/compile-fail/stable/sliced_missing_arg.rs:9:21
    |

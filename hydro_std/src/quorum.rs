@@ -20,7 +20,7 @@ pub fn collect_quorum_with_response<
     Stream<(K, E), L, Unbounded, Order>,
 ) {
     let quorums = sliced! {
-        let new_inputs = use(responses.clone(), nondet!(
+        let new_inputs = use::batch(responses.clone(), nondet!(
             /// We always persist values that have not reached quorum, so even
             /// with arbitrary batching we always produce deterministic quorum results.
         ));
@@ -95,7 +95,7 @@ pub fn collect_quorum<'a, L: Location<'a>, Order: Ordering, K: Clone + Eq + Hash
     Stream<(K, E), L, Unbounded, Order>,
 ) {
     let just_reached_quorum = sliced! {
-        let new_inputs = use(responses.clone(), nondet!(
+        let new_inputs = use::batch(responses.clone(), nondet!(
             /// We always persist values that have not reached quorum, so even
             /// with arbitrary batching we always produce deterministic quorum results.
         ));
