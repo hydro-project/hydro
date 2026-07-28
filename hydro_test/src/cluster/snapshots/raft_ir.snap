@@ -1,0 +1,670 @@
+---
+source: hydro_test/src/cluster/raft.rs
+expression: built.ir()
+---
+[
+    Null {
+        input: Reference {
+            inner: <shared 0>: SingletonSource {
+                value: { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_955_12 ! ([CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: raft :: Replica > :: from_tagless ((__hydro_lang_cluster_self_id_loc1v1) . clone ()) , cluster_members__free = __hydro_lang_cluster_ids_loc1v1 ,] [cluster_members__free . iter () . map (| id | MemberId :: from_tagless (id . clone ())) . filter (| member | * member != CLUSTER_SELF_ID__free) . collect :: < Vec < _ > > ()]) },
+                first_tick_only: false,
+                metadata: HydroIrMetadata {
+                    location_id: Tick(0, Cluster(loc1v1)),
+                    collection_kind: Singleton {
+                        bound: Bounded,
+                        element_type: std :: vec :: Vec < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > >,
+                    },
+                },
+            },
+            kind: Singleton,
+            access_counter: Counting(
+                Cell {
+                    value: 0,
+                },
+            ),
+            metadata: HydroIrMetadata {
+                location_id: Tick(0, Cluster(loc1v1)),
+                collection_kind: Singleton {
+                    bound: Bounded,
+                    element_type: std :: vec :: Vec < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > >,
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    Null {
+        input: Reference {
+            inner: <shared 1>: Fold {
+                init: stageleft :: runtime_support :: fn0_type_hint :: < std :: vec :: Vec < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_940_15 ! ([] [| | Vec :: new ()]) }),
+                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < std :: vec :: Vec < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >) > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_942_16 ! ([] [| messages , message | { messages . push (message) ; }]) }),
+                input: Batch {
+                    inner: CycleSource {
+                        cycle_id: CycleId(
+                            0,
+                        ),
+                        metadata: HydroIrMetadata {
+                            location_id: Cluster(loc1v1),
+                            collection_kind: Stream {
+                                bound: Unbounded,
+                                order: NoOrder,
+                                retry: ExactlyOnce,
+                                element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >),
+                            },
+                        },
+                    },
+                    metadata: HydroIrMetadata {
+                        location_id: Tick(0, Cluster(loc1v1)),
+                        collection_kind: Stream {
+                            bound: Bounded,
+                            order: NoOrder,
+                            retry: ExactlyOnce,
+                            element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >),
+                        },
+                    },
+                },
+                metadata: HydroIrMetadata {
+                    location_id: Tick(0, Cluster(loc1v1)),
+                    collection_kind: Singleton {
+                        bound: Bounded,
+                        element_type: std :: vec :: Vec < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >) >,
+                    },
+                },
+            },
+            kind: Singleton,
+            access_counter: Counting(
+                Cell {
+                    value: 0,
+                },
+            ),
+            metadata: HydroIrMetadata {
+                location_id: Tick(0, Cluster(loc1v1)),
+                collection_kind: Singleton {
+                    bound: Bounded,
+                    element_type: std :: vec :: Vec < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >) >,
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    Null {
+        input: Reference {
+            inner: <shared 2>: Fold {
+                init: stageleft :: runtime_support :: fn0_type_hint :: < std :: vec :: Vec < std :: string :: String > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_931_15 ! ([] [| | Vec :: new ()]) }),
+                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < std :: vec :: Vec < std :: string :: String > , std :: string :: String , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_932_15 ! ([] [| requests , request | { requests . push (request) ; }]) }),
+                input: Batch {
+                    inner: Map {
+                        f: stageleft :: runtime_support :: fnmut1_type_hint :: < () , std :: string :: String > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: raft :: Replica > :: from_tagless ((__hydro_lang_cluster_self_id_loc1v1) . clone ()) ; move | _ | format ! ("hello from member {}" , CLUSTER_SELF_ID__free . clone () . into_tagless ()) } }),
+                        input: Source {
+                            source: Stream(
+                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_1421_30 ! ([interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { std :: time :: Duration :: from_secs (1) } } ,] [tokio_stream :: StreamExt :: map (tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) , | _ | ())]) },
+                            ),
+                            metadata: HydroIrMetadata {
+                                location_id: Cluster(loc1v1),
+                                collection_kind: Stream {
+                                    bound: Unbounded,
+                                    order: TotalOrder,
+                                    retry: ExactlyOnce,
+                                    element_type: (),
+                                },
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_id: Cluster(loc1v1),
+                            collection_kind: Stream {
+                                bound: Unbounded,
+                                order: TotalOrder,
+                                retry: ExactlyOnce,
+                                element_type: std :: string :: String,
+                            },
+                        },
+                    },
+                    metadata: HydroIrMetadata {
+                        location_id: Tick(0, Cluster(loc1v1)),
+                        collection_kind: Stream {
+                            bound: Bounded,
+                            order: TotalOrder,
+                            retry: ExactlyOnce,
+                            element_type: std :: string :: String,
+                        },
+                    },
+                },
+                metadata: HydroIrMetadata {
+                    location_id: Tick(0, Cluster(loc1v1)),
+                    collection_kind: Singleton {
+                        bound: Bounded,
+                        element_type: std :: vec :: Vec < std :: string :: String >,
+                    },
+                },
+            },
+            kind: Singleton,
+            access_counter: Counting(
+                Cell {
+                    value: 0,
+                },
+            ),
+            metadata: HydroIrMetadata {
+                location_id: Tick(0, Cluster(loc1v1)),
+                collection_kind: Singleton {
+                    bound: Bounded,
+                    element_type: std :: vec :: Vec < std :: string :: String >,
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    Null {
+        input: Reference {
+            inner: <shared 3>: Map {
+                f: stageleft :: runtime_support :: fn1_type_hint :: < usize , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_927_61 ! ([] [| n | n > 0]) }),
+                input: Fold {
+                    init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_2464_15 ! ([] [| | 0usize]) }),
+                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_2466_16 ! ([] [| count , _ | * count += 1]) }),
+                    input: Batch {
+                        inner: Source {
+                            source: Stream(
+                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_1421_30 ! ([interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { std :: time :: Duration :: from_millis (100) } } ,] [tokio_stream :: StreamExt :: map (tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) , | _ | ())]) },
+                            ),
+                            metadata: HydroIrMetadata {
+                                location_id: Cluster(loc1v1),
+                                collection_kind: Stream {
+                                    bound: Unbounded,
+                                    order: TotalOrder,
+                                    retry: ExactlyOnce,
+                                    element_type: (),
+                                },
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_id: Tick(0, Cluster(loc1v1)),
+                            collection_kind: Stream {
+                                bound: Bounded,
+                                order: TotalOrder,
+                                retry: ExactlyOnce,
+                                element_type: (),
+                            },
+                        },
+                    },
+                    metadata: HydroIrMetadata {
+                        location_id: Tick(0, Cluster(loc1v1)),
+                        collection_kind: Singleton {
+                            bound: Bounded,
+                            element_type: usize,
+                        },
+                    },
+                },
+                metadata: HydroIrMetadata {
+                    location_id: Tick(0, Cluster(loc1v1)),
+                    collection_kind: Singleton {
+                        bound: Bounded,
+                        element_type: bool,
+                    },
+                },
+            },
+            kind: Singleton,
+            access_counter: Counting(
+                Cell {
+                    value: 0,
+                },
+            ),
+            metadata: HydroIrMetadata {
+                location_id: Tick(0, Cluster(loc1v1)),
+                collection_kind: Singleton {
+                    bound: Bounded,
+                    element_type: bool,
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    Null {
+        input: Reference {
+            inner: <shared 4>: Map {
+                f: stageleft :: runtime_support :: fn1_type_hint :: < usize , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_926_59 ! ([] [| n | n > 0]) }),
+                input: Fold {
+                    init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_2464_15 ! ([] [| | 0usize]) }),
+                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_2466_16 ! ([] [| count , _ | * count += 1]) }),
+                    input: Batch {
+                        inner: Source {
+                            source: Stream(
+                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_1421_30 ! ([interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: raft :: Replica > :: from_tagless ((__hydro_lang_cluster_self_id_loc1v1) . clone ()) ; std :: time :: Duration :: from_millis (500 + u64 :: from (CLUSTER_SELF_ID__free . get_raw_id ()) * 130) } } ,] [tokio_stream :: StreamExt :: map (tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) , | _ | ())]) },
+                            ),
+                            metadata: HydroIrMetadata {
+                                location_id: Cluster(loc1v1),
+                                collection_kind: Stream {
+                                    bound: Unbounded,
+                                    order: TotalOrder,
+                                    retry: ExactlyOnce,
+                                    element_type: (),
+                                },
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_id: Tick(0, Cluster(loc1v1)),
+                            collection_kind: Stream {
+                                bound: Bounded,
+                                order: TotalOrder,
+                                retry: ExactlyOnce,
+                                element_type: (),
+                            },
+                        },
+                    },
+                    metadata: HydroIrMetadata {
+                        location_id: Tick(0, Cluster(loc1v1)),
+                        collection_kind: Singleton {
+                            bound: Bounded,
+                            element_type: usize,
+                        },
+                    },
+                },
+                metadata: HydroIrMetadata {
+                    location_id: Tick(0, Cluster(loc1v1)),
+                    collection_kind: Singleton {
+                        bound: Bounded,
+                        element_type: bool,
+                    },
+                },
+            },
+            kind: Singleton,
+            access_counter: Counting(
+                Cell {
+                    value: 0,
+                },
+            ),
+            metadata: HydroIrMetadata {
+                location_id: Tick(0, Cluster(loc1v1)),
+                collection_kind: Singleton {
+                    bound: Bounded,
+                    element_type: bool,
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    CycleSink {
+        cycle_id: CycleId(
+            1,
+        ),
+        input: Reference {
+            inner: <shared 5>: Cast {
+                inner: ChainFirst {
+                    first: DeferTick {
+                        input: CycleSource {
+                            cycle_id: CycleId(
+                                1,
+                            ),
+                            metadata: HydroIrMetadata {
+                                location_id: Tick(0, Cluster(loc1v1)),
+                                collection_kind: Singleton {
+                                    bound: Bounded,
+                                    element_type: hydro_test :: __staged :: cluster :: raft :: RaftServerState < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >,
+                                },
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_id: Tick(0, Cluster(loc1v1)),
+                            collection_kind: Optional {
+                                bound: Bounded,
+                                element_type: hydro_test :: __staged :: cluster :: raft :: RaftServerState < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >,
+                            },
+                        },
+                    },
+                    second: Cast {
+                        inner: SingletonSource {
+                            value: { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_923_61 ! ([] [RaftServerState :: new ()]) },
+                            first_tick_only: false,
+                            metadata: HydroIrMetadata {
+                                location_id: Tick(0, Cluster(loc1v1)),
+                                collection_kind: Singleton {
+                                    bound: Bounded,
+                                    element_type: hydro_test :: __staged :: cluster :: raft :: RaftServerState < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >,
+                                },
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_id: Tick(0, Cluster(loc1v1)),
+                            collection_kind: Optional {
+                                bound: Bounded,
+                                element_type: hydro_test :: __staged :: cluster :: raft :: RaftServerState < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >,
+                            },
+                        },
+                    },
+                    metadata: HydroIrMetadata {
+                        location_id: Tick(0, Cluster(loc1v1)),
+                        collection_kind: Optional {
+                            bound: Bounded,
+                            element_type: hydro_test :: __staged :: cluster :: raft :: RaftServerState < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >,
+                        },
+                    },
+                },
+                metadata: HydroIrMetadata {
+                    location_id: Tick(0, Cluster(loc1v1)),
+                    collection_kind: Singleton {
+                        bound: Bounded,
+                        element_type: hydro_test :: __staged :: cluster :: raft :: RaftServerState < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >,
+                    },
+                },
+            },
+            kind: Singleton,
+            access_counter: Counting(
+                Cell {
+                    value: 2,
+                },
+            ),
+            metadata: HydroIrMetadata {
+                location_id: Tick(0, Cluster(loc1v1)),
+                collection_kind: Singleton {
+                    bound: Bounded,
+                    element_type: hydro_test :: __staged :: cluster :: raft :: RaftServerState < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >,
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    CycleSink {
+        cycle_id: CycleId(
+            0,
+        ),
+        input: FilterMap {
+            f: stageleft :: runtime_support :: fnmut1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: WireFrame) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_1037_27 ! ([] [| (member , frame) | { if frame . channel == WireFrame :: RAFT { Some ((member , bincode :: deserialize (& frame . payload) . unwrap ())) } else { None } }]) }),
+            input: Cast {
+                inner: Network {
+                    name: None,
+                    networking_info: Tcp {
+                        fault: FailStop,
+                    },
+                    serialize: Custom {
+                        serialize_fn: Some(
+                            hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: raft :: WireFrame) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                        ),
+                    },
+                    deserialize: Custom {
+                        deserialize_fn: Some(
+                            | res | { let (id , b) = res . unwrap () ; (hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: raft :: Replica > :: from_tagless (id as hydro_lang :: __staged :: location :: TaglessMemberId) , hydro_lang :: runtime_support :: bincode :: deserialize :: < hydro_test :: __staged :: cluster :: raft :: WireFrame > (& b) . unwrap ()) },
+                        ),
+                    },
+                    instantiate_fn: <network instantiate>,
+                    input: Cast {
+                        inner: Map {
+                            f: stageleft :: runtime_support :: fnmut1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: WireFrame) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_1020_20 ! ([] [| (member , msg) | (member , WireFrame { channel : WireFrame :: RAFT , payload : bincode :: serialize (& msg) . unwrap () , })]) }),
+                            input: YieldConcat {
+                                inner: FlatMap {
+                                    f: stageleft :: runtime_support :: fnmut1_type_hint :: < () , std :: vec :: Vec < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_988_33 ! ([__sl_p0 = crate :: __staged , CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: raft :: Replica > :: from_tagless ((__hydro_lang_cluster_self_id_loc1v1) . clone ()) , cluster_size__free = 3usize , committed_ref__free = __hydro_singleton_ref_0 , election_fired_ref__free = __hydro_singleton_ref_1 , heartbeat_fired_ref__free = __hydro_singleton_ref_2 , message_vec_ref__free = __hydro_singleton_ref_3 , other_members_ref__free = __hydro_singleton_ref_4 , redirected_ref__free = __hydro_singleton_ref_5 , request_vec_ref__free = __hydro_singleton_ref_6 , state_ref__free = __hydro_singleton_ref_7 , view_transitions_ref__free = __hydro_singleton_ref_8 ,] [move | _ | { let output = __sl_p0 :: cluster :: raft :: raft_step (& mut * state_ref__free , RaftStepInput { me : CLUSTER_SELF_ID__free . clone () , other_members : other_members_ref__free . clone () , cluster_size : { cluster_size__free } , election_timer_fired : * election_fired_ref__free , heartbeat_timer_fired : * heartbeat_fired_ref__free , requests : request_vec_ref__free . clone () , messages : message_vec_ref__free . clone () , } ,) ; for entry in output . committed { committed_ref__free . push (entry) ; } for redirect in output . redirected { redirected_ref__free . push (redirect) ; } if let Some (view) = output . view_transition { view_transitions_ref__free . push (view) ; } output . outbound }]) }),
+                                    input: Cast {
+                                        inner: SingletonSource {
+                                            value: { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_986_26 ! ([] [()]) },
+                                            first_tick_only: false,
+                                            metadata: HydroIrMetadata {
+                                                location_id: Tick(0, Cluster(loc1v1)),
+                                                collection_kind: Singleton {
+                                                    bound: Bounded,
+                                                    element_type: (),
+                                                },
+                                            },
+                                        },
+                                        metadata: HydroIrMetadata {
+                                            location_id: Tick(0, Cluster(loc1v1)),
+                                            collection_kind: Stream {
+                                                bound: Bounded,
+                                                order: TotalOrder,
+                                                retry: ExactlyOnce,
+                                                element_type: (),
+                                            },
+                                        },
+                                    },
+                                    metadata: HydroIrMetadata {
+                                        location_id: Tick(0, Cluster(loc1v1)),
+                                        collection_kind: Stream {
+                                            bound: Bounded,
+                                            order: TotalOrder,
+                                            retry: ExactlyOnce,
+                                            element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >),
+                                        },
+                                    },
+                                },
+                                metadata: HydroIrMetadata {
+                                    location_id: Cluster(loc1v1),
+                                    collection_kind: Stream {
+                                        bound: Unbounded,
+                                        order: TotalOrder,
+                                        retry: ExactlyOnce,
+                                        element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >),
+                                    },
+                                },
+                            },
+                            metadata: HydroIrMetadata {
+                                location_id: Cluster(loc1v1),
+                                collection_kind: Stream {
+                                    bound: Unbounded,
+                                    order: TotalOrder,
+                                    retry: ExactlyOnce,
+                                    element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: WireFrame),
+                                },
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_id: Cluster(loc1v1),
+                            collection_kind: KeyedStream {
+                                bound: Unbounded,
+                                value_order: TotalOrder,
+                                value_retry: ExactlyOnce,
+                                key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica >,
+                                value_type: hydro_test :: __staged :: cluster :: raft :: WireFrame,
+                            },
+                        },
+                    },
+                    metadata: HydroIrMetadata {
+                        location_id: Cluster(loc1v1),
+                        collection_kind: KeyedStream {
+                            bound: Unbounded,
+                            value_order: TotalOrder,
+                            value_retry: ExactlyOnce,
+                            key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica >,
+                            value_type: hydro_test :: __staged :: cluster :: raft :: WireFrame,
+                        },
+                    },
+                },
+                metadata: HydroIrMetadata {
+                    location_id: Cluster(loc1v1),
+                    collection_kind: Stream {
+                        bound: Unbounded,
+                        order: NoOrder,
+                        retry: ExactlyOnce,
+                        element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: WireFrame),
+                    },
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_id: Cluster(loc1v1),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: NoOrder,
+                    retry: ExactlyOnce,
+                    element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > , hydro_test :: __staged :: cluster :: raft :: RaftRpc < std :: string :: String , hydro_test :: __staged :: cluster :: raft :: Replica >),
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    Null {
+        input: YieldConcat {
+            inner: Reference {
+                inner: <shared 6>: Source {
+                    source: Iter(
+                        stageleft :: runtime_support :: type_hint :: < std :: vec :: Vec < hydro_test :: __staged :: cluster :: raft :: LeaderView < hydro_test :: __staged :: cluster :: raft :: Replica > > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_980_32 ! ([] [Vec :: new ()]) }),
+                    ),
+                    metadata: HydroIrMetadata {
+                        location_id: Tick(0, Cluster(loc1v1)),
+                        collection_kind: Stream {
+                            bound: Bounded,
+                            order: TotalOrder,
+                            retry: ExactlyOnce,
+                            element_type: hydro_test :: __staged :: cluster :: raft :: LeaderView < hydro_test :: __staged :: cluster :: raft :: Replica >,
+                        },
+                    },
+                },
+                kind: Vec,
+                access_counter: Counting(
+                    Cell {
+                        value: 2,
+                    },
+                ),
+                metadata: HydroIrMetadata {
+                    location_id: Tick(0, Cluster(loc1v1)),
+                    collection_kind: Stream {
+                        bound: Bounded,
+                        order: TotalOrder,
+                        retry: ExactlyOnce,
+                        element_type: hydro_test :: __staged :: cluster :: raft :: LeaderView < hydro_test :: __staged :: cluster :: raft :: Replica >,
+                    },
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_id: Cluster(loc1v1),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: hydro_test :: __staged :: cluster :: raft :: LeaderView < hydro_test :: __staged :: cluster :: raft :: Replica >,
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    ForEach {
+        f: stageleft :: runtime_support :: fnmut1_type_hint :: < hydro_test :: __staged :: cluster :: raft :: LogEntry < std :: string :: String > , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { | entry | println ! ("committed [term {}, index {}]: {}" , entry . term_received , entry . index , entry . message) } }),
+        input: Cast {
+            inner: EndAtomic {
+                inner: BeginAtomic {
+                    inner: AssertIsConsistent {
+                        inner: YieldConcat {
+                            inner: Reference {
+                                inner: <shared 7>: Source {
+                                    source: Iter(
+                                        stageleft :: runtime_support :: type_hint :: < std :: vec :: Vec < hydro_test :: __staged :: cluster :: raft :: LogEntry < std :: string :: String > > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_974_77 ! ([] [Vec :: new ()]) }),
+                                    ),
+                                    metadata: HydroIrMetadata {
+                                        location_id: Tick(0, Cluster(loc1v1)),
+                                        collection_kind: Stream {
+                                            bound: Bounded,
+                                            order: TotalOrder,
+                                            retry: ExactlyOnce,
+                                            element_type: hydro_test :: __staged :: cluster :: raft :: LogEntry < std :: string :: String >,
+                                        },
+                                    },
+                                },
+                                kind: Vec,
+                                access_counter: Counting(
+                                    Cell {
+                                        value: 2,
+                                    },
+                                ),
+                                metadata: HydroIrMetadata {
+                                    location_id: Tick(0, Cluster(loc1v1)),
+                                    collection_kind: Stream {
+                                        bound: Bounded,
+                                        order: TotalOrder,
+                                        retry: ExactlyOnce,
+                                        element_type: hydro_test :: __staged :: cluster :: raft :: LogEntry < std :: string :: String >,
+                                    },
+                                },
+                            },
+                            metadata: HydroIrMetadata {
+                                location_id: Cluster(loc1v1),
+                                collection_kind: Stream {
+                                    bound: Unbounded,
+                                    order: TotalOrder,
+                                    retry: ExactlyOnce,
+                                    element_type: hydro_test :: __staged :: cluster :: raft :: LogEntry < std :: string :: String >,
+                                },
+                            },
+                        },
+                        trusted: false,
+                        metadata: HydroIrMetadata {
+                            location_id: Cluster(loc1v1),
+                            collection_kind: Stream {
+                                bound: Unbounded,
+                                order: TotalOrder,
+                                retry: ExactlyOnce,
+                                element_type: hydro_test :: __staged :: cluster :: raft :: LogEntry < std :: string :: String >,
+                            },
+                        },
+                    },
+                    metadata: HydroIrMetadata {
+                        location_id: Atomic(Tick(1, Cluster(loc1v1))),
+                        collection_kind: Stream {
+                            bound: Unbounded,
+                            order: TotalOrder,
+                            retry: ExactlyOnce,
+                            element_type: hydro_test :: __staged :: cluster :: raft :: LogEntry < std :: string :: String >,
+                        },
+                    },
+                },
+                metadata: HydroIrMetadata {
+                    location_id: Cluster(loc1v1),
+                    collection_kind: Stream {
+                        bound: Unbounded,
+                        order: TotalOrder,
+                        retry: ExactlyOnce,
+                        element_type: hydro_test :: __staged :: cluster :: raft :: LogEntry < std :: string :: String >,
+                    },
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_id: Cluster(loc1v1),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: hydro_test :: __staged :: cluster :: raft :: LogEntry < std :: string :: String >,
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    ForEach {
+        f: stageleft :: runtime_support :: fnmut1_type_hint :: < (std :: string :: String , core :: option :: Option < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > >) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { | (request , leader_hint) | println ! ("redirected: {request:?} (leader hint: {leader_hint:?})") } }),
+        input: YieldConcat {
+            inner: Reference {
+                inner: <shared 8>: Source {
+                    source: Iter(
+                        stageleft :: runtime_support :: type_hint :: < std :: vec :: Vec < (std :: string :: String , core :: option :: Option < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > >) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_977_32 ! ([] [Vec :: new ()]) }),
+                    ),
+                    metadata: HydroIrMetadata {
+                        location_id: Tick(0, Cluster(loc1v1)),
+                        collection_kind: Stream {
+                            bound: Bounded,
+                            order: TotalOrder,
+                            retry: ExactlyOnce,
+                            element_type: (std :: string :: String , core :: option :: Option < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > >),
+                        },
+                    },
+                },
+                kind: Vec,
+                access_counter: Counting(
+                    Cell {
+                        value: 2,
+                    },
+                ),
+                metadata: HydroIrMetadata {
+                    location_id: Tick(0, Cluster(loc1v1)),
+                    collection_kind: Stream {
+                        bound: Bounded,
+                        order: TotalOrder,
+                        retry: ExactlyOnce,
+                        element_type: (std :: string :: String , core :: option :: Option < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > >),
+                    },
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_id: Cluster(loc1v1),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: (std :: string :: String , core :: option :: Option < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: raft :: Replica > >),
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+]

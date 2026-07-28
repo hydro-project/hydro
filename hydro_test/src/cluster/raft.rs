@@ -2566,4 +2566,83 @@ mod tests {
                 }
             });
     }
+
+    /// Deploy-shaped wiring mirroring `examples/raft.rs`: periodic per-member
+    /// requests, per-member skewed election timers, fast heartbeats, and TCP
+    /// networking, with committed entries and redirected requests printed.
+    fn create_raft(replicas: &Cluster<'_, Replica>) {
+        use hydro_lang::location::Location;
+        use hydro_lang::location::cluster::CLUSTER_SELF_ID;
+
+        let requests = replicas
+            .source_interval(q!(std::time::Duration::from_secs(1)))
+            .map(q!(move |_| format!(
+                "hello from member {}",
+                CLUSTER_SELF_ID.clone().into_tagless()
+            )));
+
+        let election_timer_interrupts = replicas.source_interval(q!(
+            std::time::Duration::from_millis(500 + u64::from(CLUSTER_SELF_ID.get_raw_id()) * 130)
+        ));
+        let heartbeat_timer_interrupts =
+            replicas.source_interval(q!(std::time::Duration::from_millis(100)));
+
+        let (committed, redirected) = raft(
+            requests,
+            election_timer_interrupts,
+            heartbeat_timer_interrupts,
+            RaftConfig { cluster_size: 3 },
+            || TCP.fail_stop().bincode(),
+            nondet!(
+                /// Which member leads and how concurrent requests interleave in the
+                /// log is inherently non-deterministic; every member still prints
+                /// the same committed sequence.
+            ),
+        );
+
+        committed
+            .end_atomic()
+            .weaken_consistency()
+            .for_each(q!(|entry| println!(
+                "committed [term {}, index {}]: {}",
+                entry.term_received, entry.index, entry.message
+            )));
+
+        redirected.for_each(q!(|(request, leader_hint)| println!(
+            "redirected: {request:?} (leader hint: {leader_hint:?})"
+        )));
+    }
+
+    /// Pins the Hydro IR (and the per-member DFIR graph) generated for the
+    /// deploy-shaped raft wiring, so optimizer or staging regressions surface as
+    /// snapshot diffs — matching the `paxos_ir` / `two_pc_ir` convention.
+    #[test]
+    fn raft_ir() {
+        use dfir_lang::graph::WriteConfig;
+        use hydro_lang::deploy::HydroDeploy;
+
+        let mut builder = FlowBuilder::new();
+        let replicas = builder.cluster::<Replica>();
+        create_raft(&replicas);
+        let mut built = builder.with_default_optimize::<HydroDeploy>();
+
+        hydro_lang::compile::ir::dbg_dedup_tee(|| {
+            hydro_build_utils::assert_debug_snapshot!(built.ir());
+        });
+
+        let preview = built.preview_compile();
+        hydro_build_utils::insta::with_settings!({
+            snapshot_suffix => "replica_mermaid"
+        }, {
+            hydro_build_utils::assert_snapshot!(
+                preview.dfir_for(&replicas).to_mermaid(&WriteConfig {
+                    no_subgraphs: true,
+                    no_pull_push: true,
+                    no_handoffs: true,
+                    op_text_no_imports: true,
+                    ..WriteConfig::default()
+                })
+            );
+        });
+    }
 }

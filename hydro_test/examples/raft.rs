@@ -96,19 +96,9 @@ async fn main() {
     // tie-breaking): distinct periods guarantee two members' timers cannot fire
     // simultaneously forever. Heartbeats are much faster than the shortest election
     // timeout, so a live leader suppresses follower elections.
-    let election_timer_interrupts =
-        replicas.source_interval(q!(std::time::Duration::from_millis({
-            let member_index: u64 = CLUSTER_SELF_ID
-                .clone()
-                .into_tagless()
-                .to_string()
-                .chars()
-                .filter(|c| c.is_ascii_digit())
-                .collect::<String>()
-                .parse()
-                .unwrap_or(0);
-            500 + member_index * 130
-        })));
+    let election_timer_interrupts = replicas.source_interval(q!(std::time::Duration::from_millis(
+        500 + u64::from(CLUSTER_SELF_ID.get_raw_id()) * 130
+    )));
     let heartbeat_timer_interrupts =
         replicas.source_interval(q!(std::time::Duration::from_millis(100)));
 
