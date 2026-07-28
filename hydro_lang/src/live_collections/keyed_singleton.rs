@@ -1621,8 +1621,9 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
 impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B>
 where
     L: Location<'a>,
+    B: KeyedSingletonBound<ValueBound = Bounded>,
 {
-    /// Shifts this keyed singleton into an atomic context, which guarantees that any downstream logic
+    /// Shifts this bounded-value keyed singleton into an atomic context, which guarantees that any downstream logic
     /// will all be executed synchronously before any outputs are yielded (in [`KeyedSingleton::end_atomic`]).
     ///
     /// This is useful to enforce local consistency constraints, such as ensuring that a write is

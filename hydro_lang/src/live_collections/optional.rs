@@ -1285,53 +1285,12 @@ where
             },
         )
     }
-
-    /// Returns this optional back into a top-level, asynchronous execution context where updates
-    /// to the value will be asynchronously propagated.
-    pub fn end_atomic(self) -> Optional<T, L, B> {
-        Optional::new(
-            self.location.tick.l.clone(),
-            HydroNode::EndAtomic {
-                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .tick
-                    .l
-                    .new_node_metadata(Optional::<T, L, B>::collection_kind()),
-            },
-        )
-    }
 }
 
 impl<'a, T, L, B: Boundedness> Optional<T, L, B>
 where
     L: Location<'a>,
 {
-    /// Shifts this optional into an atomic context, which guarantees that any downstream logic
-    /// will observe the same version of the value and will be executed synchronously before any
-    /// outputs are yielded (in [`Optional::end_atomic`]).
-    ///
-    /// This is useful to enforce local consistency constraints, such as ensuring that several readers
-    /// see a consistent version of local state (since otherwise each [`Optional::snapshot`] may pick
-    /// a different version).
-    pub fn atomic(self) -> Optional<T, Atomic<L>, B> {
-        let id = self.location.flow_state().borrow_mut().next_clock_id();
-        let out_location = Atomic {
-            tick: Tick {
-                id,
-                l: self.location.clone(),
-            },
-        };
-        Optional::new(
-            out_location.clone(),
-            HydroNode::BeginAtomic {
-                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: out_location
-                    .new_node_metadata(Optional::<T, Atomic<L>, B>::collection_kind()),
-            },
-        )
-    }
-
     /// Given a tick, returns a optional value corresponding to a snapshot of the optional
     /// as of that tick. The snapshot at tick `t + 1` is guaranteed to include at least all
     /// relevant data that contributed to the snapshot at tick `t`.
