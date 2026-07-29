@@ -25,6 +25,7 @@
 //! reply carries a higher term than its own.
 
 use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use hydro_lang::forward_handle::ForwardHandle;
@@ -110,7 +111,7 @@ impl<T: Clone, ClusterTag> Clone for AppendEntriesRequest<T, ClusterTag> {
     }
 }
 
-impl<T: std::fmt::Debug, ClusterTag> std::fmt::Debug for AppendEntriesRequest<T, ClusterTag> {
+impl<T: Debug, ClusterTag> Debug for AppendEntriesRequest<T, ClusterTag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppendEntriesRequest")
             .field("term", &self.term)
@@ -180,7 +181,7 @@ impl<T: Clone, ClusterTag> Clone for RaftRpc<T, ClusterTag> {
     }
 }
 
-impl<T: std::fmt::Debug, ClusterTag> std::fmt::Debug for RaftRpc<T, ClusterTag> {
+impl<T: Debug, ClusterTag> Debug for RaftRpc<T, ClusterTag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RaftRpc::RequestVote(dto) => f.debug_tuple("RequestVote").field(dto).finish(),
@@ -257,7 +258,7 @@ impl<ClusterTag> Clone for LeaderView<ClusterTag> {
     }
 }
 
-impl<ClusterTag> std::fmt::Debug for LeaderView<ClusterTag> {
+impl<ClusterTag> Debug for LeaderView<ClusterTag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LeaderView")
             .field("term", &self.term)
