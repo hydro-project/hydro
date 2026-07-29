@@ -2448,9 +2448,9 @@ mod tests {
     /// fuzzer therefore owns the complete schedule: which timer fires between which
     /// message deliveries, how batches form on each member's tick, everything.
     /// For deeper exploration, run it under coverage-guided fuzzing:
-    /// `./cargo-sim sim -- fully_concurrent_run` (a found failure is saved as a
-    /// minimized reproducer under `src/consensus/sim-failures/` — gitignored, kept
-    /// local — which plain `cargo test` then replays deterministically).
+    /// `cargo sim -- fully_concurrent_run` (a found failure is saved as a
+    /// minimized reproducer under `src/cluster/sim-failures/`, which plain
+    /// `cargo test` then replays deterministically).
     ///
     /// The price of zero barriers is that nothing intermediate can be asserted — no
     /// "member X won term Y", and no liveness at all (a schedule where elections
