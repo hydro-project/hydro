@@ -223,34 +223,6 @@ pub struct RequestVoteResponseDto {
     pub term: usize,
 }
 
-/// A channel-tagged envelope for intra-cluster traffic.
-///
-/// RAFT itself uses a single logical channel ([`WireFrame::RAFT`]), but some
-/// deployment backends (notably Maelstrom, which multiplexes all cluster traffic
-/// over one stdin/stdout JSON protocol without per-channel routing) deliver every
-/// message to every channel's source. Wrapping each message in a frame tagged with
-/// its logical channel lets receivers discard traffic that belongs to another
-/// channel. Under backends with true per-channel transport (TCP), the filter is a
-/// no-op.
-///
-/// Callers that open additional intra-cluster channels alongside `raft` on such a
-/// multiplexed backend must join this scheme: wrap their messages in a `WireFrame`
-/// with a tag distinct from [`WireFrame::RAFT`], and filter on it when receiving
-/// (see the Maelstrom `lin-kv` adapter's leader forwarding for an example).
-#[derive(Serialize, Deserialize, Clone)]
-pub struct WireFrame {
-    /// The logical channel: [`WireFrame::RAFT`] for the protocol's own traffic.
-    pub channel: u8,
-    /// The bincode-serialized message ([`RaftRpc`] on the RAFT channel).
-    pub payload: Vec<u8>,
-}
-
-impl WireFrame {
-    /// Channel tag for the RAFT protocol's unified intra-cluster traffic
-    /// ([`RaftRpc`]).
-    pub const RAFT: u8 = 0;
-}
-
 /// Configuration shared by [`raft`] and its inner server component.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RaftConfig {
@@ -875,7 +847,7 @@ where
     T: Clone + Serialize + DeserializeOwned + 'a,
     ClusterTag: 'a,
     O: Ordering,
-    Net: NetworkFor<WireFrame>,
+    Net: NetworkFor<RaftRpc<T, ClusterTag>>,
     NoOrder: MinOrder<Net::OrderingGuarantee, Min = NoOrder>,
 {
     let cluster_size = config.cluster_size;
@@ -1052,34 +1024,17 @@ where
         (outbound, committed, redirected, view_transitions)
     };
 
-    traffic_handle.complete(
-        outbound_messages
-            .map(q!(|(member, msg)| (
-                member,
-                WireFrame {
-                    channel: WireFrame::RAFT,
-                    payload: bincode::serialize(&msg).unwrap(),
-                }
-            )))
+    traffic_handle.complete(outbound_messages
             .into_keyed()
             // The channel's fault model is chosen by the caller: sim tests use
             // `TCP.fail_stop()` (the simulator cannot explore lossy channels without
             // giving up liveness assertions), while real deployments that face
-            // partitions (e.g. Maelstrom's partition nemesis) pass
-            // `TCP.lossy_delayed_forever()` — RAFT tolerates the loss: lost
-            // AppendEntries (or replies) are re-sent on the next heartbeat, and lost
-            // vote traffic is retried at the next election timeout.
+            // partitions pass `TCP.lossy_delayed_forever()` — RAFT tolerates the
+            // loss: lost AppendEntries (or replies) are re-sent on the next
+            // heartbeat, and lost vote traffic is retried at the next election
+            // timeout.
             .demux(cluster, net)
-            .entries()
-            .filter_map(q!(|(member, frame)| {
-                // Discard frames belonging to other logical channels (see `WireFrame`).
-                if frame.channel == WireFrame::RAFT {
-                    Some((member, bincode::deserialize(&frame.payload).unwrap()))
-                } else {
-                    None
-                }
-            })),
-    );
+            .entries());
 
     RaftOutputs {
         // The RAFT protocol itself is what justifies the consistency cast: every
@@ -1133,9 +1088,9 @@ where
 ///   election timeout, so a live leader's heartbeats arrive between election
 ///   interrupts and suppress them.
 /// * `net`: builds the fault model for the intra-cluster channel. Simulation tests
-///   pass `|| TCP.fail_stop().bincode()`; deployments facing partitions (e.g.
-///   Maelstrom's partition nemesis) pass `|| TCP.lossy_delayed_forever().bincode()`,
-///   which RAFT is designed to tolerate.
+///   pass `|| TCP.fail_stop().bincode()`; deployments facing partitions pass
+///   `|| TCP.lossy_delayed_forever().bincode()`, which RAFT is designed to
+///   tolerate.
 #[expect(
     clippy::type_complexity,
     reason = "the return type spells out the exact consistency/ordering guarantees"
@@ -1166,7 +1121,7 @@ where
     O: Ordering,
     Con: Consistency,
     ClusterTag: 'a,
-    Net: NetworkFor<WireFrame>,
+    Net: NetworkFor<RaftRpc<T, ClusterTag>>,
     NoOrder: MinOrder<Net::OrderingGuarantee, Min = NoOrder>,
 {
     // The server runs on the consistency-less view of the cluster: `Cluster`'s
@@ -1906,7 +1861,7 @@ mod tests {
     /// leader holds every committed entry — without it, a member that sat out a
     /// partition inflating its term can win an election with a stale log and
     /// truncate committed entries (observed as a real linearizability violation
-    /// under Maelstrom's partition nemesis before this check existed).
+    /// under simulated partitions before this check existed).
     ///
     /// Setup: a two-member cluster where member 0's log position is (term 1,
     /// index 3) and member 1's log is empty. Majorities need both votes, so:
