@@ -563,7 +563,7 @@ mod tests {
         let items = node.source_iter(q!(1..=3i32));
 
         sliced! {
-            let items = use(items, nondet!(/** test */));
+            let items = use::batch(items, nondet!(/** test */));
             let my_count = items
                 .location()
                 .source_iter(q!(0..5i32))
@@ -596,7 +596,7 @@ mod tests {
         let items = node.source_iter(q!(1..=3i32));
 
         sliced! {
-            let items = use(items, nondet!(/** test */));
+            let items = use::batch(items, nondet!(/** test */));
             let my_count = items
                 .location()
                 .source_iter(q!(0..5i32))

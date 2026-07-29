@@ -383,7 +383,7 @@ mod tests {
 
         let write_ack_recv = atomic_write.end_atomic().sim_output();
         let read_response_recv = sliced! {
-            let batch_of_req = use(read_req, nondet!(/** test */));
+            let batch_of_req = use::batch(read_req, nondet!(/** test */));
             let latest_singleton = use::atomic(current_state, nondet!(/** test */));
             batch_of_req.cross_singleton(latest_singleton)
         }
@@ -430,8 +430,8 @@ mod tests {
         let write_ack_recv = write_req.sim_output();
 
         let read_response_recv = sliced! {
-            let batch_of_req = use(read_req, nondet!(/** test */));
-            let latest_singleton = use(current_state, nondet!(/** test */));
+            let batch_of_req = use::batch(read_req, nondet!(/** test */));
+            let latest_singleton = use::snapshot(current_state, nondet!(/** test */));
             batch_of_req.cross_singleton(latest_singleton)
         }
         .sim_output();

@@ -5394,9 +5394,9 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "stageleft"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5525642086d3b7d902687aec7a3671ab163412e83200ae82251e4669fabe6e47"
+checksum = "19d1e313737e051a78f7dd3bc9d0cec17fe9bde4aaae37718016cdf002f97493"
 dependencies = [
  "ctor",
  "parking_lot",
@@ -5409,9 +5409,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_macro"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b5b7837bc7433600c0383b3ce2f0c56af945cc347fbc737e7013ed2ed3b4fbc"
+checksum = "81339bbfea24d25eb4aecf32e9eb37308ed801993f0879b99562b5cc0590b29d"
 dependencies = [
  "proc-macro-crate 3.4.0",
  "proc-macro2",
@@ -5422,9 +5422,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_tool"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08eac826cb2f7db961325c9cec981e9cfd8bceb8be706d1fbb0909aea2305670"
+checksum = "acd847bcaabcdfe9a650cb4aa5d7f136e5905d86881703bc41bcaaf3cd51c588"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.4.0",

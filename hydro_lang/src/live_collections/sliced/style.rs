@@ -20,7 +20,8 @@ use crate::nondet::NonDet;
 
 /// Default style wrapper that stores a collection and its non-determinism guard.
 ///
-/// This is used by the `sliced!` macro when no explicit style is specified.
+/// This is used by the `sliced!` macro when no explicit style is specified. This style is
+/// deprecated; use the explicit [`batch`] or [`snapshot`] styles instead.
 pub struct Default<T> {
     pub(crate) collection: T,
     pub(crate) nondet: NonDet,
@@ -35,8 +36,58 @@ impl<T> Default<T> {
 
 /// Helper function for unstyled `use` in `sliced!` macro - wraps the collection in Default style.
 #[doc(hidden)]
+#[deprecated(
+    note = "use `use::batch(...)` for stream-like collections or `use::snapshot(...)` for singleton-like collections instead"
+)]
 pub fn default<T>(t: T, nondet: NonDet) -> Default<T> {
     Default::new(t, nondet)
+}
+
+/// Batch style wrapper that stores a stream-like collection and its non-determinism guard.
+///
+/// This is used by the `sliced!` macro when `use::batch(...)` is specified.
+pub struct Batch<T> {
+    pub(crate) collection: T,
+    pub(crate) nondet: NonDet,
+}
+
+impl<T> Batch<T> {
+    /// Creates a new batch-styled wrapper.
+    pub fn new(collection: T, nondet: NonDet) -> Self {
+        Self { collection, nondet }
+    }
+}
+
+/// Wraps a stream-like live collection (such as a [`Stream`](crate::live_collections::Stream),
+/// [`KeyedStream`](crate::live_collections::KeyedStream), or a
+/// [`KeyedSingleton`](crate::live_collections::KeyedSingleton) with bounded values) to be
+/// sliced into non-deterministic batches of asynchronously arriving elements.
+pub fn batch<T>(t: T, nondet: NonDet) -> Batch<T> {
+    Batch::new(t, nondet)
+}
+
+/// Snapshot style wrapper that stores a singleton-like collection and its non-determinism guard.
+///
+/// This is used by the `sliced!` macro when `use::snapshot(...)` is specified.
+pub struct Snapshot<T> {
+    pub(crate) collection: T,
+    pub(crate) nondet: NonDet,
+}
+
+impl<T> Snapshot<T> {
+    /// Creates a new snapshot-styled wrapper.
+    pub fn new(collection: T, nondet: NonDet) -> Self {
+        Self { collection, nondet }
+    }
+}
+
+/// Wraps a singleton-like live collection (such as a
+/// [`Singleton`](crate::live_collections::Singleton),
+/// [`Optional`](crate::live_collections::Optional), or a
+/// [`KeyedSingleton`](crate::live_collections::KeyedSingleton) with asynchronously updated
+/// values) to be sliced into non-deterministic snapshots of its continuously changing value.
+pub fn snapshot<T>(t: T, nondet: NonDet) -> Snapshot<T> {
+    Snapshot::new(t, nondet)
 }
 
 /// Atomic style wrapper that stores a collection and its non-determinism guard.
@@ -246,6 +297,119 @@ impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
     }
     fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch(tick, self.nondet);
+        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
+        out
+    }
+}
+
+// ============================================================================
+// Batch style Slicable implementations (stream-like collections)
+//
+// All of these drop consistency because they are performing non-deterministic
+// batching.
+// ============================================================================
+
+impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Slicable<'a, L::DropConsistency> for Batch<crate::live_collections::Stream<T, L, B, O, R>>
+{
+    type Slice = crate::live_collections::Stream<T, Tick<L::DropConsistency>, Bounded, O, R>;
+    type Backtrace = crate::compile::ir::backtrace::Backtrace;
+
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
+    }
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
+        let out = self.collection.batch(tick, self.nondet);
+        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
+        out
+    }
+}
+
+impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Slicable<'a, L::DropConsistency>
+    for Batch<crate::live_collections::KeyedStream<K, V, L, B, O, R>>
+{
+    type Slice =
+        crate::live_collections::KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R>;
+    type Backtrace = crate::compile::ir::backtrace::Backtrace;
+
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
+    }
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
+        let out = self.collection.batch(tick, self.nondet);
+        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
+        out
+    }
+}
+
+impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
+    for Batch<crate::live_collections::KeyedSingleton<K, V, L, BoundedValue>>
+{
+    type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;
+    type Backtrace = crate::compile::ir::backtrace::Backtrace;
+
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
+    }
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
+        let out = self.collection.batch(tick, self.nondet);
+        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
+        out
+    }
+}
+
+// ============================================================================
+// Snapshot style Slicable implementations (singleton-like collections)
+//
+// All of these drop consistency because they are performing non-deterministic
+// snapshotting.
+// ============================================================================
+
+impl<'a, T, L: Location<'a>, B: SingletonBound> Slicable<'a, L::DropConsistency>
+    for Snapshot<crate::live_collections::Singleton<T, L, B>>
+{
+    type Slice = crate::live_collections::Singleton<T, Tick<L::DropConsistency>, Bounded>;
+    type Backtrace = crate::compile::ir::backtrace::Backtrace;
+
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
+    }
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
+        let out = self.collection.snapshot(tick, self.nondet);
+        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
+        out
+    }
+}
+
+impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L::DropConsistency>
+    for Snapshot<crate::live_collections::Optional<T, L, B>>
+{
+    type Slice = crate::live_collections::Optional<T, Tick<L::DropConsistency>, Bounded>;
+    type Backtrace = crate::compile::ir::backtrace::Backtrace;
+
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
+    }
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
+        let out = self.collection.snapshot(tick, self.nondet);
+        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
+        out
+    }
+}
+
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>>
+    Slicable<'a, L::DropConsistency>
+    for Snapshot<crate::live_collections::KeyedSingleton<K, V, L, B>>
+{
+    type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;
+    type Backtrace = crate::compile::ir::backtrace::Backtrace;
+
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
+    }
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
+        let out = self.collection.snapshot(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }

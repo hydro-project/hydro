@@ -23,6 +23,9 @@ macro_rules! __sliced_parse_uses__ {
     };
 
     // Parse immutable use statements without style: let name = use(args...);
+    // This form is deprecated; the `default` style function it expands to is marked
+    // `#[deprecated]`, which surfaces a deprecation warning on the user's `use(...)` tokens
+    // (via `copy_span!`).
     (
         @uses [$($uses:tt)*]
         @states [$($states:tt)*]
@@ -136,19 +139,27 @@ macro_rules! __sliced_parse_uses__ {
 /// # Syntax
 /// The `sliced!` macro takes in a closure-like syntax specifying the live collections to be sliced
 /// and the body of the transformation. Each `use` statement indicates a live collection to be sliced,
-/// along with a non-determinism explanation. Optionally, a style can be specified to control how the
-/// live collection is sliced (e.g., atomically). All `use` statements must appear before the body.
+/// along with a non-determinism explanation. The style specifies how the live collection is sliced:
+/// `use::batch` for stream-like collections (such as [`Stream`](crate::live_collections::Stream)),
+/// `use::snapshot` for singleton-like collections (such as
+/// [`Singleton`](crate::live_collections::Singleton)), and `use::atomic` for atomically-processed
+/// collections. All `use` statements must appear before the body.
 ///
 /// ```rust,ignore
 /// let stream = sliced! {
-///     let name1 = use(collection1, nondet!(/** explanation */));
-///     let name2 = use::atomic(collection2, nondet!(/** explanation */));
+///     let name1 = use::batch(stream1, nondet!(/** explanation */));
+///     let name2 = use::snapshot(singleton2, nondet!(/** explanation */));
+///     let name3 = use::atomic(collection3, nondet!(/** explanation */));
 ///
 ///     // arbitrary statements can follow
 ///     let intermediate = name1.map(...);
 ///     intermediate.cross_singleton(name2)
 /// };
 /// ```
+///
+/// The style-less form `use(collection, nondet!(...))`, which picks between batching and
+/// snapshotting automatically based on the collection type, is deprecated; use the explicit
+/// `use::batch` or `use::snapshot` styles instead.
 ///
 /// # Stateful Computations
 /// The `sliced!` macro also supports stateful computations across iterations using `let mut` bindings
@@ -163,7 +174,7 @@ macro_rules! __sliced_parse_uses__ {
 ///
 /// ```rust,ignore
 /// let counter_stream = sliced! {
-///     let batch = use(input_stream, nondet!(/** explanation */));
+///     let batch = use::batch(input_stream, nondet!(/** explanation */));
 ///     let mut counter = use::state(|l| l.singleton(q!(0)));
 ///
 ///     // Increment counter by the number of items in this batch
@@ -522,7 +533,7 @@ mod tests {
         let (input_send, input) = node.sim_input::<i32, _, _>();
 
         let out_recv = sliced! {
-            let batch = use(input, nondet!(/** test */));
+            let batch = use::batch(input, nondet!(/** test */));
             let mut counter = use::state(|l| l.singleton(q!(0)));
 
             let new_count = counter.clone().zip(batch.count())
@@ -558,7 +569,7 @@ mod tests {
         let (input_send, input) = node.sim_input::<i32, _, _>();
 
         let out_recv = sliced! {
-            let batch = use(input, nondet!(/** test */));
+            let batch = use::batch(input, nondet!(/** test */));
             let mut prev = use::state_null::<Optional<i32, Tick<_>, Bounded>>();
 
             // Output the previous value (or -1 if none)
@@ -595,7 +606,7 @@ mod tests {
         let (input_send, input) = node.sim_input::<i32, _, _>();
 
         let out_recv = sliced! {
-            let batch = use(input, nondet!(/** test */));
+            let batch = use::batch(input, nondet!(/** test */));
             let mut items = use::state(|l| l.source_iter(q!([10, 20])));
 
             // Output the current state, then replace it with the batch

@@ -25,7 +25,7 @@ let total_spent: KeyedSingleton<&str, i32, _, _> =
     purchases.fold(q!(|| 0), q!(|acc, amount| *acc += amount));
 // { "alice": 25, "bob": 5 }
 # sliced! {
-#     let snapshot = use(total_spent, nondet!(/** test */));
+#     let snapshot = use::snapshot(total_spent, nondet!(/** test */));
 #     snapshot.entries()
 # }.map(q!(|(k, v)| (k.to_string(), v)))
 # }, |mut stream| async move {
@@ -59,8 +59,8 @@ Because keyed state updates asynchronously, reading it requires taking a **snaps
 let totals = increments.fold(q!(|| 0), q!(|acc, amount| *acc += amount));
 
 let get_response = sliced! {
-    let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
-    let totals_snapshot = use(totals, nondet!(/** each request observes some valid version of the totals */));
+    let request_batch = use::batch(get_requests, nondet!(/** we never observe batch boundaries */));
+    let totals_snapshot = use::snapshot(totals, nondet!(/** each request observes some valid version of the totals */));
 
     request_batch
         .join_keyed_singleton(totals_snapshot)

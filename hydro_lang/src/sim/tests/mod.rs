@@ -118,7 +118,7 @@ fn fuzzed_batching_program_sliced<'a>(
     let (in_send, input) = node.sim_input();
 
     let out_recv = sliced! {
-        let batch = use(input, nondet!(/** test */));
+        let batch = use::batch(input, nondet!(/** test */));
         batch.fold(q!(|| 0), q!(|acc, v| *acc += v)).into_stream()
     }
     .sim_output();
@@ -342,7 +342,7 @@ fn sim_cluster_unordered_input() {
     // Batch the unordered input through a tick via `sliced!` so the simulator
     // explores the different interleavings of the unordered arrivals.
     let out_recv = sliced! {
-        let batch = use(input, nondet!(/** test */));
+        let batch = use::batch(input, nondet!(/** test */));
         batch.map(q!(|x| x * 10))
     }
     .sim_cluster_output();
@@ -469,7 +469,7 @@ fn sim_fold_sample_eager_state_count() {
         ),
     );
     let out_recv = sliced! {
-        let snapshot = use(folded, nondet!(/** test */));
+        let snapshot = use::snapshot(folded, nondet!(/** test */));
         snapshot.into_stream()
     }
     .sim_output();
@@ -507,7 +507,7 @@ fn sim_fold_commutative_explores_all_subset_sums() {
         ),
     );
     let out_recv = sliced! {
-        let snapshot = use(folded, nondet!(/** test */));
+        let snapshot = use::snapshot(folded, nondet!(/** test */));
         snapshot.into_stream()
     }
     .sim_output();
@@ -543,7 +543,7 @@ fn sim_fold_total_order_no_permutation() {
     let source = node.source_stream(q!(tokio_stream::iter(vec!["a", "b", "c"])));
     let folded = source.fold(q!(|| String::new()), q!(|acc, v| acc.push_str(v)));
     let out_recv = sliced! {
-        let snapshot = use(folded, nondet!(/** test */));
+        let snapshot = use::snapshot(folded, nondet!(/** test */));
         snapshot.into_stream()
     }
     .sim_output();
@@ -585,7 +585,7 @@ fn sim_fold_keyed_no_order() {
         ),
     );
     let out_recv = sliced! {
-        let snapshot = use(folded, nondet!(/** test */));
+        let snapshot = use::snapshot(folded, nondet!(/** test */));
         snapshot.entries()
     }
     .sim_output();
@@ -617,13 +617,13 @@ fn sim_fold_tee_downstream_sees_different_subsets() {
     let folded = source.fold(q!(|| 0), q!(|acc, v| *acc += v));
 
     let out_a = sliced! {
-        let snapshot = use(folded.clone(), nondet!(/** test */));
+        let snapshot = use::snapshot(folded.clone(), nondet!(/** test */));
         snapshot.into_stream()
     }
     .sim_output();
 
     let out_b = sliced! {
-        let snapshot = use(folded, nondet!(/** test */));
+        let snapshot = use::snapshot(folded, nondet!(/** test */));
         snapshot.into_stream()
     }
     .sim_output();
@@ -677,7 +677,7 @@ fn sim_fold_catches_false_commutativity() {
         ),
     );
     let out_recv = sliced! {
-        let snapshot = use(folded, nondet!(/** test */));
+        let snapshot = use::snapshot(folded, nondet!(/** test */));
         snapshot.into_stream()
     }
     .sim_output();
@@ -768,7 +768,7 @@ fn sim_singleton_not_ready_until_producer_runs() {
 
     // First sliced block: produces an Unbounded Singleton
     let produced_singleton = sliced! {
-        let batch = use(in_no_order.clone(), nondet!(/** batch */));
+        let batch = use::batch(in_no_order.clone(), nondet!(/** batch */));
         batch.assume_ordering::<TotalOrder>(nondet!(/** order */))
             .fold(q!(|| 0u32), q!(|acc, v| *acc += v))
     };
@@ -777,8 +777,8 @@ fn sim_singleton_not_ready_until_producer_runs() {
     // If the simulator schedules this tick before the first one has run,
     // the SingletonHook has no value → panic.
     let out = sliced! {
-        let trigger = use(in_no_order, nondet!(/** batch */));
-        let snapshot = use(produced_singleton, nondet!(/** snapshot */));
+        let trigger = use::batch(in_no_order, nondet!(/** batch */));
+        let snapshot = use::snapshot(produced_singleton, nondet!(/** snapshot */));
         trigger.cross_singleton(snapshot)
     }
     .assume_ordering::<TotalOrder>(nondet!(/** test */));
@@ -860,7 +860,7 @@ fn sim_unbounded_optional_rejected_snapshot() {
         .latest();
 
     let output = sliced! {
-        let snapshot = use(optional, nondet!(/** test */));
+        let snapshot = use::snapshot(optional, nondet!(/** test */));
         snapshot.into_stream()
     }
     .sim_output();

@@ -155,9 +155,9 @@ let unit_price: Singleton<u32, _, _> = // computed elsewhere, may change over ti
 
 let quotes = sliced! {
     // the entries that arrived since the previous slice; each order appears exactly once
-    let new_orders = use(orders, nondet!(/** each order is quoted independently, exactly once */));
+    let new_orders = use::batch(orders, nondet!(/** each order is quoted independently, exactly once */));
     // a snapshot of the current price
-    let price = use(unit_price, nondet!(/** each order is quoted at the price when it is processed */));
+    let price = use::snapshot(unit_price, nondet!(/** each order is quoted at the price when it is processed */));
 
     new_orders
         .into_keyed_stream()

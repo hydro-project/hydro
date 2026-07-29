@@ -4,7 +4,7 @@ pub fn count_elems<'a, T: 'a>(
     input_stream: Stream<T, Process<'a>, Unbounded>,
 ) -> Stream<u32, Process<'a>, Unbounded> {
     sliced! {
-        let batch = use(input_stream.map(q!(|_| 1)), nondet!(/** test */));
+        let batch = use::batch(input_stream.map(q!(|_| 1)), nondet!(/** test */));
         batch.fold(q!(|| 0), q!(|a, b| *a += b)).into_stream()
     }
 }

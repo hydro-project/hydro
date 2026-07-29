@@ -48,7 +48,7 @@ let input: Singleton<_, _, Bounded> = process.singleton(q!(0));
 let unbounded: Singleton<_, _, Unbounded> = input.into();
 ```
 
-Converting from an unbounded collection **to a bounded collection**, however, is more complex. This requires cutting off the unbounded collection at a specific point in time, which is not possible to do deterministically. In Hydro, this conversion is performed by taking a **slice** of the unbounded collection with the [`sliced!`](../state-management/slices.mdx) macro. Inside a `sliced!` block, each `use` hook reveals a bounded version of a live collection: a **batch** of new elements for a `Stream`, or a **snapshot** of the current value for a `Singleton`. Because the boundaries of batches and the timing of snapshots depend on runtime factors, each `use` hook requires a [non-determinism guard](./nondet.md):
+Converting from an unbounded collection **to a bounded collection**, however, is more complex. This requires cutting off the unbounded collection at a specific point in time, which is not possible to do deterministically. In Hydro, this conversion is performed by taking a **slice** of the unbounded collection with the [`sliced!`](../state-management/slices.mdx) macro. Inside a `sliced!` block, each `use` hook reveals a bounded version of a live collection: `use::batch` reveals a **batch** of new elements for a `Stream`, and `use::snapshot` reveals a **snapshot** of the current value for a `Singleton`. Because the boundaries of batches and the timing of snapshots depend on runtime factors, these `use` hooks require a [non-determinism guard](./nondet.md):
 
 ```rust
 # use hydro_lang::prelude::*;
@@ -59,7 +59,7 @@ let unbounded_input: Stream<_, _, Unbounded> =
 
 let doubled = sliced! {
     // inside the slice, `batch` is a **bounded** stream of newly arrived elements
-    let batch = use(unbounded_input, nondet!(
+    let batch = use::batch(unbounded_input, nondet!(
         /// each element is transformed independently, so
         /// batch boundaries do not affect the final result
     ));

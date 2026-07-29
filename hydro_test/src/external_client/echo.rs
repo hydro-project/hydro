@@ -10,7 +10,7 @@ pub fn echo_server<'a, P>(
     membership: KeyedStream<u64, MembershipEvent, Process<'a, P>, Unbounded, TotalOrder>,
 ) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder> {
     sliced! {
-        let conns = use(track_membership(membership), nondet!(/** logging */));
+        let conns = use::snapshot(track_membership(membership), nondet!(/** logging */));
         conns.filter(q!(|b| *b)).key_count()
     }
     .sample_every(q!(Duration::from_secs(1)), nondet!(/** logging */))

@@ -130,7 +130,7 @@ let purchases = process.source_iter(q!(vec![
 purchases.fold(q!(|| 0), q!(|acc, amount| *acc += amount))
 # ;
 # sliced! {
-#     let snap = use(out, nondet!(/** test */));
+#     let snap = use::snapshot(out, nondet!(/** test */));
 #     snap.entries()
 # }.map(q!(|(k, v)| (k.to_string(), v)))
 # }, |mut stream| async move {
@@ -176,7 +176,7 @@ health_checks.fold(
 )
 # ;
 # sliced! {
-#     let snap = use(out, nondet!(/** test */));
+#     let snap = use::snapshot(out, nondet!(/** test */));
 #     snap.entries()
 # }.map(q!(|(k, v)| (k.to_string(), v)))
 # }, |mut stream| async move {

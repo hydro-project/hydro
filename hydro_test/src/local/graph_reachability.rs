@@ -9,9 +9,9 @@ pub fn graph_reachability<'a>(
 
     sliced! {
         let mut reached = use::state_null::<Stream<_, _, _, NoOrder>>();
-        let new_roots = use(roots, nondet!(/** roots can be inserted on any tick because we are fixpointing */));
-        let current_edges = use(edges.collect_vec(), nondet!(/** edges can be inserted on any tick because we are fixpointing */));
-        let spin = use(spinner, nondet!(/** force infinite loop for fixpoint */));
+        let new_roots = use::batch(roots, nondet!(/** roots can be inserted on any tick because we are fixpointing */));
+        let current_edges = use::snapshot(edges.collect_vec(), nondet!(/** edges can be inserted on any tick because we are fixpointing */));
+        let spin = use::batch(spinner, nondet!(/** force infinite loop for fixpoint */));
 
         reached = reached.chain(new_roots);
         let reachable = reached

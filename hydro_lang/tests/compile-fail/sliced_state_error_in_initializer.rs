@@ -6,7 +6,7 @@ struct P1 {}
 
 fn test<'a>(input: Stream<u32, Process<'a, P1>>) {
     sliced! {
-        let s = use(input, nondet!(/** test */));
+        let s = use::batch(input, nondet!(/** test */));
 
         // The error inside the initializer body should be attributed to the exact
         // expression that caused it, not the entire `sliced!` block.

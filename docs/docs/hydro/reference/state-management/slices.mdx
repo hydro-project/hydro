@@ -19,19 +19,19 @@ Hydro provides the `sliced!` macro to solve this problem. It allows you to take 
 use hydro_lang::prelude::*;
 
 let get_response = sliced! {
-    let request_batch = use(get_requests, nondet!(/** batch boundaries are never observed */));
-    let count_snapshot = use(current_count, nondet!(/** each request reads the count at the time it is processed */));
+    let request_batch = use::batch(get_requests, nondet!(/** batch boundaries are never observed */));
+    let count_snapshot = use::snapshot(current_count, nondet!(/** each request reads the count at the time it is processed */));
 
     let count_ref = count_snapshot.by_ref();
     request_batch.map(q!(|_req| *count_ref))
 };
 ```
 
-A `sliced!` block starts with one or more `use` statements — **hooks**, with syntax inspired by React hooks — each specifying a live collection to slice. Each hook returns the sliced version of the collection, which is [bounded](../correctness/bounded-unbounded.md) for the duration of the slice:
+A `sliced!` block starts with one or more `use` statements — **hooks**, with syntax inspired by React hooks — each specifying a live collection to slice and a style controlling how it is sliced. Each hook returns the sliced version of the collection, which is [bounded](../correctness/bounded-unbounded.md) for the duration of the slice:
 
-- For a `Stream` / `KeyedStream`, you get a **batch** of elements that arrived since the last slice
-- For a `Singleton` / `Optional`, you get a **snapshot** of the current value
-- For a `KeyedSingleton`, you get a **snapshot** of the current entries, or a **batch** of new entries if values are immutable (`BoundedValue`)
+- For a `Stream` / `KeyedStream`, `use::batch` gives a **batch** of elements that arrived since the last slice
+- For a `Singleton` / `Optional`, `use::snapshot` gives a **snapshot** of the current value
+- For a `KeyedSingleton`, `use::snapshot` gives a **snapshot** of the current entries, or `use::batch` gives a **batch** of new entries if values are immutable (`BoundedValue`)
 
 The full set of hooks — including atomic and stateful variants — and their per-collection semantics are documented in [Slice Hooks](./slice-hooks.md).
 
@@ -50,7 +50,7 @@ In the animation below, elements arrive continuously on the input stream. When a
 let numbers = process.source_iter(q!(vec![1, 2, 3, 4, 5]));
 
 let stringified = sliced! {
-    let batch = use(numbers, nondet!(/** batch boundaries don't affect final result */));
+    let batch = use::batch(numbers, nondet!(/** batch boundaries don't affect final result */));
     batch.map(q!(|x| x.to_string()))
 };
 // Eventually emits: "1", "2", "3", "4", "5" (in batches)
@@ -78,8 +78,8 @@ let requests: Stream<()> = ...; // (), (), ()
 let state: Singleton<i32> = ...; // 5 ~> 7
 
 let scaled = sliced! {
-    let batch = use(requests, nondet!(/** batch boundaries are non-deterministic */));
-    let current_state = use(state, nondet!(/** snapshot timing is non-deterministic */));
+    let batch = use::batch(requests, nondet!(/** batch boundaries are non-deterministic */));
+    let current_state = use::snapshot(state, nondet!(/** snapshot timing is non-deterministic */));
     batch.cross_singleton(current_state)
 };
 ```
@@ -102,8 +102,8 @@ let get_requests = process.source_iter(q!(vec!["alice", "bob"]));
 let current_count = increments.count();
 
 let get_response = sliced! {
-    let request_batch = use(get_requests, nondet!(/** batch boundaries are never observed */));
-    let count_snapshot = use(current_count, nondet!(/** each request reads the count at the time it is processed */));
+    let request_batch = use::batch(get_requests, nondet!(/** batch boundaries are never observed */));
+    let count_snapshot = use::snapshot(current_count, nondet!(/** each request reads the count at the time it is processed */));
 
     let count_ref = count_snapshot.by_ref();
     request_batch.map(q!(|requester| (requester, *count_ref)))
@@ -120,7 +120,7 @@ Because the snapshot revealed by the hook is bounded, `by_ref()` gives you a han
 
 :::caution
 
-Snapshots taken with a plain `use` hook are only guaranteed to be *monotone* — they may lag behind outputs your program has already released. If clients require read-after-write consistency (e.g., a get request issued after an acknowledged increment must observe that increment), use [atomic collections](../atomic-collections.mdx) and the `use::atomic` hook.
+Snapshots taken with the `use::snapshot` hook are only guaranteed to be *monotone* — they may lag behind outputs your program has already released. If clients require read-after-write consistency (e.g., a get request issued after an acknowledged increment must observe that increment), use [atomic collections](../atomic-collections.mdx) and the `use::atomic` hook.
 
 :::
 
@@ -138,7 +138,7 @@ Sometimes you need to maintain state across slice iterations—for example, accu
 
 ```rust,ignore
 let running_count = sliced! {
-    let batch = use(input_stream, nondet!(/** batch boundaries don't affect final count */));
+    let batch = use::batch(input_stream, nondet!(/** batch boundaries don't affect final count */));
     let mut counter = use::state(|l| l.singleton(q!(0)));
 
     // Increment counter by the number of items in this batch
@@ -170,8 +170,8 @@ sampled_state.clone().for_each(q!(|sample| {
 }));
 
 let periodic_output = sliced! {
-    let sample_batch = use(sampled_state, nondet!(/** batch boundaries are non-deterministic */));
-    let other_state_snapshot = use(other_state, nondet!(/** snapshot timing is non-deterministic */));
+    let sample_batch = use::batch(sampled_state, nondet!(/** batch boundaries are non-deterministic */));
+    let other_state_snapshot = use::snapshot(other_state, nondet!(/** snapshot timing is non-deterministic */));
 
     sample_batch.cross_singleton(other_state_snapshot)
         .map(q!(|(s1, s2)| process(s1, s2)))
@@ -187,8 +187,8 @@ let ticks = process.source_interval(
 );
 
 let periodic_output = sliced! {
-    let tick_batch = use(ticks, nondet!(/** batch boundaries are non-deterministic */));
-    let state = use(current_state, nondet!(/** snapshot timing is non-deterministic */));
+    let tick_batch = use::batch(ticks, nondet!(/** batch boundaries are non-deterministic */));
+    let state = use::snapshot(current_state, nondet!(/** snapshot timing is non-deterministic */));
 
     // Only emit when there is at least one tick in this batch
     state.filter_if(tick_batch.first().is_some()).into_stream()
