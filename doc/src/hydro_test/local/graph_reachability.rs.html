@@ -9,9 +9,9 @@
 <a href=#9 id=9 data-nosnippet>9</a>
 <a href=#10 id=10 data-nosnippet>10</a>    <span class="macro">sliced!</span> {
 <a href=#11 id=11 data-nosnippet>11</a>        <span class="kw">let </span><span class="kw-2">mut </span>reached = <span class="kw">use</span>::state_null::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, NoOrder&gt;&gt;();
-<a href=#12 id=12 data-nosnippet>12</a>        <span class="kw">let </span>new_roots = <span class="kw">use</span>(roots, <span class="macro">nondet!</span>(<span class="doccomment">/** roots can be inserted on any tick because we are fixpointing */</span>));
-<a href=#13 id=13 data-nosnippet>13</a>        <span class="kw">let </span>current_edges = <span class="kw">use</span>(edges.collect_vec(), <span class="macro">nondet!</span>(<span class="doccomment">/** edges can be inserted on any tick because we are fixpointing */</span>));
-<a href=#14 id=14 data-nosnippet>14</a>        <span class="kw">let </span>spin = <span class="kw">use</span>(spinner, <span class="macro">nondet!</span>(<span class="doccomment">/** force infinite loop for fixpoint */</span>));
+<a href=#12 id=12 data-nosnippet>12</a>        <span class="kw">let </span>new_roots = <span class="kw">use</span>::batch(roots, <span class="macro">nondet!</span>(<span class="doccomment">/** roots can be inserted on any tick because we are fixpointing */</span>));
+<a href=#13 id=13 data-nosnippet>13</a>        <span class="kw">let </span>current_edges = <span class="kw">use</span>::snapshot(edges.collect_vec(), <span class="macro">nondet!</span>(<span class="doccomment">/** edges can be inserted on any tick because we are fixpointing */</span>));
+<a href=#14 id=14 data-nosnippet>14</a>        <span class="kw">let </span>spin = <span class="kw">use</span>::batch(spinner, <span class="macro">nondet!</span>(<span class="doccomment">/** force infinite loop for fixpoint */</span>));
 <a href=#15 id=15 data-nosnippet>15</a>
 <a href=#16 id=16 data-nosnippet>16</a>        reached = reached.chain(new_roots);
 <a href=#17 id=17 data-nosnippet>17</a>        <span class="kw">let </span>reachable = reached

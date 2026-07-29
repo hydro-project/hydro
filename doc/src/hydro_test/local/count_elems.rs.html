@@ -4,7 +4,7 @@
 <a href=#4 id=4 data-nosnippet>4</a>    input_stream: Stream&lt;T, Process&lt;<span class="lifetime">'a</span>&gt;, Unbounded&gt;,
 <a href=#5 id=5 data-nosnippet>5</a>) -&gt; Stream&lt;u32, Process&lt;<span class="lifetime">'a</span>&gt;, Unbounded&gt; {
 <a href=#6 id=6 data-nosnippet>6</a>    <span class="macro">sliced!</span> {
-<a href=#7 id=7 data-nosnippet>7</a>        <span class="kw">let </span>batch = <span class="kw">use</span>(input_stream.map(<span class="macro">q!</span>(|<span class="kw">_</span>| <span class="number">1</span>)), <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#7 id=7 data-nosnippet>7</a>        <span class="kw">let </span>batch = <span class="kw">use</span>::batch(input_stream.map(<span class="macro">q!</span>(|<span class="kw">_</span>| <span class="number">1</span>)), <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#8 id=8 data-nosnippet>8</a>        batch.fold(<span class="macro">q!</span>(|| <span class="number">0</span>), <span class="macro">q!</span>(|a, b| <span class="kw-2">*</span>a += b)).into_stream()
 <a href=#9 id=9 data-nosnippet>9</a>    }
 <a href=#10 id=10 data-nosnippet>10</a>}

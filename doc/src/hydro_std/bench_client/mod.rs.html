@@ -65,7 +65,7 @@
 <a href=#65 id=65 data-nosnippet>65</a>    Output: <span class="lifetime">'a </span>+ Clone,
 <a href=#66 id=66 data-nosnippet>66</a>{
 <a href=#67 id=67 data-nosnippet>67</a>    <span class="kw">let </span>new_payload_ids = <span class="macro">sliced!</span> {
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>num_clients_per_node = <span class="kw">use</span>(num_clients_per_node, <span class="macro">nondet!</span>(<span class="doccomment">/** This is a constant */</span>));
+<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>num_clients_per_node = <span class="kw">use</span>::snapshot(num_clients_per_node, <span class="macro">nondet!</span>(<span class="doccomment">/** This is a constant */</span>));
 <a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">let </span><span class="kw-2">mut </span>next_virtual_client = <span class="kw">use</span>::state(|l| Optional::from(l.singleton(<span class="macro">q!</span>((<span class="number">0u32</span>, <span class="prelude-val">None</span>)))));
 <a href=#70 id=70 data-nosnippet>70</a>
 <a href=#71 id=71 data-nosnippet>71</a>        <span class="comment">// Set up virtual clients - spawn new ones each tick until we reach the limit
@@ -108,8 +108,8 @@
 <a href=#108 id=108 data-nosnippet>108</a>    );
 <a href=#109 id=109 data-nosnippet>109</a>
 <a href=#110 id=110 data-nosnippet>110</a>    <span class="macro">sliced!</span> {
-<a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">let </span>start_times = <span class="kw">use</span>(start_times, <span class="macro">nondet!</span>(<span class="doccomment">/** Only one in-flight message per virtual client at any time, and outputs happen-after inputs, so if an output is received the start_times must contain its input time. */</span>));
-<a href=#112 id=112 data-nosnippet>112</a>        <span class="kw">let </span>current_outputs = <span class="kw">use</span>(protocol_outputs, <span class="macro">nondet!</span>(<span class="doccomment">/** Batching is required to compare output to input time, but does not actually affect the result. */</span>));
+<a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">let </span>start_times = <span class="kw">use</span>::snapshot(start_times, <span class="macro">nondet!</span>(<span class="doccomment">/** Only one in-flight message per virtual client at any time, and outputs happen-after inputs, so if an output is received the start_times must contain its input time. */</span>));
+<a href=#112 id=112 data-nosnippet>112</a>        <span class="kw">let </span>current_outputs = <span class="kw">use</span>::batch(protocol_outputs, <span class="macro">nondet!</span>(<span class="doccomment">/** Batching is required to compare output to input time, but does not actually affect the result. */</span>));
 <a href=#113 id=113 data-nosnippet>113</a>
 <a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span>end_times_and_output = current_outputs
 <a href=#115 id=115 data-nosnippet>115</a>            .reduce(<span class="macro">q!</span>(|curr, new| {
@@ -143,8 +143,8 @@
 <a href=#143 id=143 data-nosnippet>143</a>    <span class="kw">let </span>punctuation = clients.source_interval(<span class="macro">q!</span>(Duration::from_millis(interval_millis)));
 <a href=#144 id=144 data-nosnippet>144</a>
 <a href=#145 id=145 data-nosnippet>145</a>    <span class="kw">let </span>(interval_throughput, interval_latency) = <span class="macro">sliced!</span> {
-<a href=#146 id=146 data-nosnippet>146</a>        <span class="kw">let </span>punctuation = <span class="kw">use</span>(punctuation, nondet_measurement_window);
-<a href=#147 id=147 data-nosnippet>147</a>        <span class="kw">let </span>latencies = <span class="kw">use</span>(latencies, nondet_measurement_window);
+<a href=#146 id=146 data-nosnippet>146</a>        <span class="kw">let </span>punctuation = <span class="kw">use</span>::batch(punctuation, nondet_measurement_window);
+<a href=#147 id=147 data-nosnippet>147</a>        <span class="kw">let </span>latencies = <span class="kw">use</span>::batch(latencies, nondet_measurement_window);
 <a href=#148 id=148 data-nosnippet>148</a>        <span class="kw">let </span><span class="kw-2">mut </span>latency_histogram = <span class="kw">use</span>::state(|l| l.singleton(<span class="macro">q!</span>(Rc::new(RefCell::new(Histogram::&lt;u64&gt;::new(<span class="number">3</span>).unwrap())))));
 <a href=#149 id=149 data-nosnippet>149</a>        <span class="kw">let </span><span class="kw-2">mut </span>throughput = <span class="kw">use</span>::state(|l| l.singleton(<span class="macro">q!</span>(<span class="number">0usize</span>)));
 <a href=#150 id=150 data-nosnippet>150</a>
@@ -225,9 +225,9 @@
 <a href=#225 id=225 data-nosnippet>225</a>        .map(<span class="macro">q!</span>(|wrapper| wrapper.histogram));
 <a href=#226 id=226 data-nosnippet>226</a>
 <a href=#227 id=227 data-nosnippet>227</a>    <span class="kw">let </span>(combined_throughputs, combined_latencies) = <span class="macro">sliced!</span> {
-<a href=#228 id=228 data-nosnippet>228</a>        <span class="kw">let </span>punctuation = <span class="kw">use</span>(punctuation, nondet_sampling);
-<a href=#229 id=229 data-nosnippet>229</a>        <span class="kw">let </span>a_throughputs = <span class="kw">use</span>(a_throughputs, nondet_sampling);
-<a href=#230 id=230 data-nosnippet>230</a>        <span class="kw">let </span>a_latencies = <span class="kw">use</span>(a_latencies, nondet_sampling);
+<a href=#228 id=228 data-nosnippet>228</a>        <span class="kw">let </span>punctuation = <span class="kw">use</span>::batch(punctuation, nondet_sampling);
+<a href=#229 id=229 data-nosnippet>229</a>        <span class="kw">let </span>a_throughputs = <span class="kw">use</span>::batch(a_throughputs, nondet_sampling);
+<a href=#230 id=230 data-nosnippet>230</a>        <span class="kw">let </span>a_latencies = <span class="kw">use</span>::batch(a_latencies, nondet_sampling);
 <a href=#231 id=231 data-nosnippet>231</a>        <span class="kw">let </span><span class="kw-2">mut </span>latency_histogram = <span class="kw">use</span>::state(|l| l.singleton(<span class="macro">q!</span>(Rc::new(RefCell::new(Histogram::&lt;u64&gt;::new(<span class="number">3</span>).unwrap())))));
 <a href=#232 id=232 data-nosnippet>232</a>        <span class="kw">let </span><span class="kw-2">mut </span>throughput = <span class="kw">use</span>::state(|l| l.singleton(<span class="macro">q!</span>(<span class="number">0usize</span>)));
 <a href=#233 id=233 data-nosnippet>233</a>

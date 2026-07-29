@@ -26,7 +26,7 @@
 <a href=#26 id=26 data-nosnippet>26</a>        .into_keyed();
 <a href=#27 id=27 data-nosnippet>27</a>
 <a href=#28 id=28 data-nosnippet>28</a>    <span class="kw">let </span>get_lookup = <span class="macro">sliced!</span> {
-<a href=#29 id=29 data-nosnippet>29</a>        <span class="kw">let </span>request_batch = <span class="kw">use</span>(requests_regrouped, <span class="macro">nondet!</span>(<span class="doccomment">/** we never observe batch boundaries */</span>));
+<a href=#29 id=29 data-nosnippet>29</a>        <span class="kw">let </span>request_batch = <span class="kw">use</span>::batch(requests_regrouped, <span class="macro">nondet!</span>(<span class="doccomment">/** we never observe batch boundaries */</span>));
 <a href=#30 id=30 data-nosnippet>30</a>        <span class="kw">let </span>count_snapshot = <span class="kw">use</span>::atomic(current_count, <span class="macro">nondet!</span>(<span class="doccomment">/** atomicity guarantees consistency wrt increments */</span>));
 <a href=#31 id=31 data-nosnippet>31</a>
 <a href=#32 id=32 data-nosnippet>32</a>        request_batch.join_keyed_singleton(count_snapshot)

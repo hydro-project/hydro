@@ -383,7 +383,7 @@
 <a href=#383 id=383 data-nosnippet>383</a>
 <a href=#384 id=384 data-nosnippet>384</a>        <span class="kw">let </span>write_ack_recv = atomic_write.end_atomic().sim_output();
 <a href=#385 id=385 data-nosnippet>385</a>        <span class="kw">let </span>read_response_recv = <span class="macro">sliced!</span> {
-<a href=#386 id=386 data-nosnippet>386</a>            <span class="kw">let </span>batch_of_req = <span class="kw">use</span>(read_req, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#386 id=386 data-nosnippet>386</a>            <span class="kw">let </span>batch_of_req = <span class="kw">use</span>::batch(read_req, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#387 id=387 data-nosnippet>387</a>            <span class="kw">let </span>latest_singleton = <span class="kw">use</span>::atomic(current_state, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#388 id=388 data-nosnippet>388</a>            batch_of_req.cross_singleton(latest_singleton)
 <a href=#389 id=389 data-nosnippet>389</a>        }
@@ -430,8 +430,8 @@
 <a href=#430 id=430 data-nosnippet>430</a>        <span class="kw">let </span>write_ack_recv = write_req.sim_output();
 <a href=#431 id=431 data-nosnippet>431</a>
 <a href=#432 id=432 data-nosnippet>432</a>        <span class="kw">let </span>read_response_recv = <span class="macro">sliced!</span> {
-<a href=#433 id=433 data-nosnippet>433</a>            <span class="kw">let </span>batch_of_req = <span class="kw">use</span>(read_req, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
-<a href=#434 id=434 data-nosnippet>434</a>            <span class="kw">let </span>latest_singleton = <span class="kw">use</span>(current_state, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#433 id=433 data-nosnippet>433</a>            <span class="kw">let </span>batch_of_req = <span class="kw">use</span>::batch(read_req, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#434 id=434 data-nosnippet>434</a>            <span class="kw">let </span>latest_singleton = <span class="kw">use</span>::snapshot(current_state, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#435 id=435 data-nosnippet>435</a>            batch_of_req.cross_singleton(latest_singleton)
 <a href=#436 id=436 data-nosnippet>436</a>        }
 <a href=#437 id=437 data-nosnippet>437</a>        .sim_output();

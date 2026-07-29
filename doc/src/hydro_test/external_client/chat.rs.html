@@ -35,8 +35,8 @@
 <a href=#35 id=35 data-nosnippet>35</a>    nondet_user_arrival_broadcast: NonDet,
 <a href=#36 id=36 data-nosnippet>36</a>) -&gt; KeyedStream&lt;u64, String, Process&lt;<span class="lifetime">'a</span>, P&gt;, Unbounded, NoOrder&gt; {
 <a href=#37 id=37 data-nosnippet>37</a>    <span class="macro">sliced!</span> {
-<a href=#38 id=38 data-nosnippet>38</a>        <span class="kw">let </span>msg_batch = <span class="kw">use</span>(in_stream, nondet_user_arrival_broadcast);
-<a href=#39 id=39 data-nosnippet>39</a>        <span class="kw">let </span>members = <span class="kw">use</span>(track_membership(membership), nondet_user_arrival_broadcast);
+<a href=#38 id=38 data-nosnippet>38</a>        <span class="kw">let </span>msg_batch = <span class="kw">use</span>::batch(in_stream, nondet_user_arrival_broadcast);
+<a href=#39 id=39 data-nosnippet>39</a>        <span class="kw">let </span>members = <span class="kw">use</span>::snapshot(track_membership(membership), nondet_user_arrival_broadcast);
 <a href=#40 id=40 data-nosnippet>40</a>
 <a href=#41 id=41 data-nosnippet>41</a>        <span class="kw">let </span>current_members = members.filter(<span class="macro">q!</span>(|b| <span class="kw-2">*</span>b)).keys();
 <a href=#42 id=42 data-nosnippet>42</a>        current_members.cross_product(msg_batch.entries()).into_keyed()

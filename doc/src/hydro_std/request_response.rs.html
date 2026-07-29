@@ -19,7 +19,7 @@
 <a href=#19 id=19 data-nosnippet>19</a>    <span class="macro">sliced!</span> {
 <a href=#20 id=20 data-nosnippet>20</a>        <span class="kw">let </span><span class="kw-2">mut </span>remaining_to_join = <span class="kw">use</span>::state_null::&lt;Stream&lt;(K, M), <span class="kw">_</span>, <span class="kw">_</span>, NoOrder&gt;&gt;();
 <a href=#21 id=21 data-nosnippet>21</a>
-<a href=#22 id=22 data-nosnippet>22</a>        <span class="kw">let </span>response_batch = <span class="kw">use</span>(responses, <span class="macro">nondet!</span>(
+<a href=#22 id=22 data-nosnippet>22</a>        <span class="kw">let </span>response_batch = <span class="kw">use</span>::batch(responses, <span class="macro">nondet!</span>(
 <a href=#23 id=23 data-nosnippet>23</a>            <span class="doccomment">/// Because we persist the metadata, delays resulting from
 <a href=#24 id=24 data-nosnippet>24</a>            /// batching boundaries do not affect the output contents.
 <a href=#25 id=25 data-nosnippet>25</a>        </span>));

@@ -20,7 +20,7 @@
 <a href=#20 id=20 data-nosnippet>20</a>    Stream&lt;(K, E), L, Unbounded, Order&gt;,
 <a href=#21 id=21 data-nosnippet>21</a>) {
 <a href=#22 id=22 data-nosnippet>22</a>    <span class="kw">let </span>quorums = <span class="macro">sliced!</span> {
-<a href=#23 id=23 data-nosnippet>23</a>        <span class="kw">let </span>new_inputs = <span class="kw">use</span>(responses.clone(), <span class="macro">nondet!</span>(
+<a href=#23 id=23 data-nosnippet>23</a>        <span class="kw">let </span>new_inputs = <span class="kw">use</span>::batch(responses.clone(), <span class="macro">nondet!</span>(
 <a href=#24 id=24 data-nosnippet>24</a>            <span class="doccomment">/// We always persist values that have not reached quorum, so even
 <a href=#25 id=25 data-nosnippet>25</a>            /// with arbitrary batching we always produce deterministic quorum results.
 <a href=#26 id=26 data-nosnippet>26</a>        </span>));
@@ -95,7 +95,7 @@
 <a href=#95 id=95 data-nosnippet>95</a>    Stream&lt;(K, E), L, Unbounded, Order&gt;,
 <a href=#96 id=96 data-nosnippet>96</a>) {
 <a href=#97 id=97 data-nosnippet>97</a>    <span class="kw">let </span>just_reached_quorum = <span class="macro">sliced!</span> {
-<a href=#98 id=98 data-nosnippet>98</a>        <span class="kw">let </span>new_inputs = <span class="kw">use</span>(responses.clone(), <span class="macro">nondet!</span>(
+<a href=#98 id=98 data-nosnippet>98</a>        <span class="kw">let </span>new_inputs = <span class="kw">use</span>::batch(responses.clone(), <span class="macro">nondet!</span>(
 <a href=#99 id=99 data-nosnippet>99</a>            <span class="doccomment">/// We always persist values that have not reached quorum, so even
 <a href=#100 id=100 data-nosnippet>100</a>            /// with arbitrary batching we always produce deterministic quorum results.
 <a href=#101 id=101 data-nosnippet>101</a>        </span>));

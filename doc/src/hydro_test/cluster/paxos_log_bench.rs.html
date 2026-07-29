@@ -63,7 +63,7 @@
 <a href=#63 id=63 data-nosnippet>63</a>            <span class="comment">// Compute checkpoints on the leader
 <a href=#64 id=64 data-nosnippet>64</a>            </span><span class="kw">let </span>nondet_log_holes = <span class="macro">nondet!</span>(<span class="doccomment">/** Current max log sequence number dpeends on when the commit is confirmed */</span>);
 <a href=#65 id=65 data-nosnippet>65</a>            <span class="kw">let </span>p_checkpoint = <span class="macro">sliced!</span> {
-<a href=#66 id=66 data-nosnippet>66</a>                <span class="kw">let </span>new_slots = <span class="kw">use</span>(sequenced_payloads.into_keyed().keys(), nondet_log_holes);
+<a href=#66 id=66 data-nosnippet>66</a>                <span class="kw">let </span>new_slots = <span class="kw">use</span>::batch(sequenced_payloads.into_keyed().keys(), nondet_log_holes);
 <a href=#67 id=67 data-nosnippet>67</a>                <span class="kw">let </span><span class="kw-2">mut </span>log_holes = <span class="kw">use</span>::state_null::&lt;Stream&lt;usize, Tick&lt;<span class="kw">_</span>&gt;, Bounded, NoOrder&gt;&gt;();
 <a href=#68 id=68 data-nosnippet>68</a>                <span class="kw">let </span><span class="kw-2">mut </span>prev_checkpoint_slot = <span class="kw">use</span>::state::&lt;Singleton&lt;usize, Tick&lt;<span class="kw">_</span>&gt;, Bounded&gt;&gt;(|l| l.singleton(<span class="macro">q!</span>(<span class="number">0</span>)));
 <a href=#69 id=69 data-nosnippet>69</a>

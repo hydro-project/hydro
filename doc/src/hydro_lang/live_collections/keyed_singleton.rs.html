@@ -1056,9 +1056,9 @@
 <a href=#1056 id=1056 data-nosnippet>1056</a>                );
 <a href=#1057 id=1057 data-nosnippet>1057</a>
 <a href=#1058 id=1058 data-nosnippet>1058</a>                <span class="kw">let </span>result = <span class="macro">sliced!</span> {
-<a href=#1059 id=1059 data-nosnippet>1059</a>                    <span class="kw">let </span>snapshot = <span class="kw">use</span>(me, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
+<a href=#1059 id=1059 data-nosnippet>1059</a>                    <span class="kw">let </span>snapshot = <span class="kw">use</span>::snapshot(me, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
 <a href=#1060 id=1060 data-nosnippet>1060</a>                    <span class="kw">let </span>thresh_snapshot =
-<a href=#1061 id=1061 data-nosnippet>1061</a>                        <span class="kw">use</span>(thresholds, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
+<a href=#1061 id=1061 data-nosnippet>1061</a>                        <span class="kw">use</span>::batch(thresholds, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
 <a href=#1062 id=1062 data-nosnippet>1062</a>                    <span class="kw">let </span><span class="kw-2">mut </span>already_crossed =
 <a href=#1063 id=1063 data-nosnippet>1063</a>                        <span class="kw">use</span>::state_null::&lt;Stream&lt;K, Tick&lt;<span class="kw">_</span>&gt;, Bounded, NoOrder&gt;&gt;();
 <a href=#1064 id=1064 data-nosnippet>1064</a>
@@ -1086,9 +1086,9 @@
 <a href=#1086 id=1086 data-nosnippet>1086</a>                );
 <a href=#1087 id=1087 data-nosnippet>1087</a>
 <a href=#1088 id=1088 data-nosnippet>1088</a>                <span class="kw">let </span>result = <span class="macro">sliced!</span> {
-<a href=#1089 id=1089 data-nosnippet>1089</a>                    <span class="kw">let </span>snapshot = <span class="kw">use</span>(me, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
+<a href=#1089 id=1089 data-nosnippet>1089</a>                    <span class="kw">let </span>snapshot = <span class="kw">use</span>::batch(me, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
 <a href=#1090 id=1090 data-nosnippet>1090</a>                    <span class="kw">let </span>thresh_snapshot =
-<a href=#1091 id=1091 data-nosnippet>1091</a>                        <span class="kw">use</span>(thresholds, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
+<a href=#1091 id=1091 data-nosnippet>1091</a>                        <span class="kw">use</span>::batch(thresholds, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
 <a href=#1092 id=1092 data-nosnippet>1092</a>                    <span class="kw">let </span><span class="kw-2">mut </span>already_crossed =
 <a href=#1093 id=1093 data-nosnippet>1093</a>                        <span class="kw">use</span>::state_null::&lt;Stream&lt;K, Tick&lt;<span class="kw">_</span>&gt;, Bounded, NoOrder&gt;&gt;();
 <a href=#1094 id=1094 data-nosnippet>1094</a>
@@ -1187,7 +1187,7 @@
 <a href=#1187 id=1187 data-nosnippet>1187</a>                );
 <a href=#1188 id=1188 data-nosnippet>1188</a>
 <a href=#1189 id=1189 data-nosnippet>1189</a>                <span class="kw">let </span>result = <span class="macro">sliced!</span> {
-<a href=#1190 id=1190 data-nosnippet>1190</a>                    <span class="kw">let </span>snapshot = <span class="kw">use</span>(me, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
+<a href=#1190 id=1190 data-nosnippet>1190</a>                    <span class="kw">let </span>snapshot = <span class="kw">use</span>::snapshot(me, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
 <a href=#1191 id=1191 data-nosnippet>1191</a>                    <span class="kw">let </span><span class="kw-2">mut </span>already_crossed =
 <a href=#1192 id=1192 data-nosnippet>1192</a>                        <span class="kw">use</span>::state_null::&lt;Stream&lt;K, Tick&lt;<span class="kw">_</span>&gt;, Bounded, NoOrder&gt;&gt;();
 <a href=#1193 id=1193 data-nosnippet>1193</a>
@@ -1224,7 +1224,7 @@
 <a href=#1224 id=1224 data-nosnippet>1224</a>                );
 <a href=#1225 id=1225 data-nosnippet>1225</a>
 <a href=#1226 id=1226 data-nosnippet>1226</a>                <span class="kw">let </span>result = <span class="macro">sliced!</span> {
-<a href=#1227 id=1227 data-nosnippet>1227</a>                    <span class="kw">let </span>snapshot = <span class="kw">use</span>(me, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
+<a href=#1227 id=1227 data-nosnippet>1227</a>                    <span class="kw">let </span>snapshot = <span class="kw">use</span>::batch(me, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
 <a href=#1228 id=1228 data-nosnippet>1228</a>                    <span class="kw">let </span><span class="kw-2">mut </span>already_crossed =
 <a href=#1229 id=1229 data-nosnippet>1229</a>                        <span class="kw">use</span>::state_null::&lt;Stream&lt;K, Tick&lt;<span class="kw">_</span>&gt;, Bounded, NoOrder&gt;&gt;();
 <a href=#1230 id=1230 data-nosnippet>1230</a>

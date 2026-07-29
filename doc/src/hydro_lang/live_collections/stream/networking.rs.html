@@ -326,8 +326,8 @@
 <a href=#326 id=326 data-nosnippet>326</a>            <span class="macro">nondet!</span>(<span class="doccomment">/** dropped prefixes don't affect broadcast */</span>),
 <a href=#327 id=327 data-nosnippet>327</a>        ));
 <a href=#328 id=328 data-nosnippet>328</a>        <span class="macro">sliced!</span> {
-<a href=#329 id=329 data-nosnippet>329</a>            <span class="kw">let </span>members_snapshot = <span class="kw">use</span>(ids, nondet_membership);
-<a href=#330 id=330 data-nosnippet>330</a>            <span class="kw">let </span>elements = <span class="kw">use</span>(<span class="self">self</span>, nondet_membership);
+<a href=#329 id=329 data-nosnippet>329</a>            <span class="kw">let </span>members_snapshot = <span class="kw">use</span>::snapshot(ids, nondet_membership);
+<a href=#330 id=330 data-nosnippet>330</a>            <span class="kw">let </span>elements = <span class="kw">use</span>::batch(<span class="self">self</span>, nondet_membership);
 <a href=#331 id=331 data-nosnippet>331</a>
 <a href=#332 id=332 data-nosnippet>332</a>            <span class="kw">let </span>current_members = members_snapshot.filter(<span class="macro">q!</span>(|b| <span class="kw-2">*</span>b));
 <a href=#333 id=333 data-nosnippet>333</a>            elements.repeat_with_keys(current_members)
@@ -740,8 +740,8 @@
 <a href=#740 id=740 data-nosnippet>740</a>            <span class="macro">nondet!</span>(<span class="doccomment">/** dropped prefixes don't affect broadcast */</span>),
 <a href=#741 id=741 data-nosnippet>741</a>        ));
 <a href=#742 id=742 data-nosnippet>742</a>        <span class="macro">sliced!</span> {
-<a href=#743 id=743 data-nosnippet>743</a>            <span class="kw">let </span>members_snapshot = <span class="kw">use</span>(ids, nondet_membership);
-<a href=#744 id=744 data-nosnippet>744</a>            <span class="kw">let </span>elements = <span class="kw">use</span>(<span class="self">self</span>.enumerate(), nondet_membership);
+<a href=#743 id=743 data-nosnippet>743</a>            <span class="kw">let </span>members_snapshot = <span class="kw">use</span>::snapshot(ids, nondet_membership);
+<a href=#744 id=744 data-nosnippet>744</a>            <span class="kw">let </span>elements = <span class="kw">use</span>::batch(<span class="self">self</span>.enumerate(), nondet_membership);
 <a href=#745 id=745 data-nosnippet>745</a>
 <a href=#746 id=746 data-nosnippet>746</a>            <span class="kw">let </span>current_members = members_snapshot
 <a href=#747 id=747 data-nosnippet>747</a>                .filter(<span class="macro">q!</span>(|b| <span class="kw-2">*</span>b))
@@ -888,8 +888,8 @@
 <a href=#888 id=888 data-nosnippet>888</a>            <span class="macro">nondet!</span>(<span class="doccomment">/** dropped prefixes don't affect broadcast */</span>),
 <a href=#889 id=889 data-nosnippet>889</a>        ));
 <a href=#890 id=890 data-nosnippet>890</a>        <span class="macro">sliced!</span> {
-<a href=#891 id=891 data-nosnippet>891</a>            <span class="kw">let </span>members_snapshot = <span class="kw">use</span>(ids, nondet_membership);
-<a href=#892 id=892 data-nosnippet>892</a>            <span class="kw">let </span>elements = <span class="kw">use</span>(<span class="self">self</span>.enumerate(), nondet_membership);
+<a href=#891 id=891 data-nosnippet>891</a>            <span class="kw">let </span>members_snapshot = <span class="kw">use</span>::snapshot(ids, nondet_membership);
+<a href=#892 id=892 data-nosnippet>892</a>            <span class="kw">let </span>elements = <span class="kw">use</span>::batch(<span class="self">self</span>.enumerate(), nondet_membership);
 <a href=#893 id=893 data-nosnippet>893</a>
 <a href=#894 id=894 data-nosnippet>894</a>            <span class="kw">let </span>current_members = members_snapshot
 <a href=#895 id=895 data-nosnippet>895</a>                .filter(<span class="macro">q!</span>(|b| <span class="kw-2">*</span>b))
@@ -1233,8 +1233,8 @@
 <a href=#1233 id=1233 data-nosnippet>1233</a>            <span class="macro">nondet!</span>(<span class="doccomment">/** dropped prefixes don't affect broadcast */</span>),
 <a href=#1234 id=1234 data-nosnippet>1234</a>        ));
 <a href=#1235 id=1235 data-nosnippet>1235</a>        <span class="macro">sliced!</span> {
-<a href=#1236 id=1236 data-nosnippet>1236</a>            <span class="kw">let </span>members_snapshot = <span class="kw">use</span>(ids, nondet_membership);
-<a href=#1237 id=1237 data-nosnippet>1237</a>            <span class="kw">let </span>elements = <span class="kw">use</span>(<span class="self">self</span>, nondet_membership);
+<a href=#1236 id=1236 data-nosnippet>1236</a>            <span class="kw">let </span>members_snapshot = <span class="kw">use</span>::snapshot(ids, nondet_membership);
+<a href=#1237 id=1237 data-nosnippet>1237</a>            <span class="kw">let </span>elements = <span class="kw">use</span>::batch(<span class="self">self</span>, nondet_membership);
 <a href=#1238 id=1238 data-nosnippet>1238</a>
 <a href=#1239 id=1239 data-nosnippet>1239</a>            <span class="kw">let </span>current_members = members_snapshot.filter(<span class="macro">q!</span>(|b| <span class="kw-2">*</span>b));
 <a href=#1240 id=1240 data-nosnippet>1240</a>            elements.repeat_with_keys(current_members)
@@ -1745,7 +1745,7 @@
 <a href=#1745 id=1745 data-nosnippet>1745</a>            );
 <a href=#1746 id=1746 data-nosnippet>1746</a>
 <a href=#1747 id=1747 data-nosnippet>1747</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
-<a href=#1748 id=1748 data-nosnippet>1748</a>            <span class="kw">let </span>snapshot = <span class="kw">use</span>(received, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#1748 id=1748 data-nosnippet>1748</a>            <span class="kw">let </span>snapshot = <span class="kw">use</span>::snapshot(received, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#1749 id=1749 data-nosnippet>1749</a>            snapshot.into_stream()
 <a href=#1750 id=1750 data-nosnippet>1750</a>        }
 <a href=#1751 id=1751 data-nosnippet>1751</a>        .sim_output();
@@ -1800,7 +1800,7 @@
 <a href=#1800 id=1800 data-nosnippet>1800</a>            );
 <a href=#1801 id=1801 data-nosnippet>1801</a>
 <a href=#1802 id=1802 data-nosnippet>1802</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
-<a href=#1803 id=1803 data-nosnippet>1803</a>            <span class="kw">let </span>snapshot = <span class="kw">use</span>(received, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#1803 id=1803 data-nosnippet>1803</a>            <span class="kw">let </span>snapshot = <span class="kw">use</span>::snapshot(received, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#1804 id=1804 data-nosnippet>1804</a>            snapshot.into_stream()
 <a href=#1805 id=1805 data-nosnippet>1805</a>        }
 <a href=#1806 id=1806 data-nosnippet>1806</a>        .sim_output();

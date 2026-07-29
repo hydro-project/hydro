@@ -14,7 +14,7 @@
 <a href=#14 id=14 data-nosnippet>14</a>    <span class="kw">let </span>increment_ack = increment_request_processing.end_atomic();
 <a href=#15 id=15 data-nosnippet>15</a>
 <a href=#16 id=16 data-nosnippet>16</a>    <span class="kw">let </span>get_response = <span class="macro">sliced!</span> {
-<a href=#17 id=17 data-nosnippet>17</a>        <span class="kw">let </span>request_batch = <span class="kw">use</span>(get_requests, <span class="macro">nondet!</span>(<span class="doccomment">/** we never observe batch boundaries */</span>));
+<a href=#17 id=17 data-nosnippet>17</a>        <span class="kw">let </span>request_batch = <span class="kw">use</span>::batch(get_requests, <span class="macro">nondet!</span>(<span class="doccomment">/** we never observe batch boundaries */</span>));
 <a href=#18 id=18 data-nosnippet>18</a>        <span class="kw">let </span>count_snapshot = <span class="kw">use</span>::atomic(current_count, <span class="macro">nondet!</span>(<span class="doccomment">/** atomicity guarantees consistency wrt increments */</span>));
 <a href=#19 id=19 data-nosnippet>19</a>
 <a href=#20 id=20 data-nosnippet>20</a>        request_batch.cross_singleton(count_snapshot).map(<span class="macro">q!</span>(|(<span class="kw">_</span>, count)| count))

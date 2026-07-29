@@ -86,7 +86,7 @@
 <a href=#86 id=86 data-nosnippet>86</a>        .value_counts();
 <a href=#87 id=87 data-nosnippet>87</a>
 <a href=#88 id=88 data-nosnippet>88</a>    <span class="kw">let </span>lookup_result = <span class="macro">sliced!</span> {
-<a href=#89 id=89 data-nosnippet>89</a>        <span class="kw">let </span>batch_get_requests = <span class="kw">use</span>(get_stream, <span class="macro">nondet!</span>(<span class="doccomment">/** batch get requests */</span>));
+<a href=#89 id=89 data-nosnippet>89</a>        <span class="kw">let </span>batch_get_requests = <span class="kw">use</span>::batch(get_stream, <span class="macro">nondet!</span>(<span class="doccomment">/** batch get requests */</span>));
 <a href=#90 id=90 data-nosnippet>90</a>        <span class="kw">let </span>cur_counters = <span class="kw">use</span>::atomic(counters, <span class="macro">nondet!</span>(<span class="doccomment">/** intentional non-determinism for get timing */</span>));
 <a href=#91 id=91 data-nosnippet>91</a>
 <a href=#92 id=92 data-nosnippet>92</a>        batch_get_requests.lookup_keyed_singleton(cur_counters).into_keyed_stream()

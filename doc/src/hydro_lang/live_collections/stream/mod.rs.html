@@ -3509,8 +3509,8 @@
 <a href=#3509 id=3509 data-nosnippet>3509</a>            node.source_external_bincode::&lt;<span class="kw">_</span>, <span class="kw">_</span>, TotalOrder, ExactlyOnce&gt;(<span class="kw-2">&amp;</span>external);
 <a href=#3510 id=3510 data-nosnippet>3510</a>
 <a href=#3511 id=3511 data-nosnippet>3511</a>        <span class="kw">let </span>out = <span class="macro">sliced!</span> {
-<a href=#3512 id=3512 data-nosnippet>3512</a>            <span class="kw">let </span>input = <span class="kw">use</span>(input, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
-<a href=#3513 id=3513 data-nosnippet>3513</a>            <span class="kw">let </span>v = <span class="kw">use</span>(node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])).reduce(<span class="macro">q!</span>(|acc, v| <span class="kw-2">*</span>acc += v)), <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#3512 id=3512 data-nosnippet>3512</a>            <span class="kw">let </span>input = <span class="kw">use</span>::batch(input, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#3513 id=3513 data-nosnippet>3513</a>            <span class="kw">let </span>v = <span class="kw">use</span>::snapshot(node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])).reduce(<span class="macro">q!</span>(|acc, v| <span class="kw-2">*</span>acc += v)), <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#3514 id=3514 data-nosnippet>3514</a>            input.cross_singleton(v.into_stream().count())
 <a href=#3515 id=3515 data-nosnippet>3515</a>        }
 <a href=#3516 id=3516 data-nosnippet>3516</a>        .send_bincode_external(<span class="kw-2">&amp;</span>external);
@@ -3547,8 +3547,8 @@
 <a href=#3547 id=3547 data-nosnippet>3547</a>            node.source_external_bincode::&lt;<span class="kw">_</span>, <span class="kw">_</span>, TotalOrder, ExactlyOnce&gt;(<span class="kw-2">&amp;</span>external);
 <a href=#3548 id=3548 data-nosnippet>3548</a>
 <a href=#3549 id=3549 data-nosnippet>3549</a>        <span class="kw">let </span>out = <span class="macro">sliced!</span> {
-<a href=#3550 id=3550 data-nosnippet>3550</a>            <span class="kw">let </span>input = <span class="kw">use</span>(input, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
-<a href=#3551 id=3551 data-nosnippet>3551</a>            <span class="kw">let </span>v = <span class="kw">use</span>(node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])).reduce(<span class="macro">q!</span>(|acc, v| <span class="kw-2">*</span>acc += v)).into_singleton(), <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#3550 id=3550 data-nosnippet>3550</a>            <span class="kw">let </span>input = <span class="kw">use</span>::batch(input, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#3551 id=3551 data-nosnippet>3551</a>            <span class="kw">let </span>v = <span class="kw">use</span>::snapshot(node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])).reduce(<span class="macro">q!</span>(|acc, v| <span class="kw-2">*</span>acc += v)).into_singleton(), <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#3552 id=3552 data-nosnippet>3552</a>            input.cross_singleton(v.into_stream().count())
 <a href=#3553 id=3553 data-nosnippet>3553</a>        }
 <a href=#3554 id=3554 data-nosnippet>3554</a>        .send_bincode_external(<span class="kw-2">&amp;</span>external);
@@ -4916,7 +4916,7 @@
 <a href=#4916 id=4916 data-nosnippet>4916</a>        <span class="kw">let </span>(trigger_send, trigger) = node.sim_input::&lt;i32, TotalOrder, ExactlyOnce&gt;();
 <a href=#4917 id=4917 data-nosnippet>4917</a>
 <a href=#4918 id=4918 data-nosnippet>4918</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
-<a href=#4919 id=4919 data-nosnippet>4919</a>            <span class="kw">let </span>batch = <span class="kw">use</span>(trigger, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#4919 id=4919 data-nosnippet>4919</a>            <span class="kw">let </span>batch = <span class="kw">use</span>::batch(trigger, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#4920 id=4920 data-nosnippet>4920</a>            <span class="kw">let </span>counter = batch.location().source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">0i32</span>]))
 <a href=#4921 id=4921 data-nosnippet>4921</a>                .fold(<span class="macro">q!</span>(|| <span class="number">0i32</span>), <span class="macro">q!</span>(|acc, v| <span class="kw-2">*</span>acc += v));
 <a href=#4922 id=4922 data-nosnippet>4922</a>            <span class="kw">let </span>counter_mut = counter.by_mut();
@@ -4958,7 +4958,7 @@
 <a href=#4958 id=4958 data-nosnippet>4958</a>        <span class="kw">let </span>(trigger_send, trigger) = node.sim_input::&lt;i32, TotalOrder, ExactlyOnce&gt;();
 <a href=#4959 id=4959 data-nosnippet>4959</a>
 <a href=#4960 id=4960 data-nosnippet>4960</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
-<a href=#4961 id=4961 data-nosnippet>4961</a>            <span class="kw">let </span>batch = <span class="kw">use</span>(trigger, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#4961 id=4961 data-nosnippet>4961</a>            <span class="kw">let </span>batch = <span class="kw">use</span>::batch(trigger, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#4962 id=4962 data-nosnippet>4962</a>            <span class="kw">let </span>offset = batch
 <a href=#4963 id=4963 data-nosnippet>4963</a>                .location()
 <a href=#4964 id=4964 data-nosnippet>4964</a>                .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">10i32</span>]))

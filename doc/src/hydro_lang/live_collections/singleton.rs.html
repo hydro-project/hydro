@@ -1043,7 +1043,7 @@
 <a href=#1043 id=1043 data-nosnippet>1043</a>            }
 <a href=#1044 id=1044 data-nosnippet>1044</a>            <span class="prelude-val">Err</span>(me) =&gt; {
 <a href=#1045 id=1045 data-nosnippet>1045</a>                <span class="kw">let </span>uncasted = <span class="macro">sliced!</span> {
-<a href=#1046 id=1046 data-nosnippet>1046</a>                    <span class="kw">let </span>me = <span class="kw">use</span>(me, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
+<a href=#1046 id=1046 data-nosnippet>1046</a>                    <span class="kw">let </span>me = <span class="kw">use</span>::snapshot(me, <span class="macro">nondet!</span>(<span class="doccomment">/** thresholds are deterministic */</span>));
 <a href=#1047 id=1047 data-nosnippet>1047</a>                    <span class="kw">let </span><span class="kw-2">mut </span>remaining_threshold = <span class="kw">use</span>::state(|l| {
 <a href=#1048 id=1048 data-nosnippet>1048</a>                        <span class="kw">let </span>as_option: Optional&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>&gt; = threshold.clone_into_tick(l).into();
 <a href=#1049 id=1049 data-nosnippet>1049</a>                        as_option
@@ -1248,7 +1248,7 @@
 <a href=#1248 id=1248 data-nosnippet>1248</a>        nondet: NonDet,
 <a href=#1249 id=1249 data-nosnippet>1249</a>    ) -&gt; Stream&lt;T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce&gt; {
 <a href=#1250 id=1250 data-nosnippet>1250</a>        <span class="macro">sliced!</span> {
-<a href=#1251 id=1251 data-nosnippet>1251</a>            <span class="kw">let </span>snapshot = <span class="kw">use</span>(<span class="self">self</span>, nondet);
+<a href=#1251 id=1251 data-nosnippet>1251</a>            <span class="kw">let </span>snapshot = <span class="kw">use</span>::snapshot(<span class="self">self</span>, nondet);
 <a href=#1252 id=1252 data-nosnippet>1252</a>            snapshot.into_stream()
 <a href=#1253 id=1253 data-nosnippet>1253</a>        }
 <a href=#1254 id=1254 data-nosnippet>1254</a>        .weaken_retries()
@@ -1274,8 +1274,8 @@
 <a href=#1274 id=1274 data-nosnippet>1274</a>    {
 <a href=#1275 id=1275 data-nosnippet>1275</a>        <span class="kw">let </span>samples = <span class="self">self</span>.location.source_interval(interval);
 <a href=#1276 id=1276 data-nosnippet>1276</a>        <span class="macro">sliced!</span> {
-<a href=#1277 id=1277 data-nosnippet>1277</a>            <span class="kw">let </span>snapshot = <span class="kw">use</span>(<span class="self">self</span>, nondet);
-<a href=#1278 id=1278 data-nosnippet>1278</a>            <span class="kw">let </span>sample_batch = <span class="kw">use</span>(samples, nondet);
+<a href=#1277 id=1277 data-nosnippet>1277</a>            <span class="kw">let </span>snapshot = <span class="kw">use</span>::snapshot(<span class="self">self</span>, nondet);
+<a href=#1278 id=1278 data-nosnippet>1278</a>            <span class="kw">let </span>sample_batch = <span class="kw">use</span>::batch(samples, nondet);
 <a href=#1279 id=1279 data-nosnippet>1279</a>
 <a href=#1280 id=1280 data-nosnippet>1280</a>            snapshot.filter_if(sample_batch.first().is_some()).into_stream()
 <a href=#1281 id=1281 data-nosnippet>1281</a>        }
@@ -1868,7 +1868,7 @@
 <a href=#1868 id=1868 data-nosnippet>1868</a>        <span class="kw">let </span>folded = source_iter.fold(<span class="macro">q!</span>(|| <span class="number">0</span>), <span class="macro">q!</span>(|a, b| <span class="kw-2">*</span>a += b));
 <a href=#1869 id=1869 data-nosnippet>1869</a>
 <a href=#1870 id=1870 data-nosnippet>1870</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
-<a href=#1871 id=1871 data-nosnippet>1871</a>            <span class="kw">let </span>v = <span class="kw">use</span>(folded, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#1871 id=1871 data-nosnippet>1871</a>            <span class="kw">let </span>v = <span class="kw">use</span>::snapshot(folded, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#1872 id=1872 data-nosnippet>1872</a>            v.clone().zip(v).into_stream()
 <a href=#1873 id=1873 data-nosnippet>1873</a>        }
 <a href=#1874 id=1874 data-nosnippet>1874</a>        .sim_output();
@@ -1950,7 +1950,7 @@
 <a href=#1950 id=1950 data-nosnippet>1950</a>        <span class="kw">let </span>source = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1i32</span>, <span class="number">2</span>, <span class="number">3</span>]));
 <a href=#1951 id=1951 data-nosnippet>1951</a>
 <a href=#1952 id=1952 data-nosnippet>1952</a>        <span class="kw">let </span>(first, second) = <span class="macro">sliced!</span> {
-<a href=#1953 id=1953 data-nosnippet>1953</a>            <span class="kw">let </span>batch = <span class="kw">use</span>(source, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#1953 id=1953 data-nosnippet>1953</a>            <span class="kw">let </span>batch = <span class="kw">use</span>::batch(source, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#1954 id=1954 data-nosnippet>1954</a>            <span class="kw">let </span><span class="kw-2">mut </span>total = <span class="kw">use</span>::state(|l| l.singleton(<span class="macro">q!</span>(<span class="number">0i32</span>)));
 <a href=#1955 id=1955 data-nosnippet>1955</a>            <span class="kw">let </span>total_mut = total.by_mut();
 <a href=#1956 id=1956 data-nosnippet>1956</a>
@@ -1991,7 +1991,7 @@
 <a href=#1991 id=1991 data-nosnippet>1991</a>        <span class="kw">let </span>source = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">3i32</span>]));
 <a href=#1992 id=1992 data-nosnippet>1992</a>
 <a href=#1993 id=1993 data-nosnippet>1993</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
-<a href=#1994 id=1994 data-nosnippet>1994</a>            <span class="kw">let </span>batch = <span class="kw">use</span>(source, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#1994 id=1994 data-nosnippet>1994</a>            <span class="kw">let </span>batch = <span class="kw">use</span>::batch(source, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#1995 id=1995 data-nosnippet>1995</a>            <span class="kw">let </span><span class="kw-2">mut </span>total = <span class="kw">use</span>::state(|l| l.singleton(<span class="macro">q!</span>(<span class="number">0i32</span>)));
 <a href=#1996 id=1996 data-nosnippet>1996</a>            <span class="kw">let </span>total_mut = total.by_mut();
 <a href=#1997 id=1997 data-nosnippet>1997</a>
