@@ -6,6 +6,23 @@
 //! decomposed into separately-ticking election/replication components, because RAFT's
 //! safety proofs interlock vote and log decisions through shared state (see the design
 //! notes on [`raft`]).
+//!
+//! # Protocol mechanics
+//!
+//! Each member is a follower, a candidate, or the leader. A member whose election
+//! timer fires becomes a candidate and requests votes, sending the index and term of
+//! its last log entry; voters refuse candidates whose log is behind their own (RAFT
+//! §5.4.1), which is what guarantees an elected leader holds every committed entry.
+//!
+//! The leader replicates by sending each follower `AppendEntries` messages carrying
+//! new entries (empty for a pure heartbeat), the index and term of the entry
+//! immediately preceding them, and the leader's commit index. The follower accepts
+//! the entries iff its log contains a matching entry at that preceding position (the
+//! log-matching property, RAFT §5.3), and advances its own commit index to
+//! `min(leader_commit, index of last new entry)`. Acknowledgements report the highest
+//! index known replicated on the follower; the leader advances its commit index once
+//! a majority of members hold an entry of the current term, and steps down when any
+//! reply carries a higher term than its own.
 
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
@@ -23,6 +40,9 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 /// A RAFT server is either a follower, a candidate, or the leader
+///
+/// Public only because staged (`q!`) code must reference it by path; not stable API.
+#[doc(hidden)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum RaftState {
     /// When in follower mode, a RAFT server receives AppendEntries RPCs and updates its log
@@ -45,7 +65,8 @@ pub struct LogEntry<T> {
     pub index: usize,
 }
 
-/// The full `AppendEntries` RPC payload exchanged by [`log_replication`] (RAFT §5.3).
+/// The full `AppendEntries` RPC payload (RAFT §5.3); see the module docs for the
+/// acceptance and commit rules it drives.
 ///
 /// `entries` is empty for pure heartbeats. The follower accepts the entries iff its log
 /// contains an entry at `prev_log_index` with term `prev_log_term` (the log-matching
@@ -53,6 +74,9 @@ pub struct LogEntry<T> {
 ///
 /// Trait impls avoid derive bounds on `ClusterTag` (it only appears inside [`MemberId`],
 /// which implements everything for any tag); serde bounds constrain only `T`.
+///
+/// Public only because staged (`q!`) code must reference it by path; not stable API.
+#[doc(hidden)]
 #[derive(Serialize, Deserialize)]
 #[serde(bound(
     serialize = "T: Serialize",
@@ -103,6 +127,9 @@ impl<T: std::fmt::Debug, ClusterTag> std::fmt::Debug for AppendEntriesRequest<T,
 ///
 /// The follower's identity is carried by the keyed intra-cluster channel, not the
 /// payload, mirroring how vote traffic identifies senders in `leader_election`.
+///
+/// Public only because staged (`q!`) code must reference it by path; not stable API.
+#[doc(hidden)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct AppendEntriesReply {
     /// The follower's current term (lets a deposed leader step down).
@@ -170,8 +197,13 @@ impl<T: std::fmt::Debug, ClusterTag> std::fmt::Debug for RaftRpc<T, ClusterTag> 
     }
 }
 
+/// Candidate → everyone vote-request payload (RAFT §5.2).
+///
+/// Public only because staged (`q!`) code must reference it by path; not stable API.
+#[doc(hidden)]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RequestVoteDto {
+    /// The candidate's term.
     pub term: usize,
     /// Index of the candidate's last log entry (0 = empty log), for the RAFT §5.4.1
     /// up-to-dateness check: voters refuse candidates whose log is behind their own,
@@ -181,8 +213,13 @@ pub struct RequestVoteDto {
     pub last_log_term: usize,
 }
 
+/// Voter → candidate vote-grant payload (RAFT §5.2).
+///
+/// Public only because staged (`q!`) code must reference it by path; not stable API.
+#[doc(hidden)]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RequestVoteResponseDto {
+    /// The term the vote is granted for.
     pub term: usize,
 }
 
