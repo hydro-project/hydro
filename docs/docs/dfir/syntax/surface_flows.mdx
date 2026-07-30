@@ -1,8 +1,8 @@
 ---
 sidebar_position: 2
 ---
-
 import CodeBlock from "@theme/CodeBlock";
+import Mermaid from '@theme/Mermaid';
 import example1Code from "!!raw-loader!../../../../dfir_rs/examples/example_surface_flows_1_basic.rs";
 import example2Code from "!!raw-loader!../../../../dfir_rs/examples/example_surface_flows_2_varname.rs";
 import example3Code from "!!raw-loader!../../../../dfir_rs/examples/example_surface_flows_3_ports.rs";
@@ -49,7 +49,7 @@ Here is an example that tees one flow into two, handles each separately, and the
 Here is a visualization of the flow that was generated. Note that the outbound labels to `my_tee`
 were auto-generated, but the inbound labels to `my_union` were specified by the code above:
 
-<mermaid value={extractMermaid(example3Out)}></mermaid>
+<Mermaid value={extractMermaid(example3Out)}></Mermaid>
 
 DFIR compiled this flow into two subgraphs called _compiled components_, connected by _handoffs_. You can ignore
 these details unless you are interested in low-level performance tuning; they are explained in the discussion
@@ -60,7 +60,7 @@ of [in-out trees](../architecture/in-out_trees.md).
 Closures inside surface syntax operators have access to a special `context` object which provides
 access to scheduling, timing, and state APIs. The object is accessible as a shared reference
 (`&Context`) via the special name `context`.
-[Here is the full API documentation for `Context`](rust:dfir_rs::scheduled::context::Context).
+[Here is the full API documentation for `Context`](rust:dfir_rs::runtime::context::Context).
 
 <CodeBlock language="rust">{getLines(example4Code, 5, 6)}</CodeBlock>
 

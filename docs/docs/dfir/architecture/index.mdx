@@ -1,3 +1,4 @@
+import Mermaid from '@theme/Mermaid';
 import exampleOutput from '!!raw-loader!../../../../dfir_rs/examples/snapshots/example_5_reachability.snap';
 import { extractMermaid } from '../../../src/util';
 
@@ -7,23 +8,23 @@ import { extractMermaid } from '../../../src/util';
 TODO(inline): This page references the scheduled DFIR architecture (subgraphs, handoffs, strata) which is being replaced by the inline codegen path. Content is out of date.
 :::
 
-DFIR graphs are divided into two layers: the outer _scheduled layer_ and
+DFIR graphs are divided into two layers: the outer _runtime layer_ and
 inner _compiled layer_.
 
-In the mermaid diagrams generated for DFIR, the scheduler is responsible for the outermost gray boxes
-(the *subgraphs*)
-and handoffs, while the insides of the gray boxes are compiled via the compiled layer. As a reminder,
-here is the graph from the
+In DFIR, operators are partitioned into groups called _subgraphs_, visible in the mermaid digrams as the outermsot gray
+boxes, and are connected to other subgraphs via _handoff_ buffers. The operators within a subgraph are compiled together,
+forming the compiled layer, while the runtime layer encompasses the execution of each subgraph in sequence as well as all
+runtime APIs (like `Context`). Here is the graph from the
 [reachability](../quickstart/example_5_reachability) chapter, which we will use a running example:
 
-<mermaid value={extractMermaid(exampleOutput)}></mermaid>
+<Mermaid value={extractMermaid(exampleOutput)}></Mermaid>
 
 The [DFIR Architecture Design Doc](https://hydro-project.github.io/hydro/design_docs/2021-10_architecture_design_doc.html)
 contains a more detailed explanation of this section. Note that some aspects of
 the design doc are not implemented (e.g. early yielding) or may become out of
 date as time passes.
 
-## Scheduled Layer
+## Runtime Layer
 
 The scheduled layer is dynamic: it stores a list of operators (or "subgraphs")
 as well as buffers ("handoffs") between them. The scheduled layer chooses how
@@ -88,8 +89,8 @@ Alternatively, the _Core API_ allows you to interact with handoffs directly at a
 level. It doesn't provide any notion of chainable operators. You can use Rust `Iterator`s
 or any other arbitrary Rust code to implement the operators.
 
-The Core API lives in [`dfir_rs::scheduled`](rust:dfir_rs::scheduled),
-mainly in methods on the [`Dfir` struct](rust:dfir_rs::scheduled::context::Dfir).
+The Core API lives in [`dfir_rs::runtime`](rust:dfir_rs::runtime),
+mainly in methods on the [`Dfir` struct](rust:dfir_rs::runtime::context::Dfir).
 Compiled push-based iterators live in [`dfir_rs::compiled`](rust:dfir_rs::compiled).
 When working with DFIR, we intend users to use the Flow Syntax as it is much more friendly, but as
 DFIR is in active development some operators might not be available in

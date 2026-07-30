@@ -9,22 +9,21 @@ code style, commit messages, testing setups, and more to help you get started.
 The Hydro repo is set up as a monorepo and [Cargo workspace](https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html).
 Relative to the repository root:
 
-* `dfir_rs` is the main DFIR package, containing the DFIR runtime. It re-exports the
-  flow syntax macros in `dfir_macro` and `dfir_lang`. The runtime is the "scheduled
-  layer" while the flow syntax compiler is the "compiled layer".
 * `hydro_lang` and related (`hydro_*`) packages contain Hydro, which is a functional syntax built on
-  top of `DFIR`.
+  top of `DFIR`. Hydro tracks runtime properties and handles distribution across multiple locations.
+* `dfir_rs` is the main DFIR package, containing the DFIR runtime APIs and utilities. It re-exports the DFIR surface
+  syntax macros from `dfir_macro` and `dfir_lang`. Runtime APIs are the outer "runtime layer" while the surface syntax
+  is compiled into the "compiled layer". The compiled layer uses the `dfir_pipes` iterator/pusherator framework.
 * `docs` is the [Hydro.run](https://hydro.run/) website. `website_playground` contains the
   playground portion of the website, used for compiling DFIR in-browser via WASM.
-* `benches` contains some microbenchmarks for DFIR and other frameworks.
+* `benches` contains microbenchmarks for DFIR and other frameworks.
+
+There are several related packages/folders included that are used by Hydro but are more general-purpose:
+
 * `design_docs` contains old point-in-time design docs for DFIR's architecture.
-
-There are several subpackages included that are used by Hydro but are more general-purpose:
-
-* `stageleft` is a framework for staged programming in Rust, used by `hydro_lang`.
-* `lattices` is a abstract algebra library, originally for lattice types.
+* [`stageleft`](https://github.com/hydro-project/stageleft/) is a framework for staged programming in Rust, used by `hydro_lang`.
 * `variadics` is a crate for emulating variadic generics using tuple lists.
-* `pusherator` is a rudimentary library providing push-based iterators.
+* `lattices` is a abstract algebra library, originally for lattice types.
 * `multiplatform_test` provides a convenience macro for specifying and initializing tests on
   various platforms.
 
@@ -93,12 +92,12 @@ what you expect.
 ## Snapshot Testing
 
 Hydro uses two types of snapshot testing: [`insta`](https://insta.rs/) and [`trybuild`](https://github.com/dtolnay/trybuild).
-Insta provides general snapshot testing in Rust, and we mainly use it to test the DFIR graphs
-generated from the flow syntax. These snapshots are of the [Mermaid](https://mermaid.js.org/) or
-[DOT](https://graphviz.org/) graph visualizations rather than the graph datastructures themselves;
-see `dfir_rs/tests/snapshots`. The snapshots can be useful not just to track changes but also as
-a quick reference to view the visualizations (i.e. by pasting into [mermaid.live](https://mermaid.live/)).
-`trybuild` is used to test the error messages in DFIR's flow syntax; see `dfir_rs/tests/compile-fail`.
+Insta provides general snapshot testing in Rust, and we mainly use it to test the generated graph structures in both
+Hydro and DFIR. In Hydro, these are of the graph AST. In DFIR, these are of the [Mermaid](https://mermaid.js.org/) or
+[DOT](https://graphviz.org/) graph visualizations rather than the graph datastructure itself. The snapshots can be
+useful not just to track changes but also as a quick reference to view the visualizations (i.e. by pasting into
+[mermaid.live](https://mermaid.live/)). `trybuild` is used to test the error messages in both Hydro and DFIR's surface
+syntax.
 
 `insta` provides a CLI, `cargo insta` to run tests and review changes:
 ```shell

@@ -2,9 +2,8 @@ import CodeBlock from '@theme/CodeBlock';
 import exampleCode from '!!raw-loader!../../../../dfir_rs/examples/example_syntax_hello_world.rs';
 
 # DFIR Surface Syntax
-The natural way to write a DFIR program is using the _Surface Syntax_ documented here.
-It is a chained `Iterator`-style syntax of operators built into DFIR that should be sufficient
-for most uses. If you want lower-level access you can work with the `Core API` documented in the [Architecture](../architecture/index.mdx) section.
+The natural way to write a DFIR program is using the _surface syntax_ documented here.
+It is a chained `Iterator`-style syntax of operators built into DFIR.
 
 In this chapter we go over the syntax piece by piece: how to [embed surface syntax in Rust](./surface_embedding.mdx) and how to specify [_flows_](./surface_flows.mdx), which consist of [_data sources_](./surface_data.mdx) flowing through [_operators_](./surface_ops_gen.md).
 

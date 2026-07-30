@@ -16,12 +16,12 @@ For example, here we iterate through a vector of `usize` items and push them dow
 ```rust,ignore
     source_iter(vec![0, 1]) -> ...
 ```
-The Hello, World example above uses this construct. 
+The Hello, World example above uses this construct.
 
 The [`source_file()`](./surface_ops_gen.md#source_file) and [`source_json()`](./surface_ops_gen.md#source_json) operators are similar, but read from a specified file.
 
 All of these operators output the contents of their collection only once, during the first tick.
-To output every tick, consider feeding results into a [`persist()`](./surface_ops_gen.md#persist) 
+To output every tick, consider feeding results into a [`persist()`](./surface_ops_gen.md#persist)
 operator.
 
 ## Streaming Sources
