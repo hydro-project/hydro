@@ -29,7 +29,7 @@ let get_response = sliced! {
 };
 ```
 
-Inside the slice, the snapshot is a *bounded* singleton, so you can capture a [reference](./references-mutations.md) to it with `by_ref()` and read it inside `q!()` closures like a regular Rust value. The [Slice Hooks](./slice-hooks.md) page documents how each type of live collection is revealed inside a slice.
+Inside the slice, the snapshot is a *bounded* singleton, so you can capture a [reference](./references-mutations.md) to it with `by_ref()` and read it inside `q!()` closures like a regular Rust value. The [Slice Blocks](./slices.mdx) page documents how each type of live collection is revealed inside a slice.
 
 :::caution
 
@@ -57,7 +57,6 @@ This is the most powerful — and least protected — way to manage state, so it
 
 ## In This Section
 - **[Singletons and Optionals](./singletons-optionals.md)**: the core live collections for single-value state
-- **[Keyed State](./keyed-state.md)**: per-key state with `KeyedSingleton`, like a live `HashMap`
-- **[Slice Blocks](./slices.mdx)**: processing batches of requests against snapshots of state with `sliced!`
-- **[Slice Hooks](./slice-hooks.md)**: the `use` hooks available inside `sliced!` and their semantics
+- **[Slice Blocks](./slices.mdx)**: processing batches of requests against snapshots of state with `sliced!`, and the `use` hooks available inside
 - **[References and Mutations](./references-mutations.md)**: reading and mutating state from `q!()` closures with `by_ref()` and `by_mut()`
+- **[Keyed State](./keyed-state.md)**: per-key state with `KeyedSingleton`, like a live `HashMap`
