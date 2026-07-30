@@ -11,7 +11,7 @@ TODO(inline): This page references the scheduled DFIR architecture (subgraphs, h
 DFIR graphs are divided into two layers: the outer _runtime layer_ and
 inner _compiled layer_.
 
-In DFIR, operators are partitioned into groups called _subgraphs_, visible in the mermaid digrams as the outermsot gray
+In DFIR, operators are partitioned into groups called _subgraphs_, visible in the mermaid diagrams as the outermost gray
 boxes, and are connected to other subgraphs via _handoff_ buffers. The operators within a subgraph are compiled together,
 forming the compiled layer, while the runtime layer encompasses the execution of each subgraph in sequence as well as all
 runtime APIs (like `Context`). Here is the graph from the

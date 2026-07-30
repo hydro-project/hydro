@@ -10,7 +10,7 @@ DFIR is targeted at supporting the following unique features:
 2. Dataflow programming model, capturing the streaming message/data-driven nature of nodes within a system.
 3. Reactive programming model with cumulative state, capturing the nature of stateful services (also applicable to front-end frameworks).
 4. `#[no_std]` no-alloc support, using bounded static memory.
-5. Easy-to-read surface syntax, embeddedable in Rust.
+5. Easy-to-read surface syntax, embeddable in Rust.
 
 The most recent version of the [DFIR docs are online](https://hydro.run/docs/dfir/#this-documentation), providing documentation and examples.
 

@@ -23,7 +23,7 @@ There are several related packages/folders included that are used by Hydro but a
 * `design_docs` contains old point-in-time design docs for DFIR's architecture.
 * [`stageleft`](https://github.com/hydro-project/stageleft/) is a framework for staged programming in Rust, used by `hydro_lang`.
 * `variadics` is a crate for emulating variadic generics using tuple lists.
-* `lattices` is a abstract algebra library, originally for lattice types.
+* `lattices` is an abstract algebra library, originally for lattice types.
 * `multiplatform_test` provides a convenience macro for specifying and initializing tests on
   various platforms.
 
