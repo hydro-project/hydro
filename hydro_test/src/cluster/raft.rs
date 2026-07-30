@@ -906,23 +906,23 @@ where
         Stream<(T, Option<MemberId<ClusterTag>>), Cluster<'a, ClusterTag>>,
         Stream<LeaderView<ClusterTag>, Cluster<'a, ClusterTag>>,
     ) = sliced! {
-        let request_batch = use(requests, nondet!(
+        let request_batch = use::batch(requests, nondet!(
             /// Which requests are batched together only affects which log indexes the
             /// leader assigns them, folded into the arbitrary order fixed above.
             nondet_raft
         ));
-        let election_batch = use(election_timer_interrupts, nondet!(
+        let election_batch = use::batch(election_timer_interrupts, nondet!(
             /// When timer interrupts are processed relative to messages only affects
             /// which elections are attempted, which folds into the non-determinism of
             /// which member wins an election.
             nondet_raft
         ));
-        let heartbeat_batch = use(heartbeat_timer_interrupts, nondet!(
+        let heartbeat_batch = use::batch(heartbeat_timer_interrupts, nondet!(
             /// Heartbeat timing only affects when replication progress is made, not
             /// the committed sequence.
             nondet_raft
         ));
-        let traffic_batch = use(traffic, nondet!(
+        let traffic_batch = use::batch(traffic, nondet!(
             /// Message delivery interleavings shift which member wins elections and
             /// when entries replicate and commit, but never the committed sequence
             /// itself: every message is processed atomically against the member's
