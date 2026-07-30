@@ -2,16 +2,252 @@
 sidebar_position: 1
 ---
 
-import HydroDeployDocs from '../../../../../hydro_deploy/core/README.md'
+# Deployment
 
-# Hydro Deploy
+Hydro supports two active deployment backends — **Docker** for local development and testing, and **ECS** for production on AWS. Both use the same autonomous networking model based on the channel mux protocol.
+
+A legacy **HydroDeploy** mode also exists but is deprecated.
+
+## Overview
+
+| Mode | Backend struct | Feature flag | Use case | Status |
+|------|---------------|--------------|----------|--------|
+| **Docker** | `DockerDeploy` | `docker_deploy` | Local development, testing, and CI | **Recommended** |
+| **ECS** | `EcsDeploy` | `ecs_deploy` | Production deployment on AWS ECS | **Recommended** |
+| **HydroDeploy** | `HydroDeploy` | `deploy` | Legacy orchestrator-based mode | **Deprecated** |
+
+All backends share the same `FlowBuilder` programming model. The deployment mode is chosen at the "last mile" — when you call `.deploy(&mut env)` — by providing the appropriate environment.
+
+---
+
+## Docker Deploy
+
+**Feature:** `docker_deploy`  
+**Backend:** `DockerDeploy` (in `hydro_lang::deploy`)
+
+This is the recommended mode for local development, testing, and CI. Each process/cluster member runs inside a Docker container on the local machine with real network isolation — an accurate model of how your distributed system will behave in production.
+
+### Why Docker over localhost?
+
+- **Realistic networking** — Each container has its own IP address and discovers peers dynamically, just like in a real multi-machine deployment.
+- **Dynamic membership** — Cluster members can join and leave at runtime. No need to wire all connections ahead of time.
+- **Proper isolation** — Each process has its own filesystem, environment, and network namespace.
+- **Better logging** — Logs are per-container (`docker logs <id>`), not multiplexed over stdout. Stdout is free for your application to use.
+- **Matches production** — Uses the same channel mux protocol and membership discovery as ECS, so what works in Docker will work in production.
+
+### Architecture
+
+1. **Compile** — Trybuild generates a Rust binary for each location (process or cluster member). Targets Linux (musl by default, or glibc).
+2. **Build Image** — Each binary is packaged into a minimal Docker image (`FROM scratch` by default, or a custom base image).
+3. **Network** — A Docker bridge network is created. All containers are attached to this network.
+4. **Start** — Containers are created and started. Each container gets a hostname equal to its container name.
+
+### Networking (Channel Mux)
+
+Containers discover and connect to each other **autonomously** via a channel mux protocol:
+
+- Every container listens on a well-known port (`10000`) with a shared `ChannelMux` accept loop.
+- When process A needs to send to process B, it opens a TCP connection to `{B's container name}:10000`.
+- It performs a 3-frame handshake: `ChannelMagic` → `ChannelProtocolVersion` → `ChannelHandshake` (containing the logical channel name and optional sender ID).
+- The receiver dispatches the connection to the correct channel handler based on the channel name.
+
+This means networking is **name-based** — the Docker container name *is* the address. Cluster member identity is derived from the `CONTAINER_NAME` environment variable.
+
+### Cluster Membership
+
+Cluster membership is **dynamic** and discovered via the Docker API. Each container connects to the local Docker socket (`/var/run/docker.sock`) and:
+1. Lists currently running containers matching the deployment instance and location key.
+2. Subscribes to Docker events (start/die) for live membership updates.
+
+This enables adding or removing cluster members at runtime — something impossible with the legacy HydroDeploy mode.
+
+### Example
+
+```rust
+use hydro_lang::deploy::{DockerDeploy, DockerNetwork};
+
+let network = DockerNetwork::new("my-app".to_owned());
+let mut deployment = DockerDeploy::new(network);
+
+let nodes = builder
+    .with_process(&p1, deployment.add_localhost_docker(None, vec![]))
+    .with_cluster(&c, deployment.add_localhost_docker_cluster(None, vec![], 3))
+    .with_external(&ext, deployment.add_external("client".to_owned()))
+    .deploy(&mut deployment);
+
+deployment.provision(&nodes).await?;  // builds images
+deployment.start(&nodes).await?;      // creates network + containers
+
+// ... interact via external port ...
+
+deployment.stop(&nodes).await?;       // kills containers
+deployment.cleanup(&nodes).await?;    // removes containers, images, network
+```
+
+### Configuration
+
+- `.base_image("debian:bookworm-slim")` — Use a non-scratch base image (required if your binary needs libc, DNS, etc.)
+- `.linux_compile_type(LinuxCompileType::Glibc)` — Compile with glibc instead of musl
+- `.features(["tokio"])` — Enable additional Cargo features
+
+---
+
+## ECS Deploy
+
+**Feature:** `ecs_deploy`  
+**Backend:** `EcsDeploy` (in `hydro_lang::deploy`)
+
+This is the recommended mode for production deployments on AWS Elastic Container Service. `EcsDeploy` **generates a manifest** describing what needs to be built and deployed — the actual deployment is handled by external tooling (CDK, Terraform, custom scripts).
+
+### Architecture
+
+1. **Compile** — Trybuild generates binaries (same as Docker mode, targeting Linux with static linking).
+2. **Export** — Calling `deployment.export(&nodes)` produces a `HydroManifest` containing:
+   - For each process: binary name, build config (project dir, target dir, features), exposed ports, and ECS task family name.
+   - For each cluster: same as process, plus default instance count and task family prefix.
+3. **External Build** — Your CI/CD pipeline reads the manifest, compiles each binary, builds Docker images, and pushes to ECR.
+4. **External Deploy** — CDK or deployment scripts create ECS task definitions, services, and security groups based on the manifest.
+
+### Networking
+
+The ECS runtime reuses the same **channel mux** protocol as Docker, with one key difference in service discovery:
+
+- Instead of using Docker container names, ECS tasks discover each other via the **ECS API**.
+- `resolve_task_family_to_task_id(family)` — Finds a running task by its task definition family name (for process-to-process connections).
+- `resolve_task_ip(task_id)` — Resolves a task ID to its private IPv4 address via the task's ENI attachment.
+- Self-identification uses the `ECS_CONTAINER_METADATA_URI_V4` environment variable (automatically set by ECS).
+
+### Cluster Membership
+
+Membership is discovered by **polling the ECS API** every 2 seconds:
+1. `list_tasks` on the ECS cluster.
+2. `describe_tasks` to get task definition ARNs and status.
+3. Parse the task definition ARN to extract the location key, filtering for the specific cluster.
+4. Emit `Joined`/`Left` events as tasks appear or disappear.
+
+The task definition ARN follows the naming convention: `hy-{name_hint}-loc{idx}v{version}`.
+
+### Example
+
+```rust
+use hydro_lang::deploy::EcsDeploy;
+
+let mut deployment = EcsDeploy::new();
+
+let nodes = builder
+    .with_process(&p1, deployment.add_ecs_process())
+    .with_cluster(&c, deployment.add_ecs_cluster(3))
+    .with_external(&ext, deployment.add_external("client".to_owned()))
+    .deploy(&mut deployment);
+
+let manifest = deployment.export(&nodes);
+
+// Write manifest to disk for CI/CD consumption
+let json = serde_json::to_string_pretty(&manifest)?;
+std::fs::write("hydro-manifest.json", json)?;
+```
+
+### Manifest Structure
+
+```json
+{
+  "processes": {
+    "P1": {
+      "build": {
+        "project_dir": "/path/to/trybuild",
+        "target_dir": "/path/to/target",
+        "bin_name": "example_abc123",
+        "package_name": "my-app-hydro-trybuild",
+        "features": ["hydro___feature_ecs_runtime"]
+      },
+      "ports": {
+        "exposed-8080": { "protocol": "tcp", "port": 8080 }
+      },
+      "task_family": "hy-p1-loc0v1"
+    }
+  },
+  "clusters": {
+    "C2": {
+      "build": { "..." : "..." },
+      "ports": {},
+      "default_count": 3,
+      "task_family_prefix": "hy-c2-loc1v1"
+    }
+  }
+}
+```
+
+### Environment Variables
+
+ECS-deployed binaries expect these environment variables:
+- `CLUSTER_NAME` — The ECS cluster name (for API calls).
+- `ECS_CONTAINER_METADATA_URI_V4` — Automatically set by ECS; used to determine self task ID.
+
+---
+
+## Comparison: Docker vs. ECS
+
+| Aspect | Docker | ECS |
+|--------|--------|-----|
+| **Runs locally?** | Yes | No (manifest export only) |
+| **Connection setup** | Channel mux + container name resolution | Channel mux + ECS API resolution |
+| **Service discovery** | Docker DNS (container names) | ECS `list_tasks` / `describe_tasks` API |
+| **Membership** | Docker events API (dynamic) | ECS polling (dynamic, 2s interval) |
+| **Identity** | Container name (`CONTAINER_NAME` env) | ECS task ID (from metadata URI) |
+| **Orchestrator required?** | No (containers are autonomous) | No (containers are autonomous) |
+
+---
+
+## HydroDeploy (Legacy)
 
 :::caution
 
-Hydro Deploy is currently in alpha, and documentation is still under construction. Please reach out if you run into any issues--it is under active development and we continue to use it for large-scale distributed experiments within the Hydro research group.
+HydroDeploy is deprecated. Use **Docker Deploy** for local development and **ECS Deploy** for production.
 
 :::
 
-<HydroDeployDocs />
+**Feature:** `deploy`  
+**Backend:** `HydroDeploy` (in `hydro_lang::deploy`)  
+**Orchestrator:** `hydro_deploy::Deployment`
 
-{/* This guide will walk you through the process of deploying your Hydro app in a variety of scenarios. */}
+The legacy deployment mode uses an external orchestrator process that manages the full lifecycle. It has several fundamental limitations:
+
+- **Static topology** — All connections must be established before any node starts. You cannot dynamically add or remove cluster members at runtime.
+- **Stdin/stdout protocol** — Port metadata is passed via stdin, which prevents processes from using stdout for logging or other purposes.
+- **Unrealistic networking** — Local-to-local connections use Unix sockets, which don't model real network behavior (latency, partitions, independent failure).
+- **No isolation** — All processes run as child processes of the orchestrator with shared filesystem and environment.
+
+### How it works
+
+1. **Compile** — Trybuild generates binaries as `--example` targets.
+2. **Provision** — Hosts are provisioned via `hydro_deploy` (localhost, GCP, Azure, AWS EC2).
+3. **Connect** — The orchestrator wires ports between services. Each binary receives `DeployPorts<HydroMeta>` on stdin.
+4. **Start / Stop** — The orchestrator manages the process lifecycle.
+
+### Example (legacy)
+
+```rust
+use hydro_deploy::Deployment;
+use hydro_lang::deploy::TrybuildHost;
+
+let mut deployment = Deployment::new();
+
+let nodes = builder
+    .with_process(&p1, TrybuildHost::new(deployment.Localhost()))
+    .with_cluster(&c, (0..3).map(|_| TrybuildHost::new(deployment.Localhost())))
+    .with_external(&ext, deployment.Localhost())
+    .deploy(&mut deployment);
+
+deployment.deploy().await?;
+deployment.start().await?;
+// ... run your test ...
+deployment.stop().await?;
+```
+
+---
+
+## Choosing a Mode
+
+- **Local development and testing** → **Docker Deploy**. Realistic networking, dynamic membership, proper isolation and logging.
+- **CI / integration tests** → **Docker Deploy**. Same as development, runs anywhere Docker is available.
+- **Production** → **ECS Deploy**. Generates manifests for your deployment pipeline. Supports auto-scaling and long-lived services.
