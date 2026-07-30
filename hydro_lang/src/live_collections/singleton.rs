@@ -8,6 +8,7 @@ use std::rc::Rc;
 use sealed::sealed;
 use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q};
 
+use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::optional::Optional;
 use super::sliced::sliced;
@@ -309,6 +310,11 @@ where
     /// inside `q!()` closures. The handle resolves to `&T` at runtime.
     ///
     /// The singleton must be bounded, otherwise reading it would be non-deterministic.
+    /// The handle can only be captured in closures passed to operators on collections at
+    /// the same location with **matching boundedness**; capturing it in a closure over an
+    /// unbounded collection is rejected at compile time, since the bounded singleton is only
+    /// materialized on the first tick while the closure would keep running on later ticks,
+    /// where accessing the reference would crash.
     ///
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -343,7 +349,9 @@ where
     /// # });
     /// # }
     /// ```
-    pub fn by_ref(&self) -> crate::handoff_ref::SingletonRef<'a, '_, T, L>
+    pub fn by_ref(
+        &self,
+    ) -> crate::handoff_ref::SingletonRef<'a, '_, T, L, <B as SingletonBound>::UnderlyingBound>
     where
         B: IsBounded,
     {
@@ -392,7 +400,9 @@ where
     /// # });
     /// # }
     /// ```
-    pub fn by_mut(&self) -> crate::handoff_ref::SingletonMut<'a, '_, T, L>
+    pub fn by_mut(
+        &self,
+    ) -> crate::handoff_ref::SingletonMut<'a, '_, T, L, <B as SingletonBound>::UnderlyingBound>
     where
         B: IsBounded,
     {
@@ -502,13 +512,21 @@ where
     /// ```
     pub fn map<U, F, OP, B2: SingletonBound>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, SingletonMapFuncAlgebra<OP>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, <B as SingletonBound>::UnderlyingBound>,
+            SingletonMapFuncAlgebra<OP>,
+        >,
     ) -> Singleton<U, L, B2>
     where
         F: Fn(T) -> U + 'a,
         B: ApplyOrderPreservingSingleton<OP, B2>,
     {
-        let (f, proof) = f.splice_fn1_ctx_props(&self.location);
+        let (f, proof) = f
+            .splice_fn1_ctx_props(
+                &OperatorContext::<L, <B as SingletonBound>::UnderlyingBound>::new(&self.location),
+            );
         proof.register_proof(&f);
         let f = f.into();
         Singleton::new(
@@ -552,7 +570,7 @@ where
     /// ```
     pub fn flat_map_ordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, Bounded>, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Stream<U, L, Bounded, TotalOrder, ExactlyOnce>
     where
         B: IsBounded,
@@ -594,7 +612,7 @@ where
     /// ```
     pub fn flat_map_unordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, Bounded>, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Stream<U, L, Bounded, NoOrder, ExactlyOnce>
     where
         B: IsBounded,
@@ -700,11 +718,18 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B::UnderlyingBound>
+    pub fn filter<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, <B as SingletonBound>::UnderlyingBound>>,
+    ) -> Optional<T, L, B::UnderlyingBound>
     where
         F: Fn(&T) -> bool + 'a,
     {
-        let f = f.splice_fn1_borrow_ctx(&self.location).into();
+        let f = f
+            .splice_fn1_borrow_ctx(
+                &OperatorContext::<L, <B as SingletonBound>::UnderlyingBound>::new(&self.location),
+            )
+            .into();
         Optional::new(
             self.location.clone(),
             HydroNode::Filter {
@@ -742,12 +767,16 @@ where
     /// ```
     pub fn filter_map<U, F>(
         self,
-        f: impl IntoQuotedMut<'a, F, L>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, <B as SingletonBound>::UnderlyingBound>>,
     ) -> Optional<U, L, B::UnderlyingBound>
     where
         F: Fn(T) -> Option<U> + 'a,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let f = f
+            .splice_fn1_ctx(
+                &OperatorContext::<L, <B as SingletonBound>::UnderlyingBound>::new(&self.location),
+            )
+            .into();
         Optional::new(
             self.location.clone(),
             HydroNode::FilterMap {

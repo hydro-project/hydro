@@ -8,7 +8,7 @@ Hydro's dataflow operators like `zip` and `cross_singleton` combine collections 
 
 ## Reference Handles with `by_ref`
 
-Calling `.by_ref()` on a live collection returns a handle that can be captured by any `q!()` closure at the same location. At runtime, the handle resolves to a shared reference to the collection's current contents:
+Calling `.by_ref()` on a live collection returns a handle that can be captured by `q!()` closures operating on collections at the same location with the same boundedness. At runtime, the handle resolves to a shared reference to the collection's current contents:
 
 | Collection | Handle resolves to |
 |---|---|
@@ -41,6 +41,8 @@ let shifted = process
 ```
 
 Reference handles require the collection to be [**bounded**](../correctness/bounded-unbounded.md). A bounded collection's contents are fully determined, so reading it as a whole is deterministic. Reading an *unbounded* collection this way would expose whatever portion happened to have arrived — a non-deterministic result. This restriction is enforced at compile time.
+
+The closure capturing the handle must itself run on a **bounded** collection at the same location. A bounded collection is only materialized on the first tick, while closures on unbounded collections keep running on later ticks — where the referenced value no longer exists, so accessing the handle would crash. This is also enforced at compile time: capturing a handle in a closure on an unbounded collection is rejected.
 
 In practice, most reference handles appear inside [slice blocks](./slices.mdx): the batches and snapshots revealed by [slice hooks](./slice-hooks.md) are bounded, so `by_ref` is the natural way to read a snapshot of state while processing a batch of requests:
 

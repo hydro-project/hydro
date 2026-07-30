@@ -9,6 +9,7 @@ use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q};
 
+use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
 use super::optional::Optional;
@@ -820,16 +821,20 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedStream<K, U, L, B, O, R>
+    pub fn map<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
+    ) -> KeyedStream<K, U, L, B, O, R>
     where
         F: Fn(V) -> U + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
         let map_f = q!({
             let orig = f;
             move |(k, v)| (k, orig(v))
         })
-        .splice_fn1_ctx::<(K, V), (K, U)>(&self.location)
+        .splice_fn1_ctx::<(K, V), (K, U)>(&OperatorContext::<L, B>::new(&self.location))
         .into();
 
         KeyedStream::new(
@@ -874,13 +879,14 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn map_with_key<U, F>(
         self,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
     ) -> KeyedStream<K, U, L, B, O, R>
     where
         F: Fn((K, V)) -> U + 'a,
         K: Clone,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
         let map_f = q!({
             let orig = f;
             move |(k, v)| {
@@ -888,7 +894,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 (k, out)
             }
         })
-        .splice_fn1_ctx::<(K, V), (K, U)>(&self.location)
+        .splice_fn1_ctx::<(K, V), (K, U)>(&OperatorContext::<L, B>::new(&self.location))
         .into();
 
         KeyedStream::new(
@@ -931,12 +937,13 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn prefix_key<K2, F>(
         self,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
     ) -> KeyedStream<(K2, K), V, L, B, O, R>
     where
         F: Fn(&(K, V)) -> K2 + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_borrow_ctx(ctx));
         let map_f = q!({
             let orig = f;
             move |kv| {
@@ -944,7 +951,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 ((out, kv.0), kv.1)
             }
         })
-        .splice_fn1_ctx::<(K, V), ((K2, K), V)>(&self.location)
+        .splice_fn1_ctx::<(K, V), ((K2, K), V)>(&OperatorContext::<L, B>::new(&self.location))
         .into();
 
         KeyedStream::new(
@@ -988,16 +995,20 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedStream<K, V, L, B, O, R>
+    pub fn filter<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
+    ) -> KeyedStream<K, V, L, B, O, R>
     where
         F: Fn(&V) -> bool + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_borrow_ctx(ctx));
         let filter_f = q!({
             let orig = f;
             move |t: &(_, _)| orig(&t.1)
         })
-        .splice_fn1_borrow_ctx::<(K, V), bool>(&self.location)
+        .splice_fn1_borrow_ctx::<(K, V), bool>(&OperatorContext::<L, B>::new(&self.location))
         .into();
 
         KeyedStream::new(
@@ -1041,13 +1052,13 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn filter_with_key<F>(
         self,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
     ) -> KeyedStream<K, V, L, B, O, R>
     where
         F: Fn(&(K, V)) -> bool + 'a,
     {
         let filter_f = f
-            .splice_fn1_borrow_ctx::<(K, V), bool>(&self.location)
+            .splice_fn1_borrow_ctx::<(K, V), bool>(&OperatorContext::<L, B>::new(&self.location))
             .into();
 
         KeyedStream::new(
@@ -1088,17 +1099,18 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn filter_map<U, F>(
         self,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
     ) -> KeyedStream<K, U, L, B, O, R>
     where
         F: Fn(V) -> Option<U> + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
         let filter_map_f = q!({
             let orig = f;
             move |(k, v)| orig(v).map(|o| (k, o))
         })
-        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&self.location)
+        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&OperatorContext::<L, B>::new(&self.location))
         .into();
 
         KeyedStream::new(
@@ -1141,13 +1153,14 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn filter_map_with_key<U, F>(
         self,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
     ) -> KeyedStream<K, U, L, B, O, R>
     where
         F: Fn((K, V)) -> Option<U> + 'a,
         K: Clone,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
         let filter_map_f = q!({
             let orig = f;
             move |(k, v)| {
@@ -1155,7 +1168,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 out.map(|o| (k, o))
             }
         })
-        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&self.location)
+        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&OperatorContext::<L, B>::new(&self.location))
         .into();
 
         KeyedStream::new(
@@ -1254,19 +1267,20 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn flat_map_ordered<U, I, F>(
         self,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
     ) -> KeyedStream<K, U, L, B, O, R>
     where
         I: IntoIterator<Item = U>,
         F: Fn(V) -> I + 'a,
         K: Clone,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
         let flat_map_f = q!({
             let orig = f;
             move |(k, v)| orig(v).into_iter().map(move |u| (Clone::clone(&k), u))
         })
-        .splice_fn1_ctx::<(K, V), _>(&self.location)
+        .splice_fn1_ctx::<(K, V), _>(&OperatorContext::<L, B>::new(&self.location))
         .into();
 
         KeyedStream::new(
@@ -1311,19 +1325,20 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn flat_map_unordered<U, I, F>(
         self,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
     ) -> KeyedStream<K, U, L, B, NoOrder, R>
     where
         I: IntoIterator<Item = U>,
         F: Fn(V) -> I + 'a,
         K: Clone,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
         let flat_map_f = q!({
             let orig = f;
             move |(k, v)| orig(v).into_iter().map(move |u| (Clone::clone(&k), u))
         })
-        .splice_fn1_ctx::<(K, V), _>(&self.location)
+        .splice_fn1_ctx::<(K, V), _>(&OperatorContext::<L, B>::new(&self.location))
         .into();
 
         KeyedStream::new(
@@ -1436,16 +1451,17 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> Self
+    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy) -> Self
     where
         F: Fn(&V) + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_borrow_ctx(ctx));
         let inspect_f = q!({
             let orig = f;
             move |t: &(_, _)| orig(&t.1)
         })
-        .splice_fn1_borrow_ctx::<(K, V), ()>(&self.location)
+        .splice_fn1_borrow_ctx::<(K, V), ()>(&OperatorContext::<L, B>::new(&self.location))
         .into();
 
         KeyedStream::new(
@@ -1483,11 +1499,13 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn inspect_with_key<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Self
+    pub fn inspect_with_key<F>(self, f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>>) -> Self
     where
         F: Fn(&(K, V)) + 'a,
     {
-        let inspect_f = f.splice_fn1_borrow_ctx::<(K, V), ()>(&self.location).into();
+        let inspect_f = f
+            .splice_fn1_borrow_ctx::<(K, V), ()>(&OperatorContext::<L, B>::new(&self.location))
+            .into();
 
         KeyedStream::new(
             self.location.clone(),
@@ -1521,7 +1539,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// If the function returns `None`, the stream is terminated and no more elements are processed.
     ///
     /// The `init` and `f` closures may capture bounded singletons, optionals, or streams by
-    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref).
+    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref), as long as the
+    /// referenced collection has the same location and boundedness as this stream.
     ///
     /// # Example
     /// ```rust
@@ -1553,8 +1572,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn scan<A, U, I, F>(
         self,
-        init: impl IntoQuotedMut<'a, I, L> + Copy,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
     ) -> KeyedStream<K, U, L, B, TotalOrder, ExactlyOnce>
     where
         O: IsOrdered,
@@ -1563,7 +1582,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> Option<U> + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn2_borrow_mut_ctx(ctx));
         self.make_totally_ordered().make_exactly_once().generator(
             init,
             q!({
@@ -1590,7 +1610,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// should be processed.
     ///
     /// The `init` and `f` closures may capture bounded singletons, optionals, or streams by
-    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref).
+    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref), as long as the
+    /// referenced collection has the same location and boundedness as this stream.
     ///
     /// # Example
     /// ```rust
@@ -1632,8 +1653,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn generator<A, U, I, F>(
         self,
-        init: impl IntoQuotedMut<'a, I, L> + Copy,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
     ) -> KeyedStream<K, U, L, B, TotalOrder, ExactlyOnce>
     where
         O: IsOrdered,
@@ -1642,14 +1663,18 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> Generate<U> + 'a,
     {
-        let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
+        let init: ManualExpr<I, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| init.splice_fn0_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn2_borrow_mut_ctx(ctx));
 
         let this = self.make_totally_ordered().make_exactly_once();
 
         let scan_init = crate::handoff_ref::with_ref_capture(|| {
             q!(|| HashMap::new())
-                .splice_fn0_ctx::<HashMap<K, Option<A>>>(&this.location)
+                .splice_fn0_ctx::<HashMap<K, Option<A>>>(&OperatorContext::<L, B>::new(
+                    &this.location,
+                ))
                 .into()
         });
         let scan_f = crate::handoff_ref::with_ref_capture(|| {
@@ -1672,7 +1697,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                     Some(None)
                 }
             })
-            .splice_fn2_borrow_mut_ctx::<HashMap<K, Option<A>>, (K, V), _>(&this.location)
+            .splice_fn2_borrow_mut_ctx::<HashMap<K, Option<A>>, (K, V), _>(
+                &OperatorContext::<L, B>::new(&this.location),
+            )
             .into()
         });
 
@@ -1690,7 +1717,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         };
 
         let flatten_f = q!(|d| d)
-            .splice_fn1_ctx::<Option<(K, U)>, _>(&this.location)
+            .splice_fn1_ctx::<Option<(K, U)>, _>(&OperatorContext::<L, B>::new(&this.location))
             .into();
         let flatten_node = HydroNode::FlatMap {
             f: flatten_f,
@@ -1745,8 +1772,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn fold_early_stop<A, I, F>(
         self,
-        init: impl IntoQuotedMut<'a, I, L> + Copy,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
     ) -> KeyedSingleton<K, A, L, B::WithBoundedValue>
     where
         O: IsOrdered,
@@ -1755,8 +1782,10 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> bool + 'a,
     {
-        let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
+        let init: ManualExpr<I, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| init.splice_fn0_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn2_borrow_mut_ctx(ctx));
         let out_without_bound_cast = self.generator(
             q!(move || Some(init())),
             q!(move |key_state, v| {
@@ -1851,7 +1880,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn limit(
         self,
-        n: impl QuotedWithContext<'a, usize, L> + Copy + 'a,
+        n: impl QuotedWithContext<'a, usize, OperatorContext<L, B>> + Copy + 'a,
     ) -> KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>
     where
         O: IsOrdered,
@@ -2006,8 +2035,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn fold<A, I: Fn() -> A + 'a, F: 'a + Fn(&mut A, V), C, Idemp, M, B2: KeyedSingletonBound>(
         self,
-        init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp, M>>,
+        init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>>,
+        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<C, Idemp, M>>,
     ) -> KeyedSingleton<K, A, L, B2>
     where
         K: Eq + Hash,
@@ -2015,8 +2044,11 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         Idemp: ValidIdempotenceFor<R>,
         B: ApplyMonotoneKeyedStream<M, B2>,
     {
-        let init = init.splice_fn0_ctx(&self.location).into();
-        let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
+        let init = init
+            .splice_fn0_ctx(&OperatorContext::<L, B>::new(&self.location))
+            .into();
+        let (comb, proof) =
+            comb.splice_fn2_borrow_mut_ctx_props(&OperatorContext::<L, B>::new(&self.location));
         proof.register_proof(&comb);
 
         let retried = self
@@ -2072,14 +2104,15 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn reduce<F: Fn(&mut V, V) + 'a, C, Idemp>(
         self,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
+        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<C, Idemp>>,
     ) -> KeyedSingleton<K, V, L, B>
     where
         K: Eq + Hash,
         C: ValidCommutativityFor<O>,
         Idemp: ValidIdempotenceFor<R>,
     {
-        let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
+        let (f, proof) =
+            comb.splice_fn2_borrow_mut_ctx_props(&OperatorContext::<L, B>::new(&self.location));
         proof.register_proof(&f);
 
         let ordered = self
@@ -2130,7 +2163,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     pub fn reduce_watermark<O2, F, C, Idemp>(
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
+        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<C, Idemp>>,
     ) -> KeyedSingleton<K, V, L, B>
     where
         K: Eq + Hash,
@@ -2141,7 +2174,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     {
         let other: Optional<O2, Tick<L::Root>, Bounded> = other.into();
         check_matching_location(&self.location.root(), other.location.outer());
-        let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
+        let (f, proof) =
+            comb.splice_fn2_borrow_mut_ctx_props(&OperatorContext::<L, B>::new(&self.location));
         proof.register_proof(&f);
 
         let ordered = self

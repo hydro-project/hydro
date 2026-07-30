@@ -1,3 +1,4 @@
+use hydro_lang::live_collections::OperatorContext;
 use hydro_lang::live_collections::keyed_stream::KeyedStream;
 use hydro_lang::live_collections::sliced::sliced;
 use hydro_lang::live_collections::stream::{ExactlyOnce, NoOrder, TotalOrder};
@@ -39,7 +40,12 @@ pub struct Logger {}
 fn hash_demux<'a, F, N: NetworkFor<Request>>(
     requests: Stream<Request, Cluster<'a, GossipServer>, Unbounded, TotalOrder>,
     to: &Cluster<'a, GossipServer>,
-    route: impl IntoQuotedMut<'a, F, Tick<Cluster<'a, GossipServer>>, StreamMapFuncAlgebra>,
+    route: impl IntoQuotedMut<
+        'a,
+        F,
+        OperatorContext<Tick<Cluster<'a, GossipServer>>, Bounded>,
+        StreamMapFuncAlgebra,
+    >,
     via: N,
     nondet_membership: NonDet,
 ) -> (
@@ -86,7 +92,12 @@ where
 fn gossip_server<'a, F>(
     requests: Stream<Request, Cluster<'a, GossipServer>, Unbounded, TotalOrder>,
     servers: &Cluster<'a, GossipServer>,
-    route: impl IntoQuotedMut<'a, F, Tick<Cluster<'a, GossipServer>>, StreamMapFuncAlgebra>,
+    route: impl IntoQuotedMut<
+        'a,
+        F,
+        OperatorContext<Tick<Cluster<'a, GossipServer>>, Bounded>,
+        StreamMapFuncAlgebra,
+    >,
 ) -> (
     Stream<Response, Cluster<'a, GossipServer>, Unbounded, NoOrder>,
     Stream<Vec<MemberId<GossipServer>>, Cluster<'a, GossipServer>, Unbounded>,

@@ -258,18 +258,18 @@ pub struct ClusterSelfId<'a> {
     _private: &'a (),
 }
 
-impl<'a, L> FreeVariableWithContextWithProps<L, ()> for ClusterSelfId<'a>
+impl<'a, Ctx> FreeVariableWithContextWithProps<Ctx, ()> for ClusterSelfId<'a>
 where
-    L: Location<'a>,
-    <L as Location<'a>>::Root: IsCluster,
+    Ctx: crate::live_collections::ContextWithLocation<'a>,
+    <Ctx::Location as Location<'a>>::Root: IsCluster,
 {
-    type O = MemberId<<<L as Location<'a>>::Root as IsCluster>::Tag>;
+    type O = MemberId<<<Ctx::Location as Location<'a>>::Root as IsCluster>::Tag>;
 
-    fn to_tokens(self, ctx: &L) -> (QuoteTokens, ())
+    fn to_tokens(self, ctx: &Ctx) -> (QuoteTokens, ())
     where
         Self: Sized,
     {
-        let LocationId::Cluster(cluster_id) = ctx.root().id() else {
+        let LocationId::Cluster(cluster_id) = ctx.context_location().root().id() else {
             unreachable!()
         };
 
@@ -278,7 +278,8 @@ where
             Span::call_site(),
         );
         let root = get_this_crate();
-        let c_type: syn::Type = quote_type::<<<L as Location<'a>>::Root as IsCluster>::Tag>();
+        let c_type: syn::Type =
+            quote_type::<<<Ctx::Location as Location<'a>>::Root as IsCluster>::Tag>();
 
         (
             QuoteTokens {
@@ -292,12 +293,16 @@ where
     }
 }
 
-impl<'a, L>
-    QuotedWithContextWithProps<'a, MemberId<<<L as Location<'a>>::Root as IsCluster>::Tag>, L, ()>
-    for ClusterSelfId<'a>
+impl<'a, Ctx>
+    QuotedWithContextWithProps<
+        'a,
+        MemberId<<<Ctx::Location as Location<'a>>::Root as IsCluster>::Tag>,
+        Ctx,
+        (),
+    > for ClusterSelfId<'a>
 where
-    L: Location<'a>,
-    <L as Location<'a>>::Root: IsCluster,
+    Ctx: crate::live_collections::ContextWithLocation<'a>,
+    <Ctx::Location as Location<'a>>::Root: IsCluster,
 {
 }
 

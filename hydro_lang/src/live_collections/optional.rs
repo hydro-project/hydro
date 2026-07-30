@@ -8,6 +8,7 @@ use std::rc::Rc;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use syn::parse_quote;
 
+use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::singleton::Singleton;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
@@ -304,7 +305,10 @@ where
     /// closures. The handle resolves to `&Option<T>` at runtime.
     ///
     /// The optional must be bounded, otherwise reading it would be non-deterministic.
-    pub fn by_ref(&self) -> crate::handoff_ref::OptionalRef<'a, '_, T, L>
+    /// The handle can only be captured in closures passed to operators on collections at
+    /// the same location with **matching boundedness**; capturing it in a closure over an
+    /// unbounded collection is rejected at compile time.
+    pub fn by_ref(&self) -> crate::handoff_ref::OptionalRef<'a, '_, T, L, B>
     where
         B: IsBounded,
     {
@@ -313,7 +317,7 @@ where
 
     /// Returns a mutable reference handle to this optional that can be captured inside `q!()`
     /// closures. The handle resolves to `&mut Option<T>` at runtime.
-    pub fn by_mut(&self) -> crate::handoff_ref::OptionalMut<'a, '_, T, L>
+    pub fn by_mut(&self) -> crate::handoff_ref::OptionalMut<'a, '_, T, L, B>
     where
         B: IsBounded,
     {
@@ -400,11 +404,13 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B>
+    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>>) -> Optional<U, L, B>
     where
         F: Fn(T) -> U + 'a,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let f = f
+            .splice_fn1_ctx(&OperatorContext::<L, B>::new(&self.location))
+            .into();
         Optional::new(
             self.location.clone(),
             HydroNode::Map {
@@ -447,7 +453,7 @@ where
     /// ```
     pub fn flat_map_ordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, Bounded>, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Stream<U, L, Bounded, TotalOrder, ExactlyOnce>
     where
         B: IsBounded,
@@ -490,7 +496,7 @@ where
     /// ```
     pub fn flat_map_unordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, Bounded>, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Stream<U, L, Bounded, NoOrder, ExactlyOnce>
     where
         B: IsBounded,
@@ -599,11 +605,13 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B>
+    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>>) -> Optional<T, L, B>
     where
         F: Fn(&T) -> bool + 'a,
     {
-        let f = f.splice_fn1_borrow_ctx(&self.location).into();
+        let f = f
+            .splice_fn1_borrow_ctx(&OperatorContext::<L, B>::new(&self.location))
+            .into();
         Optional::new(
             self.location.clone(),
             HydroNode::Filter {
@@ -638,11 +646,16 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B>
+    pub fn filter_map<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>>,
+    ) -> Optional<U, L, B>
     where
         F: Fn(T) -> Option<U> + 'a,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let f = f
+            .splice_fn1_ctx(&OperatorContext::<L, B>::new(&self.location))
+            .into();
         Optional::new(
             self.location.clone(),
             HydroNode::FilterMap {
