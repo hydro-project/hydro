@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1785306633839,
+  "lastUpdate": 1785392609722,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -301332,6 +301332,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 210320,
             "range": "± 13417.51",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "82a7c9cba6b9c1273e49e1a2f70e7ac6f04a38f6",
+          "message": "feat(hydro_lang): deprecate unstyled `use(...)` in `sliced!`, add `batch` and `snapshot` styles (#3078)\n\nThe style-less `use(collection, nondet)` form in `sliced!` automatically\npicked between\nbatching (stream-like collections) and snapshotting (singleton-like\ncollections), which\nhid an important semantic distinction from developers. This change:\n\n- Adds explicit `use::batch(...)` for stream-like collections (`Stream`,\n`KeyedStream`,\nand `KeyedSingleton` with bounded values), backed by a new `Batch` style\nwrapper.\n- Adds explicit `use::snapshot(...)` for singleton-like collections\n(`Singleton`,\n`Optional`, and `KeyedSingleton` with asynchronously-updated values),\nbacked by a new\n  `Snapshot` style wrapper.\n- Marks the hidden `style::default` helper as `#[deprecated]`; because\nthe `sliced!`\nmacro re-spans the expansion onto the user's tokens via `copy_span!`,\nthe deprecation\n  warning surfaces directly on the user's `use(...)` statement.\n- Migrates all internal call sites in `hydro_lang`, `hydro_std`, and\n`hydro_test` to the\n  explicit styles.\n- Updates `sliced!` macro documentation to describe the explicit styles\nand note the\n  deprecation.\n- Updates the Docusaurus docs (quickstart tutorials, state-management,\ncorrectness,\nsimulation, atomic-collections, streaming-data pages): all embedded\n`getLines`\nsnippet assertions match the migrated sources, standalone examples use\nthe explicit\nstyles, and slice-hooks.md documents the `use::batch`/`use::snapshot`\nhooks along\n  with a deprecation note for the style-less form.\n- Bumps `stageleft`/`stageleft_tool` to 0.15.1, which fixes the\ndeprecation warning on\nthe generated `lib_pub.rs` re-export of the deprecated `default` style\nhelper.\n- Regenerates the derived template prompt\n(`template/generate_prompts.py`) and stable\ninsta/trybuild snapshots affected by the migration (nightly snapshots\nare left\n  untouched; CI auto-updates them).\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-07-29T22:35:29Z",
+          "url": "https://github.com/hydro-project/hydro/commit/82a7c9cba6b9c1273e49e1a2f70e7ac6f04a38f6"
+        },
+        "date": 1785392609671,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311212,
+            "range": "± 5341",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6534291,
+            "range": "± 37760",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6877398,
+            "range": "± 9146",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 44813,
+            "range": "± 2589",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 8507027,
+            "range": "± 32922",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 993130,
+            "range": "± 7527",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1066296,
+            "range": "± 7732",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 46899609,
+            "range": "± 1072205",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6822562,
+            "range": "± 27169",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 13347533,
+            "range": "± 1425276",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6535776,
+            "range": "± 7703",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6998559,
+            "range": "± 13804",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 42177768,
+            "range": "± 171387",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 4028,
+            "range": "± 68",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 23771,
+            "range": "± 228",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4122,
+            "range": "± 49",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6756,
+            "range": "± 123",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 373668,
+            "range": "± 1393",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55426,
+            "range": "± 542",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 44541,
+            "range": "± 402",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 17152,
+            "range": "± 296",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6997,
+            "range": "± 95",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7297,
+            "range": "± 84",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 73099,
+            "range": "± 496",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 80095,
+            "range": "± 622",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7361,
+            "range": "± 169",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15438,
+            "range": "± 109",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 61487,
+            "range": "± 2803",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7520,
+            "range": "± 103",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 198040,
+            "range": "± 3014.37",
             "unit": "ops/s"
           }
         ]
