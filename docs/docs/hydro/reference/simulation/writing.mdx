@@ -48,7 +48,7 @@ The `exhaustive()` method explores *all* possible executions. This is feasible w
 
 Sometimes an assertion only makes sense for a subset of executions—for example, when the property you want to check only holds if certain messages happened to arrive in the same batch. The `hydro_lang::sim::continue_if!` macro lets you express such preconditions: if the condition is false, the current simulation instance is stopped and discarded (it is *not* a test failure), and exploration moves on to the next execution. This is the same concept as `assume` in verification tools and property-based testing libraries (e.g. `kani::assume` or proptest's `prop_assume!`).
 
-```rust,no_run
+```rust
 # use hydro_lang::prelude::*;
 # use hydro_lang::sim::continue_if;
 # let mut flow = FlowBuilder::new();
@@ -60,7 +60,7 @@ Sometimes an assertion only makes sense for a subset of executions—for example
 #     .count()
 #     .all_ticks()
 #     .sim_output();
-flow.sim().fuzz(async || {
+flow.sim().exhaustive(async || {
     in_send.send_many([1, 2]);
     let batch_sizes: Vec<usize> = out_recv.collect().await;
     // only check executions where both messages landed in the first batch
