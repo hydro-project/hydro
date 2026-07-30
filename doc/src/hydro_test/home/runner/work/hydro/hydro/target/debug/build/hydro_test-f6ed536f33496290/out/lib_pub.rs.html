@@ -1156,5 +1156,20 @@
 <a href=#1156 id=1156 data-nosnippet>1156</a>#[cfg(doctest)]
 <a href=#1157 id=1157 data-nosnippet>1157</a></span><span class="kw">pub mod </span>docs {
 <a href=#1158 id=1158 data-nosnippet>1158</a>    <span class="macro">include_mdtests::include_mdtests!</span>(<span class="string">"docs/docs/hydro/**/*.md*"</span>);
-<a href=#1159 id=1159 data-nosnippet>1159</a>}
+<a href=#1159 id=1159 data-nosnippet>1159</a>    <span class="doccomment">/// Registers a global constructor in the merged doctest binary so that `IS_TEST` mode is
+<a href=#1160 id=1160 data-nosnippet>1160</a>    /// enabled for all doctests (required for doctests that compile Hydro programs, e.g. sim
+<a href=#1161 id=1161 data-nosnippet>1161</a>    /// tests). This works because edition-2024 doctests are combined into a single binary, so
+<a href=#1162 id=1162 data-nosnippet>1162</a>    /// the `ctor` below runs before every doctest in this crate.
+<a href=#1163 id=1163 data-nosnippet>1163</a>    ///
+<a href=#1164 id=1164 data-nosnippet>1164</a>    /// ```rust
+<a href=#1165 id=1165 data-nosnippet>1165</a>    /// hydro_lang::macro_support::ctor::declarative::ctor!(
+<a href=#1166 id=1166 data-nosnippet>1166</a>    ///     #[ctor(unsafe)]
+<a href=#1167 id=1167 data-nosnippet>1167</a>    ///     fn init() {
+<a href=#1168 id=1168 data-nosnippet>1168</a>    ///         hydro_lang::compile::init_test();
+<a href=#1169 id=1169 data-nosnippet>1169</a>    ///     }
+<a href=#1170 id=1170 data-nosnippet>1170</a>    /// );
+<a href=#1171 id=1171 data-nosnippet>1171</a>    /// fn main() {}
+<a href=#1172 id=1172 data-nosnippet>1172</a>    /// ```
+<a href=#1173 id=1173 data-nosnippet>1173</a>    </span><span class="kw">pub mod </span>doctest_init {}
+<a href=#1174 id=1174 data-nosnippet>1174</a>}
 </code></pre></div></section></main></body></html>
