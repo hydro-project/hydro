@@ -575,7 +575,7 @@ fn compile_sim_graph_trybuild(
     let mut dfir_into_code_erased = |g: &DfirGraph| -> syn::Expr {
         let inner = dfir_into_code(g);
         syn::parse_quote! {
-            __root_dfir_rs::scheduled::context::Dfir::into_erased(#inner)
+            __root_dfir_rs::runtime::context::Dfir::into_erased(#inner)
         }
     };
 
@@ -713,8 +713,8 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            Vec<(&'static str, Option<u32>, __root_dfir_rs::runtime::context::DfirErased)>,
+            Vec<(&'static str, Option<u32>, __root_dfir_rs::runtime::context::DfirErased)>,
             #root::sim::runtime::Hooks<&'static str>,
             #root::sim::runtime::InlineHooks<&'static str>,
         ) {
@@ -783,8 +783,8 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            Vec<(&'static str, Option<u32>, __root_dfir_rs::runtime::context::DfirErased)>,
+            Vec<(&'static str, Option<u32>, __root_dfir_rs::runtime::context::DfirErased)>,
             #root::sim::runtime::Hooks<&'static str>,
             #root::sim::runtime::InlineHooks<&'static str>,
         ) {

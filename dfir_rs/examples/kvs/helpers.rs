@@ -1,5 +1,5 @@
 use dfir_lang::graph::{WriteConfig, WriteGraphType};
-use dfir_rs::scheduled::context::{Dfir, TickClosure};
+use dfir_rs::runtime::context::{Dfir, TickClosure};
 use regex::Regex;
 
 use crate::protocol::KvsMessage;

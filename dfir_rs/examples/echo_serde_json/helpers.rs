@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use dfir_rs::lang::graph::{WriteConfig, WriteGraphType};
-use dfir_rs::scheduled::context::{Dfir, TickClosure};
+use dfir_rs::runtime::context::{Dfir, TickClosure};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_util::codec::LinesCodecError;

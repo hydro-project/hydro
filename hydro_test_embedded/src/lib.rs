@@ -83,7 +83,7 @@ mod tests {
     use hydro_lang::location::member_id::TaglessMemberId;
 
     async fn run_flow(
-        flow: &mut dfir_rs::scheduled::context::Dfir<impl dfir_rs::scheduled::context::TickClosure>,
+        flow: &mut dfir_rs::runtime::context::Dfir<impl dfir_rs::runtime::context::TickClosure>,
     ) {
         tokio::task::LocalSet::new()
             .run_until(flow.run_tick())

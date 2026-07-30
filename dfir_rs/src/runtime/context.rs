@@ -16,7 +16,7 @@ use dfir_lang::diagnostic::{Diagnostic, Diagnostics, SerdeSpan};
 use dfir_lang::graph::DfirGraph;
 
 use super::metrics::{DfirMetrics, DfirMetricsIntervals};
-use crate::scheduled::ticks::TickInstant;
+use crate::runtime::ticks::TickInstant;
 
 /// Coordinates waking between [`Context`] (inside the tick closure) and [`Dfir`]
 /// (the external runner). Shared via `Arc` between both.
@@ -131,7 +131,7 @@ impl Context {
     /// Called by the generated tick closure at the end of each tick.
     #[doc(hidden)]
     pub fn __end_tick(&mut self) {
-        self.current_tick += crate::scheduled::ticks::TickDuration::SINGLE_TICK;
+        self.current_tick += crate::runtime::ticks::TickDuration::SINGLE_TICK;
     }
 }
 

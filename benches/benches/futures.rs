@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::context::{Dfir, TickClosure};
+use dfir_rs::runtime::context::{Dfir, TickClosure};
 
 const NUM_ELEMS: u32 = 3000;
 

@@ -77,9 +77,9 @@ fn dfir_syntax_internal(
         Err(diagnostics) => (
             quote! {
                 {
-                    #root::scheduled::context::Dfir::new(
-                        #root::scheduled::context::NullTickClosure,
-                        <#root::scheduled::context::Context as ::std::default::Default>::default(),
+                    #root::runtime::context::Dfir::new(
+                        #root::runtime::context::NullTickClosure,
+                        <#root::runtime::context::Context as ::std::default::Default>::default(),
                         None,
                         None,
                     )

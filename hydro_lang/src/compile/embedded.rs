@@ -2,7 +2,7 @@
 //!
 //! Instead of compiling each location into a standalone binary, this backend generates
 //! a Rust source file containing one function per location. Each function returns a
-//! `dfir_rs::scheduled::graph::Dfir` that can be manually driven by the caller.
+//! `dfir_rs::runtime::graph::Dfir` that can be manually driven by the caller.
 //!
 //! This is useful when you want full control over where and how the projected DFIR
 //! code runs (e.g. embedding it into an existing application).
@@ -533,7 +533,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
     ///
     /// Each generated function has the signature:
     /// ```ignore
-    /// pub fn <fn_name>() -> dfir_rs::scheduled::graph::Dfir<'static>
+    /// pub fn <fn_name>() -> dfir_rs::runtime::graph::Dfir<'static>
     /// ```
     /// where `fn_name` is the `String` passed to `with_process` / `with_cluster`.
     ///
@@ -946,7 +946,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 .chain(net_out_params)
                 .collect();
 
-            let ret_type: syn::Type = syn::parse_quote! { #root::runtime_support::dfir_rs::scheduled::context::Dfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a> };
+            let ret_type: syn::Type = syn::parse_quote! { #root::runtime_support::dfir_rs::runtime::context::Dfir<impl #root::runtime_support::dfir_rs::runtime::context::TickClosure + 'a> };
 
             let func = if !extra_fn_generics.is_empty() {
                 syn::parse_quote! {

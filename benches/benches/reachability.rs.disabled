@@ -6,7 +6,7 @@ use std::sync::LazyLock;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::graph_ext::GraphExt;
+use dfir_rs::runtime::graph_ext::GraphExt;
 use differential_dataflow::input::Input;
 use differential_dataflow::operators::{Iterate, Join, Threshold};
 
@@ -119,8 +119,8 @@ fn benchmark_differential(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
-    use dfir_rs::scheduled::graph::Dfir;
-    use dfir_rs::scheduled::handoff::{Iter, VecHandoff};
+    use dfir_rs::runtime::graph::Dfir;
+    use dfir_rs::runtime::handoff::{Iter, VecHandoff};
     use dfir_rs::{var_args, var_expr};
 
     let edges = &*EDGES;
@@ -217,8 +217,8 @@ fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow(c: &mut Criterion) {
-    use dfir_rs::scheduled::graph::Dfir;
-    use dfir_rs::scheduled::handoff::VecHandoff;
+    use dfir_rs::runtime::graph::Dfir;
+    use dfir_rs::runtime::handoff::VecHandoff;
     use dfir_rs::sinktools::{SinkBuild, ToSinkBuild, for_each};
     use dfir_rs::{var_args, var_expr};
 

@@ -31,7 +31,7 @@ use std::task::ready;
 
 use bytes::Bytes;
 use colored::Colorize;
-use dfir_rs::scheduled::context::DfirErased;
+use dfir_rs::runtime::context::DfirErased;
 use futures::{Stream, StreamExt};
 use libloading::Library;
 use serde::Serialize;

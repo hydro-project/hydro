@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 /// `TickInstant` instances can be subtracted to calculate the `TickDuration` between them.
 ///
 /// ```
-/// # use dfir_rs::scheduled::ticks::{TickDuration, TickInstant};
+/// # use dfir_rs::runtime::ticks::{TickDuration, TickInstant};
 ///
 /// assert_eq!(TickInstant(1) - TickInstant(0), TickDuration::SINGLE_TICK);
 /// assert_eq!(TickInstant(0) - TickInstant(1), -TickDuration::SINGLE_TICK);
@@ -30,13 +30,13 @@ pub struct TickInstant(pub u64);
 /// `TickDuration` instances can be negative to allow for calculation of `TickInstant` instances in the past.
 ///
 /// ```
-/// # use dfir_rs::scheduled::ticks::{TickDuration, TickInstant};
+/// # use dfir_rs::runtime::ticks::{TickDuration, TickInstant};
 /// assert_eq!(TickInstant(1) + TickDuration::new(-1), TickInstant(0))
 /// ```
 /// `TickDuration` instances can be added/subtracted to/from other `TickDuration` instances
 ///
 /// ```
-/// # use dfir_rs::scheduled::ticks::TickDuration;
+/// # use dfir_rs::runtime::ticks::TickDuration;
 /// assert_eq!(TickDuration::ZERO + TickDuration::ZERO, TickDuration::ZERO);
 /// assert_eq!(
 ///     TickDuration::ZERO + TickDuration::SINGLE_TICK,
@@ -81,7 +81,7 @@ impl TickDuration {
     /// the same `TickInstant` or `TickDuration`.
     ///
     /// ```
-    /// # use dfir_rs::scheduled::ticks::{TickDuration, TickInstant};
+    /// # use dfir_rs::runtime::ticks::{TickDuration, TickInstant};
     /// # use dfir_lang::graph::ops::DelayType::Tick;
     /// let ticks = TickInstant::new(100);
     /// assert_eq!(ticks + TickDuration::ZERO, ticks);
@@ -98,7 +98,7 @@ impl TickDuration {
     /// It is the duration between two consecutive `TickInstant` instances.
     ///
     /// ```
-    /// # use dfir_rs::scheduled::ticks::{TickDuration, TickInstant};
+    /// # use dfir_rs::runtime::ticks::{TickDuration, TickInstant};
     /// assert_eq!(TickInstant(0) + TickDuration::SINGLE_TICK, TickInstant(1))
     /// ```
     pub const SINGLE_TICK: Self = TickDuration { ticks: 1 };

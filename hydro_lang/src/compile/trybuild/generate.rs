@@ -300,7 +300,7 @@ pub fn compile_graph_trybuild(
                 fn __hydro_runtime<'a>(
                     __hydro_lang_maelstrom_meta: &'a #root::__staged::deploy::maelstrom::deploy_runtime_maelstrom::MaelstromMeta
                 )
-                    -> #root::runtime_support::dfir_rs::scheduled::context::Dfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a>
+                    -> #root::runtime_support::dfir_rs::runtime::context::Dfir<impl #root::runtime_support::dfir_rs::runtime::context::TickClosure + 'a>
                 {
                     #( #extra_stmts )*
 
