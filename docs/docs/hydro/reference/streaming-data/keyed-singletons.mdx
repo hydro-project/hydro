@@ -182,3 +182,9 @@ Inside a slice, batched keyed singletons also unlock relational APIs like `get`,
 The batch-of-new-entries semantics applies to `BoundedValue` keyed singletons. Slicing an `Unbounded` keyed singleton (mutable per-key state) instead reveals a **snapshot** of the current mapping; see [Keyed State](../state-management/keyed-state.md).
 
 :::
+
+## Related API
+
+- [`KeyedSingleton`](rust:hydro_lang::live_collections::KeyedSingleton)
+- Keyed singleton bounds: [`BoundedValue`](rust:hydro_lang::live_collections::keyed_singleton::BoundedValue), [`MonotonicValue`](rust:hydro_lang::live_collections::keyed_singleton::MonotonicValue), and [`MonotonicKeys`](rust:hydro_lang::live_collections::keyed_singleton::MonotonicKeys)
+- [Live Collections API overview](../api/index.md)

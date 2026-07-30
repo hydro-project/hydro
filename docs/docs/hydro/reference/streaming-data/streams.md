@@ -155,3 +155,10 @@ Use `assume_ordering` sparingly. Once you cast a stream to `TotalOrder`, the typ
 
 ## Bounded and Unbounded Streams
 Like all live collections, streams have a type parameter that tracks whether their contents are final (`Bounded`) or may continue to grow asynchronously (`Unbounded`). A stream created from a fixed in-memory collection with `source_iter` is bounded, while streams of network requests are unbounded. Several APIs — such as those that need to observe the _end_ of the stream — are only available on bounded streams. See [Bounded and Unbounded Types](../correctness/bounded-unbounded.md) for how boundedness is tracked and converted.
+
+## Related API
+
+- [`Stream`](rust:hydro_lang::live_collections::Stream)
+- Ordering markers: [`TotalOrder`](rust:hydro_lang::live_collections::stream::TotalOrder) and [`NoOrder`](rust:hydro_lang::live_collections::stream::NoOrder)
+- Retry markers: [`ExactlyOnce`](rust:hydro_lang::live_collections::stream::ExactlyOnce) and [`AtLeastOnce`](rust:hydro_lang::live_collections::stream::AtLeastOnce)
+- [Live Collections API overview](../api/index.md)

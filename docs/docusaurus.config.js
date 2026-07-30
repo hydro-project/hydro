@@ -164,16 +164,21 @@ const config = {
               {
                 to: "docs/hydro/reference",
                 activeBasePath: "docs/hydro/reference",
-                label: "Hydro",
+                label: "Hydro Guide",
+              },
+              {
+                to: "docs/hydro/reference/api",
+                activeBasePath: "docs/hydro/reference/api",
+                label: "Live Collections API",
+              },
+              {
+                href: "pathname:///rustdoc/hydro_lang/",
+                label: "Full Rust API",
               },
               {
                 type: "docSidebar",
                 sidebarId: "dfirSidebar",
                 label: "DFIR",
-              },
-              {
-                href: "pathname:///rustdoc/hydro_lang/",
-                label: "Rustdoc",
               },
             ],
           },
