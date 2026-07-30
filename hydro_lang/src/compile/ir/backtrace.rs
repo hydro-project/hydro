@@ -195,6 +195,6 @@ mod tests {
         let backtrace = Backtrace::get_backtrace(0);
         let elements = backtrace.elements();
 
-        hydro_build_utils::assert_debug_snapshot!(elements.collect::<Vec<_>>());
+        hydro_build_utils::assert_debug_snapshot_unfiltered!(elements.collect::<Vec<_>>());
     }
 }
