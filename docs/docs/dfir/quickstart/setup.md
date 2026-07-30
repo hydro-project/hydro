@@ -47,8 +47,7 @@ cargo install cargo-generate
 
 ## VS Code Setup
 
-We recommend using VS Code with the `rust-analyzer` extension (and NOT the
-`Rust` extension).
+We recommend using VS Code with the `rust-analyzer` extension.
 
 ## Setting up a DFIR Project
 The easiest way to get started with DFIR is to begin with a template project.
@@ -114,16 +113,12 @@ Hello!
 
 This documentation will assume you are using the template project, but some
 Rust experts may want to get started with DFIR by cloning and working in the
-repository directly.
-You should fork the repository if you want to push your
-changes.
+Hydro repository directly.
 
 To clone the repo, run:
 ```bash
 git clone git@github.com:hydro-project/hydro.git
 ```
-DFIR requires nightly Rust, but the repo is already configured for it via
-`rust-toolchain.toml`.
 
 You can then open the repo in VS Code or IDE of your choice. In VS Code, `rust-analyzer`
 will provide inline type and error messages, code completion, etc.
@@ -135,8 +130,7 @@ The simplest example is the
 the simplest example with networking is the
 [`echo server`](https://github.com/hydro-project/hydro/blob/main/dfir_rs/examples/echo_server/main.rs).
 
-The DFIR repository is set up as a [workspace](https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html),
+The Hydro repository is set up as a [workspace](https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html),
 i.e. a repo containing a bunch of separate packages, `dfir_rs` is just the
-main one. So if you want to work in a proper separate cargo package, you can
-create one and add it into the [root `Cargo.toml`](https://github.com/hydro-project/hydro/blob/main/Cargo.toml),
-much like the [provided template](https://github.com/hydro-project/hydro/tree/main/template/dfir#readme).
+main one for DFIR. So if you want to work in a proper separate cargo package, you can
+create one and add it into the [root `Cargo.toml`](https://github.com/hydro-project/hydro/blob/main/Cargo.toml).

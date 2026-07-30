@@ -2,6 +2,7 @@
 sidebar_position: 5
 ---
 import CodeBlock from '@theme/CodeBlock';
+import Mermaid from '@theme/Mermaid';
 import exampleCode from '!!raw-loader!../../../../dfir_rs/examples/example_4_neighbors.rs';
 import exampleOutput from '!!raw-loader!../../../../dfir_rs/examples/snapshots/example_4_neighbors.snap';
 import { getLines, extractOutput, extractMermaid } from '../../../src/util';
@@ -118,7 +119,7 @@ the structure of the graph, and print it to stdout.
 You can copy that text and paste it into the [Mermaid Live Editor](https://mermaid-js.github.io/mermaid-live-editor/)
 to see the graph, which should look as follows:
 
-<mermaid value={extractMermaid(exampleOutput)}></mermaid>
+<Mermaid value={extractMermaid(exampleOutput)}></Mermaid>
 
 You may be wondering why the nodes in the graph have different colors (and shapes, for readers who cannot distinguish
 colors easily). The answer has nothing to do with the meaning of the program, only with the way that DFIR compiles
