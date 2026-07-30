@@ -48,9 +48,12 @@ pub enum TaglessMemberId {
         /// The raw numeric identifier for this cluster member.
         raw_id: u32,
     },
-    /// A Docker container-based member ID, used with the `docker_runtime` feature.
-    #[cfg(feature = "docker_runtime")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "docker_runtime")))]
+    /// A Docker container-based member ID, used with the `docker_runtime` / `ecs_runtime` feature.
+    #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(feature = "docker_runtime", feature = "ecs_runtime")))
+    )]
     Docker {
         /// The Docker container name identifying this cluster member.
         container_name: String,
@@ -111,10 +114,10 @@ impl TaglessMemberId {
     /// Creates a [`TaglessMemberId`] from a Docker container name.
     ///
     /// # Panics
-    /// Panics if the `docker_runtime` feature is not enabled.
+    /// Panics if the `docker_runtime` / `ecs_runtime` feature is not enabled.
     pub fn from_container_name(_container_name: impl Into<String>) -> Self {
         assert_feature! {
-            #[cfg(feature = "docker_runtime")]
+            #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
             Self::Docker {
                 container_name: _container_name.into(),
             }
@@ -124,11 +127,11 @@ impl TaglessMemberId {
     /// Returns the Docker container name from this member identifier.
     ///
     /// # Panics
-    /// Panics if this is not the `Docker` variant or if the `docker_runtime`
+    /// Panics if this is not the `Docker` variant or if the `docker_runtime` / `ecs_runtime`
     /// feature is not enabled.
     pub fn get_container_name(&self) -> &str {
         assert_feature! {
-            #[cfg(feature = "docker_runtime")]
+            #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
             #[expect(clippy::allow_attributes, reason = "Depends on features.")]
             #[allow(
                 irrefutable_let_patterns,
@@ -186,7 +189,7 @@ impl Display for TaglessMemberId {
                 feature = "embedded_runtime"
             ))]
             TaglessMemberId::Legacy { raw_id } => write!(_f, "{}", raw_id),
-            #[cfg(feature = "docker_runtime")]
+            #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
             TaglessMemberId::Docker { container_name } => write!(_f, "{}", container_name),
             #[cfg(feature = "maelstrom_runtime")]
             TaglessMemberId::Maelstrom { node_id } => write!(_f, "{}", node_id),
