@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1785392609722,
+  "lastUpdate": 1785480386575,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -301534,6 +301534,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 198040,
             "range": "± 3014.37",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Aanand Kainth",
+            "username": "akainth015",
+            "email": "aakainth@amazon.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "02a84f75af8208bdf0b6069c59ad91814b840d2b",
+          "message": "feat(hydro_test): add Raft implementation with sim tests and deploy example (#3082)\n\nThis is a fairly thorough, but unoptimized implementation of the Raft\nconsensus protocol for strong consistency.\n\nIt contains simulation tests for a few tricky cases, as well as a\nbroader simulation test to validate consistency over the replicas across\nthe fuzzed orderings.\n\n## Tests\n\n### Deterministic step-harness tests\n\nDrive `raft_step` directly through a scripted multi-member harness,\npinning the paper's safety arguments to concrete scenarios:\n\n* `leader_replicates_and_commits_requests` — the happy path: real\nelection, append, replicate, majority commit, commit index propagation.\n* `non_leader_redirects_requests` — requests landing on a follower come\nback on `redirected`, with hint `None` before a leader is known and the\nleader's identity after heartbeats teach it.\n* `leader_without_quorum_commits_nothing` — a 1-of-3 leader can never\ncommit; catches an off-by-one quorum of `n / 2`.\n* `stale_log_candidate_is_refused` — the §5.4.1 election restriction\n(voters refuse less up-to-date logs); this check's absence was once\nobserved as a real linearizability violation under simulated partitions.\n* `leader_steps_down_on_higher_term_reply` — §5.1 deposition via reply\ntraffic.\n* `vote_and_ack_decisions_interlock` — a vote request and an\n`AppendEntries` arriving in the same batch must never combine into\n\"acked the entry AND endorsed a candidate missing it\", in either\nprocessing order.\n* `new_leader_overwrites_conflicting_uncommitted_entries` — §5.3 (figure\n7) divergent-log reconciliation: conflicting uncommitted entries are\ntruncated, committed prefixes are preserved.\n* `previous_term_entries_commit_only_transitively` — §5.4.2 (figure 8):\na leader never commits a previous-term entry by counting replicas, only\ntransitively beneath a committed entry of its own term.\n\n### Simulation tests (fuzzed orderings)\n\nCompile the actual dataflow and let the simulator explore schedules:\n\n* `even_cluster_simultaneous_candidates_exactly_one_leader_per_term` —\ntwo timers fire at once in a 4-member cluster; every explored execution\nmust elect at most one leader per term (catches double voting and bogus\nquorums on an even split) while a re-fired uncontested timer must\neventually win (rejects trivially-safe implementations that elect\nnobody).\n* `heartbeats_converge_leader_views` — heartbeat rounds converge every\nmember's `(term, leader)` view, without term inflation, including after\ndeposition by a new leader.\n* `composed_raft_elects_replicates_and_suppresses` — end to end through\nthe public `raft` API only: real election, commit on every member,\nredirect with a learned leader hint, and election-timer suppression\nwhile heartbeats flow.\n* `concurrent_elections_never_fork_the_committed_log` — regression net\nfor a eal cross-tick race from the pre-unification design (vote and ack\nstate in separate ticks let a committed entry be truncated); asserts\npairwise prefix-consistency of all committed histories across fuzzed\nschedules.\n* `fully_concurrent_run_never_forks_the_committed_log` — the maximal\nversion: every input for the whole run is sent up front with no\nintermediate quiescence, so the fuzzer owns the complete schedule. Only\nthe core safety contract is checked at the end: contiguous per-member\ncommit indexes and pairwise prefix-consistent histories. Deeper\nexploration via coverage-guided fuzzing under `cargo-sim`.\n\n### Snapshot test\n\n* `raft_ir` — insta snapshot of the optimized HydroDeploy IR plus the\nreplica's DFIR mermaid graph, guarding against unintended dataflow\nregressions (same convention as `paxos_ir`, `two_pc_ir`).\n\n---------\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-07-31T00:14:08Z",
+          "url": "https://github.com/hydro-project/hydro/commit/02a84f75af8208bdf0b6069c59ad91814b840d2b"
+        },
+        "date": 1785480386516,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311295,
+            "range": "± 6845",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6532581,
+            "range": "± 7575",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6876496,
+            "range": "± 17448",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 44405,
+            "range": "± 1952",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 8499256,
+            "range": "± 54435",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 991829,
+            "range": "± 20597",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1066105,
+            "range": "± 6151",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 46574307,
+            "range": "± 1085539",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6818647,
+            "range": "± 10001",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 13273337,
+            "range": "± 1439568",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6533928,
+            "range": "± 47702",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6991440,
+            "range": "± 15756",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 42258552,
+            "range": "± 730638",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 4118,
+            "range": "± 115",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22605,
+            "range": "± 208",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4133,
+            "range": "± 68",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6667,
+            "range": "± 61",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 373030,
+            "range": "± 1972",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55433,
+            "range": "± 486",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 44519,
+            "range": "± 415",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 17068,
+            "range": "± 219",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6995,
+            "range": "± 128",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7316,
+            "range": "± 131",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72239,
+            "range": "± 525",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 80068,
+            "range": "± 550",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7344,
+            "range": "± 156",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15465,
+            "range": "± 124",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 61158,
+            "range": "± 2441",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7524,
+            "range": "± 154",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 198640,
+            "range": "± 8574.52",
             "unit": "ops/s"
           }
         ]
