@@ -267,14 +267,14 @@
 <a href=#267 id=267 data-nosnippet>267</a><span class="attr">#[cfg(test)]
 <a href=#268 id=268 data-nosnippet>268</a></span><span class="kw">mod </span>test {
 <a href=#269 id=269 data-nosnippet>269</a>    <span class="kw">use </span>futures::StreamExt;
-<a href=#270 id=270 data-nosnippet>270</a>    <span class="kw">use </span>rand::Rng;
+<a href=#270 id=270 data-nosnippet>270</a>    <span class="kw">use </span>rand::RngExt;
 <a href=#271 id=271 data-nosnippet>271</a>    <span class="kw">use </span>tokio::task::LocalSet;
 <a href=#272 id=272 data-nosnippet>272</a>    <span class="kw">use </span>web_time::Duration;
 <a href=#273 id=273 data-nosnippet>273</a>
 <a href=#274 id=274 data-nosnippet>274</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 <a href=#275 id=275 data-nosnippet>275</a>
 <a href=#276 id=276 data-nosnippet>276</a>    <span class="kw">async fn </span>delay(n: u64) {
-<a href=#277 id=277 data-nosnippet>277</a>        <span class="kw">let </span>millis = rand::thread_rng().gen_range(<span class="number">0</span>..n);
+<a href=#277 id=277 data-nosnippet>277</a>        <span class="kw">let </span>millis = rand::rng().random_range(<span class="number">0</span>..n);
 <a href=#278 id=278 data-nosnippet>278</a>        tokio::time::sleep(Duration::from_millis(millis)).<span class="kw">await</span>;
 <a href=#279 id=279 data-nosnippet>279</a>    }
 <a href=#280 id=280 data-nosnippet>280</a>
