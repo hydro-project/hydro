@@ -71,6 +71,10 @@ name = "paxos"
 required-features = ["tokio"]
 
 [[example]]
+name = "raft"
+required-features = ["tokio"]
+
+[[example]]
 name = "paxos_log"
 required-features = ["tokio"]
 
