@@ -19,7 +19,7 @@ stageleft_macro_entrypoint = ["hydro_lang/stageleft_macro_entrypoint"]
 hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.4", default-features = false }
 hydro_std = { path = "../hydro_std", version = "^0.17.0-alpha.4", default-features = false }
 stageleft.workspace = true
-rand = "0.8.0"
+rand = "0.9.2"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0"
 colored = "3.0.0"
