@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["raft","raft_server"],"struct":["LeaderView","LogEntry","RaftConfig","RaftOutputs"]};
