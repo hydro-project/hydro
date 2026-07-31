@@ -367,8 +367,22 @@ impl CompiledSim {
                         test_name: None,
                     })
                     .with_iterations(self.unit_test_fuzz_iterations)
-                    .run(move || {
-                        let instance = instantiator();
+                    .run_with_replay(move |is_replay| {
+                        let mut instance = instantiator();
+
+                        if instance.log {
+                            eprintln!(
+                                "{}",
+                                "\n==== New Simulation Instance ===="
+                                    .color(colored::Color::Cyan)
+                                    .bold()
+                            );
+                        }
+
+                        if is_replay {
+                            instance.log = true;
+                        }
+
                         tokio::runtime::Builder::new_current_thread()
                             .build()
                             .unwrap()
@@ -1318,13 +1332,17 @@ impl<W: std::io::Write> LaunchedSim<W> {
                             write.write_str(" ")
                         };
 
-                        let mut tick_decision_writer = indenter::indented(&mut self.log)
-                            .with_format(indenter::Format::Custom {
-                                inserter: &mut asterisk_indenter,
+                        let mut tick_decision_writer =
+                            (!matches!(self.log, LogKind::Null)).then(|| {
+                                indenter::indented(&mut self.log).with_format(
+                                    indenter::Format::Custom {
+                                        inserter: &mut asterisk_indenter,
+                                    },
+                                )
                             });
 
                         let hooks = self.hooks.get_mut(&(removed.0.clone(), removed.1)).unwrap();
-                        run_hooks(&mut tick_decision_writer, hooks);
+                        run_hooks(tick_decision_writer.as_mut(), hooks);
 
                         let run_tick_future = removed.2.run_tick();
                         if let Some(inline_hooks) =
@@ -1347,7 +1365,11 @@ impl<W: std::io::Write> LaunchedSim<W> {
                                                         hook.autonomous_decision(driver);
                                                     }
 
-                                                    hook.release_decision(&mut tick_decision_writer);
+                                                    hook.release_decision(
+                                                        tick_decision_writer
+                                                            .as_mut()
+                                                            .map(|w| w as &mut dyn std::fmt::Write),
+                                                    );
                                                 }
                                             }
                                         });
@@ -1370,7 +1392,9 @@ impl<W: std::io::Write> LaunchedSim<W> {
                             .get_mut(&self.possibly_ready_observation[next_obs])
                             .unwrap_or(&mut default_hooks);
 
-                        run_hooks(&mut self.log, hooks);
+                        let log_writer =
+                            (!matches!(self.log, LogKind::Null)).then_some(&mut self.log);
+                        run_hooks(log_writer, hooks);
                     }
                 }
             }
@@ -1378,7 +1402,10 @@ impl<W: std::io::Write> LaunchedSim<W> {
     }
 }
 
-fn run_hooks(tick_decision_writer: &mut impl std::fmt::Write, hooks: &mut Vec<Box<dyn SimHook>>) {
+fn run_hooks<W: std::fmt::Write>(
+    mut tick_decision_writer: Option<&mut W>,
+    hooks: &mut Vec<Box<dyn SimHook>>,
+) {
     let mut remaining_decision_count = hooks.len();
     let mut made_nontrivial_decision = false;
 
@@ -1406,7 +1433,11 @@ fn run_hooks(tick_decision_writer: &mut impl std::fmt::Write, hooks: &mut Vec<Bo
                 remaining_decision_count -= 1;
             }
 
-            hook.release_decision(tick_decision_writer);
+            hook.release_decision(
+                tick_decision_writer
+                    .as_deref_mut()
+                    .map(|w| w as &mut dyn std::fmt::Write),
+            );
         });
     });
 }

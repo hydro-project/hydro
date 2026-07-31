@@ -66,7 +66,11 @@ pub trait SimHook {
         driver: &mut Borrowed<'a>,
         force_nontrivial: bool,
     ) -> bool;
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write);
+
+    /// Release the decision that was made, logging to `log_writer`. A `None`
+    /// writer means logging is disabled, allowing the hook to skip formatting
+    /// entirely.
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>);
 
     /// Whether this hook is ready to participate in a tick. Returns false if the
     /// hook has never received any input and cannot produce a value (e.g. a
@@ -89,8 +93,10 @@ pub trait SimInlineHook {
     /// Make an autonomous decision.
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>);
 
-    /// Release the decision that was made, logging to `log_writer`.
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write);
+    /// Release the decision that was made, logging to `log_writer`. A `None`
+    /// writer means logging is disabled, allowing the hook to skip formatting
+    /// entirely.
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>);
 }
 
 struct ManualDebug<'a, T>(&'a T, fn(&T) -> Option<String>);
@@ -206,38 +212,40 @@ impl<T> SimHook for StreamHook<T, TotalOrder> {
         count > 0
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            let (batch_location, line, caret_indent) = self.batch_location;
-            let note_str = if to_release.is_empty() {
-                "^ releasing no items".to_owned()
-            } else {
-                format!(
-                    "^ releasing items: {:?}",
-                    TruncatedVecDebug(
-                        RefCell::new(Some(to_release.iter())),
-                        8,
-                        self.format_item_debug
+            if let Some(log_writer) = log_writer {
+                let (batch_location, line, caret_indent) = self.batch_location;
+                let note_str = if to_release.is_empty() {
+                    "^ releasing no items".to_owned()
+                } else {
+                    format!(
+                        "^ releasing items: {:?}",
+                        TruncatedVecDebug(
+                            RefCell::new(Some(to_release.iter())),
+                            8,
+                            self.format_item_debug
+                        )
                     )
-                )
-            };
+                };
 
-            let _ = writeln!(
-                log_writer,
-                "{} {}",
-                "-->".color(colored::Color::Blue),
-                batch_location
-            );
+                let _ = writeln!(
+                    log_writer,
+                    "{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
 
-            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
 
-            let _ = writeln!(
-                log_writer,
-                " {}{}{}",
-                "|".color(colored::Color::Blue),
-                caret_indent,
-                note_str.color(colored::Color::Green)
-            );
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
 
             for item in to_release {
                 self.output.send(item).unwrap();
@@ -290,38 +298,40 @@ impl<T> SimHook for StreamHook<T, NoOrder> {
         was_nontrivial
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            let (batch_location, line, caret_indent) = self.batch_location;
-            let note_str = if to_release.is_empty() {
-                "^ releasing no items".to_owned()
-            } else {
-                format!(
-                    "^ releasing unordered items: {:?}",
-                    TruncatedVecDebug(
-                        RefCell::new(Some(to_release.iter())),
-                        8,
-                        self.format_item_debug
+            if let Some(log_writer) = log_writer {
+                let (batch_location, line, caret_indent) = self.batch_location;
+                let note_str = if to_release.is_empty() {
+                    "^ releasing no items".to_owned()
+                } else {
+                    format!(
+                        "^ releasing unordered items: {:?}",
+                        TruncatedVecDebug(
+                            RefCell::new(Some(to_release.iter())),
+                            8,
+                            self.format_item_debug
+                        )
                     )
-                )
-            };
+                };
 
-            let _ = writeln!(
-                log_writer,
-                "{} {}",
-                "-->".color(colored::Color::Blue),
-                batch_location
-            );
+                let _ = writeln!(
+                    log_writer,
+                    "{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
 
-            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
 
-            let _ = writeln!(
-                log_writer,
-                " {}{}{}",
-                "|".color(colored::Color::Blue),
-                caret_indent,
-                note_str.color(colored::Color::Green)
-            );
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
 
             for item in to_release {
                 self.output.send(item).unwrap();
@@ -389,38 +399,40 @@ impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, TotalOrder> {
         !self.to_release.as_ref().unwrap().is_empty()
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            let (batch_location, line, caret_indent) = self.batch_location;
-            let note_str = if to_release.is_empty() {
-                "^ releasing no items".to_owned()
-            } else {
-                format!(
-                    "^ releasing items: {:?}",
-                    TruncatedVecDebug(
-                        RefCell::new(Some(to_release.iter())),
-                        8,
-                        self.format_item_debug
+            if let Some(log_writer) = log_writer {
+                let (batch_location, line, caret_indent) = self.batch_location;
+                let note_str = if to_release.is_empty() {
+                    "^ releasing no items".to_owned()
+                } else {
+                    format!(
+                        "^ releasing items: {:?}",
+                        TruncatedVecDebug(
+                            RefCell::new(Some(to_release.iter())),
+                            8,
+                            self.format_item_debug
+                        )
                     )
-                )
-            };
+                };
 
-            let _ = writeln!(
-                log_writer,
-                "{} {}",
-                "-->".color(colored::Color::Blue),
-                batch_location
-            );
+                let _ = writeln!(
+                    log_writer,
+                    "{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
 
-            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
 
-            let _ = writeln!(
-                log_writer,
-                " {}{}{}",
-                "|".color(colored::Color::Blue),
-                caret_indent,
-                note_str.color(colored::Color::Green)
-            );
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
 
             for item in to_release {
                 self.output.send(item).unwrap();
@@ -486,38 +498,40 @@ impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, NoOrder> {
         !self.to_release.as_ref().unwrap().is_empty()
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            let (batch_location, line, caret_indent) = self.batch_location;
-            let note_str = if to_release.is_empty() {
-                "^ releasing no items".to_owned()
-            } else {
-                format!(
-                    "^ releasing unordered items: {:?}",
-                    TruncatedVecDebug(
-                        RefCell::new(Some(to_release.iter())),
-                        8,
-                        self.format_item_debug
+            if let Some(log_writer) = log_writer {
+                let (batch_location, line, caret_indent) = self.batch_location;
+                let note_str = if to_release.is_empty() {
+                    "^ releasing no items".to_owned()
+                } else {
+                    format!(
+                        "^ releasing unordered items: {:?}",
+                        TruncatedVecDebug(
+                            RefCell::new(Some(to_release.iter())),
+                            8,
+                            self.format_item_debug
+                        )
                     )
-                )
-            };
+                };
 
-            let _ = writeln!(
-                log_writer,
-                "{} {}",
-                "-->".color(colored::Color::Blue),
-                batch_location
-            );
+                let _ = writeln!(
+                    log_writer,
+                    "{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
 
-            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
 
-            let _ = writeln!(
-                log_writer,
-                " {}{}{}",
-                "|".color(colored::Color::Blue),
-                caret_indent,
-                note_str.color(colored::Color::Green)
-            );
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
 
             for item in to_release {
                 self.output.send(item).unwrap();
@@ -605,50 +619,52 @@ impl<T: Clone> SimHook for SingletonHook<T> {
         }
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some((to_release, is_new)) = self.to_release.take() {
             self.last_released = Some(to_release.clone());
 
-            let (batch_location, line, caret_indent) = self.batch_location;
-            let note_str = if self.skipped_states.is_empty() {
-                if is_new {
-                    format!(
-                        "^ releasing snapshot: {:?}",
-                        ManualDebug(&to_release, self.format_item_debug)
-                    )
+            if let Some(log_writer) = log_writer {
+                let (batch_location, line, caret_indent) = self.batch_location;
+                let note_str = if self.skipped_states.is_empty() {
+                    if is_new {
+                        format!(
+                            "^ releasing snapshot: {:?}",
+                            ManualDebug(&to_release, self.format_item_debug)
+                        )
+                    } else {
+                        format!(
+                            "^ releasing unchanged snapshot: {:?}",
+                            ManualDebug(&to_release, self.format_item_debug)
+                        )
+                    }
                 } else {
                     format!(
-                        "^ releasing unchanged snapshot: {:?}",
-                        ManualDebug(&to_release, self.format_item_debug)
+                        "^ releasing snapshot: {:?} (skipping earlier states: {:?})",
+                        ManualDebug(&to_release, self.format_item_debug),
+                        self.skipped_states
+                            .iter()
+                            .map(|s| ManualDebug(s, self.format_item_debug))
+                            .collect::<Vec<_>>()
                     )
-                }
-            } else {
-                format!(
-                    "^ releasing snapshot: {:?} (skipping earlier states: {:?})",
-                    ManualDebug(&to_release, self.format_item_debug),
-                    self.skipped_states
-                        .iter()
-                        .map(|s| ManualDebug(s, self.format_item_debug))
-                        .collect::<Vec<_>>()
-                )
-            };
+                };
 
-            let _ = writeln!(
-                log_writer,
-                "{} {}",
-                "-->".color(colored::Color::Blue),
-                batch_location
-            );
+                let _ = writeln!(
+                    log_writer,
+                    "{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
 
-            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
 
-            let _ = writeln!(
-                log_writer,
-                " {}{}{}",
-                "|".color(colored::Color::Blue),
-                caret_indent,
-                note_str.color(colored::Color::Green)
-            );
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
 
             self.output.send(to_release).unwrap();
         } else {
@@ -711,30 +727,32 @@ impl<T> SimHook for PassthroughSingletonHook<T> {
         }
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            let (batch_location, line, caret_indent) = self.batch_location;
-            let note_str = format!(
-                "^ releasing snapshot: {:?}",
-                ManualDebug(&to_release, self.format_item_debug)
-            );
+            if let Some(log_writer) = log_writer {
+                let (batch_location, line, caret_indent) = self.batch_location;
+                let note_str = format!(
+                    "^ releasing snapshot: {:?}",
+                    ManualDebug(&to_release, self.format_item_debug)
+                );
 
-            let _ = writeln!(
-                log_writer,
-                "{} {}",
-                "-->".color(colored::Color::Blue),
-                batch_location
-            );
+                let _ = writeln!(
+                    log_writer,
+                    "{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
 
-            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
 
-            let _ = writeln!(
-                log_writer,
-                " {}{}{}",
-                "|".color(colored::Color::Blue),
-                caret_indent,
-                note_str.color(colored::Color::Green)
-            );
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
 
             self.output.send(to_release).unwrap();
         } else {
@@ -851,51 +869,53 @@ impl<K: Hash + Eq + Clone, V: Clone> SimHook for KeyedSingletonHook<K, V> {
         any_nontrivial
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            let (batch_location, line, caret_indent) = self.batch_location;
-            let note_str = if to_release.is_empty() {
-                "^ releasing no items".to_owned()
-            } else {
-                let mut mapping_text = String::new();
-                for (key, value, is_new) in &to_release {
-                    let entry_text = if *is_new {
-                        format!(
-                            "{:?}: {:?}",
-                            ManualDebug(key, self.format_key_debug),
-                            ManualDebug(value, self.format_value_debug)
-                        )
-                    } else {
-                        format!(
-                            "{:?}: {:?} (unchanged)",
-                            ManualDebug(key, self.format_key_debug),
-                            ManualDebug(value, self.format_value_debug)
-                        )
-                    };
-                    if !mapping_text.is_empty() {
-                        mapping_text.push_str(", ");
+            if let Some(log_writer) = log_writer {
+                let (batch_location, line, caret_indent) = self.batch_location;
+                let note_str = if to_release.is_empty() {
+                    "^ releasing no items".to_owned()
+                } else {
+                    let mut mapping_text = String::new();
+                    for (key, value, is_new) in &to_release {
+                        let entry_text = if *is_new {
+                            format!(
+                                "{:?}: {:?}",
+                                ManualDebug(key, self.format_key_debug),
+                                ManualDebug(value, self.format_value_debug)
+                            )
+                        } else {
+                            format!(
+                                "{:?}: {:?} (unchanged)",
+                                ManualDebug(key, self.format_key_debug),
+                                ManualDebug(value, self.format_value_debug)
+                            )
+                        };
+                        if !mapping_text.is_empty() {
+                            mapping_text.push_str(", ");
+                        }
+                        mapping_text.push_str(&entry_text);
                     }
-                    mapping_text.push_str(&entry_text);
-                }
-                format!("^ releasing items: {{ {} }}", mapping_text)
-            };
+                    format!("^ releasing items: {{ {} }}", mapping_text)
+                };
 
-            let _ = writeln!(
-                log_writer,
-                "{} {}",
-                "-->".color(colored::Color::Blue),
-                batch_location
-            );
+                let _ = writeln!(
+                    log_writer,
+                    "{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
 
-            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
 
-            let _ = writeln!(
-                log_writer,
-                " {}{}{}",
-                "|".color(colored::Color::Blue),
-                caret_indent,
-                note_str.color(colored::Color::Green)
-            );
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
 
             for (key, value, _) in to_release {
                 self.output.send((key, value)).unwrap();
@@ -953,9 +973,11 @@ impl<T> SimInlineHook for StreamOrderHook<T> {
         self.to_release = Some(inputs);
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            if !to_release.is_empty() {
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
                 let (batch_location, line, caret_indent) = self.batch_location;
                 let note_str = format!(
                     "^ observed non-deterministic order: {:?}",
@@ -1067,10 +1089,12 @@ impl<T> SimInlineHook for MergeOrderedHook<T> {
         self.release_sources = Some(sources);
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
             let sources = self.release_sources.take().unwrap();
-            if !to_release.is_empty() {
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
                 let (batch_location, line, caret_indent) = self.batch_location;
 
                 let labeled_iter =
@@ -1177,9 +1201,11 @@ impl<K: Hash + Eq + Clone, V> SimInlineHook for KeyedStreamOrderHook<K, V> {
         self.to_release = Some(out);
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            if !to_release.is_empty() {
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
                 let (batch_location, line, caret_indent) = self.batch_location;
                 let mut note_str = String::new();
                 for (key, values) in &to_release {
@@ -1304,9 +1330,11 @@ impl<K: Hash + Eq + Clone, V> SimInlineHook for PartiallyOrderedStreamHook<K, V>
         self.to_release = Some(out);
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            if !to_release.is_empty() {
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
                 let (batch_location, line, caret_indent) = self.batch_location;
                 let mut note_str = String::new();
                 for (key, value) in &to_release {
@@ -1408,9 +1436,11 @@ impl<T> SimHook for TopLevelStreamOrderHook<T> {
         was_nontrivial
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            if !to_release.is_empty() {
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
                 let (batch_location, line, caret_indent) = self.location;
                 let note_str = format!(
                     "^ observered non-deterministic order: {:?}",
@@ -1517,9 +1547,11 @@ impl<T> SimHook for TopLevelFoldHook<T> {
         true
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            if !to_release.is_empty() {
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
                 let (batch_location, line, caret_indent) = self.location;
                 let note_str = format!(
                     "^ fold input batch (permuted): {:?}",
@@ -1618,9 +1650,11 @@ impl<K: Hash + Eq + Clone, V> SimHook for TopLevelKeyedStreamOrderHook<K, V> {
         true
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            if !to_release.is_empty() {
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
                 let (batch_location, line, caret_indent) = self.location;
                 let note_str = format!(
                     "^ observed non-deterministic order: {:?}",
@@ -1714,9 +1748,11 @@ impl<K: Hash + Eq + Clone, V> SimHook for TopLevelPartiallyOrderedStreamHook<K, 
         true
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
-            if !to_release.is_empty() {
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
                 let (batch_location, line, caret_indent) = self.location;
                 let note_str = format!(
                     "^ observed partially-ordered interleaving: {:?}",
@@ -1815,10 +1851,12 @@ impl<T> SimHook for TopLevelMergeOrderedHook<T> {
         true
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
             let source = self.release_source.take();
-            if !to_release.is_empty() {
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
                 let (batch_location, line, caret_indent) = self.location;
                 let source_label = source.unwrap_or("?");
 
@@ -1964,10 +2002,12 @@ impl<K: Hash + Eq + Clone, V> SimInlineHook for KeyedMergeOrderedHook<K, V> {
         self.release_sources = Some(sources);
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
             let sources = self.release_sources.take().unwrap();
-            if !to_release.is_empty() {
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
                 let (batch_location, line, caret_indent) = self.batch_location;
 
                 let labeled_iter =
@@ -2103,10 +2143,12 @@ impl<K: Hash + Eq + Clone, V> SimHook for TopLevelKeyedMergeOrderedHook<K, V> {
         true
     }
 
-    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
         if let Some(to_release) = self.to_release.take() {
             let source = self.release_source.take();
-            if !to_release.is_empty() {
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
                 let (batch_location, line, caret_indent) = self.location;
                 let source_label = source.unwrap_or("?");
 
