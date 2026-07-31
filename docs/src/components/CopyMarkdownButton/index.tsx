@@ -1,37 +1,37 @@
 import React, {useCallback, useState} from 'react';
+import {useDoc} from '@docusaurus/plugin-content-docs/client';
+import useBaseUrl from '@docusaurus/useBaseUrl';
+import {rawSourceUrl} from './rawSourceUrl';
 import styles from './styles.module.css';
 
-export default function CopyMarkdownButton(): React.ReactElement {
-  const [copied, setCopied] = useState(false);
+type CopyState = 'idle' | 'copied' | 'error';
+
+export default function CopyMarkdownButton(): React.ReactElement | null {
+  const {metadata} = useDoc();
+  const rawUrl = useBaseUrl(rawSourceUrl(metadata.source) ?? '');
+  const [state, setState] = useState<CopyState>('idle');
 
   const handleCopy = useCallback(async () => {
-    // Find the article content on the page
-    const article = document.querySelector('article');
-    if (!article) return;
+    try {
+      const response = await fetch(rawUrl);
+      if (!response.ok) {
+        throw new Error(`Fetching ${rawUrl} failed: ${response.status}`);
+      }
+      const markdown = await response.text();
+      const source = `\n\n---\nSource: ${window.location.href}\n`;
+      await navigator.clipboard.writeText(markdown + source);
+      setState('copied');
+    } catch (error) {
+      console.error('Copy as Markdown failed:', error);
+      setState('error');
+    }
+    setTimeout(() => setState('idle'), 2000);
+  }, [rawUrl]);
 
-    // Lazily import to avoid SSR issues
-    const {htmlToMarkdown} = await import('./htmlToMarkdown');
-
-    // Clone to avoid modifying the DOM
-    const clone = article.cloneNode(true) as HTMLElement;
-
-    // Remove elements we don't want in the copied markdown
-    // Remove breadcrumbs, footer, pagination, mobile TOC
-    clone
-      .querySelectorAll('.theme-doc-breadcrumbs, [class*="breadcrumbs"], .theme-doc-footer, .pagination-nav, [class*="tocMobile"]')
-      .forEach(el => el.remove());
-    // Remove our own copy button if it somehow appears in the article
-    clone
-      .querySelectorAll('[aria-label="Copy page as Markdown"]')
-      .forEach(el => el.remove());
-
-    const markdown = htmlToMarkdown(clone.innerHTML);
-    const source = `\n\n---\nSource: ${window.location.href}\n`;
-    await navigator.clipboard.writeText(markdown + source);
-
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, []);
+  // Pages without a markdown source (e.g. generated pages) get no button
+  if (!rawSourceUrl(metadata.source)) {
+    return null;
+  }
 
   return (
     <button
@@ -39,12 +39,14 @@ export default function CopyMarkdownButton(): React.ReactElement {
       onClick={handleCopy}
       title="Copy page as Markdown"
       aria-label="Copy page as Markdown">
-      {copied ? (
+      {state === 'copied' && (
         <>
           <CheckIcon />
           <span className={styles.label}>Copied!</span>
         </>
-      ) : (
+      )}
+      {state === 'error' && <span className={styles.label}>Copy failed</span>}
+      {state === 'idle' && (
         <>
           <CopyIcon />
           <span className={styles.label}>Copy as Markdown</span>
