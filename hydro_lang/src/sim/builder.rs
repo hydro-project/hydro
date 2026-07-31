@@ -148,7 +148,7 @@ impl SimBuilder {
             Span::call_site(),
         );
         self.extra_stmts_global.push(syn::parse_quote! {
-            let #ident: ::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<u32, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<#elem_ty>>>> =
+            let #ident: ::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<u32, __root_dfir_rs::util::unsync::mpsc::Sender<#elem_ty>>>> =
                 ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::HashMap::new()));
         });
         self.channel_tables.insert(channel_id, ident.clone());
@@ -205,7 +205,7 @@ impl SimBuilder {
         let send_body: syn::Expr = syn::parse_quote! {
             {
                 if let Some(__s) = #send_table.borrow().get(&#dest_expr) {
-                    let _ = __s.send(#payload_expr);
+                    let _ = __s.try_send(#payload_expr);
                 }
             }
         };
@@ -251,7 +251,7 @@ impl SimBuilder {
         let register_stmt: syn::Stmt = syn::parse_quote! {
             let #channel_source = {
                 let (__channel_sink, __channel_source) =
-                    __root_dfir_rs::util::unbounded_channel::<#elem_ty>();
+                    __root_dfir_rs::util::unsync::mpsc::unbounded::<#elem_ty>();
                 #recv_table.borrow_mut().insert(#member_key_expr, __channel_sink);
                 __channel_source
             };
@@ -367,7 +367,7 @@ impl DfirBuilder for SimBuilder {
                         syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
                     self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
                     });
                     self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                         let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
@@ -431,7 +431,7 @@ impl DfirBuilder for SimBuilder {
                         syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
                     self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
                     });
                     self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                         let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(__root_dfir_rs::rustc_hash::FxHashMap::<_, ::std::collections::VecDeque<_>>::default()));
@@ -504,7 +504,7 @@ impl DfirBuilder for SimBuilder {
                     };
 
                     self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
                     });
                     self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                         let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
@@ -553,7 +553,7 @@ impl DfirBuilder for SimBuilder {
                         syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
                     self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
                     });
                     self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                         let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(__root_dfir_rs::rustc_hash::FxHashMap::<_, ::std::collections::VecDeque<_>>::default()));
@@ -630,12 +630,12 @@ impl DfirBuilder for SimBuilder {
                         syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
                     self.add_extra_stmt_internal(out_location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
                     });
 
                     self.get_dfir_mut(in_location).add_dfir(
                         parse_quote! {
-                            #in_ident -> for_each(|v| #hoff_send_ident.send(v).unwrap());
+                            #in_ident -> for_each(|v| #hoff_send_ident.try_send(v).unwrap());
                         },
                         None,
                         None,
@@ -771,11 +771,11 @@ impl DfirBuilder for SimBuilder {
                         syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
                     self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
                     });
 
                     self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
-                        let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident.into_inner()));
+                        let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident));
                     });
 
                     self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
@@ -844,11 +844,11 @@ impl DfirBuilder for SimBuilder {
                         syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
                     self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
                     });
 
                     self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
-                        let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident.into_inner()));
+                        let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident));
                     });
 
                     self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
@@ -918,11 +918,11 @@ impl DfirBuilder for SimBuilder {
                         syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
                     self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
                     });
 
                     self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
-                        let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident.into_inner()));
+                        let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident));
                     });
 
                     self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
@@ -1004,7 +1004,7 @@ impl DfirBuilder for SimBuilder {
                         syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
                     self.add_extra_stmt_internal(location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
                     });
                     self.add_extra_stmt_internal(location, syn::parse_quote! {
                         let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
@@ -1063,7 +1063,7 @@ impl DfirBuilder for SimBuilder {
                         syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
                     self.add_extra_stmt_internal(location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
                     });
                     self.add_extra_stmt_internal(location, syn::parse_quote! {
                         let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(__root_dfir_rs::rustc_hash::FxHashMap::default()));
@@ -1122,7 +1122,7 @@ impl DfirBuilder for SimBuilder {
                         syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
                     self.add_extra_stmt_internal(location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
                     });
                     self.add_extra_stmt_internal(location, syn::parse_quote! {
                         let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(__root_dfir_rs::rustc_hash::FxHashMap::default()));
@@ -1228,11 +1228,11 @@ impl DfirBuilder for SimBuilder {
                 syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
             self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
-                let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
             });
 
             self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
-                let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident.into_inner()));
+                let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident));
             });
 
             self.add_extra_stmt_internal(
@@ -1338,7 +1338,7 @@ impl DfirBuilder for SimBuilder {
                 syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
             self.add_extra_stmt_internal(location, syn::parse_quote! {
-                let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
             });
 
             if is_keyed {
@@ -1495,13 +1495,13 @@ impl DfirBuilder for SimBuilder {
         match (from, to) {
             (LocationId::Process(_), LocationId::Process(_)) => {
                 self.extra_stmts_global.push(syn::parse_quote! {
-                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<#payload>();
+                    let (#sink, #source) = __root_dfir_rs::util::unsync::mpsc::unbounded::<#payload>();
                 });
 
                 if let Some(serialize_pipeline) = serialize {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> map(#serialize_pipeline) -> for_each(|v| #sink.send(v).unwrap());
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|v| #sink.try_send(v).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -1509,7 +1509,7 @@ impl DfirBuilder for SimBuilder {
                 } else {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> for_each(|v| #sink.send(v).unwrap());
+                            #input_ident -> for_each(|v| #sink.try_send(v).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -1536,7 +1536,7 @@ impl DfirBuilder for SimBuilder {
             }
             (LocationId::Cluster(_), LocationId::Process(_)) => {
                 self.extra_stmts_global.push(syn::parse_quote! {
-                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<(#root::__staged::location::TaglessMemberId, #payload)>();
+                    let (#sink, #source) = __root_dfir_rs::util::unsync::mpsc::unbounded::<(#root::__staged::location::TaglessMemberId, #payload)>();
                 });
 
                 self.extra_stmts_cluster
@@ -1549,7 +1549,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(serialize_pipeline) = serialize {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> map(#serialize_pipeline) -> for_each(|v| #sink.send((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|v| #sink.try_send((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -1557,7 +1557,7 @@ impl DfirBuilder for SimBuilder {
                 } else {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> for_each(|v| #sink.send((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
+                            #input_ident -> for_each(|v| #sink.try_send((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -1588,7 +1588,7 @@ impl DfirBuilder for SimBuilder {
                     Span::call_site(),
                 );
                 self.extra_stmts_global.push(syn::parse_quote! {
-                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<#payload>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
+                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::util::unsync::mpsc::Sender<#payload>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
                 });
 
                 self.extra_stmts_global.push(syn::parse_quote! {
@@ -1600,7 +1600,7 @@ impl DfirBuilder for SimBuilder {
                     .or_default()
                     .push(syn::parse_quote! {
                         let #source = {
-                            let (__sink, __source) = __root_dfir_rs::util::unbounded_channel::<#payload>();
+                            let (__sink, __source) = __root_dfir_rs::util::unsync::mpsc::unbounded::<#payload>();
                             #sink_writer.borrow_mut().push(__sink);
                             __source
                         };
@@ -1609,7 +1609,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(serialize_pipeline) = serialize {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> map(#serialize_pipeline) -> for_each(|(target_member_id, v)| (#sink.borrow())[#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].send(v).unwrap());
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|(target_member_id, v)| (#sink.borrow())[#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].try_send(v).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -1617,7 +1617,7 @@ impl DfirBuilder for SimBuilder {
                 } else {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> for_each(|(target_member_id, v)| (#sink.borrow())[#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].send(v).unwrap());
+                            #input_ident -> for_each(|(target_member_id, v)| (#sink.borrow())[#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].try_send(v).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -1648,7 +1648,7 @@ impl DfirBuilder for SimBuilder {
                     Span::call_site(),
                 );
                 self.extra_stmts_global.push(syn::parse_quote! {
-                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<(#root::__staged::location::TaglessMemberId, #payload)>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
+                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::util::unsync::mpsc::Sender<(#root::__staged::location::TaglessMemberId, #payload)>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
                 });
 
                 self.extra_stmts_global.push(syn::parse_quote! {
@@ -1667,7 +1667,7 @@ impl DfirBuilder for SimBuilder {
                     .or_default()
                     .push(syn::parse_quote! {
                         let #source = {
-                            let (__sink, __source) = __root_dfir_rs::util::unbounded_channel::<(#root::__staged::location::TaglessMemberId, #payload)>();
+                            let (__sink, __source) = __root_dfir_rs::util::unsync::mpsc::unbounded::<(#root::__staged::location::TaglessMemberId, #payload)>();
                             #sink_writer.borrow_mut().push(__sink);
                             __source
                         };
@@ -1676,7 +1676,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(serialize_pipeline) = serialize {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> map(#serialize_pipeline) -> for_each(|(target_member_id, v)| (#sink.borrow())[#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].send((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|(target_member_id, v)| (#sink.borrow())[#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].try_send((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -1684,7 +1684,7 @@ impl DfirBuilder for SimBuilder {
                 } else {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> for_each(|(target_member_id, v)| (#sink.borrow())[#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].send((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
+                            #input_ident -> for_each(|(target_member_id, v)| (#sink.borrow())[#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].try_send((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -1764,7 +1764,7 @@ impl DfirBuilder for SimBuilder {
         if let Some(serialize_pipeline) = serialize {
             self.get_dfir_mut(on).add_dfir(
                 parse_quote! {
-                    #input_ident -> map(#serialize_pipeline) -> for_each(|v| #grabbed_ident.send(v).unwrap());
+                    #input_ident -> map(#serialize_pipeline) -> for_each(|v| #grabbed_ident.try_send(v).unwrap());
                 },
                 None,
                 Some(&format!("send{}", tag_id)),
@@ -1772,7 +1772,7 @@ impl DfirBuilder for SimBuilder {
         } else {
             self.get_dfir_mut(on).add_dfir(
                 parse_quote! {
-                    #input_ident -> for_each(|v| #grabbed_ident.send(v).unwrap());
+                    #input_ident -> for_each(|v| #grabbed_ident.try_send(v).unwrap());
                 },
                 None,
                 Some(&format!("send{}", tag_id)),
@@ -1816,11 +1816,11 @@ impl DfirBuilder for SimBuilder {
                 syn::Ident::new(&format!("__fold_hook_out_{hoff_id}"), Span::call_site());
 
             self.add_extra_stmt_internal(tick_location.root(), syn::parse_quote! {
-                let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
             });
 
             self.add_extra_stmt_internal(tick_location.root(), syn::parse_quote! {
-                let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident.into_inner()));
+                let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident));
             });
 
             self.add_extra_stmt_internal(
@@ -1899,7 +1899,7 @@ impl DfirBuilder for SimBuilder {
         let out_ident = syn::Ident::new(&format!("__fold_hook_out_{hoff_id}"), Span::call_site());
 
         self.add_extra_stmt_internal(location, syn::parse_quote! {
-            let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+            let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
         });
         self.add_extra_stmt_internal(location, syn::parse_quote! {
             let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));

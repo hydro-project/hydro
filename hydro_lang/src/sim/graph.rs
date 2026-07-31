@@ -328,7 +328,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         let ident = syn::Ident::new("__hydro_external_in", Span::call_site());
         let p1_port_usize = p1_port.0;
         syn::parse_quote!({
-            let (__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
+            let (__sender, __receiver) = __root_dfir_rs::util::unsync::mpsc::unbounded::<__root_dfir_rs::bytes::Bytes>();
             #ident.insert(#p1_port_usize, __sender);
             __receiver
         })
@@ -355,8 +355,8 @@ impl<'a> Deploy<'a> for SimDeploy {
         let ident = syn::Ident::new("__hydro_external_out", Span::call_site());
         let p2_port_usize = p2_port.0;
         syn::parse_quote!({
-            let (__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
-            #ident.insert(#p2_port_usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream::new(__receiver.into_inner()));
+            let (__sender, __receiver) = __root_dfir_rs::util::unsync::mpsc::unbounded::<__root_dfir_rs::bytes::Bytes>();
+            #ident.insert(#p2_port_usize, __receiver);
             __sender
         })
     }
@@ -373,7 +373,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         let ident = syn::Ident::new("__hydro_cluster_external_in", Span::call_site());
         let p1_port_usize = p1_port.0;
         syn::parse_quote!({
-            let (__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
+            let (__sender, __receiver) = __root_dfir_rs::util::unsync::mpsc::unbounded::<__root_dfir_rs::bytes::Bytes>();
             #ident.entry(#p1_port_usize).or_insert_with(::std::collections::HashMap::new).insert(__current_cluster_id, __sender);
             __receiver
         })
@@ -399,8 +399,8 @@ impl<'a> Deploy<'a> for SimDeploy {
         let ident = syn::Ident::new("__hydro_cluster_external_out", Span::call_site());
         let p2_port_usize = p2_port.0;
         syn::parse_quote!({
-            let (__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
-            #ident.entry(#p2_port_usize).or_insert_with(::std::collections::HashMap::new).insert(__current_cluster_id, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream::new(__receiver.into_inner()));
+            let (__sender, __receiver) = __root_dfir_rs::util::unsync::mpsc::unbounded::<__root_dfir_rs::bytes::Bytes>();
+            #ident.entry(#p2_port_usize).or_insert_with(::std::collections::HashMap::new).insert(__current_cluster_id, __receiver);
             __sender
         })
     }
@@ -706,10 +706,10 @@ fn compile_sim_graph_trybuild(
         /// TODO(mingwei): enforce/check this, somehow
         #[allow(unused)]
         fn __hydro_runtime_core<'a>(
-            __hydro_external_out: &mut ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>,
-            __hydro_external_in: &mut ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
-            __hydro_cluster_external_out: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>>,
-            __hydro_cluster_external_in: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>>,
+            __hydro_external_out: &mut ::std::collections::HashMap<usize, __root_dfir_rs::util::unsync::mpsc::Receiver<__root_dfir_rs::bytes::Bytes>>,
+            __hydro_external_in: &mut ::std::collections::HashMap<usize, __root_dfir_rs::util::unsync::mpsc::Sender<__root_dfir_rs::bytes::Bytes>>,
+            __hydro_cluster_external_out: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::util::unsync::mpsc::Receiver<__root_dfir_rs::bytes::Bytes>>>,
+            __hydro_cluster_external_in: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::util::unsync::mpsc::Sender<__root_dfir_rs::bytes::Bytes>>>,
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
@@ -776,10 +776,10 @@ fn compile_sim_graph_trybuild(
         #[unsafe(no_mangle)]
         unsafe extern "Rust" fn __hydro_runtime(
             should_color: bool,
-            __hydro_external_out: &mut ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>,
-            __hydro_external_in: &mut ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
-            __hydro_cluster_external_out: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>>,
-            __hydro_cluster_external_in: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>>,
+            __hydro_external_out: &mut ::std::collections::HashMap<usize, __root_dfir_rs::util::unsync::mpsc::Receiver<__root_dfir_rs::bytes::Bytes>>,
+            __hydro_external_in: &mut ::std::collections::HashMap<usize, __root_dfir_rs::util::unsync::mpsc::Sender<__root_dfir_rs::bytes::Bytes>>,
+            __hydro_cluster_external_out: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::util::unsync::mpsc::Receiver<__root_dfir_rs::bytes::Bytes>>>,
+            __hydro_cluster_external_in: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::util::unsync::mpsc::Sender<__root_dfir_rs::bytes::Bytes>>>,
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
