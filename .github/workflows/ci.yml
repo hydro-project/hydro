@@ -77,8 +77,6 @@ jobs:
     timeout-minutes: 90
     needs: pre_job
     runs-on: ${{ matrix.os }}
-    permissions:
-      issues: write
     env:
       RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-nightly' && 'nightly' || '' }}
     strategy:
@@ -164,12 +162,70 @@ jobs:
           __CARGO_DEFAULT_LIB_METADATA: "1"
         run: cargo test --no-fail-fast --doc
 
-      # Nightly snapshot update logic
-      - name: Check for snapshot changes (nightly only)
+      # Nightly snapshot update logic: each test flavor packages its snapshot changes and test
+      # outcomes as an artifact. The `nightly-snapshot-pr` job below combines the changes from all
+      # flavors into a single PR, so the PR's CI runs with the full set of updated snapshots.
+      # (Separate per-flavor PRs would each fail CI, since each would be missing the other's changes.)
+      - name: Package snapshot changes and test outcomes (nightly only)
         if: matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && matrix.os == 'ubuntu-latest'
-        id: check_snapshot_changes
         run: |
-          if git diff --quiet; then
+          mkdir -p "$RUNNER_TEMP/nightly-snapshots"
+          # Stage everything so new (untracked) snapshot files are included in the patch.
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No snapshot changes detected"
+          else
+            echo "Snapshot changes detected"
+            git diff --cached --binary > "$RUNNER_TEMP/nightly-snapshots/changes-${{ matrix.test_flavor }}.patch"
+          fi
+          cat > "$RUNNER_TEMP/nightly-snapshots/outcomes-${{ matrix.test_flavor }}.json" <<EOF
+          {
+            "test_flavor": "${{ matrix.test_flavor }}",
+            "nextest_outcome": "${{ steps.nextest.outcome }}",
+            "doctest_outcome": "${{ steps.doctests.outcome }}"
+          }
+          EOF
+
+      - name: Upload nightly snapshot artifact
+        if: matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nightly-snapshots-${{ matrix.test_flavor }}
+          path: ${{ runner.temp }}/nightly-snapshots/
+          if-no-files-found: error
+
+  nightly-snapshot-pr:
+    name: Create combined nightly snapshot update PR
+    # Use always() so this still runs if some `test` matrix legs failed (e.g. the stable legs);
+    # the nightly legs use continue-on-error for the test steps themselves.
+    if: ${{ always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+    timeout-minutes: 20
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Download nightly snapshot artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: nightly-snapshots-*
+          path: ${{ runner.temp }}/nightly-snapshots
+          merge-multiple: true
+
+      - name: Apply snapshot changes from all test flavors
+        id: apply_changes
+        run: |
+          shopt -s nullglob
+          for patch in "$RUNNER_TEMP/nightly-snapshots"/changes-*.patch; do
+            echo "Applying $patch"
+            # --3way merges cleanly if multiple flavors touched the same file, since all patches
+            # are based on the same commit as this checkout.
+            git apply --3way "$patch"
+          done
+          if [ -z "$(git status --porcelain)" ]; then
             echo "No snapshot changes detected"
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
@@ -178,7 +234,7 @@ jobs:
           fi
 
       - name: Generate token
-        if: matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && matrix.os == 'ubuntu-latest' && steps.check_snapshot_changes.outputs.has_changes == 'true'
+        if: steps.apply_changes.outputs.has_changes == 'true'
         id: app-token
         uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         with:
@@ -188,35 +244,47 @@ jobs:
           repositories: ${{ github.event.repository.name }}
 
       - name: Create Pull Request for snapshot updates
-        if: matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && matrix.os == 'ubuntu-latest' && steps.check_snapshot_changes.outputs.has_changes == 'true'
+        if: steps.apply_changes.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@4e1beaa7521e8b457b572c090b25bd3db56bf1c5 # v5
         id: create_snapshot_pr
         with:
           token: ${{ steps.app-token.outputs.token }}
-          commit-message: "chore: update nightly snapshots (${{ matrix.test_flavor }})"
+          commit-message: "chore: update nightly snapshots"
           author: hydro-project-bot[bot] <132423234+hydro-project-bot[bot]@users.noreply.github.com>
-          title: "chore: update nightly snapshots (${{ matrix.test_flavor }})"
+          title: "chore: update nightly snapshots"
           body: |
             [ci-full]
 
-            This PR was automatically generated by the nightly CI run (`${{ matrix.test_flavor }}` test flavor). Updated insta/trybuild snapshots for nightly Rust builds. Please review the snapshot changes to ensure they are expected.
-          branch: nightly-snapshot-updates-${{ matrix.test_flavor }}
+            This PR was automatically generated by the nightly CI run, combining snapshot changes from all test flavors (`ci-main` and `ci-heavy`). Updated insta/trybuild snapshots for nightly Rust builds. Please review the snapshot changes to ensure they are expected.
+          branch: nightly-snapshot-updates
           delete-branch: true
           draft: false
 
       - name: Manage nightly test failure issue
-        if: matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && matrix.os == 'ubuntu-latest' && steps.check_snapshot_changes.outputs.has_changes == 'true'
+        if: steps.apply_changes.outputs.has_changes == 'true'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
+            const fs = require('fs');
+            const path = require('path');
+
             const prNumber = '${{ steps.create_snapshot_pr.outputs.pull-request-number }}';
-            const testFlavor = '${{ matrix.test_flavor }}';
-            const nextestOutcome = '${{ steps.nextest.outcome }}';
-            const doctestOutcome = '${{ steps.doctests.outcome }}';
-            const hasTestFailures = nextestOutcome === 'failure' || doctestOutcome === 'failure';
             const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
 
-            // Search for existing nightly failure issue (per test flavor)
+            const artifactDir = path.join(process.env.RUNNER_TEMP, 'nightly-snapshots');
+            const outcomes = fs.existsSync(artifactDir)
+              ? fs.readdirSync(artifactDir)
+                  .filter(f => f.startsWith('outcomes-') && f.endsWith('.json'))
+                  .map(f => JSON.parse(fs.readFileSync(path.join(artifactDir, f), 'utf8')))
+              : [];
+            const hasTestFailures = outcomes.some(o =>
+              o.nextest_outcome === 'failure' || o.doctest_outcome === 'failure'
+            );
+            const resultLines = outcomes.map(o =>
+              `- \`${o.test_flavor}\`: nextest ${o.nextest_outcome}, doctests ${o.doctest_outcome}`
+            ).join('\n');
+
+            // Search for existing nightly failure issue
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -225,11 +293,11 @@ jobs:
             });
 
             const existingIssue = issues.find(issue =>
-              issue.title.includes(`Nightly snapshot update test failures (${testFlavor})`)
+              issue.title.includes('Nightly snapshot update test failures')
             );
 
             if (hasTestFailures) {
-              const issueTitle = `🚨 Nightly snapshot update test failures (${testFlavor}) (last failure: ${currentDate})`;
+              const issueTitle = `🚨 Nightly snapshot update test failures (last failure: ${currentDate})`;
               const issueBody = `## Nightly Snapshot Update Test Failures
 
               The nightly CI run has updated snapshots but some tests are still failing.
@@ -239,8 +307,7 @@ jobs:
               **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
               ### Latest Test Results
-              - Nextest outcome: ${nextestOutcome}
-              - Doctests outcome: ${doctestOutcome}
+              ${resultLines}
 
               ### Action Required
               Please investigate the failing tests and determine if:
