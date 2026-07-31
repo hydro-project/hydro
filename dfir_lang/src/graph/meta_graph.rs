@@ -1725,13 +1725,13 @@ impl DfirGraph {
                             });
 
                             op_prologue_code.push(syn::parse_quote! {
-                                #[allow(non_snake_case)]
+                                #[allow(dead_code, non_snake_case, reason = "codegen")]
                                 #[inline(always)]
                                 fn #work_fn<T>(thunk: impl ::std::ops::FnOnce() -> T) -> T {
                                     thunk()
                                 }
 
-                                #[allow(non_snake_case)]
+                                #[allow(dead_code, non_snake_case, reason = "codegen")]
                                 #[inline(always)]
                                 async fn #work_fn_async<T>(
                                     thunk: impl ::std::future::Future<Output = T>,
