@@ -7,9 +7,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use dfir_rs::dfir_pipes::pull::{
     self, HalfSetJoinState, Pull, PullStep, symmetric_hash_join as shj_fn,
 };
-use rand::SeedableRng;
-use rand::distributions::Distribution;
-use rand::rngs::StdRng;
+use rand::distr::Distribution;
 
 /// Helper function to run a symmetric hash join benchmark and consume all results
 #[inline(always)]
@@ -50,7 +48,7 @@ fn run_join_benchmark<K, V1, V2>(
 }
 
 fn ops(c: &mut Criterion) {
-    let mut rng = StdRng::from_entropy();
+    let mut rng = rand::make_rng::<rand::rngs::StdRng>();
 
     c.bench_function("symmetric_hash_join/no_match", |b| {
         let lhs: Vec<_> = (0..3000).map(|v| (v, ())).collect();
@@ -76,7 +74,7 @@ fn ops(c: &mut Criterion) {
     c.bench_function(
         "symmetric_hash_join/zipf_keys_low_contention_unique_values",
         |b| {
-            let dist = rand_distr::Zipf::new(8000, 0.5).unwrap();
+            let dist = rand_distr::Zipf::new(8000.0, 0.5).unwrap();
 
             let lhs: Vec<_> = (0..2000)
                 .map(|v| (dist.sample(&mut rng) as usize, v))
@@ -93,7 +91,7 @@ fn ops(c: &mut Criterion) {
     c.bench_function(
         "symmetric_hash_join/zipf_keys_high_contention_unique_values",
         |b| {
-            let dist = rand_distr::Zipf::new(8000, 4.0).unwrap();
+            let dist = rand_distr::Zipf::new(8000.0, 4.0).unwrap();
 
             let lhs: Vec<_> = (0..1000)
                 .map(|v| (dist.sample(&mut rng) as usize, v))

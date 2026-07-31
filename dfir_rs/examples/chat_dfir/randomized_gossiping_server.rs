@@ -4,8 +4,8 @@ use std::net::SocketAddr;
 use chrono::{DateTime, Utc};
 use dfir_macro::dfir_syntax;
 use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
-use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::rng;
+use rand::seq::IndexedRandom;
 use serde::{Deserialize, Serialize};
 use web_time::Duration;
 
@@ -164,7 +164,7 @@ pub(crate) async fn run_gossiping_server(opts: Opts) {
         triggered_messages = cross_join()
             -> map(|(_, message)| {
                     // Choose a random peer
-                    let random_peer = other_members.choose(&mut thread_rng()).unwrap();
+                    let random_peer = other_members.choose(&mut rng()).unwrap();
                     (message, gossip_address(random_peer))
                })
             -> tee();
