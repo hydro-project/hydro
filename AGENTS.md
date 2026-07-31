@@ -12,7 +12,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/) format:
 
 Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `ci`, `perf`.
 
-For breaking changes, append `!` after the type (e.g. `refactor(infinity-daemon)!:`), and add `BREAKING CHANGE: ...` footers
+For breaking changes, append `!` after the type (e.g. `refactor(hydro_lang)!:`), and add `BREAKING CHANGE: ...` footers
 describing each breaking change (or summarizing if many).
 
 ## Descriptions
@@ -22,7 +22,5 @@ Write the description in **Markdown**. Use bullet lists, code spans, and heading
 ```
 feat(hydro_lang): ...
 
-* Store sessions to `~/.infinity/sessions.json` on shutdown
-* Restore on startup via `SessionStore::load()`
-* Skip sessions older than 7 days
+... detailed explanation of key design decisions
 ```
