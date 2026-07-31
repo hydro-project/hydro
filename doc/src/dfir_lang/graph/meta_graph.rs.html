@@ -1725,13 +1725,13 @@
 <a href=#1725 id=1725 data-nosnippet>1725</a>                            });
 <a href=#1726 id=1726 data-nosnippet>1726</a>
 <a href=#1727 id=1727 data-nosnippet>1727</a>                            op_prologue_code.push(<span class="macro">syn::parse_quote!</span> {
-<a href=#1728 id=1728 data-nosnippet>1728</a>                                <span class="attr">#[allow(non_snake_case)]
+<a href=#1728 id=1728 data-nosnippet>1728</a>                                <span class="attr">#[allow(dead_code, non_snake_case, reason = <span class="string">"codegen"</span>)]
 <a href=#1729 id=1729 data-nosnippet>1729</a>                                #[inline(always)]
 <a href=#1730 id=1730 data-nosnippet>1730</a>                                </span><span class="kw">fn </span>#work_fn&lt;T&gt;(thunk: <span class="kw">impl </span>::std::ops::FnOnce() -&gt; T) -&gt; T {
 <a href=#1731 id=1731 data-nosnippet>1731</a>                                    thunk()
 <a href=#1732 id=1732 data-nosnippet>1732</a>                                }
 <a href=#1733 id=1733 data-nosnippet>1733</a>
-<a href=#1734 id=1734 data-nosnippet>1734</a>                                <span class="attr">#[allow(non_snake_case)]
+<a href=#1734 id=1734 data-nosnippet>1734</a>                                <span class="attr">#[allow(dead_code, non_snake_case, reason = <span class="string">"codegen"</span>)]
 <a href=#1735 id=1735 data-nosnippet>1735</a>                                #[inline(always)]
 <a href=#1736 id=1736 data-nosnippet>1736</a>                                </span><span class="kw">async fn </span>#work_fn_async&lt;T&gt;(
 <a href=#1737 id=1737 data-nosnippet>1737</a>                                    thunk: <span class="kw">impl </span>::std::future::Future&lt;Output = T&gt;,
