@@ -69,7 +69,7 @@ tokio-util = { version = "0.7.5", features = [ "net" ], optional = true }
 # passthrough to enable "js" on getrandom. As a workaround, we enable the
 # getrandom js feature here; when the feature resolver computes the set of
 # features for getrandom (unification), it will include "js".
-getrandom = { version = "0.2.6", features = [ "js" ] }
+getrandom = { version = "0.4", features = [ "wasm_js" ] }
 
 [dev-dependencies]
 dfir_rs = { path = ".", features = [ "macros", "debugging", "meta", "tokio" ], default-features = false } # good to be explicit about the features required by tests
@@ -82,8 +82,8 @@ example_test = { path = "../example_test", version = "^0.0.1" }
 include_mdtests = { path = "../include_mdtests", version = "^0.0.0" }
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0", features = [ "insta", "trybuild" ] }
 multiplatform_test = { path = "../multiplatform_test", version = "^0.7.1-alpha.0" }
-rand = { version = "0.8.0", features = [ "small_rng" ] }
-rand_distr = "0.4.3"
+rand = "0.10"
+rand_distr = "0.6"
 regex = "1.10.4"
 static_assertions = "1.0.0"
 time = "0.3"

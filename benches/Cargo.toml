@@ -19,8 +19,8 @@ dfir_rs = { path = "../dfir_rs", features = [ "debugging" ] }
 differential-dataflow = { package = "differential-dataflow-master", version = "0.13.0-dev.1" } # git = "https://github.com/TimelyDataflow/differential-dataflow.git", rev = "7bc5338a977fe1d95b96a9ba84ba8cd460e0cdd7" } # "0.12"
 futures = "0.3"
 nameof = "1.0.0"
-rand = "0.8.0"
-rand_distr = "0.4.3"
+rand = "0.10"
+rand_distr = "0.6"
 seq-macro = "0.2.0"
 sinktools = { path = "../sinktools" }
 static_assertions = "1.0.0"
