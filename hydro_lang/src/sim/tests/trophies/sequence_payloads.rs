@@ -167,23 +167,18 @@ fn trace_snapshot() {
     flow.sim()
         .compiled()
         .fuzz_repro(repro_bytes, async |compiled| {
-            let schedule = compiled.schedule_with_logger(&mut log_out);
-            let rest = async move {
-                in_send.send_many_unordered([
-                    SequencedKv { seq: 0 },
-                    SequencedKv { seq: 1 },
-                    SequencedKv { seq: 2 },
-                    SequencedKv { seq: 3 },
-                ]);
+            compiled
+                .run_with_scheduler_and_logger(&mut log_out, async move {
+                    in_send.send_many_unordered([
+                        SequencedKv { seq: 0 },
+                        SequencedKv { seq: 1 },
+                        SequencedKv { seq: 2 },
+                        SequencedKv { seq: 3 },
+                    ]);
 
-                let _all_out = out_recv.collect::<Vec<_>>().await;
-            };
-
-            tokio::select! {
-                biased;
-                _ = rest => {},
-                _ = schedule => {},
-            };
+                    let _all_out = out_recv.collect::<Vec<_>>().await;
+                })
+                .await;
         });
 
     let log_str = String::from_utf8(log_out).unwrap();
