@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1785740515794,
+  "lastUpdate": 1785824810400,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -302341,6 +302341,208 @@
             "name": "paxos_bench",
             "value": 193420,
             "range": "± 11917.62",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joe Hellerstein",
+            "username": "jhellerstein",
+            "email": "jmh@berkeley.edu"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "7ba6ce0e76eaba0d0dff36a6eb761d72327030fd",
+          "message": "docs: Fix rustdoc links on case-insensitive filesystems (#3087)\n\n## Summary\n- require exact directory-entry casing before treating a rustdoc path\nsegment as a module\n- prevent item names such as `Stream` from accidentally matching\nlowercase module directories on case-insensitive filesystems\n\n## Testing\n- `cargo +1.96.0 doc --no-deps --all-features`\n- `CI=true NO_COLOR=1 npm run build` (from `docs/`)\n\nCo-authored-by: Joe Hellerstein <jmhwork@amazon.com>",
+          "timestamp": "2026-08-04T01:35:31Z",
+          "url": "https://github.com/hydro-project/hydro/commit/7ba6ce0e76eaba0d0dff36a6eb761d72327030fd"
+        },
+        "date": 1785824810342,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 216165,
+            "range": "± 13851",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 13850492,
+            "range": "± 150643",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 14023464,
+            "range": "± 54417",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 40690,
+            "range": "± 2196",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 7899854,
+            "range": "± 117168",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 898432,
+            "range": "± 2762",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 967324,
+            "range": "± 2010",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 45632878,
+            "range": "± 572966",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 3745867,
+            "range": "± 77402",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 18575169,
+            "range": "± 1848804",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 13064900,
+            "range": "± 17237",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 13602588,
+            "range": "± 34446",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 40855393,
+            "range": "± 685805",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 3903,
+            "range": "± 38",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 24344,
+            "range": "± 144",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4256,
+            "range": "± 73",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6370,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 494361,
+            "range": "± 2414",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 61553,
+            "range": "± 192",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 48108,
+            "range": "± 434",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 47572,
+            "range": "± 530",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 7333,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 25708,
+            "range": "± 74",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 76753,
+            "range": "± 265",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 87467,
+            "range": "± 283",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7134,
+            "range": "± 98",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 17581,
+            "range": "± 115",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 54139,
+            "range": "± 1718",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 5460,
+            "range": "± 65",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 247900,
+            "range": "± 1242.58",
             "unit": "ops/s"
           }
         ]
