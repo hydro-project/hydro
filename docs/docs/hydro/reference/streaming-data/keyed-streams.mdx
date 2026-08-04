@@ -194,9 +194,3 @@ This makes keyed streams particularly well-suited for distributed aggregations w
 
 ## Collapsing to One Value Per Key
 Keyed streams model *many* events per key. When each key should instead resolve to a *single* value — such as one response per request — you can collapse a keyed stream into a [Keyed Singleton](./keyed-singletons.mdx) using APIs like `first()` (take the first value for each key) or `fold_early_stop` (aggregate each key's values until the aggregation declares itself complete). See [Keyed Singletons](./keyed-singletons.mdx) for details.
-
-## Related API
-
-- [`KeyedStream`](rust:hydro_lang::live_collections::KeyedStream)
-- Ordering markers: [`TotalOrder`](rust:hydro_lang::live_collections::stream::TotalOrder) and [`NoOrder`](rust:hydro_lang::live_collections::stream::NoOrder)
-- Retry markers: [`ExactlyOnce`](rust:hydro_lang::live_collections::stream::ExactlyOnce) and [`AtLeastOnce`](rust:hydro_lang::live_collections::stream::AtLeastOnce)

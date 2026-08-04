@@ -132,9 +132,3 @@ let get_response = sliced! {
 ```
 
 Snapshots are asynchronous: each snapshot is at least as recent as the previous one, but may lag behind acknowledged writes. See [Slice Blocks](./slices.mdx) for the semantics of slicing, [References and Mutations](./references-mutations.md) for `by_ref()` and `by_mut()`, and [Atomic Collections](../atomic-collections.mdx) for establishing read-after-write consistency.
-
-## Related API
-
-- [`Singleton`](rust:hydro_lang::live_collections::Singleton)
-- [`Optional`](rust:hydro_lang::live_collections::Optional)
-- [`Monotonic`](rust:hydro_lang::live_collections::singleton::Monotonic)

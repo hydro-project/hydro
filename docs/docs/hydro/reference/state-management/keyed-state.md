@@ -88,8 +88,3 @@ Since keys are unordered across groups, streams produced by flattening have `NoO
 
 ## Rekeying and Transformation
 Keyed singletons support per-key transformations like `map`, `filter`, and `filter_map` (operating on each value), and `map_with_key` when the transformation also needs the key. To change the *grouping key* of state (e.g., from client ID to resource name), regroup the underlying keyed stream **before** aggregating: flatten with `entries()`, remap the tuples, and regroup with `into_keyed()`, as shown in the [keyed counter tutorial](../../learn/quickstart/keyed-counter.mdx).
-
-## Related API
-
-- [`KeyedSingleton`](rust:hydro_lang::live_collections::KeyedSingleton)
-- Keyed singleton bounds: [`BoundedValue`](rust:hydro_lang::live_collections::keyed_singleton::BoundedValue), [`MonotonicValue`](rust:hydro_lang::live_collections::keyed_singleton::MonotonicValue), and [`MonotonicKeys`](rust:hydro_lang::live_collections::keyed_singleton::MonotonicKeys)
