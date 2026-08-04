@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1
-sidebar_label: Live Collection API
+sidebar_label: Live Collections API
 ---
 
 # Live Collections API
@@ -23,7 +23,7 @@ For a conceptual introduction to how these types relate, see [Live Collections](
 
 Live Collection type parameters record distributed-systems guarantees. They determine which operations are safe and therefore which methods are available.
 
-| Guarantee | Marker types | Learn more |
+| Guarantee | Marker types | Guide |
 | --- | --- | --- |
 | Whether a collection is final or may continue changing | [`Bounded`](rust:hydro_lang::live_collections::boundedness::Bounded), [`Unbounded`](rust:hydro_lang::live_collections::boundedness::Unbounded) | [Bounded and Unbounded Types](../reference/correctness/bounded-unbounded.md) |
 | Whether stream order is deterministic | [`TotalOrder`](rust:hydro_lang::live_collections::stream::TotalOrder), [`NoOrder`](rust:hydro_lang::live_collections::stream::NoOrder) | [Stream Ordering and Determinism](../reference/streaming-data/streams.md#stream-ordering-and-determinism) |
