@@ -328,7 +328,7 @@
 <a href=#328 id=328 data-nosnippet>328</a>        <span class="kw">let </span>ident = syn::Ident::new(<span class="string">"__hydro_external_in"</span>, Span::call_site());
 <a href=#329 id=329 data-nosnippet>329</a>        <span class="kw">let </span>p1_port_usize = p1_port.<span class="number">0</span>;
 <a href=#330 id=330 data-nosnippet>330</a>        <span class="macro">syn::parse_quote!</span>({
-<a href=#331 id=331 data-nosnippet>331</a>            <span class="kw">let </span>(__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::&lt;__root_dfir_rs::bytes::Bytes&gt;();
+<a href=#331 id=331 data-nosnippet>331</a>            <span class="kw">let </span>(__sender, __receiver) = __root_dfir_rs::util::unsync::mpsc::unbounded::&lt;__root_dfir_rs::bytes::Bytes&gt;();
 <a href=#332 id=332 data-nosnippet>332</a>            #ident.insert(#p1_port_usize, __sender);
 <a href=#333 id=333 data-nosnippet>333</a>            __receiver
 <a href=#334 id=334 data-nosnippet>334</a>        })
@@ -355,8 +355,8 @@
 <a href=#355 id=355 data-nosnippet>355</a>        <span class="kw">let </span>ident = syn::Ident::new(<span class="string">"__hydro_external_out"</span>, Span::call_site());
 <a href=#356 id=356 data-nosnippet>356</a>        <span class="kw">let </span>p2_port_usize = p2_port.<span class="number">0</span>;
 <a href=#357 id=357 data-nosnippet>357</a>        <span class="macro">syn::parse_quote!</span>({
-<a href=#358 id=358 data-nosnippet>358</a>            <span class="kw">let </span>(__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::&lt;__root_dfir_rs::bytes::Bytes&gt;();
-<a href=#359 id=359 data-nosnippet>359</a>            #ident.insert(#p2_port_usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream::new(__receiver.into_inner()));
+<a href=#358 id=358 data-nosnippet>358</a>            <span class="kw">let </span>(__sender, __receiver) = __root_dfir_rs::util::unsync::mpsc::unbounded::&lt;__root_dfir_rs::bytes::Bytes&gt;();
+<a href=#359 id=359 data-nosnippet>359</a>            #ident.insert(#p2_port_usize, __receiver);
 <a href=#360 id=360 data-nosnippet>360</a>            __sender
 <a href=#361 id=361 data-nosnippet>361</a>        })
 <a href=#362 id=362 data-nosnippet>362</a>    }
@@ -373,7 +373,7 @@
 <a href=#373 id=373 data-nosnippet>373</a>        <span class="kw">let </span>ident = syn::Ident::new(<span class="string">"__hydro_cluster_external_in"</span>, Span::call_site());
 <a href=#374 id=374 data-nosnippet>374</a>        <span class="kw">let </span>p1_port_usize = p1_port.<span class="number">0</span>;
 <a href=#375 id=375 data-nosnippet>375</a>        <span class="macro">syn::parse_quote!</span>({
-<a href=#376 id=376 data-nosnippet>376</a>            <span class="kw">let </span>(__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::&lt;__root_dfir_rs::bytes::Bytes&gt;();
+<a href=#376 id=376 data-nosnippet>376</a>            <span class="kw">let </span>(__sender, __receiver) = __root_dfir_rs::util::unsync::mpsc::unbounded::&lt;__root_dfir_rs::bytes::Bytes&gt;();
 <a href=#377 id=377 data-nosnippet>377</a>            #ident.entry(#p1_port_usize).or_insert_with(::std::collections::HashMap::new).insert(__current_cluster_id, __sender);
 <a href=#378 id=378 data-nosnippet>378</a>            __receiver
 <a href=#379 id=379 data-nosnippet>379</a>        })
@@ -399,8 +399,8 @@
 <a href=#399 id=399 data-nosnippet>399</a>        <span class="kw">let </span>ident = syn::Ident::new(<span class="string">"__hydro_cluster_external_out"</span>, Span::call_site());
 <a href=#400 id=400 data-nosnippet>400</a>        <span class="kw">let </span>p2_port_usize = p2_port.<span class="number">0</span>;
 <a href=#401 id=401 data-nosnippet>401</a>        <span class="macro">syn::parse_quote!</span>({
-<a href=#402 id=402 data-nosnippet>402</a>            <span class="kw">let </span>(__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::&lt;__root_dfir_rs::bytes::Bytes&gt;();
-<a href=#403 id=403 data-nosnippet>403</a>            #ident.entry(#p2_port_usize).or_insert_with(::std::collections::HashMap::new).insert(__current_cluster_id, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream::new(__receiver.into_inner()));
+<a href=#402 id=402 data-nosnippet>402</a>            <span class="kw">let </span>(__sender, __receiver) = __root_dfir_rs::util::unsync::mpsc::unbounded::&lt;__root_dfir_rs::bytes::Bytes&gt;();
+<a href=#403 id=403 data-nosnippet>403</a>            #ident.entry(#p2_port_usize).or_insert_with(::std::collections::HashMap::new).insert(__current_cluster_id, __receiver);
 <a href=#404 id=404 data-nosnippet>404</a>            __sender
 <a href=#405 id=405 data-nosnippet>405</a>        })
 <a href=#406 id=406 data-nosnippet>406</a>    }
@@ -706,10 +706,10 @@
 <a href=#706 id=706 data-nosnippet>706</a>        /// TODO(mingwei): enforce/check this, somehow
 <a href=#707 id=707 data-nosnippet>707</a>        </span><span class="attr">#[allow(unused)]
 <a href=#708 id=708 data-nosnippet>708</a>        </span><span class="kw">fn </span>__hydro_runtime_core&lt;<span class="lifetime">'a</span>&gt;(
-<a href=#709 id=709 data-nosnippet>709</a>            __hydro_external_out: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;,
-<a href=#710 id=710 data-nosnippet>710</a>            __hydro_external_in: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;,
-<a href=#711 id=711 data-nosnippet>711</a>            __hydro_cluster_external_out: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, ::std::collections::HashMap&lt;u32, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;&gt;,
-<a href=#712 id=712 data-nosnippet>712</a>            __hydro_cluster_external_in: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, ::std::collections::HashMap&lt;u32, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;&gt;,
+<a href=#709 id=709 data-nosnippet>709</a>            __hydro_external_out: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, __root_dfir_rs::util::unsync::mpsc::Receiver&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;,
+<a href=#710 id=710 data-nosnippet>710</a>            __hydro_external_in: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, __root_dfir_rs::util::unsync::mpsc::Sender&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;,
+<a href=#711 id=711 data-nosnippet>711</a>            __hydro_cluster_external_out: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, ::std::collections::HashMap&lt;u32, __root_dfir_rs::util::unsync::mpsc::Receiver&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;&gt;,
+<a href=#712 id=712 data-nosnippet>712</a>            __hydro_cluster_external_in: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, ::std::collections::HashMap&lt;u32, __root_dfir_rs::util::unsync::mpsc::Sender&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;&gt;,
 <a href=#713 id=713 data-nosnippet>713</a>            __println_handler: <span class="kw">fn</span>(::std::fmt::Arguments&lt;<span class="lifetime">'_</span>&gt;),
 <a href=#714 id=714 data-nosnippet>714</a>            __eprintln_handler: <span class="kw">fn</span>(::std::fmt::Arguments&lt;<span class="lifetime">'_</span>&gt;),
 <a href=#715 id=715 data-nosnippet>715</a>        ) -&gt; (
@@ -776,10 +776,10 @@
 <a href=#776 id=776 data-nosnippet>776</a>        <span class="attr">#[<span class="kw">unsafe</span>(no_mangle)]
 <a href=#777 id=777 data-nosnippet>777</a>        </span><span class="kw">unsafe extern </span><span class="string">"Rust" </span><span class="kw">fn </span>__hydro_runtime(
 <a href=#778 id=778 data-nosnippet>778</a>            should_color: bool,
-<a href=#779 id=779 data-nosnippet>779</a>            __hydro_external_out: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;,
-<a href=#780 id=780 data-nosnippet>780</a>            __hydro_external_in: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;,
-<a href=#781 id=781 data-nosnippet>781</a>            __hydro_cluster_external_out: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, ::std::collections::HashMap&lt;u32, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;&gt;,
-<a href=#782 id=782 data-nosnippet>782</a>            __hydro_cluster_external_in: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, ::std::collections::HashMap&lt;u32, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;&gt;,
+<a href=#779 id=779 data-nosnippet>779</a>            __hydro_external_out: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, __root_dfir_rs::util::unsync::mpsc::Receiver&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;,
+<a href=#780 id=780 data-nosnippet>780</a>            __hydro_external_in: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, __root_dfir_rs::util::unsync::mpsc::Sender&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;,
+<a href=#781 id=781 data-nosnippet>781</a>            __hydro_cluster_external_out: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, ::std::collections::HashMap&lt;u32, __root_dfir_rs::util::unsync::mpsc::Receiver&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;&gt;,
+<a href=#782 id=782 data-nosnippet>782</a>            __hydro_cluster_external_in: <span class="kw-2">&amp;mut </span>::std::collections::HashMap&lt;usize, ::std::collections::HashMap&lt;u32, __root_dfir_rs::util::unsync::mpsc::Sender&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;&gt;,
 <a href=#783 id=783 data-nosnippet>783</a>            __println_handler: <span class="kw">fn</span>(::std::fmt::Arguments&lt;<span class="lifetime">'_</span>&gt;),
 <a href=#784 id=784 data-nosnippet>784</a>            __eprintln_handler: <span class="kw">fn</span>(::std::fmt::Arguments&lt;<span class="lifetime">'_</span>&gt;),
 <a href=#785 id=785 data-nosnippet>785</a>        ) -&gt; (

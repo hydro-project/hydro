@@ -8,7 +8,7 @@
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>bolero::{ValueGenerator, produce};
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>colored::Colorize;
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>dfir_rs::rustc_hash::FxHashMap;
-<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>tokio::sync::mpsc::UnboundedSender;
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>dfir_rs::util::unsync::mpsc::Sender;
 <a href=#12 id=12 data-nosnippet>12</a>
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::{NoOrder, Ordering, TotalOrder};
 <a href=#14 id=14 data-nosnippet>14</a>
@@ -183,7 +183,7 @@
 <a href=#183 id=183 data-nosnippet>183</a><span class="kw">pub struct </span>StreamHook&lt;T, Order: Ordering&gt; {
 <a href=#184 id=184 data-nosnippet>184</a>    <span class="kw">pub </span>input: Rc&lt;RefCell&lt;VecDeque&lt;T&gt;&gt;&gt;,
 <a href=#185 id=185 data-nosnippet>185</a>    <span class="kw">pub </span>to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;T&gt;&gt;,
-<a href=#186 id=186 data-nosnippet>186</a>    <span class="kw">pub </span>output: UnboundedSender&lt;T&gt;,
+<a href=#186 id=186 data-nosnippet>186</a>    <span class="kw">pub </span>output: Sender&lt;T&gt;,
 <a href=#187 id=187 data-nosnippet>187</a>    <span class="kw">pub </span>batch_location: HookLocationMeta,
 <a href=#188 id=188 data-nosnippet>188</a>    <span class="kw">pub </span>format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#189 id=189 data-nosnippet>189</a>    <span class="kw">pub </span>_order: std::marker::PhantomData&lt;Order&gt;,
@@ -248,7 +248,7 @@
 <a href=#248 id=248 data-nosnippet>248</a>            }
 <a href=#249 id=249 data-nosnippet>249</a>
 <a href=#250 id=250 data-nosnippet>250</a>            <span class="kw">for </span>item <span class="kw">in </span>to_release {
-<a href=#251 id=251 data-nosnippet>251</a>                <span class="self">self</span>.output.send(item).unwrap();
+<a href=#251 id=251 data-nosnippet>251</a>                <span class="self">self</span>.output.try_send(item).unwrap();
 <a href=#252 id=252 data-nosnippet>252</a>            }
 <a href=#253 id=253 data-nosnippet>253</a>        } <span class="kw">else </span>{
 <a href=#254 id=254 data-nosnippet>254</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
@@ -334,7 +334,7 @@
 <a href=#334 id=334 data-nosnippet>334</a>            }
 <a href=#335 id=335 data-nosnippet>335</a>
 <a href=#336 id=336 data-nosnippet>336</a>            <span class="kw">for </span>item <span class="kw">in </span>to_release {
-<a href=#337 id=337 data-nosnippet>337</a>                <span class="self">self</span>.output.send(item).unwrap();
+<a href=#337 id=337 data-nosnippet>337</a>                <span class="self">self</span>.output.try_send(item).unwrap();
 <a href=#338 id=338 data-nosnippet>338</a>            }
 <a href=#339 id=339 data-nosnippet>339</a>        } <span class="kw">else </span>{
 <a href=#340 id=340 data-nosnippet>340</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
@@ -345,7 +345,7 @@
 <a href=#345 id=345 data-nosnippet>345</a><span class="kw">pub struct </span>KeyedStreamHook&lt;K: Hash + Eq + Clone, V, Order: Ordering&gt; {
 <a href=#346 id=346 data-nosnippet>346</a>    <span class="kw">pub </span>input: Rc&lt;RefCell&lt;FxHashMap&lt;K, VecDeque&lt;V&gt;&gt;&gt;&gt;, <span class="comment">// FxHasher is deterministic
 <a href=#347 id=347 data-nosnippet>347</a>    </span><span class="kw">pub </span>to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;(K, V)&gt;&gt;,
-<a href=#348 id=348 data-nosnippet>348</a>    <span class="kw">pub </span>output: UnboundedSender&lt;(K, V)&gt;,
+<a href=#348 id=348 data-nosnippet>348</a>    <span class="kw">pub </span>output: Sender&lt;(K, V)&gt;,
 <a href=#349 id=349 data-nosnippet>349</a>    <span class="kw">pub </span>batch_location: HookLocationMeta,
 <a href=#350 id=350 data-nosnippet>350</a>    <span class="kw">pub </span>format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>(K, V)) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#351 id=351 data-nosnippet>351</a>    <span class="kw">pub </span>_order: std::marker::PhantomData&lt;Order&gt;,
@@ -435,7 +435,7 @@
 <a href=#435 id=435 data-nosnippet>435</a>            }
 <a href=#436 id=436 data-nosnippet>436</a>
 <a href=#437 id=437 data-nosnippet>437</a>            <span class="kw">for </span>item <span class="kw">in </span>to_release {
-<a href=#438 id=438 data-nosnippet>438</a>                <span class="self">self</span>.output.send(item).unwrap();
+<a href=#438 id=438 data-nosnippet>438</a>                <span class="self">self</span>.output.try_send(item).unwrap();
 <a href=#439 id=439 data-nosnippet>439</a>            }
 <a href=#440 id=440 data-nosnippet>440</a>        } <span class="kw">else </span>{
 <a href=#441 id=441 data-nosnippet>441</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
@@ -534,7 +534,7 @@
 <a href=#534 id=534 data-nosnippet>534</a>            }
 <a href=#535 id=535 data-nosnippet>535</a>
 <a href=#536 id=536 data-nosnippet>536</a>            <span class="kw">for </span>item <span class="kw">in </span>to_release {
-<a href=#537 id=537 data-nosnippet>537</a>                <span class="self">self</span>.output.send(item).unwrap();
+<a href=#537 id=537 data-nosnippet>537</a>                <span class="self">self</span>.output.try_send(item).unwrap();
 <a href=#538 id=538 data-nosnippet>538</a>            }
 <a href=#539 id=539 data-nosnippet>539</a>        } <span class="kw">else </span>{
 <a href=#540 id=540 data-nosnippet>540</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
@@ -547,7 +547,7 @@
 <a href=#547 id=547 data-nosnippet>547</a>    to_release: <span class="prelude-ty">Option</span>&lt;(T, bool)&gt;, <span class="comment">// (data, is new)
 <a href=#548 id=548 data-nosnippet>548</a>    </span>last_released: <span class="prelude-ty">Option</span>&lt;T&gt;,
 <a href=#549 id=549 data-nosnippet>549</a>    skipped_states: Vec&lt;T&gt;,
-<a href=#550 id=550 data-nosnippet>550</a>    output: UnboundedSender&lt;T&gt;,
+<a href=#550 id=550 data-nosnippet>550</a>    output: Sender&lt;T&gt;,
 <a href=#551 id=551 data-nosnippet>551</a>    batch_location: HookLocationMeta,
 <a href=#552 id=552 data-nosnippet>552</a>    format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#553 id=553 data-nosnippet>553</a>}
@@ -555,7 +555,7 @@
 <a href=#555 id=555 data-nosnippet>555</a><span class="kw">impl</span>&lt;T: Clone&gt; SingletonHook&lt;T&gt; {
 <a href=#556 id=556 data-nosnippet>556</a>    <span class="kw">pub fn </span>new(
 <a href=#557 id=557 data-nosnippet>557</a>        input: Rc&lt;RefCell&lt;VecDeque&lt;T&gt;&gt;&gt;,
-<a href=#558 id=558 data-nosnippet>558</a>        output: UnboundedSender&lt;T&gt;,
+<a href=#558 id=558 data-nosnippet>558</a>        output: Sender&lt;T&gt;,
 <a href=#559 id=559 data-nosnippet>559</a>        batch_location: HookLocationMeta,
 <a href=#560 id=560 data-nosnippet>560</a>        format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#561 id=561 data-nosnippet>561</a>    ) -&gt; <span class="self">Self </span>{
@@ -666,7 +666,7 @@
 <a href=#666 id=666 data-nosnippet>666</a>                );
 <a href=#667 id=667 data-nosnippet>667</a>            }
 <a href=#668 id=668 data-nosnippet>668</a>
-<a href=#669 id=669 data-nosnippet>669</a>            <span class="self">self</span>.output.send(to_release).unwrap();
+<a href=#669 id=669 data-nosnippet>669</a>            <span class="self">self</span>.output.try_send(to_release).unwrap();
 <a href=#670 id=670 data-nosnippet>670</a>        } <span class="kw">else </span>{
 <a href=#671 id=671 data-nosnippet>671</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
 <a href=#672 id=672 data-nosnippet>672</a>        }
@@ -680,7 +680,7 @@
 <a href=#680 id=680 data-nosnippet>680</a></span><span class="kw">pub struct </span>PassthroughSingletonHook&lt;T&gt; {
 <a href=#681 id=681 data-nosnippet>681</a>    input: Rc&lt;RefCell&lt;VecDeque&lt;T&gt;&gt;&gt;,
 <a href=#682 id=682 data-nosnippet>682</a>    to_release: <span class="prelude-ty">Option</span>&lt;T&gt;,
-<a href=#683 id=683 data-nosnippet>683</a>    output: UnboundedSender&lt;T&gt;,
+<a href=#683 id=683 data-nosnippet>683</a>    output: Sender&lt;T&gt;,
 <a href=#684 id=684 data-nosnippet>684</a>    batch_location: HookLocationMeta,
 <a href=#685 id=685 data-nosnippet>685</a>    format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#686 id=686 data-nosnippet>686</a>}
@@ -688,7 +688,7 @@
 <a href=#688 id=688 data-nosnippet>688</a><span class="kw">impl</span>&lt;T&gt; PassthroughSingletonHook&lt;T&gt; {
 <a href=#689 id=689 data-nosnippet>689</a>    <span class="kw">pub fn </span>new(
 <a href=#690 id=690 data-nosnippet>690</a>        input: Rc&lt;RefCell&lt;VecDeque&lt;T&gt;&gt;&gt;,
-<a href=#691 id=691 data-nosnippet>691</a>        output: UnboundedSender&lt;T&gt;,
+<a href=#691 id=691 data-nosnippet>691</a>        output: Sender&lt;T&gt;,
 <a href=#692 id=692 data-nosnippet>692</a>        batch_location: HookLocationMeta,
 <a href=#693 id=693 data-nosnippet>693</a>        format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#694 id=694 data-nosnippet>694</a>    ) -&gt; <span class="self">Self </span>{
@@ -754,7 +754,7 @@
 <a href=#754 id=754 data-nosnippet>754</a>                );
 <a href=#755 id=755 data-nosnippet>755</a>            }
 <a href=#756 id=756 data-nosnippet>756</a>
-<a href=#757 id=757 data-nosnippet>757</a>            <span class="self">self</span>.output.send(to_release).unwrap();
+<a href=#757 id=757 data-nosnippet>757</a>            <span class="self">self</span>.output.try_send(to_release).unwrap();
 <a href=#758 id=758 data-nosnippet>758</a>        } <span class="kw">else </span>{
 <a href=#759 id=759 data-nosnippet>759</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
 <a href=#760 id=760 data-nosnippet>760</a>        }
@@ -766,7 +766,7 @@
 <a href=#766 id=766 data-nosnippet>766</a>    </span>to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;(K, V, bool)&gt;&gt;,         <span class="comment">// (key, data, is new)
 <a href=#767 id=767 data-nosnippet>767</a>    </span>last_released: FxHashMap&lt;K, V&gt;,
 <a href=#768 id=768 data-nosnippet>768</a>    skipped_states: FxHashMap&lt;K, Vec&lt;V&gt;&gt;,
-<a href=#769 id=769 data-nosnippet>769</a>    output: UnboundedSender&lt;(K, V)&gt;,
+<a href=#769 id=769 data-nosnippet>769</a>    output: Sender&lt;(K, V)&gt;,
 <a href=#770 id=770 data-nosnippet>770</a>    batch_location: HookLocationMeta,
 <a href=#771 id=771 data-nosnippet>771</a>    format_key_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#772 id=772 data-nosnippet>772</a>    format_value_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>V) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
@@ -775,7 +775,7 @@
 <a href=#775 id=775 data-nosnippet>775</a><span class="kw">impl</span>&lt;K: Hash + Eq + Clone, V: Clone&gt; KeyedSingletonHook&lt;K, V&gt; {
 <a href=#776 id=776 data-nosnippet>776</a>    <span class="kw">pub fn </span>new(
 <a href=#777 id=777 data-nosnippet>777</a>        input: Rc&lt;RefCell&lt;FxHashMap&lt;K, VecDeque&lt;V&gt;&gt;&gt;&gt;,
-<a href=#778 id=778 data-nosnippet>778</a>        output: UnboundedSender&lt;(K, V)&gt;,
+<a href=#778 id=778 data-nosnippet>778</a>        output: Sender&lt;(K, V)&gt;,
 <a href=#779 id=779 data-nosnippet>779</a>        batch_location: HookLocationMeta,
 <a href=#780 id=780 data-nosnippet>780</a>        format_key_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#781 id=781 data-nosnippet>781</a>        format_value_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>V) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
@@ -918,7 +918,7 @@
 <a href=#918 id=918 data-nosnippet>918</a>            }
 <a href=#919 id=919 data-nosnippet>919</a>
 <a href=#920 id=920 data-nosnippet>920</a>            <span class="kw">for </span>(key, value, <span class="kw">_</span>) <span class="kw">in </span>to_release {
-<a href=#921 id=921 data-nosnippet>921</a>                <span class="self">self</span>.output.send((key, value)).unwrap();
+<a href=#921 id=921 data-nosnippet>921</a>                <span class="self">self</span>.output.try_send((key, value)).unwrap();
 <a href=#922 id=922 data-nosnippet>922</a>            }
 <a href=#923 id=923 data-nosnippet>923</a>        } <span class="kw">else </span>{
 <a href=#924 id=924 data-nosnippet>924</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
@@ -929,7 +929,7 @@
 <a href=#929 id=929 data-nosnippet>929</a><span class="kw">pub struct </span>StreamOrderHook&lt;T&gt; {
 <a href=#930 id=930 data-nosnippet>930</a>    input: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;T&gt;&gt;&gt;&gt;,
 <a href=#931 id=931 data-nosnippet>931</a>    to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;T&gt;&gt;,
-<a href=#932 id=932 data-nosnippet>932</a>    output: UnboundedSender&lt;Vec&lt;T&gt;&gt;,
+<a href=#932 id=932 data-nosnippet>932</a>    output: Sender&lt;Vec&lt;T&gt;&gt;,
 <a href=#933 id=933 data-nosnippet>933</a>    batch_location: HookLocationMeta,
 <a href=#934 id=934 data-nosnippet>934</a>    format_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#935 id=935 data-nosnippet>935</a>}
@@ -937,7 +937,7 @@
 <a href=#937 id=937 data-nosnippet>937</a><span class="kw">impl</span>&lt;T&gt; StreamOrderHook&lt;T&gt; {
 <a href=#938 id=938 data-nosnippet>938</a>    <span class="kw">pub fn </span>new(
 <a href=#939 id=939 data-nosnippet>939</a>        input: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;T&gt;&gt;&gt;&gt;,
-<a href=#940 id=940 data-nosnippet>940</a>        output: UnboundedSender&lt;Vec&lt;T&gt;&gt;,
+<a href=#940 id=940 data-nosnippet>940</a>        output: Sender&lt;Vec&lt;T&gt;&gt;,
 <a href=#941 id=941 data-nosnippet>941</a>        batch_location: HookLocationMeta,
 <a href=#942 id=942 data-nosnippet>942</a>        format_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#943 id=943 data-nosnippet>943</a>    ) -&gt; <span class="self">Self </span>{
@@ -1002,7 +1002,7 @@
 <a href=#1002 id=1002 data-nosnippet>1002</a>                );
 <a href=#1003 id=1003 data-nosnippet>1003</a>            }
 <a href=#1004 id=1004 data-nosnippet>1004</a>
-<a href=#1005 id=1005 data-nosnippet>1005</a>            <span class="self">self</span>.output.send(to_release).unwrap();
+<a href=#1005 id=1005 data-nosnippet>1005</a>            <span class="self">self</span>.output.try_send(to_release).unwrap();
 <a href=#1006 id=1006 data-nosnippet>1006</a>        } <span class="kw">else </span>{
 <a href=#1007 id=1007 data-nosnippet>1007</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
 <a href=#1008 id=1008 data-nosnippet>1008</a>        }
@@ -1014,7 +1014,7 @@
 <a href=#1014 id=1014 data-nosnippet>1014</a>    second: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;T&gt;&gt;&gt;&gt;,
 <a href=#1015 id=1015 data-nosnippet>1015</a>    to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;T&gt;&gt;,
 <a href=#1016 id=1016 data-nosnippet>1016</a>    release_sources: <span class="prelude-ty">Option</span>&lt;Vec&lt;bool&gt;&gt;,
-<a href=#1017 id=1017 data-nosnippet>1017</a>    output: UnboundedSender&lt;Vec&lt;T&gt;&gt;,
+<a href=#1017 id=1017 data-nosnippet>1017</a>    output: Sender&lt;Vec&lt;T&gt;&gt;,
 <a href=#1018 id=1018 data-nosnippet>1018</a>    batch_location: HookLocationMeta,
 <a href=#1019 id=1019 data-nosnippet>1019</a>    format_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1020 id=1020 data-nosnippet>1020</a>}
@@ -1023,7 +1023,7 @@
 <a href=#1023 id=1023 data-nosnippet>1023</a>    <span class="kw">pub fn </span>new(
 <a href=#1024 id=1024 data-nosnippet>1024</a>        first: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;T&gt;&gt;&gt;&gt;,
 <a href=#1025 id=1025 data-nosnippet>1025</a>        second: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;T&gt;&gt;&gt;&gt;,
-<a href=#1026 id=1026 data-nosnippet>1026</a>        output: UnboundedSender&lt;Vec&lt;T&gt;&gt;,
+<a href=#1026 id=1026 data-nosnippet>1026</a>        output: Sender&lt;Vec&lt;T&gt;&gt;,
 <a href=#1027 id=1027 data-nosnippet>1027</a>        batch_location: HookLocationMeta,
 <a href=#1028 id=1028 data-nosnippet>1028</a>        format_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1029 id=1029 data-nosnippet>1029</a>    ) -&gt; <span class="self">Self </span>{
@@ -1133,7 +1133,7 @@
 <a href=#1133 id=1133 data-nosnippet>1133</a>                );
 <a href=#1134 id=1134 data-nosnippet>1134</a>            }
 <a href=#1135 id=1135 data-nosnippet>1135</a>
-<a href=#1136 id=1136 data-nosnippet>1136</a>            <span class="self">self</span>.output.send(to_release).unwrap();
+<a href=#1136 id=1136 data-nosnippet>1136</a>            <span class="self">self</span>.output.try_send(to_release).unwrap();
 <a href=#1137 id=1137 data-nosnippet>1137</a>        } <span class="kw">else </span>{
 <a href=#1138 id=1138 data-nosnippet>1138</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
 <a href=#1139 id=1139 data-nosnippet>1139</a>        }
@@ -1145,7 +1145,7 @@
 <a href=#1145 id=1145 data-nosnippet>1145</a><span class="kw">pub struct </span>KeyedStreamOrderHook&lt;K: Hash + Eq + Clone, V&gt; {
 <a href=#1146 id=1146 data-nosnippet>1146</a>    input: KeyedStreamOrderHookInput&lt;K, V&gt;,
 <a href=#1147 id=1147 data-nosnippet>1147</a>    to_release: <span class="prelude-ty">Option</span>&lt;FxHashMap&lt;K, Vec&lt;V&gt;&gt;&gt;,
-<a href=#1148 id=1148 data-nosnippet>1148</a>    output: UnboundedSender&lt;Vec&lt;(K, V)&gt;&gt;,
+<a href=#1148 id=1148 data-nosnippet>1148</a>    output: Sender&lt;Vec&lt;(K, V)&gt;&gt;,
 <a href=#1149 id=1149 data-nosnippet>1149</a>    batch_location: HookLocationMeta,
 <a href=#1150 id=1150 data-nosnippet>1150</a>    format_key_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1151 id=1151 data-nosnippet>1151</a>    format_value_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>V) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
@@ -1154,7 +1154,7 @@
 <a href=#1154 id=1154 data-nosnippet>1154</a><span class="kw">impl</span>&lt;K: Hash + Eq + Clone, V&gt; KeyedStreamOrderHook&lt;K, V&gt; {
 <a href=#1155 id=1155 data-nosnippet>1155</a>    <span class="kw">pub fn </span>new(
 <a href=#1156 id=1156 data-nosnippet>1156</a>        input: KeyedStreamOrderHookInput&lt;K, V&gt;,
-<a href=#1157 id=1157 data-nosnippet>1157</a>        output: UnboundedSender&lt;Vec&lt;(K, V)&gt;&gt;,
+<a href=#1157 id=1157 data-nosnippet>1157</a>        output: Sender&lt;Vec&lt;(K, V)&gt;&gt;,
 <a href=#1158 id=1158 data-nosnippet>1158</a>        batch_location: HookLocationMeta,
 <a href=#1159 id=1159 data-nosnippet>1159</a>        format_key_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1160 id=1160 data-nosnippet>1160</a>        format_value_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>V) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
@@ -1249,7 +1249,7 @@
 <a href=#1249 id=1249 data-nosnippet>1249</a>                    flat_out.push((k.clone(), v));
 <a href=#1250 id=1250 data-nosnippet>1250</a>                }
 <a href=#1251 id=1251 data-nosnippet>1251</a>            }
-<a href=#1252 id=1252 data-nosnippet>1252</a>            <span class="self">self</span>.output.send(flat_out).unwrap();
+<a href=#1252 id=1252 data-nosnippet>1252</a>            <span class="self">self</span>.output.try_send(flat_out).unwrap();
 <a href=#1253 id=1253 data-nosnippet>1253</a>        } <span class="kw">else </span>{
 <a href=#1254 id=1254 data-nosnippet>1254</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
 <a href=#1255 id=1255 data-nosnippet>1255</a>        }
@@ -1261,7 +1261,7 @@
 <a href=#1261 id=1261 data-nosnippet>1261</a></span><span class="kw">pub struct </span>PartiallyOrderedStreamHook&lt;K: Hash + Eq + Clone, V&gt; {
 <a href=#1262 id=1262 data-nosnippet>1262</a>    input: KeyedStreamOrderHookInput&lt;K, V&gt;,
 <a href=#1263 id=1263 data-nosnippet>1263</a>    to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;(K, V)&gt;&gt;,
-<a href=#1264 id=1264 data-nosnippet>1264</a>    output: UnboundedSender&lt;Vec&lt;(K, V)&gt;&gt;,
+<a href=#1264 id=1264 data-nosnippet>1264</a>    output: Sender&lt;Vec&lt;(K, V)&gt;&gt;,
 <a href=#1265 id=1265 data-nosnippet>1265</a>    batch_location: HookLocationMeta,
 <a href=#1266 id=1266 data-nosnippet>1266</a>    format_key_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1267 id=1267 data-nosnippet>1267</a>    format_value_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>V) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
@@ -1270,7 +1270,7 @@
 <a href=#1270 id=1270 data-nosnippet>1270</a><span class="kw">impl</span>&lt;K: Hash + Eq + Clone, V&gt; PartiallyOrderedStreamHook&lt;K, V&gt; {
 <a href=#1271 id=1271 data-nosnippet>1271</a>    <span class="kw">pub fn </span>new(
 <a href=#1272 id=1272 data-nosnippet>1272</a>        input: KeyedStreamOrderHookInput&lt;K, V&gt;,
-<a href=#1273 id=1273 data-nosnippet>1273</a>        output: UnboundedSender&lt;Vec&lt;(K, V)&gt;&gt;,
+<a href=#1273 id=1273 data-nosnippet>1273</a>        output: Sender&lt;Vec&lt;(K, V)&gt;&gt;,
 <a href=#1274 id=1274 data-nosnippet>1274</a>        batch_location: HookLocationMeta,
 <a href=#1275 id=1275 data-nosnippet>1275</a>        format_key_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1276 id=1276 data-nosnippet>1276</a>        format_value_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>V) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
@@ -1368,7 +1368,7 @@
 <a href=#1368 id=1368 data-nosnippet>1368</a>                );
 <a href=#1369 id=1369 data-nosnippet>1369</a>            }
 <a href=#1370 id=1370 data-nosnippet>1370</a>
-<a href=#1371 id=1371 data-nosnippet>1371</a>            <span class="self">self</span>.output.send(to_release).unwrap();
+<a href=#1371 id=1371 data-nosnippet>1371</a>            <span class="self">self</span>.output.try_send(to_release).unwrap();
 <a href=#1372 id=1372 data-nosnippet>1372</a>        } <span class="kw">else </span>{
 <a href=#1373 id=1373 data-nosnippet>1373</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
 <a href=#1374 id=1374 data-nosnippet>1374</a>        }
@@ -1396,7 +1396,7 @@
 <a href=#1396 id=1396 data-nosnippet>1396</a></span><span class="kw">pub struct </span>TopLevelStreamOrderHook&lt;T&gt; {
 <a href=#1397 id=1397 data-nosnippet>1397</a>    <span class="kw">pub </span>input: Rc&lt;RefCell&lt;VecDeque&lt;T&gt;&gt;&gt;,
 <a href=#1398 id=1398 data-nosnippet>1398</a>    <span class="kw">pub </span>to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;T&gt;&gt;,
-<a href=#1399 id=1399 data-nosnippet>1399</a>    <span class="kw">pub </span>output: UnboundedSender&lt;T&gt;,
+<a href=#1399 id=1399 data-nosnippet>1399</a>    <span class="kw">pub </span>output: Sender&lt;T&gt;,
 <a href=#1400 id=1400 data-nosnippet>1400</a>    <span class="kw">pub </span>location: HookLocationMeta,
 <a href=#1401 id=1401 data-nosnippet>1401</a>    <span class="kw">pub </span>format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1402 id=1402 data-nosnippet>1402</a>}
@@ -1470,7 +1470,7 @@
 <a href=#1470 id=1470 data-nosnippet>1470</a>            }
 <a href=#1471 id=1471 data-nosnippet>1471</a>
 <a href=#1472 id=1472 data-nosnippet>1472</a>            <span class="kw">for </span>item <span class="kw">in </span>to_release {
-<a href=#1473 id=1473 data-nosnippet>1473</a>                <span class="self">self</span>.output.send(item).unwrap();
+<a href=#1473 id=1473 data-nosnippet>1473</a>                <span class="self">self</span>.output.try_send(item).unwrap();
 <a href=#1474 id=1474 data-nosnippet>1474</a>            }
 <a href=#1475 id=1475 data-nosnippet>1475</a>        } <span class="kw">else </span>{
 <a href=#1476 id=1476 data-nosnippet>1476</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
@@ -1484,7 +1484,7 @@
 <a href=#1484 id=1484 data-nosnippet>1484</a></span><span class="kw">pub struct </span>TopLevelFoldHook&lt;T&gt; {
 <a href=#1485 id=1485 data-nosnippet>1485</a>    <span class="kw">pub </span>input: Rc&lt;RefCell&lt;VecDeque&lt;T&gt;&gt;&gt;,
 <a href=#1486 id=1486 data-nosnippet>1486</a>    <span class="kw">pub </span>to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;T&gt;&gt;,
-<a href=#1487 id=1487 data-nosnippet>1487</a>    <span class="kw">pub </span>output: UnboundedSender&lt;Vec&lt;T&gt;&gt;,
+<a href=#1487 id=1487 data-nosnippet>1487</a>    <span class="kw">pub </span>output: Sender&lt;Vec&lt;T&gt;&gt;,
 <a href=#1488 id=1488 data-nosnippet>1488</a>    <span class="kw">pub </span>location: HookLocationMeta,
 <a href=#1489 id=1489 data-nosnippet>1489</a>    <span class="kw">pub </span>format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1490 id=1490 data-nosnippet>1490</a>}
@@ -1580,7 +1580,7 @@
 <a href=#1580 id=1580 data-nosnippet>1580</a>                );
 <a href=#1581 id=1581 data-nosnippet>1581</a>            }
 <a href=#1582 id=1582 data-nosnippet>1582</a>
-<a href=#1583 id=1583 data-nosnippet>1583</a>            <span class="self">self</span>.output.send(to_release).unwrap();
+<a href=#1583 id=1583 data-nosnippet>1583</a>            <span class="self">self</span>.output.try_send(to_release).unwrap();
 <a href=#1584 id=1584 data-nosnippet>1584</a>        } <span class="kw">else </span>{
 <a href=#1585 id=1585 data-nosnippet>1585</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
 <a href=#1586 id=1586 data-nosnippet>1586</a>        }
@@ -1593,7 +1593,7 @@
 <a href=#1593 id=1593 data-nosnippet>1593</a></span><span class="kw">pub struct </span>TopLevelKeyedStreamOrderHook&lt;K: Hash + Eq + Clone, V&gt; {
 <a href=#1594 id=1594 data-nosnippet>1594</a>    <span class="kw">pub </span>input: Rc&lt;RefCell&lt;FxHashMap&lt;K, VecDeque&lt;V&gt;&gt;&gt;&gt;,
 <a href=#1595 id=1595 data-nosnippet>1595</a>    <span class="kw">pub </span>to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;(K, V)&gt;&gt;,
-<a href=#1596 id=1596 data-nosnippet>1596</a>    <span class="kw">pub </span>output: UnboundedSender&lt;(K, V)&gt;,
+<a href=#1596 id=1596 data-nosnippet>1596</a>    <span class="kw">pub </span>output: Sender&lt;(K, V)&gt;,
 <a href=#1597 id=1597 data-nosnippet>1597</a>    <span class="kw">pub </span>location: HookLocationMeta,
 <a href=#1598 id=1598 data-nosnippet>1598</a>    <span class="kw">pub </span>format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>(K, V)) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1599 id=1599 data-nosnippet>1599</a>}
@@ -1684,7 +1684,7 @@
 <a href=#1684 id=1684 data-nosnippet>1684</a>            }
 <a href=#1685 id=1685 data-nosnippet>1685</a>
 <a href=#1686 id=1686 data-nosnippet>1686</a>            <span class="kw">for </span>item <span class="kw">in </span>to_release {
-<a href=#1687 id=1687 data-nosnippet>1687</a>                <span class="self">self</span>.output.send(item).unwrap();
+<a href=#1687 id=1687 data-nosnippet>1687</a>                <span class="self">self</span>.output.try_send(item).unwrap();
 <a href=#1688 id=1688 data-nosnippet>1688</a>            }
 <a href=#1689 id=1689 data-nosnippet>1689</a>        } <span class="kw">else </span>{
 <a href=#1690 id=1690 data-nosnippet>1690</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
@@ -1698,7 +1698,7 @@
 <a href=#1698 id=1698 data-nosnippet>1698</a></span><span class="kw">pub struct </span>TopLevelPartiallyOrderedStreamHook&lt;K: Hash + Eq + Clone, V&gt; {
 <a href=#1699 id=1699 data-nosnippet>1699</a>    <span class="kw">pub </span>input: Rc&lt;RefCell&lt;FxHashMap&lt;K, VecDeque&lt;V&gt;&gt;&gt;&gt;,
 <a href=#1700 id=1700 data-nosnippet>1700</a>    <span class="kw">pub </span>to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;(K, V)&gt;&gt;,
-<a href=#1701 id=1701 data-nosnippet>1701</a>    <span class="kw">pub </span>output: UnboundedSender&lt;(K, V)&gt;,
+<a href=#1701 id=1701 data-nosnippet>1701</a>    <span class="kw">pub </span>output: Sender&lt;(K, V)&gt;,
 <a href=#1702 id=1702 data-nosnippet>1702</a>    <span class="kw">pub </span>location: HookLocationMeta,
 <a href=#1703 id=1703 data-nosnippet>1703</a>    <span class="kw">pub </span>format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>(K, V)) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1704 id=1704 data-nosnippet>1704</a>}
@@ -1782,7 +1782,7 @@
 <a href=#1782 id=1782 data-nosnippet>1782</a>            }
 <a href=#1783 id=1783 data-nosnippet>1783</a>
 <a href=#1784 id=1784 data-nosnippet>1784</a>            <span class="kw">for </span>item <span class="kw">in </span>to_release {
-<a href=#1785 id=1785 data-nosnippet>1785</a>                <span class="self">self</span>.output.send(item).unwrap();
+<a href=#1785 id=1785 data-nosnippet>1785</a>                <span class="self">self</span>.output.try_send(item).unwrap();
 <a href=#1786 id=1786 data-nosnippet>1786</a>            }
 <a href=#1787 id=1787 data-nosnippet>1787</a>        } <span class="kw">else </span>{
 <a href=#1788 id=1788 data-nosnippet>1788</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
@@ -1798,7 +1798,7 @@
 <a href=#1798 id=1798 data-nosnippet>1798</a>    <span class="kw">pub </span>second: Rc&lt;RefCell&lt;VecDeque&lt;T&gt;&gt;&gt;,
 <a href=#1799 id=1799 data-nosnippet>1799</a>    <span class="kw">pub </span>to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;T&gt;&gt;,
 <a href=#1800 id=1800 data-nosnippet>1800</a>    <span class="kw">pub </span>release_source: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;,
-<a href=#1801 id=1801 data-nosnippet>1801</a>    <span class="kw">pub </span>output: UnboundedSender&lt;T&gt;,
+<a href=#1801 id=1801 data-nosnippet>1801</a>    <span class="kw">pub </span>output: Sender&lt;T&gt;,
 <a href=#1802 id=1802 data-nosnippet>1802</a>    <span class="kw">pub </span>location: HookLocationMeta,
 <a href=#1803 id=1803 data-nosnippet>1803</a>    <span class="kw">pub </span>format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1804 id=1804 data-nosnippet>1804</a>}
@@ -1890,7 +1890,7 @@
 <a href=#1890 id=1890 data-nosnippet>1890</a>            }
 <a href=#1891 id=1891 data-nosnippet>1891</a>
 <a href=#1892 id=1892 data-nosnippet>1892</a>            <span class="kw">for </span>item <span class="kw">in </span>to_release {
-<a href=#1893 id=1893 data-nosnippet>1893</a>                <span class="self">self</span>.output.send(item).unwrap();
+<a href=#1893 id=1893 data-nosnippet>1893</a>                <span class="self">self</span>.output.try_send(item).unwrap();
 <a href=#1894 id=1894 data-nosnippet>1894</a>            }
 <a href=#1895 id=1895 data-nosnippet>1895</a>        } <span class="kw">else </span>{
 <a href=#1896 id=1896 data-nosnippet>1896</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
@@ -1911,7 +1911,7 @@
 <a href=#1911 id=1911 data-nosnippet>1911</a>    second: KeyedMergeOrderedInput&lt;K, V&gt;,
 <a href=#1912 id=1912 data-nosnippet>1912</a>    to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;(K, V)&gt;&gt;,
 <a href=#1913 id=1913 data-nosnippet>1913</a>    release_sources: <span class="prelude-ty">Option</span>&lt;Vec&lt;bool&gt;&gt;,
-<a href=#1914 id=1914 data-nosnippet>1914</a>    output: UnboundedSender&lt;Vec&lt;(K, V)&gt;&gt;,
+<a href=#1914 id=1914 data-nosnippet>1914</a>    output: Sender&lt;Vec&lt;(K, V)&gt;&gt;,
 <a href=#1915 id=1915 data-nosnippet>1915</a>    batch_location: HookLocationMeta,
 <a href=#1916 id=1916 data-nosnippet>1916</a>    format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>(K, V)) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1917 id=1917 data-nosnippet>1917</a>}
@@ -1920,7 +1920,7 @@
 <a href=#1920 id=1920 data-nosnippet>1920</a>    <span class="kw">pub fn </span>new(
 <a href=#1921 id=1921 data-nosnippet>1921</a>        first: KeyedMergeOrderedInput&lt;K, V&gt;,
 <a href=#1922 id=1922 data-nosnippet>1922</a>        second: KeyedMergeOrderedInput&lt;K, V&gt;,
-<a href=#1923 id=1923 data-nosnippet>1923</a>        output: UnboundedSender&lt;Vec&lt;(K, V)&gt;&gt;,
+<a href=#1923 id=1923 data-nosnippet>1923</a>        output: Sender&lt;Vec&lt;(K, V)&gt;&gt;,
 <a href=#1924 id=1924 data-nosnippet>1924</a>        batch_location: HookLocationMeta,
 <a href=#1925 id=1925 data-nosnippet>1925</a>        format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>(K, V)) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#1926 id=1926 data-nosnippet>1926</a>    ) -&gt; <span class="self">Self </span>{
@@ -2046,7 +2046,7 @@
 <a href=#2046 id=2046 data-nosnippet>2046</a>                );
 <a href=#2047 id=2047 data-nosnippet>2047</a>            }
 <a href=#2048 id=2048 data-nosnippet>2048</a>
-<a href=#2049 id=2049 data-nosnippet>2049</a>            <span class="self">self</span>.output.send(to_release).unwrap();
+<a href=#2049 id=2049 data-nosnippet>2049</a>            <span class="self">self</span>.output.try_send(to_release).unwrap();
 <a href=#2050 id=2050 data-nosnippet>2050</a>        } <span class="kw">else </span>{
 <a href=#2051 id=2051 data-nosnippet>2051</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
 <a href=#2052 id=2052 data-nosnippet>2052</a>        }
@@ -2064,7 +2064,7 @@
 <a href=#2064 id=2064 data-nosnippet>2064</a>    <span class="kw">pub </span>second: Rc&lt;RefCell&lt;FxHashMap&lt;K, VecDeque&lt;V&gt;&gt;&gt;&gt;,
 <a href=#2065 id=2065 data-nosnippet>2065</a>    <span class="kw">pub </span>to_release: <span class="prelude-ty">Option</span>&lt;Vec&lt;(K, V)&gt;&gt;,
 <a href=#2066 id=2066 data-nosnippet>2066</a>    <span class="kw">pub </span>release_source: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;,
-<a href=#2067 id=2067 data-nosnippet>2067</a>    <span class="kw">pub </span>output: UnboundedSender&lt;(K, V)&gt;,
+<a href=#2067 id=2067 data-nosnippet>2067</a>    <span class="kw">pub </span>output: Sender&lt;(K, V)&gt;,
 <a href=#2068 id=2068 data-nosnippet>2068</a>    <span class="kw">pub </span>location: HookLocationMeta,
 <a href=#2069 id=2069 data-nosnippet>2069</a>    <span class="kw">pub </span>format_item_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>(K, V)) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
 <a href=#2070 id=2070 data-nosnippet>2070</a>}
@@ -2182,7 +2182,7 @@
 <a href=#2182 id=2182 data-nosnippet>2182</a>            }
 <a href=#2183 id=2183 data-nosnippet>2183</a>
 <a href=#2184 id=2184 data-nosnippet>2184</a>            <span class="kw">for </span>item <span class="kw">in </span>to_release {
-<a href=#2185 id=2185 data-nosnippet>2185</a>                <span class="self">self</span>.output.send(item).unwrap();
+<a href=#2185 id=2185 data-nosnippet>2185</a>                <span class="self">self</span>.output.try_send(item).unwrap();
 <a href=#2186 id=2186 data-nosnippet>2186</a>            }
 <a href=#2187 id=2187 data-nosnippet>2187</a>        } <span class="kw">else </span>{
 <a href=#2188 id=2188 data-nosnippet>2188</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
