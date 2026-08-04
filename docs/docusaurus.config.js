@@ -108,6 +108,7 @@ const config = {
       },
     ],
     require.resolve("./wasm-plugin.js"),
+    require.resolve("./raw-docs-plugin.js"),
     function (context, options) {
       return {
         name: "webpack-process-polyfill",

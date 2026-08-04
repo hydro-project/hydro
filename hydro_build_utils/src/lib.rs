@@ -26,6 +26,12 @@ macro_rules! nightly_wrapper {
         $crate::insta::with_settings!({
             prepend_module_to_snapshot => option_env!("CARGO_TARGET_TMPDIR").is_some(), // Only for integration tests.
             snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" },
+            filters => vec![
+                // Stageleft quote macro names embed the source line/column of the `q!` macro
+                // invocation (e.g. `__stageleft_quote_src_cluster_paxos_rs_157_21`), which churns
+                // snapshots whenever unrelated code moves. Redact the position for stability.
+                (r"(__stageleft_quote_\w+_rs)_\d+_\d+", "${1}_LINE_COL"),
+            ],
         }, {
             $statement;
         });
@@ -45,6 +51,32 @@ macro_rules! assert_snapshot {
 macro_rules! assert_debug_snapshot {
     ($($arg:tt)*) => {
         $crate::nightly_wrapper!($crate::insta::assert_debug_snapshot!($($arg)*));
+    };
+}
+
+#[cfg(feature = "insta")]
+/// Like [`nightly_wrapper!`], but without any [`filters`](insta::Settings::set_filters) applied.
+///
+/// Useful for snapshots that are sensitive to the exact code expanded into the test body (e.g.
+/// backtrace tests, where the extra `filters` setup code perturbs frame symbolization).
+#[macro_export]
+macro_rules! nightly_wrapper_unfiltered {
+    ($statement:stmt) => {
+        $crate::insta::with_settings!({
+            prepend_module_to_snapshot => option_env!("CARGO_TARGET_TMPDIR").is_some(), // Only for integration tests.
+            snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" },
+        }, {
+            $statement;
+        });
+    }
+}
+
+#[cfg(feature = "insta")]
+/// Like [`assert_debug_snapshot!`], but without any filters applied.
+#[macro_export]
+macro_rules! assert_debug_snapshot_unfiltered {
+    ($($arg:tt)*) => {
+        $crate::nightly_wrapper_unfiltered!($crate::insta::assert_debug_snapshot!($($arg)*));
     };
 }
 
