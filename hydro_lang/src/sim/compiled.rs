@@ -32,14 +32,13 @@ use std::task::ready;
 use bytes::Bytes;
 use colored::Colorize;
 use dfir_rs::scheduled::context::DfirErased;
+use dfir_rs::util::unsync::mpsc::{Receiver as UnsyncReceiver, Sender as UnsyncSender};
 use futures::{Stream, StreamExt};
 use libloading::Library;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use tempfile::TempPath;
-use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::{Mutex, Notify};
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use super::runtime::{Hooks, InlineHooks};
 use super::{SimClusterReceiver, SimClusterSender, SimReceiver, SimSender};
@@ -85,11 +84,11 @@ impl QuiescenceState {
 }
 
 struct SimConnections {
-    input_senders: HashMap<SimExternalPort, Rc<UnboundedSender<Bytes>>>,
-    output_receivers: HashMap<SimExternalPort, Rc<Mutex<UnboundedReceiverStream<Bytes>>>>,
-    cluster_input_senders: HashMap<SimExternalPort, HashMap<u32, Rc<UnboundedSender<Bytes>>>>,
+    input_senders: HashMap<SimExternalPort, UnsyncSender<Bytes>>,
+    output_receivers: HashMap<SimExternalPort, Rc<Mutex<UnsyncReceiver<Bytes>>>>,
+    cluster_input_senders: HashMap<SimExternalPort, HashMap<u32, UnsyncSender<Bytes>>>,
     cluster_output_receivers:
-        HashMap<SimExternalPort, HashMap<u32, Rc<Mutex<UnboundedReceiverStream<Bytes>>>>>,
+        HashMap<SimExternalPort, HashMap<u32, Rc<Mutex<UnsyncReceiver<Bytes>>>>>,
     external_registered: HashMap<ExternalPortId, SimExternalPort>,
     quiescence: Rc<QuiescenceState>,
     log: bool,
@@ -211,10 +210,10 @@ type SimLoaded<'a> = libloading::Symbol<
     'a,
     unsafe extern "Rust" fn(
         should_color: bool,
-        external_out: &mut HashMap<usize, UnboundedReceiverStream<Bytes>>,
-        external_in: &mut HashMap<usize, UnboundedSender<Bytes>>,
-        cluster_external_out: &mut HashMap<usize, HashMap<u32, UnboundedReceiverStream<Bytes>>>,
-        cluster_external_in: &mut HashMap<usize, HashMap<u32, UnboundedSender<Bytes>>>,
+        external_out: &mut HashMap<usize, UnsyncReceiver<Bytes>>,
+        external_in: &mut HashMap<usize, UnsyncSender<Bytes>>,
+        cluster_external_out: &mut HashMap<usize, HashMap<u32, UnsyncReceiver<Bytes>>>,
+        cluster_external_in: &mut HashMap<usize, HashMap<u32, UnsyncSender<Bytes>>>,
         println_handler: fn(fmt::Arguments<'_>),
         eprintln_handler: fn(fmt::Arguments<'_>),
     ) -> (
@@ -533,11 +532,11 @@ impl<'a> CompiledSimInstance<'a> {
         mut self,
         thunk: impl AsyncFnOnce(CompiledSimInstance) + RefUnwindSafe,
     ) {
-        let mut external_out: HashMap<usize, UnboundedReceiverStream<Bytes>> = HashMap::new();
-        let mut external_in: HashMap<usize, UnboundedSender<Bytes>> = HashMap::new();
-        let mut cluster_external_out: HashMap<usize, HashMap<u32, UnboundedReceiverStream<Bytes>>> =
+        let mut external_out: HashMap<usize, UnsyncReceiver<Bytes>> = HashMap::new();
+        let mut external_in: HashMap<usize, UnsyncSender<Bytes>> = HashMap::new();
+        let mut cluster_external_out: HashMap<usize, HashMap<u32, UnsyncReceiver<Bytes>>> =
             HashMap::new();
-        let mut cluster_external_in: HashMap<usize, HashMap<u32, UnboundedSender<Bytes>>> =
+        let mut cluster_external_in: HashMap<usize, HashMap<u32, UnsyncSender<Bytes>>> =
             HashMap::new();
 
         let dylib_result = unsafe {
@@ -580,19 +579,13 @@ impl<'a> CompiledSimInstance<'a> {
         for sim_port in registered.values() {
             let usize_key = sim_port.into_inner();
             if let Some(sender) = external_in.remove(&usize_key) {
-                input_senders.insert(*sim_port, Rc::new(sender));
+                input_senders.insert(*sim_port, sender);
             }
             if let Some(receiver) = external_out.remove(&usize_key) {
                 output_receivers.insert(*sim_port, Rc::new(Mutex::new(receiver)));
             }
             if let Some(senders) = cluster_external_in.remove(&usize_key) {
-                cluster_input_senders.insert(
-                    *sim_port,
-                    senders
-                        .into_iter()
-                        .map(|(member, s)| (member, Rc::new(s)))
-                        .collect(),
-                );
+                cluster_input_senders.insert(*sim_port, senders);
             }
             if let Some(receivers) = cluster_external_out.remove(&usize_key) {
                 cluster_output_receivers.insert(
@@ -958,10 +951,7 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, NoOrder, ExactlyOnce> {
 }
 
 impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimSender<T, O, R> {
-    fn with_sink<Out>(
-        &self,
-        thunk: impl FnOnce(&dyn Fn(T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>>) -> Out,
-    ) -> Out {
+    fn with_sink<Out>(&self, thunk: impl FnOnce(&dyn Fn(T)) -> Out) -> Out {
         let (sender, quiescence) = CURRENT_SIM_CONNECTIONS.with(|connections| {
             let connections = connections.borrow();
             (
@@ -975,9 +965,10 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimSender<T, O, R
         });
 
         thunk(&move |t| {
-            let res = sender.send(bincode::serialize(&t).unwrap().into());
+            sender
+                .try_send(bincode::serialize(&t).unwrap().into())
+                .unwrap();
             quiescence.resume();
-            res
         })
     }
 }
@@ -988,7 +979,7 @@ impl<T: Serialize + DeserializeOwned, O: Ordering> SimSender<T, O, ExactlyOnce> 
     pub fn send_many_unordered<I: IntoIterator<Item = T>>(&self, iter: I) {
         self.with_sink(|send| {
             for t in iter {
-                send(t).unwrap();
+                send(t);
             }
         })
     }
@@ -998,7 +989,7 @@ impl<T: Serialize + DeserializeOwned> SimSender<T, TotalOrder, ExactlyOnce> {
     /// Sends a message to the external bincode sink. The message will be asynchronously processed
     /// as part of the simulation.
     pub fn send(&self, t: T) {
-        self.with_sink(|send| send(t)).unwrap();
+        self.with_sink(|send| send(t));
     }
 
     /// Sends several messages to the external bincode sink. The messages will be asynchronously
@@ -1006,7 +997,7 @@ impl<T: Serialize + DeserializeOwned> SimSender<T, TotalOrder, ExactlyOnce> {
     pub fn send_many<I: IntoIterator<Item = T>>(&self, iter: I) {
         self.with_sink(|send| {
             for t in iter {
-                send(t).unwrap();
+                send(t);
             }
         })
     }
@@ -1093,12 +1084,7 @@ impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, NoOrder, ExactlyOnce
 }
 
 impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterSender<T, O, R> {
-    fn with_sink<Out>(
-        &self,
-        thunk: impl FnOnce(
-            &dyn Fn(u32, T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>>,
-        ) -> Out,
-    ) -> Out {
+    fn with_sink<Out>(&self, thunk: impl FnOnce(&dyn Fn(u32, T)) -> Out) -> Out {
         let (senders, quiescence) = CURRENT_SIM_CONNECTIONS.with(|connections| {
             let connections = connections.borrow();
             (
@@ -1113,9 +1099,8 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterSender<
 
         thunk(&move |member_id: u32, t: T| {
             let payload = bincode::serialize(&t).unwrap();
-            let res = senders[&member_id].send(Bytes::from(payload));
+            senders[&member_id].try_send(Bytes::from(payload)).unwrap();
             quiescence.resume();
-            res
         })
     }
 }
@@ -1126,7 +1111,7 @@ impl<T: Serialize + DeserializeOwned, O: Ordering> SimClusterSender<T, O, Exactl
     pub fn send_many_unordered<I: IntoIterator<Item = (u32, T)>>(&self, iter: I) {
         self.with_sink(|send| {
             for (member_id, t) in iter {
-                send(member_id, t).unwrap();
+                send(member_id, t);
             }
         })
     }
@@ -1135,14 +1120,14 @@ impl<T: Serialize + DeserializeOwned, O: Ordering> SimClusterSender<T, O, Exactl
 impl<T: Serialize + DeserializeOwned> SimClusterSender<T, TotalOrder, ExactlyOnce> {
     /// Sends a value to a specific cluster member.
     pub fn send(&self, member_id: u32, t: T) {
-        self.with_sink(|send| send(member_id, t)).unwrap();
+        self.with_sink(|send| send(member_id, t));
     }
 
     /// Sends multiple values to specific cluster members.
     pub fn send_many<I: IntoIterator<Item = (u32, T)>>(&self, iter: I) {
         self.with_sink(|send| {
             for (member_id, t) in iter {
-                send(member_id, t).unwrap();
+                send(member_id, t);
             }
         })
     }
