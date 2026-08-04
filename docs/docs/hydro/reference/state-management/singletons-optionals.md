@@ -138,4 +138,3 @@ Snapshots are asynchronous: each snapshot is at least as recent as the previous 
 - [`Singleton`](rust:hydro_lang::live_collections::Singleton)
 - [`Optional`](rust:hydro_lang::live_collections::Optional)
 - [`Monotonic`](rust:hydro_lang::live_collections::singleton::Monotonic)
-- [Live Collections API overview](../api/index.md)

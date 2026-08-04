@@ -167,9 +167,9 @@ const config = {
                 label: "Hydro Guide",
               },
               {
-                to: "docs/hydro/reference/api",
-                activeBasePath: "docs/hydro/reference/api",
-                label: "Live Collections API",
+                to: "docs/hydro/quick-reference/live-collections",
+                activeBasePath: "docs/hydro/quick-reference",
+                label: "Quick References",
               },
               {
                 href: "pathname:///rustdoc/hydro_lang/",

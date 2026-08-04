@@ -37,7 +37,3 @@ These collections come in two flavors based on how they are used. **Streaming da
 Because live collections update asynchronously, you might expect Hydro programs to be riddled with race conditions. Instead, Hydro uses the Rust type system to preserve strong correctness guarantees:
 - Each live collection type tracks whether it is [**bounded or unbounded**](../correctness/bounded-unbounded.md) — whether its final contents are already fully determined or new changes may still arrive. APIs that need to observe a collection "in its entirety" are only available on bounded collections.
 - All safe APIs on live collections guarantee [**eventual determinism**](../correctness/determinism.md): given the same eventual inputs, a program always produces the same eventual outputs, regardless of network delays or event interleaving. The places where non-determinism is truly necessary are explicitly marked with [`nondet!`](../correctness/nondet.md).
-
-## API Reference
-
-For a type-by-type map of the public API and the guarantees encoded in each collection, see the [Live Collections API reference](../api/index.md). Exact signatures and methods are linked from there to the generated Rust API documentation.

@@ -161,4 +161,3 @@ Like all live collections, streams have a type parameter that tracks whether the
 - [`Stream`](rust:hydro_lang::live_collections::Stream)
 - Ordering markers: [`TotalOrder`](rust:hydro_lang::live_collections::stream::TotalOrder) and [`NoOrder`](rust:hydro_lang::live_collections::stream::NoOrder)
 - Retry markers: [`ExactlyOnce`](rust:hydro_lang::live_collections::stream::ExactlyOnce) and [`AtLeastOnce`](rust:hydro_lang::live_collections::stream::AtLeastOnce)
-- [Live Collections API overview](../api/index.md)

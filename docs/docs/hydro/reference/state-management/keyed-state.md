@@ -93,4 +93,3 @@ Keyed singletons support per-key transformations like `map`, `filter`, and `filt
 
 - [`KeyedSingleton`](rust:hydro_lang::live_collections::KeyedSingleton)
 - Keyed singleton bounds: [`BoundedValue`](rust:hydro_lang::live_collections::keyed_singleton::BoundedValue), [`MonotonicValue`](rust:hydro_lang::live_collections::keyed_singleton::MonotonicValue), and [`MonotonicKeys`](rust:hydro_lang::live_collections::keyed_singleton::MonotonicKeys)
-- [Live Collections API overview](../api/index.md)
