@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use dfir_rs::scheduled::context::DfirErased;
+use dfir_rs::runtime::context::DfirErased;
 use dfir_rs::util::collect_ready;
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};

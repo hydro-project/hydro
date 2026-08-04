@@ -2019,7 +2019,7 @@ impl DfirGraph {
                         let sg_metrics = &__dfir_metrics.subgraphs[
                             #root::slotmap::KeyData::from_ffi(#sg_metrics_ffi).into()
                         ];
-                        #root::scheduled::metrics::InstrumentSubgraph::new(
+                        #root::runtime::metrics::InstrumentSubgraph::new(
                             #sg_fut_ident, sg_metrics
                         ).await;
                         sg_metrics.total_run_count.update(|x| x + 1);
@@ -2153,17 +2153,17 @@ impl DfirGraph {
                 use #root::{var_expr, var_args};
 
                 let __dfir_wake_state = ::std::sync::Arc::new(
-                    #root::scheduled::context::WakeState::default()
+                    #root::runtime::context::WakeState::default()
                 );
 
                 let __dfir_metrics = {
-                    let mut dfir_metrics = #root::scheduled::metrics::DfirMetrics::default();
+                    let mut dfir_metrics = #root::runtime::metrics::DfirMetrics::default();
                     #( #metrics_init_code )*
                     ::std::rc::Rc::new(dfir_metrics)
                 };
 
                 #[allow(unused_mut)]
-                let mut #df = #root::scheduled::context::Context::new(
+                let mut #df = #root::runtime::context::Context::new(
                     ::std::clone::Clone::clone(&__dfir_wake_state),
                     __dfir_metrics,
                 );
@@ -2185,7 +2185,7 @@ impl DfirGraph {
                 // if any handoff buffer has data.
                 let mut __dfir_work_done = true;
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof)]
-                let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context| {
+                let __dfir_inline_tick = async move |#df: &mut #root::runtime::context::Context| {
                     // Reset arena between ticks (start-of-tick)
                     #bump_ident.reset();
 
@@ -2213,7 +2213,7 @@ impl DfirGraph {
 
                     ::std::mem::take(&mut __dfir_work_done)
                 };
-                #root::scheduled::context::Dfir::new(
+                #root::runtime::context::Dfir::new(
                     __dfir_inline_tick,
                     #df,
                     #meta_graph_arg,

@@ -377,10 +377,10 @@ pub struct WriteContextArgs<'a> {
     /// `dfir` crate name for `use #root::something`.
     pub root: &'a TokenStream,
     /// `context` ident, the name of the provided
-    /// [`dfir_rs::scheduled::Context`](https://hydro.run/rustdoc/dfir_rs/scheduled/context/struct.Context.html).
+    /// [`dfir_rs::runtime::Context`](https://hydro.run/rustdoc/dfir_rs/scheduled/context/struct.Context.html).
     pub context: &'a Ident,
     /// `df` ident, the name of the
-    /// [`dfir_rs::scheduled::graph::Dfir`](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir.html)
+    /// [`dfir_rs::runtime::graph::Dfir`](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir.html)
     /// instance.
     pub df_ident: &'a Ident,
     /// Subgraph ID in which this operator is contained.

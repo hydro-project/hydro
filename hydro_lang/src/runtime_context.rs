@@ -1,6 +1,6 @@
 //! Interfaces to access DFIR runtime metadata from Hydro programs.
 
-use dfir_rs::scheduled::context::Context;
+use dfir_rs::runtime::context::Context;
 use quote::quote;
 use stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
 

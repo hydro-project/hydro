@@ -7,7 +7,7 @@ use bytes::{BufMut, Bytes, BytesMut};
 use dfir_lang::graph::{WriteConfig, WriteGraphType};
 use dfir_pipes::pull::HalfMultisetJoinState;
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::ticks::TickInstant;
+use dfir_rs::runtime::ticks::TickInstant;
 use futures::Stream;
 use lattices::map_union::{MapUnionHashMap, MapUnionSingletonMap};
 use lattices::set_union::SetUnionSingletonSet;

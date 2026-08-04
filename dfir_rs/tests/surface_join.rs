@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use dfir_rs::assert_graphvis_snapshots;
-use dfir_rs::scheduled::ticks::TickInstant;
+use dfir_rs::runtime::ticks::TickInstant;
 use multiplatform_test::multiplatform_test;
 
 macro_rules! assert_contains_each_by_tick {

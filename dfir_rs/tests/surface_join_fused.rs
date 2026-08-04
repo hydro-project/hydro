@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use dfir_rs::dfir_pipes::pull::{Fold, Reduce};
 use dfir_rs::lattices::set_union::SetUnionSingletonSet;
-use dfir_rs::scheduled::ticks::TickInstant;
+use dfir_rs::runtime::ticks::TickInstant;
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use lattices::Merge;
 use lattices::set_union::SetUnionHashSet;

@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use dfir_rs::scheduled::ticks::{TickDuration, TickInstant};
+use dfir_rs::runtime::ticks::{TickDuration, TickInstant};
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax, rassert_eq};
 use multiplatform_test::multiplatform_test;
 use tokio::time::timeout;

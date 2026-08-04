@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use dfir_rs::scheduled::ticks::TickInstant;
+use dfir_rs::runtime::ticks::TickInstant;
 use dfir_rs::util::collect_ready;
 use dfir_rs::util::multiset::HashMultiSet;
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};

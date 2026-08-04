@@ -1,5 +1,5 @@
 use dfir_rs::lang::graph::{WriteConfig, WriteGraphType};
-use dfir_rs::scheduled::context::{Dfir, TickClosure};
+use dfir_rs::runtime::context::{Dfir, TickClosure};
 
 pub fn print_graph(
     flow: &Dfir<impl TickClosure>,

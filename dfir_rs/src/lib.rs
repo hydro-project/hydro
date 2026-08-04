@@ -3,7 +3,7 @@
 
 //! DFIR is a low-level dataflow-based runtime system for the [Hydro Project](https://hydro.run/).
 //!
-//! The primary item in this crate is the [`Dfir`](crate::scheduled::context::Dfir) struct,
+//! The primary item in this crate is the [`Dfir`](crate::runtime::context::Dfir) struct,
 //! representing a DFIR dataflow instance. Instantiate one with the
 //! [`dfir_syntax!`] macro using DFIR's custom syntax.
 //!
@@ -17,7 +17,7 @@
 //! For more examples, check out the [`examples` folder on Github](https://github.com/hydro-project/hydro/tree/main/dfir_rs/examples).
 
 pub mod compiled;
-pub mod scheduled;
+pub mod runtime;
 pub mod util;
 
 #[doc(hidden)]

@@ -12,7 +12,7 @@ use std::time::SystemTime;
 #[cfg(feature = "runtime_support")]
 use dfir_rs::Never;
 #[cfg(feature = "runtime_support")]
-use dfir_rs::scheduled::metrics::{DfirMetrics, DfirMetricsIntervals};
+use dfir_rs::runtime::metrics::{DfirMetrics, DfirMetricsIntervals};
 #[cfg(feature = "runtime_support")]
 use futures::FutureExt;
 use quote::quote;
