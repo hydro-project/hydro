@@ -92,11 +92,11 @@
 <a href=#92 id=92 data-nosnippet>92</a>            type_args
 <a href=#93 id=93 data-nosnippet>93</a>                .first()
 <a href=#94 id=94 data-nosnippet>94</a>                .map(ToTokens::to_token_stream)
-<a href=#95 id=95 data-nosnippet>95</a>                .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>)),
+<a href=#95 id=95 data-nosnippet>95</a>                .unwrap_or_else(|| <span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>)),
 <a href=#96 id=96 data-nosnippet>96</a>            type_args
 <a href=#97 id=97 data-nosnippet>97</a>                .get(<span class="number">1</span>)
 <a href=#98 id=98 data-nosnippet>98</a>                .map(ToTokens::to_token_stream)
-<a href=#99 id=99 data-nosnippet>99</a>                .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>)),
+<a href=#99 id=99 data-nosnippet>99</a>                .unwrap_or_else(|| <span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>)),
 <a href=#100 id=100 data-nosnippet>100</a>        ];
 <a href=#101 id=101 data-nosnippet>101</a>
 <a href=#102 id=102 data-nosnippet>102</a>        <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];

@@ -958,7 +958,7 @@
 <a href=#958 id=958 data-nosnippet>958</a>    <span class="doccomment">/// Warns about unused port indexing referenced in [`Self::varname_ends`].
 <a href=#959 id=959 data-nosnippet>959</a>    /// https://github.com/hydro-project/hydro/issues/1108
 <a href=#960 id=960 data-nosnippet>960</a>    </span><span class="kw">fn </span>warn_unused_port_indexing(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#961 id=961 data-nosnippet>961</a>        <span class="kw">for </span>(_ident, varname_info) <span class="kw">in </span><span class="self">self</span>.varname_ends.iter() {
+<a href=#961 id=961 data-nosnippet>961</a>        <span class="kw">for </span>varname_info <span class="kw">in </span><span class="self">self</span>.varname_ends.values() {
 <a href=#962 id=962 data-nosnippet>962</a>            <span class="kw">if </span>!varname_info.inn_used {
 <a href=#963 id=963 data-nosnippet>963</a>                <span class="self">Self</span>::helper_check_unused_port(<span class="kw-2">&amp;mut </span><span class="self">self</span>.diagnostics, <span class="kw-2">&amp;</span>varname_info.ends, <span class="bool-val">true</span>);
 <a href=#964 id=964 data-nosnippet>964</a>            }

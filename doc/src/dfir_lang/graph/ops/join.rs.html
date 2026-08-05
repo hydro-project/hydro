@@ -118,7 +118,7 @@
 <a href=#118 id=118 data-nosnippet>118</a>            type_args
 <a href=#119 id=119 data-nosnippet>119</a>                .first()
 <a href=#120 id=120 data-nosnippet>120</a>                .map(ToTokens::to_token_stream)
-<a href=#121 id=121 data-nosnippet>121</a>                .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt;
+<a href=#121 id=121 data-nosnippet>121</a>                .unwrap_or_else(|| <span class="macro">quote_spanned!</span>(op_span=&gt;
 <a href=#122 id=122 data-nosnippet>122</a>                    #root::dfir_pipes::pull::HalfSetJoinState
 <a href=#123 id=123 data-nosnippet>123</a>                ));
 <a href=#124 id=124 data-nosnippet>124</a>

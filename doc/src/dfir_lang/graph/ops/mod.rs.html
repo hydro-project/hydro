@@ -156,7 +156,7 @@
 <a href=#156 id=156 data-nosnippet>156</a>    <span class="kw">let </span>generic_type = type_args
 <a href=#157 id=157 data-nosnippet>157</a>        .first()
 <a href=#158 id=158 data-nosnippet>158</a>        .map(quote::ToTokens::to_token_stream)
-<a href=#159 id=159 data-nosnippet>159</a>        .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>));
+<a href=#159 id=159 data-nosnippet>159</a>        .unwrap_or_else(|| <span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>));
 <a href=#160 id=160 data-nosnippet>160</a>
 <a href=#161 id=161 data-nosnippet>161</a>    <span class="kw">if </span>is_pull {
 <a href=#162 id=162 data-nosnippet>162</a>        <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];

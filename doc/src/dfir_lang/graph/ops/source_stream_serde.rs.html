@@ -58,7 +58,7 @@
 <a href=#58 id=58 data-nosnippet>58</a>        <span class="kw">let </span>generic_type = type_args
 <a href=#59 id=59 data-nosnippet>59</a>            .first()
 <a href=#60 id=60 data-nosnippet>60</a>            .map(quote::ToTokens::to_token_stream)
-<a href=#61 id=61 data-nosnippet>61</a>            .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>));
+<a href=#61 id=61 data-nosnippet>61</a>            .unwrap_or_else(|| <span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>));
 <a href=#62 id=62 data-nosnippet>62</a>
 <a href=#63 id=63 data-nosnippet>63</a>        <span class="kw">let </span>receiver = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
 <a href=#64 id=64 data-nosnippet>64</a>        <span class="kw">let </span>stream_ident = wc.make_ident(<span class="string">"stream"</span>);

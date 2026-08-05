@@ -598,7 +598,7 @@
 <a href=#598 id=598 data-nosnippet>598</a>        env: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[
 <a href=#599 id=599 data-nosnippet>599</a>            <span class="macro">format!</span>(<span class="string">"CONTAINER_NAME={container_name}"</span>),
 <a href=#600 id=600 data-nosnippet>600</a>            <span class="macro">format!</span>(<span class="string">"DEPLOYMENT_INSTANCE={deployment_instance}"</span>),
-<a href=#601 id=601 data-nosnippet>601</a>            <span class="macro">format!</span>(<span class="string">"RUST_LOG=trace"</span>),
+<a href=#601 id=601 data-nosnippet>601</a>            <span class="string">"RUST_LOG=trace"</span>.to_owned(),
 <a href=#602 id=602 data-nosnippet>602</a>        ]),
 <a href=#603 id=603 data-nosnippet>603</a>        networking_config: <span class="prelude-val">Some</span>(NetworkingConfig {
 <a href=#604 id=604 data-nosnippet>604</a>            endpoints_config: <span class="prelude-val">Some</span>(HashMap::from([(
@@ -1161,22 +1161,22 @@
 <a href=#1161 id=1161 data-nosnippet>1161</a>        p2.exposed_ports.borrow_mut().push(<span class="kw-2">*</span>p2_port);
 <a href=#1162 id=1162 data-nosnippet>1162</a>
 <a href=#1163 id=1163 data-nosnippet>1163</a>        <span class="kw">let </span>socket_ident = syn::Ident::new(
-<a href=#1164 id=1164 data-nosnippet>1164</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_socket"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#1164 id=1164 data-nosnippet>1164</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_socket"</span>, shared_handle),
 <a href=#1165 id=1165 data-nosnippet>1165</a>            Span::call_site(),
 <a href=#1166 id=1166 data-nosnippet>1166</a>        );
 <a href=#1167 id=1167 data-nosnippet>1167</a>
 <a href=#1168 id=1168 data-nosnippet>1168</a>        <span class="kw">let </span>source_ident = syn::Ident::new(
-<a href=#1169 id=1169 data-nosnippet>1169</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_source"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#1169 id=1169 data-nosnippet>1169</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_source"</span>, shared_handle),
 <a href=#1170 id=1170 data-nosnippet>1170</a>            Span::call_site(),
 <a href=#1171 id=1171 data-nosnippet>1171</a>        );
 <a href=#1172 id=1172 data-nosnippet>1172</a>
 <a href=#1173 id=1173 data-nosnippet>1173</a>        <span class="kw">let </span>sink_ident = syn::Ident::new(
-<a href=#1174 id=1174 data-nosnippet>1174</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_sink"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#1174 id=1174 data-nosnippet>1174</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_sink"</span>, shared_handle),
 <a href=#1175 id=1175 data-nosnippet>1175</a>            Span::call_site(),
 <a href=#1176 id=1176 data-nosnippet>1176</a>        );
 <a href=#1177 id=1177 data-nosnippet>1177</a>
 <a href=#1178 id=1178 data-nosnippet>1178</a>        <span class="kw">let </span>membership_ident = syn::Ident::new(
-<a href=#1179 id=1179 data-nosnippet>1179</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_membership"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#1179 id=1179 data-nosnippet>1179</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_membership"</span>, shared_handle),
 <a href=#1180 id=1180 data-nosnippet>1180</a>            Span::call_site(),
 <a href=#1181 id=1181 data-nosnippet>1181</a>        );
 <a href=#1182 id=1182 data-nosnippet>1182</a>
@@ -1198,7 +1198,7 @@
 <a href=#1198 id=1198 data-nosnippet>1198</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%shared_handle))]
 <a href=#1199 id=1199 data-nosnippet>1199</a>    </span><span class="kw">fn </span>e2o_many_sink(shared_handle: String) -&gt; syn::Expr {
 <a href=#1200 id=1200 data-nosnippet>1200</a>        <span class="kw">let </span>sink_ident = syn::Ident::new(
-<a href=#1201 id=1201 data-nosnippet>1201</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_sink"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#1201 id=1201 data-nosnippet>1201</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_sink"</span>, shared_handle),
 <a href=#1202 id=1202 data-nosnippet>1202</a>            Span::call_site(),
 <a href=#1203 id=1203 data-nosnippet>1203</a>        );
 <a href=#1204 id=1204 data-nosnippet>1204</a>        <span class="macro">parse_quote!</span>(#sink_ident)
@@ -1226,17 +1226,17 @@
 <a href=#1226 id=1226 data-nosnippet>1226</a>        p2.exposed_ports.borrow_mut().push(<span class="kw-2">*</span>p2_port);
 <a href=#1227 id=1227 data-nosnippet>1227</a>
 <a href=#1228 id=1228 data-nosnippet>1228</a>        <span class="kw">let </span>socket_ident = syn::Ident::new(
-<a href=#1229 id=1229 data-nosnippet>1229</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_socket"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#1229 id=1229 data-nosnippet>1229</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_socket"</span>, shared_handle),
 <a href=#1230 id=1230 data-nosnippet>1230</a>            Span::call_site(),
 <a href=#1231 id=1231 data-nosnippet>1231</a>        );
 <a href=#1232 id=1232 data-nosnippet>1232</a>
 <a href=#1233 id=1233 data-nosnippet>1233</a>        <span class="kw">let </span>source_ident = syn::Ident::new(
-<a href=#1234 id=1234 data-nosnippet>1234</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_source"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#1234 id=1234 data-nosnippet>1234</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_source"</span>, shared_handle),
 <a href=#1235 id=1235 data-nosnippet>1235</a>            Span::call_site(),
 <a href=#1236 id=1236 data-nosnippet>1236</a>        );
 <a href=#1237 id=1237 data-nosnippet>1237</a>
 <a href=#1238 id=1238 data-nosnippet>1238</a>        <span class="kw">let </span>sink_ident = syn::Ident::new(
-<a href=#1239 id=1239 data-nosnippet>1239</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_sink"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#1239 id=1239 data-nosnippet>1239</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_sink"</span>, shared_handle),
 <a href=#1240 id=1240 data-nosnippet>1240</a>            Span::call_site(),
 <a href=#1241 id=1241 data-nosnippet>1241</a>        );
 <a href=#1242 id=1242 data-nosnippet>1242</a>
@@ -1299,7 +1299,7 @@
 <a href=#1299 id=1299 data-nosnippet>1299</a>        shared_handle: String,
 <a href=#1300 id=1300 data-nosnippet>1300</a>    ) -&gt; syn::Expr {
 <a href=#1301 id=1301 data-nosnippet>1301</a>        <span class="kw">let </span>sink_ident = syn::Ident::new(
-<a href=#1302 id=1302 data-nosnippet>1302</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_sink"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#1302 id=1302 data-nosnippet>1302</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_sink"</span>, shared_handle),
 <a href=#1303 id=1303 data-nosnippet>1303</a>            Span::call_site(),
 <a href=#1304 id=1304 data-nosnippet>1304</a>        );
 <a href=#1305 id=1305 data-nosnippet>1305</a>        <span class="macro">parse_quote!</span>(#sink_ident)

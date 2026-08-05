@@ -51,40 +51,38 @@
 <a href=#51 id=51 data-nosnippet>51</a>
 <a href=#52 id=52 data-nosnippet>52</a><span class="attr">#[cfg(test)]
 <a href=#53 id=53 data-nosnippet>53</a></span><span class="kw">mod </span>tests {
-<a href=#54 id=54 data-nosnippet>54</a>    <span class="kw">use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#54 id=54 data-nosnippet>54</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 <a href=#55 id=55 data-nosnippet>55</a>
-<a href=#56 id=56 data-nosnippet>56</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-<a href=#57 id=57 data-nosnippet>57</a>
-<a href=#58 id=58 data-nosnippet>58</a>    <span class="attr">#[test]
-<a href=#59 id=59 data-nosnippet>59</a>    </span><span class="kw">fn </span>test_counter_read_after_write() {
-<a href=#60 id=60 data-nosnippet>60</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#61 id=61 data-nosnippet>61</a>        <span class="kw">let </span>process = flow.process();
-<a href=#62 id=62 data-nosnippet>62</a>        <span class="kw">let </span>shards = flow.cluster();
-<a href=#63 id=63 data-nosnippet>63</a>
-<a href=#64 id=64 data-nosnippet>64</a>        <span class="kw">let </span>(inc_in_port, inc_requests) = process.sim_input();
-<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">let </span>inc_requests = inc_requests.into_keyed();
-<a href=#66 id=66 data-nosnippet>66</a>
-<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">let </span>(get_in_port, get_requests) = process.sim_input();
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>get_requests = get_requests.into_keyed();
-<a href=#69 id=69 data-nosnippet>69</a>
-<a href=#70 id=70 data-nosnippet>70</a>        <span class="kw">let </span>(inc_acks, get_responses) =
-<a href=#71 id=71 data-nosnippet>71</a>            sharded_counter_service(<span class="kw-2">&amp;</span>process, <span class="kw-2">&amp;</span>shards, inc_requests, get_requests);
-<a href=#72 id=72 data-nosnippet>72</a>
-<a href=#73 id=73 data-nosnippet>73</a>        <span class="kw">let </span>inc_out_port = inc_acks.entries().sim_output();
-<a href=#74 id=74 data-nosnippet>74</a>        <span class="kw">let </span>get_out_port = get_responses.entries().sim_output();
-<a href=#75 id=75 data-nosnippet>75</a>
-<a href=#76 id=76 data-nosnippet>76</a>        flow.sim()
-<a href=#77 id=77 data-nosnippet>77</a>            .with_cluster_size(<span class="kw-2">&amp;</span>shards, <span class="number">5</span>)
-<a href=#78 id=78 data-nosnippet>78</a>            .exhaustive(<span class="kw">async </span>|| {
-<a href=#79 id=79 data-nosnippet>79</a>                inc_in_port.send((<span class="number">1</span>, <span class="string">"abc"</span>.to_owned()));
-<a href=#80 id=80 data-nosnippet>80</a>                inc_out_port
-<a href=#81 id=81 data-nosnippet>81</a>                    .assert_yields_unordered([(<span class="number">1</span>, <span class="string">"abc"</span>.to_owned())])
-<a href=#82 id=82 data-nosnippet>82</a>                    .<span class="kw">await</span>;
-<a href=#83 id=83 data-nosnippet>83</a>                get_in_port.send((<span class="number">1</span>, <span class="string">"abc"</span>.to_owned()));
-<a href=#84 id=84 data-nosnippet>84</a>                get_out_port
-<a href=#85 id=85 data-nosnippet>85</a>                    .assert_yields_only_unordered([(<span class="number">1</span>, (<span class="string">"abc"</span>.to_owned(), <span class="number">1</span>))])
-<a href=#86 id=86 data-nosnippet>86</a>                    .<span class="kw">await</span>;
-<a href=#87 id=87 data-nosnippet>87</a>            });
-<a href=#88 id=88 data-nosnippet>88</a>    }
-<a href=#89 id=89 data-nosnippet>89</a>}
+<a href=#56 id=56 data-nosnippet>56</a>    <span class="attr">#[test]
+<a href=#57 id=57 data-nosnippet>57</a>    </span><span class="kw">fn </span>test_counter_read_after_write() {
+<a href=#58 id=58 data-nosnippet>58</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#59 id=59 data-nosnippet>59</a>        <span class="kw">let </span>process = flow.process();
+<a href=#60 id=60 data-nosnippet>60</a>        <span class="kw">let </span>shards = flow.cluster();
+<a href=#61 id=61 data-nosnippet>61</a>
+<a href=#62 id=62 data-nosnippet>62</a>        <span class="kw">let </span>(inc_in_port, inc_requests) = process.sim_input();
+<a href=#63 id=63 data-nosnippet>63</a>        <span class="kw">let </span>inc_requests = inc_requests.into_keyed();
+<a href=#64 id=64 data-nosnippet>64</a>
+<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">let </span>(get_in_port, get_requests) = process.sim_input();
+<a href=#66 id=66 data-nosnippet>66</a>        <span class="kw">let </span>get_requests = get_requests.into_keyed();
+<a href=#67 id=67 data-nosnippet>67</a>
+<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>(inc_acks, get_responses) =
+<a href=#69 id=69 data-nosnippet>69</a>            sharded_counter_service(<span class="kw-2">&amp;</span>process, <span class="kw-2">&amp;</span>shards, inc_requests, get_requests);
+<a href=#70 id=70 data-nosnippet>70</a>
+<a href=#71 id=71 data-nosnippet>71</a>        <span class="kw">let </span>inc_out_port = inc_acks.entries().sim_output();
+<a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span>get_out_port = get_responses.entries().sim_output();
+<a href=#73 id=73 data-nosnippet>73</a>
+<a href=#74 id=74 data-nosnippet>74</a>        flow.sim()
+<a href=#75 id=75 data-nosnippet>75</a>            .with_cluster_size(<span class="kw-2">&amp;</span>shards, <span class="number">5</span>)
+<a href=#76 id=76 data-nosnippet>76</a>            .exhaustive(<span class="kw">async </span>|| {
+<a href=#77 id=77 data-nosnippet>77</a>                inc_in_port.send((<span class="number">1</span>, <span class="string">"abc"</span>.to_owned()));
+<a href=#78 id=78 data-nosnippet>78</a>                inc_out_port
+<a href=#79 id=79 data-nosnippet>79</a>                    .assert_yields_unordered([(<span class="number">1</span>, <span class="string">"abc"</span>.to_owned())])
+<a href=#80 id=80 data-nosnippet>80</a>                    .<span class="kw">await</span>;
+<a href=#81 id=81 data-nosnippet>81</a>                get_in_port.send((<span class="number">1</span>, <span class="string">"abc"</span>.to_owned()));
+<a href=#82 id=82 data-nosnippet>82</a>                get_out_port
+<a href=#83 id=83 data-nosnippet>83</a>                    .assert_yields_only_unordered([(<span class="number">1</span>, (<span class="string">"abc"</span>.to_owned(), <span class="number">1</span>))])
+<a href=#84 id=84 data-nosnippet>84</a>                    .<span class="kw">await</span>;
+<a href=#85 id=85 data-nosnippet>85</a>            });
+<a href=#86 id=86 data-nosnippet>86</a>    }
+<a href=#87 id=87 data-nosnippet>87</a>}
 </code></pre></div></section></main></body></html>

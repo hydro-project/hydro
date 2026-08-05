@@ -275,7 +275,7 @@
 <a href=#275 id=275 data-nosnippet>275</a>
 <a href=#276 id=276 data-nosnippet>276</a><span class="kw">fn </span>exit_code(c: ExitStatus) -&gt; i32 {
 <a href=#277 id=277 data-nosnippet>277</a>    <span class="attr">#[cfg(unix)]
-<a href=#278 id=278 data-nosnippet>278</a>    </span><span class="kw">return </span>c.code().or(c.signal()).unwrap();
+<a href=#278 id=278 data-nosnippet>278</a>    </span><span class="kw">return </span>c.code().or_else(|| c.signal()).unwrap();
 <a href=#279 id=279 data-nosnippet>279</a>    <span class="attr">#[cfg(not(unix))]
 <a href=#280 id=280 data-nosnippet>280</a>    </span><span class="kw">return </span>c.code().unwrap();
 <a href=#281 id=281 data-nosnippet>281</a>}
