@@ -216,10 +216,10 @@ mod test {
             for b in sub_items {
                 test_vec.push(DomPair::new(
                     WithTop::new(
-                        a.map(|x| SetUnionHashSet::new_from(HashSet::from_iter(x.iter().cloned()))),
+                        a.map(|x| SetUnionHashSet::new_from(HashSet::from_iter(x.iter().copied()))),
                     ),
                     WithTop::new(
-                        b.map(|x| SetUnionHashSet::new_from(HashSet::from_iter(x.iter().cloned()))),
+                        b.map(|x| SetUnionHashSet::new_from(HashSet::from_iter(x.iter().copied()))),
                     ),
                 ));
             }

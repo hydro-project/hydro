@@ -967,7 +967,7 @@ impl HydroNode {
                 params.config,
             );
             let node_id = params.structure.add_node_with_metadata(
-                NodeLabel::Static(params.op_name.to_string()),
+                NodeLabel::Static(params.op_name.clone()),
                 params.node_type,
                 params.metadata,
             );
@@ -997,7 +997,7 @@ impl HydroNode {
                 params.config,
             );
             let node_id = params.structure.add_node_with_metadata(
-                NodeLabel::with_exprs(params.op_name.to_string(), vec![expr.clone()]),
+                NodeLabel::with_exprs(params.op_name.clone(), vec![expr.clone()]),
                 params.node_type,
                 params.metadata,
             );
@@ -1028,10 +1028,7 @@ impl HydroNode {
                 params.config,
             );
             let node_id = params.structure.add_node_with_metadata(
-                NodeLabel::with_exprs(
-                    params.op_name.to_string(),
-                    vec![expr1.clone(), expr2.clone()],
-                ),
+                NodeLabel::with_exprs(params.op_name.clone(), vec![expr1.clone(), expr2.clone()]),
                 params.node_type,
                 params.metadata,
             );

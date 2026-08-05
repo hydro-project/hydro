@@ -2211,7 +2211,7 @@ impl Debug for SharedNode {
             if let Some(printed_tees_mut) = printed_tees_mut {
                 if let Some(existing) = printed_tees_mut
                     .1
-                    .get(&(self.0.as_ref() as *const RefCell<HydroNode>))
+                    .get(&(std::ptr::from_ref(self.0.as_ref())))
                 {
                     write!(f, "<shared {}>", existing)
                 } else {
@@ -2219,7 +2219,7 @@ impl Debug for SharedNode {
                     printed_tees_mut.0 += 1;
                     printed_tees_mut
                         .1
-                        .insert(self.0.as_ref() as *const RefCell<HydroNode>, next_id);
+                        .insert(std::ptr::from_ref(self.0.as_ref()), next_id);
                     drop(printed_tees_mut_borrow);
                     write!(f, "<shared {}>: ", next_id)?;
                     Debug::fmt(&self.0.borrow(), f)
@@ -3981,7 +3981,7 @@ impl HydroNode {
                         let stmt_id = next_stmt_id.get_and_increment();
 
                         let ret_ident = if let Some(built_idents) =
-                            built_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
+                            built_tees.get(&(std::ptr::from_ref(inner.0.as_ref())))
                         {
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(_) => {}
@@ -4000,7 +4000,7 @@ impl HydroNode {
                                 syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                             built_tees.insert(
-                                inner.0.as_ref() as *const RefCell<HydroNode>,
+                                std::ptr::from_ref(inner.0.as_ref()),
                                 vec![tee_ident.clone()],
                             );
 
@@ -4045,7 +4045,7 @@ impl HydroNode {
                         let stmt_id = next_stmt_id.get_and_increment();
 
                         let ret_ident = if let Some(built_idents) =
-                            built_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
+                            built_tees.get(&(std::ptr::from_ref(inner.0.as_ref())))
                         {
                             built_idents[0].clone()
                         } else {
@@ -4055,7 +4055,7 @@ impl HydroNode {
                                 syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                             built_tees.insert(
-                                inner.0.as_ref() as *const RefCell<HydroNode>,
+                                std::ptr::from_ref(inner.0.as_ref()),
                                 vec![ref_ident.clone()],
                             );
 
@@ -4092,7 +4092,7 @@ impl HydroNode {
                         inner, f, is_true, metadata,
                     } => {
                         let is_true = *is_true; // need to copy early to avoid borrow checking issues with node
-                        let ptr = inner.0.as_ref() as *const RefCell<HydroNode>;
+                        let ptr = std::ptr::from_ref(inner.0.as_ref());
                         let stmt_id = next_stmt_id.get_and_increment();
 
                         let ret_ident = if let Some(built_idents) = built_tees.get(&ptr) {
