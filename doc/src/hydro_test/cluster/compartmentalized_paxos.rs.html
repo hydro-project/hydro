@@ -237,7 +237,7 @@
 <a href=#237 id=237 data-nosnippet>237</a>        NoOrder,
 <a href=#238 id=238 data-nosnippet>238</a>    &gt;,
 <a href=#239 id=239 data-nosnippet>239</a>    config: CompartmentalizedPaxosConfig,
-<a href=#240 id=240 data-nosnippet>240</a>    a_max_ballot: Singleton&lt;Ballot, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
+<a href=#240 id=240 data-nosnippet>240</a>    a_max_ballot: Singleton&lt;<span class="prelude-ty">Option</span>&lt;Ballot&gt;, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
 <a href=#241 id=241 data-nosnippet>241</a>    nondet_commit_leader_change: NonDet,
 <a href=#242 id=242 data-nosnippet>242</a>) -&gt; (
 <a href=#243 id=243 data-nosnippet>243</a>    Stream&lt;(usize, <span class="prelude-ty">Option</span>&lt;P&gt;), Cluster&lt;<span class="lifetime">'a</span>, ProxyLeader&gt;, Unbounded, NoOrder&gt;,
@@ -338,7 +338,7 @@
 <a href=#338 id=338 data-nosnippet>338</a>    );
 <a href=#339 id=339 data-nosnippet>339</a>
 <a href=#340 id=340 data-nosnippet>340</a>    <span class="kw">let </span>pl_failed_p2b_to_proposer = fails
-<a href=#341 id=341 data-nosnippet>341</a>        .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, ballot)| (ballot.proposer_id.clone(), ballot)))
+<a href=#341 id=341 data-nosnippet>341</a>        .flat_map_ordered(<span class="macro">q!</span>(|(<span class="kw">_</span>, ballot)| ballot.map(|b| (b.proposer_id.clone(), b))))
 <a href=#342 id=342 data-nosnippet>342</a>        .inspect(<span class="macro">q!</span>(|(<span class="kw">_</span>, ballot)| <span class="macro">println!</span>(<span class="string">"Failed P2b: {:?}"</span>, ballot)))
 <a href=#343 id=343 data-nosnippet>343</a>        .demux(proposers, TCP.fail_stop().bincode())
 <a href=#344 id=344 data-nosnippet>344</a>        .values();
