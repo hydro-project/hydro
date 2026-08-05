@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1785824810400,
+  "lastUpdate": 1785911014837,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -302544,6 +302544,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 247900,
             "range": "± 1242.58",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "dc95106f9ebd8889fb39fc3ac11d6737edb64124",
+          "message": "refactor(hydro_lang): replace sim channels with single-threaded waker-backed queues (#3113)\n\nThe simulator runs all top-level and tick DFIRs (plus the test harness)\none at a time on a single thread via the scheduler, so the tokio mpsc\nchannels connecting them were unnecessary synchronization overhead.\n\nIntroduce `SimQueue<T>` in `sim::runtime`: a channel backed by a plain\n`Rc<RefCell<VecDeque<T>>>` with an associated waker slot. Sending is a\ndirect push onto the deque; each push wakes the consumer registered by\nthe most recent empty poll, so the DFIR scheduler's `run_tick` /\nquiescence machinery is preserved. The queue implements `Stream` for\ndirect use as a `source_stream` input and never yields `None`, since\nchannels are never closed during simulation, which eliminates all the\nclose-tracking, weak-ref, and capacity logic of a real channel. Both\n\"ends\" are shallow clones of the same queue.\n\n- `sim/runtime.rs`: hook `output` fields are now `SimQueue<T>`;\n  releases use `.push(item)` instead of `.send(item).unwrap()`\n- `sim/builder.rs`: generated `unbounded_channel()` sites now emit\n  `SimQueue::new_split()`; the `Rc<RefCell<receiver.into_inner()>>`\n  re-wrapping for inline hooks is deleted since the queue is directly\nclonable, with `recv().await` replacing\n`borrow_mut().recv().await.unwrap()`\n- `sim/graph.rs`: external port codegen (e2o/o2e/e2m/m2e) and the\n  `__hydro_runtime` dylib signature use `SimQueue<Bytes>` in both\n  directions, dropping the `UnboundedReceiverStream` wrappers\n- `sim/compiled.rs`: `SimConnections` / `SimLoaded` use\n`SimQueue<Bytes>`;\n  senders no longer need `Rc` wrapping and `with_sink` closures are\n  infallible\n\nNo public API changes.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-08-04T22:48:27Z",
+          "url": "https://github.com/hydro-project/hydro/commit/dc95106f9ebd8889fb39fc3ac11d6737edb64124"
+        },
+        "date": 1785911014783,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 351371,
+            "range": "± 610",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 7378618,
+            "range": "± 14744",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 7775422,
+            "range": "± 218791",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 43672,
+            "range": "± 2326",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 9597582,
+            "range": "± 213622",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1106228,
+            "range": "± 26698",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1157255,
+            "range": "± 8688",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 47519051,
+            "range": "± 1068220",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 7675403,
+            "range": "± 103587",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 11988927,
+            "range": "± 1411454",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 7380120,
+            "range": "± 89749",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 7883815,
+            "range": "± 9989",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 43641504,
+            "range": "± 163640",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 4291,
+            "range": "± 46",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 24940,
+            "range": "± 512",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4346,
+            "range": "± 160",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 7259,
+            "range": "± 69",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 591861,
+            "range": "± 4520",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 61009,
+            "range": "± 621",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 45397,
+            "range": "± 1334",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 18329,
+            "range": "± 158",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 7255,
+            "range": "± 172",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7498,
+            "range": "± 59",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 78808,
+            "range": "± 319",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 101447,
+            "range": "± 620",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7732,
+            "range": "± 139",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 16941,
+            "range": "± 124",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 61702,
+            "range": "± 2472",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 6214,
+            "range": "± 417",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 215640,
+            "range": "± 523.83",
             "unit": "ops/s"
           }
         ]
