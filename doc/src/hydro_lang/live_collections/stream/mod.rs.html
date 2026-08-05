@@ -3786,7 +3786,7 @@
 <a href=#3786 id=3786 data-nosnippet>3786</a>            in_send.send(());
 <a href=#3787 id=3787 data-nosnippet>3787</a>            in_send.send(());
 <a href=#3788 id=3788 data-nosnippet>3788</a>
-<a href=#3789 id=3789 data-nosnippet>3789</a>            <span class="macro">assert_eq!</span>(out_recv.next().<span class="kw">await</span>.unwrap(), <span class="number">3</span>); <span class="comment">// fails with nondet batching
+<a href=#3789 id=3789 data-nosnippet>3789</a>            <span class="macro">assert_eq!</span>(out_recv.next().<span class="kw">await</span>, <span class="number">3</span>); <span class="comment">// fails with nondet batching
 <a href=#3790 id=3790 data-nosnippet>3790</a>        </span>});
 <a href=#3791 id=3791 data-nosnippet>3791</a>    }
 <a href=#3792 id=3792 data-nosnippet>3792</a>

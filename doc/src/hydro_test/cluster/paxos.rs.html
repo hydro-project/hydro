@@ -953,7 +953,7 @@
 <a href=#953 id=953 data-nosnippet>953</a>
 <a href=#954 id=954 data-nosnippet>954</a>            <span class="kw">let </span><span class="kw-2">mut </span>next_expected = <span class="number">0</span>;
 <a href=#955 id=955 data-nosnippet>955</a>            <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..=<span class="number">4 </span>{
-<a href=#956 id=956 data-nosnippet>956</a>                <span class="kw">let </span>(next_slot, v) = out_recv.next().<span class="kw">await</span>.unwrap();
+<a href=#956 id=956 data-nosnippet>956</a>                <span class="kw">let </span>(next_slot, v) = out_recv.next().<span class="kw">await</span>;
 <a href=#957 id=957 data-nosnippet>957</a>                <span class="macro">assert_eq!</span>(v, i);
 <a href=#958 id=958 data-nosnippet>958</a>
 <a href=#959 id=959 data-nosnippet>959</a>                <span class="kw">if </span>next_expected &lt; <span class="number">123 </span>{

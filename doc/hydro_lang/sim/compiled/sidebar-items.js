@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CompiledSim","CompiledSimInstance"],"trait":["Instantiator"]};
+window.SIDEBAR_ITEMS = {"fn":["quiesce"],"struct":["CompiledSim","CompiledSimInstance"],"trait":["Instantiator"]};
