@@ -191,7 +191,15 @@ where
     /// `batch_size` unit values.
     pub fn spin_batch(
         &self,
-        batch_size: impl QuotedWithContext<'a, usize, L> + Copy + 'a,
+        batch_size: impl QuotedWithContext<
+            'a,
+            usize,
+            crate::live_collections::OperatorContext<
+                L,
+                crate::live_collections::boundedness::Unbounded,
+            >,
+        > + Copy
+        + 'a,
     ) -> Stream<(), Self, Bounded, TotalOrder, ExactlyOnce>
     where
         L: TopLevel<'a>,

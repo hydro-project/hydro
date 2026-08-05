@@ -4,6 +4,13 @@
 //! registers itself with the current capture scope. At codegen time, the IR node is lowered
 //! to the corresponding DFIR pseudo-operator (`singleton()`, `optional()`, or `handoff()`),
 //! and the reference resolves to the appropriate borrow type.
+//!
+//! Each handle tracks the [`Location`] **and** the boundedness of the collection it refers to
+//! (see [`OperatorContext`]). A handle can only be captured inside closures passed to operators
+//! on collections with a matching location and boundedness. This is required for soundness:
+//! a bounded collection is only materialized on the first tick, while closures on unbounded
+//! collections continue to run on later ticks, where the referenced value no longer exists and
+//! accessing it would crash at runtime.
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
@@ -14,6 +21,7 @@ use quote::quote;
 use stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
 
 use crate::compile::ir::{AccessCounter, HydroNode, SharedNode};
+use crate::live_collections::OperatorContext;
 use crate::location::Location;
 
 /// Determines which DFIR pseudo-operator a reference node lowers to.
@@ -128,12 +136,12 @@ macro_rules! define_handoff_ref {
     ) => {
         $(
             $(#[$meta])*
-            pub struct $name<'a, 'slf, T, L> {
+            pub struct $name<'a, 'slf, T, L, B> {
                 pub(crate) ir_node: &'slf RefCell<HydroNode>,
-                _phantom: PhantomData<(&'a T, L)>,
+                _phantom: PhantomData<(&'a T, L, B)>,
             }
 
-            impl<'slf, T, L> $name<'_, 'slf, T, L> {
+            impl<'slf, T, L, B> $name<'_, 'slf, T, L, B> {
                 /// Creates a new reference handle from an IR node cell.
                 pub(crate) fn new(ir_node: &'slf RefCell<HydroNode>) -> Self {
                     Self {
@@ -143,20 +151,21 @@ macro_rules! define_handoff_ref {
                 }
             }
 
-            impl<T, L> Copy for $name<'_, '_, T, L> {}
-            impl<T, L> Clone for $name<'_, '_, T, L> {
+            impl<T, L, B> Copy for $name<'_, '_, T, L, B> {}
+            impl<T, L, B> Clone for $name<'_, '_, T, L, B> {
                 fn clone(&self) -> Self {
                     *self
                 }
             }
 
-            impl<'a, 'slf, T: 'a, L> FreeVariableWithContextWithProps<L, ()> for $name<'a, 'slf, T, L>
+            impl<'a, 'slf, T: 'a, L, B> FreeVariableWithContextWithProps<OperatorContext<L, B>, ()>
+                for $name<'a, 'slf, T, L, B>
             where
                 L: Location<'a>,
             {
                 type O = $output;
 
-                fn to_tokens(self, _ctx: &L) -> (QuoteTokens, ()) {
+                fn to_tokens(self, _ctx: &OperatorContext<L, B>) -> (QuoteTokens, ()) {
                     let ident = register_handoff_ref(
                         self.ir_node,
                         $is_mut,

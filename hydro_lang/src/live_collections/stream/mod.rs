@@ -11,6 +11,7 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q,
 #[cfg(feature = "tokio")]
 use tokio::time::Instant;
 
+use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
 use super::keyed_stream::{Generate, KeyedStream};
@@ -442,7 +443,7 @@ where
     /// inside `q!()` closures. The handle resolves to `&Vec<T>` at runtime.
     ///
     /// The stream must be bounded, otherwise reading it would be non-deterministic.
-    pub fn by_ref(&self) -> crate::handoff_ref::StreamRef<'a, '_, T, L>
+    pub fn by_ref(&self) -> crate::handoff_ref::StreamRef<'a, '_, T, L, B>
     where
         B: IsBounded,
     {
@@ -451,7 +452,7 @@ where
 
     /// Returns a mutable reference handle to this stream's handoff buffer that can be captured
     /// inside `q!()` closures. The handle resolves to `&mut Vec<T>` at runtime.
-    pub fn by_mut(&self) -> crate::handoff_ref::StreamMut<'a, '_, T, L>
+    pub fn by_mut(&self) -> crate::handoff_ref::StreamMut<'a, '_, T, L, B>
     where
         B: IsBounded,
     {
@@ -581,7 +582,7 @@ where
     /// ```
     pub fn map<U, F, C, I, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, I>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, I>>,
     ) -> Stream<U, L, B, O, R>
     where
         F: FnMut(T) -> U + 'a,
@@ -589,7 +590,8 @@ where
         I: ValidMutIdempotenceFor<F, T, U, R, WAS_MUT>,
     {
         let f = crate::handoff_ref::with_ref_capture(|| {
-            let (expr, proof) = f.splice_fnmut1_ctx_props(&self.location);
+            let (expr, proof) =
+                f.splice_fnmut1_ctx_props(&OperatorContext::<L, B>::new(&self.location));
             proof.register_proof(&expr);
             expr.into()
         });
@@ -631,7 +633,7 @@ where
     /// ```
     pub fn flat_map_ordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Stream<U, L, B, O, R>
     where
         I: IntoIterator<Item = U>,
@@ -640,7 +642,8 @@ where
         Idemp: ValidMutIdempotenceFor<F, T, I, R, WAS_MUT>,
     {
         let f = crate::handoff_ref::with_ref_capture(|| {
-            let (expr, proof) = f.splice_fnmut1_ctx_props(&self.location);
+            let (expr, proof) =
+                f.splice_fnmut1_ctx_props(&OperatorContext::<L, B>::new(&self.location));
             proof.register_proof(&expr);
             expr.into()
         });
@@ -684,7 +687,7 @@ where
     /// ```
     pub fn flat_map_unordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Stream<U, L, B, NoOrder, R>
     where
         I: IntoIterator<Item = U>,
@@ -693,7 +696,8 @@ where
         Idemp: ValidMutIdempotenceFor<F, T, I, R, WAS_MUT>,
     {
         let f = crate::handoff_ref::with_ref_capture(|| {
-            let (expr, proof) = f.splice_fnmut1_ctx_props(&self.location);
+            let (expr, proof) =
+                f.splice_fnmut1_ctx_props(&OperatorContext::<L, B>::new(&self.location));
             proof.register_proof(&expr);
             expr.into()
         });
@@ -776,7 +780,7 @@ where
     /// `Pending`, this operator yields as well.
     pub fn flat_map_stream_blocking<U, S, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Stream<U, L, B, O, R>
     where
         S: futures::Stream<Item = U>,
@@ -785,7 +789,8 @@ where
         Idemp: ValidMutIdempotenceFor<F, T, S, R, WAS_MUT>,
     {
         let f = crate::handoff_ref::with_ref_capture(|| {
-            let (expr, proof) = f.splice_fnmut1_ctx_props(&self.location);
+            let (expr, proof) =
+                f.splice_fnmut1_ctx_props(&OperatorContext::<L, B>::new(&self.location));
             proof.register_proof(&expr);
             expr.into()
         });
@@ -837,7 +842,7 @@ where
     /// ```
     pub fn filter<F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Self
     where
         F: FnMut(&T) -> bool + 'a,
@@ -845,7 +850,8 @@ where
         Idemp: ValidMutBorrowIdempotenceFor<F, T, bool, R, WAS_MUT>,
     {
         let f = crate::handoff_ref::with_ref_capture(|| {
-            let (expr, proof) = f.splice_fnmut1_borrow_ctx_props(&self.location);
+            let (expr, proof) =
+                f.splice_fnmut1_borrow_ctx_props(&OperatorContext::<L, B>::new(&self.location));
             proof.register_proof(&expr);
             expr.into()
         });
@@ -895,7 +901,7 @@ where
     /// ```
     pub fn partition<F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> (Stream<T, L, B, O, R>, Stream<T, L, B, O, R>)
     where
         F: FnMut(&T) -> bool + 'a,
@@ -903,7 +909,8 @@ where
         Idemp: ValidMutBorrowIdempotenceFor<F, T, bool, R, WAS_MUT>,
     {
         let f = crate::handoff_ref::with_ref_capture(|| {
-            let (expr, proof) = f.splice_fnmut1_borrow_ctx_props(&self.location);
+            let (expr, proof) =
+                f.splice_fnmut1_borrow_ctx_props(&OperatorContext::<L, B>::new(&self.location));
             proof.register_proof(&expr);
             expr.into()
         });
@@ -955,7 +962,7 @@ where
     /// ```
     pub fn filter_map<U, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, Idemp>>,
     ) -> Stream<U, L, B, O, R>
     where
         F: FnMut(T) -> Option<U> + 'a,
@@ -963,7 +970,8 @@ where
         Idemp: ValidMutIdempotenceFor<F, T, Option<U>, R, WAS_MUT>,
     {
         let f = crate::handoff_ref::with_ref_capture(|| {
-            let (expr, proof) = f.splice_fnmut1_ctx_props(&self.location);
+            let (expr, proof) =
+                f.splice_fnmut1_ctx_props(&OperatorContext::<L, B>::new(&self.location));
             proof.register_proof(&expr);
             expr.into()
         });
@@ -1276,7 +1284,12 @@ where
     /// ```
     pub fn inspect<F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, L::DropConsistency, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L::DropConsistency, B>,
+            StreamMapFuncAlgebra<C, Idemp>,
+        >,
     ) -> Self
     where
         F: FnMut(&T) + 'a,
@@ -1284,7 +1297,10 @@ where
         Idemp: ValidMutBorrowIdempotenceFor<F, T, (), R, WAS_MUT>,
     {
         let f = crate::handoff_ref::with_ref_capture(|| {
-            let (expr, proof) = f.splice_fnmut1_borrow_ctx_props(&self.location.drop_consistency());
+            let (expr, proof) =
+                f.splice_fnmut1_borrow_ctx_props(&OperatorContext::<L::DropConsistency, B>::new(
+                    &self.location.drop_consistency(),
+                ));
             proof.register_proof(&expr);
             expr.into()
         });
@@ -1313,16 +1329,19 @@ where
     ///
     /// On a `TotalOrder + ExactlyOnce` stream, no annotations are needed.
     ///
-    /// The closure may capture singletons via `by_ref()` or `by_mut()`.
+    /// The closure may capture singletons via `by_ref()` or `by_mut()`, as long as the
+    /// referenced collection lives at the same location and has the same boundedness as this
+    /// stream.
     pub fn for_each<F: FnMut(T) + 'a, C, I>(
         self,
-        f: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, I>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<C, I>>,
     ) where
         C: ValidCommutativityFor<O>,
         I: ValidIdempotenceFor<R>,
     {
         let f = crate::handoff_ref::with_ref_capture(|| {
-            let (f, proof) = f.splice_fnmut1_ctx_props(&self.location);
+            let (f, proof) =
+                f.splice_fnmut1_ctx_props(&OperatorContext::<L, B>::new(&self.location));
             proof.register_proof(&f);
             f.into()
         });
@@ -1421,8 +1440,8 @@ where
     /// ```
     pub fn fold<A, I, F, C, Idemp, M, B2: SingletonBound>(
         self,
-        init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp, M>>,
+        init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>>,
+        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<C, Idemp, M>>,
     ) -> Singleton<A, L, B2>
     where
         I: Fn() -> A + 'a,
@@ -1431,8 +1450,11 @@ where
         Idemp: ValidIdempotenceFor<R>,
         B: ApplyMonotoneStream<M, B2>,
     {
-        let init = init.splice_fn0_ctx(&self.location).into();
-        let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
+        let init = init
+            .splice_fn0_ctx(&OperatorContext::<L, B>::new(&self.location))
+            .into();
+        let (comb, proof) =
+            comb.splice_fn2_borrow_mut_ctx_props(&OperatorContext::<L, B>::new(&self.location));
         proof.register_proof(&comb);
 
         // Only assume_retries (for idempotence), not assume_ordering.
@@ -1481,14 +1503,15 @@ where
     /// ```
     pub fn reduce<F, C, Idemp>(
         self,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
+        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<C, Idemp>>,
     ) -> Optional<T, L, B>
     where
         F: Fn(&mut T, T) + 'a,
         C: ValidCommutativityFor<O>,
         Idemp: ValidIdempotenceFor<R>,
     {
-        let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
+        let (f, proof) =
+            comb.splice_fn2_borrow_mut_ctx_props(&OperatorContext::<L, B>::new(&self.location));
         proof.register_proof(&f);
 
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
@@ -1662,7 +1685,7 @@ where
     /// ```
     pub fn limit(
         self,
-        n: impl QuotedWithContext<'a, usize, L> + Copy + 'a,
+        n: impl QuotedWithContext<'a, usize, OperatorContext<L, B>> + Copy + 'a,
     ) -> Stream<T, L, B, TotalOrder, ExactlyOnce>
     where
         O: IsOrdered,
@@ -1735,7 +1758,9 @@ where
     /// If the function returns `None`, the stream is terminated and no more elements are processed.
     ///
     /// The `init` and `f` closures may capture bounded singletons, optionals, or streams by
-    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref).
+    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref), as long as the
+    /// referenced collection lives at the same location and has the same boundedness as this
+    /// stream.
     ///
     /// # Examples
     ///
@@ -1788,8 +1813,8 @@ where
     /// ```
     pub fn scan<A, U, I, F>(
         self,
-        init: impl IntoQuotedMut<'a, I, L>,
-        f: impl IntoQuotedMut<'a, F, L>,
+        init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>>,
     ) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
     where
         O: IsOrdered,
@@ -1797,10 +1822,13 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, T) -> Option<U> + 'a,
     {
-        let init =
-            crate::handoff_ref::with_ref_capture(|| init.splice_fn0_ctx(&self.location).into());
+        let init = crate::handoff_ref::with_ref_capture(|| {
+            init.splice_fn0_ctx(&OperatorContext::<L, B>::new(&self.location))
+                .into()
+        });
         let f = crate::handoff_ref::with_ref_capture(|| {
-            f.splice_fn2_borrow_mut_ctx(&self.location).into()
+            f.splice_fn2_borrow_mut_ctx(&OperatorContext::<L, B>::new(&self.location))
+                .into()
         });
 
         Stream::new(
@@ -1825,7 +1853,9 @@ where
     /// emitted. If it resolves to `None`, the item is filtered out.
     ///
     /// The `init` and `f` closures may capture bounded singletons, optionals, or streams by
-    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref).
+    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref), as long as the
+    /// referenced collection lives at the same location and has the same boundedness as this
+    /// stream.
     ///
     /// # Examples
     ///
@@ -1854,8 +1884,8 @@ where
     /// ```
     pub fn scan_async_blocking<A, U, I, F, Fut>(
         self,
-        init: impl IntoQuotedMut<'a, I, L>,
-        f: impl IntoQuotedMut<'a, F, L>,
+        init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>>,
     ) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
     where
         O: IsOrdered,
@@ -1864,10 +1894,13 @@ where
         F: Fn(&mut A, T) -> Fut + 'a,
         Fut: Future<Output = Option<U>> + 'a,
     {
-        let init =
-            crate::handoff_ref::with_ref_capture(|| init.splice_fn0_ctx(&self.location).into());
+        let init = crate::handoff_ref::with_ref_capture(|| {
+            init.splice_fn0_ctx(&OperatorContext::<L, B>::new(&self.location))
+                .into()
+        });
         let f = crate::handoff_ref::with_ref_capture(|| {
-            f.splice_fn2_borrow_mut_ctx(&self.location).into()
+            f.splice_fn2_borrow_mut_ctx(&OperatorContext::<L, B>::new(&self.location))
+                .into()
         });
 
         Stream::new(
@@ -1893,7 +1926,9 @@ where
     /// variants define what is emitted and whether further inputs should be processed.
     ///
     /// The `init` and `f` closures may capture bounded singletons, optionals, or streams by
-    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref).
+    /// reference via [`by_ref()`](crate::live_collections::Singleton::by_ref), as long as the
+    /// referenced collection lives at the same location and has the same boundedness as this
+    /// stream.
     ///
     /// # Example
     /// ```rust
@@ -1927,8 +1962,8 @@ where
     /// ```
     pub fn generator<A, U, I, F>(
         self,
-        init: impl IntoQuotedMut<'a, I, L> + Copy,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
     ) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
     where
         O: IsOrdered,
@@ -1936,8 +1971,10 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, T) -> Generate<U> + 'a,
     {
-        let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
+        let init: ManualExpr<I, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| init.splice_fn0_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn2_borrow_mut_ctx(ctx));
 
         let this = self.make_totally_ordered().make_exactly_once();
 
@@ -1972,7 +2009,9 @@ where
                     _ => None,
                 }
             })
-            .splice_fn2_borrow_mut_ctx::<Option<Option<A>>, T, _>(&this.location)
+            .splice_fn2_borrow_mut_ctx::<Option<Option<A>>, T, _>(&OperatorContext::<L, B>::new(
+                &this.location,
+            ))
             .into()
         });
 
@@ -2041,7 +2080,12 @@ where
     #[cfg(feature = "tokio")]
     pub fn timeout(
         self,
-        duration: impl QuotedWithContext<'a, std::time::Duration, Tick<L::DropConsistency>> + Copy + 'a,
+        duration: impl QuotedWithContext<
+            'a,
+            std::time::Duration,
+            OperatorContext<Tick<L::DropConsistency>, Bounded>,
+        > + Copy
+        + 'a,
         nondet: NonDet,
     ) -> Optional<(), L::DropConsistency, Unbounded>
     where
