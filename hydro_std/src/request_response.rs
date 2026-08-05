@@ -44,8 +44,6 @@ pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<
 
 #[cfg(test)]
 mod tests {
-    use hydro_lang::prelude::*;
-
     use super::*;
 
     /// Test that join_responses correctly joins metadata with responses.

@@ -598,7 +598,7 @@ async fn create_and_start_container(
         env: Some(vec![
             format!("CONTAINER_NAME={container_name}"),
             format!("DEPLOYMENT_INSTANCE={deployment_instance}"),
-            format!("RUST_LOG=trace"),
+            "RUST_LOG=trace".to_owned(),
         ]),
         networking_config: Some(NetworkingConfig {
             endpoints_config: Some(HashMap::from([(
@@ -1161,22 +1161,22 @@ impl<'a> Deploy<'a> for DockerDeploy {
         p2.exposed_ports.borrow_mut().push(*p2_port);
 
         let socket_ident = syn::Ident::new(
-            &format!("__hydro_deploy_many_{}_socket", &shared_handle),
+            &format!("__hydro_deploy_many_{}_socket", shared_handle),
             Span::call_site(),
         );
 
         let source_ident = syn::Ident::new(
-            &format!("__hydro_deploy_many_{}_source", &shared_handle),
+            &format!("__hydro_deploy_many_{}_source", shared_handle),
             Span::call_site(),
         );
 
         let sink_ident = syn::Ident::new(
-            &format!("__hydro_deploy_many_{}_sink", &shared_handle),
+            &format!("__hydro_deploy_many_{}_sink", shared_handle),
             Span::call_site(),
         );
 
         let membership_ident = syn::Ident::new(
-            &format!("__hydro_deploy_many_{}_membership", &shared_handle),
+            &format!("__hydro_deploy_many_{}_membership", shared_handle),
             Span::call_site(),
         );
 
@@ -1198,7 +1198,7 @@ impl<'a> Deploy<'a> for DockerDeploy {
     #[instrument(level = "trace", skip_all, fields(%shared_handle))]
     fn e2o_many_sink(shared_handle: String) -> syn::Expr {
         let sink_ident = syn::Ident::new(
-            &format!("__hydro_deploy_many_{}_sink", &shared_handle),
+            &format!("__hydro_deploy_many_{}_sink", shared_handle),
             Span::call_site(),
         );
         parse_quote!(#sink_ident)
@@ -1226,17 +1226,17 @@ impl<'a> Deploy<'a> for DockerDeploy {
         p2.exposed_ports.borrow_mut().push(*p2_port);
 
         let socket_ident = syn::Ident::new(
-            &format!("__hydro_deploy_{}_socket", &shared_handle),
+            &format!("__hydro_deploy_{}_socket", shared_handle),
             Span::call_site(),
         );
 
         let source_ident = syn::Ident::new(
-            &format!("__hydro_deploy_{}_source", &shared_handle),
+            &format!("__hydro_deploy_{}_source", shared_handle),
             Span::call_site(),
         );
 
         let sink_ident = syn::Ident::new(
-            &format!("__hydro_deploy_{}_sink", &shared_handle),
+            &format!("__hydro_deploy_{}_sink", shared_handle),
             Span::call_site(),
         );
 
@@ -1299,7 +1299,7 @@ impl<'a> Deploy<'a> for DockerDeploy {
         shared_handle: String,
     ) -> syn::Expr {
         let sink_ident = syn::Ident::new(
-            &format!("__hydro_deploy_{}_sink", &shared_handle),
+            &format!("__hydro_deploy_{}_sink", shared_handle),
             Span::call_site(),
         );
         parse_quote!(#sink_ident)

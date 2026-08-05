@@ -86,7 +86,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
         let lattice_type = type_args
             .first()
             .map(ToTokens::to_token_stream)
-            .unwrap_or(quote_spanned!(op_span=> _));
+            .unwrap_or_else(|| quote_spanned!(op_span=> _));
 
         let [persistence] = wc.persistence_args(diagnostics);
 

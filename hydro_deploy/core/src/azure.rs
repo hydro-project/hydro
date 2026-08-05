@@ -331,17 +331,23 @@ impl Host for AzureHost {
                 })
             );
 
-        let user = self.user.as_ref().cloned().unwrap_or("hydro".to_owned());
+        let user = self
+            .user
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| "hydro".to_owned());
         let os_type = format!("azurerm_{}_virtual_machine", self.os_type.clone());
-        let image = self.image.as_ref().cloned().unwrap_or(HashMap::from([
-            ("publisher".to_owned(), "Canonical".to_owned()),
-            (
-                "offer".to_owned(),
-                "0001-com-ubuntu-server-jammy".to_owned(),
-            ),
-            ("sku".to_owned(), "22_04-lts".to_owned()),
-            ("version".to_owned(), "latest".to_owned()),
-        ]));
+        let image = self.image.as_ref().cloned().unwrap_or_else(|| {
+            HashMap::from([
+                ("publisher".to_owned(), "Canonical".to_owned()),
+                (
+                    "offer".to_owned(),
+                    "0001-com-ubuntu-server-jammy".to_owned(),
+                ),
+                ("sku".to_owned(), "22_04-lts".to_owned()),
+                ("version".to_owned(), "latest".to_owned()),
+            ])
+        });
 
         resource_batch
             .terraform
@@ -411,7 +417,11 @@ impl Host for AzureHost {
 
                 Arc::new(LaunchedVirtualMachine {
                     resource_result: resource_result.clone(),
-                    user: self.user.as_ref().cloned().unwrap_or("hydro".to_owned()),
+                    user: self
+                        .user
+                        .as_ref()
+                        .cloned()
+                        .unwrap_or_else(|| "hydro".to_owned()),
                     internal_ip,
                     external_ip,
                 })

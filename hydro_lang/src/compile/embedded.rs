@@ -785,9 +785,10 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                     .iter()
                     .zip(net_out_generic_idents.iter())
                     .map(|((_, is_tagged, ext_ty), generic)| {
-                        let payload = match ext_ty {
-                            Some(ty) => quote! { #ty },
-                            None => quote! { #root::runtime_support::dfir_rs::bytes::Bytes },
+                        let payload = if let Some(ty) = ext_ty {
+                            quote! { #ty }
+                        } else {
+                            quote! { #root::runtime_support::dfir_rs::bytes::Bytes }
                         };
                         if *is_tagged {
                             quote! { #generic: FnMut((#root::location::member_id::TaglessMemberId, #payload)) }
@@ -800,9 +801,10 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 for ((_, is_tagged, ext_ty), generic) in
                     loc_net_outputs.iter().zip(net_out_generic_idents.iter())
                 {
-                    let payload = match ext_ty {
-                        Some(ty) => quote! { #ty },
-                        None => quote! { #root::runtime_support::dfir_rs::bytes::Bytes },
+                    let payload = if let Some(ty) = ext_ty {
+                        quote! { #ty }
+                    } else {
+                        quote! { #root::runtime_support::dfir_rs::bytes::Bytes }
                     };
                     if *is_tagged {
                         extra_fn_generics.push(

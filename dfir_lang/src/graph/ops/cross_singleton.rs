@@ -62,6 +62,7 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
             let mut #singleton_state_ident: ::std::option::Option<_> = ::std::option::Option::None;
         };
 
+        #[expect(clippy::single_match_else, reason = "TODO(mingwei): handle loops")]
         let write_tick_end = match persistence {
             Persistence::Static => Default::default(),
             _ => quote_spanned! {op_span=>

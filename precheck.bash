@@ -112,10 +112,13 @@ fi
 # Run the tests, echoing the commands as they are run
 set -x
 
+./template/generate_prompts.py
 cargo +nightly fmt --all
-cargo clippy $TARGETS --all-targets --no-default-features -- -D warnings
-cargo clippy $TARGETS --all-targets --all-features -- -D warnings
-cargo clippy $TARGETS --all-targets $FEATURES -- -D warnings
+
+cargo clippy $TARGETS --keep-going --all-targets --no-default-features -- -D warnings
+cargo clippy $TARGETS --keep-going --all-targets --all-features -- -D warnings
+cargo clippy $TARGETS --keep-going --all-targets $FEATURES -- -D warnings
+
 [ "$TEST_ALL" = false ] || cargo check --all-targets --no-default-features
 
 # `--all-targets` is everything except `--doc`: https://github.com/rust-lang/cargo/issues/6669.

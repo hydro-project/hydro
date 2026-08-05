@@ -192,8 +192,6 @@ pub fn gossip_server_versioned<'a>(
 
 #[cfg(test)]
 mod tests {
-    use hydro_lang::prelude::*;
-
     use super::*;
 
     /// Write to member 0, read from member 1; both should see the value because gossip replicates

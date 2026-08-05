@@ -395,10 +395,9 @@ where
                     self.state = None;
                     return Some(item);
                 }
-                None | Some((_, 0)) => match self.iter.next() {
-                    Some(state) => self.state = Some(state),
-                    None => return None,
-                },
+                None | Some((_, 0)) => {
+                    self.state = Some(self.iter.next()?);
+                }
                 Some((item, many)) => {
                     let out = Some(item.clone());
                     self.state = Some((item, many - 1));

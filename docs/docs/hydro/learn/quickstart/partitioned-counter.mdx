@@ -157,11 +157,7 @@ The test is similar to the keyed counter test, but now you need to instantiate t
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/partitioned_counter.rs">src/partitioned_counter.rs</Link>
-} showLineNumbers={54}>{highlightLines(getLines(partitionedCounterSrc, 54, 84, `
-use hydro_lang::prelude::*;
-
-use super::*;
-
+} showLineNumbers={56}>{highlightLines(getLines(partitionedCounterSrc, 56, 86, `
 #[test]
 fn test_counter_read_after_write() {
     let mut flow = FlowBuilder::new();
@@ -184,6 +180,10 @@ fn test_counter_read_after_write() {
                 .await;
             get_in_port.send((1, "abc".to_owned()));
             get_out_port
+                .assert_yields_only_unordered([(1, ("abc".to_owned(), 1))])
+                .await;
+        });
+}
 `), [5, 20])}</CodeBlock>
 
 The `with_cluster_size(&shards, 5)` method configures the simulator to create 5 cluster members. The test verifies that the partitioned counter behaves identically to the single-process version, even though the state is now distributed across multiple machines.

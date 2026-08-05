@@ -11,7 +11,7 @@ use crate::{DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 pub struct Max<T>(T);
 impl<T> Max<T> {
     /// Create a new `Max` lattice instance from a `T`.
-    pub fn new(val: T) -> Self {
+    pub const fn new(val: T) -> Self {
         Self(val)
     }
 

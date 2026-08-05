@@ -41,8 +41,6 @@ pub fn keyed_counter_service_buggy<'a, L: Location<'a>, O: Ordering>(
 
 #[cfg(test)]
 mod tests {
-    use hydro_lang::prelude::*;
-
     use super::*;
 
     #[test]
