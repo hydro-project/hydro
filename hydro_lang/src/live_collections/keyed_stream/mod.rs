@@ -3186,6 +3186,10 @@ mod tests {
         let node_tick = node.tick();
         let watermark = node_tick.singleton(q!(2));
 
+        // The reduce produces a top-level value driven by `node_tick`'s watermark. Snapshot it
+        // in a *distinct* tick so we don't re-enter `node_tick` (which supplied an input to the
+        // reduce), which is not representable as a DFIR loop.
+        let snapshot_tick = node.tick();
         let sum = node
             .source_stream(q!(tokio_stream::iter([
                 (0, 100),
@@ -3200,7 +3204,7 @@ mod tests {
                     *acc += v;
                 }),
             )
-            .snapshot(&node_tick, nondet!(/** test */))
+            .snapshot(&snapshot_tick, nondet!(/** test */))
             .entries()
             .all_ticks()
             .send_bincode_external(&external);
@@ -3286,6 +3290,11 @@ mod tests {
             )
             .all_ticks();
 
+        // Snapshot the top-level reduce output in a *distinct* tick from `node_tick` (which
+        // supplies the watermark and tick-triggered inputs to the reduce), so we don't re-enter
+        // `node_tick` — a value that already exited that tick coming back into it is not
+        // representable as a DFIR loop.
+        let snapshot_tick = node.tick();
         let sum = node
             .source_stream(q!(tokio_stream::iter([
                 (0, 100),
@@ -3304,7 +3313,7 @@ mod tests {
                     commutative = manual_proof!(/** integer addition is commutative */)
                 ),
             )
-            .snapshot(&node_tick, nondet!(/** test */))
+            .snapshot(&snapshot_tick, nondet!(/** test */))
             .entries()
             .all_ticks()
             .send_bincode_external(&external);
