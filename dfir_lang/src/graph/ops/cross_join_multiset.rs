@@ -60,16 +60,16 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
         };
 
         let lhs_write_tick_end = match lhs_persistence {
-            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+            Persistence::Tick => quote_spanned! {op_span=>
                 #lhs_state.clear();
             },
-            _ => Default::default(),
+            Persistence::Static => Default::default(),
         };
         let rhs_write_tick_end = match rhs_persistence {
-            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+            Persistence::Tick => quote_spanned! {op_span=>
                 #rhs_state.clear();
             },
-            _ => Default::default(),
+            Persistence::Static => Default::default(),
         };
 
         let write_iterator = quote_spanned! {op_span=>

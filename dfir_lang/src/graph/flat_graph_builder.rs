@@ -12,7 +12,7 @@ use syn::{Error, Ident, ItemUse};
 
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::graph::meta_graph::ResolvedHandoffRef;
-use crate::graph::ops::{DelayType, FloType, Persistence, PortListSpec, RangeTrait};
+use crate::graph::ops::{DelayType, FloType, PortListSpec, RangeTrait};
 use crate::graph::{
     DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, HandoffKind, PortIndexValue,
     graph_algorithms,
@@ -1051,35 +1051,6 @@ impl FlatGraphBuilder {
                 continue;
             };
             let loop_opt = self.flat_graph.node_loop(node_id);
-
-            // Ensure no `'tick` or `'static` persistences are used WITHIN a loop context.
-            // Ensure no `'loop` persistences are used OUTSIDE a loop context.
-            for persistence in &op_inst.generics.persistence_args {
-                let span = op_inst.generics.generic_args.span();
-                match (loop_opt, persistence) {
-                    (Some(_loop_id), p @ (Persistence::Tick | Persistence::Static)) => {
-                        self.diagnostics.push(Diagnostic::spanned(
-                            span,
-                            Level::Error,
-                            format!(
-                                "Operator uses `'{}` persistence, which is not allowed within a `loop {{ ... }}` context.",
-                                p.to_str_lowercase(),
-                            ),
-                        ));
-                    }
-                    (None, p @ (Persistence::None | Persistence::Loop)) => {
-                        self.diagnostics.push(Diagnostic::spanned(
-                            span,
-                            Level::Error,
-                            format!(
-                                "Operator uses `'{}` persistence, but is not within a `loop {{ ... }}` context.",
-                                p.to_str_lowercase(),
-                            ),
-                        ));
-                    }
-                    _ => {}
-                }
-            }
 
             // All inputs must be declared in the root block.
             if let (Some(_loop_id), Some(FloType::Source)) =

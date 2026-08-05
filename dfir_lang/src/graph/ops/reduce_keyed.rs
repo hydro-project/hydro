@@ -118,17 +118,8 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = if is_pull {
             let iter_expr = match persistence {
-                Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+                Persistence::Tick => quote_spanned! {op_span=>
                     #hashtable_ident.drain()
-                },
-                Persistence::Loop => quote_spanned! {op_span=>
-                    #hashtable_ident.iter().map(
-                        #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-                        |(k, v)| (
-                            ::std::clone::Clone::clone(k),
-                            ::std::clone::Clone::clone(v),
-                        )
-                    )
                 },
                 Persistence::Static => quote_spanned! {op_span=>
                     // Play everything (each subgraph runs exactly once per tick).

@@ -54,8 +54,8 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
 
         // persistences[0] = build (first port), persistences[1] = probe (second port)
         let probe_persist = match persistences[1] {
-            Persistence::None | Persistence::Tick => false,
-            Persistence::Loop | Persistence::Static => true,
+            Persistence::Tick => false,
+            Persistence::Static => true,
         };
 
         let write_prologue_probe = probe_persist.then(|| {
@@ -69,17 +69,17 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
         };
 
         let write_tick_end_build = match persistences[0] {
-            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+            Persistence::Tick => quote_spanned! {op_span=>
                 #build_ident.clear();
             },
-            _ => Default::default(),
+            Persistence::Static => Default::default(),
         };
         let write_tick_end_probe = if probe_persist {
             match persistences[1] {
-                Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+                Persistence::Tick => quote_spanned! {op_span=>
                     #probe_ident.clear();
                 },
-                _ => Default::default(),
+                Persistence::Static => Default::default(),
             }
         } else {
             Default::default()

@@ -77,10 +77,10 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
             let mut #uniquedata_ident = #root::rustc_hash::FxHashSet::default();
         };
         let write_tick_end = match persistence {
-            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+            Persistence::Tick => quote_spanned! {op_span=>
                 #uniquedata_ident.clear();
             },
-            _ => Default::default(),
+            Persistence::Static => Default::default(),
         };
 
         let filter_fn = quote_spanned! {op_span=>

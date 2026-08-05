@@ -279,15 +279,13 @@ pub fn get_operator_generics(diagnostics: &mut Diagnostics, operator: &Operator)
     let persistence_args = generic_args.iter().flatten().map_while(|generic_arg| match generic_arg {
             GenericArgument::Lifetime(lifetime) => {
                 match &*lifetime.ident.to_string() {
-                    "none" => Some(Persistence::None),
-                    "loop" => Some(Persistence::Loop),
                     "tick" => Some(Persistence::Tick),
                     "static" => Some(Persistence::Static),
                     _ => {
                         diagnostics.push(Diagnostic::spanned(
                             generic_arg.span(),
                             Level::Error,
-                            format!("Unknown lifetime generic argument `'{}`, expected `'none`, `'loop`, `'tick`, or `'static`.", lifetime.ident),
+                            format!("Unknown lifetime generic argument `'{}`, expected `'tick` or `'static`.", lifetime.ident),
                         ));
                         // TODO(mingwei): should really keep going and not short circuit?
                         None

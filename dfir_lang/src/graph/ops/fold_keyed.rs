@@ -129,7 +129,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
             Persistence::Tick => quote_spanned! {op_span=>
                 #singleton_output_ident.clear();
             },
-            _ => Default::default(),
+            Persistence::Static => Default::default(),
         };
 
         let assign_hashtable_ident = quote_spanned! {op_span=>
@@ -148,17 +148,8 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
             }
         } else {
             let iter_expr = match persistence {
-                Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+                Persistence::Tick => quote_spanned! {op_span=>
                     #hashtable_ident.drain()
-                },
-                Persistence::Loop => quote_spanned! {op_span=>
-                    #hashtable_ident.iter().map(
-                        #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-                        |(k, v)| (
-                            ::std::clone::Clone::clone(k),
-                            ::std::clone::Clone::clone(v),
-                        )
-                    )
                 },
                 Persistence::Static => quote_spanned! {op_span=>
                     // Play everything (each subgraph runs exactly once per tick).

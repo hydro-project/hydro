@@ -55,8 +55,8 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
         let neg_ident = wc.make_ident("neg");
 
         let pos_persist = match persistences[0] {
-            Persistence::None | Persistence::Tick => false,
-            Persistence::Loop | Persistence::Static => true,
+            Persistence::Tick => false,
+            Persistence::Static => true,
         };
 
         let write_prologue_pos = pos_persist.then(|| {
@@ -66,10 +66,10 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
         });
         let write_tick_end_pos = if pos_persist {
             match persistences[0] {
-                Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+                Persistence::Tick => quote_spanned! {op_span=>
                     #pos_ident.clear();
                 },
-                _ => Default::default(),
+                Persistence::Static => Default::default(),
             }
         } else {
             Default::default()
@@ -79,10 +79,10 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
             let mut #neg_ident: #root::rustc_hash::FxHashSet<_> = #root::rustc_hash::FxHashSet::default();
         };
         let write_tick_end_neg = match persistences[1] {
-            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+            Persistence::Tick => quote_spanned! {op_span=>
                 #neg_ident.clear();
             },
-            _ => Default::default(),
+            Persistence::Static => Default::default(),
         };
 
         let input_neg = &inputs[0]; // N before P

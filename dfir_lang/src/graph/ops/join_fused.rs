@@ -3,8 +3,8 @@ use quote::quote_spanned;
 use syn::{Ident, parse_quote};
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
-    RANGE_1, WriteContextArgs,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 use crate::diagnostic::Diagnostic;
 
@@ -192,38 +192,22 @@ pub(crate) fn make_joindata(
     let joindata_ident = wc.make_ident(format!("joindata_{}", side));
     let borrow_ident = wc.make_ident(format!("joindata_{}_borrow", side));
 
-    let &WriteContextArgs {
-        root,
-        op_span,
-        ..
-    } = wc;
+    let &WriteContextArgs { root, op_span, .. } = wc;
 
-    Ok(match persistence {
-        Persistence::None => (
-            Default::default(),
-            Default::default(),
-            quote_spanned! {op_span=>
-                let #borrow_ident = &mut #root::rustc_hash::FxHashMap::default();
-            },
-            borrow_ident,
-        ),
-        Persistence::Tick | Persistence::Loop | Persistence::Static => {
-            let tick_end = match persistence {
-                Persistence::Tick => quote_spanned! {op_span=>
-                    #joindata_ident.clear();
-                },
-                _ => Default::default(),
-            };
-            (
-                quote_spanned! {op_span=>
-                    let mut #joindata_ident = #root::rustc_hash::FxHashMap::default();
-                },
-                tick_end,
-                quote_spanned! {op_span=>
-                    let #borrow_ident = &mut #joindata_ident;
-                },
-                borrow_ident
-            )
-        }
-    })
+    let tick_end = match persistence {
+        Persistence::Tick => quote_spanned! {op_span=>
+            #joindata_ident.clear();
+        },
+        Persistence::Static => Default::default(),
+    };
+    Ok((
+        quote_spanned! {op_span=>
+            let mut #joindata_ident = #root::rustc_hash::FxHashMap::default();
+        },
+        tick_end,
+        quote_spanned! {op_span=>
+            let #borrow_ident = &mut #joindata_ident;
+        },
+        borrow_ident,
+    ))
 }
