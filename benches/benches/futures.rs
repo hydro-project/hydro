@@ -26,12 +26,11 @@ impl Future for ManualFut {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        match *self.done.borrow() {
-            true => Poll::Ready(()),
-            false => {
-                self.waker.replace(Some(cx.waker().clone()));
-                Poll::Pending
-            }
+        if *self.done.borrow() {
+            Poll::Ready(())
+        } else {
+            self.waker.replace(Some(cx.waker().clone()));
+            Poll::Pending
         }
     }
 }

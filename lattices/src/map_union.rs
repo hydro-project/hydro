@@ -90,17 +90,14 @@ where
             .into_iter()
             .filter(|(_k_other, val_other)| !val_other.is_bot())
             .filter_map(|(k_other, val_other)| {
-                match self.0.get_mut(&k_other) {
+                if let Some(mut val_self) = self.0.get_mut(&k_other) {
                     // Key collision, merge into `self`.
-                    Some(mut val_self) => {
-                        changed |= val_self.merge(val_other);
-                        None
-                    }
+                    changed |= val_self.merge(val_other);
+                    None
+                } else {
                     // New value, convert for extending.
-                    None => {
-                        changed = true;
-                        Some((k_other, ValSelf::lattice_from(val_other)))
-                    }
+                    changed = true;
+                    Some((k_other, ValSelf::lattice_from(val_other)))
                 }
             })
             .collect();

@@ -156,7 +156,7 @@ pub fn identity_write_iterator_fn(
     let generic_type = type_args
         .first()
         .map(quote::ToTokens::to_token_stream)
-        .unwrap_or(quote_spanned!(op_span=> _));
+        .unwrap_or_else(|| quote_spanned!(op_span=> _));
 
     if is_pull {
         let input = &inputs[0];

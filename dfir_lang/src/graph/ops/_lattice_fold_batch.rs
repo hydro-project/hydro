@@ -65,7 +65,7 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
         let lattice_type = type_args
             .first()
             .map(ToTokens::to_token_stream)
-            .unwrap_or(quote_spanned!(op_span=> _));
+            .unwrap_or_else(|| quote_spanned!(op_span=> _));
 
         let lattice_ident = wc.make_ident("lattice");
         let signal_ident = wc.make_ident("signal");
