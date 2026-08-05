@@ -21,7 +21,7 @@ pub struct DfirCode {
     pub statements: Vec<DfirStatement>,
 }
 impl Parse for DfirCode {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let mut statements = Vec::new();
         while !input.is_empty() {
             statements.push(input.parse()?);
@@ -44,7 +44,7 @@ pub enum DfirStatement {
     Loop(LoopStatement),
 }
 impl Parse for DfirStatement {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let lookahead1 = input.lookahead1();
         if lookahead1.peek(Token![use]) {
             Ok(Self::Use(ItemUse::parse(input)?))
@@ -90,7 +90,7 @@ pub struct NamedStatement {
     pub semi_token: Token![;],
 }
 impl Parse for NamedStatement {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let name = input.parse()?;
         let equals = input.parse()?;
         let pipeline = input.parse()?;
@@ -117,7 +117,7 @@ pub struct PipelineStatement {
     pub semi_token: Token![;],
 }
 impl Parse for PipelineStatement {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let pipeline = input.parse()?;
         let semi_token = input.parse()?;
         Ok(Self {
@@ -142,7 +142,7 @@ pub enum Pipeline {
     ModuleBoundary(Ported<Token![mod]>),
 }
 impl Pipeline {
-    fn parse_one(input: ParseStream) -> syn::Result<Self> {
+    fn parse_one(input: ParseStream<'_>) -> syn::Result<Self> {
         let lookahead1 = input.lookahead1();
 
         // Leading indexing
@@ -199,7 +199,7 @@ impl Pipeline {
     }
 }
 impl Parse for Pipeline {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let lhs = Pipeline::parse_one(input)?;
         if input.is_empty() || input.peek(Token![;]) {
             Ok(lhs)
@@ -231,7 +231,7 @@ pub struct LoopStatement {
     pub semi_token: Token![;],
 }
 impl Parse for LoopStatement {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let loop_token = input.parse()?;
         let ident = input.parse()?;
         let content;
@@ -275,7 +275,7 @@ where
 {
     /// The caller will often parse the first port (`inn`) as part of determining what to parse
     /// next, so this will do the rest after that.
-    fn parse_rest(inn: Option<Indexing>, input: ParseStream) -> syn::Result<Self> {
+    fn parse_rest(inn: Option<Indexing>, input: ParseStream<'_>) -> syn::Result<Self> {
         let inner = input.parse()?;
         let out = input.call(Indexing::parse_opt)?;
         Ok(Self { inn, inner, out })
@@ -285,7 +285,7 @@ impl<Inner> Parse for Ported<Inner>
 where
     Inner: Parse,
 {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let inn = input.call(Indexing::parse_opt)?;
         Self::parse_rest(inn, input)
     }
@@ -307,7 +307,7 @@ pub struct PipelineParen {
     pub pipeline: Box<Pipeline>,
 }
 impl Parse for PipelineParen {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let content;
         let paren_token = parenthesized!(content in input);
         let pipeline = content.parse()?;
@@ -332,7 +332,7 @@ pub struct PipelineLink {
     pub rhs: Box<Pipeline>,
 }
 impl Parse for PipelineLink {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let lhs = input.parse()?;
         let arrow = input.parse()?;
         let rhs = input.parse()?;
@@ -354,12 +354,12 @@ pub struct Indexing {
     pub index: PortIndex,
 }
 impl Indexing {
-    fn parse_opt(input: ParseStream) -> syn::Result<Option<Self>> {
+    fn parse_opt(input: ParseStream<'_>) -> syn::Result<Option<Self>> {
         input.peek(Bracket).then(|| input.parse()).transpose()
     }
 }
 impl Parse for Indexing {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let content;
         let bracket_token = bracketed!(content in input);
         let index = content.parse()?;
@@ -384,7 +384,7 @@ pub enum PortIndex {
     Path(ExprPath),
 }
 impl Parse for PortIndex {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let lookahead = input.lookahead1();
         if lookahead.peek(LitInt) {
             input.parse().map(Self::Int)
@@ -490,7 +490,7 @@ impl Operator {
     }
 }
 impl Parse for Operator {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let path: Path = input.parse()?;
         if let Some(path_seg) = path.segments.iter().find(|path_seg| {
             matches!(
@@ -557,7 +557,7 @@ pub struct IndexInt {
     pub span: Span,
 }
 impl Parse for IndexInt {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let lit_int: LitInt = input.parse()?;
         let value = lit_int.base10_parse()?;
         Ok(Self {
@@ -611,7 +611,7 @@ pub struct SingletonRef {
 
 impl SingletonRef {
     /// Returns a parsed singleton reference token (if valid) and all remaining tokens.
-    pub fn try_parse(input: ParseStream) -> syn::Result<(Option<Self>, TokenStream)> {
+    pub fn try_parse(input: ParseStream<'_>) -> syn::Result<(Option<Self>, TokenStream)> {
         let this = if input.peek(Token![#]) {
             let fork = input.fork();
             if let Ok(this) = fork.parse() {
@@ -629,7 +629,7 @@ impl SingletonRef {
 }
 
 impl Parse for SingletonRef {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let hash = input.parse()?;
         let access_group = input
             .peek(Brace)

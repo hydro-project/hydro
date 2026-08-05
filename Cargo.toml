@@ -64,6 +64,7 @@ debug-assertions = false
 opt-level = "s"
 
 [workspace.lints.rust]
+elided_lifetimes_in_paths = "warn"
 impl_trait_overcaptures = "warn"
 missing_unsafe_on_extern = "deny"
 unsafe_attr_outside_unsafe = "deny"

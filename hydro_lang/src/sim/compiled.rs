@@ -470,13 +470,13 @@ pub trait Instantiator<'a>: RefUnwindSafe + Fn() -> CompiledSimInstance<'a> {}
 #[sealed::sealed]
 impl<'a, T: RefUnwindSafe + Fn() -> CompiledSimInstance<'a>> Instantiator<'a> for T {}
 
-fn null_handler(_args: fmt::Arguments) {}
+fn null_handler(_args: fmt::Arguments<'_>) {}
 
-fn println_handler(args: fmt::Arguments) {
+fn println_handler(args: fmt::Arguments<'_>) {
     println!("{}", args);
 }
 
-fn eprintln_handler(args: fmt::Arguments) {
+fn eprintln_handler(args: fmt::Arguments<'_>) {
     eprintln!("{}", args);
 }
 
@@ -505,7 +505,7 @@ type SimLoaded<'a> = libloading::Symbol<
 
 impl CompiledSim {
     /// Executes the given closure with a single instance of the compiled simulation.
-    pub fn with_instance<T>(&self, thunk: impl FnOnce(CompiledSimInstance) -> T) -> T {
+    pub fn with_instance<T>(&self, thunk: impl FnOnce(CompiledSimInstance<'_>) -> T) -> T {
         self.with_instantiator(|instantiator| thunk(instantiator()), true)
     }
 
@@ -518,10 +518,10 @@ impl CompiledSim {
     /// enabled if the `HYDRO_SIM_LOG` environment variable is set to `1`.
     pub fn with_instantiator<T>(
         &self,
-        thunk: impl FnOnce(&dyn Instantiator) -> T,
+        thunk: impl FnOnce(&dyn Instantiator<'_>) -> T,
         always_log: bool,
     ) -> T {
-        let func: SimLoaded = unsafe { self.lib.get(b"__hydro_runtime").unwrap() };
+        let func: SimLoaded<'_> = unsafe { self.lib.get(b"__hydro_runtime").unwrap() };
         let log = always_log || std::env::var("HYDRO_SIM_LOG").is_ok_and(|v| v == "1");
         thunk(
             &(|| CompiledSimInstance {
@@ -679,7 +679,7 @@ impl CompiledSim {
     pub fn fuzz_repro<'a>(
         &'a self,
         bytes: Vec<u8>,
-        thunk: impl AsyncFnOnce(CompiledSimInstance) + RefUnwindSafe,
+        thunk: impl AsyncFnOnce(CompiledSimInstance<'_>) + RefUnwindSafe,
     ) {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             self.with_instance(|instance| {
@@ -812,7 +812,7 @@ impl<'a> CompiledSimInstance<'a> {
 
     async fn run_without_launching(
         mut self,
-        thunk: impl AsyncFnOnce(CompiledSimInstance) + RefUnwindSafe,
+        thunk: impl AsyncFnOnce(CompiledSimInstance<'_>) + RefUnwindSafe,
     ) {
         let mut external_out: HashMap<usize, UnsyncReceiver<Bytes>> = HashMap::new();
         let mut external_in: HashMap<usize, UnsyncSender<Bytes>> = HashMap::new();

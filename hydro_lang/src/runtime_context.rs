@@ -7,7 +7,7 @@ use stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
 use crate::live_collections::ContextWithLocation;
 
 /// Exposes the DFIR [`Context`] inside quoted code.
-pub static RUNTIME_CONTEXT: RuntimeContext = RuntimeContext { _private: &() };
+pub static RUNTIME_CONTEXT: RuntimeContext<'static> = RuntimeContext { _private: &() };
 
 /// A handle to DFIR [`Context`] which can be used inside quoted code.
 ///

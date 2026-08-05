@@ -220,7 +220,7 @@ mod tests {
             reason = "nondeterministic iteration order, fine to collect into set"
         )]
         let result = input.iter().map(|v| v.as_ref_var()).collect();
-        let v: HashSet<ResultType> = htrie.recursive_iter().collect();
+        let v: HashSet<ResultType<'_>> = htrie.recursive_iter().collect();
         assert_eq!(v, result);
     }
 
@@ -250,7 +250,7 @@ mod tests {
             );
         // let key = var_expr!(42u8).as_ref_var();
         let key = (); // (var_expr!().as_ref_var();)
-        let v: HashSet<ResultType> = leaf.prefix_iter(key).collect();
+        let v: HashSet<ResultType<'_>> = leaf.prefix_iter(key).collect();
         #[expect(
             clippy::disallowed_methods,
             reason = "nondeterministic iteration order, fine to collect into set"
@@ -285,11 +285,12 @@ mod tests {
         );
         let htrie = MyGht::new_from(input.clone());
 
-        let v: HashSet<ResultType> = htrie.prefix_iter(var_expr!(42, 315).as_ref_var()).collect();
+        let v: HashSet<ResultType<'_>> =
+            htrie.prefix_iter(var_expr!(42, 315).as_ref_var()).collect();
         let result = HashSet::from_iter([var_expr!(&42, &315, &43770)].iter().copied());
         assert_eq!(v, result);
 
-        let v: HashSet<ResultType> = htrie.prefix_iter(var_expr!(42u8).as_ref_var()).collect();
+        let v: HashSet<ResultType<'_>> = htrie.prefix_iter(var_expr!(42u8).as_ref_var()).collect();
         #[expect(
             clippy::disallowed_methods,
             reason = "nondeterministic iteration order, fine to collect into set"
@@ -332,7 +333,7 @@ mod tests {
 
         let htrie = MyGht::new_from(input.clone());
 
-        let v: HashSet<ResultType> = htrie
+        let v: HashSet<ResultType<'_>> = htrie
             .prefix_iter(var_expr!(true, 1, "hi").as_ref_var())
             .collect();
         #[expect(
@@ -347,7 +348,7 @@ mod tests {
             .collect();
         assert_eq!(v, result);
 
-        let v: HashSet<ResultType> = htrie.prefix_iter(var_expr!(true).as_ref_var()).collect();
+        let v: HashSet<ResultType<'_>> = htrie.prefix_iter(var_expr!(true).as_ref_var()).collect();
         #[expect(
             clippy::disallowed_methods,
             reason = "nondeterministic iteration order, fine to collect into set"
@@ -500,7 +501,7 @@ mod tests {
         ght_b.insert(var_expr!(10, 1, 2, "hi"));
         ght_b.insert(var_expr!(12, 10, 98, "bye"));
 
-        let result: HashSet<ResultSchemaRefType> = [var_expr!(&5, &1, &7, &"hi", &"world")]
+        let result: HashSet<ResultSchemaRefType<'_>> = [var_expr!(&5, &1, &7, &"hi", &"world")]
             .iter()
             .copied()
             .collect();
@@ -524,7 +525,7 @@ mod tests {
                 GhtNodeKeyedBimorphism::new(GhtValTypeProductBimorphism::<MyGhtOut>::default()),
             ));
             let out = bim.call(&ght_a, &ght_b);
-            let out: HashSet<ResultSchemaRefType> = out.recursive_iter().collect();
+            let out: HashSet<ResultSchemaRefType<'_>> = out.recursive_iter().collect();
             assert_eq!(out, result);
         }
         {
@@ -533,9 +534,9 @@ mod tests {
             type MyNodeBim<'a> = <(MyGhtATrie, MyGhtBTrie) as DeepJoinLatticeBimorphism<
                 VariadicHashSetStd<ResultSchemaType>,
             >>::DeepJoinLatticeBimorphism;
-            let mut bim = <MyNodeBim as Default>::default();
+            let mut bim = <MyNodeBim<'_> as Default>::default();
             let out = bim.call(&ght_a, &ght_b);
-            let out: HashSet<ResultSchemaRefType> = out.recursive_iter().collect();
+            let out: HashSet<ResultSchemaRefType<'_>> = out.recursive_iter().collect();
             assert_eq!(out, result);
         }
     }

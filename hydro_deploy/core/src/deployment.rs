@@ -2,6 +2,10 @@
     mismatched_lifetime_syntaxes,
     reason = "https://github.com/BrynCooke/buildstructor/issues/200"
 )]
+#![expect(
+    elided_lifetimes_in_paths,
+    reason = "https://github.com/BrynCooke/buildstructor/issues/200#issuecomment-5195747044"
+)]
 
 use std::collections::HashMap;
 use std::future::Future;

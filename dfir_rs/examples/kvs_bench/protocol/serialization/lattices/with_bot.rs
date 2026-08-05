@@ -43,7 +43,7 @@ impl<'de, const SIZE: usize> DeserializeSeed<'de> for WithBotDeserializer<SIZE> 
         impl<'de, const SIZE: usize> Visitor<'de> for V<SIZE> {
             type Value = WithBot<Point<AutoReturnBuffer<SIZE>, ()>>;
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 formatter.write_str(std::any::type_name::<Self::Value>())
             }
 
@@ -57,7 +57,10 @@ impl<'de, const SIZE: usize> DeserializeSeed<'de> for WithBotDeserializer<SIZE> 
                 impl<'de, const SIZE: usize> Visitor<'de> for V<SIZE> {
                     type Value = Point<AutoReturnBuffer<SIZE>, ()>;
 
-                    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    fn expecting(
+                        &self,
+                        formatter: &mut std::fmt::Formatter<'_>,
+                    ) -> std::fmt::Result {
                         formatter.write_str(std::any::type_name::<Self::Value>())
                     }
 

@@ -9,7 +9,7 @@ use crate::compile::ir::HydroRoot;
 
 fn render_with_config<F>(
     roots: &[HydroRoot],
-    config: Option<HydroWriteConfig>,
+    config: Option<HydroWriteConfig<'_>>,
     renderer: F,
 ) -> String
 where
@@ -22,7 +22,7 @@ where
 pub fn save_mermaid(
     roots: &[HydroRoot],
     filename: Option<&str>,
-    config: Option<HydroWriteConfig>,
+    config: Option<HydroWriteConfig<'_>>,
 ) -> Result<std::path::PathBuf> {
     let content = render_with_config(roots, config, render_hydro_ir_mermaid);
     save_to_file(content, filename, "hydro_graph.mmd")
@@ -32,7 +32,7 @@ pub fn save_mermaid(
 pub fn save_dot(
     roots: &[HydroRoot],
     filename: Option<&str>,
-    config: Option<HydroWriteConfig>,
+    config: Option<HydroWriteConfig<'_>>,
 ) -> Result<std::path::PathBuf> {
     let content = render_with_config(roots, config, render_hydro_ir_dot);
     save_to_file(content, filename, "hydro_graph.dot")
@@ -42,7 +42,7 @@ pub fn save_dot(
 pub fn save_json(
     roots: &[HydroRoot],
     filename: Option<&str>,
-    config: Option<HydroWriteConfig>,
+    config: Option<HydroWriteConfig<'_>>,
 ) -> Result<std::path::PathBuf> {
     let content = render_with_config(roots, config, render_hydro_ir_json);
     save_to_file(content, filename, "hydro_graph.json")

@@ -197,7 +197,7 @@ impl<'a> BuiltFlow<'a> {
 
     pub fn with_process<P, D: Deploy<'a>>(
         self,
-        process: &Process<P>,
+        process: &Process<'_, P>,
         spec: impl IntoProcessSpec<'a, D>,
     ) -> DeployFlow<'a, D> {
         self.into_deploy().with_process(process, spec)
@@ -212,7 +212,7 @@ impl<'a> BuiltFlow<'a> {
 
     pub fn with_external<P, D: Deploy<'a>>(
         self,
-        process: &External<P>,
+        process: &External<'_, P>,
         spec: impl ExternalSpec<'a, D>,
     ) -> DeployFlow<'a, D> {
         self.into_deploy().with_external(process, spec)
@@ -227,7 +227,7 @@ impl<'a> BuiltFlow<'a> {
 
     pub fn with_cluster<C, D: Deploy<'a>>(
         self,
-        cluster: &Cluster<C>,
+        cluster: &Cluster<'_, C>,
         spec: impl ClusterSpec<'a, D>,
     ) -> DeployFlow<'a, D> {
         self.into_deploy().with_cluster(cluster, spec)

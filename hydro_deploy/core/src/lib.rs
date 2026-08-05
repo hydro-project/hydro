@@ -262,7 +262,7 @@ pub trait Host: Any + Send + Sync + Debug {
     ) -> Result<(ClientStrategy<'a>, HostStrategyGetter)>;
 
     /// Determines whether this host can connect to another host using the given strategy.
-    fn can_connect_to(&self, typ: ClientStrategy) -> bool;
+    fn can_connect_to(&self, typ: ClientStrategy<'_>) -> bool;
 }
 
 #[async_trait]

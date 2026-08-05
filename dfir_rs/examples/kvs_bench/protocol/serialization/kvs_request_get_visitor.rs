@@ -6,7 +6,7 @@ pub struct KvsRequestGetVisitor<const SIZE: usize>;
 impl<'de, const SIZE: usize> Visitor<'de> for KvsRequestGetVisitor<SIZE> {
     type Value = KvsRequest<SIZE>;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str("KvsRequest::Get")
     }
 

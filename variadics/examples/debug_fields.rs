@@ -6,15 +6,15 @@ use variadics::{Variadic, var_args, var_expr, var_type};
 
 #[sealed::sealed]
 pub trait DebugVariadicTrait {
-    fn apply(&self, f: &mut DebugTuple);
+    fn apply(&self, f: &mut DebugTuple<'_, '_>);
 }
 #[sealed::sealed]
 impl DebugVariadicTrait for () {
-    fn apply(&self, _f: &mut DebugTuple) {}
+    fn apply(&self, _f: &mut DebugTuple<'_, '_>) {}
 }
 #[sealed::sealed]
 impl<Head: Debug, Tail: Variadic + DebugVariadicTrait> DebugVariadicTrait for var_type!(Head, ...Tail) {
-    fn apply(&self, f: &mut DebugTuple) {
+    fn apply(&self, f: &mut DebugTuple<'_, '_>) {
         let var_args!(head, ...tail) = self;
         f.field(head);
         tail.apply(f);

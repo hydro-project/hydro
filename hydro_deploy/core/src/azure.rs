@@ -472,7 +472,7 @@ impl Host for AzureHost {
         }
     }
 
-    fn can_connect_to(&self, typ: ClientStrategy) -> bool {
+    fn can_connect_to(&self, typ: ClientStrategy<'_>) -> bool {
         match typ {
             ClientStrategy::UnixSocket(id) => {
                 #[cfg(unix)]

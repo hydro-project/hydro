@@ -7,7 +7,7 @@ struct CopySpanInput {
 }
 
 impl syn::parse::Parse for CopySpanInput {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+    fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
         let mut sources = vec![];
         loop {
             let next_source: syn::Expr = input.parse()?;

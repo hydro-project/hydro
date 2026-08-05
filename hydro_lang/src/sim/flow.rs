@@ -96,7 +96,7 @@ impl<'a> SimFlow<'a> {
     }
 
     /// Executes the given closure with a single instance of the compiled simulation.
-    pub fn with_instance<T>(self, thunk: impl FnOnce(CompiledSimInstance) -> T) -> T {
+    pub fn with_instance<T>(self, thunk: impl FnOnce(CompiledSimInstance<'_>) -> T) -> T {
         self.compiled().with_instance(thunk)
     }
 

@@ -185,7 +185,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
 
 /// Returns `(prologue, tick_end, pre_write_iter, borrow_ident)`.
 pub(crate) fn make_joindata(
-    wc: &WriteContextArgs,
+    wc: &WriteContextArgs<'_>,
     persistence: Persistence,
     side: &str,
 ) -> Result<(TokenStream, TokenStream, TokenStream, Ident), Diagnostic> {
