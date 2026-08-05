@@ -44,6 +44,16 @@ For ordered streams, use `send()` to send a single message or `send_many()` to s
 
 The `exhaustive()` method explores *all* possible executions. This is feasible when the inputs are finite and the number of `nondet!` decision points is manageable. For complex protocols, use `fuzz()` instead (see [Coverage-Guided Simulation](./fuzzing.mdx) for details).
 
+### Receiving Outputs and Quiescence
+
+Instead of asserting, you can also receive output messages directly. `next()` waits for and returns the next message (failing the test if no more messages can arrive), and `collect_n(n)` returns the next `n` messages. These are always safe to use in the middle of a test: waiting for a message only runs the simulation work needed to produce it.
+
+Observing the *absence* of messages is more delicate, because the simulator must run **all** pending work (such as ticks with buffered inputs) to prove that no more messages can arrive—potentially running work that a later assertion expected to observe in an unfinished state. The simulator handles this depending on the API and mode:
+
+- The assertion methods (`assert_no_more()`, the `assert_yields_only*` variants, and `collect_n_only(n)`) first let the simulation *settle*: if it reaches quiescence with only deterministic work, the check is free and the test continues. Otherwise, under `exhaustive()` the search **forks**: one instance performs the check and ends there (explored first, so failures are attributed to the right assertion), while sibling instances skip the check and continue.
+- `try_next()` (returns `Option`) and `collect()` drain the simulation to quiescence when needed, in every mode. Because this may overrun pending work, they should be the *last* observations of a test: after forcing quiescence this way, sending more input and then attempting to receive output will panic.
+- Multi-phase tests that *intentionally* let the system settle between rounds of input (e.g. modeling timers that fire long after messages propagate) can insert an explicit `hydro_lang::sim::quiesce().await` phase barrier. This forces the simulation to quiesce and declares that later observations are meant to see the settled state, so the test may continue sending and receiving afterwards — at the cost of never exploring executions where the phases interleave (pair with a barrier-free test if those matter).
+
 ### Restricting Explored Executions with `continue_if!`
 
 Sometimes an assertion only makes sense for a subset of executions—for example, when the property you want to check only holds if certain messages happened to arrive in the same batch. The `hydro_lang::sim::continue_if!` macro lets you express such preconditions: if the condition is false, the current simulation instance is stopped and discarded (it is *not* a test failure), and exploration moves on to the next execution. This is the same concept as `assume` in verification tools and property-based testing libraries (e.g. `kani::assume` or proptest's `prop_assume!`).

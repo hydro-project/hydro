@@ -3,6 +3,6 @@ source: hydro_lang/tests/sim_fuzzer.rs
 expression: "lines[block_start..block_start + 4].join(\"\\n\")"
 ---
 Condition failed (discarding simulation instance):
---> hydro_lang/src/sim/tests/mod.rs:1013:9
+--> hydro_lang/src/sim/tests/mod.rs:1259:9
  |        crate::sim::continue_if!(
  |        ^ first batch was a singleton
