@@ -3,15 +3,69 @@
  * and scoped locally.
  */
 
+/* ===== Landing theme variables (shared with components/landing) ===== */
+
+.landingRoot {
+  --lp-client: #0096ff;
+  --lp-server: #0aa87c;
+  --lp-network: #f97316;
+  --lp-chanb: #8b5cf6;
+  --lp-pink: #db2777;
+  --lp-grey: #9096a1;
+  --lp-error: #e5484d;
+  --lp-aws: #ff9900;
+  --lp-ink: #2c2c2c;
+  --lp-muted: #6b7280;
+  --lp-border: #e3e6ea;
+  --lp-panel-bg: #ffffff;
+  --lp-code-bg: #ffffff;
+  --lp-code-title-bg: #f6f8fa;
+  --lp-chip-bg: #eef1f4;
+  --lp-line-active: rgb(249 115 22 / 12%);
+  --lp-line-static: rgb(255 153 0 / 14%);
+  --lp-error-bg: rgb(229 72 77 / 8%);
+  --lp-island-bg: #ffffff;
+  --lp-frost: rgb(255 255 255 / 72%);
+  --lp-halo: var(--lp-island-bg);
+  --lp-node-fill: var(--lp-island-bg);
+
+  /* Height of the sticky graph box and of the first/last story sections.
+     These must match for the graph to align with the endpoint sections at
+     pin-in and release; the box is centered in the viewport via the sticky
+     top offset, so it can be much shorter than the viewport. */
+  --lp-endpoint-h: 76vh;
+
+  overflow-x: clip;
+}
+
+[data-theme="dark"] .landingRoot {
+  --lp-server: #0fdba2;
+  --lp-pink: #f472b6;
+  --lp-ink: #ececee;
+  --lp-muted: #9aa3af;
+  --lp-border: #3a3f46;
+  --lp-panel-bg: #212226;
+  --lp-code-bg: #1e1f23;
+  --lp-code-title-bg: #26272c;
+  --lp-chip-bg: #33353b;
+  --lp-line-active: rgb(249 115 22 / 22%);
+  --lp-line-static: rgb(255 153 0 / 20%);
+  --lp-error-bg: rgb(229 72 77 / 15%);
+  --lp-island-bg: #212226;
+  --lp-frost: rgb(27 27 29 / 72%);
+}
+
+/* ===== Hero ===== */
+
 .jumbo {
   max-width: calc(min(1000px, 100vw - 60px));
-  min-height: calc(100vh - 700px);
   margin-left: auto;
   margin-right: auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  margin-top: 30px;
+  margin-top: 60px;
+  margin-bottom: 40px;
   box-sizing: border-box;
   line-height: normal;
 }
@@ -25,7 +79,7 @@
 
 .indexTitle {
   text-align: center;
-  font-family: 'Nunito', sans-serif;
+  font-family: "Nunito", sans-serif;
   font-size: 45px;
   font-weight: 700;
   max-width: 800px;
@@ -50,24 +104,197 @@
   }
 }
 
-.heroBanner {
-  padding: 4rem 0;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
+.heroButtons {
+  display: flex;
+  flex-direction: row;
+  margin-top: 25px;
+  margin-bottom: 0;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ===== Scrollytelling layout ===== */
+
+.scrolly {
+  display: flex;
+  gap: 56px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 40px;
+  align-items: stretch;
+}
+
+.scrollySections {
+  flex: 1 1 54%;
+  min-width: 0;
+  order: 1;
+}
+
+.scrollyGraphCol {
+  flex: 1 1 46%;
+  max-width: 520px;
+  min-width: 380px;
+  order: 2;
+}
+
+.graphSticky {
+  position: sticky;
+
+  /* Center the (76vh) box in the viewport below the navbar; the graph is
+     centered inside it, so it reads as viewport-centered while pinned. */
+  top: calc(
+    var(--ifm-navbar-height) +
+      (100vh - var(--ifm-navbar-height) - var(--lp-endpoint-h)) / 2
+  );
+  height: var(--lp-endpoint-h);
+  padding: 16px 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.graphIsland {
+  background: var(--lp-island-bg, var(--lp-panel-bg));
+  border: 1.5px solid var(--lp-border);
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgb(0 0 0 / 10%);
+
+  /* No padding: the SVG's viewBox already includes margins. */
+  padding: 0;
+}
+
+.storySection {
+  /* Interior sections hug their content with fixed padding, so the gap
+     between consecutive sections' content is a consistent 2 x 7vh
+     (centering inside min-height boxes made gaps vary with content
+     height). */
+  padding: 7vh 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+  opacity: 0.45;
+  transition: opacity 0.45s ease;
+}
+
+/* The first and last sections must match the sticky graph box height so
+   the graph's center lines up with the section's center both before the
+   graph pins (top of the scrolly container) and after it releases (bottom
+   of the scrolly container). Pre-pin and post-release the graph and the
+   endpoint section scroll together, exactly aligned. */
+.storySection:first-child,
+.storySection:last-child {
+  min-height: var(--lp-endpoint-h);
+}
+
+/* Doubled class for higher specificity: with a single class this ties with
+   the base rule and production CSS ordering can put it first, breaking the
+   active state. */
+.storySection.storySectionActive {
+  opacity: 1;
+}
+
+.storyTitle {
+  font-family: var(--ifm-heading-font-family);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 120%;
+  margin-bottom: 18px;
+  color: var(--lp-ink);
+  text-wrap: balance;
+}
+
+.storyBlurb {
+  font-size: 17.5px;
+  line-height: 160%;
+  margin-bottom: 16px;
+  text-wrap: pretty;
+}
+
+.codeStack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 @media screen and (max-width: 996px) {
-  .heroBanner {
-    padding: 2rem;
+  .scrolly {
+    display: block;
+    padding: 0 16px;
+  }
+
+  /* The island's trace/output panel overflows the column's reserved height.
+     The bottom margin extends the sticky element's *margin box*, which is
+     what sticky positioning clamps within the container — so the island
+     releases ~100px early and is gone before its overflow could overlap
+     the content below the story. The matching negative margin on the
+     sections cancels the layout shift. */
+  .scrollyGraphCol {
+    margin-bottom: 100px;
+  }
+
+  .scrollySections {
+    margin-top: -100px;
+  }
+
+  /* On mobile the diagram island pins to the top of the viewport (it comes
+     first in the DOM), and the sections scroll beneath it. The column's
+     flow height is *fixed* (graph cap + chrome, no extras), so the island
+     growing/shrinking never shifts the page scroll — which could oscillate
+     with the scroll-driven scene switching. When the trace/output panel
+     appears, the island simply overflows the reserved height and paints
+     over the content below (which scrolls beneath the frosted card
+     anyway); the 75% activation line keeps section titles clear of even
+     the fully-grown island. */
+  .scrollyGraphCol {
+    position: sticky;
+    top: var(--ifm-navbar-height);
+    z-index: 10;
+    max-width: none;
+    min-width: 0;
+    height: calc(min(34vh, 300px) + 55px);
+  }
+
+  .graphSticky {
+    position: static;
+    height: auto;
+    display: block;
+    padding: 8px 0 4px;
+  }
+
+  .graphIsland {
+    border-radius: 16px;
+
+    /* Frosted glass: content scrolling beneath the pinned island shows
+       through, blurred. */
+    background: var(--lp-frost);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+
+  .storySection {
+    min-height: unset;
+    padding: 28px 0;
+    opacity: 1;
+  }
+
+  .storySection:first-child,
+  .storySection:last-child {
+    min-height: unset;
+  }
+
+  /* The pinned island already provides visual spacing at the top. */
+  .storySection:first-child {
+    padding-top: 16px;
+  }
+
+  .storyTitle {
+    font-size: 28px;
   }
 }
 
-.buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+/* ===== Bottom panels ===== */
 
 .panel h1 {
   font-size: 50px;
@@ -89,6 +316,7 @@
   padding-bottom: 80px;
   justify-content: center;
   flex-wrap: wrap;
+  margin-top: 8vh;
 }
 
 @media screen and (max-width: 1000px) {
@@ -109,13 +337,9 @@
   line-height: 155%;
 }
 
-.panel pre {
-  font-size: 15px;
-}
-
 .panelImage {
   flex-grow: 1;
-  min-width: 450px;
+  min-width: 260px;
   max-width: 700px;
   display: flex;
   justify-content: center;
@@ -126,26 +350,4 @@
   .panelImage {
     min-width: 0;
   }
-}
-
-.inDevPanel {
-  background: #e0f5f0;
-  padding: 15px;
-  border-radius: 10px;
-}
-
-[data-theme="dark"] .inDevPanel {
-  background: none;
-  border: 5px solid #b1efe0;
-}
-
-.comingSoonPanel {
-  background: #f5f3e0;
-  padding: 15px;
-  border-radius: 10px;
-}
-
-[data-theme="dark"] .comingSoonPanel {
-  background: none;
-  border: 5px solid #f2eaa5;
 }
