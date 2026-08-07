@@ -511,7 +511,6 @@ fn mark_tick_boundary_handoffs(
 ///
 /// This hands back the original **flat graph** alongside the diagnostic, so callers can visualize
 /// the graph to diagnose the cycle that prevented partitioning.
-#[derive(Debug)]
 pub struct PartitionError {
     /// The pristine, un-partitioned flat graph (returned so it can still be rendered).
     ///
@@ -526,6 +525,14 @@ pub struct PartitionError {
 impl std::fmt::Display for PartitionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.diagnostic, f)
+    }
+}
+
+impl std::fmt::Debug for PartitionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(nameof::name_of_type!(PartitionError))
+            .field(nameof::name_of!(diagnostic in Self), &self.diagnostic)
+            .finish_non_exhaustive() // Hide the large `DfirGraph` debug output.
     }
 }
 
