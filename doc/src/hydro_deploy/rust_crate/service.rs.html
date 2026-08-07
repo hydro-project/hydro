@@ -230,7 +230,7 @@
 <a href=#230 id=230 data-nosnippet>230</a>                            })
 <a href=#231 id=231 data-nosnippet>231</a>                            .collect::&lt;HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
 <a href=#232 id=232 data-nosnippet>232</a>
-<a href=#233 id=233 data-nosnippet>233</a>                        <span class="kw">let </span>formatted_bind_config = serde_json::to_string::&lt;InitConfig&gt;(<span class="kw-2">&amp;</span>(
+<a href=#233 id=233 data-nosnippet>233</a>                        <span class="kw">let </span>formatted_bind_config = serde_json::to_string::&lt;InitConfig&lt;<span class="lifetime">'_</span>&gt;&gt;(<span class="kw-2">&amp;</span>(
 <a href=#234 id=234 data-nosnippet>234</a>                            bind_config,
 <a href=#235 id=235 data-nosnippet>235</a>                            <span class="self">self</span>.meta.get().map(|s| s.as_str().into()),
 <a href=#236 id=236 data-nosnippet>236</a>                        ))

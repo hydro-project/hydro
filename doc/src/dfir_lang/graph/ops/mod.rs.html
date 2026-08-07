@@ -151,7 +151,7 @@
 <a href=#151 id=151 data-nosnippet>151</a>                ..
 <a href=#152 id=152 data-nosnippet>152</a>            },
 <a href=#153 id=153 data-nosnippet>153</a>        ..
-<a href=#154 id=154 data-nosnippet>154</a>    }: <span class="kw-2">&amp;</span>WriteContextArgs,
+<a href=#154 id=154 data-nosnippet>154</a>    }: <span class="kw-2">&amp;</span>WriteContextArgs&lt;<span class="lifetime">'_</span>&gt;,
 <a href=#155 id=155 data-nosnippet>155</a>) -&gt; TokenStream {
 <a href=#156 id=156 data-nosnippet>156</a>    <span class="kw">let </span>generic_type = type_args
 <a href=#157 id=157 data-nosnippet>157</a>        .first()
@@ -212,7 +212,7 @@
 <a href=#212 id=212 data-nosnippet>212</a>                ..
 <a href=#213 id=213 data-nosnippet>213</a>            },
 <a href=#214 id=214 data-nosnippet>214</a>        ..
-<a href=#215 id=215 data-nosnippet>215</a>    }: <span class="kw-2">&amp;</span>WriteContextArgs,
+<a href=#215 id=215 data-nosnippet>215</a>    }: <span class="kw-2">&amp;</span>WriteContextArgs&lt;<span class="lifetime">'_</span>&gt;,
 <a href=#216 id=216 data-nosnippet>216</a>) -&gt; TokenStream {
 <a href=#217 id=217 data-nosnippet>217</a>    <span class="kw">let </span>default_type = <span class="macro">parse_quote_spanned!</span> {op_span=&gt; <span class="kw">_</span>};
 <a href=#218 id=218 data-nosnippet>218</a>    <span class="kw">let </span>iter_type = type_args.first().unwrap_or(<span class="kw-2">&amp;</span>default_type);

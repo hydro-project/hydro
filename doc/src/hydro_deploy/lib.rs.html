@@ -262,7 +262,7 @@
 <a href=#262 id=262 data-nosnippet>262</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(ClientStrategy&lt;<span class="lifetime">'a</span>&gt;, HostStrategyGetter)&gt;;
 <a href=#263 id=263 data-nosnippet>263</a>
 <a href=#264 id=264 data-nosnippet>264</a>    <span class="doccomment">/// Determines whether this host can connect to another host using the given strategy.
-<a href=#265 id=265 data-nosnippet>265</a>    </span><span class="kw">fn </span>can_connect_to(<span class="kw-2">&amp;</span><span class="self">self</span>, typ: ClientStrategy) -&gt; bool;
+<a href=#265 id=265 data-nosnippet>265</a>    </span><span class="kw">fn </span>can_connect_to(<span class="kw-2">&amp;</span><span class="self">self</span>, typ: ClientStrategy&lt;<span class="lifetime">'_</span>&gt;) -&gt; bool;
 <a href=#266 id=266 data-nosnippet>266</a>}
 <a href=#267 id=267 data-nosnippet>267</a>
 <a href=#268 id=268 data-nosnippet>268</a><span class="attr">#[async_trait]

@@ -231,7 +231,7 @@
 <a href=#231 id=231 data-nosnippet>231</a>        <span class="kw">let </span>previous_bar = surrounding_children
 <a href=#232 id=232 data-nosnippet>232</a>            .iter()
 <a href=#233 id=233 data-nosnippet>233</a>            .rev()
-<a href=#234 id=234 data-nosnippet>234</a>            .flat_map(|c| c.get_pb())
+<a href=#234 id=234 data-nosnippet>234</a>            .filter_map(|c| c.get_pb())
 <a href=#235 id=235 data-nosnippet>235</a>            .next();
 <a href=#236 id=236 data-nosnippet>236</a>
 <a href=#237 id=237 data-nosnippet>237</a>        <span class="kw">let </span>index_to_insert = <span class="kw">if let </span><span class="prelude-val">Some</span>(previous_bar) = previous_bar {

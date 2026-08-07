@@ -102,7 +102,7 @@
 <a href=#102 id=102 data-nosnippet>102</a>        }
 <a href=#103 id=103 data-nosnippet>103</a>    }
 <a href=#104 id=104 data-nosnippet>104</a>
-<a href=#105 id=105 data-nosnippet>105</a>    <span class="kw">fn </span>can_connect_to(<span class="kw-2">&amp;</span><span class="self">self</span>, typ: ClientStrategy) -&gt; bool {
+<a href=#105 id=105 data-nosnippet>105</a>    <span class="kw">fn </span>can_connect_to(<span class="kw-2">&amp;</span><span class="self">self</span>, typ: ClientStrategy&lt;<span class="lifetime">'_</span>&gt;) -&gt; bool {
 <a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">match </span>typ {
 <a href=#107 id=107 data-nosnippet>107</a>            ClientStrategy::UnixSocket(id) =&gt; {
 <a href=#108 id=108 data-nosnippet>108</a>                <span class="attr">#[cfg(unix)]
@@ -244,7 +244,7 @@
 <a href=#244 id=244 data-nosnippet>244</a>                    <span class="kw">let </span><span class="kw-2">mut </span>paths = std::env::split_paths(<span class="kw-2">&amp;</span>paths).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 <a href=#245 id=245 data-nosnippet>245</a>                    paths.insert(<span class="number">0</span>, std::path::PathBuf::from(local_libdir));
 <a href=#246 id=246 data-nosnippet>246</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(shared_path) = <span class="kw-2">&amp;</span>binary.shared_library_path {
-<a href=#247 id=247 data-nosnippet>247</a>                        paths.insert(<span class="number">0</span>, shared_path.to_path_buf());
+<a href=#247 id=247 data-nosnippet>247</a>                        paths.insert(<span class="number">0</span>, shared_path.clone());
 <a href=#248 id=248 data-nosnippet>248</a>                    }
 <a href=#249 id=249 data-nosnippet>249</a>                    std::env::join_paths(paths).unwrap()
 <a href=#250 id=250 data-nosnippet>250</a>                },

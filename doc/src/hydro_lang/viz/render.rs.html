@@ -960,14 +960,14 @@
 <a href=#960 id=960 data-nosnippet>960</a>        }
 <a href=#961 id=961 data-nosnippet>961</a>
 <a href=#962 id=962 data-nosnippet>962</a>        <span class="comment">// Single-input transform with no expressions
-<a href=#963 id=963 data-nosnippet>963</a>        </span><span class="kw">fn </span>build_simple_transform(params: TransformParams) -&gt; VizNodeKey {
+<a href=#963 id=963 data-nosnippet>963</a>        </span><span class="kw">fn </span>build_simple_transform(params: TransformParams&lt;<span class="lifetime">'_</span>&gt;) -&gt; VizNodeKey {
 <a href=#964 id=964 data-nosnippet>964</a>            <span class="kw">let </span>input_id = params.input.build_graph_structure(
 <a href=#965 id=965 data-nosnippet>965</a>                params.structure,
 <a href=#966 id=966 data-nosnippet>966</a>                params.seen_tees,
 <a href=#967 id=967 data-nosnippet>967</a>                params.config,
 <a href=#968 id=968 data-nosnippet>968</a>            );
 <a href=#969 id=969 data-nosnippet>969</a>            <span class="kw">let </span>node_id = params.structure.add_node_with_metadata(
-<a href=#970 id=970 data-nosnippet>970</a>                NodeLabel::Static(params.op_name.to_string()),
+<a href=#970 id=970 data-nosnippet>970</a>                NodeLabel::Static(params.op_name.clone()),
 <a href=#971 id=971 data-nosnippet>971</a>                params.node_type,
 <a href=#972 id=972 data-nosnippet>972</a>                params.metadata,
 <a href=#973 id=973 data-nosnippet>973</a>            );
@@ -987,48 +987,48 @@
 <a href=#987 id=987 data-nosnippet>987</a>        }
 <a href=#988 id=988 data-nosnippet>988</a>
 <a href=#989 id=989 data-nosnippet>989</a>        <span class="comment">// Single-input transform with one expression
-<a href=#990 id=990 data-nosnippet>990</a>        </span><span class="kw">fn </span>build_single_expr_transform(params: TransformParams, expr: <span class="kw-2">&amp;</span>DebugExpr) -&gt; VizNodeKey {
-<a href=#991 id=991 data-nosnippet>991</a>            <span class="kw">let </span>input_id = params.input.build_graph_structure(
-<a href=#992 id=992 data-nosnippet>992</a>                params.structure,
-<a href=#993 id=993 data-nosnippet>993</a>                params.seen_tees,
-<a href=#994 id=994 data-nosnippet>994</a>                params.config,
-<a href=#995 id=995 data-nosnippet>995</a>            );
-<a href=#996 id=996 data-nosnippet>996</a>            <span class="kw">let </span>node_id = params.structure.add_node_with_metadata(
-<a href=#997 id=997 data-nosnippet>997</a>                NodeLabel::with_exprs(params.op_name.to_string(), <span class="macro">vec!</span>[expr.clone()]),
-<a href=#998 id=998 data-nosnippet>998</a>                params.node_type,
-<a href=#999 id=999 data-nosnippet>999</a>                params.metadata,
-<a href=#1000 id=1000 data-nosnippet>1000</a>            );
-<a href=#1001 id=1001 data-nosnippet>1001</a>
-<a href=#1002 id=1002 data-nosnippet>1002</a>            <span class="comment">// Extract semantic tags from input metadata
-<a href=#1003 id=1003 data-nosnippet>1003</a>            </span><span class="kw">let </span>input_metadata = params.input.metadata();
-<a href=#1004 id=1004 data-nosnippet>1004</a>            add_edge_with_metadata(
-<a href=#1005 id=1005 data-nosnippet>1005</a>                params.structure,
-<a href=#1006 id=1006 data-nosnippet>1006</a>                input_id,
-<a href=#1007 id=1007 data-nosnippet>1007</a>                node_id,
-<a href=#1008 id=1008 data-nosnippet>1008</a>                <span class="prelude-val">Some</span>(input_metadata),
-<a href=#1009 id=1009 data-nosnippet>1009</a>                <span class="prelude-val">Some</span>(params.metadata),
-<a href=#1010 id=1010 data-nosnippet>1010</a>                <span class="prelude-val">None</span>,
-<a href=#1011 id=1011 data-nosnippet>1011</a>            );
-<a href=#1012 id=1012 data-nosnippet>1012</a>
-<a href=#1013 id=1013 data-nosnippet>1013</a>            node_id
-<a href=#1014 id=1014 data-nosnippet>1014</a>        }
+<a href=#990 id=990 data-nosnippet>990</a>        </span><span class="kw">fn </span>build_single_expr_transform(
+<a href=#991 id=991 data-nosnippet>991</a>            params: TransformParams&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#992 id=992 data-nosnippet>992</a>            expr: <span class="kw-2">&amp;</span>DebugExpr,
+<a href=#993 id=993 data-nosnippet>993</a>        ) -&gt; VizNodeKey {
+<a href=#994 id=994 data-nosnippet>994</a>            <span class="kw">let </span>input_id = params.input.build_graph_structure(
+<a href=#995 id=995 data-nosnippet>995</a>                params.structure,
+<a href=#996 id=996 data-nosnippet>996</a>                params.seen_tees,
+<a href=#997 id=997 data-nosnippet>997</a>                params.config,
+<a href=#998 id=998 data-nosnippet>998</a>            );
+<a href=#999 id=999 data-nosnippet>999</a>            <span class="kw">let </span>node_id = params.structure.add_node_with_metadata(
+<a href=#1000 id=1000 data-nosnippet>1000</a>                NodeLabel::with_exprs(params.op_name.clone(), <span class="macro">vec!</span>[expr.clone()]),
+<a href=#1001 id=1001 data-nosnippet>1001</a>                params.node_type,
+<a href=#1002 id=1002 data-nosnippet>1002</a>                params.metadata,
+<a href=#1003 id=1003 data-nosnippet>1003</a>            );
+<a href=#1004 id=1004 data-nosnippet>1004</a>
+<a href=#1005 id=1005 data-nosnippet>1005</a>            <span class="comment">// Extract semantic tags from input metadata
+<a href=#1006 id=1006 data-nosnippet>1006</a>            </span><span class="kw">let </span>input_metadata = params.input.metadata();
+<a href=#1007 id=1007 data-nosnippet>1007</a>            add_edge_with_metadata(
+<a href=#1008 id=1008 data-nosnippet>1008</a>                params.structure,
+<a href=#1009 id=1009 data-nosnippet>1009</a>                input_id,
+<a href=#1010 id=1010 data-nosnippet>1010</a>                node_id,
+<a href=#1011 id=1011 data-nosnippet>1011</a>                <span class="prelude-val">Some</span>(input_metadata),
+<a href=#1012 id=1012 data-nosnippet>1012</a>                <span class="prelude-val">Some</span>(params.metadata),
+<a href=#1013 id=1013 data-nosnippet>1013</a>                <span class="prelude-val">None</span>,
+<a href=#1014 id=1014 data-nosnippet>1014</a>            );
 <a href=#1015 id=1015 data-nosnippet>1015</a>
-<a href=#1016 id=1016 data-nosnippet>1016</a>        <span class="comment">// Single-input transform with two expressions
-<a href=#1017 id=1017 data-nosnippet>1017</a>        </span><span class="kw">fn </span>build_dual_expr_transform(
-<a href=#1018 id=1018 data-nosnippet>1018</a>            params: TransformParams,
-<a href=#1019 id=1019 data-nosnippet>1019</a>            expr1: <span class="kw-2">&amp;</span>DebugExpr,
-<a href=#1020 id=1020 data-nosnippet>1020</a>            expr2: <span class="kw-2">&amp;</span>DebugExpr,
-<a href=#1021 id=1021 data-nosnippet>1021</a>        ) -&gt; VizNodeKey {
-<a href=#1022 id=1022 data-nosnippet>1022</a>            <span class="kw">let </span>input_id = params.input.build_graph_structure(
-<a href=#1023 id=1023 data-nosnippet>1023</a>                params.structure,
-<a href=#1024 id=1024 data-nosnippet>1024</a>                params.seen_tees,
-<a href=#1025 id=1025 data-nosnippet>1025</a>                params.config,
-<a href=#1026 id=1026 data-nosnippet>1026</a>            );
-<a href=#1027 id=1027 data-nosnippet>1027</a>            <span class="kw">let </span>node_id = params.structure.add_node_with_metadata(
-<a href=#1028 id=1028 data-nosnippet>1028</a>                NodeLabel::with_exprs(
-<a href=#1029 id=1029 data-nosnippet>1029</a>                    params.op_name.to_string(),
-<a href=#1030 id=1030 data-nosnippet>1030</a>                    <span class="macro">vec!</span>[expr1.clone(), expr2.clone()],
-<a href=#1031 id=1031 data-nosnippet>1031</a>                ),
+<a href=#1016 id=1016 data-nosnippet>1016</a>            node_id
+<a href=#1017 id=1017 data-nosnippet>1017</a>        }
+<a href=#1018 id=1018 data-nosnippet>1018</a>
+<a href=#1019 id=1019 data-nosnippet>1019</a>        <span class="comment">// Single-input transform with two expressions
+<a href=#1020 id=1020 data-nosnippet>1020</a>        </span><span class="kw">fn </span>build_dual_expr_transform(
+<a href=#1021 id=1021 data-nosnippet>1021</a>            params: TransformParams&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#1022 id=1022 data-nosnippet>1022</a>            expr1: <span class="kw-2">&amp;</span>DebugExpr,
+<a href=#1023 id=1023 data-nosnippet>1023</a>            expr2: <span class="kw-2">&amp;</span>DebugExpr,
+<a href=#1024 id=1024 data-nosnippet>1024</a>        ) -&gt; VizNodeKey {
+<a href=#1025 id=1025 data-nosnippet>1025</a>            <span class="kw">let </span>input_id = params.input.build_graph_structure(
+<a href=#1026 id=1026 data-nosnippet>1026</a>                params.structure,
+<a href=#1027 id=1027 data-nosnippet>1027</a>                params.seen_tees,
+<a href=#1028 id=1028 data-nosnippet>1028</a>                params.config,
+<a href=#1029 id=1029 data-nosnippet>1029</a>            );
+<a href=#1030 id=1030 data-nosnippet>1030</a>            <span class="kw">let </span>node_id = params.structure.add_node_with_metadata(
+<a href=#1031 id=1031 data-nosnippet>1031</a>                NodeLabel::with_exprs(params.op_name.clone(), <span class="macro">vec!</span>[expr1.clone(), expr2.clone()]),
 <a href=#1032 id=1032 data-nosnippet>1032</a>                params.node_type,
 <a href=#1033 id=1033 data-nosnippet>1033</a>                params.metadata,
 <a href=#1034 id=1034 data-nosnippet>1034</a>            );
@@ -1792,36 +1792,40 @@
 <a href=#1792 id=1792 data-nosnippet>1792</a><span class="macro">render_hydro_ir!</span>(render_hydro_ir_mermaid, write_hydro_ir_mermaid);
 <a href=#1793 id=1793 data-nosnippet>1793</a><span class="macro">write_hydro_ir!</span>(
 <a href=#1794 id=1794 data-nosnippet>1794</a>    write_hydro_ir_mermaid,
-<a href=#1795 id=1795 data-nosnippet>1795</a>    HydroMermaid&lt;<span class="kw">_</span>&gt;,
+<a href=#1795 id=1795 data-nosnippet>1795</a>    HydroMermaid&lt;<span class="lifetime">'_</span>, <span class="kw">_</span>&gt;,
 <a href=#1796 id=1796 data-nosnippet>1796</a>    HydroMermaid::new_with_config
 <a href=#1797 id=1797 data-nosnippet>1797</a>);
 <a href=#1798 id=1798 data-nosnippet>1798</a>
 <a href=#1799 id=1799 data-nosnippet>1799</a><span class="macro">render_hydro_ir!</span>(render_hydro_ir_dot, write_hydro_ir_dot);
-<a href=#1800 id=1800 data-nosnippet>1800</a><span class="macro">write_hydro_ir!</span>(write_hydro_ir_dot, HydroDot&lt;<span class="kw">_</span>&gt;, HydroDot::new_with_config);
-<a href=#1801 id=1801 data-nosnippet>1801</a>
-<a href=#1802 id=1802 data-nosnippet>1802</a><span class="comment">// Legacy hydroscope function - now uses HydroJson for consistency
-<a href=#1803 id=1803 data-nosnippet>1803</a></span><span class="macro">render_hydro_ir!</span>(render_hydro_ir_hydroscope, write_hydro_ir_json);
-<a href=#1804 id=1804 data-nosnippet>1804</a>
-<a href=#1805 id=1805 data-nosnippet>1805</a><span class="comment">// JSON rendering
-<a href=#1806 id=1806 data-nosnippet>1806</a></span><span class="macro">render_hydro_ir!</span>(render_hydro_ir_json, write_hydro_ir_json);
-<a href=#1807 id=1807 data-nosnippet>1807</a><span class="macro">write_hydro_ir!</span>(write_hydro_ir_json, HydroJson&lt;<span class="kw">_</span>&gt;, HydroJson::new);
+<a href=#1800 id=1800 data-nosnippet>1800</a><span class="macro">write_hydro_ir!</span>(
+<a href=#1801 id=1801 data-nosnippet>1801</a>    write_hydro_ir_dot,
+<a href=#1802 id=1802 data-nosnippet>1802</a>    HydroDot&lt;<span class="lifetime">'_</span>, <span class="kw">_</span>&gt;,
+<a href=#1803 id=1803 data-nosnippet>1803</a>    HydroDot::new_with_config
+<a href=#1804 id=1804 data-nosnippet>1804</a>);
+<a href=#1805 id=1805 data-nosnippet>1805</a>
+<a href=#1806 id=1806 data-nosnippet>1806</a><span class="comment">// Legacy hydroscope function - now uses HydroJson for consistency
+<a href=#1807 id=1807 data-nosnippet>1807</a></span><span class="macro">render_hydro_ir!</span>(render_hydro_ir_hydroscope, write_hydro_ir_json);
 <a href=#1808 id=1808 data-nosnippet>1808</a>
-<a href=#1809 id=1809 data-nosnippet>1809</a><span class="kw">fn </span>write_hydro_ir_graph&lt;W&gt;(
-<a href=#1810 id=1810 data-nosnippet>1810</a>    graph_write: W,
-<a href=#1811 id=1811 data-nosnippet>1811</a>    roots: <span class="kw-2">&amp;</span>[HydroRoot],
-<a href=#1812 id=1812 data-nosnippet>1812</a>    config: HydroWriteConfig&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#1813 id=1813 data-nosnippet>1813</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), W::Err&gt;
-<a href=#1814 id=1814 data-nosnippet>1814</a><span class="kw">where
-<a href=#1815 id=1815 data-nosnippet>1815</a>    </span>W: HydroGraphWrite,
-<a href=#1816 id=1816 data-nosnippet>1816</a>{
-<a href=#1817 id=1817 data-nosnippet>1817</a>    <span class="kw">let </span><span class="kw-2">mut </span>structure = HydroGraphStructure::new();
-<a href=#1818 id=1818 data-nosnippet>1818</a>    <span class="kw">let </span><span class="kw-2">mut </span>seen_tees = HashMap::new();
-<a href=#1819 id=1819 data-nosnippet>1819</a>
-<a href=#1820 id=1820 data-nosnippet>1820</a>    <span class="comment">// Build the graph structure for all roots
-<a href=#1821 id=1821 data-nosnippet>1821</a>    </span><span class="kw">for </span>leaf <span class="kw">in </span>roots {
-<a href=#1822 id=1822 data-nosnippet>1822</a>        leaf.build_graph_structure(<span class="kw-2">&amp;mut </span>structure, <span class="kw-2">&amp;mut </span>seen_tees, config);
-<a href=#1823 id=1823 data-nosnippet>1823</a>    }
-<a href=#1824 id=1824 data-nosnippet>1824</a>
-<a href=#1825 id=1825 data-nosnippet>1825</a>    write_graph_structure(<span class="kw-2">&amp;</span>structure, graph_write, config)
-<a href=#1826 id=1826 data-nosnippet>1826</a>}
+<a href=#1809 id=1809 data-nosnippet>1809</a><span class="comment">// JSON rendering
+<a href=#1810 id=1810 data-nosnippet>1810</a></span><span class="macro">render_hydro_ir!</span>(render_hydro_ir_json, write_hydro_ir_json);
+<a href=#1811 id=1811 data-nosnippet>1811</a><span class="macro">write_hydro_ir!</span>(write_hydro_ir_json, HydroJson&lt;<span class="lifetime">'_</span>, <span class="kw">_</span>&gt;, HydroJson::new);
+<a href=#1812 id=1812 data-nosnippet>1812</a>
+<a href=#1813 id=1813 data-nosnippet>1813</a><span class="kw">fn </span>write_hydro_ir_graph&lt;W&gt;(
+<a href=#1814 id=1814 data-nosnippet>1814</a>    graph_write: W,
+<a href=#1815 id=1815 data-nosnippet>1815</a>    roots: <span class="kw-2">&amp;</span>[HydroRoot],
+<a href=#1816 id=1816 data-nosnippet>1816</a>    config: HydroWriteConfig&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#1817 id=1817 data-nosnippet>1817</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), W::Err&gt;
+<a href=#1818 id=1818 data-nosnippet>1818</a><span class="kw">where
+<a href=#1819 id=1819 data-nosnippet>1819</a>    </span>W: HydroGraphWrite,
+<a href=#1820 id=1820 data-nosnippet>1820</a>{
+<a href=#1821 id=1821 data-nosnippet>1821</a>    <span class="kw">let </span><span class="kw-2">mut </span>structure = HydroGraphStructure::new();
+<a href=#1822 id=1822 data-nosnippet>1822</a>    <span class="kw">let </span><span class="kw-2">mut </span>seen_tees = HashMap::new();
+<a href=#1823 id=1823 data-nosnippet>1823</a>
+<a href=#1824 id=1824 data-nosnippet>1824</a>    <span class="comment">// Build the graph structure for all roots
+<a href=#1825 id=1825 data-nosnippet>1825</a>    </span><span class="kw">for </span>leaf <span class="kw">in </span>roots {
+<a href=#1826 id=1826 data-nosnippet>1826</a>        leaf.build_graph_structure(<span class="kw-2">&amp;mut </span>structure, <span class="kw-2">&amp;mut </span>seen_tees, config);
+<a href=#1827 id=1827 data-nosnippet>1827</a>    }
+<a href=#1828 id=1828 data-nosnippet>1828</a>
+<a href=#1829 id=1829 data-nosnippet>1829</a>    write_graph_structure(<span class="kw-2">&amp;</span>structure, graph_write, config)
+<a href=#1830 id=1830 data-nosnippet>1830</a>}
 </code></pre></div></section></main></body></html>

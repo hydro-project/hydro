@@ -583,7 +583,7 @@
 <a href=#583 id=583 data-nosnippet>583</a>        <span class="kw">match </span>pipe {
 <a href=#584 id=584 data-nosnippet>584</a>            Connection::AsClient(ClientConnection::Demux(demux)) =&gt; {
 <a href=#585 id=585 data-nosnippet>585</a>                <span class="kw">let </span><span class="kw-2">mut </span>connected_demux = HashMap::new();
-<a href=#586 id=586 data-nosnippet>586</a>                <span class="kw">let </span>keys = demux.keys().cloned().collect();
+<a href=#586 id=586 data-nosnippet>586</a>                <span class="kw">let </span>keys = demux.keys().copied().collect();
 <a href=#587 id=587 data-nosnippet>587</a>                <span class="kw">for </span>(id, pipe) <span class="kw">in </span>demux {
 <a href=#588 id=588 data-nosnippet>588</a>                    connected_demux.insert(
 <a href=#589 id=589 data-nosnippet>589</a>                        id,
@@ -605,7 +605,7 @@
 <a href=#605 id=605 data-nosnippet>605</a>
 <a href=#606 id=606 data-nosnippet>606</a>            Connection::AsServer(AcceptedServer::Demux(demux)) =&gt; {
 <a href=#607 id=607 data-nosnippet>607</a>                <span class="kw">let </span><span class="kw-2">mut </span>connected_demux = HashMap::new();
-<a href=#608 id=608 data-nosnippet>608</a>                <span class="kw">let </span>keys = demux.keys().cloned().collect();
+<a href=#608 id=608 data-nosnippet>608</a>                <span class="kw">let </span>keys = demux.keys().copied().collect();
 <a href=#609 id=609 data-nosnippet>609</a>                <span class="kw">for </span>(id, bound) <span class="kw">in </span>demux {
 <a href=#610 id=610 data-nosnippet>610</a>                    connected_demux.insert(
 <a href=#611 id=611 data-nosnippet>611</a>                        id,

@@ -247,7 +247,7 @@
 <a href=#247 id=247 data-nosnippet>247</a>
 <a href=#248 id=248 data-nosnippet>248</a><span class="doccomment">/// A free variable representing the cluster's own ID. When spliced in
 <a href=#249 id=249 data-nosnippet>249</a>/// a quoted snippet that will run on a cluster, this turns into a [`MemberId`].
-<a href=#250 id=250 data-nosnippet>250</a></span><span class="kw">pub static </span>CLUSTER_SELF_ID: ClusterSelfId = ClusterSelfId { _private: <span class="kw-2">&amp;</span>() };
+<a href=#250 id=250 data-nosnippet>250</a></span><span class="kw">pub static </span>CLUSTER_SELF_ID: ClusterSelfId&lt;<span class="lifetime">'static</span>&gt; = ClusterSelfId { _private: <span class="kw-2">&amp;</span>() };
 <a href=#251 id=251 data-nosnippet>251</a>
 <a href=#252 id=252 data-nosnippet>252</a><span class="doccomment">/// The concrete type behind [`CLUSTER_SELF_ID`].
 <a href=#253 id=253 data-nosnippet>253</a>///

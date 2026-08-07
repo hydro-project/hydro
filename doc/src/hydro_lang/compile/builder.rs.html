@@ -343,7 +343,7 @@
 <a href=#343 id=343 data-nosnippet>343</a>
 <a href=#344 id=344 data-nosnippet>344</a>    <span class="kw">pub fn </span>with_process&lt;P, D: Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;(
 <a href=#345 id=345 data-nosnippet>345</a>        <span class="self">self</span>,
-<a href=#346 id=346 data-nosnippet>346</a>        process: <span class="kw-2">&amp;</span>Process&lt;P&gt;,
+<a href=#346 id=346 data-nosnippet>346</a>        process: <span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'_</span>, P&gt;,
 <a href=#347 id=347 data-nosnippet>347</a>        spec: <span class="kw">impl </span>IntoProcessSpec&lt;<span class="lifetime">'a</span>, D&gt;,
 <a href=#348 id=348 data-nosnippet>348</a>    ) -&gt; DeployFlow&lt;<span class="lifetime">'a</span>, D&gt; {
 <a href=#349 id=349 data-nosnippet>349</a>        <span class="self">self</span>.with_default_optimize().with_process(process, spec)
@@ -358,7 +358,7 @@
 <a href=#358 id=358 data-nosnippet>358</a>
 <a href=#359 id=359 data-nosnippet>359</a>    <span class="kw">pub fn </span>with_external&lt;P, D: Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;(
 <a href=#360 id=360 data-nosnippet>360</a>        <span class="self">self</span>,
-<a href=#361 id=361 data-nosnippet>361</a>        process: <span class="kw-2">&amp;</span>External&lt;P&gt;,
+<a href=#361 id=361 data-nosnippet>361</a>        process: <span class="kw-2">&amp;</span>External&lt;<span class="lifetime">'_</span>, P&gt;,
 <a href=#362 id=362 data-nosnippet>362</a>        spec: <span class="kw">impl </span>ExternalSpec&lt;<span class="lifetime">'a</span>, D&gt;,
 <a href=#363 id=363 data-nosnippet>363</a>    ) -&gt; DeployFlow&lt;<span class="lifetime">'a</span>, D&gt; {
 <a href=#364 id=364 data-nosnippet>364</a>        <span class="self">self</span>.with_default_optimize().with_external(process, spec)
@@ -373,7 +373,7 @@
 <a href=#373 id=373 data-nosnippet>373</a>
 <a href=#374 id=374 data-nosnippet>374</a>    <span class="kw">pub fn </span>with_cluster&lt;C, D: Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;(
 <a href=#375 id=375 data-nosnippet>375</a>        <span class="self">self</span>,
-<a href=#376 id=376 data-nosnippet>376</a>        cluster: <span class="kw-2">&amp;</span>Cluster&lt;C&gt;,
+<a href=#376 id=376 data-nosnippet>376</a>        cluster: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'_</span>, C&gt;,
 <a href=#377 id=377 data-nosnippet>377</a>        spec: <span class="kw">impl </span>ClusterSpec&lt;<span class="lifetime">'a</span>, D&gt;,
 <a href=#378 id=378 data-nosnippet>378</a>    ) -&gt; DeployFlow&lt;<span class="lifetime">'a</span>, D&gt; {
 <a href=#379 id=379 data-nosnippet>379</a>        <span class="self">self</span>.with_default_optimize().with_cluster(cluster, spec)
@@ -401,7 +401,7 @@
 <a href=#401 id=401 data-nosnippet>401</a>        <span class="self">self</span>.finalize().sim()
 <a href=#402 id=402 data-nosnippet>402</a>    }
 <a href=#403 id=403 data-nosnippet>403</a>
-<a href=#404 id=404 data-nosnippet>404</a>    <span class="kw">pub fn </span>from_built&lt;<span class="lifetime">'b</span>&gt;(built: <span class="kw-2">&amp;</span><span class="kw">super</span>::built::BuiltFlow) -&gt; FlowBuilder&lt;<span class="lifetime">'b</span>&gt; {
+<a href=#404 id=404 data-nosnippet>404</a>    <span class="kw">pub fn </span>from_built&lt;<span class="lifetime">'b</span>&gt;(built: <span class="kw-2">&amp;</span><span class="kw">super</span>::built::BuiltFlow&lt;<span class="lifetime">'_</span>&gt;) -&gt; FlowBuilder&lt;<span class="lifetime">'b</span>&gt; {
 <a href=#405 id=405 data-nosnippet>405</a>        FlowBuilder {
 <a href=#406 id=406 data-nosnippet>406</a>            flow_state: Rc::new(RefCell::new(FlowStateInner {
 <a href=#407 id=407 data-nosnippet>407</a>                roots: <span class="prelude-val">None</span>,

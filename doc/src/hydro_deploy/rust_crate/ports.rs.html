@@ -399,7 +399,7 @@
 <a href=#399 id=399 data-nosnippet>399</a>
 <a href=#400 id=400 data-nosnippet>400</a><span class="kw">impl </span>ServerConfig {
 <a href=#401 id=401 data-nosnippet>401</a>    <span class="kw">pub fn </span>from_strategy(
-<a href=#402 id=402 data-nosnippet>402</a>        strategy: <span class="kw-2">&amp;</span>ClientStrategy,
+<a href=#402 id=402 data-nosnippet>402</a>        strategy: <span class="kw-2">&amp;</span>ClientStrategy&lt;<span class="lifetime">'_</span>&gt;,
 <a href=#403 id=403 data-nosnippet>403</a>        server: Arc&lt;<span class="kw">dyn </span>RustCrateServer&gt;,
 <a href=#404 id=404 data-nosnippet>404</a>    ) -&gt; ServerConfig {
 <a href=#405 id=405 data-nosnippet>405</a>        <span class="kw">match </span>strategy {

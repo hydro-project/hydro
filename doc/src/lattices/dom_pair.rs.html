@@ -216,10 +216,10 @@
 <a href=#216 id=216 data-nosnippet>216</a>            <span class="kw">for </span>b <span class="kw">in </span>sub_items {
 <a href=#217 id=217 data-nosnippet>217</a>                test_vec.push(DomPair::new(
 <a href=#218 id=218 data-nosnippet>218</a>                    WithTop::new(
-<a href=#219 id=219 data-nosnippet>219</a>                        a.map(|x| SetUnionHashSet::new_from(HashSet::from_iter(x.iter().cloned()))),
+<a href=#219 id=219 data-nosnippet>219</a>                        a.map(|x| SetUnionHashSet::new_from(HashSet::from_iter(x.iter().copied()))),
 <a href=#220 id=220 data-nosnippet>220</a>                    ),
 <a href=#221 id=221 data-nosnippet>221</a>                    WithTop::new(
-<a href=#222 id=222 data-nosnippet>222</a>                        b.map(|x| SetUnionHashSet::new_from(HashSet::from_iter(x.iter().cloned()))),
+<a href=#222 id=222 data-nosnippet>222</a>                        b.map(|x| SetUnionHashSet::new_from(HashSet::from_iter(x.iter().copied()))),
 <a href=#223 id=223 data-nosnippet>223</a>                    ),
 <a href=#224 id=224 data-nosnippet>224</a>                ));
 <a href=#225 id=225 data-nosnippet>225</a>            }

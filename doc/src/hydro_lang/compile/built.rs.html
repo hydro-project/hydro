@@ -207,7 +207,7 @@
 <a href=#207 id=207 data-nosnippet>207</a>
 <a href=#208 id=208 data-nosnippet>208</a>    <span class="kw">pub fn </span>with_process&lt;P, D: Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;(
 <a href=#209 id=209 data-nosnippet>209</a>        <span class="self">self</span>,
-<a href=#210 id=210 data-nosnippet>210</a>        process: <span class="kw-2">&amp;</span>Process&lt;P&gt;,
+<a href=#210 id=210 data-nosnippet>210</a>        process: <span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'_</span>, P&gt;,
 <a href=#211 id=211 data-nosnippet>211</a>        spec: <span class="kw">impl </span>IntoProcessSpec&lt;<span class="lifetime">'a</span>, D&gt;,
 <a href=#212 id=212 data-nosnippet>212</a>    ) -&gt; DeployFlow&lt;<span class="lifetime">'a</span>, D&gt; {
 <a href=#213 id=213 data-nosnippet>213</a>        <span class="self">self</span>.into_deploy().with_process(process, spec)
@@ -222,7 +222,7 @@
 <a href=#222 id=222 data-nosnippet>222</a>
 <a href=#223 id=223 data-nosnippet>223</a>    <span class="kw">pub fn </span>with_external&lt;P, D: Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;(
 <a href=#224 id=224 data-nosnippet>224</a>        <span class="self">self</span>,
-<a href=#225 id=225 data-nosnippet>225</a>        process: <span class="kw-2">&amp;</span>External&lt;P&gt;,
+<a href=#225 id=225 data-nosnippet>225</a>        process: <span class="kw-2">&amp;</span>External&lt;<span class="lifetime">'_</span>, P&gt;,
 <a href=#226 id=226 data-nosnippet>226</a>        spec: <span class="kw">impl </span>ExternalSpec&lt;<span class="lifetime">'a</span>, D&gt;,
 <a href=#227 id=227 data-nosnippet>227</a>    ) -&gt; DeployFlow&lt;<span class="lifetime">'a</span>, D&gt; {
 <a href=#228 id=228 data-nosnippet>228</a>        <span class="self">self</span>.into_deploy().with_external(process, spec)
@@ -237,7 +237,7 @@
 <a href=#237 id=237 data-nosnippet>237</a>
 <a href=#238 id=238 data-nosnippet>238</a>    <span class="kw">pub fn </span>with_cluster&lt;C, D: Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;(
 <a href=#239 id=239 data-nosnippet>239</a>        <span class="self">self</span>,
-<a href=#240 id=240 data-nosnippet>240</a>        cluster: <span class="kw-2">&amp;</span>Cluster&lt;C&gt;,
+<a href=#240 id=240 data-nosnippet>240</a>        cluster: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'_</span>, C&gt;,
 <a href=#241 id=241 data-nosnippet>241</a>        spec: <span class="kw">impl </span>ClusterSpec&lt;<span class="lifetime">'a</span>, D&gt;,
 <a href=#242 id=242 data-nosnippet>242</a>    ) -&gt; DeployFlow&lt;<span class="lifetime">'a</span>, D&gt; {
 <a href=#243 id=243 data-nosnippet>243</a>        <span class="self">self</span>.into_deploy().with_cluster(cluster, spec)

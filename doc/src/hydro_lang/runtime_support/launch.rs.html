@@ -105,7 +105,7 @@
 <a href=#105 id=105 data-nosnippet>105</a>    std::io::stdin().read_line(<span class="kw-2">&amp;mut </span>input).unwrap();
 <a href=#106 id=106 data-nosnippet>106</a>    <span class="kw">let </span>trimmed = input.trim();
 <a href=#107 id=107 data-nosnippet>107</a>
-<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">let </span>bind_config = serde_json::from_str::&lt;InitConfig&gt;(trimmed).unwrap();
+<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">let </span>bind_config = serde_json::from_str::&lt;InitConfig&lt;<span class="lifetime">'_</span>&gt;&gt;(trimmed).unwrap();
 <a href=#109 id=109 data-nosnippet>109</a>
 <a href=#110 id=110 data-nosnippet>110</a>    <span class="comment">// config telling other services how to connect to me
 <a href=#111 id=111 data-nosnippet>111</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>bind_results: HashMap&lt;String, ServerPort&gt; = HashMap::new();

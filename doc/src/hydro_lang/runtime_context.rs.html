@@ -7,7 +7,7 @@
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">crate</span>::live_collections::ContextWithLocation;
 <a href=#8 id=8 data-nosnippet>8</a>
 <a href=#9 id=9 data-nosnippet>9</a><span class="doccomment">/// Exposes the DFIR [`Context`] inside quoted code.
-<a href=#10 id=10 data-nosnippet>10</a></span><span class="kw">pub static </span>RUNTIME_CONTEXT: RuntimeContext = RuntimeContext { _private: <span class="kw-2">&amp;</span>() };
+<a href=#10 id=10 data-nosnippet>10</a></span><span class="kw">pub static </span>RUNTIME_CONTEXT: RuntimeContext&lt;<span class="lifetime">'static</span>&gt; = RuntimeContext { _private: <span class="kw-2">&amp;</span>() };
 <a href=#11 id=11 data-nosnippet>11</a>
 <a href=#12 id=12 data-nosnippet>12</a><span class="doccomment">/// A handle to DFIR [`Context`] which can be used inside quoted code.
 <a href=#13 id=13 data-nosnippet>13</a>///

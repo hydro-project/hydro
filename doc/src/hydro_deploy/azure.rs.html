@@ -209,7 +209,7 @@
 <a href=#209 id=209 data-nosnippet>209</a>            .entry(<span class="string">"azurerm_resource_group"</span>.to_owned())
 <a href=#210 id=210 data-nosnippet>210</a>            .or_default()
 <a href=#211 id=211 data-nosnippet>211</a>            .insert(
-<a href=#212 id=212 data-nosnippet>212</a>                vm_key.to_string(),
+<a href=#212 id=212 data-nosnippet>212</a>                vm_key.clone(),
 <a href=#213 id=213 data-nosnippet>213</a>                <span class="macro">json!</span>({
 <a href=#214 id=214 data-nosnippet>214</a>                    <span class="string">"name"</span>: project,
 <a href=#215 id=215 data-nosnippet>215</a>                    <span class="string">"location"</span>: <span class="self">self</span>.region.clone(),
@@ -222,7 +222,7 @@
 <a href=#222 id=222 data-nosnippet>222</a>            .entry(<span class="string">"azurerm_virtual_network"</span>.to_owned())
 <a href=#223 id=223 data-nosnippet>223</a>            .or_default()
 <a href=#224 id=224 data-nosnippet>224</a>            .insert(
-<a href=#225 id=225 data-nosnippet>225</a>                vm_key.to_string(),
+<a href=#225 id=225 data-nosnippet>225</a>                vm_key.clone(),
 <a href=#226 id=226 data-nosnippet>226</a>                <span class="macro">json!</span>({
 <a href=#227 id=227 data-nosnippet>227</a>                    <span class="string">"name"</span>: <span class="macro">format!</span>(<span class="string">"{vm_key}-network"</span>),
 <a href=#228 id=228 data-nosnippet>228</a>                    <span class="string">"address_space"</span>: [<span class="string">"10.0.0.0/16"</span>],
@@ -237,7 +237,7 @@
 <a href=#237 id=237 data-nosnippet>237</a>            .entry(<span class="string">"azurerm_subnet"</span>.to_owned())
 <a href=#238 id=238 data-nosnippet>238</a>            .or_default()
 <a href=#239 id=239 data-nosnippet>239</a>            .insert(
-<a href=#240 id=240 data-nosnippet>240</a>                vm_key.to_string(),
+<a href=#240 id=240 data-nosnippet>240</a>                vm_key.clone(),
 <a href=#241 id=241 data-nosnippet>241</a>                <span class="macro">json!</span>({
 <a href=#242 id=242 data-nosnippet>242</a>                    <span class="string">"name"</span>: <span class="string">"internal"</span>,
 <a href=#243 id=243 data-nosnippet>243</a>                    <span class="string">"resource_group_name"</span>: <span class="macro">format!</span>(<span class="string">"${{azurerm_resource_group.{vm_key}.name}}"</span>),
@@ -252,7 +252,7 @@
 <a href=#252 id=252 data-nosnippet>252</a>            .entry(<span class="string">"azurerm_public_ip"</span>.to_owned())
 <a href=#253 id=253 data-nosnippet>253</a>            .or_default()
 <a href=#254 id=254 data-nosnippet>254</a>            .insert(
-<a href=#255 id=255 data-nosnippet>255</a>                vm_key.to_string(),
+<a href=#255 id=255 data-nosnippet>255</a>                vm_key.clone(),
 <a href=#256 id=256 data-nosnippet>256</a>                <span class="macro">json!</span>({
 <a href=#257 id=257 data-nosnippet>257</a>                    <span class="string">"name"</span>: <span class="string">"hydropubip"</span>,
 <a href=#258 id=258 data-nosnippet>258</a>                    <span class="string">"resource_group_name"</span>: <span class="macro">format!</span>(<span class="string">"${{azurerm_resource_group.{vm_key}.name}}"</span>),
@@ -267,7 +267,7 @@
 <a href=#267 id=267 data-nosnippet>267</a>            .entry(<span class="string">"azurerm_network_interface"</span>.to_owned())
 <a href=#268 id=268 data-nosnippet>268</a>            .or_default()
 <a href=#269 id=269 data-nosnippet>269</a>            .insert(
-<a href=#270 id=270 data-nosnippet>270</a>                vm_key.to_string(),
+<a href=#270 id=270 data-nosnippet>270</a>                vm_key.clone(),
 <a href=#271 id=271 data-nosnippet>271</a>                <span class="macro">json!</span>({
 <a href=#272 id=272 data-nosnippet>272</a>                    <span class="string">"name"</span>: <span class="macro">format!</span>(<span class="string">"{vm_key}-nic"</span>),
 <a href=#273 id=273 data-nosnippet>273</a>                    <span class="string">"location"</span>: <span class="macro">format!</span>(<span class="string">"${{azurerm_resource_group.{vm_key}.location}}"</span>),
@@ -288,7 +288,7 @@
 <a href=#288 id=288 data-nosnippet>288</a>            .entry(<span class="string">"azurerm_network_security_group"</span>.to_owned())
 <a href=#289 id=289 data-nosnippet>289</a>            .or_default()
 <a href=#290 id=290 data-nosnippet>290</a>            .insert(
-<a href=#291 id=291 data-nosnippet>291</a>                vm_key.to_string(),
+<a href=#291 id=291 data-nosnippet>291</a>                vm_key.clone(),
 <a href=#292 id=292 data-nosnippet>292</a>                <span class="macro">json!</span>({
 <a href=#293 id=293 data-nosnippet>293</a>                    <span class="string">"name"</span>: <span class="string">"primary_security_group"</span>,
 <a href=#294 id=294 data-nosnippet>294</a>                    <span class="string">"location"</span>: <span class="macro">format!</span>(<span class="string">"${{azurerm_resource_group.{vm_key}.location}}"</span>),
@@ -302,7 +302,7 @@
 <a href=#302 id=302 data-nosnippet>302</a>            .entry(<span class="string">"azurerm_network_security_rule"</span>.to_owned())
 <a href=#303 id=303 data-nosnippet>303</a>            .or_default()
 <a href=#304 id=304 data-nosnippet>304</a>            .insert(
-<a href=#305 id=305 data-nosnippet>305</a>                vm_key.to_string(),
+<a href=#305 id=305 data-nosnippet>305</a>                vm_key.clone(),
 <a href=#306 id=306 data-nosnippet>306</a>                <span class="macro">json!</span>({
 <a href=#307 id=307 data-nosnippet>307</a>                    <span class="string">"name"</span>: <span class="string">"allowall"</span>,
 <a href=#308 id=308 data-nosnippet>308</a>                    <span class="string">"priority"</span>: <span class="number">100</span>,
@@ -324,7 +324,7 @@
 <a href=#324 id=324 data-nosnippet>324</a>            .entry(<span class="string">"azurerm_subnet_network_security_group_association"</span>.to_owned())
 <a href=#325 id=325 data-nosnippet>325</a>            .or_default()
 <a href=#326 id=326 data-nosnippet>326</a>            .insert(
-<a href=#327 id=327 data-nosnippet>327</a>                vm_key.to_string(),
+<a href=#327 id=327 data-nosnippet>327</a>                vm_key.clone(),
 <a href=#328 id=328 data-nosnippet>328</a>                <span class="macro">json!</span>({
 <a href=#329 id=329 data-nosnippet>329</a>                    <span class="string">"subnet_id"</span>: <span class="macro">format!</span>(<span class="string">"${{azurerm_subnet.{vm_key}.id}}"</span>),
 <a href=#330 id=330 data-nosnippet>330</a>                    <span class="string">"network_security_group_id"</span>: <span class="macro">format!</span>(<span class="string">"${{azurerm_network_security_group.{vm_key}.id}}"</span>),
@@ -472,7 +472,7 @@
 <a href=#472 id=472 data-nosnippet>472</a>        }
 <a href=#473 id=473 data-nosnippet>473</a>    }
 <a href=#474 id=474 data-nosnippet>474</a>
-<a href=#475 id=475 data-nosnippet>475</a>    <span class="kw">fn </span>can_connect_to(<span class="kw-2">&amp;</span><span class="self">self</span>, typ: ClientStrategy) -&gt; bool {
+<a href=#475 id=475 data-nosnippet>475</a>    <span class="kw">fn </span>can_connect_to(<span class="kw-2">&amp;</span><span class="self">self</span>, typ: ClientStrategy&lt;<span class="lifetime">'_</span>&gt;) -&gt; bool {
 <a href=#476 id=476 data-nosnippet>476</a>        <span class="kw">match </span>typ {
 <a href=#477 id=477 data-nosnippet>477</a>            ClientStrategy::UnixSocket(id) =&gt; {
 <a href=#478 id=478 data-nosnippet>478</a>                <span class="attr">#[cfg(unix)]

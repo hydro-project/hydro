@@ -608,7 +608,7 @@
 <a href=#608 id=608 data-nosnippet>608</a>            <span class="kw">let </span><span class="kw-2">mut </span>seen = seen_joined_events.lock().unwrap();
 <a href=#609 id=609 data-nosnippet>609</a>            <span class="kw">match </span>event {
 <a href=#610 id=610 data-nosnippet>610</a>                MembershipEvent::Joined =&gt; {
-<a href=#611 id=611 data-nosnippet>611</a>                    <span class="kw">if </span>seen.insert(name.to_owned()) {
+<a href=#611 id=611 data-nosnippet>611</a>                    <span class="kw">if </span>seen.insert(name.clone()) {
 <a href=#612 id=612 data-nosnippet>612</a>                        <span class="prelude-val">Some</span>((name, MembershipEvent::Joined))
 <a href=#613 id=613 data-nosnippet>613</a>                    } <span class="kw">else </span>{
 <a href=#614 id=614 data-nosnippet>614</a>                        <span class="prelude-val">None
