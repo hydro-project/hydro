@@ -62,6 +62,7 @@ mod tests {
             built
                 .preview_compile()
                 .dfir_for(&p1)
+                .unwrap()
                 .to_mermaid(&Default::default())
         );
 
@@ -135,6 +136,7 @@ mod tests {
             built
                 .preview_compile()
                 .dfir_for(&p1)
+                .unwrap()
                 .to_mermaid(&Default::default())
         );
 

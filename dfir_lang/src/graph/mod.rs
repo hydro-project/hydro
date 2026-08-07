@@ -28,7 +28,7 @@ use std::fmt::Display;
 pub use di_mul_graph::DiMulGraph;
 pub use eliminate_extra_unions_tees::eliminate_extra_unions_tees;
 pub use flat_graph_builder::{FlatGraphBuilder, FlatGraphBuilderOutput};
-pub use flat_to_partitioned::partition_graph;
+pub use flat_to_partitioned::{PartitionError, partition_graph};
 pub use meta_graph::{DfirGraph, WriteConfig, WriteGraphType};
 
 pub use crate::graph_ids::{GraphEdgeId, GraphLoopId, GraphNodeId, GraphSubgraphId};
@@ -504,8 +504,8 @@ pub fn build_dfir_code(
 
     let partitioned_graph = match partition_graph(flat_graph) {
         Ok(partitioned_graph) => partitioned_graph,
-        Err(d) => {
-            diagnostics.push(d);
+        Err(err) => {
+            diagnostics.push(err.diagnostic);
             return Err(diagnostics);
         }
     };
