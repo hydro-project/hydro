@@ -590,7 +590,12 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
         for location_key in location_keys {
             let graph = compiled.all_dfir()[location_key]
                 .as_ref()
-                .unwrap_or_else(|err| panic!("Failed to partition DFIR graph: {}", err.diagnostic));
+                .unwrap_or_else(|err| {
+                    panic!(
+                        "Failed to partition DFIR graph for location {location_key}: {}",
+                        err.diagnostic
+                    )
+                });
 
             // Get the user-provided function name from the node.
             let fn_name = fn_names[location_key];

@@ -204,7 +204,10 @@ impl<'a> SimFlow<'a> {
                         g.build().expect("Failed to build DFIR flat graph.");
                     eliminate_extra_unions_tees(&mut flat_graph);
                     let partitioned = partition_graph(flat_graph).unwrap_or_else(|err| {
-                        panic!("Failed to partition DFIR graph: {}", err.diagnostic)
+                        panic!(
+                            "Failed to partition DFIR graph for location {l:?}: {}",
+                            err.diagnostic
+                        )
                     });
                     (l, partitioned)
                 })
