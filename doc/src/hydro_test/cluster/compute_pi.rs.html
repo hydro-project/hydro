@@ -74,7 +74,7 @@
 <a href=#74 id=74 data-nosnippet>74</a>            <span class="macro">hydro_build_utils::insta::with_settings!</span>({
 <a href=#75 id=75 data-nosnippet>75</a>                snapshot_suffix =&gt; <span class="macro">format!</span>(<span class="string">"surface_graph_{location_key}"</span>),
 <a href=#76 id=76 data-nosnippet>76</a>            }, {
-<a href=#77 id=77 data-nosnippet>77</a>                <span class="macro">hydro_build_utils::assert_snapshot!</span>(ir.surface_syntax_string());
+<a href=#77 id=77 data-nosnippet>77</a>                <span class="macro">hydro_build_utils::assert_snapshot!</span>(ir.as_ref().unwrap().surface_syntax_string());
 <a href=#78 id=78 data-nosnippet>78</a>            });
 <a href=#79 id=79 data-nosnippet>79</a>        }
 <a href=#80 id=80 data-nosnippet>80</a>    }

@@ -203,121 +203,124 @@
 <a href=#203 id=203 data-nosnippet>203</a>                    <span class="kw">let </span>FlatGraphBuilderOutput { <span class="kw-2">mut </span>flat_graph, .. } =
 <a href=#204 id=204 data-nosnippet>204</a>                        g.build().expect(<span class="string">"Failed to build DFIR flat graph."</span>);
 <a href=#205 id=205 data-nosnippet>205</a>                    eliminate_extra_unions_tees(<span class="kw-2">&amp;mut </span>flat_graph);
-<a href=#206 id=206 data-nosnippet>206</a>                    (
-<a href=#207 id=207 data-nosnippet>207</a>                        l,
-<a href=#208 id=208 data-nosnippet>208</a>                        partition_graph(flat_graph).expect(<span class="string">"Failed to partition (cycle detected)."</span>),
-<a href=#209 id=209 data-nosnippet>209</a>                    )
-<a href=#210 id=210 data-nosnippet>210</a>                })
-<a href=#211 id=211 data-nosnippet>211</a>                .collect()
-<a href=#212 id=212 data-nosnippet>212</a>        }
-<a href=#213 id=213 data-nosnippet>213</a>
-<a href=#214 id=214 data-nosnippet>214</a>        <span class="kw">let </span>process_graphs = build_graphs(sim_emit.process_graphs);
-<a href=#215 id=215 data-nosnippet>215</a>        <span class="kw">let </span>cluster_graphs = build_graphs(sim_emit.cluster_graphs);
-<a href=#216 id=216 data-nosnippet>216</a>        <span class="kw">let </span>process_tick_graphs = build_graphs(sim_emit.process_tick_dfirs);
-<a href=#217 id=217 data-nosnippet>217</a>        <span class="kw">let </span>cluster_tick_graphs = build_graphs(sim_emit.cluster_tick_dfirs);
-<a href=#218 id=218 data-nosnippet>218</a>
-<a href=#219 id=219 data-nosnippet>219</a>        <span class="attr">#[expect(
-<a href=#220 id=220 data-nosnippet>220</a>            clippy::disallowed_methods,
-<a href=#221 id=221 data-nosnippet>221</a>            reason = <span class="string">"nondeterministic iteration order, fine for checks"
-<a href=#222 id=222 data-nosnippet>222</a>        </span>)]
-<a href=#223 id=223 data-nosnippet>223</a>        </span><span class="kw">for </span>c <span class="kw">in </span><span class="self">self</span>.clusters.keys() {
-<a href=#224 id=224 data-nosnippet>224</a>            <span class="macro">assert!</span>(
-<a href=#225 id=225 data-nosnippet>225</a>                <span class="self">self</span>.cluster_max_sizes.contains_key(c),
-<a href=#226 id=226 data-nosnippet>226</a>                <span class="string">"Cluster {:?} missing max size; call with_cluster_size() before compiled()"</span>,
-<a href=#227 id=227 data-nosnippet>227</a>                c
-<a href=#228 id=228 data-nosnippet>228</a>            );
-<a href=#229 id=229 data-nosnippet>229</a>        }
-<a href=#230 id=230 data-nosnippet>230</a>
-<a href=#231 id=231 data-nosnippet>231</a>        <span class="kw">let </span>(cluster_max_sizes, cluster_member_ids) = <span class="self">self</span>.cluster_sizing();
-<a href=#232 id=232 data-nosnippet>232</a>        drop(flow_build_span);
+<a href=#206 id=206 data-nosnippet>206</a>                    <span class="kw">let </span>partitioned = partition_graph(flat_graph).unwrap_or_else(|err| {
+<a href=#207 id=207 data-nosnippet>207</a>                        <span class="macro">panic!</span>(
+<a href=#208 id=208 data-nosnippet>208</a>                            <span class="string">"Failed to partition DFIR graph for location {l:?}: {}"</span>,
+<a href=#209 id=209 data-nosnippet>209</a>                            err.diagnostic
+<a href=#210 id=210 data-nosnippet>210</a>                        )
+<a href=#211 id=211 data-nosnippet>211</a>                    });
+<a href=#212 id=212 data-nosnippet>212</a>                    (l, partitioned)
+<a href=#213 id=213 data-nosnippet>213</a>                })
+<a href=#214 id=214 data-nosnippet>214</a>                .collect()
+<a href=#215 id=215 data-nosnippet>215</a>        }
+<a href=#216 id=216 data-nosnippet>216</a>
+<a href=#217 id=217 data-nosnippet>217</a>        <span class="kw">let </span>process_graphs = build_graphs(sim_emit.process_graphs);
+<a href=#218 id=218 data-nosnippet>218</a>        <span class="kw">let </span>cluster_graphs = build_graphs(sim_emit.cluster_graphs);
+<a href=#219 id=219 data-nosnippet>219</a>        <span class="kw">let </span>process_tick_graphs = build_graphs(sim_emit.process_tick_dfirs);
+<a href=#220 id=220 data-nosnippet>220</a>        <span class="kw">let </span>cluster_tick_graphs = build_graphs(sim_emit.cluster_tick_dfirs);
+<a href=#221 id=221 data-nosnippet>221</a>
+<a href=#222 id=222 data-nosnippet>222</a>        <span class="attr">#[expect(
+<a href=#223 id=223 data-nosnippet>223</a>            clippy::disallowed_methods,
+<a href=#224 id=224 data-nosnippet>224</a>            reason = <span class="string">"nondeterministic iteration order, fine for checks"
+<a href=#225 id=225 data-nosnippet>225</a>        </span>)]
+<a href=#226 id=226 data-nosnippet>226</a>        </span><span class="kw">for </span>c <span class="kw">in </span><span class="self">self</span>.clusters.keys() {
+<a href=#227 id=227 data-nosnippet>227</a>            <span class="macro">assert!</span>(
+<a href=#228 id=228 data-nosnippet>228</a>                <span class="self">self</span>.cluster_max_sizes.contains_key(c),
+<a href=#229 id=229 data-nosnippet>229</a>                <span class="string">"Cluster {:?} missing max size; call with_cluster_size() before compiled()"</span>,
+<a href=#230 id=230 data-nosnippet>230</a>                c
+<a href=#231 id=231 data-nosnippet>231</a>            );
+<a href=#232 id=232 data-nosnippet>232</a>        }
 <a href=#233 id=233 data-nosnippet>233</a>
-<a href=#234 id=234 data-nosnippet>234</a>        <span class="kw">let </span>(bin, trybuild) = create_sim_graph_trybuild(
-<a href=#235 id=235 data-nosnippet>235</a>            process_graphs,
-<a href=#236 id=236 data-nosnippet>236</a>            cluster_graphs,
-<a href=#237 id=237 data-nosnippet>237</a>            cluster_max_sizes,
-<a href=#238 id=238 data-nosnippet>238</a>            cluster_member_ids,
-<a href=#239 id=239 data-nosnippet>239</a>            process_tick_graphs,
-<a href=#240 id=240 data-nosnippet>240</a>            cluster_tick_graphs,
-<a href=#241 id=241 data-nosnippet>241</a>            sim_emit.extra_stmts_global,
-<a href=#242 id=242 data-nosnippet>242</a>            sim_emit.extra_stmts_cluster,
-<a href=#243 id=243 data-nosnippet>243</a>        );
-<a href=#244 id=244 data-nosnippet>244</a>
-<a href=#245 id=245 data-nosnippet>245</a>        <span class="kw">let </span>out = compile_sim(bin, trybuild).unwrap();
-<a href=#246 id=246 data-nosnippet>246</a>        <span class="kw">let </span>lib = {
-<a href=#247 id=247 data-nosnippet>247</a>            <span class="kw">let </span>_span = <span class="macro">tracing::debug_span!</span>(target: <span class="string">"hydro_build"</span>, <span class="string">"load_dylib"</span>).entered();
-<a href=#248 id=248 data-nosnippet>248</a>            <span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>out).unwrap() }
-<a href=#249 id=249 data-nosnippet>249</a>        };
-<a href=#250 id=250 data-nosnippet>250</a>        drop(compiled_span);
-<a href=#251 id=251 data-nosnippet>251</a>
-<a href=#252 id=252 data-nosnippet>252</a>        CompiledSim {
-<a href=#253 id=253 data-nosnippet>253</a>            _path: out,
-<a href=#254 id=254 data-nosnippet>254</a>            lib,
-<a href=#255 id=255 data-nosnippet>255</a>            externals_port_registry: <span class="self">self</span>.externals_port_registry.take(),
-<a href=#256 id=256 data-nosnippet>256</a>            unit_test_fuzz_iterations: <span class="self">self</span>.unit_test_fuzz_iterations,
-<a href=#257 id=257 data-nosnippet>257</a>        }
-<a href=#258 id=258 data-nosnippet>258</a>    }
-<a href=#259 id=259 data-nosnippet>259</a>
-<a href=#260 id=260 data-nosnippet>260</a>    <span class="doccomment">/// Computes each cluster's merged size and the global member-id slice it constructs.
-<a href=#261 id=261 data-nosnippet>261</a>    ///
-<a href=#262 id=262 data-nosnippet>262</a>    /// Corresponding clusters (a [`next_version`](crate::location::Cluster::next_version) chain)
-<a href=#263 id=263 data-nosnippet>263</a>    /// share a group key; the merged size for a group is the sum of its per-version sizes, and each
-<a href=#264 id=264 data-nosnippet>264</a>    /// version gets a contiguous member-id slice assigned in version order. A single-version
-<a href=#265 id=265 data-nosnippet>265</a>    /// cluster is the degenerate case: its own group, one version, slice `0..size`.
-<a href=#266 id=266 data-nosnippet>266</a>    </span><span class="kw">fn </span>cluster_sizing(
-<a href=#267 id=267 data-nosnippet>267</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#268 id=268 data-nosnippet>268</a>    ) -&gt; (
-<a href=#269 id=269 data-nosnippet>269</a>        SparseSecondaryMap&lt;LocationKey, usize&gt;,
-<a href=#270 id=270 data-nosnippet>270</a>        BTreeMap&lt;LocationId, Vec&lt;u32&gt;&gt;,
-<a href=#271 id=271 data-nosnippet>271</a>    ) {
-<a href=#272 id=272 data-nosnippet>272</a>        <span class="comment">// Group corresponding clusters by their shared group root, recording each version's size.
-<a href=#273 id=273 data-nosnippet>273</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>sizes_by_group_root: BTreeMap&lt;LocationKey, BTreeMap&lt;u32, usize&gt;&gt; = BTreeMap::new();
-<a href=#274 id=274 data-nosnippet>274</a>        <span class="attr">#[expect(
-<a href=#275 id=275 data-nosnippet>275</a>            clippy::disallowed_methods,
-<a href=#276 id=276 data-nosnippet>276</a>            reason = <span class="string">"each cluster key is unique; iteration order does not affect the result"
-<a href=#277 id=277 data-nosnippet>277</a>        </span>)]
-<a href=#278 id=278 data-nosnippet>278</a>        </span><span class="kw">for </span>key <span class="kw">in </span><span class="self">self</span>.clusters.keys() {
-<a href=#279 id=279 data-nosnippet>279</a>            <span class="kw">let </span>group_root = <span class="self">self</span>.location_version_group_root[key];
-<a href=#280 id=280 data-nosnippet>280</a>            <span class="kw">let </span>version = <span class="self">self</span>.location_version[key];
-<a href=#281 id=281 data-nosnippet>281</a>            <span class="kw">let </span>size = <span class="kw-2">*</span><span class="self">self</span>.cluster_max_sizes.get(key).unwrap_or_else(|| {
-<a href=#282 id=282 data-nosnippet>282</a>                <span class="macro">panic!</span>(
-<a href=#283 id=283 data-nosnippet>283</a>                    <span class="string">"cluster {key:?} missing max size; `compiled()` asserts every cluster has one \
-<a href=#284 id=284 data-nosnippet>284</a>                     before calling `cluster_sizing`"
-<a href=#285 id=285 data-nosnippet>285</a>                </span>)
-<a href=#286 id=286 data-nosnippet>286</a>            });
-<a href=#287 id=287 data-nosnippet>287</a>            <span class="kw">let </span>prev = sizes_by_group_root
-<a href=#288 id=288 data-nosnippet>288</a>                .entry(group_root)
-<a href=#289 id=289 data-nosnippet>289</a>                .or_default()
-<a href=#290 id=290 data-nosnippet>290</a>                .insert(version, size);
-<a href=#291 id=291 data-nosnippet>291</a>            <span class="macro">assert!</span>(
-<a href=#292 id=292 data-nosnippet>292</a>                prev.is_none(),
-<a href=#293 id=293 data-nosnippet>293</a>                <span class="string">"multi-version simulation has two corresponding clusters at the same version; \
-<a href=#294 id=294 data-nosnippet>294</a>                 each `next_version()` call must advance to a distinct version"
-<a href=#295 id=295 data-nosnippet>295</a>            </span>);
-<a href=#296 id=296 data-nosnippet>296</a>        }
-<a href=#297 id=297 data-nosnippet>297</a>
-<a href=#298 id=298 data-nosnippet>298</a>        <span class="comment">// Each cluster location gets the merged total size (so its membership lists the union) and
-<a href=#299 id=299 data-nosnippet>299</a>        // its own contiguous slice of the global member-id range, assigned in version order.
-<a href=#300 id=300 data-nosnippet>300</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>cluster_sizes: SparseSecondaryMap&lt;LocationKey, usize&gt; = SparseSecondaryMap::new();
-<a href=#301 id=301 data-nosnippet>301</a>        <span class="kw">let </span><span class="kw-2">mut </span>cluster_member_ids: BTreeMap&lt;LocationId, Vec&lt;u32&gt;&gt; = BTreeMap::new();
-<a href=#302 id=302 data-nosnippet>302</a>        <span class="attr">#[expect(
-<a href=#303 id=303 data-nosnippet>303</a>            clippy::disallowed_methods,
-<a href=#304 id=304 data-nosnippet>304</a>            reason = <span class="string">"each cluster key is unique; iteration order does not affect the result"
-<a href=#305 id=305 data-nosnippet>305</a>        </span>)]
-<a href=#306 id=306 data-nosnippet>306</a>        </span><span class="kw">for </span>key <span class="kw">in </span><span class="self">self</span>.clusters.keys() {
-<a href=#307 id=307 data-nosnippet>307</a>            <span class="kw">let </span>group_root = <span class="self">self</span>.location_version_group_root[key];
-<a href=#308 id=308 data-nosnippet>308</a>            <span class="kw">let </span>version = <span class="self">self</span>.location_version[key];
-<a href=#309 id=309 data-nosnippet>309</a>            <span class="kw">let </span>per_version = <span class="kw-2">&amp;</span>sizes_by_group_root[<span class="kw-2">&amp;</span>group_root];
-<a href=#310 id=310 data-nosnippet>310</a>            <span class="kw">let </span>merged_total: usize = per_version.values().sum();
-<a href=#311 id=311 data-nosnippet>311</a>            <span class="kw">let </span>offset: u32 = per_version.range(..version).map(|(<span class="kw">_</span>, <span class="kw-2">&amp;</span>n)| n <span class="kw">as </span>u32).sum();
-<a href=#312 id=312 data-nosnippet>312</a>            <span class="kw">let </span>size = <span class="kw-2">*</span>per_version
-<a href=#313 id=313 data-nosnippet>313</a>                .get(<span class="kw-2">&amp;</span>version)
-<a href=#314 id=314 data-nosnippet>314</a>                .expect(<span class="string">"every (group, version) was recorded by the first pass above"</span>)
-<a href=#315 id=315 data-nosnippet>315</a>                <span class="kw">as </span>u32;
-<a href=#316 id=316 data-nosnippet>316</a>            cluster_sizes.insert(key, merged_total);
-<a href=#317 id=317 data-nosnippet>317</a>            cluster_member_ids.insert(LocationId::Cluster(key), (offset..offset + size).collect());
-<a href=#318 id=318 data-nosnippet>318</a>        }
-<a href=#319 id=319 data-nosnippet>319</a>
-<a href=#320 id=320 data-nosnippet>320</a>        (cluster_sizes, cluster_member_ids)
-<a href=#321 id=321 data-nosnippet>321</a>    }
-<a href=#322 id=322 data-nosnippet>322</a>}
+<a href=#234 id=234 data-nosnippet>234</a>        <span class="kw">let </span>(cluster_max_sizes, cluster_member_ids) = <span class="self">self</span>.cluster_sizing();
+<a href=#235 id=235 data-nosnippet>235</a>        drop(flow_build_span);
+<a href=#236 id=236 data-nosnippet>236</a>
+<a href=#237 id=237 data-nosnippet>237</a>        <span class="kw">let </span>(bin, trybuild) = create_sim_graph_trybuild(
+<a href=#238 id=238 data-nosnippet>238</a>            process_graphs,
+<a href=#239 id=239 data-nosnippet>239</a>            cluster_graphs,
+<a href=#240 id=240 data-nosnippet>240</a>            cluster_max_sizes,
+<a href=#241 id=241 data-nosnippet>241</a>            cluster_member_ids,
+<a href=#242 id=242 data-nosnippet>242</a>            process_tick_graphs,
+<a href=#243 id=243 data-nosnippet>243</a>            cluster_tick_graphs,
+<a href=#244 id=244 data-nosnippet>244</a>            sim_emit.extra_stmts_global,
+<a href=#245 id=245 data-nosnippet>245</a>            sim_emit.extra_stmts_cluster,
+<a href=#246 id=246 data-nosnippet>246</a>        );
+<a href=#247 id=247 data-nosnippet>247</a>
+<a href=#248 id=248 data-nosnippet>248</a>        <span class="kw">let </span>out = compile_sim(bin, trybuild).unwrap();
+<a href=#249 id=249 data-nosnippet>249</a>        <span class="kw">let </span>lib = {
+<a href=#250 id=250 data-nosnippet>250</a>            <span class="kw">let </span>_span = <span class="macro">tracing::debug_span!</span>(target: <span class="string">"hydro_build"</span>, <span class="string">"load_dylib"</span>).entered();
+<a href=#251 id=251 data-nosnippet>251</a>            <span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>out).unwrap() }
+<a href=#252 id=252 data-nosnippet>252</a>        };
+<a href=#253 id=253 data-nosnippet>253</a>        drop(compiled_span);
+<a href=#254 id=254 data-nosnippet>254</a>
+<a href=#255 id=255 data-nosnippet>255</a>        CompiledSim {
+<a href=#256 id=256 data-nosnippet>256</a>            _path: out,
+<a href=#257 id=257 data-nosnippet>257</a>            lib,
+<a href=#258 id=258 data-nosnippet>258</a>            externals_port_registry: <span class="self">self</span>.externals_port_registry.take(),
+<a href=#259 id=259 data-nosnippet>259</a>            unit_test_fuzz_iterations: <span class="self">self</span>.unit_test_fuzz_iterations,
+<a href=#260 id=260 data-nosnippet>260</a>        }
+<a href=#261 id=261 data-nosnippet>261</a>    }
+<a href=#262 id=262 data-nosnippet>262</a>
+<a href=#263 id=263 data-nosnippet>263</a>    <span class="doccomment">/// Computes each cluster's merged size and the global member-id slice it constructs.
+<a href=#264 id=264 data-nosnippet>264</a>    ///
+<a href=#265 id=265 data-nosnippet>265</a>    /// Corresponding clusters (a [`next_version`](crate::location::Cluster::next_version) chain)
+<a href=#266 id=266 data-nosnippet>266</a>    /// share a group key; the merged size for a group is the sum of its per-version sizes, and each
+<a href=#267 id=267 data-nosnippet>267</a>    /// version gets a contiguous member-id slice assigned in version order. A single-version
+<a href=#268 id=268 data-nosnippet>268</a>    /// cluster is the degenerate case: its own group, one version, slice `0..size`.
+<a href=#269 id=269 data-nosnippet>269</a>    </span><span class="kw">fn </span>cluster_sizing(
+<a href=#270 id=270 data-nosnippet>270</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#271 id=271 data-nosnippet>271</a>    ) -&gt; (
+<a href=#272 id=272 data-nosnippet>272</a>        SparseSecondaryMap&lt;LocationKey, usize&gt;,
+<a href=#273 id=273 data-nosnippet>273</a>        BTreeMap&lt;LocationId, Vec&lt;u32&gt;&gt;,
+<a href=#274 id=274 data-nosnippet>274</a>    ) {
+<a href=#275 id=275 data-nosnippet>275</a>        <span class="comment">// Group corresponding clusters by their shared group root, recording each version's size.
+<a href=#276 id=276 data-nosnippet>276</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>sizes_by_group_root: BTreeMap&lt;LocationKey, BTreeMap&lt;u32, usize&gt;&gt; = BTreeMap::new();
+<a href=#277 id=277 data-nosnippet>277</a>        <span class="attr">#[expect(
+<a href=#278 id=278 data-nosnippet>278</a>            clippy::disallowed_methods,
+<a href=#279 id=279 data-nosnippet>279</a>            reason = <span class="string">"each cluster key is unique; iteration order does not affect the result"
+<a href=#280 id=280 data-nosnippet>280</a>        </span>)]
+<a href=#281 id=281 data-nosnippet>281</a>        </span><span class="kw">for </span>key <span class="kw">in </span><span class="self">self</span>.clusters.keys() {
+<a href=#282 id=282 data-nosnippet>282</a>            <span class="kw">let </span>group_root = <span class="self">self</span>.location_version_group_root[key];
+<a href=#283 id=283 data-nosnippet>283</a>            <span class="kw">let </span>version = <span class="self">self</span>.location_version[key];
+<a href=#284 id=284 data-nosnippet>284</a>            <span class="kw">let </span>size = <span class="kw-2">*</span><span class="self">self</span>.cluster_max_sizes.get(key).unwrap_or_else(|| {
+<a href=#285 id=285 data-nosnippet>285</a>                <span class="macro">panic!</span>(
+<a href=#286 id=286 data-nosnippet>286</a>                    <span class="string">"cluster {key:?} missing max size; `compiled()` asserts every cluster has one \
+<a href=#287 id=287 data-nosnippet>287</a>                     before calling `cluster_sizing`"
+<a href=#288 id=288 data-nosnippet>288</a>                </span>)
+<a href=#289 id=289 data-nosnippet>289</a>            });
+<a href=#290 id=290 data-nosnippet>290</a>            <span class="kw">let </span>prev = sizes_by_group_root
+<a href=#291 id=291 data-nosnippet>291</a>                .entry(group_root)
+<a href=#292 id=292 data-nosnippet>292</a>                .or_default()
+<a href=#293 id=293 data-nosnippet>293</a>                .insert(version, size);
+<a href=#294 id=294 data-nosnippet>294</a>            <span class="macro">assert!</span>(
+<a href=#295 id=295 data-nosnippet>295</a>                prev.is_none(),
+<a href=#296 id=296 data-nosnippet>296</a>                <span class="string">"multi-version simulation has two corresponding clusters at the same version; \
+<a href=#297 id=297 data-nosnippet>297</a>                 each `next_version()` call must advance to a distinct version"
+<a href=#298 id=298 data-nosnippet>298</a>            </span>);
+<a href=#299 id=299 data-nosnippet>299</a>        }
+<a href=#300 id=300 data-nosnippet>300</a>
+<a href=#301 id=301 data-nosnippet>301</a>        <span class="comment">// Each cluster location gets the merged total size (so its membership lists the union) and
+<a href=#302 id=302 data-nosnippet>302</a>        // its own contiguous slice of the global member-id range, assigned in version order.
+<a href=#303 id=303 data-nosnippet>303</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>cluster_sizes: SparseSecondaryMap&lt;LocationKey, usize&gt; = SparseSecondaryMap::new();
+<a href=#304 id=304 data-nosnippet>304</a>        <span class="kw">let </span><span class="kw-2">mut </span>cluster_member_ids: BTreeMap&lt;LocationId, Vec&lt;u32&gt;&gt; = BTreeMap::new();
+<a href=#305 id=305 data-nosnippet>305</a>        <span class="attr">#[expect(
+<a href=#306 id=306 data-nosnippet>306</a>            clippy::disallowed_methods,
+<a href=#307 id=307 data-nosnippet>307</a>            reason = <span class="string">"each cluster key is unique; iteration order does not affect the result"
+<a href=#308 id=308 data-nosnippet>308</a>        </span>)]
+<a href=#309 id=309 data-nosnippet>309</a>        </span><span class="kw">for </span>key <span class="kw">in </span><span class="self">self</span>.clusters.keys() {
+<a href=#310 id=310 data-nosnippet>310</a>            <span class="kw">let </span>group_root = <span class="self">self</span>.location_version_group_root[key];
+<a href=#311 id=311 data-nosnippet>311</a>            <span class="kw">let </span>version = <span class="self">self</span>.location_version[key];
+<a href=#312 id=312 data-nosnippet>312</a>            <span class="kw">let </span>per_version = <span class="kw-2">&amp;</span>sizes_by_group_root[<span class="kw-2">&amp;</span>group_root];
+<a href=#313 id=313 data-nosnippet>313</a>            <span class="kw">let </span>merged_total: usize = per_version.values().sum();
+<a href=#314 id=314 data-nosnippet>314</a>            <span class="kw">let </span>offset: u32 = per_version.range(..version).map(|(<span class="kw">_</span>, <span class="kw-2">&amp;</span>n)| n <span class="kw">as </span>u32).sum();
+<a href=#315 id=315 data-nosnippet>315</a>            <span class="kw">let </span>size = <span class="kw-2">*</span>per_version
+<a href=#316 id=316 data-nosnippet>316</a>                .get(<span class="kw-2">&amp;</span>version)
+<a href=#317 id=317 data-nosnippet>317</a>                .expect(<span class="string">"every (group, version) was recorded by the first pass above"</span>)
+<a href=#318 id=318 data-nosnippet>318</a>                <span class="kw">as </span>u32;
+<a href=#319 id=319 data-nosnippet>319</a>            cluster_sizes.insert(key, merged_total);
+<a href=#320 id=320 data-nosnippet>320</a>            cluster_member_ids.insert(LocationId::Cluster(key), (offset..offset + size).collect());
+<a href=#321 id=321 data-nosnippet>321</a>        }
+<a href=#322 id=322 data-nosnippet>322</a>
+<a href=#323 id=323 data-nosnippet>323</a>        (cluster_sizes, cluster_member_ids)
+<a href=#324 id=324 data-nosnippet>324</a>    }
+<a href=#325 id=325 data-nosnippet>325</a>}
 </code></pre></div></section></main></body></html>

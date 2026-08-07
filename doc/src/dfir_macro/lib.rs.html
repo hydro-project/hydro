@@ -132,7 +132,7 @@
 <a href=#132 id=132 data-nosnippet>132</a>
 <a href=#133 id=133 data-nosnippet>133</a>        <span class="kw">let </span>part_mermaid = partition_graph(flat_graph)
 <a href=#134 id=134 data-nosnippet>134</a>            .map(|part_graph| part_graph.to_mermaid(<span class="kw-2">&amp;</span>Default::default()))
-<a href=#135 id=135 data-nosnippet>135</a>            .unwrap_or_else(|err| <span class="macro">format!</span>(<span class="string">"failed to partition: {err}"</span>));
+<a href=#135 id=135 data-nosnippet>135</a>            .unwrap_or_else(|err| <span class="macro">format!</span>(<span class="string">"failed to partition: {}"</span>, err.diagnostic));
 <a href=#136 id=136 data-nosnippet>136</a>
 <a href=#137 id=137 data-nosnippet>137</a>        <span class="kw">let </span>lit0 = Literal::string(<span class="kw-2">&amp;</span>flat_mermaid);
 <a href=#138 id=138 data-nosnippet>138</a>        <span class="kw">let </span>lit1 = Literal::string(<span class="kw-2">&amp;</span>part_mermaid);

@@ -28,7 +28,7 @@
 <a href=#28 id=28 data-nosnippet>28</a><span class="kw">pub use </span>di_mul_graph::DiMulGraph;
 <a href=#29 id=29 data-nosnippet>29</a><span class="kw">pub use </span>eliminate_extra_unions_tees::eliminate_extra_unions_tees;
 <a href=#30 id=30 data-nosnippet>30</a><span class="kw">pub use </span>flat_graph_builder::{FlatGraphBuilder, FlatGraphBuilderOutput};
-<a href=#31 id=31 data-nosnippet>31</a><span class="kw">pub use </span>flat_to_partitioned::partition_graph;
+<a href=#31 id=31 data-nosnippet>31</a><span class="kw">pub use </span>flat_to_partitioned::{PartitionError, partition_graph};
 <a href=#32 id=32 data-nosnippet>32</a><span class="kw">pub use </span>meta_graph::{DfirGraph, WriteConfig, WriteGraphType};
 <a href=#33 id=33 data-nosnippet>33</a>
 <a href=#34 id=34 data-nosnippet>34</a><span class="kw">pub use </span><span class="kw">crate</span>::graph_ids::{GraphEdgeId, GraphLoopId, GraphNodeId, GraphSubgraphId};
@@ -504,8 +504,8 @@
 <a href=#504 id=504 data-nosnippet>504</a>
 <a href=#505 id=505 data-nosnippet>505</a>    <span class="kw">let </span>partitioned_graph = <span class="kw">match </span>partition_graph(flat_graph) {
 <a href=#506 id=506 data-nosnippet>506</a>        <span class="prelude-val">Ok</span>(partitioned_graph) =&gt; partitioned_graph,
-<a href=#507 id=507 data-nosnippet>507</a>        <span class="prelude-val">Err</span>(d) =&gt; {
-<a href=#508 id=508 data-nosnippet>508</a>            diagnostics.push(d);
+<a href=#507 id=507 data-nosnippet>507</a>        <span class="prelude-val">Err</span>(err) =&gt; {
+<a href=#508 id=508 data-nosnippet>508</a>            diagnostics.push(err.diagnostic);
 <a href=#509 id=509 data-nosnippet>509</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(diagnostics);
 <a href=#510 id=510 data-nosnippet>510</a>        }
 <a href=#511 id=511 data-nosnippet>511</a>    };

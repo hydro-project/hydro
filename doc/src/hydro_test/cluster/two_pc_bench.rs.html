@@ -115,7 +115,7 @@
 <a href=#115 id=115 data-nosnippet>115</a>            snapshot_suffix =&gt; <span class="string">"coordinator_mermaid"
 <a href=#116 id=116 data-nosnippet>116</a>        </span>}, {
 <a href=#117 id=117 data-nosnippet>117</a>            <span class="macro">hydro_build_utils::assert_snapshot!</span>(
-<a href=#118 id=118 data-nosnippet>118</a>                preview.dfir_for(<span class="kw-2">&amp;</span>coordinator).to_mermaid(<span class="kw-2">&amp;</span>WriteConfig {
+<a href=#118 id=118 data-nosnippet>118</a>                preview.dfir_for(<span class="kw-2">&amp;</span>coordinator).unwrap().to_mermaid(<span class="kw-2">&amp;</span>WriteConfig {
 <a href=#119 id=119 data-nosnippet>119</a>                    no_subgraphs: <span class="bool-val">true</span>,
 <a href=#120 id=120 data-nosnippet>120</a>                    no_pull_push: <span class="bool-val">true</span>,
 <a href=#121 id=121 data-nosnippet>121</a>                    no_handoffs: <span class="bool-val">true</span>,
@@ -130,7 +130,7 @@
 <a href=#130 id=130 data-nosnippet>130</a>            snapshot_suffix =&gt; <span class="string">"participants_mermaid"
 <a href=#131 id=131 data-nosnippet>131</a>        </span>}, {
 <a href=#132 id=132 data-nosnippet>132</a>            <span class="macro">hydro_build_utils::assert_snapshot!</span>(
-<a href=#133 id=133 data-nosnippet>133</a>                preview.dfir_for(<span class="kw-2">&amp;</span>participants).to_mermaid(<span class="kw-2">&amp;</span>WriteConfig {
+<a href=#133 id=133 data-nosnippet>133</a>                preview.dfir_for(<span class="kw-2">&amp;</span>participants).unwrap().to_mermaid(<span class="kw-2">&amp;</span>WriteConfig {
 <a href=#134 id=134 data-nosnippet>134</a>                    no_subgraphs: <span class="bool-val">true</span>,
 <a href=#135 id=135 data-nosnippet>135</a>                    no_pull_push: <span class="bool-val">true</span>,
 <a href=#136 id=136 data-nosnippet>136</a>                    no_handoffs: <span class="bool-val">true</span>,

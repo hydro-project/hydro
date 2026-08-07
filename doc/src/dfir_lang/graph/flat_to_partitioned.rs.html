@@ -507,255 +507,347 @@
 <a href=#507 id=507 data-nosnippet>507</a>    }
 <a href=#508 id=508 data-nosnippet>508</a>}
 <a href=#509 id=509 data-nosnippet>509</a>
-<a href=#510 id=510 data-nosnippet>510</a><span class="doccomment">/// Main method for this module. Partitions a flat [`DfirGraph`] into one with subgraphs.
+<a href=#510 id=510 data-nosnippet>510</a><span class="doccomment">/// The error returned by [`partition_graph`] when partitioning fails.
 <a href=#511 id=511 data-nosnippet>511</a>///
-<a href=#512 id=512 data-nosnippet>512</a>/// Returns an error if an intra-tick cycle exists in the graph.
-<a href=#513 id=513 data-nosnippet>513</a></span><span class="kw">pub fn </span>partition_graph(flat_graph: DfirGraph) -&gt; <span class="prelude-ty">Result</span>&lt;DfirGraph, Diagnostic&gt; {
-<a href=#514 id=514 data-nosnippet>514</a>    <span class="kw">let </span>(<span class="kw-2">mut </span>tick_edges, edge_barrier_pairs) = find_edge_barriers(<span class="kw-2">&amp;</span>flat_graph);
-<a href=#515 id=515 data-nosnippet>515</a>    <span class="kw">let </span>access_group_pairs = find_access_group_ordering(<span class="kw-2">&amp;</span>flat_graph);
-<a href=#516 id=516 data-nosnippet>516</a>    <span class="kw">let </span><span class="kw-2">mut </span>partitioned_graph = flat_graph;
-<a href=#517 id=517 data-nosnippet>517</a>
-<a href=#518 id=518 data-nosnippet>518</a>    <span class="comment">// Partition into subgraphs and insert handoffs.
-<a href=#519 id=519 data-nosnippet>519</a>    </span>make_subgraphs(
-<a href=#520 id=520 data-nosnippet>520</a>        <span class="kw-2">&amp;mut </span>partitioned_graph,
-<a href=#521 id=521 data-nosnippet>521</a>        <span class="kw-2">&amp;mut </span>tick_edges,
-<a href=#522 id=522 data-nosnippet>522</a>        <span class="kw-2">&amp;</span>edge_barrier_pairs,
-<a href=#523 id=523 data-nosnippet>523</a>        <span class="kw-2">&amp;</span>access_group_pairs,
-<a href=#524 id=524 data-nosnippet>524</a>    )<span class="question-mark">?</span>;
-<a href=#525 id=525 data-nosnippet>525</a>
-<a href=#526 id=526 data-nosnippet>526</a>    <span class="comment">// Mark tick-boundary handoffs for double-buffering.
-<a href=#527 id=527 data-nosnippet>527</a>    </span>mark_tick_boundary_handoffs(<span class="kw-2">&amp;mut </span>partitioned_graph, <span class="kw-2">&amp;</span>tick_edges);
-<a href=#528 id=528 data-nosnippet>528</a>
-<a href=#529 id=529 data-nosnippet>529</a>    <span class="prelude-val">Ok</span>(partitioned_graph)
-<a href=#530 id=530 data-nosnippet>530</a>}
-<a href=#531 id=531 data-nosnippet>531</a>
-<a href=#532 id=532 data-nosnippet>532</a><span class="attr">#[cfg(test)]
-<a href=#533 id=533 data-nosnippet>533</a></span><span class="kw">mod </span>tests {
-<a href=#534 id=534 data-nosnippet>534</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-<a href=#535 id=535 data-nosnippet>535</a>    <span class="kw">use </span><span class="kw">crate</span>::graph::GraphNode;
-<a href=#536 id=536 data-nosnippet>536</a>
-<a href=#537 id=537 data-nosnippet>537</a>    <span class="doccomment">/// Regression test for a loop-contiguity toposort bug.
-<a href=#538 id=538 data-nosnippet>538</a>    /// https://github.com/hydro-project/hydro/issues/3048
-<a href=#539 id=539 data-nosnippet>539</a>    ///
-<a href=#540 id=540 data-nosnippet>540</a>    /// [`make_loops_contiguous`] gathers every subgraph of a loop at the position of the
-<a href=#541 id=541 data-nosnippet>541</a>    /// loop's *first* subgraph in the flat order. If an external subgraph that *feeds into*
-<a href=#542 id=542 data-nosnippet>542</a>    /// the loop (loop ingress) happens to sit — in the flat topological order — after the
-<a href=#543 id=543 data-nosnippet>543</a>    /// loop's first subgraph but before a later loop subgraph, then gathering the loop
-<a href=#544 id=544 data-nosnippet>544</a>    /// pulls that later (ingress-receiving) subgraph *ahead* of its producer.
-<a href=#545 id=545 data-nosnippet>545</a>    ///
-<a href=#546 id=546 data-nosnippet>546</a>    /// Concretely, the flat order `[S1, loopA, S2, loopB]` (valid, since `S2 -&gt; loopB`)
-<a href=#547 id=547 data-nosnippet>547</a>    /// would become `[S1, loopA, loopB, S2]`, so the loop-ingress *receiver* `loopB` would
-<a href=#548 id=548 data-nosnippet>548</a>    /// be emitted before its *sender* `S2`. Downstream this produces a handoff-buffer "use
-<a href=#549 id=549 data-nosnippet>549</a>    /// before declaration" compile error (and, logically, a drained-but-never-filled
-<a href=#550 id=550 data-nosnippet>550</a>    /// buffer).
-<a href=#551 id=551 data-nosnippet>551</a>    ///
-<a href=#552 id=552 data-nosnippet>552</a>    /// The fix adds loop-ingress ordering constraints so every ingress sender precedes the
-<a href=#553 id=553 data-nosnippet>553</a>    /// entire loop block, keeping gather-at-first sound.
-<a href=#554 id=554 data-nosnippet>554</a>    </span><span class="attr">#[test]
-<a href=#555 id=555 data-nosnippet>555</a>    </span><span class="kw">fn </span>test_make_loops_contiguous_ingress_toposort() {
-<a href=#556 id=556 data-nosnippet>556</a>        <span class="kw">use </span><span class="kw">crate</span>::graph::{FlatGraphBuilder, FlatGraphBuilderOutput};
-<a href=#557 id=557 data-nosnippet>557</a>
-<a href=#558 id=558 data-nosnippet>558</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = FlatGraphBuilder::new();
-<a href=#559 id=559 data-nosnippet>559</a>        <span class="comment">// External source #1 (feeds the loop's first ingress).
-<a href=#560 id=560 data-nosnippet>560</a>        </span>builder.add_dfir(
-<a href=#561 id=561 data-nosnippet>561</a>            <span class="macro">syn::parse_quote!</span> {
-<a href=#562 id=562 data-nosnippet>562</a>                inp1 = source_iter([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#563 id=563 data-nosnippet>563</a>            },
-<a href=#564 id=564 data-nosnippet>564</a>            <span class="prelude-val">None</span>,
-<a href=#565 id=565 data-nosnippet>565</a>            <span class="prelude-val">None</span>,
-<a href=#566 id=566 data-nosnippet>566</a>        );
-<a href=#567 id=567 data-nosnippet>567</a>        <span class="kw">let </span>loop_id = builder.insert_loop(<span class="prelude-val">None</span>);
-<a href=#568 id=568 data-nosnippet>568</a>        <span class="comment">// Loop ingress A — independent of `inp2`, so the flat toposort can place it before
-<a href=#569 id=569 data-nosnippet>569</a>        // `inp2`.
-<a href=#570 id=570 data-nosnippet>570</a>        </span>builder.add_dfir(
-<a href=#571 id=571 data-nosnippet>571</a>            <span class="macro">syn::parse_quote!</span> {
-<a href=#572 id=572 data-nosnippet>572</a>                inp1 -&gt; batch() -&gt; for_each(std::mem::drop);
-<a href=#573 id=573 data-nosnippet>573</a>            },
-<a href=#574 id=574 data-nosnippet>574</a>            <span class="prelude-val">Some</span>(loop_id),
-<a href=#575 id=575 data-nosnippet>575</a>            <span class="prelude-val">None</span>,
-<a href=#576 id=576 data-nosnippet>576</a>        );
-<a href=#577 id=577 data-nosnippet>577</a>        <span class="comment">// External source #2 — the loop-ingress "sender", defined after loop ingress A so
-<a href=#578 id=578 data-nosnippet>578</a>        // the flat toposort interleaves it: `[inp1, loopA, inp2, loopB]`.
-<a href=#579 id=579 data-nosnippet>579</a>        </span>builder.add_dfir(
-<a href=#580 id=580 data-nosnippet>580</a>            <span class="macro">syn::parse_quote!</span> {
-<a href=#581 id=581 data-nosnippet>581</a>                inp2 = source_iter([<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]);
-<a href=#582 id=582 data-nosnippet>582</a>            },
-<a href=#583 id=583 data-nosnippet>583</a>            <span class="prelude-val">None</span>,
-<a href=#584 id=584 data-nosnippet>584</a>            <span class="prelude-val">None</span>,
-<a href=#585 id=585 data-nosnippet>585</a>        );
-<a href=#586 id=586 data-nosnippet>586</a>        <span class="comment">// Loop ingress B — the "receiver" of `inp2`.
-<a href=#587 id=587 data-nosnippet>587</a>        </span>builder.add_dfir(
-<a href=#588 id=588 data-nosnippet>588</a>            <span class="macro">syn::parse_quote!</span> {
-<a href=#589 id=589 data-nosnippet>589</a>                inp2 -&gt; batch() -&gt; for_each(std::mem::drop);
-<a href=#590 id=590 data-nosnippet>590</a>            },
-<a href=#591 id=591 data-nosnippet>591</a>            <span class="prelude-val">Some</span>(loop_id),
-<a href=#592 id=592 data-nosnippet>592</a>            <span class="prelude-val">None</span>,
-<a href=#593 id=593 data-nosnippet>593</a>        );
-<a href=#594 id=594 data-nosnippet>594</a>
-<a href=#595 id=595 data-nosnippet>595</a>        <span class="kw">let </span>FlatGraphBuilderOutput { flat_graph, .. } =
-<a href=#596 id=596 data-nosnippet>596</a>            builder.build().expect(<span class="string">"should build without errors"</span>);
-<a href=#597 id=597 data-nosnippet>597</a>        <span class="kw">let </span>partitioned = partition_graph(flat_graph).expect(<span class="string">"should partition without errors"</span>);
-<a href=#598 id=598 data-nosnippet>598</a>
-<a href=#599 id=599 data-nosnippet>599</a>        <span class="comment">// Verify: every forward (non-delay) handoff has its producer subgraph *before* its
-<a href=#600 id=600 data-nosnippet>600</a>        // consumer subgraph in the final `subgraph_toposort`.
-<a href=#601 id=601 data-nosnippet>601</a>        </span><span class="kw">let </span>order = partitioned.subgraph_toposort();
-<a href=#602 id=602 data-nosnippet>602</a>        <span class="kw">let </span>pos: std::collections::HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; =
-<a href=#603 id=603 data-nosnippet>603</a>            order.iter().enumerate().map(|(i, <span class="kw-2">&amp;</span>sg)| (sg, i)).collect();
-<a href=#604 id=604 data-nosnippet>604</a>
-<a href=#605 id=605 data-nosnippet>605</a>        <span class="kw">for </span>(hoff_id, node) <span class="kw">in </span>partitioned.nodes() {
-<a href=#606 id=606 data-nosnippet>606</a>            <span class="kw">if </span>!<span class="macro">matches!</span>(node, GraphNode::Handoff { .. }) {
-<a href=#607 id=607 data-nosnippet>607</a>                <span class="kw">continue</span>;
-<a href=#608 id=608 data-nosnippet>608</a>            }
-<a href=#609 id=609 data-nosnippet>609</a>            <span class="comment">// Skip delay (back-edge) handoffs, which are allowed to point "backwards".
-<a href=#610 id=610 data-nosnippet>610</a>            </span><span class="kw">if </span>partitioned.handoff_delay_type(hoff_id).is_some() {
-<a href=#611 id=611 data-nosnippet>611</a>                <span class="kw">continue</span>;
-<a href=#612 id=612 data-nosnippet>612</a>            }
-<a href=#613 id=613 data-nosnippet>613</a>            <span class="kw">let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, pred)) = partitioned.node_predecessors(hoff_id).next() <span class="kw">else </span>{
-<a href=#614 id=614 data-nosnippet>614</a>                <span class="kw">continue</span>;
-<a href=#615 id=615 data-nosnippet>615</a>            };
-<a href=#616 id=616 data-nosnippet>616</a>            <span class="kw">let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, succ)) = partitioned.node_successors(hoff_id).next() <span class="kw">else </span>{
-<a href=#617 id=617 data-nosnippet>617</a>                <span class="kw">continue</span>;
-<a href=#618 id=618 data-nosnippet>618</a>            };
-<a href=#619 id=619 data-nosnippet>619</a>            <span class="kw">let </span>(<span class="prelude-val">Some</span>(pred_sg), <span class="prelude-val">Some</span>(succ_sg)) = (
-<a href=#620 id=620 data-nosnippet>620</a>                partitioned.node_subgraph(pred),
-<a href=#621 id=621 data-nosnippet>621</a>                partitioned.node_subgraph(succ),
-<a href=#622 id=622 data-nosnippet>622</a>            ) <span class="kw">else </span>{
-<a href=#623 id=623 data-nosnippet>623</a>                <span class="kw">continue</span>;
-<a href=#624 id=624 data-nosnippet>624</a>            };
-<a href=#625 id=625 data-nosnippet>625</a>            <span class="kw">let </span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>pp), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>sp)) = (pos.get(<span class="kw-2">&amp;</span>pred_sg), pos.get(<span class="kw-2">&amp;</span>succ_sg)) <span class="kw">else </span>{
-<a href=#626 id=626 data-nosnippet>626</a>                <span class="kw">continue</span>;
-<a href=#627 id=627 data-nosnippet>627</a>            };
-<a href=#628 id=628 data-nosnippet>628</a>            <span class="macro">assert!</span>(
-<a href=#629 id=629 data-nosnippet>629</a>                pp &lt; sp,
-<a href=#630 id=630 data-nosnippet>630</a>                <span class="string">"toposort violated: producer subgraph {pred_sg:?} (pos {pp}) emitted after \
-<a href=#631 id=631 data-nosnippet>631</a>                 consumer subgraph {succ_sg:?} (pos {sp}) via handoff {hoff_id:?}; order = {order:?}"</span>,
-<a href=#632 id=632 data-nosnippet>632</a>            );
-<a href=#633 id=633 data-nosnippet>633</a>        }
-<a href=#634 id=634 data-nosnippet>634</a>    }
-<a href=#635 id=635 data-nosnippet>635</a>
-<a href=#636 id=636 data-nosnippet>636</a>    <span class="kw">fn </span>make_op_node(graph: <span class="kw-2">&amp;mut </span>DfirGraph, loop_ctx: <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt;) -&gt; GraphNodeId {
-<a href=#637 id=637 data-nosnippet>637</a>        <span class="kw">let </span>operator: <span class="kw">crate</span>::parse::Operator = <span class="macro">syn::parse_quote!</span> { identity() };
-<a href=#638 id=638 data-nosnippet>638</a>        graph.insert_node(GraphNode::Operator(operator), <span class="prelude-val">None</span>, loop_ctx)
-<a href=#639 id=639 data-nosnippet>639</a>    }
-<a href=#640 id=640 data-nosnippet>640</a>
-<a href=#641 id=641 data-nosnippet>641</a>    <span class="doccomment">/// Test that subgraphs within a loop are contiguous after rearrangement,
-<a href=#642 id=642 data-nosnippet>642</a>    /// even when the flat input order interleaves them with unrelated subgraphs.
-<a href=#643 id=643 data-nosnippet>643</a>    </span><span class="attr">#[test]
-<a href=#644 id=644 data-nosnippet>644</a>    </span><span class="kw">fn </span>test_make_loops_contiguous_basic() {
-<a href=#645 id=645 data-nosnippet>645</a>        <span class="kw">let </span><span class="kw-2">mut </span>graph = DfirGraph::default();
-<a href=#646 id=646 data-nosnippet>646</a>
-<a href=#647 id=647 data-nosnippet>647</a>        <span class="comment">// Create a loop.
-<a href=#648 id=648 data-nosnippet>648</a>        </span><span class="kw">let </span>loop_id = graph.insert_loop(<span class="prelude-val">None</span>);
-<a href=#649 id=649 data-nosnippet>649</a>
-<a href=#650 id=650 data-nosnippet>650</a>        <span class="comment">// Create operator nodes: two outside the loop, two inside.
-<a href=#651 id=651 data-nosnippet>651</a>        </span><span class="kw">let </span>op_a = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">None</span>);
-<a href=#652 id=652 data-nosnippet>652</a>        <span class="kw">let </span>op_b = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">None</span>);
-<a href=#653 id=653 data-nosnippet>653</a>        <span class="kw">let </span>op_c = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(loop_id));
-<a href=#654 id=654 data-nosnippet>654</a>        <span class="kw">let </span>op_d = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(loop_id));
-<a href=#655 id=655 data-nosnippet>655</a>
-<a href=#656 id=656 data-nosnippet>656</a>        <span class="comment">// Create subgraphs (one per operator node).
-<a href=#657 id=657 data-nosnippet>657</a>        </span><span class="kw">let </span>sg_a = graph.insert_subgraph(<span class="macro">vec!</span>[op_a]).unwrap();
-<a href=#658 id=658 data-nosnippet>658</a>        <span class="kw">let </span>sg_b = graph.insert_subgraph(<span class="macro">vec!</span>[op_b]).unwrap();
-<a href=#659 id=659 data-nosnippet>659</a>        <span class="kw">let </span>sg_c = graph.insert_subgraph(<span class="macro">vec!</span>[op_c]).unwrap();
-<a href=#660 id=660 data-nosnippet>660</a>        <span class="kw">let </span>sg_d = graph.insert_subgraph(<span class="macro">vec!</span>[op_d]).unwrap();
-<a href=#661 id=661 data-nosnippet>661</a>
-<a href=#662 id=662 data-nosnippet>662</a>        <span class="comment">// Flat order: A, C, B, D — the loop subgraphs (C, D) are not contiguous.
-<a href=#663 id=663 data-nosnippet>663</a>        </span><span class="kw">let </span>flat_order = <span class="macro">vec!</span>[sg_a, sg_c, sg_b, sg_d];
-<a href=#664 id=664 data-nosnippet>664</a>        <span class="kw">let </span>result = make_loops_contiguous(<span class="kw-2">&amp;</span>graph, <span class="kw-2">&amp;</span>flat_order);
-<a href=#665 id=665 data-nosnippet>665</a>
-<a href=#666 id=666 data-nosnippet>666</a>        <span class="comment">// After rearrangement: A, C, D, B — loop subgraphs are now contiguous.
-<a href=#667 id=667 data-nosnippet>667</a>        </span><span class="macro">assert_eq!</span>(result, <span class="macro">vec!</span>[sg_a, sg_c, sg_d, sg_b]);
-<a href=#668 id=668 data-nosnippet>668</a>    }
-<a href=#669 id=669 data-nosnippet>669</a>
-<a href=#670 id=670 data-nosnippet>670</a>    <span class="doccomment">/// Test that two independent sibling loops each have their subgraphs contiguous.
-<a href=#671 id=671 data-nosnippet>671</a>    </span><span class="attr">#[test]
-<a href=#672 id=672 data-nosnippet>672</a>    </span><span class="kw">fn </span>test_make_loops_contiguous_independent_loops() {
-<a href=#673 id=673 data-nosnippet>673</a>        <span class="kw">let </span><span class="kw-2">mut </span>graph = DfirGraph::default();
-<a href=#674 id=674 data-nosnippet>674</a>
-<a href=#675 id=675 data-nosnippet>675</a>        <span class="kw">let </span>loop1 = graph.insert_loop(<span class="prelude-val">None</span>);
-<a href=#676 id=676 data-nosnippet>676</a>        <span class="kw">let </span>loop2 = graph.insert_loop(<span class="prelude-val">None</span>);
+<a href=#512 id=512 data-nosnippet>512</a>/// This hands back the original **flat graph** alongside the diagnostic, so callers can visualize
+<a href=#513 id=513 data-nosnippet>513</a>/// the graph to diagnose the cycle that prevented partitioning.
+<a href=#514 id=514 data-nosnippet>514</a></span><span class="kw">pub struct </span>PartitionError {
+<a href=#515 id=515 data-nosnippet>515</a>    <span class="doccomment">/// The pristine, un-partitioned flat graph (returned so it can still be rendered).
+<a href=#516 id=516 data-nosnippet>516</a>    ///
+<a href=#517 id=517 data-nosnippet>517</a>    /// Boxed because a [`DfirGraph`] is large (hundreds of bytes) and this keeps the
+<a href=#518 id=518 data-nosnippet>518</a>    /// `Err` variant of [`partition_graph`]'s result small; the allocation only happens
+<a href=#519 id=519 data-nosnippet>519</a>    /// on the (cold) failure path.
+<a href=#520 id=520 data-nosnippet>520</a>    </span><span class="kw">pub </span>flat_graph: Box&lt;DfirGraph&gt;,
+<a href=#521 id=521 data-nosnippet>521</a>    <span class="doccomment">/// The diagnostic explaining why partitioning failed (names the offending cycle).
+<a href=#522 id=522 data-nosnippet>522</a>    </span><span class="kw">pub </span>diagnostic: Diagnostic,
+<a href=#523 id=523 data-nosnippet>523</a>}
+<a href=#524 id=524 data-nosnippet>524</a>
+<a href=#525 id=525 data-nosnippet>525</a><span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>PartitionError {
+<a href=#526 id=526 data-nosnippet>526</a>    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
+<a href=#527 id=527 data-nosnippet>527</a>        std::fmt::Display::fmt(<span class="kw-2">&amp;</span><span class="self">self</span>.diagnostic, f)
+<a href=#528 id=528 data-nosnippet>528</a>    }
+<a href=#529 id=529 data-nosnippet>529</a>}
+<a href=#530 id=530 data-nosnippet>530</a>
+<a href=#531 id=531 data-nosnippet>531</a><span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>PartitionError {
+<a href=#532 id=532 data-nosnippet>532</a>    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
+<a href=#533 id=533 data-nosnippet>533</a>        f.debug_struct(<span class="macro">nameof::name_of_type!</span>(PartitionError))
+<a href=#534 id=534 data-nosnippet>534</a>            .field(<span class="macro">nameof::name_of!</span>(diagnostic <span class="kw">in </span><span class="self">Self</span>), <span class="kw-2">&amp;</span><span class="self">self</span>.diagnostic)
+<a href=#535 id=535 data-nosnippet>535</a>            .finish_non_exhaustive() <span class="comment">// Hide the large `DfirGraph` debug output.
+<a href=#536 id=536 data-nosnippet>536</a>    </span>}
+<a href=#537 id=537 data-nosnippet>537</a>}
+<a href=#538 id=538 data-nosnippet>538</a>
+<a href=#539 id=539 data-nosnippet>539</a><span class="doccomment">/// Main method for this module. Partitions a flat [`DfirGraph`] into one with subgraphs.
+<a href=#540 id=540 data-nosnippet>540</a>///
+<a href=#541 id=541 data-nosnippet>541</a>/// Returns [`PartitionError`] if an intra-tick cycle exists in the graph. On error the
+<a href=#542 id=542 data-nosnippet>542</a>/// original (pristine, un-partitioned) flat graph is handed back inside the error so it
+<a href=#543 id=543 data-nosnippet>543</a>/// can still be rendered for debugging — see [`PartitionError`].
+<a href=#544 id=544 data-nosnippet>544</a></span><span class="kw">pub fn </span>partition_graph(flat_graph: DfirGraph) -&gt; <span class="prelude-ty">Result</span>&lt;DfirGraph, PartitionError&gt; {
+<a href=#545 id=545 data-nosnippet>545</a>    <span class="kw">let </span>(<span class="kw-2">mut </span>tick_edges, edge_barrier_pairs) = find_edge_barriers(<span class="kw-2">&amp;</span>flat_graph);
+<a href=#546 id=546 data-nosnippet>546</a>    <span class="kw">let </span>access_group_pairs = find_access_group_ordering(<span class="kw-2">&amp;</span>flat_graph);
+<a href=#547 id=547 data-nosnippet>547</a>    <span class="kw">let </span><span class="kw-2">mut </span>partitioned_graph = flat_graph;
+<a href=#548 id=548 data-nosnippet>548</a>
+<a href=#549 id=549 data-nosnippet>549</a>    <span class="comment">// Partition into subgraphs and insert handoffs. The only recoverable failure is an
+<a href=#550 id=550 data-nosnippet>550</a>    // intra-tick cycle, which is detected before `partitioned_graph` is mutated, so on
+<a href=#551 id=551 data-nosnippet>551</a>    // error it is still the pristine flat graph and safe to hand back.
+<a href=#552 id=552 data-nosnippet>552</a>    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(diagnostic) = make_subgraphs(
+<a href=#553 id=553 data-nosnippet>553</a>        <span class="kw-2">&amp;mut </span>partitioned_graph,
+<a href=#554 id=554 data-nosnippet>554</a>        <span class="kw-2">&amp;mut </span>tick_edges,
+<a href=#555 id=555 data-nosnippet>555</a>        <span class="kw-2">&amp;</span>edge_barrier_pairs,
+<a href=#556 id=556 data-nosnippet>556</a>        <span class="kw-2">&amp;</span>access_group_pairs,
+<a href=#557 id=557 data-nosnippet>557</a>    ) {
+<a href=#558 id=558 data-nosnippet>558</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(PartitionError {
+<a href=#559 id=559 data-nosnippet>559</a>            flat_graph: Box::new(partitioned_graph),
+<a href=#560 id=560 data-nosnippet>560</a>            diagnostic,
+<a href=#561 id=561 data-nosnippet>561</a>        });
+<a href=#562 id=562 data-nosnippet>562</a>    }
+<a href=#563 id=563 data-nosnippet>563</a>
+<a href=#564 id=564 data-nosnippet>564</a>    <span class="comment">// Mark tick-boundary handoffs for double-buffering.
+<a href=#565 id=565 data-nosnippet>565</a>    </span>mark_tick_boundary_handoffs(<span class="kw-2">&amp;mut </span>partitioned_graph, <span class="kw-2">&amp;</span>tick_edges);
+<a href=#566 id=566 data-nosnippet>566</a>
+<a href=#567 id=567 data-nosnippet>567</a>    <span class="prelude-val">Ok</span>(partitioned_graph)
+<a href=#568 id=568 data-nosnippet>568</a>}
+<a href=#569 id=569 data-nosnippet>569</a>
+<a href=#570 id=570 data-nosnippet>570</a><span class="attr">#[cfg(test)]
+<a href=#571 id=571 data-nosnippet>571</a></span><span class="kw">mod </span>tests {
+<a href=#572 id=572 data-nosnippet>572</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+<a href=#573 id=573 data-nosnippet>573</a>    <span class="kw">use </span><span class="kw">crate</span>::graph::GraphNode;
+<a href=#574 id=574 data-nosnippet>574</a>
+<a href=#575 id=575 data-nosnippet>575</a>    <span class="doccomment">/// Regression test for a loop-contiguity toposort bug.
+<a href=#576 id=576 data-nosnippet>576</a>    /// https://github.com/hydro-project/hydro/issues/3048
+<a href=#577 id=577 data-nosnippet>577</a>    ///
+<a href=#578 id=578 data-nosnippet>578</a>    /// [`make_loops_contiguous`] gathers every subgraph of a loop at the position of the
+<a href=#579 id=579 data-nosnippet>579</a>    /// loop's *first* subgraph in the flat order. If an external subgraph that *feeds into*
+<a href=#580 id=580 data-nosnippet>580</a>    /// the loop (loop ingress) happens to sit — in the flat topological order — after the
+<a href=#581 id=581 data-nosnippet>581</a>    /// loop's first subgraph but before a later loop subgraph, then gathering the loop
+<a href=#582 id=582 data-nosnippet>582</a>    /// pulls that later (ingress-receiving) subgraph *ahead* of its producer.
+<a href=#583 id=583 data-nosnippet>583</a>    ///
+<a href=#584 id=584 data-nosnippet>584</a>    /// Concretely, the flat order `[S1, loopA, S2, loopB]` (valid, since `S2 -&gt; loopB`)
+<a href=#585 id=585 data-nosnippet>585</a>    /// would become `[S1, loopA, loopB, S2]`, so the loop-ingress *receiver* `loopB` would
+<a href=#586 id=586 data-nosnippet>586</a>    /// be emitted before its *sender* `S2`. Downstream this produces a handoff-buffer "use
+<a href=#587 id=587 data-nosnippet>587</a>    /// before declaration" compile error (and, logically, a drained-but-never-filled
+<a href=#588 id=588 data-nosnippet>588</a>    /// buffer).
+<a href=#589 id=589 data-nosnippet>589</a>    ///
+<a href=#590 id=590 data-nosnippet>590</a>    /// The fix adds loop-ingress ordering constraints so every ingress sender precedes the
+<a href=#591 id=591 data-nosnippet>591</a>    /// entire loop block, keeping gather-at-first sound.
+<a href=#592 id=592 data-nosnippet>592</a>    </span><span class="attr">#[test]
+<a href=#593 id=593 data-nosnippet>593</a>    </span><span class="kw">fn </span>test_make_loops_contiguous_ingress_toposort() {
+<a href=#594 id=594 data-nosnippet>594</a>        <span class="kw">use </span><span class="kw">crate</span>::graph::{FlatGraphBuilder, FlatGraphBuilderOutput};
+<a href=#595 id=595 data-nosnippet>595</a>
+<a href=#596 id=596 data-nosnippet>596</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = FlatGraphBuilder::new();
+<a href=#597 id=597 data-nosnippet>597</a>        <span class="comment">// External source #1 (feeds the loop's first ingress).
+<a href=#598 id=598 data-nosnippet>598</a>        </span>builder.add_dfir(
+<a href=#599 id=599 data-nosnippet>599</a>            <span class="macro">syn::parse_quote!</span> {
+<a href=#600 id=600 data-nosnippet>600</a>                inp1 = source_iter([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#601 id=601 data-nosnippet>601</a>            },
+<a href=#602 id=602 data-nosnippet>602</a>            <span class="prelude-val">None</span>,
+<a href=#603 id=603 data-nosnippet>603</a>            <span class="prelude-val">None</span>,
+<a href=#604 id=604 data-nosnippet>604</a>        );
+<a href=#605 id=605 data-nosnippet>605</a>        <span class="kw">let </span>loop_id = builder.insert_loop(<span class="prelude-val">None</span>);
+<a href=#606 id=606 data-nosnippet>606</a>        <span class="comment">// Loop ingress A — independent of `inp2`, so the flat toposort can place it before
+<a href=#607 id=607 data-nosnippet>607</a>        // `inp2`.
+<a href=#608 id=608 data-nosnippet>608</a>        </span>builder.add_dfir(
+<a href=#609 id=609 data-nosnippet>609</a>            <span class="macro">syn::parse_quote!</span> {
+<a href=#610 id=610 data-nosnippet>610</a>                inp1 -&gt; batch() -&gt; for_each(std::mem::drop);
+<a href=#611 id=611 data-nosnippet>611</a>            },
+<a href=#612 id=612 data-nosnippet>612</a>            <span class="prelude-val">Some</span>(loop_id),
+<a href=#613 id=613 data-nosnippet>613</a>            <span class="prelude-val">None</span>,
+<a href=#614 id=614 data-nosnippet>614</a>        );
+<a href=#615 id=615 data-nosnippet>615</a>        <span class="comment">// External source #2 — the loop-ingress "sender", defined after loop ingress A so
+<a href=#616 id=616 data-nosnippet>616</a>        // the flat toposort interleaves it: `[inp1, loopA, inp2, loopB]`.
+<a href=#617 id=617 data-nosnippet>617</a>        </span>builder.add_dfir(
+<a href=#618 id=618 data-nosnippet>618</a>            <span class="macro">syn::parse_quote!</span> {
+<a href=#619 id=619 data-nosnippet>619</a>                inp2 = source_iter([<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]);
+<a href=#620 id=620 data-nosnippet>620</a>            },
+<a href=#621 id=621 data-nosnippet>621</a>            <span class="prelude-val">None</span>,
+<a href=#622 id=622 data-nosnippet>622</a>            <span class="prelude-val">None</span>,
+<a href=#623 id=623 data-nosnippet>623</a>        );
+<a href=#624 id=624 data-nosnippet>624</a>        <span class="comment">// Loop ingress B — the "receiver" of `inp2`.
+<a href=#625 id=625 data-nosnippet>625</a>        </span>builder.add_dfir(
+<a href=#626 id=626 data-nosnippet>626</a>            <span class="macro">syn::parse_quote!</span> {
+<a href=#627 id=627 data-nosnippet>627</a>                inp2 -&gt; batch() -&gt; for_each(std::mem::drop);
+<a href=#628 id=628 data-nosnippet>628</a>            },
+<a href=#629 id=629 data-nosnippet>629</a>            <span class="prelude-val">Some</span>(loop_id),
+<a href=#630 id=630 data-nosnippet>630</a>            <span class="prelude-val">None</span>,
+<a href=#631 id=631 data-nosnippet>631</a>        );
+<a href=#632 id=632 data-nosnippet>632</a>
+<a href=#633 id=633 data-nosnippet>633</a>        <span class="kw">let </span>FlatGraphBuilderOutput { flat_graph, .. } =
+<a href=#634 id=634 data-nosnippet>634</a>            builder.build().expect(<span class="string">"should build without errors"</span>);
+<a href=#635 id=635 data-nosnippet>635</a>        <span class="kw">let </span>partitioned = partition_graph(flat_graph).expect(<span class="string">"should partition without errors"</span>);
+<a href=#636 id=636 data-nosnippet>636</a>        <span class="comment">// Verify: every forward (non-delay) handoff has its producer subgraph *before* its
+<a href=#637 id=637 data-nosnippet>637</a>        // consumer subgraph in the final `subgraph_toposort`.
+<a href=#638 id=638 data-nosnippet>638</a>        </span><span class="kw">let </span>order = partitioned.subgraph_toposort();
+<a href=#639 id=639 data-nosnippet>639</a>        <span class="kw">let </span>pos: std::collections::HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; =
+<a href=#640 id=640 data-nosnippet>640</a>            order.iter().enumerate().map(|(i, <span class="kw-2">&amp;</span>sg)| (sg, i)).collect();
+<a href=#641 id=641 data-nosnippet>641</a>
+<a href=#642 id=642 data-nosnippet>642</a>        <span class="kw">for </span>(hoff_id, node) <span class="kw">in </span>partitioned.nodes() {
+<a href=#643 id=643 data-nosnippet>643</a>            <span class="kw">if </span>!<span class="macro">matches!</span>(node, GraphNode::Handoff { .. }) {
+<a href=#644 id=644 data-nosnippet>644</a>                <span class="kw">continue</span>;
+<a href=#645 id=645 data-nosnippet>645</a>            }
+<a href=#646 id=646 data-nosnippet>646</a>            <span class="comment">// Skip delay (back-edge) handoffs, which are allowed to point "backwards".
+<a href=#647 id=647 data-nosnippet>647</a>            </span><span class="kw">if </span>partitioned.handoff_delay_type(hoff_id).is_some() {
+<a href=#648 id=648 data-nosnippet>648</a>                <span class="kw">continue</span>;
+<a href=#649 id=649 data-nosnippet>649</a>            }
+<a href=#650 id=650 data-nosnippet>650</a>            <span class="kw">let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, pred)) = partitioned.node_predecessors(hoff_id).next() <span class="kw">else </span>{
+<a href=#651 id=651 data-nosnippet>651</a>                <span class="kw">continue</span>;
+<a href=#652 id=652 data-nosnippet>652</a>            };
+<a href=#653 id=653 data-nosnippet>653</a>            <span class="kw">let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, succ)) = partitioned.node_successors(hoff_id).next() <span class="kw">else </span>{
+<a href=#654 id=654 data-nosnippet>654</a>                <span class="kw">continue</span>;
+<a href=#655 id=655 data-nosnippet>655</a>            };
+<a href=#656 id=656 data-nosnippet>656</a>            <span class="kw">let </span>(<span class="prelude-val">Some</span>(pred_sg), <span class="prelude-val">Some</span>(succ_sg)) = (
+<a href=#657 id=657 data-nosnippet>657</a>                partitioned.node_subgraph(pred),
+<a href=#658 id=658 data-nosnippet>658</a>                partitioned.node_subgraph(succ),
+<a href=#659 id=659 data-nosnippet>659</a>            ) <span class="kw">else </span>{
+<a href=#660 id=660 data-nosnippet>660</a>                <span class="kw">continue</span>;
+<a href=#661 id=661 data-nosnippet>661</a>            };
+<a href=#662 id=662 data-nosnippet>662</a>            <span class="kw">let </span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>pp), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>sp)) = (pos.get(<span class="kw-2">&amp;</span>pred_sg), pos.get(<span class="kw-2">&amp;</span>succ_sg)) <span class="kw">else </span>{
+<a href=#663 id=663 data-nosnippet>663</a>                <span class="kw">continue</span>;
+<a href=#664 id=664 data-nosnippet>664</a>            };
+<a href=#665 id=665 data-nosnippet>665</a>            <span class="macro">assert!</span>(
+<a href=#666 id=666 data-nosnippet>666</a>                pp &lt; sp,
+<a href=#667 id=667 data-nosnippet>667</a>                <span class="string">"toposort violated: producer subgraph {pred_sg:?} (pos {pp}) emitted after \
+<a href=#668 id=668 data-nosnippet>668</a>                 consumer subgraph {succ_sg:?} (pos {sp}) via handoff {hoff_id:?}; order = {order:?}"</span>,
+<a href=#669 id=669 data-nosnippet>669</a>            );
+<a href=#670 id=670 data-nosnippet>670</a>        }
+<a href=#671 id=671 data-nosnippet>671</a>    }
+<a href=#672 id=672 data-nosnippet>672</a>
+<a href=#673 id=673 data-nosnippet>673</a>    <span class="kw">fn </span>make_op_node(graph: <span class="kw-2">&amp;mut </span>DfirGraph, loop_ctx: <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt;) -&gt; GraphNodeId {
+<a href=#674 id=674 data-nosnippet>674</a>        <span class="kw">let </span>operator: <span class="kw">crate</span>::parse::Operator = <span class="macro">syn::parse_quote!</span> { identity() };
+<a href=#675 id=675 data-nosnippet>675</a>        graph.insert_node(GraphNode::Operator(operator), <span class="prelude-val">None</span>, loop_ctx)
+<a href=#676 id=676 data-nosnippet>676</a>    }
 <a href=#677 id=677 data-nosnippet>677</a>
-<a href=#678 id=678 data-nosnippet>678</a>        <span class="comment">// Loop1: C, D. Loop2: E, F.
-<a href=#679 id=679 data-nosnippet>679</a>        </span><span class="kw">let </span>op_c = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(loop1));
-<a href=#680 id=680 data-nosnippet>680</a>        <span class="kw">let </span>op_d = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(loop1));
-<a href=#681 id=681 data-nosnippet>681</a>        <span class="kw">let </span>op_e = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(loop2));
-<a href=#682 id=682 data-nosnippet>682</a>        <span class="kw">let </span>op_f = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(loop2));
+<a href=#678 id=678 data-nosnippet>678</a>    <span class="doccomment">/// Test that subgraphs within a loop are contiguous after rearrangement,
+<a href=#679 id=679 data-nosnippet>679</a>    /// even when the flat input order interleaves them with unrelated subgraphs.
+<a href=#680 id=680 data-nosnippet>680</a>    </span><span class="attr">#[test]
+<a href=#681 id=681 data-nosnippet>681</a>    </span><span class="kw">fn </span>test_make_loops_contiguous_basic() {
+<a href=#682 id=682 data-nosnippet>682</a>        <span class="kw">let </span><span class="kw-2">mut </span>graph = DfirGraph::default();
 <a href=#683 id=683 data-nosnippet>683</a>
-<a href=#684 id=684 data-nosnippet>684</a>        <span class="kw">let </span>sg_c = graph.insert_subgraph(<span class="macro">vec!</span>[op_c]).unwrap();
-<a href=#685 id=685 data-nosnippet>685</a>        <span class="kw">let </span>sg_d = graph.insert_subgraph(<span class="macro">vec!</span>[op_d]).unwrap();
-<a href=#686 id=686 data-nosnippet>686</a>        <span class="kw">let </span>sg_e = graph.insert_subgraph(<span class="macro">vec!</span>[op_e]).unwrap();
-<a href=#687 id=687 data-nosnippet>687</a>        <span class="kw">let </span>sg_f = graph.insert_subgraph(<span class="macro">vec!</span>[op_f]).unwrap();
-<a href=#688 id=688 data-nosnippet>688</a>
-<a href=#689 id=689 data-nosnippet>689</a>        <span class="comment">// Flat order interleaves the two loops: C, E, D, F.
-<a href=#690 id=690 data-nosnippet>690</a>        </span><span class="kw">let </span>flat_order = <span class="macro">vec!</span>[sg_c, sg_e, sg_d, sg_f];
-<a href=#691 id=691 data-nosnippet>691</a>        <span class="kw">let </span>result = make_loops_contiguous(<span class="kw-2">&amp;</span>graph, <span class="kw-2">&amp;</span>flat_order);
+<a href=#684 id=684 data-nosnippet>684</a>        <span class="comment">// Create a loop.
+<a href=#685 id=685 data-nosnippet>685</a>        </span><span class="kw">let </span>loop_id = graph.insert_loop(<span class="prelude-val">None</span>);
+<a href=#686 id=686 data-nosnippet>686</a>
+<a href=#687 id=687 data-nosnippet>687</a>        <span class="comment">// Create operator nodes: two outside the loop, two inside.
+<a href=#688 id=688 data-nosnippet>688</a>        </span><span class="kw">let </span>op_a = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">None</span>);
+<a href=#689 id=689 data-nosnippet>689</a>        <span class="kw">let </span>op_b = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">None</span>);
+<a href=#690 id=690 data-nosnippet>690</a>        <span class="kw">let </span>op_c = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(loop_id));
+<a href=#691 id=691 data-nosnippet>691</a>        <span class="kw">let </span>op_d = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(loop_id));
 <a href=#692 id=692 data-nosnippet>692</a>
-<a href=#693 id=693 data-nosnippet>693</a>        <span class="comment">// Both loops should be contiguous. Loop1 appears first (C seen first).
-<a href=#694 id=694 data-nosnippet>694</a>        </span><span class="kw">let </span>pos_c = result.iter().position(|<span class="kw-2">&amp;</span>s| s == sg_c).unwrap();
-<a href=#695 id=695 data-nosnippet>695</a>        <span class="kw">let </span>pos_d = result.iter().position(|<span class="kw-2">&amp;</span>s| s == sg_d).unwrap();
-<a href=#696 id=696 data-nosnippet>696</a>        <span class="kw">let </span>pos_e = result.iter().position(|<span class="kw-2">&amp;</span>s| s == sg_e).unwrap();
-<a href=#697 id=697 data-nosnippet>697</a>        <span class="kw">let </span>pos_f = result.iter().position(|<span class="kw-2">&amp;</span>s| s == sg_f).unwrap();
+<a href=#693 id=693 data-nosnippet>693</a>        <span class="comment">// Create subgraphs (one per operator node).
+<a href=#694 id=694 data-nosnippet>694</a>        </span><span class="kw">let </span>sg_a = graph.insert_subgraph(<span class="macro">vec!</span>[op_a]).unwrap();
+<a href=#695 id=695 data-nosnippet>695</a>        <span class="kw">let </span>sg_b = graph.insert_subgraph(<span class="macro">vec!</span>[op_b]).unwrap();
+<a href=#696 id=696 data-nosnippet>696</a>        <span class="kw">let </span>sg_c = graph.insert_subgraph(<span class="macro">vec!</span>[op_c]).unwrap();
+<a href=#697 id=697 data-nosnippet>697</a>        <span class="kw">let </span>sg_d = graph.insert_subgraph(<span class="macro">vec!</span>[op_d]).unwrap();
 <a href=#698 id=698 data-nosnippet>698</a>
-<a href=#699 id=699 data-nosnippet>699</a>        <span class="comment">// C before D, E before F (relative order preserved).
-<a href=#700 id=700 data-nosnippet>700</a>        </span><span class="macro">assert!</span>(pos_c &lt; pos_d);
-<a href=#701 id=701 data-nosnippet>701</a>        <span class="macro">assert!</span>(pos_e &lt; pos_f);
+<a href=#699 id=699 data-nosnippet>699</a>        <span class="comment">// Flat order: A, C, B, D — the loop subgraphs (C, D) are not contiguous.
+<a href=#700 id=700 data-nosnippet>700</a>        </span><span class="kw">let </span>flat_order = <span class="macro">vec!</span>[sg_a, sg_c, sg_b, sg_d];
+<a href=#701 id=701 data-nosnippet>701</a>        <span class="kw">let </span>result = make_loops_contiguous(<span class="kw-2">&amp;</span>graph, <span class="kw-2">&amp;</span>flat_order);
 <a href=#702 id=702 data-nosnippet>702</a>
-<a href=#703 id=703 data-nosnippet>703</a>        <span class="comment">// Contiguity: C and D are adjacent, E and F are adjacent.
-<a href=#704 id=704 data-nosnippet>704</a>        </span><span class="macro">assert_eq!</span>(pos_d - pos_c, <span class="number">1</span>, <span class="string">"Loop1 subgraphs must be contiguous"</span>);
-<a href=#705 id=705 data-nosnippet>705</a>        <span class="macro">assert_eq!</span>(pos_f - pos_e, <span class="number">1</span>, <span class="string">"Loop2 subgraphs must be contiguous"</span>);
-<a href=#706 id=706 data-nosnippet>706</a>    }
-<a href=#707 id=707 data-nosnippet>707</a>
-<a href=#708 id=708 data-nosnippet>708</a>    <span class="doccomment">/// Test nested loops: inner loop subgraphs are contiguous within the outer loop block.
-<a href=#709 id=709 data-nosnippet>709</a>    </span><span class="attr">#[test]
-<a href=#710 id=710 data-nosnippet>710</a>    </span><span class="kw">fn </span>test_make_loops_contiguous_nested() {
-<a href=#711 id=711 data-nosnippet>711</a>        <span class="kw">let </span><span class="kw-2">mut </span>graph = DfirGraph::default();
-<a href=#712 id=712 data-nosnippet>712</a>
-<a href=#713 id=713 data-nosnippet>713</a>        <span class="kw">let </span>outer = graph.insert_loop(<span class="prelude-val">None</span>);
-<a href=#714 id=714 data-nosnippet>714</a>        <span class="kw">let </span>inner = graph.insert_loop(<span class="prelude-val">Some</span>(outer));
-<a href=#715 id=715 data-nosnippet>715</a>
-<a href=#716 id=716 data-nosnippet>716</a>        <span class="comment">// Outer loop has: op_a, then inner loop (op_b, op_c), then op_d.
-<a href=#717 id=717 data-nosnippet>717</a>        </span><span class="kw">let </span>op_a = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(outer));
-<a href=#718 id=718 data-nosnippet>718</a>        <span class="kw">let </span>op_b = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(inner));
-<a href=#719 id=719 data-nosnippet>719</a>        <span class="kw">let </span>op_c = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(inner));
-<a href=#720 id=720 data-nosnippet>720</a>        <span class="kw">let </span>op_d = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(outer));
-<a href=#721 id=721 data-nosnippet>721</a>
-<a href=#722 id=722 data-nosnippet>722</a>        <span class="kw">let </span>sg_a = graph.insert_subgraph(<span class="macro">vec!</span>[op_a]).unwrap();
-<a href=#723 id=723 data-nosnippet>723</a>        <span class="kw">let </span>sg_b = graph.insert_subgraph(<span class="macro">vec!</span>[op_b]).unwrap();
-<a href=#724 id=724 data-nosnippet>724</a>        <span class="kw">let </span>sg_c = graph.insert_subgraph(<span class="macro">vec!</span>[op_c]).unwrap();
-<a href=#725 id=725 data-nosnippet>725</a>        <span class="kw">let </span>sg_d = graph.insert_subgraph(<span class="macro">vec!</span>[op_d]).unwrap();
-<a href=#726 id=726 data-nosnippet>726</a>
-<a href=#727 id=727 data-nosnippet>727</a>        <span class="comment">// Flat order: A, B, C, D (already valid).
-<a href=#728 id=728 data-nosnippet>728</a>        </span><span class="kw">let </span>flat_order = <span class="macro">vec!</span>[sg_a, sg_b, sg_c, sg_d];
-<a href=#729 id=729 data-nosnippet>729</a>        <span class="kw">let </span>result = make_loops_contiguous(<span class="kw-2">&amp;</span>graph, <span class="kw-2">&amp;</span>flat_order);
-<a href=#730 id=730 data-nosnippet>730</a>
-<a href=#731 id=731 data-nosnippet>731</a>        <span class="comment">// Expected: A, B, C, D (all contiguous within outer, B/C contiguous within inner).
-<a href=#732 id=732 data-nosnippet>732</a>        </span><span class="macro">assert_eq!</span>(result, <span class="macro">vec!</span>[sg_a, sg_b, sg_c, sg_d]);
-<a href=#733 id=733 data-nosnippet>733</a>    }
-<a href=#734 id=734 data-nosnippet>734</a>
-<a href=#735 id=735 data-nosnippet>735</a>    <span class="doccomment">/// Test nested loops with interleaving: outer-level subgraph between inner loop items.
-<a href=#736 id=736 data-nosnippet>736</a>    </span><span class="attr">#[test]
-<a href=#737 id=737 data-nosnippet>737</a>    </span><span class="kw">fn </span>test_make_loops_contiguous_nested_interleaved() {
-<a href=#738 id=738 data-nosnippet>738</a>        <span class="kw">let </span><span class="kw-2">mut </span>graph = DfirGraph::default();
+<a href=#703 id=703 data-nosnippet>703</a>        <span class="comment">// After rearrangement: A, C, D, B — loop subgraphs are now contiguous.
+<a href=#704 id=704 data-nosnippet>704</a>        </span><span class="macro">assert_eq!</span>(result, <span class="macro">vec!</span>[sg_a, sg_c, sg_d, sg_b]);
+<a href=#705 id=705 data-nosnippet>705</a>    }
+<a href=#706 id=706 data-nosnippet>706</a>
+<a href=#707 id=707 data-nosnippet>707</a>    <span class="doccomment">/// Test that two independent sibling loops each have their subgraphs contiguous.
+<a href=#708 id=708 data-nosnippet>708</a>    </span><span class="attr">#[test]
+<a href=#709 id=709 data-nosnippet>709</a>    </span><span class="kw">fn </span>test_make_loops_contiguous_independent_loops() {
+<a href=#710 id=710 data-nosnippet>710</a>        <span class="kw">let </span><span class="kw-2">mut </span>graph = DfirGraph::default();
+<a href=#711 id=711 data-nosnippet>711</a>
+<a href=#712 id=712 data-nosnippet>712</a>        <span class="kw">let </span>loop1 = graph.insert_loop(<span class="prelude-val">None</span>);
+<a href=#713 id=713 data-nosnippet>713</a>        <span class="kw">let </span>loop2 = graph.insert_loop(<span class="prelude-val">None</span>);
+<a href=#714 id=714 data-nosnippet>714</a>
+<a href=#715 id=715 data-nosnippet>715</a>        <span class="comment">// Loop1: C, D. Loop2: E, F.
+<a href=#716 id=716 data-nosnippet>716</a>        </span><span class="kw">let </span>op_c = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(loop1));
+<a href=#717 id=717 data-nosnippet>717</a>        <span class="kw">let </span>op_d = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(loop1));
+<a href=#718 id=718 data-nosnippet>718</a>        <span class="kw">let </span>op_e = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(loop2));
+<a href=#719 id=719 data-nosnippet>719</a>        <span class="kw">let </span>op_f = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(loop2));
+<a href=#720 id=720 data-nosnippet>720</a>
+<a href=#721 id=721 data-nosnippet>721</a>        <span class="kw">let </span>sg_c = graph.insert_subgraph(<span class="macro">vec!</span>[op_c]).unwrap();
+<a href=#722 id=722 data-nosnippet>722</a>        <span class="kw">let </span>sg_d = graph.insert_subgraph(<span class="macro">vec!</span>[op_d]).unwrap();
+<a href=#723 id=723 data-nosnippet>723</a>        <span class="kw">let </span>sg_e = graph.insert_subgraph(<span class="macro">vec!</span>[op_e]).unwrap();
+<a href=#724 id=724 data-nosnippet>724</a>        <span class="kw">let </span>sg_f = graph.insert_subgraph(<span class="macro">vec!</span>[op_f]).unwrap();
+<a href=#725 id=725 data-nosnippet>725</a>
+<a href=#726 id=726 data-nosnippet>726</a>        <span class="comment">// Flat order interleaves the two loops: C, E, D, F.
+<a href=#727 id=727 data-nosnippet>727</a>        </span><span class="kw">let </span>flat_order = <span class="macro">vec!</span>[sg_c, sg_e, sg_d, sg_f];
+<a href=#728 id=728 data-nosnippet>728</a>        <span class="kw">let </span>result = make_loops_contiguous(<span class="kw-2">&amp;</span>graph, <span class="kw-2">&amp;</span>flat_order);
+<a href=#729 id=729 data-nosnippet>729</a>
+<a href=#730 id=730 data-nosnippet>730</a>        <span class="comment">// Both loops should be contiguous. Loop1 appears first (C seen first).
+<a href=#731 id=731 data-nosnippet>731</a>        </span><span class="kw">let </span>pos_c = result.iter().position(|<span class="kw-2">&amp;</span>s| s == sg_c).unwrap();
+<a href=#732 id=732 data-nosnippet>732</a>        <span class="kw">let </span>pos_d = result.iter().position(|<span class="kw-2">&amp;</span>s| s == sg_d).unwrap();
+<a href=#733 id=733 data-nosnippet>733</a>        <span class="kw">let </span>pos_e = result.iter().position(|<span class="kw-2">&amp;</span>s| s == sg_e).unwrap();
+<a href=#734 id=734 data-nosnippet>734</a>        <span class="kw">let </span>pos_f = result.iter().position(|<span class="kw-2">&amp;</span>s| s == sg_f).unwrap();
+<a href=#735 id=735 data-nosnippet>735</a>
+<a href=#736 id=736 data-nosnippet>736</a>        <span class="comment">// C before D, E before F (relative order preserved).
+<a href=#737 id=737 data-nosnippet>737</a>        </span><span class="macro">assert!</span>(pos_c &lt; pos_d);
+<a href=#738 id=738 data-nosnippet>738</a>        <span class="macro">assert!</span>(pos_e &lt; pos_f);
 <a href=#739 id=739 data-nosnippet>739</a>
-<a href=#740 id=740 data-nosnippet>740</a>        <span class="kw">let </span>outer = graph.insert_loop(<span class="prelude-val">None</span>);
-<a href=#741 id=741 data-nosnippet>741</a>        <span class="kw">let </span>inner = graph.insert_loop(<span class="prelude-val">Some</span>(outer));
-<a href=#742 id=742 data-nosnippet>742</a>
-<a href=#743 id=743 data-nosnippet>743</a>        <span class="kw">let </span>op_a = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(outer));
-<a href=#744 id=744 data-nosnippet>744</a>        <span class="kw">let </span>op_b = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(inner));
-<a href=#745 id=745 data-nosnippet>745</a>        <span class="kw">let </span>op_c = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(inner));
-<a href=#746 id=746 data-nosnippet>746</a>        <span class="kw">let </span>op_d = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(outer));
-<a href=#747 id=747 data-nosnippet>747</a>
-<a href=#748 id=748 data-nosnippet>748</a>        <span class="kw">let </span>sg_a = graph.insert_subgraph(<span class="macro">vec!</span>[op_a]).unwrap();
-<a href=#749 id=749 data-nosnippet>749</a>        <span class="kw">let </span>sg_b = graph.insert_subgraph(<span class="macro">vec!</span>[op_b]).unwrap();
-<a href=#750 id=750 data-nosnippet>750</a>        <span class="kw">let </span>sg_c = graph.insert_subgraph(<span class="macro">vec!</span>[op_c]).unwrap();
-<a href=#751 id=751 data-nosnippet>751</a>        <span class="kw">let </span>sg_d = graph.insert_subgraph(<span class="macro">vec!</span>[op_d]).unwrap();
+<a href=#740 id=740 data-nosnippet>740</a>        <span class="comment">// Contiguity: C and D are adjacent, E and F are adjacent.
+<a href=#741 id=741 data-nosnippet>741</a>        </span><span class="macro">assert_eq!</span>(pos_d - pos_c, <span class="number">1</span>, <span class="string">"Loop1 subgraphs must be contiguous"</span>);
+<a href=#742 id=742 data-nosnippet>742</a>        <span class="macro">assert_eq!</span>(pos_f - pos_e, <span class="number">1</span>, <span class="string">"Loop2 subgraphs must be contiguous"</span>);
+<a href=#743 id=743 data-nosnippet>743</a>    }
+<a href=#744 id=744 data-nosnippet>744</a>
+<a href=#745 id=745 data-nosnippet>745</a>    <span class="doccomment">/// Test nested loops: inner loop subgraphs are contiguous within the outer loop block.
+<a href=#746 id=746 data-nosnippet>746</a>    </span><span class="attr">#[test]
+<a href=#747 id=747 data-nosnippet>747</a>    </span><span class="kw">fn </span>test_make_loops_contiguous_nested() {
+<a href=#748 id=748 data-nosnippet>748</a>        <span class="kw">let </span><span class="kw-2">mut </span>graph = DfirGraph::default();
+<a href=#749 id=749 data-nosnippet>749</a>
+<a href=#750 id=750 data-nosnippet>750</a>        <span class="kw">let </span>outer = graph.insert_loop(<span class="prelude-val">None</span>);
+<a href=#751 id=751 data-nosnippet>751</a>        <span class="kw">let </span>inner = graph.insert_loop(<span class="prelude-val">Some</span>(outer));
 <a href=#752 id=752 data-nosnippet>752</a>
-<a href=#753 id=753 data-nosnippet>753</a>        <span class="comment">// Flat order: A, B, D, C — D (outer) is between B and C (inner).
-<a href=#754 id=754 data-nosnippet>754</a>        </span><span class="kw">let </span>flat_order = <span class="macro">vec!</span>[sg_a, sg_b, sg_d, sg_c];
-<a href=#755 id=755 data-nosnippet>755</a>        <span class="kw">let </span>result = make_loops_contiguous(<span class="kw-2">&amp;</span>graph, <span class="kw-2">&amp;</span>flat_order);
-<a href=#756 id=756 data-nosnippet>756</a>
-<a href=#757 id=757 data-nosnippet>757</a>        <span class="comment">// After rearrangement within outer: A, B, C, D — inner loop (B, C) contiguous.
-<a href=#758 id=758 data-nosnippet>758</a>        </span><span class="macro">assert_eq!</span>(result, <span class="macro">vec!</span>[sg_a, sg_b, sg_c, sg_d]);
-<a href=#759 id=759 data-nosnippet>759</a>    }
-<a href=#760 id=760 data-nosnippet>760</a>}
+<a href=#753 id=753 data-nosnippet>753</a>        <span class="comment">// Outer loop has: op_a, then inner loop (op_b, op_c), then op_d.
+<a href=#754 id=754 data-nosnippet>754</a>        </span><span class="kw">let </span>op_a = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(outer));
+<a href=#755 id=755 data-nosnippet>755</a>        <span class="kw">let </span>op_b = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(inner));
+<a href=#756 id=756 data-nosnippet>756</a>        <span class="kw">let </span>op_c = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(inner));
+<a href=#757 id=757 data-nosnippet>757</a>        <span class="kw">let </span>op_d = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(outer));
+<a href=#758 id=758 data-nosnippet>758</a>
+<a href=#759 id=759 data-nosnippet>759</a>        <span class="kw">let </span>sg_a = graph.insert_subgraph(<span class="macro">vec!</span>[op_a]).unwrap();
+<a href=#760 id=760 data-nosnippet>760</a>        <span class="kw">let </span>sg_b = graph.insert_subgraph(<span class="macro">vec!</span>[op_b]).unwrap();
+<a href=#761 id=761 data-nosnippet>761</a>        <span class="kw">let </span>sg_c = graph.insert_subgraph(<span class="macro">vec!</span>[op_c]).unwrap();
+<a href=#762 id=762 data-nosnippet>762</a>        <span class="kw">let </span>sg_d = graph.insert_subgraph(<span class="macro">vec!</span>[op_d]).unwrap();
+<a href=#763 id=763 data-nosnippet>763</a>
+<a href=#764 id=764 data-nosnippet>764</a>        <span class="comment">// Flat order: A, B, C, D (already valid).
+<a href=#765 id=765 data-nosnippet>765</a>        </span><span class="kw">let </span>flat_order = <span class="macro">vec!</span>[sg_a, sg_b, sg_c, sg_d];
+<a href=#766 id=766 data-nosnippet>766</a>        <span class="kw">let </span>result = make_loops_contiguous(<span class="kw-2">&amp;</span>graph, <span class="kw-2">&amp;</span>flat_order);
+<a href=#767 id=767 data-nosnippet>767</a>
+<a href=#768 id=768 data-nosnippet>768</a>        <span class="comment">// Expected: A, B, C, D (all contiguous within outer, B/C contiguous within inner).
+<a href=#769 id=769 data-nosnippet>769</a>        </span><span class="macro">assert_eq!</span>(result, <span class="macro">vec!</span>[sg_a, sg_b, sg_c, sg_d]);
+<a href=#770 id=770 data-nosnippet>770</a>    }
+<a href=#771 id=771 data-nosnippet>771</a>
+<a href=#772 id=772 data-nosnippet>772</a>    <span class="doccomment">/// Test nested loops with interleaving: outer-level subgraph between inner loop items.
+<a href=#773 id=773 data-nosnippet>773</a>    </span><span class="attr">#[test]
+<a href=#774 id=774 data-nosnippet>774</a>    </span><span class="kw">fn </span>test_make_loops_contiguous_nested_interleaved() {
+<a href=#775 id=775 data-nosnippet>775</a>        <span class="kw">let </span><span class="kw-2">mut </span>graph = DfirGraph::default();
+<a href=#776 id=776 data-nosnippet>776</a>
+<a href=#777 id=777 data-nosnippet>777</a>        <span class="kw">let </span>outer = graph.insert_loop(<span class="prelude-val">None</span>);
+<a href=#778 id=778 data-nosnippet>778</a>        <span class="kw">let </span>inner = graph.insert_loop(<span class="prelude-val">Some</span>(outer));
+<a href=#779 id=779 data-nosnippet>779</a>
+<a href=#780 id=780 data-nosnippet>780</a>        <span class="kw">let </span>op_a = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(outer));
+<a href=#781 id=781 data-nosnippet>781</a>        <span class="kw">let </span>op_b = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(inner));
+<a href=#782 id=782 data-nosnippet>782</a>        <span class="kw">let </span>op_c = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(inner));
+<a href=#783 id=783 data-nosnippet>783</a>        <span class="kw">let </span>op_d = make_op_node(<span class="kw-2">&amp;mut </span>graph, <span class="prelude-val">Some</span>(outer));
+<a href=#784 id=784 data-nosnippet>784</a>
+<a href=#785 id=785 data-nosnippet>785</a>        <span class="kw">let </span>sg_a = graph.insert_subgraph(<span class="macro">vec!</span>[op_a]).unwrap();
+<a href=#786 id=786 data-nosnippet>786</a>        <span class="kw">let </span>sg_b = graph.insert_subgraph(<span class="macro">vec!</span>[op_b]).unwrap();
+<a href=#787 id=787 data-nosnippet>787</a>        <span class="kw">let </span>sg_c = graph.insert_subgraph(<span class="macro">vec!</span>[op_c]).unwrap();
+<a href=#788 id=788 data-nosnippet>788</a>        <span class="kw">let </span>sg_d = graph.insert_subgraph(<span class="macro">vec!</span>[op_d]).unwrap();
+<a href=#789 id=789 data-nosnippet>789</a>
+<a href=#790 id=790 data-nosnippet>790</a>        <span class="comment">// Flat order: A, B, D, C — D (outer) is between B and C (inner).
+<a href=#791 id=791 data-nosnippet>791</a>        </span><span class="kw">let </span>flat_order = <span class="macro">vec!</span>[sg_a, sg_b, sg_d, sg_c];
+<a href=#792 id=792 data-nosnippet>792</a>        <span class="kw">let </span>result = make_loops_contiguous(<span class="kw-2">&amp;</span>graph, <span class="kw-2">&amp;</span>flat_order);
+<a href=#793 id=793 data-nosnippet>793</a>
+<a href=#794 id=794 data-nosnippet>794</a>        <span class="comment">// After rearrangement within outer: A, B, C, D — inner loop (B, C) contiguous.
+<a href=#795 id=795 data-nosnippet>795</a>        </span><span class="macro">assert_eq!</span>(result, <span class="macro">vec!</span>[sg_a, sg_b, sg_c, sg_d]);
+<a href=#796 id=796 data-nosnippet>796</a>    }
+<a href=#797 id=797 data-nosnippet>797</a>
+<a href=#798 id=798 data-nosnippet>798</a>    <span class="doccomment">/// Demonstrates the mechanism behind the proposed fix for the "meta-graph
+<a href=#799 id=799 data-nosnippet>799</a>    /// catch-22": when a flat graph contains an intra-tick cycle, [`partition_graph`]
+<a href=#800 id=800 data-nosnippet>800</a>    /// fails, but the *flat* graph is still fully renderable to mermaid. That flat
+<a href=#801 id=801 data-nosnippet>801</a>    /// rendering (plus the diagnostic, which names the offending cycle) is exactly
+<a href=#802 id=802 data-nosnippet>802</a>    /// what a user needs to diagnose why partitioning failed.
+<a href=#803 id=803 data-nosnippet>803</a>    ///
+<a href=#804 id=804 data-nosnippet>804</a>    /// This is why [`partition_graph`] returns [`PartitionError`] (carrying the flat
+<a href=#805 id=805 data-nosnippet>805</a>    /// graph) rather than discarding its input on failure: callers such as
+<a href=#806 id=806 data-nosnippet>806</a>    /// `hydro_lang`'s `preview_compile` can then hand back a renderable meta graph to
+<a href=#807 id=807 data-nosnippet>807</a>    /// debug the very error that prevents compilation. This test locks in that property.
+<a href=#808 id=808 data-nosnippet>808</a>    </span><span class="attr">#[test]
+<a href=#809 id=809 data-nosnippet>809</a>    </span><span class="kw">fn </span>flat_mermaid_available_when_partition_fails() {
+<a href=#810 id=810 data-nosnippet>810</a>        <span class="kw">use </span><span class="kw">crate</span>::graph::{FlatGraphBuilder, FlatGraphBuilderOutput};
+<a href=#811 id=811 data-nosnippet>811</a>
+<a href=#812 id=812 data-nosnippet>812</a>        <span class="comment">// An intra-tick cycle: `my_union` feeds a `map` that feeds back into
+<a href=#813 id=813 data-nosnippet>813</a>        // `my_union` with no `defer_tick()` to break the cycle across ticks.
+<a href=#814 id=814 data-nosnippet>814</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>builder = FlatGraphBuilder::new();
+<a href=#815 id=815 data-nosnippet>815</a>        builder.add_dfir(
+<a href=#816 id=816 data-nosnippet>816</a>            <span class="macro">syn::parse_quote!</span> {
+<a href=#817 id=817 data-nosnippet>817</a>                source_iter(<span class="number">0</span>..<span class="number">5</span>) -&gt; my_union;
+<a href=#818 id=818 data-nosnippet>818</a>                my_union = union() -&gt; map(|x| x + <span class="number">1</span>) -&gt; my_union;
+<a href=#819 id=819 data-nosnippet>819</a>            },
+<a href=#820 id=820 data-nosnippet>820</a>            <span class="prelude-val">None</span>,
+<a href=#821 id=821 data-nosnippet>821</a>            <span class="prelude-val">None</span>,
+<a href=#822 id=822 data-nosnippet>822</a>        );
+<a href=#823 id=823 data-nosnippet>823</a>
+<a href=#824 id=824 data-nosnippet>824</a>        <span class="kw">let </span>FlatGraphBuilderOutput { flat_graph, .. } = builder
+<a href=#825 id=825 data-nosnippet>825</a>            .build()
+<a href=#826 id=826 data-nosnippet>826</a>            .expect(<span class="string">"flat graph should build successfully"</span>);
+<a href=#827 id=827 data-nosnippet>827</a>
+<a href=#828 id=828 data-nosnippet>828</a>        <span class="comment">// 1. The flat graph renders to mermaid just fine — the cyclic operators
+<a href=#829 id=829 data-nosnippet>829</a>        //    (`union` and `map`) that make up the offending cycle are visible, so a
+<a href=#830 id=830 data-nosnippet>830</a>        //    user could actually diagnose the problem from this rendering.
+<a href=#831 id=831 data-nosnippet>831</a>        </span><span class="kw">let </span>flat_mermaid = flat_graph.mermaid_string_flat();
+<a href=#832 id=832 data-nosnippet>832</a>        <span class="macro">assert!</span>(flat_mermaid.contains(<span class="string">"flowchart"</span>));
+<a href=#833 id=833 data-nosnippet>833</a>        <span class="macro">assert!</span>(flat_mermaid.contains(<span class="string">"union"</span>));
+<a href=#834 id=834 data-nosnippet>834</a>        <span class="macro">assert!</span>(flat_mermaid.contains(<span class="string">"map"</span>));
+<a href=#835 id=835 data-nosnippet>835</a>
+<a href=#836 id=836 data-nosnippet>836</a>        <span class="comment">// 2. Partitioning fails, but hands back the pristine flat graph *and* a
+<a href=#837 id=837 data-nosnippet>837</a>        //    diagnostic that names the cycle. Both pieces are exactly what a user
+<a href=#838 id=838 data-nosnippet>838</a>        //    needs to debug the failure — and neither is discarded.
+<a href=#839 id=839 data-nosnippet>839</a>        </span><span class="kw">let </span>err = partition_graph(flat_graph).expect_err(<span class="string">"partitioning should fail on a cycle"</span>);
+<a href=#840 id=840 data-nosnippet>840</a>        <span class="macro">assert!</span>(
+<a href=#841 id=841 data-nosnippet>841</a>            <span class="macro">format!</span>(<span class="string">"{}"</span>, err.diagnostic).contains(<span class="string">"Cyclical dataflow within a tick"</span>),
+<a href=#842 id=842 data-nosnippet>842</a>            <span class="string">"unexpected diagnostic: {}"</span>,
+<a href=#843 id=843 data-nosnippet>843</a>            err.diagnostic
+<a href=#844 id=844 data-nosnippet>844</a>        );
+<a href=#845 id=845 data-nosnippet>845</a>
+<a href=#846 id=846 data-nosnippet>846</a>        <span class="comment">// The returned flat graph is still fully renderable (this is the property the
+<a href=#847 id=847 data-nosnippet>847</a>        // `hydro_lang` catch-22 fix relies on).
+<a href=#848 id=848 data-nosnippet>848</a>        </span><span class="kw">let </span>recovered_mermaid = err.flat_graph.mermaid_string_flat();
+<a href=#849 id=849 data-nosnippet>849</a>        <span class="macro">assert!</span>(recovered_mermaid.contains(<span class="string">"union"</span>));
+<a href=#850 id=850 data-nosnippet>850</a>        <span class="macro">assert!</span>(recovered_mermaid.contains(<span class="string">"map"</span>));
+<a href=#851 id=851 data-nosnippet>851</a>    }
+<a href=#852 id=852 data-nosnippet>852</a>}
 </code></pre></div></section></main></body></html>
