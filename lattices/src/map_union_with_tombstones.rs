@@ -107,17 +107,14 @@ where
                 !val_other.is_bot() && !self.tombstones.contains(k_other)
             })
             .filter_map(|(k_other, val_other)| {
-                match self.map.get_mut(&k_other) {
+                if let Some(mut val_self) = self.map.get_mut(&k_other) {
                     // Key collision, merge into `self`.
-                    Some(mut val_self) => {
-                        changed |= val_self.merge(val_other);
-                        None
-                    }
+                    changed |= val_self.merge(val_other);
+                    None
+                } else {
                     // New value, convert for extending.
-                    None => {
-                        changed = true;
-                        Some((k_other, ValSelf::lattice_from(val_other)))
-                    }
+                    changed = true;
+                    Some((k_other, ValSelf::lattice_from(val_other)))
                 }
             })
             .collect();

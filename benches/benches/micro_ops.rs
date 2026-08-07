@@ -1,17 +1,14 @@
 use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
-use rand::SeedableRng;
-use rand::distributions::{Distribution, Uniform};
-use rand::rngs::StdRng;
+use rand::distr::{Distribution, Uniform};
 
 fn ops(c: &mut Criterion) {
-    let mut rng = StdRng::from_entropy();
-
+    let mut rng = rand::make_rng::<rand::rngs::StdRng>();
     c.bench_function("micro/ops/identity", |b| {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 10_000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let data: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
                 dfir_syntax! {
@@ -29,7 +26,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 10_000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let data: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
                 dfir_syntax! {
@@ -47,7 +44,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 10_000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let data: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
                 dfir_syntax! {
@@ -65,7 +62,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 10_000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let data: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
                 dfir_syntax! {
@@ -83,7 +80,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 10_000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let data: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
                 dfir_syntax! {
@@ -101,7 +98,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 10_000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let input0: Vec<(usize, ())> =
                     (0..NUM_INTS).map(|_| (dist.sample(&mut rng), ())).collect();
                 let input1: Vec<(usize, ())> =
@@ -127,7 +124,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 10_000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let input0: Vec<(usize, ())> =
                     (0..NUM_INTS).map(|_| (dist.sample(&mut rng), ())).collect();
                 let input1: Vec<(usize, ())> =
@@ -153,7 +150,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 10_000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let input0: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
                 let input1: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
@@ -177,7 +174,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 10_000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let input0: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
                 dfir_syntax! {
@@ -200,7 +197,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 10_000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let input0: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
                 {
@@ -220,7 +217,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 10_000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let input0: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
                 dfir_syntax! {
@@ -241,7 +238,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 1000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let input0: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
                 let input1: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
@@ -265,7 +262,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 1000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let input0: Vec<(usize, ())> =
                     (0..NUM_INTS).map(|_| (dist.sample(&mut rng), ())).collect();
                 let input1: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
@@ -358,7 +355,7 @@ fn ops(c: &mut Criterion) {
         b.iter_batched_ref(
             || {
                 const NUM_INTS: usize = 1000;
-                let dist = Uniform::new(0, 100);
+                let dist = Uniform::new(0, 100).unwrap();
                 let input0: Vec<(usize, usize)> = (0..NUM_INTS)
                     .map(|_| (dist.sample(&mut rng), dist.sample(&mut rng)))
                     .collect();

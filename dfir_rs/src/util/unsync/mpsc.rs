@@ -267,14 +267,14 @@ pub fn unbounded<T>() -> (Sender<T>, Receiver<T>) {
 #[cfg(test)]
 mod test {
     use futures::StreamExt;
-    use rand::Rng;
+    use rand::RngExt;
     use tokio::task::LocalSet;
     use web_time::Duration;
 
     use super::*;
 
     async fn delay(n: u64) {
-        let millis = rand::thread_rng().gen_range(0..n);
+        let millis = rand::rng().random_range(0..n);
         tokio::time::sleep(Duration::from_millis(millis)).await;
     }
 

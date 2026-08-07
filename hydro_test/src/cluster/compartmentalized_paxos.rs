@@ -237,7 +237,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
         NoOrder,
     >,
     config: CompartmentalizedPaxosConfig,
-    a_max_ballot: Singleton<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded>,
+    a_max_ballot: Singleton<Option<Ballot>, Tick<Cluster<'a, Acceptor>>, Bounded>,
     nondet_commit_leader_change: NonDet,
 ) -> (
     Stream<(usize, Option<P>), Cluster<'a, ProxyLeader>, Unbounded, NoOrder>,
@@ -338,7 +338,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     );
 
     let pl_failed_p2b_to_proposer = fails
-        .map(q!(|(_, ballot)| (ballot.proposer_id.clone(), ballot)))
+        .flat_map_ordered(q!(|(_, ballot)| ballot.map(|b| (b.proposer_id.clone(), b))))
         .inspect(q!(|(_, ballot)| println!("Failed P2b: {:?}", ballot)))
         .demux(proposers, TCP.fail_stop().bincode())
         .values();

@@ -191,7 +191,15 @@ where
     /// `batch_size` unit values.
     pub fn spin_batch(
         &self,
-        batch_size: impl QuotedWithContext<'a, usize, L> + Copy + 'a,
+        batch_size: impl QuotedWithContext<
+            'a,
+            usize,
+            crate::live_collections::OperatorContext<
+                L,
+                crate::live_collections::boundedness::Unbounded,
+            >,
+        > + Copy
+        + 'a,
     ) -> Stream<(), Self, Bounded, TotalOrder, ExactlyOnce>
     where
         L: TopLevel<'a>,
@@ -394,7 +402,7 @@ mod tests {
             write_send.send(1);
             write_ack_recv.assert_yields([1]).await;
             read_send.send(());
-            assert!(read_response_recv.next().await.is_some_and(|(_, v)| v >= 1));
+            assert!(read_response_recv.next().await.1 >= 1);
         });
 
         assert_eq!(instances, 1);
@@ -441,9 +449,8 @@ mod tests {
             write_ack_recv.assert_yields([1]).await;
             read_send.send(());
 
-            if let Some((_, v)) = read_response_recv.next().await {
-                assert_eq!(v, 1);
-            }
+            let (_, v) = read_response_recv.next().await;
+            assert_eq!(v, 1);
         });
     }
 }

@@ -10,6 +10,7 @@ use std::rc::Rc;
 use sealed::sealed;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
+use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
@@ -482,17 +483,22 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// ```
     pub fn map<U, F>(
         self,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>> + Copy,
     ) -> KeyedSingleton<K, U, L, B::EraseMonotonic>
     where
         F: Fn(V) -> U + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B::UnderlyingBound>| {
+                f.splice_fn1_ctx(ctx)
+            });
         let map_f = q!({
             let orig = f;
             move |(k, v)| (k, orig(v))
         })
-        .splice_fn1_ctx::<(K, V), (K, U)>(&self.location)
+        .splice_fn1_ctx::<(K, V), (K, U)>(&OperatorContext::<L, B::UnderlyingBound>::new(
+            &self.location,
+        ))
         .into();
 
         KeyedSingleton::new(
@@ -542,13 +548,16 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// ```
     pub fn map_with_key<U, F>(
         self,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>> + Copy,
     ) -> KeyedSingleton<K, U, L, B::EraseMonotonic>
     where
         F: Fn((K, V)) -> U + 'a,
         K: Clone,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B::UnderlyingBound>| {
+                f.splice_fn1_ctx(ctx)
+            });
         let map_f = q!({
             let orig = f;
             move |(k, v)| {
@@ -556,7 +565,9 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 (k, out)
             }
         })
-        .splice_fn1_ctx::<(K, V), (K, U)>(&self.location)
+        .splice_fn1_ctx::<(K, V), (K, U)>(&OperatorContext::<L, B::UnderlyingBound>::new(
+            &self.location,
+        ))
         .into();
 
         KeyedSingleton::new(
@@ -1330,7 +1341,9 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// ```
     pub fn values(self) -> Stream<V, L, B::UnderlyingBound, NoOrder, ExactlyOnce> {
         let map_f = q!(|(_, v)| v)
-            .splice_fn1_ctx::<(K, V), V>(&self.location)
+            .splice_fn1_ctx::<(K, V), V>(&OperatorContext::<L, B::UnderlyingBound>::new(
+                &self.location,
+            ))
             .into();
 
         Stream::new(
@@ -1456,16 +1469,24 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # }));
     /// # }
     /// ```
-    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> Self
+    pub fn inspect<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>> + Copy,
+    ) -> Self
     where
         F: Fn(&V) + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B::UnderlyingBound>| {
+                f.splice_fn1_borrow_ctx(ctx)
+            });
         let inspect_f = q!({
             let orig = f;
             move |t: &(_, _)| orig(&t.1)
         })
-        .splice_fn1_borrow_ctx::<(K, V), ()>(&self.location)
+        .splice_fn1_borrow_ctx::<(K, V), ()>(&OperatorContext::<L, B::UnderlyingBound>::new(
+            &self.location,
+        ))
         .into();
 
         KeyedSingleton::new(
@@ -1504,11 +1525,18 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # }));
     /// # }
     /// ```
-    pub fn inspect_with_key<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Self
+    pub fn inspect_with_key<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>>,
+    ) -> Self
     where
         F: Fn(&(K, V)) + 'a,
     {
-        let inspect_f = f.splice_fn1_borrow_ctx::<(K, V), ()>(&self.location).into();
+        let inspect_f = f
+            .splice_fn1_borrow_ctx::<(K, V), ()>(&OperatorContext::<L, B::UnderlyingBound>::new(
+                &self.location,
+            ))
+            .into();
 
         KeyedSingleton::new(
             self.location.clone(),
@@ -1813,16 +1841,24 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, V, L, B>
+    pub fn filter<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>> + Copy,
+    ) -> KeyedSingleton<K, V, L, B>
     where
         F: Fn(&V) -> bool + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B::UnderlyingBound>| {
+                f.splice_fn1_borrow_ctx(ctx)
+            });
         let filter_f = q!({
             let orig = f;
             move |t: &(_, _)| orig(&t.1)
         })
-        .splice_fn1_borrow_ctx::<(K, V), bool>(&self.location)
+        .splice_fn1_borrow_ctx::<(K, V), bool>(&OperatorContext::<L, B::UnderlyingBound>::new(
+            &self.location,
+        ))
         .into();
 
         KeyedSingleton::new(
@@ -1870,17 +1906,22 @@ where
     /// ```
     pub fn filter_map<F, U>(
         self,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>> + Copy,
     ) -> KeyedSingleton<K, U, L, B::EraseMonotonic>
     where
         F: Fn(V) -> Option<U> + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B::UnderlyingBound>| {
+                f.splice_fn1_ctx(ctx)
+            });
         let filter_map_f = q!({
             let orig = f;
             move |(k, v)| orig(v).map(|o| (k, o))
         })
-        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&self.location)
+        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&OperatorContext::<L, B::UnderlyingBound>::new(
+            &self.location,
+        ))
         .into();
 
         KeyedSingleton::new(

@@ -1,3 +1,4 @@
+use hydro_lang::live_collections::OperatorContext;
 use hydro_lang::live_collections::stream::TotalOrder;
 use hydro_lang::location::MemberId;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
@@ -9,7 +10,12 @@ use stageleft::IntoQuotedMut;
 pub fn partition<'a, F>(
     cluster1: Cluster<'a, ()>,
     cluster2: Cluster<'a, ()>,
-    dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, ()>, StreamMapFuncAlgebra>,
+    dist_policy: impl IntoQuotedMut<
+        'a,
+        F,
+        OperatorContext<Cluster<'a, ()>, Unbounded>,
+        StreamMapFuncAlgebra,
+    >,
 ) -> (Cluster<'a, ()>, Cluster<'a, ()>)
 where
     F: Fn((MemberId<()>, String)) -> (MemberId<()>, String) + 'a,

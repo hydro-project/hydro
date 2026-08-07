@@ -57,8 +57,6 @@ pub fn sequence_payloads<'a, K: KvKey, V: KvValue, L: Location<'a>>(
 
 #[cfg(test)]
 mod tests {
-    use hydro_lang::prelude::*;
-
     use super::super::SequencedKv;
     use super::*;
 

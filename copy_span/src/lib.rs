@@ -64,28 +64,21 @@ fn recursively_set_span(token: &mut proc_macro2::TokenTree, span: proc_macro2::S
 pub fn copy_span(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let CopySpanInput { sources, target } = syn::parse_macro_input!(input as CopySpanInput);
 
-    let mut combined_span = None;
-    for mut inner_source in sources {
-        while let syn::Expr::Group(g) = inner_source {
-            inner_source = *g.expr;
-        }
-
-        if combined_span.is_none() {
-            combined_span = Some(inner_source.span());
-        } else {
-            combined_span = Some(
-                combined_span
-                    .unwrap()
-                    .join(inner_source.span())
-                    .unwrap_or(combined_span.unwrap()),
-            );
-        }
-    }
+    let combined_span = sources
+        .into_iter()
+        .map(|mut inner_source| {
+            while let syn::Expr::Group(g) = inner_source {
+                inner_source = *g.expr;
+            }
+            inner_source.span()
+        })
+        .reduce(|a, b| a.join(b).unwrap_or(a))
+        .expect("bug: `sources` was empty");
 
     let output = target
         .into_iter()
         .fold(proc_macro2::TokenStream::new(), |mut acc, mut token| {
-            recursively_set_span(&mut token, combined_span.unwrap());
+            recursively_set_span(&mut token, combined_span);
             acc.extend(std::iter::once(token));
             acc
         });

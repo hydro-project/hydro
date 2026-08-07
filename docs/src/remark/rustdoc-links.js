@@ -224,9 +224,11 @@ function resolveIn(dir, segments, allowedKinds) {
     return results;
   }
   const [seg, ...rest] = segments;
-  // Descend into a submodule directory.
+  // Descend only when rustdoc contains an exactly-cased module directory.
+  // On case-insensitive filesystems (notably default macOS volumes), an item
+  // such as `Stream` must not accidentally match the `stream` module.
   if (rest.length > 0 || !allowedKinds || allowedKinds.includes("mod")) {
-    if (isDir(path.join(dir, seg))) {
+    if ((listDir(dir) || []).includes(seg) && isDir(path.join(dir, seg))) {
       results.push(...resolveIn(path.join(dir, seg), rest, allowedKinds));
     }
   }

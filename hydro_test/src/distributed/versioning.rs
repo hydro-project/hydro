@@ -1,3 +1,4 @@
+use hydro_lang::live_collections::OperatorContext;
 use hydro_lang::live_collections::keyed_stream::KeyedStream;
 use hydro_lang::live_collections::sliced::sliced;
 use hydro_lang::live_collections::stream::{ExactlyOnce, NoOrder, TotalOrder};
@@ -39,7 +40,12 @@ pub struct Logger {}
 fn hash_demux<'a, F, N: NetworkFor<Request>>(
     requests: Stream<Request, Cluster<'a, GossipServer>, Unbounded, TotalOrder>,
     to: &Cluster<'a, GossipServer>,
-    route: impl IntoQuotedMut<'a, F, Tick<Cluster<'a, GossipServer>>, StreamMapFuncAlgebra>,
+    route: impl IntoQuotedMut<
+        'a,
+        F,
+        OperatorContext<Tick<Cluster<'a, GossipServer>>, Bounded>,
+        StreamMapFuncAlgebra,
+    >,
     via: N,
     nondet_membership: NonDet,
 ) -> (
@@ -86,7 +92,12 @@ where
 fn gossip_server<'a, F>(
     requests: Stream<Request, Cluster<'a, GossipServer>, Unbounded, TotalOrder>,
     servers: &Cluster<'a, GossipServer>,
-    route: impl IntoQuotedMut<'a, F, Tick<Cluster<'a, GossipServer>>, StreamMapFuncAlgebra>,
+    route: impl IntoQuotedMut<
+        'a,
+        F,
+        OperatorContext<Tick<Cluster<'a, GossipServer>>, Bounded>,
+        StreamMapFuncAlgebra,
+    >,
 ) -> (
     Stream<Response, Cluster<'a, GossipServer>, Unbounded, NoOrder>,
     Stream<Vec<MemberId<GossipServer>>, Cluster<'a, GossipServer>, Unbounded>,
@@ -192,8 +203,6 @@ pub fn gossip_server_versioned<'a>(
 
 #[cfg(test)]
 mod tests {
-    use hydro_lang::prelude::*;
-
     use super::*;
 
     /// Write to member 0, read from member 1; both should see the value because gossip replicates
@@ -219,7 +228,7 @@ mod tests {
                 // Wait until both members have discovered full membership.
                 for member in [0, 1] {
                     loop {
-                        match membership_output.next(member).await {
+                        match membership_output.try_next(member).await {
                             Some(count) if count >= 2 => break,
                             Some(_) => continue,
                             None => return,
@@ -229,7 +238,7 @@ mod tests {
 
                 inputter.send(0, Request::Write { value: 42 });
 
-                let r1 = output.collect_sorted::<Vec<_>>(0).await;
+                let r1 = output.collect_n_sorted::<Vec<_>>(0, 1).await;
                 match r1.as_slice() {
                     [Response { value: 42 }] => {
                         write_confirmed = true;
@@ -285,7 +294,7 @@ mod tests {
             .with_cluster_size(&servers_v2, 1)
             .exhaustive(async || {
                 loop {
-                    match membership_output.next(0).await {
+                    match membership_output.try_next(0).await {
                         Some(count) if count >= 2 => break,
                         Some(_) => continue,
                         None => return,
@@ -293,7 +302,7 @@ mod tests {
                 }
 
                 loop {
-                    match membership_output_v2.next(1).await {
+                    match membership_output_v2.try_next(1).await {
                         Some(count) if count >= 2 => break,
                         Some(_) => continue,
                         None => return,
@@ -302,7 +311,7 @@ mod tests {
 
                 inputter.send(0, Request::Write { value: 42 });
 
-                let r1 = output.collect_sorted::<Vec<_>>(0).await;
+                let r1 = output.collect_n_sorted::<Vec<_>>(0, 1).await;
                 match r1.as_slice() {
                     [] => return,
                     [Response { value: 42 }] => {
@@ -365,7 +374,7 @@ mod tests {
             .exhaustive(async || {
                 for (handle, member) in [(&membership_output, 0u32), (&membership_output_v2, 1)] {
                     loop {
-                        match handle.next(member).await {
+                        match handle.try_next(member).await {
                             Some(count) if count >= 2 => break,
                             Some(_) => continue,
                             None => return,
@@ -375,7 +384,7 @@ mod tests {
 
                 inputter.send(0, Request::Write { value: 42 });
 
-                let r1 = output.collect_sorted::<Vec<_>>(0).await;
+                let r1 = output.collect_n_sorted::<Vec<_>>(0, 1).await;
                 match r1.as_slice() {
                     [Response { value: 42 }] => {
                         write_confirmed = true;
@@ -452,7 +461,7 @@ mod tests {
             .exhaustive(async || {
                 for (handle, member) in [(&membership_output, 0u32), (&membership_output_v3, 1)] {
                     loop {
-                        match handle.next(member).await {
+                        match handle.try_next(member).await {
                             Some(count) if count >= 2 => break,
                             Some(_) => continue,
                             None => return,
@@ -462,7 +471,7 @@ mod tests {
 
                 inputter.send(0, Request::Write { value: 42 });
 
-                let r1 = output.collect_sorted::<Vec<_>>(0).await;
+                let r1 = output.collect_n_sorted::<Vec<_>>(0, 1).await;
                 match r1.as_slice() {
                     [Response { value: 42 }] => {
                         write_confirmed = true;

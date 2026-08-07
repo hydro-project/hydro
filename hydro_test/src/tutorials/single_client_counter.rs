@@ -25,8 +25,6 @@ pub fn single_client_counter_service<'a>(
 
 #[cfg(test)]
 mod tests {
-    use hydro_lang::prelude::*;
-
     use super::*;
 
     #[test]

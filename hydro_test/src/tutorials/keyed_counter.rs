@@ -42,8 +42,6 @@ pub fn keyed_counter_service<'a, L: Location<'a>>(
 
 #[cfg(test)]
 mod tests {
-    use hydro_lang::prelude::*;
-
     use super::*;
 
     #[test]

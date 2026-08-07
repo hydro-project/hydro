@@ -563,7 +563,7 @@ impl MaelstromDeployment {
 
         for line in BufReader::new(spawned.stdout.unwrap()).lines() {
             let line = line?;
-            eprintln!("{}", &line);
+            eprintln!("{}", line);
 
             if line.starts_with("Analysis invalid!") {
                 let path = run_dir.keep();

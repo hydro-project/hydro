@@ -118,7 +118,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             type_args
                 .first()
                 .map(ToTokens::to_token_stream)
-                .unwrap_or(quote_spanned!(op_span=>
+                .unwrap_or_else(|| quote_spanned!(op_span=>
                     #root::dfir_pipes::pull::HalfSetJoinState
                 ));
 

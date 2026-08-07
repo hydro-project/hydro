@@ -12,7 +12,7 @@ use futures::Stream;
 use lattices::map_union::{MapUnionHashMap, MapUnionSingletonMap};
 use lattices::set_union::SetUnionSingletonSet;
 use lattices::{Max, Point, WithBot};
-use rand::{Rng, SeedableRng};
+use rand::RngExt;
 use serde::Serialize;
 use serde::de::DeserializeSeed;
 use tokio::task;
@@ -118,8 +118,8 @@ pub fn run_server<RX>(
                 }
             });
 
-            let mut rng = rand::rngs::SmallRng::from_entropy();
-            let dist = rand_distr::Zipf::new(1_000_000, dist).unwrap();
+            let mut rng = rand::make_rng::<rand::rngs::SmallRng>();
+            let dist = rand_distr::Zipf::new(1_000_000.0, dist).unwrap();
 
             let mut pre_gen_index = 0;
             let pre_gen_random_numbers: Vec<u64> = (0..(128*1024)).map(|_| rng.sample(dist) as u64).collect();

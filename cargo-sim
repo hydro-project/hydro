@@ -5,6 +5,16 @@ mkdir -p fuzz
 
 export CARGO_BUILD_TARGET=$(rustc -vV | grep 'host:' | awk '{print $2}')
 export RUSTFLAGS="$RUSTFLAGS -C prefer-dynamic -Copt-level=3 -Ccodegen-units=1 -Cpasses=sancov-module -Cllvm-args=-sanitizer-coverage-inline-8bit-counters -Cllvm-args=-sanitizer-coverage-level=4 -Cllvm-args=-sanitizer-coverage-pc-table -Cllvm-args=-sanitizer-coverage-trace-compares"
+
+# The test binary hosts the libfuzzer runtime (linked in via bolero), and the simulator dlopens a
+# sancov-instrumented dylib whose coverage hooks (e.g. `__sanitizer_cov_pcs_init`) must resolve
+# against that runtime. Export the binary's symbols dynamically so the loader can find them;
+# without this, loading the dylib fails with "undefined symbol: __sanitizer_cov_pcs_init".
+if [[ "$(uname)" == "Darwin" ]]; then
+  export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-export_dynamic"
+else
+  export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-Wl,-export-dynamic"
+fi
 export BOLERO_FUZZER="libfuzzer"
 
 cargo test --lib ${@:2} --nocapture --test-threads=1
