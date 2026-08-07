@@ -54,21 +54,21 @@ fn ops(c: &mut Criterion) {
         let lhs: Vec<_> = (0..3000).map(|v| (v, ())).collect();
         let rhs: Vec<_> = (0..3000).map(|v| (v + 50000, ())).collect();
 
-        b.iter(|| run_join_benchmark(lhs.iter().cloned(), rhs.iter().cloned()));
+        b.iter(|| run_join_benchmark(lhs.iter().copied(), rhs.iter().copied()));
     });
 
     c.bench_function("symmetric_hash_join/match_keys_diff_values", |b| {
         let lhs: Vec<_> = (0..3000).map(|v| (v, v)).collect();
         let rhs: Vec<_> = (0..3000).map(|v| (v, v + 50000)).collect();
 
-        b.iter(|| run_join_benchmark(lhs.iter().cloned(), rhs.iter().cloned()));
+        b.iter(|| run_join_benchmark(lhs.iter().copied(), rhs.iter().copied()));
     });
 
     c.bench_function("symmetric_hash_join/match_keys_same_values", |b| {
         let lhs: Vec<_> = (0..3000).map(|v| (v, v)).collect();
         let rhs: Vec<_> = (0..3000).map(|v| (v, v)).collect();
 
-        b.iter(|| run_join_benchmark(lhs.iter().cloned(), rhs.iter().cloned()));
+        b.iter(|| run_join_benchmark(lhs.iter().copied(), rhs.iter().copied()));
     });
 
     c.bench_function(
@@ -84,7 +84,7 @@ fn ops(c: &mut Criterion) {
                 .map(|v| (dist.sample(&mut rng) as usize, v + 8000))
                 .collect();
 
-            b.iter(|| run_join_benchmark(lhs.iter().cloned(), rhs.iter().cloned()));
+            b.iter(|| run_join_benchmark(lhs.iter().copied(), rhs.iter().copied()));
         },
     );
 
@@ -101,7 +101,7 @@ fn ops(c: &mut Criterion) {
                 .map(|v| (dist.sample(&mut rng) as usize, v + 8000))
                 .collect();
 
-            b.iter(|| run_join_benchmark(lhs.iter().cloned(), rhs.iter().cloned()));
+            b.iter(|| run_join_benchmark(lhs.iter().copied(), rhs.iter().copied()));
         },
     );
 }

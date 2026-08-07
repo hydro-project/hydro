@@ -244,7 +244,7 @@ impl LaunchedHost for LaunchedLocalhost {
                     let mut paths = std::env::split_paths(&paths).collect::<Vec<_>>();
                     paths.insert(0, std::path::PathBuf::from(local_libdir));
                     if let Some(shared_path) = &binary.shared_library_path {
-                        paths.insert(0, shared_path.to_path_buf());
+                        paths.insert(0, shared_path.clone());
                     }
                     std::env::join_paths(paths).unwrap()
                 },

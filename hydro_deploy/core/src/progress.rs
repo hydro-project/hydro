@@ -231,7 +231,7 @@ impl ProgressTracker {
         let previous_bar = surrounding_children
             .iter()
             .rev()
-            .flat_map(|c| c.get_pb())
+            .filter_map(|c| c.get_pb())
             .next();
 
         let index_to_insert = if let Some(previous_bar) = previous_bar {

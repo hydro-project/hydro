@@ -209,7 +209,7 @@ impl Host for AzureHost {
             .entry("azurerm_resource_group".to_owned())
             .or_default()
             .insert(
-                vm_key.to_string(),
+                vm_key.clone(),
                 json!({
                     "name": project,
                     "location": self.region.clone(),
@@ -222,7 +222,7 @@ impl Host for AzureHost {
             .entry("azurerm_virtual_network".to_owned())
             .or_default()
             .insert(
-                vm_key.to_string(),
+                vm_key.clone(),
                 json!({
                     "name": format!("{vm_key}-network"),
                     "address_space": ["10.0.0.0/16"],
@@ -237,7 +237,7 @@ impl Host for AzureHost {
             .entry("azurerm_subnet".to_owned())
             .or_default()
             .insert(
-                vm_key.to_string(),
+                vm_key.clone(),
                 json!({
                     "name": "internal",
                     "resource_group_name": format!("${{azurerm_resource_group.{vm_key}.name}}"),
@@ -252,7 +252,7 @@ impl Host for AzureHost {
             .entry("azurerm_public_ip".to_owned())
             .or_default()
             .insert(
-                vm_key.to_string(),
+                vm_key.clone(),
                 json!({
                     "name": "hydropubip",
                     "resource_group_name": format!("${{azurerm_resource_group.{vm_key}.name}}"),
@@ -267,7 +267,7 @@ impl Host for AzureHost {
             .entry("azurerm_network_interface".to_owned())
             .or_default()
             .insert(
-                vm_key.to_string(),
+                vm_key.clone(),
                 json!({
                     "name": format!("{vm_key}-nic"),
                     "location": format!("${{azurerm_resource_group.{vm_key}.location}}"),
@@ -288,7 +288,7 @@ impl Host for AzureHost {
             .entry("azurerm_network_security_group".to_owned())
             .or_default()
             .insert(
-                vm_key.to_string(),
+                vm_key.clone(),
                 json!({
                     "name": "primary_security_group",
                     "location": format!("${{azurerm_resource_group.{vm_key}.location}}"),
@@ -302,7 +302,7 @@ impl Host for AzureHost {
             .entry("azurerm_network_security_rule".to_owned())
             .or_default()
             .insert(
-                vm_key.to_string(),
+                vm_key.clone(),
                 json!({
                     "name": "allowall",
                     "priority": 100,
@@ -324,7 +324,7 @@ impl Host for AzureHost {
             .entry("azurerm_subnet_network_security_group_association".to_owned())
             .or_default()
             .insert(
-                vm_key.to_string(),
+                vm_key.clone(),
                 json!({
                     "subnet_id": format!("${{azurerm_subnet.{vm_key}.id}}"),
                     "network_security_group_id": format!("${{azurerm_network_security_group.{vm_key}.id}}"),

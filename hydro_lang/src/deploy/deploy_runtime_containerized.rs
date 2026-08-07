@@ -608,7 +608,7 @@ fn docker_membership_stream(
             let mut seen = seen_joined_events.lock().unwrap();
             match event {
                 MembershipEvent::Joined => {
-                    if seen.insert(name.to_owned()) {
+                    if seen.insert(name.clone()) {
                         Some((name, MembershipEvent::Joined))
                     } else {
                         None

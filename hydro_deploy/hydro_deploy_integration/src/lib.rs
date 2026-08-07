@@ -583,7 +583,7 @@ where
         match pipe {
             Connection::AsClient(ClientConnection::Demux(demux)) => {
                 let mut connected_demux = HashMap::new();
-                let keys = demux.keys().cloned().collect();
+                let keys = demux.keys().copied().collect();
                 for (id, pipe) in demux {
                     connected_demux.insert(
                         id,
@@ -605,7 +605,7 @@ where
 
             Connection::AsServer(AcceptedServer::Demux(demux)) => {
                 let mut connected_demux = HashMap::new();
-                let keys = demux.keys().cloned().collect();
+                let keys = demux.keys().copied().collect();
                 for (id, bound) in demux {
                     connected_demux.insert(
                         id,

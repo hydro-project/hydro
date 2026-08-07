@@ -256,7 +256,7 @@ impl<'a, W> HydroJson<'a, W> {
                     let short_fn_name = Self::truncate_function_name(&elem.fn_name).to_owned();
 
                     BacktraceFrame {
-                        fn_name: short_fn_name.to_owned(),
+                        fn_name: short_fn_name.clone(),
                         function: short_fn_name,
                         file: short_filename.clone(),
                         filename: short_filename,

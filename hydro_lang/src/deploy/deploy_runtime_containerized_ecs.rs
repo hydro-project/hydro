@@ -307,8 +307,7 @@ fn ecs_membership_stream(
                     }
                 };
 
-                let task_arns: Vec<String> =
-                    tasks.task_arns().iter().map(|s| s.to_string()).collect();
+                let task_arns = tasks.task_arns().to_vec();
 
                 let mut events = Vec::new();
                 let mut current_tasks = HashSet::<String>::new();
