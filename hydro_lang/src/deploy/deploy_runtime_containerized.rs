@@ -128,6 +128,8 @@ impl ChannelMux {
 
             let mux = self.clone();
             tokio::spawn(async move {
+                // Accepted streams are read-only; if a write path is ever added,
+                // set TCP_NODELAY first (see connect_channel).
                 let (rx, _tx) = stream.into_split();
                 let mut source = FramedRead::new(rx, LengthDelimitedCodec::new());
 
@@ -254,6 +256,17 @@ pub async fn send_handshake(
     Ok(())
 }
 
+/// Connects to a channel endpoint, enabling `TCP_NODELAY` so Nagle's
+/// algorithm (combined with delayed ACKs) doesn't stall small writes.
+/// Failure to set the option is non-fatal, so we just log a warning.
+pub async fn connect_channel(target: &str) -> Result<TcpStream, std::io::Error> {
+    let stream = TcpStream::connect(target).await?;
+    if let Err(e) = stream.set_nodelay(true) {
+        warn!(name: "set_nodelay_failed", %target, error = %e);
+    }
+    Ok(stream)
+}
+
 pub fn deploy_containerized_o2o(target: &str, channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
         q!(LazySink::<_, _, _, bytes::Bytes>::new(move || Box::pin(
@@ -262,7 +275,7 @@ pub fn deploy_containerized_o2o(target: &str, channel_name: &str) -> (syn::Expr,
                 let target = format!("{}:{}", target, self::CHANNEL_MUX_PORT);
                 debug!(name: "connecting", %target, %channel_name);
 
-                let stream = TcpStream::connect(&target).await?;
+                let stream = self::connect_channel(&target).await?;
                 let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
                 self::send_handshake(&mut sink, channel_name, None).await?;
@@ -301,7 +314,7 @@ pub fn deploy_containerized_o2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
                             format!("{}:{}", key.get_container_name(), self::CHANNEL_MUX_PORT);
                         debug!(name: "connecting", %target, channel_name = %channel_name);
 
-                        let stream = TcpStream::connect(&target).await?;
+                        let stream = self::connect_channel(&target).await?;
                         let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
                         self::send_handshake(&mut sink, &channel_name, None).await?;
@@ -337,7 +350,7 @@ pub fn deploy_containerized_m2o(target_host: &str, channel_name: &str) -> (syn::
                 let target = format!("{}:{}", target_host, self::CHANNEL_MUX_PORT);
                 debug!(name: "connecting", %target, %channel_name);
 
-                let stream = TcpStream::connect(&target).await?;
+                let stream = self::connect_channel(&target).await?;
                 let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
                 let container_name = std::env::var("CONTAINER_NAME").unwrap();
@@ -388,7 +401,7 @@ pub fn deploy_containerized_m2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
                             format!("{}:{}", key.get_container_name(), self::CHANNEL_MUX_PORT);
                         debug!(name: "connecting", %target, channel_name = %channel_name);
 
-                        let stream = TcpStream::connect(&target).await?;
+                        let stream = self::connect_channel(&target).await?;
                         let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
                         let container_name = std::env::var("CONTAINER_NAME").unwrap();
