@@ -174,33 +174,28 @@ fn trace_for_fuzzed_batching() {
     flow.sim()
         .compiled()
         .fuzz_repro(repro_bytes, async |compiled| {
-            let schedule = compiled.schedule_with_logger(&mut log_out);
-            let rest = async move {
-                for _ in 0..1000 {
-                    in_send.send(456); // the fuzzer should put these some batches
-                }
-
-                in_send.send(100);
-                in_send.send(23); // the fuzzer must put these in one batch
-
-                in_send.send(99); // the fuzzer must put this in a later batch
-
-                while let Some(out) = out_recv.try_next().await {
-                    if out == 456 {
-                        // make sure exhaustive can't catch the bug by using trivial (size 1) batches
-                        return;
-                    } else if out == 123 {
-                        // don't actually panic so that we can get the trace
-                        return;
+            compiled
+                .run_with_scheduler_and_logger(&mut log_out, async move {
+                    for _ in 0..1000 {
+                        in_send.send(456); // the fuzzer should put these some batches
                     }
-                }
-            };
 
-            tokio::select! {
-                biased;
-                _ = rest => {},
-                _ = schedule => {},
-            };
+                    in_send.send(100);
+                    in_send.send(23); // the fuzzer must put these in one batch
+
+                    in_send.send(99); // the fuzzer must put this in a later batch
+
+                    while let Some(out) = out_recv.try_next().await {
+                        if out == 456 {
+                            // make sure exhaustive can't catch the bug by using trivial (size 1) batches
+                            return;
+                        } else if out == 123 {
+                            // don't actually panic so that we can get the trace
+                            return;
+                        }
+                    }
+                })
+                .await;
         });
 
     let log_str = String::from_utf8(log_out).unwrap();
@@ -226,33 +221,28 @@ fn trace_for_fuzzed_batching_sliced() {
     flow.sim()
         .compiled()
         .fuzz_repro(repro_bytes, async |compiled| {
-            let schedule = compiled.schedule_with_logger(&mut log_out);
-            let rest = async move {
-                for _ in 0..1000 {
-                    in_send.send(456); // the fuzzer should put these some batches
-                }
-
-                in_send.send(100);
-                in_send.send(23); // the fuzzer must put these in one batch
-
-                in_send.send(99); // the fuzzer must put this in a later batch
-
-                while let Some(out) = out_recv.try_next().await {
-                    if out == 456 {
-                        // make sure exhaustive can't catch the bug by using trivial (size 1) batches
-                        return;
-                    } else if out == 123 {
-                        // don't actually panic so that we can get the trace
-                        return;
+            compiled
+                .run_with_scheduler_and_logger(&mut log_out, async move {
+                    for _ in 0..1000 {
+                        in_send.send(456); // the fuzzer should put these some batches
                     }
-                }
-            };
 
-            tokio::select! {
-                biased;
-                _ = rest => {},
-                _ = schedule => {},
-            };
+                    in_send.send(100);
+                    in_send.send(23); // the fuzzer must put these in one batch
+
+                    in_send.send(99); // the fuzzer must put this in a later batch
+
+                    while let Some(out) = out_recv.try_next().await {
+                        if out == 456 {
+                            // make sure exhaustive can't catch the bug by using trivial (size 1) batches
+                            return;
+                        } else if out == 123 {
+                            // don't actually panic so that we can get the trace
+                            return;
+                        }
+                    }
+                })
+                .await;
         });
 
     let log_str = String::from_utf8(log_out).unwrap();
@@ -1281,17 +1271,12 @@ fn sim_continue_if_failure_in_fuzz_repro_is_reported() {
     flow.sim()
         .compiled()
         .fuzz_repro(vec![0; 64], async |compiled| {
-            let schedule = compiled.schedule_with_logger(std::io::sink());
-            let rest = async move {
-                in_send.send(1);
-                let _: Vec<i32> = out_recv.collect().await;
-                crate::sim::continue_if!(false, "always fails");
-            };
-
-            tokio::select! {
-                biased;
-                _ = rest => {},
-                _ = schedule => {},
-            };
+            compiled
+                .run_with_scheduler_and_logger(std::io::sink(), async move {
+                    in_send.send(1);
+                    let _: Vec<i32> = out_recv.collect().await;
+                    crate::sim::continue_if!(false, "always fails");
+                })
+                .await;
         });
 }

@@ -140,7 +140,10 @@ impl QuiescenceState {
             self.poisoned.set(true);
         }
         self.quiescent.set(false);
-        self.resume_notify.notify_waiters();
+        // `notify_one` (rather than `notify_waiters`) stores a permit if the scheduler driver
+        // is not currently parked on [`Self::resumed`], so a resume that fires before the
+        // driver parks (e.g. input sent while the driver is polling the thunk) is not lost.
+        self.resume_notify.notify_one();
     }
 
     /// Whether the scheduler is currently quiescent (no more progress possible without input).
@@ -160,13 +163,17 @@ impl QuiescenceState {
         }
     }
 
-    /// Enter quiescence and wait for new input before continuing.
-    async fn wait_for_resume(&self) {
+    /// Enter quiescence, waking receivers waiting for data (their streams end). The scheduler
+    /// driver is responsible for parking until [`Self::resume`] is called with new input.
+    fn enter_quiescence(&self) {
         self.quiescent.set(true);
         self.quiescence_notify.notify_waiters();
         self.wake_settled();
+    }
+
+    /// Completes when new input arrives (via [`Self::resume`]).
+    async fn resumed(&self) {
         self.resume_notify.notified().await;
-        self.quiescent.set(false);
     }
 }
 
@@ -222,7 +229,9 @@ impl SettlePauseGuard {
             Poll::Ready(true)
         } else if quiescence.nondet_pending.get() {
             self.release();
-            quiescence.resume_notify.notify_waiters();
+            // `notify_one` (permit-based): the driver only parks *between* thunk polls, so it
+            // is not parked right now — the permit ensures this resume is not lost.
+            quiescence.resume_notify.notify_one();
             Poll::Ready(false)
         } else {
             // This may push a duplicate waker if we are re-polled without an intervening
@@ -243,11 +252,12 @@ impl Drop for SettlePauseGuard {
         if self.active {
             self.release();
             // Resume the scheduler in case this was the last pause request (otherwise it
-            // would stay parked forever with nobody left to resume it). If other settlers
-            // still hold requests, this wakeup is spurious but harmless: the scheduler
-            // re-checks `pause_nondet > 0` before starting any nondeterministic work, so it
-            // immediately re-parks without running anything.
-            self.quiescence.resume_notify.notify_waiters();
+            // would stay parked forever with nobody left to resume it). `notify_one`
+            // (permit-based) so the resume is not lost if the driver has not parked yet. If
+            // other settlers still hold requests, this wakeup is spurious but harmless: the
+            // scheduler re-checks `pause_nondet > 0` before starting any nondeterministic
+            // work, so it immediately re-parks without running anything.
+            self.quiescence.resume_notify.notify_one();
         }
     }
 }
@@ -625,8 +635,7 @@ impl CompiledSim {
             );
         } else if let Ok(existing_bytes) = std::fs::read(&caller_fuzz_repro_path) {
             self.fuzz_repro(existing_bytes, async |compiled| {
-                compiled.launch();
-                thunk().await
+                compiled.run_with_scheduler(thunk()).await
             });
         } else {
             eprintln!(
@@ -804,8 +813,7 @@ pub struct CompiledSimInstance<'a> {
 impl<'a> CompiledSimInstance<'a> {
     async fn run(self, thunk: impl AsyncFnOnce() + RefUnwindSafe) {
         self.run_without_launching(async |instance| {
-            instance.launch();
-            thunk().await;
+            instance.run_with_scheduler(thunk()).await;
         })
         .await;
     }
@@ -887,9 +895,8 @@ impl<'a> CompiledSimInstance<'a> {
 
         self.dylib_result = Some(dylib_result);
 
-        let local_set = tokio::task::LocalSet::new();
-        local_set
-            .run_until(CURRENT_SIM_CONNECTIONS.scope(
+        CURRENT_SIM_CONNECTIONS
+            .scope(
                 RefCell::new(SimConnections {
                     input_senders,
                     output_receivers,
@@ -903,29 +910,76 @@ impl<'a> CompiledSimInstance<'a> {
                 async move {
                     thunk(self).await;
                 },
-            ))
+            )
             .await;
     }
 
-    /// Launches the simulation, which will asynchronously simulate the Hydro program. This should
-    /// be invoked but before receiving any messages.
-    fn launch(self) {
-        tokio::task::spawn_local(self.schedule_with_maybe_logger::<std::io::Empty>(None));
+    /// Runs the simulation scheduler alongside the given future, until the future completes.
+    ///
+    /// The future always gets to run first; whenever it is blocked (e.g. waiting to receive
+    /// simulation outputs), the scheduler runs a single step to completion. Steps are atomic
+    /// with respect to the future: it is re-polled between every pair of scheduler steps, but
+    /// never while a step is in flight. The [`LaunchedSim`] state struct lives across steps,
+    /// in this function's frame.
+    async fn run_with_scheduler(self, thunk: impl Future<Output = ()>) {
+        self.run_with_scheduler_and_maybe_logger::<std::io::Empty>(None, thunk)
+            .await;
     }
 
-    /// Returns a future that schedules simulation with the given logger for reporting the
-    /// simulation trace.
-    pub fn schedule_with_logger<W: std::io::Write>(
+    /// Runs the simulation scheduler alongside the given future, until the future completes,
+    /// reporting the simulation trace to the given logger.
+    ///
+    /// The future always gets to run first; whenever it is blocked (e.g. waiting to receive
+    /// simulation outputs), the scheduler runs a single step to completion. Steps are atomic
+    /// with respect to the future: it is re-polled between every pair of scheduler steps, but
+    /// never while a step is in flight.
+    pub async fn run_with_scheduler_and_logger<W: std::io::Write>(
         self,
         log_writer: W,
-    ) -> impl use<W> + Future<Output = ()> {
-        self.schedule_with_maybe_logger(Some(log_writer))
+        thunk: impl Future<Output = ()>,
+    ) {
+        self.run_with_scheduler_and_maybe_logger(Some(log_writer), thunk)
+            .await;
     }
 
-    fn schedule_with_maybe_logger<W: std::io::Write>(
-        mut self,
+    async fn run_with_scheduler_and_maybe_logger<W: std::io::Write>(
+        self,
         log_override: Option<W>,
-    ) -> impl use<W> + Future<Output = ()> {
+        thunk: impl Future<Output = ()>,
+    ) {
+        let mut sim = self.start(log_override);
+        let mut thunk_fut = pin!(thunk);
+        loop {
+            // The thunk always gets to run first.
+            if futures::poll!(thunk_fut.as_mut()).is_ready() {
+                break;
+            }
+
+            if sim.quiescence.is_quiescent() || sim.quiescence.nondet_pending.get() {
+                // The scheduler is parked: either no step can make progress until the thunk
+                // sends new input (quiescent), or nondeterministic work is ready but a
+                // settling test-side observation has paused the scheduler (nondet_pending).
+                // Park until either the thunk is woken independently or the scheduler is
+                // resumed. (`resumed()` is permit-based, so a resume that fired while polling
+                // the thunk above is not lost.)
+                tokio::select! {
+                    biased;
+                    () = &mut thunk_fut => break,
+                    () = sim.quiescence.resumed() => {}
+                }
+                sim.quiescence.nondet_pending.set(false);
+            } else {
+                // Run a single scheduler step to completion. This is awaited directly (not
+                // raced against the thunk), so a step is atomic: the thunk is never polled
+                // while a step is in flight, and a step is never cancelled mid-execution.
+                sim.step().await;
+            }
+        }
+    }
+
+    /// Consumes this instance and constructs the [`LaunchedSim`] state struct, which is
+    /// advanced incrementally via [`LaunchedSim::step`].
+    fn start<W: std::io::Write>(mut self, log_override: Option<W>) -> LaunchedSim<W> {
         let (async_dfirs, tick_dfirs, hooks, inline_hooks) = self.dylib_result.take().unwrap();
 
         let not_ready_observation = async_dfirs
@@ -938,7 +992,7 @@ impl<'a> CompiledSimInstance<'a> {
             connections.quiescence.clone()
         });
 
-        let mut launched = LaunchedSim {
+        LaunchedSim {
             async_dfirs: async_dfirs
                 .into_iter()
                 .map(|(lid, c_id, dfir)| (serde_json::from_str(lid).unwrap(), c_id, dfir))
@@ -968,9 +1022,7 @@ impl<'a> CompiledSimInstance<'a> {
                 LogKind::Null
             },
             quiescence,
-        };
-
-        async move { launched.scheduler().await }
+        }
     }
 }
 
@@ -1726,7 +1778,8 @@ impl<W: std::io::Write> std::fmt::Write for LogKind<W> {
 /// A running simulation, which manages the async DFIRs, tick DFIRs, and hook-based
 /// scheduling decisions for non-deterministic operators like `batch` and `assume_ordering`.
 ///
-/// The scheduler loops between three kinds of work:
+/// This struct holds all simulator state across scheduler steps. Each [`Self::step`] performs
+/// one of three kinds of work:
 /// - **Async DFIRs**: long-running top-level dataflows (one per process/cluster member) that
 ///   produce data consumed by ticks and observations.
 /// - **Ticks**: tick-scoped DFIRs that execute a single tick. Before running, their associated
@@ -1762,205 +1815,199 @@ struct LaunchedSim<W: std::io::Write> {
 }
 
 impl<W: std::io::Write> LaunchedSim<W> {
-    async fn scheduler(&mut self) {
-        loop {
-            tokio::task::yield_now().await;
-            let mut any_made_progress = false;
-            for (loc, c_id, dfir) in &mut self.async_dfirs {
-                if dfir.run_tick().await {
-                    any_made_progress = true;
-                    let (now_ready, still_not_ready): (Vec<_>, Vec<_>) = self
-                        .not_ready_ticks
-                        .drain(..)
-                        .partition(|(tick_loc, tick_c_id, _)| {
-                            let LocationId::Tick(_, outer) = tick_loc else {
-                                unreachable!()
-                            };
-                            outer.as_ref() == loc && tick_c_id == c_id
-                        });
+    /// Runs a single step of the simulation scheduler.
+    ///
+    /// A step first advances all async DFIRs; if none of them made progress, it instead runs
+    /// one ready tick or resolves one ready observation. If nothing at all can make progress,
+    /// the simulation is quiescent: this signals waiting receivers and returns; the driver is
+    /// responsible for parking until new external input arrives (see
+    /// [`QuiescenceState::resumed`]).
+    ///
+    /// This future is always awaited to completion by the driver, so a step is atomic: user
+    /// code never runs (and never observes intermediate state) while a step is in flight.
+    async fn step(&mut self) {
+        let mut any_made_progress = false;
+        for (loc, c_id, dfir) in &mut self.async_dfirs {
+            if dfir.run_tick().await {
+                any_made_progress = true;
+                let (now_ready, still_not_ready): (Vec<_>, Vec<_>) = self
+                    .not_ready_ticks
+                    .drain(..)
+                    .partition(|(tick_loc, tick_c_id, _)| {
+                        let LocationId::Tick(_, outer) = tick_loc else {
+                            unreachable!()
+                        };
+                        outer.as_ref() == loc && tick_c_id == c_id
+                    });
 
-                    self.possibly_ready_ticks.extend(now_ready);
-                    self.not_ready_ticks.extend(still_not_ready);
+                self.possibly_ready_ticks.extend(now_ready);
+                self.not_ready_ticks.extend(still_not_ready);
 
-                    let (now_ready_obs, still_not_ready_obs): (Vec<_>, Vec<_>) = self
-                        .not_ready_observation
-                        .drain(..)
-                        .partition(|(obs_loc, obs_c_id)| obs_loc == loc && obs_c_id == c_id);
+                let (now_ready_obs, still_not_ready_obs): (Vec<_>, Vec<_>) = self
+                    .not_ready_observation
+                    .drain(..)
+                    .partition(|(obs_loc, obs_c_id)| obs_loc == loc && obs_c_id == c_id);
 
-                    self.possibly_ready_observation.extend(now_ready_obs);
-                    self.not_ready_observation.extend(still_not_ready_obs);
-                }
+                self.possibly_ready_observation.extend(now_ready_obs);
+                self.not_ready_observation.extend(still_not_ready_obs);
+            }
+        }
+
+        if any_made_progress {
+            return;
+        }
+
+        use bolero::generator::*;
+
+        let (ready_tick, mut not_ready_tick): (Vec<_>, Vec<_>) = self
+            .possibly_ready_ticks
+            .drain(..)
+            .partition(|(name, cid, _)| {
+                let hooks = self.hooks.get(&(name.clone(), *cid)).unwrap();
+                // All hooks must be ready (have received input or have a last value)
+                hooks.iter().all(|hook| hook.is_ready())
+                    // And at least one hook must be able to make progress
+                    && hooks.iter().any(|hook| {
+                        hook.current_decision().unwrap_or(false)
+                            || hook.can_make_nontrivial_decision()
+                    })
+            });
+
+        self.possibly_ready_ticks = ready_tick;
+        self.not_ready_ticks.append(&mut not_ready_tick);
+
+        let (ready_obs, mut not_ready_obs): (Vec<_>, Vec<_>) = self
+            .possibly_ready_observation
+            .drain(..)
+            .partition(|(name, cid)| {
+                self.hooks
+                    .get(&(name.clone(), *cid))
+                    .into_iter()
+                    .flatten()
+                    .any(|hook| {
+                        hook.current_decision().unwrap_or(false)
+                            || hook.can_make_nontrivial_decision()
+                    })
+            });
+
+        self.possibly_ready_observation = ready_obs;
+        self.not_ready_observation.append(&mut not_ready_obs);
+
+        if self.possibly_ready_ticks.is_empty() && self.possibly_ready_observation.is_empty() {
+            // If any tick is blocked because a hook is not ready, that's a
+            // simulator bug — it means a singleton never received a value.
+            for (name, cid, _) in &self.not_ready_ticks {
+                let hooks = self.hooks.get(&(name.clone(), *cid)).unwrap();
+                abort_assert!(
+                    hooks.iter().all(|hook| hook.is_ready()),
+                    "tick has a hook that never became ready"
+                );
             }
 
-            if any_made_progress {
-                continue;
-            } else {
-                use bolero::generator::*;
+            // Signal quiescence, waking receivers waiting for data (their streams end). The
+            // driver is responsible for parking until new input arrives.
+            self.quiescence.enter_quiescence();
+        } else if self.quiescence.pause_nondet.get() > 0 {
+            // The test is querying whether the simulation can quiesce without
+            // nondeterministic work (see `SettlePauseGuard::poll_settle`). Report that
+            // ticks/observations are pending and pause; the driver parks until the test
+            // decides how to proceed.
+            self.quiescence.nondet_pending.set(true);
+            self.quiescence.wake_settled();
+        } else {
+            let next_tick_or_obs = (0..(self.possibly_ready_ticks.len()
+                + self.possibly_ready_observation.len()))
+                .any();
 
-                let (ready_tick, mut not_ready_tick): (Vec<_>, Vec<_>) = self
-                    .possibly_ready_ticks
-                    .drain(..)
-                    .partition(|(name, cid, _)| {
-                        let hooks = self.hooks.get(&(name.clone(), *cid)).unwrap();
-                        // All hooks must be ready (have received input or have a last value)
-                        hooks.iter().all(|hook| hook.is_ready())
-                            // And at least one hook must be able to make progress
-                            && hooks.iter().any(|hook| {
-                                hook.current_decision().unwrap_or(false)
-                                    || hook.can_make_nontrivial_decision()
-                            })
-                    });
+            if next_tick_or_obs < self.possibly_ready_ticks.len() {
+                let next_tick = next_tick_or_obs;
+                let mut removed = self.possibly_ready_ticks.remove(next_tick);
 
-                self.possibly_ready_ticks = ready_tick;
-                self.not_ready_ticks.append(&mut not_ready_tick);
-
-                let (ready_obs, mut not_ready_obs): (Vec<_>, Vec<_>) = self
-                    .possibly_ready_observation
-                    .drain(..)
-                    .partition(|(name, cid)| {
-                        self.hooks
-                            .get(&(name.clone(), *cid))
-                            .into_iter()
-                            .flatten()
-                            .any(|hook| {
-                                hook.current_decision().unwrap_or(false)
-                                    || hook.can_make_nontrivial_decision()
-                            })
-                    });
-
-                self.possibly_ready_observation = ready_obs;
-                self.not_ready_observation.append(&mut not_ready_obs);
-
-                if self.possibly_ready_ticks.is_empty()
-                    && self.possibly_ready_observation.is_empty()
-                {
-                    // If any tick is blocked because a hook is not ready, that's a
-                    // simulator bug — it means a singleton never received a value.
-                    for (name, cid, _) in &self.not_ready_ticks {
-                        let hooks = self.hooks.get(&(name.clone(), *cid)).unwrap();
-                        abort_assert!(
-                            hooks.iter().all(|hook| hook.is_ready()),
-                            "tick has a hook that never became ready"
-                        );
-                    }
-
-                    // Signal quiescence and wait for new input.
-                    self.quiescence.wait_for_resume().await;
-                } else if self.quiescence.pause_nondet.get() > 0 {
-                    // The test is querying whether the simulation can quiesce without
-                    // nondeterministic work (see `QuiescenceCheckFuture`). Report that
-                    // ticks/observations are pending and pause until the test decides how
-                    // to proceed.
-                    self.quiescence.nondet_pending.set(true);
-                    self.quiescence.wake_settled();
-                    self.quiescence.resume_notify.notified().await;
-                    self.quiescence.nondet_pending.set(false);
-                } else {
-                    let next_tick_or_obs = (0..(self.possibly_ready_ticks.len()
-                        + self.possibly_ready_observation.len()))
-                        .any();
-
-                    if next_tick_or_obs < self.possibly_ready_ticks.len() {
-                        let next_tick = next_tick_or_obs;
-                        let mut removed = self.possibly_ready_ticks.remove(next_tick);
-
-                        match &mut self.log {
-                            LogKind::Null => {}
-                            LogKind::Stderr => {
-                                if let Some(cid) = &removed.1 {
-                                    eprintln!(
-                                        "\n{}",
-                                        format!("Running Tick (Cluster Member {})", cid)
-                                            .color(colored::Color::Magenta)
-                                            .bold()
-                                    )
-                                } else {
-                                    eprintln!(
-                                        "\n{}",
-                                        "Running Tick".color(colored::Color::Magenta).bold()
-                                    )
-                                }
-                            }
-                            LogKind::Custom(writer) => {
-                                writeln!(
-                                    writer,
-                                    "\n{}",
-                                    "Running Tick".color(colored::Color::Magenta).bold()
-                                )
-                                .unwrap();
-                            }
-                        }
-
-                        let mut asterisk_indenter = |_line_no, write: &mut dyn std::fmt::Write| {
-                            write.write_str(&"*".color(colored::Color::Magenta).bold())?;
-                            write.write_str(" ")
-                        };
-
-                        let mut tick_decision_writer =
-                            (!matches!(self.log, LogKind::Null)).then(|| {
-                                indenter::indented(&mut self.log).with_format(
-                                    indenter::Format::Custom {
-                                        inserter: &mut asterisk_indenter,
-                                    },
-                                )
-                            });
-
-                        let hooks = self.hooks.get_mut(&(removed.0.clone(), removed.1)).unwrap();
-                        run_hooks(tick_decision_writer.as_mut(), hooks);
-
-                        let run_tick_future = removed.2.run_tick();
-                        if let Some(inline_hooks) =
-                            self.inline_hooks.get_mut(&(removed.0.clone(), removed.1))
-                        {
-                            let mut run_tick_future_pinned = pin!(run_tick_future);
-
-                            loop {
-                                tokio::select! {
-                                    biased;
-                                    r = &mut run_tick_future_pinned => {
-                                        abort_assert!(r, "tick DFIR run_tick() returned false");
-                                        break;
-                                    }
-                                    _ = async {} => {
-                                        bolero_generator::any::scope::borrow_with(|driver| {
-                                            for hook in inline_hooks.iter_mut() {
-                                                if hook.pending_decision() {
-                                                    if !hook.has_decision() {
-                                                        hook.autonomous_decision(driver);
-                                                    }
-
-                                                    hook.release_decision(
-                                                        tick_decision_writer
-                                                            .as_mut()
-                                                            .map(|w| w as &mut dyn std::fmt::Write),
-                                                    );
-                                                }
-                                            }
-                                        });
-                                    }
-                                }
-                            }
+                match &mut self.log {
+                    LogKind::Null => {}
+                    LogKind::Stderr => {
+                        if let Some(cid) = &removed.1 {
+                            eprintln!(
+                                "\n{}",
+                                format!("Running Tick (Cluster Member {})", cid)
+                                    .color(colored::Color::Magenta)
+                                    .bold()
+                            )
                         } else {
-                            abort_assert!(
-                                run_tick_future.await,
-                                "tick DFIR run_tick() returned false"
-                            );
+                            eprintln!("\n{}", "Running Tick".color(colored::Color::Magenta).bold())
                         }
-
-                        self.possibly_ready_ticks.push(removed);
-                    } else {
-                        let next_obs = next_tick_or_obs - self.possibly_ready_ticks.len();
-                        let mut default_hooks = vec![];
-                        let hooks = self
-                            .hooks
-                            .get_mut(&self.possibly_ready_observation[next_obs])
-                            .unwrap_or(&mut default_hooks);
-
-                        let log_writer =
-                            (!matches!(self.log, LogKind::Null)).then_some(&mut self.log);
-                        run_hooks(log_writer, hooks);
+                    }
+                    LogKind::Custom(writer) => {
+                        writeln!(
+                            writer,
+                            "\n{}",
+                            "Running Tick".color(colored::Color::Magenta).bold()
+                        )
+                        .unwrap();
                     }
                 }
+
+                let mut asterisk_indenter = |_line_no, write: &mut dyn std::fmt::Write| {
+                    write.write_str(&"*".color(colored::Color::Magenta).bold())?;
+                    write.write_str(" ")
+                };
+
+                let mut tick_decision_writer = (!matches!(self.log, LogKind::Null)).then(|| {
+                    indenter::indented(&mut self.log).with_format(indenter::Format::Custom {
+                        inserter: &mut asterisk_indenter,
+                    })
+                });
+
+                let hooks = self.hooks.get_mut(&(removed.0.clone(), removed.1)).unwrap();
+                run_hooks(tick_decision_writer.as_mut(), hooks);
+
+                let run_tick_future = removed.2.run_tick();
+                if let Some(inline_hooks) =
+                    self.inline_hooks.get_mut(&(removed.0.clone(), removed.1))
+                {
+                    let mut run_tick_future_pinned = pin!(run_tick_future);
+
+                    loop {
+                        tokio::select! {
+                            biased;
+                            r = &mut run_tick_future_pinned => {
+                                abort_assert!(r, "tick DFIR run_tick() returned false");
+                                break;
+                            }
+                            _ = async {} => {
+                                bolero_generator::any::scope::borrow_with(|driver| {
+                                    for hook in inline_hooks.iter_mut() {
+                                        if hook.pending_decision() {
+                                            if !hook.has_decision() {
+                                                hook.autonomous_decision(driver);
+                                            }
+
+                                            hook.release_decision(
+                                                tick_decision_writer
+                                                    .as_mut()
+                                                    .map(|w| w as &mut dyn std::fmt::Write),
+                                            );
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+                } else {
+                    abort_assert!(run_tick_future.await, "tick DFIR run_tick() returned false");
+                }
+
+                self.possibly_ready_ticks.push(removed);
+            } else {
+                let next_obs = next_tick_or_obs - self.possibly_ready_ticks.len();
+                let mut default_hooks = vec![];
+                let hooks = self
+                    .hooks
+                    .get_mut(&self.possibly_ready_observation[next_obs])
+                    .unwrap_or(&mut default_hooks);
+
+                let log_writer = (!matches!(self.log, LogKind::Null)).then_some(&mut self.log);
+                run_hooks(log_writer, hooks);
             }
         }
     }
