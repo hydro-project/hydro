@@ -109,6 +109,7 @@ pub enum NetworkHint {
     TcpPort(Option<u16>),
 }
 
+#[track_caller]
 pub(crate) fn check_matching_location<'a, L: Location<'a>>(l1: &L, l2: &L) {
     assert_eq!(Location::id(l1), Location::id(l2), "locations do not match");
 }

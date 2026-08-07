@@ -1648,17 +1648,21 @@ mod tests {
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let node_tick = node.tick();
-        let top_level_none = node_tick.singleton(q!(123)).latest().filter(q!(|_| false));
+        let top_level_none = node
+            .tick()
+            .singleton(q!(123))
+            .latest()
+            .filter(q!(|_| false));
         let into_singleton = top_level_none.into_singleton();
 
         let tick_driver = node.spin();
 
+        let tick_later = node.tick();
         let counts = into_singleton
-            .snapshot(&node_tick, nondet!(/** test */))
+            .snapshot(&tick_later, nondet!(/** test */))
             .into_stream()
             .count()
-            .zip(tick_driver.batch(&node_tick, nondet!(/** test */)).count())
+            .zip(tick_driver.batch(&tick_later, nondet!(/** test */)).count())
             .map(q!(|(c, _)| c))
             .all_ticks()
             .send_bincode_external(&external);
