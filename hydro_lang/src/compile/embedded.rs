@@ -588,7 +588,14 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             .collect();
 
         for location_key in location_keys {
-            let graph = &compiled.all_dfir()[location_key];
+            let graph = compiled.all_dfir()[location_key]
+                .as_ref()
+                .unwrap_or_else(|err| {
+                    panic!(
+                        "Failed to partition DFIR graph for location {location_key}: {}",
+                        err.diagnostic
+                    )
+                });
 
             // Get the user-provided function name from the node.
             let fn_name = fn_names[location_key];
@@ -785,9 +792,10 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                     .iter()
                     .zip(net_out_generic_idents.iter())
                     .map(|((_, is_tagged, ext_ty), generic)| {
-                        let payload = match ext_ty {
-                            Some(ty) => quote! { #ty },
-                            None => quote! { #root::runtime_support::dfir_rs::bytes::Bytes },
+                        let payload = if let Some(ty) = ext_ty {
+                            quote! { #ty }
+                        } else {
+                            quote! { #root::runtime_support::dfir_rs::bytes::Bytes }
                         };
                         if *is_tagged {
                             quote! { #generic: FnMut((#root::location::member_id::TaglessMemberId, #payload)) }
@@ -800,9 +808,10 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 for ((_, is_tagged, ext_ty), generic) in
                     loc_net_outputs.iter().zip(net_out_generic_idents.iter())
                 {
-                    let payload = match ext_ty {
-                        Some(ty) => quote! { #ty },
-                        None => quote! { #root::runtime_support::dfir_rs::bytes::Bytes },
+                    let payload = if let Some(ty) = ext_ty {
+                        quote! { #ty }
+                    } else {
+                        quote! { #root::runtime_support::dfir_rs::bytes::Bytes }
                     };
                     if *is_tagged {
                         extra_fn_generics.push(

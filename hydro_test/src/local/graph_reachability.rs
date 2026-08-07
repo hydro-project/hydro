@@ -52,6 +52,7 @@ mod tests {
             built
                 .preview_compile()
                 .dfir_for(&p1)
+                .unwrap()
                 .surface_syntax_string()
         );
 

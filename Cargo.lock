@@ -1761,6 +1761,7 @@ dependencies = [
  "documented",
  "hydro_build_utils",
  "itertools 0.14.0",
+ "nameof",
  "prettyplease",
  "proc-macro2",
  "quote",

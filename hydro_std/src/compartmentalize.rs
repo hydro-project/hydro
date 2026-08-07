@@ -1,3 +1,4 @@
+use hydro_lang::live_collections::OperatorContext;
 use hydro_lang::live_collections::boundedness::Boundedness;
 use hydro_lang::live_collections::stream::{NoOrder, Ordering};
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
@@ -12,7 +13,12 @@ pub trait PartitionStream<'a, T, C1, C2, Order: Ordering> {
     fn send_partitioned<F>(
         self,
         other: &Cluster<'a, C2>,
-        dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, C1>, StreamMapFuncAlgebra>,
+        dist_policy: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<Cluster<'a, C1>, Unbounded>,
+            StreamMapFuncAlgebra,
+        >,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, NoOrder>
     where
         T: Clone + Serialize + DeserializeOwned,
@@ -25,7 +31,12 @@ impl<'a, T, C1, C2, Order: Ordering> PartitionStream<'a, T, C1, C2, Order>
     fn send_partitioned<F>(
         self,
         other: &Cluster<'a, C2>,
-        dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, C1>, StreamMapFuncAlgebra>,
+        dist_policy: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<Cluster<'a, C1>, Unbounded>,
+            StreamMapFuncAlgebra,
+        >,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, NoOrder>
     where
         T: Clone + Serialize + DeserializeOwned,

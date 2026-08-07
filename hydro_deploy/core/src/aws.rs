@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::borrow::Cow;
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -592,7 +593,7 @@ impl Debug for AwsEc2Host {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "AwsEc2Host({} ({:?}))",
-            self.id, &self.display_name
+            self.id, self.display_name,
         ))
     }
 }
@@ -834,7 +835,7 @@ impl Host for AwsEc2Host {
                 },
                 "metrics": {
                     // "namespace": todo!(), // TODO(mingwei): use flow_name here somehow
-                    "metrics_collected": self.cwa_metrics_collected.as_ref().unwrap_or(&json!({
+                    "metrics_collected": self.cwa_metrics_collected.as_ref().map(Cow::Borrowed).unwrap_or_else(|| Cow::Owned(json!({
                         "cpu": {
                             "resources": [
                                 "*"
@@ -849,7 +850,7 @@ impl Host for AwsEc2Host {
                                 "used_percent"
                             ]
                         }
-                    })),
+                    }))),
                     // See special escape handling below.
                     "append_dimensions": {
                         "InstanceId": "${aws:InstanceId}"

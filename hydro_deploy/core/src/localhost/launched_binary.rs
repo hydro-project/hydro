@@ -275,7 +275,7 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
 
 fn exit_code(c: ExitStatus) -> i32 {
     #[cfg(unix)]
-    return c.code().or(c.signal()).unwrap();
+    return c.code().or_else(|| c.signal()).unwrap();
     #[cfg(not(unix))]
     return c.code().unwrap();
 }

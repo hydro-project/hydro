@@ -115,7 +115,7 @@ mod tests {
             snapshot_suffix => "coordinator_mermaid"
         }, {
             hydro_build_utils::assert_snapshot!(
-                preview.dfir_for(&coordinator).to_mermaid(&WriteConfig {
+                preview.dfir_for(&coordinator).unwrap().to_mermaid(&WriteConfig {
                     no_subgraphs: true,
                     no_pull_push: true,
                     no_handoffs: true,
@@ -130,7 +130,7 @@ mod tests {
             snapshot_suffix => "participants_mermaid"
         }, {
             hydro_build_utils::assert_snapshot!(
-                preview.dfir_for(&participants).to_mermaid(&WriteConfig {
+                preview.dfir_for(&participants).unwrap().to_mermaid(&WriteConfig {
                     no_subgraphs: true,
                     no_pull_push: true,
                     no_handoffs: true,

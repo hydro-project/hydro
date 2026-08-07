@@ -4,7 +4,7 @@ use dfir_rs::scheduled::context::Context;
 use quote::quote;
 use stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
 
-use crate::location::Location;
+use crate::live_collections::ContextWithLocation;
 
 /// Exposes the DFIR [`Context`] inside quoted code.
 pub static RUNTIME_CONTEXT: RuntimeContext = RuntimeContext { _private: &() };
@@ -17,13 +17,13 @@ pub struct RuntimeContext<'a> {
     _private: &'a (),
 }
 
-impl<'a, L> FreeVariableWithContextWithProps<L, ()> for RuntimeContext<'a>
+impl<'a, Ctx> FreeVariableWithContextWithProps<Ctx, ()> for RuntimeContext<'a>
 where
-    L: Location<'a>,
+    Ctx: ContextWithLocation<'a>,
 {
     type O = &'a Context;
 
-    fn to_tokens(self, _ctx: &L) -> (QuoteTokens, ()) {
+    fn to_tokens(self, _ctx: &Ctx) -> (QuoteTokens, ()) {
         (
             QuoteTokens {
                 prelude: None,

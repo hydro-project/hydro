@@ -16,6 +16,60 @@
 
 pub mod boundedness;
 
+/// The context type for quoted closures (`q!(...)`) passed to operators on live collections.
+///
+/// This bundles the [`crate::location::Location`] where the collection is materialized
+/// with a marker for the [`boundedness::Boundedness`] of the collection the closure operates on.
+/// Free variables captured inside such closures can constrain both components. For example,
+/// reference handles created via `by_ref()` / `by_mut()` (see [`crate::handoff_ref`]) require
+/// that both the location *and* the boundedness of the referenced collection match those of the
+/// collection whose operator captures the reference. This prevents, e.g., a reference to a
+/// [`boundedness::Bounded`] singleton from being accessed inside a `map` over an
+/// [`boundedness::Unbounded`] stream: the singleton is only materialized on the first tick,
+/// while the closure keeps running on later ticks, where accessing the reference would crash.
+pub struct OperatorContext<L, B>(L, std::marker::PhantomData<B>);
+
+impl<L: Clone, B> OperatorContext<L, B> {
+    /// Constructs an [`OperatorContext`] value for splicing quoted closures for an operator on
+    /// a collection materialized at `location` with boundedness `B`.
+    pub(crate) fn new(location: &L) -> Self {
+        OperatorContext(location.clone(), std::marker::PhantomData)
+    }
+}
+
+/// A context type for quoted snippets (`q!(...)`) from which a [`crate::location::Location`]
+/// can be extracted.
+///
+/// This is implemented both for bare locations (used when splicing quoted *values*, such as
+/// the argument to [`crate::location::Location::source_iter`]) and for [`OperatorContext`]
+/// (used when splicing quoted *closures* passed to operators on live collections). Free
+/// variables that only depend on the location of the splice site (such as
+/// [`crate::location::cluster::CLUSTER_SELF_ID`]) are generic over this trait so that they can
+/// be captured in both kinds of quoted snippets.
+pub trait ContextWithLocation<'a> {
+    /// The location type of this context.
+    type Location: crate::location::Location<'a>;
+
+    /// Extracts the location of the splice site from this context.
+    fn context_location(&self) -> &Self::Location;
+}
+
+impl<'a, L: crate::location::Location<'a>> ContextWithLocation<'a> for L {
+    type Location = L;
+
+    fn context_location(&self) -> &L {
+        self
+    }
+}
+
+impl<'a, L: crate::location::Location<'a>, B> ContextWithLocation<'a> for OperatorContext<L, B> {
+    type Location = L;
+
+    fn context_location(&self) -> &L {
+        &self.0
+    }
+}
+
 pub mod keyed_singleton;
 #[doc(inline)]
 pub use keyed_singleton::KeyedSingleton;

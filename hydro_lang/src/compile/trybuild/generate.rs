@@ -142,8 +142,8 @@ pub fn create_graph_trybuild(
         .take(8)
         .collect::<String>();
 
-    let bin_name = if let Some(bin_name_prefix) = &bin_name_prefix {
-        format!("{}_{}", clean_bin_name_prefix(bin_name_prefix), &hash)
+    let bin_name = if let Some(bin_name_prefix) = bin_name_prefix {
+        format!("{}_{}", clean_bin_name_prefix(bin_name_prefix), hash)
     } else {
         hash
     };

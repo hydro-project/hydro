@@ -216,7 +216,7 @@ mod tests {
             snapshot_suffix => "proposer_mermaid"
         }, {
             hydro_build_utils::assert_snapshot!(
-                preview.dfir_for(&proposers).to_mermaid(&WriteConfig {
+                preview.dfir_for(&proposers).unwrap().to_mermaid(&WriteConfig {
                     no_subgraphs: true,
                     no_pull_push: true,
                     no_handoffs: true,
@@ -229,7 +229,7 @@ mod tests {
             snapshot_suffix => "acceptor_mermaid"
         }, {
             hydro_build_utils::assert_snapshot!(
-                preview.dfir_for(&acceptors).to_mermaid(&WriteConfig {
+                preview.dfir_for(&acceptors).unwrap().to_mermaid(&WriteConfig {
                     no_subgraphs: true,
                     no_pull_push: true,
                     no_handoffs: true,

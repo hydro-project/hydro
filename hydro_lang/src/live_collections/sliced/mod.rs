@@ -545,13 +545,13 @@ mod tests {
 
         flow.sim().exhaustive(async || {
             input_send.send(1);
-            assert_eq!(out_recv.next().await.unwrap(), 1);
+            assert_eq!(out_recv.next().await, 1);
 
             input_send.send(1);
-            assert_eq!(out_recv.next().await.unwrap(), 2);
+            assert_eq!(out_recv.next().await, 2);
 
             input_send.send(1);
-            assert_eq!(out_recv.next().await.unwrap(), 3);
+            assert_eq!(out_recv.next().await, 3);
         });
     }
 
@@ -583,15 +583,15 @@ mod tests {
         flow.sim().exhaustive(async || {
             input_send.send(10);
             // First tick: prev is None, so output is -1
-            assert_eq!(out_recv.next().await.unwrap(), -1);
+            assert_eq!(out_recv.next().await, -1);
 
             input_send.send(20);
             // Second tick: prev is Some(10), so output is 10
-            assert_eq!(out_recv.next().await.unwrap(), 10);
+            assert_eq!(out_recv.next().await, 10);
 
             input_send.send(30);
             // Third tick: prev is Some(20), so output is 20
-            assert_eq!(out_recv.next().await.unwrap(), 20);
+            assert_eq!(out_recv.next().await, 20);
         });
     }
 
@@ -620,18 +620,18 @@ mod tests {
             input_send.send(3);
             // First tick: items = initial [10, 20], output = [10, 20]
             let mut results = vec![];
-            results.push(out_recv.next().await.unwrap());
-            results.push(out_recv.next().await.unwrap());
+            results.push(out_recv.next().await);
+            results.push(out_recv.next().await);
             results.sort();
             assert_eq!(results, vec![10, 20]);
 
             input_send.send(4);
             // Second tick: items = [3] (from previous batch), output = [3]
-            assert_eq!(out_recv.next().await.unwrap(), 3);
+            assert_eq!(out_recv.next().await, 3);
 
             input_send.send(5);
             // Third tick: items = [4] (from previous batch), output = [4]
-            assert_eq!(out_recv.next().await.unwrap(), 4);
+            assert_eq!(out_recv.next().await, 4);
         });
     }
 
@@ -665,16 +665,16 @@ mod tests {
 
         flow.sim().exhaustive(async || {
             input_send.send((1, 1));
-            assert_eq!(out_recv.next().await.unwrap(), (1, 1));
+            assert_eq!(out_recv.next().await, (1, 1));
 
             input_send.send((1, 2));
-            assert_eq!(out_recv.next().await.unwrap(), (1, 3));
+            assert_eq!(out_recv.next().await, (1, 3));
 
             input_send.send((2, 1));
-            assert_eq!(out_recv.next().await.unwrap(), (2, 1));
+            assert_eq!(out_recv.next().await, (2, 1));
 
             input_send.send((1, 3));
-            assert_eq!(out_recv.next().await.unwrap(), (1, 6));
+            assert_eq!(out_recv.next().await, (1, 6));
         });
     }
 }

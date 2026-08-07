@@ -1221,6 +1221,9 @@ mod tests {
                 interrupt_send.send(0, ());
                 interrupt_send.send(1, ());
 
+                // Phase barrier: let all vote traffic settle so the collected histories
+                // are complete before the retry is fired.
+                hydro_lang::sim::quiesce().await;
                 for member in 0..CLUSTER_SIZE as u32 {
                     transitions[member as usize].extend(view_recv.collect::<Vec<_>>(member).await);
                 }
@@ -1229,6 +1232,7 @@ mod tests {
                 // ended in a split vote, member 0 must now win a fresh term outright.
                 interrupt_send.send(0, ());
 
+                hydro_lang::sim::quiesce().await;
                 for member in 0..CLUSTER_SIZE as u32 {
                     transitions[member as usize].extend(view_recv.collect::<Vec<_>>(member).await);
                 }
@@ -1331,10 +1335,11 @@ mod tests {
                 let member_1 = MemberId::<Replica>::from_raw_id(1);
                 let mut histories: Vec<Vec<LeaderView<Replica>>> = vec![Vec::new(); CLUSTER_SIZE];
 
-                // Phase 1: an uncontested election. The quiescing collects double as
-                // barriers: all vote traffic settles before any heartbeat is sent.
+                // Phase 1: an uncontested election. The `quiesce` phase barriers ensure
+                // all vote traffic settles before any heartbeat is sent.
                 interrupt_send.send(0, ());
 
+                hydro_lang::sim::quiesce().await;
                 for member in 0..CLUSTER_SIZE as u32 {
                     histories[member as usize].extend(view_recv.collect::<Vec<_>>(member).await);
                 }
@@ -1361,6 +1366,7 @@ mod tests {
                 // Phase 2: one real heartbeat round from the leader.
                 heartbeat_interrupt_send.send(0, ());
 
+                hydro_lang::sim::quiesce().await;
                 for member in 0..CLUSTER_SIZE as u32 {
                     let new_transitions: Vec<LeaderView<Replica>> =
                         view_recv.collect(member).await;
@@ -1398,6 +1404,7 @@ mod tests {
                 // heartbeat since its last interrupt, so no candidacy may start and
                 // no member's view may change.
                 interrupt_send.send(1, ());
+                hydro_lang::sim::quiesce().await;
                 for member in 0..CLUSTER_SIZE as u32 {
                     let new_transitions: Vec<LeaderView<Replica>> =
                         view_recv.collect(member).await;
@@ -1412,6 +1419,7 @@ mod tests {
                 // a real candidacy; member 1 wins term 2 (all logs are empty, so
                 // every voter grants), deposing member 0.
                 interrupt_send.send(1, ());
+                hydro_lang::sim::quiesce().await;
                 for member in 0..CLUSTER_SIZE as u32 {
                     histories[member as usize].extend(view_recv.collect::<Vec<_>>(member).await);
                 }
@@ -1427,6 +1435,7 @@ mod tests {
                 // One heartbeat round converges everyone — including the deposed
                 // member 0 — onto the new leader.
                 heartbeat_interrupt_send.send(1, ());
+                hydro_lang::sim::quiesce().await;
                 for member in 0..CLUSTER_SIZE as u32 {
                     histories[member as usize].extend(view_recv.collect::<Vec<_>>(member).await);
                 }
@@ -2178,6 +2187,7 @@ mod tests {
                     async |committed: &mut Vec<Vec<LogEntry<String>>>, at_least: usize| {
                         for _ in 0..MAX_ROUNDS {
                             heartbeat_interrupt_send.send(0, ());
+                            hydro_lang::sim::quiesce().await;
                             for member in 0..N as u32 {
                                 committed[member as usize]
                                     .extend(committed_recv.collect::<Vec<_>>(member).await);
@@ -2200,8 +2210,9 @@ mod tests {
 
                 // Phase 1: member 0 wins term 1 through a real election. No heartbeat
                 // has ever been observed, so the interrupt cannot be suppressed; the
-                // quiescing collect settles all vote traffic before anything else.
+                // `quiesce` barrier settles all vote traffic before anything else.
                 election_interrupt_send.send(0, ());
+                hydro_lang::sim::quiesce().await;
                 let during_election: Vec<LogEntry<String>> = committed_recv.collect(0).await;
                 assert!(
                     during_election.is_empty(),
@@ -2235,6 +2246,7 @@ mod tests {
                 // the forward_ref loop into member 1's LeaderView; a misdirected
                 // request must come back with that learned hint.
                 request_send.send(1, "misdirected".to_owned());
+                hydro_lang::sim::quiesce().await;
                 let follower_redirects: Vec<(String, Option<MemberId<Replica>>)> =
                     redirected_recv.collect(1).await;
                 assert_eq!(
@@ -2247,6 +2259,7 @@ mod tests {
                 // previous election interrupt, so its timeout must be suppressed:
                 // no candidacy, no term bump, member 0 stays leader...
                 election_interrupt_send.send(1, ());
+                hydro_lang::sim::quiesce().await;
                 let after_suppression: Vec<LogEntry<String>> = committed_recv.collect(1).await;
                 assert!(
                     after_suppression.is_empty(),
@@ -2364,9 +2377,10 @@ mod tests {
             .fuzz(async || {
                 let mut committed: Vec<Vec<LogEntry<String>>> = vec![Vec::new(); N];
 
-                // Quiesce, fold each member's newly committed entries into its
-                // history, drain redirects, and check the fork invariant.
+                // Quiesce (phase barrier), fold each member's newly committed entries
+                // into its history, drain redirects, and check the fork invariant.
                 let collect_and_check = async |committed: &mut Vec<Vec<LogEntry<String>>>| {
+                    hydro_lang::sim::quiesce().await;
                     for member in 0..N as u32 {
                         committed[member as usize]
                             .extend(committed_recv.collect::<Vec<_>>(member).await);
@@ -2378,7 +2392,8 @@ mod tests {
 
                 // Phase 1: member 0 wins term 1 uncontested and commits a seed entry,
                 // so later (possibly stale) challengers have something to be behind.
-                // The quiescing collect after the interrupt lets the election settle
+                // The `quiesce` barrier (in collect_and_check) after the interrupt lets
+                // the election settle
                 // (vote traffic and view propagation) before the request is sent —
                 // otherwise the request could race ahead of member 0's leadership and
                 // be redirected into the void. This phase is deliberately race-free,
@@ -2628,7 +2643,7 @@ mod tests {
             snapshot_suffix => "replica_mermaid"
         }, {
             hydro_build_utils::assert_snapshot!(
-                preview.dfir_for(&replicas).to_mermaid(&WriteConfig {
+                preview.dfir_for(&replicas).unwrap().to_mermaid(&WriteConfig {
                     no_subgraphs: true,
                     no_pull_push: true,
                     no_handoffs: true,

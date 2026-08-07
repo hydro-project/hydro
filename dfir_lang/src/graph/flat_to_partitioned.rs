@@ -507,21 +507,59 @@ fn mark_tick_boundary_handoffs(
     }
 }
 
+/// The error returned by [`partition_graph`] when partitioning fails.
+///
+/// This hands back the original **flat graph** alongside the diagnostic, so callers can visualize
+/// the graph to diagnose the cycle that prevented partitioning.
+pub struct PartitionError {
+    /// The pristine, un-partitioned flat graph (returned so it can still be rendered).
+    ///
+    /// Boxed because a [`DfirGraph`] is large (hundreds of bytes) and this keeps the
+    /// `Err` variant of [`partition_graph`]'s result small; the allocation only happens
+    /// on the (cold) failure path.
+    pub flat_graph: Box<DfirGraph>,
+    /// The diagnostic explaining why partitioning failed (names the offending cycle).
+    pub diagnostic: Diagnostic,
+}
+
+impl std::fmt::Display for PartitionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.diagnostic, f)
+    }
+}
+
+impl std::fmt::Debug for PartitionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(nameof::name_of_type!(PartitionError))
+            .field(nameof::name_of!(diagnostic in Self), &self.diagnostic)
+            .finish_non_exhaustive() // Hide the large `DfirGraph` debug output.
+    }
+}
+
 /// Main method for this module. Partitions a flat [`DfirGraph`] into one with subgraphs.
 ///
-/// Returns an error if an intra-tick cycle exists in the graph.
-pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
+/// Returns [`PartitionError`] if an intra-tick cycle exists in the graph. On error the
+/// original (pristine, un-partitioned) flat graph is handed back inside the error so it
+/// can still be rendered for debugging — see [`PartitionError`].
+pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, PartitionError> {
     let (mut tick_edges, edge_barrier_pairs) = find_edge_barriers(&flat_graph);
     let access_group_pairs = find_access_group_ordering(&flat_graph);
     let mut partitioned_graph = flat_graph;
 
-    // Partition into subgraphs and insert handoffs.
-    make_subgraphs(
+    // Partition into subgraphs and insert handoffs. The only recoverable failure is an
+    // intra-tick cycle, which is detected before `partitioned_graph` is mutated, so on
+    // error it is still the pristine flat graph and safe to hand back.
+    if let Err(diagnostic) = make_subgraphs(
         &mut partitioned_graph,
         &mut tick_edges,
         &edge_barrier_pairs,
         &access_group_pairs,
-    )?;
+    ) {
+        return Err(PartitionError {
+            flat_graph: Box::new(partitioned_graph),
+            diagnostic,
+        });
+    }
 
     // Mark tick-boundary handoffs for double-buffering.
     mark_tick_boundary_handoffs(&mut partitioned_graph, &tick_edges);
@@ -595,7 +633,6 @@ mod tests {
         let FlatGraphBuilderOutput { flat_graph, .. } =
             builder.build().expect("should build without errors");
         let partitioned = partition_graph(flat_graph).expect("should partition without errors");
-
         // Verify: every forward (non-delay) handoff has its producer subgraph *before* its
         // consumer subgraph in the final `subgraph_toposort`.
         let order = partitioned.subgraph_toposort();
@@ -756,5 +793,60 @@ mod tests {
 
         // After rearrangement within outer: A, B, C, D — inner loop (B, C) contiguous.
         assert_eq!(result, vec![sg_a, sg_b, sg_c, sg_d]);
+    }
+
+    /// Demonstrates the mechanism behind the proposed fix for the "meta-graph
+    /// catch-22": when a flat graph contains an intra-tick cycle, [`partition_graph`]
+    /// fails, but the *flat* graph is still fully renderable to mermaid. That flat
+    /// rendering (plus the diagnostic, which names the offending cycle) is exactly
+    /// what a user needs to diagnose why partitioning failed.
+    ///
+    /// This is why [`partition_graph`] returns [`PartitionError`] (carrying the flat
+    /// graph) rather than discarding its input on failure: callers such as
+    /// `hydro_lang`'s `preview_compile` can then hand back a renderable meta graph to
+    /// debug the very error that prevents compilation. This test locks in that property.
+    #[test]
+    fn flat_mermaid_available_when_partition_fails() {
+        use crate::graph::{FlatGraphBuilder, FlatGraphBuilderOutput};
+
+        // An intra-tick cycle: `my_union` feeds a `map` that feeds back into
+        // `my_union` with no `defer_tick()` to break the cycle across ticks.
+        let mut builder = FlatGraphBuilder::new();
+        builder.add_dfir(
+            syn::parse_quote! {
+                source_iter(0..5) -> my_union;
+                my_union = union() -> map(|x| x + 1) -> my_union;
+            },
+            None,
+            None,
+        );
+
+        let FlatGraphBuilderOutput { flat_graph, .. } = builder
+            .build()
+            .expect("flat graph should build successfully");
+
+        // 1. The flat graph renders to mermaid just fine — the cyclic operators
+        //    (`union` and `map`) that make up the offending cycle are visible, so a
+        //    user could actually diagnose the problem from this rendering.
+        let flat_mermaid = flat_graph.mermaid_string_flat();
+        assert!(flat_mermaid.contains("flowchart"));
+        assert!(flat_mermaid.contains("union"));
+        assert!(flat_mermaid.contains("map"));
+
+        // 2. Partitioning fails, but hands back the pristine flat graph *and* a
+        //    diagnostic that names the cycle. Both pieces are exactly what a user
+        //    needs to debug the failure — and neither is discarded.
+        let err = partition_graph(flat_graph).expect_err("partitioning should fail on a cycle");
+        assert!(
+            format!("{}", err.diagnostic).contains("Cyclical dataflow within a tick"),
+            "unexpected diagnostic: {}",
+            err.diagnostic
+        );
+
+        // The returned flat graph is still fully renderable (this is the property the
+        // `hydro_lang` catch-22 fix relies on).
+        let recovered_mermaid = err.flat_graph.mermaid_string_flat();
+        assert!(recovered_mermaid.contains("union"));
+        assert!(recovered_mermaid.contains("map"));
     }
 }

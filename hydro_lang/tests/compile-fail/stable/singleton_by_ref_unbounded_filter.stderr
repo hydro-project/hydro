@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> tests/compile-fail/stable/singleton_by_ref_unbounded_filter.rs:18:30
+   |
+18 |     let _ = unbounded.filter(q!(|&x| x > *threshold_ref));
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                              |
+   |                              expected `hydro_lang::prelude::Bounded`, found `hydro_lang::prelude::Unbounded`
+   |                              arguments to this function are incorrect
+   |
+   = note: expected reference `&OperatorContext<hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Bounded>`
+              found reference `&OperatorContext<hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Unbounded>`
+note: method defined here
+  --> $CARGO/stageleft-$VERSION/src/runtime_support.rs
+   |
+   |     fn uninitialized(
+   |        ^^^^^^^^^^^^^
+   = note: this error originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> tests/compile-fail/stable/singleton_by_ref_unbounded_filter.rs:18:30
+   |
+18 |     let _ = unbounded.filter(q!(|&x| x > *threshold_ref));
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                              |
+   |                              expected `hydro_lang::prelude::Bounded`, found `hydro_lang::prelude::Unbounded`
+   |                              arguments to this function are incorrect
+   |
+   = note: expected reference `&OperatorContext<hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Bounded>`
+              found reference `&OperatorContext<hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Unbounded>`
+note: method defined here
+  --> $CARGO/stageleft-$VERSION/src/runtime_support.rs
+   |
+   |     fn to_tokens(self, ctx: &Ctx) -> QuoteTokens
+   |        ^^^^^^^^^
+   = note: this error originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)

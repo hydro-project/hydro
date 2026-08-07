@@ -1,5 +1,4 @@
 use std::any::Any;
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -77,8 +76,7 @@ impl GcpNetwork {
                 .terraform
                 .resource
                 .get("google_compute_network")
-                .unwrap_or(&HashMap::new())
-                .contains_key(existing)
+                .is_some_and(|nw| nw.contains_key(existing))
             {
                 format!("google_compute_network.{existing}")
             } else {
@@ -185,7 +183,7 @@ impl Debug for GcpComputeEngineHost {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "GcpComputeEngineHost({} ({:?}))",
-            self.id, &self.display_name
+            self.id, self.display_name
         ))
     }
 }
@@ -357,15 +355,16 @@ impl Host for GcpComputeEngineHost {
             }));
 
             // open the external ports that were requested
-            let my_external_tags = external_ports.iter().map(|port| {
-                let rule_id = nanoid!(8, &TERRAFORM_ALPHABET);
-                let firewall_rule = resource_batch
+            let my_external_tags =
+                external_ports.iter().map(|port| {
+                    let rule_id = nanoid!(8, &TERRAFORM_ALPHABET);
+                    let firewall_rule = resource_batch
                     .terraform
                     .resource
                     .entry("google_compute_firewall".to_owned())
                     .or_default()
                     .entry(format!("open-external-port-{}", port))
-                    .or_insert(json!({
+                    .or_insert_with(|| json!({
                         "name": format!("open-external-port-{}-{}", port, rule_id),
                         "project": project,
                         "network": format!("${{{vpc_path}.name}}"),
@@ -379,8 +378,8 @@ impl Host for GcpComputeEngineHost {
                         ]
                     }));
 
-                firewall_rule["target_tags"].as_array().unwrap()[0].clone()
-            });
+                    firewall_rule["target_tags"].as_array().unwrap()[0].clone()
+                });
 
             tags.extend(my_external_tags);
 
@@ -460,7 +459,11 @@ impl Host for GcpComputeEngineHost {
 
                 Arc::new(LaunchedComputeEngine {
                     resource_result: resource_result.clone(),
-                    user: self.user.as_ref().cloned().unwrap_or("hydro".to_owned()),
+                    user: self
+                        .user
+                        .as_ref()
+                        .cloned()
+                        .unwrap_or_else(|| "hydro".to_owned()),
                     internal_ip,
                     external_ip,
                 })

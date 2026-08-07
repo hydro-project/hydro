@@ -82,7 +82,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
         let generic_type = type_args
             .first()
             .map(quote::ToTokens::to_token_stream)
-            .unwrap_or(quote_spanned!(op_span=> _));
+            .unwrap_or_else(|| quote_spanned!(op_span=> _));
 
         let persistdata_ident = wc.make_ident("persistdata");
         let vec_ident = wc.make_ident("persistvec");

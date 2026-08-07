@@ -74,7 +74,7 @@ mod tests {
             hydro_build_utils::insta::with_settings!({
                 snapshot_suffix => format!("surface_graph_{location_key}"),
             }, {
-                hydro_build_utils::assert_snapshot!(ir.surface_syntax_string());
+                hydro_build_utils::assert_snapshot!(ir.as_ref().unwrap().surface_syntax_string());
             });
         }
     }

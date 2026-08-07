@@ -146,7 +146,9 @@ async fn main() {
         ""
     };
     let create_trybuild_host = |host: Arc<dyn Host + 'static>, name: &str, i: usize| {
-        let mut tbh = TrybuildHost::new(host).rustflags(rustflags);
+        let mut tbh = TrybuildHost::new(host)
+            .rustflags(rustflags)
+            .feature("tokio");
         // Pin to core 0 on remote machines
         if args.gcp.is_some() || args.aws {
             tbh = tbh.pin_to_core(0);
