@@ -914,15 +914,16 @@ where
             proof.register_proof(&expr);
             expr.into()
         });
-        let shared = SharedNode(Rc::new(RefCell::new(
-            self.ir_node.replace(HydroNode::Placeholder),
-        )));
+        let shared = Rc::new(RefCell::new(HydroNode::PartitionShared {
+            input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+            f,
+            metadata: self.location.new_node_metadata(Self::collection_kind()),
+        }));
 
         let true_stream = Stream::new(
             self.location.clone(),
-            HydroNode::Partition {
-                inner: SharedNode(shared.0.clone()),
-                f: f.clone(),
+            HydroNode::PartitionSide {
+                inner: SharedNode(Rc::clone(&shared)),
                 is_true: true,
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
             },
@@ -930,9 +931,8 @@ where
 
         let false_stream = Stream::new(
             self.location.clone(),
-            HydroNode::Partition {
-                inner: SharedNode(shared.0),
-                f,
+            HydroNode::PartitionSide {
+                inner: SharedNode(shared),
                 is_true: false,
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
             },

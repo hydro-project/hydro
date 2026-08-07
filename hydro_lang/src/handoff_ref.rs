@@ -799,7 +799,7 @@ mod tests {
                 | HydroNode::Reduce { f, .. }
                 | HydroNode::ReduceKeyed { f, .. }
                 | HydroNode::ReduceKeyedWatermark { f, .. }
-                | HydroNode::Partition { f, .. } => vec![f],
+                | HydroNode::PartitionShared { f, .. } => vec![f],
                 HydroNode::Fold { init, acc, .. }
                 | HydroNode::FoldKeyed { init, acc, .. }
                 | HydroNode::Scan { init, acc, .. }
@@ -833,7 +833,7 @@ mod tests {
             let shared_inner = match node {
                 HydroNode::Tee { inner, .. }
                 | HydroNode::Reference { inner, .. }
-                | HydroNode::Partition { inner, .. } => Some(inner),
+                | HydroNode::PartitionSide { inner, .. } => Some(inner),
                 _ => None,
             };
             if let Some(inner) = shared_inner

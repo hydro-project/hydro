@@ -2700,10 +2700,17 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
-    Partition {
+    /// An output side of the partition operator.
+    PartitionSide {
         inner: SharedNode,
-        f: ClosureExpr,
         is_true: bool,
+        metadata: HydroIrMetadata,
+    },
+
+    /// The inner input of partitioning, shared between two `PartitionSide`.
+    PartitionShared {
+        input: Box<HydroNode>,
+        f: ClosureExpr,
         metadata: HydroIrMetadata,
     },
 
@@ -3043,18 +3050,21 @@ impl HydroNode {
                 }
             }
 
-            HydroNode::Partition { inner, f, .. } => {
+            HydroNode::PartitionSide { inner, .. } => {
                 if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
                     *inner = SharedNode(transformed.clone());
                 } else {
-                    f.transform_children(&mut transform, seen_tees);
                     let transformed_cell = Rc::new(RefCell::new(HydroNode::Placeholder));
                     seen_tees.insert(inner.as_ptr(), transformed_cell.clone());
-                    let mut orig = inner.0.replace(HydroNode::Placeholder);
+                    let mut orig: HydroNode = inner.0.replace(HydroNode::Placeholder);
                     transform(&mut orig, seen_tees);
                     *transformed_cell.borrow_mut() = orig;
                     *inner = SharedNode(transformed_cell);
                 }
+            }
+            HydroNode::PartitionShared { input, f, .. } => {
+                f.transform_children(&mut transform, seen_tees);
+                transform(input.as_mut(), seen_tees);
             }
 
             HydroNode::Cast { inner, .. }
@@ -3247,16 +3257,14 @@ impl HydroNode {
                     }
                 }
             }
-            HydroNode::Partition {
+            HydroNode::PartitionSide {
                 inner,
-                f,
                 is_true,
                 metadata,
             } => {
                 if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
-                    HydroNode::Partition {
+                    HydroNode::PartitionSide {
                         inner: SharedNode(transformed.clone()),
-                        f: f.deep_clone(seen_tees),
                         is_true: *is_true,
                         metadata: metadata.clone(),
                     }
@@ -3265,14 +3273,18 @@ impl HydroNode {
                     seen_tees.insert(inner.as_ptr(), new_rc.clone());
                     let cloned = inner.0.borrow().deep_clone(seen_tees);
                     *new_rc.borrow_mut() = cloned;
-                    HydroNode::Partition {
+                    HydroNode::PartitionSide {
                         inner: SharedNode(new_rc),
-                        f: f.deep_clone(seen_tees),
                         is_true: *is_true,
                         metadata: metadata.clone(),
                     }
                 }
             }
+            HydroNode::PartitionShared { input, f, metadata } => HydroNode::PartitionShared {
+                input: Box::new(input.deep_clone(seen_tees)),
+                f: f.deep_clone(seen_tees),
+                metadata: metadata.clone(),
+            },
             HydroNode::YieldConcat { inner, metadata } => HydroNode::YieldConcat {
                 inner: Box::new(inner.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
@@ -4088,8 +4100,8 @@ impl HydroNode {
                         ident_stack.push(ret_ident);
                     }
 
-                    HydroNode::Partition {
-                        inner, f, is_true, metadata,
+                    HydroNode::PartitionSide {
+                        inner, is_true, metadata: _,
                     } => {
                         let is_true = *is_true; // need to copy early to avoid borrow checking issues with node
                         let ptr = std::ptr::from_ref(inner.0.as_ref());
@@ -4106,26 +4118,10 @@ impl HydroNode {
                             let idx = if is_true { 0 } else { 1 };
                             built_idents[idx].clone()
                         } else {
-                            // The inner node was already processed by transform_bottom_up,
+                            // The `PartitionShared`` node was already processed by transform_bottom_up,
                             // so its ident is on the stack
-                            let inner_ident = ident_stack.pop().unwrap();
-                            let f_tokens = f.emit_tokens(&mut ident_stack);
+                            let partition_ident = ident_stack.pop().unwrap();
 
-                            let inner_ident = {
-                                let inner_borrow = inner.0.borrow();
-                                maybe_observe_for_mut(
-                                    f, inner_ident,
-                                    &inner_borrow.metadata().location_id,
-                                    &inner_borrow.metadata().collection_kind,
-                                    &metadata.op,
-                                    builders_or_callback, next_stmt_id,
-                                )
-                            };
-
-                            let partition_ident = syn::Ident::new(
-                                &format!("stream_{}_partition", stmt_id),
-                                Span::call_site(),
-                            );
                             let true_ident = syn::Ident::new(
                                 &format!("stream_{}_true", stmt_id),
                                 Span::call_site(),
@@ -4146,7 +4142,6 @@ impl HydroNode {
                                     graph_builders.add_dfir_at(
                                         &out_location,
                                         parse_quote! {
-                                            #partition_ident = #inner_ident -> partition(|__item, __num_outputs| if (#f_tokens)(__item) { 0_usize } else { 1_usize });
                                             #true_ident = #partition_ident[0];
                                             #false_ident = #partition_ident[1];
                                         },
@@ -4162,6 +4157,45 @@ impl HydroNode {
                         };
 
                         ident_stack.push(ret_ident);
+                    }
+
+                    HydroNode::PartitionShared { input, f, metadata } => {
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
+
+                        let inner_ident = ident_stack.pop().unwrap();
+
+                        let inner_ident = {
+                            maybe_observe_for_mut(
+                                f, inner_ident,
+                                &input.metadata().location_id,
+                                &input.metadata().collection_kind,
+                                &metadata.op,
+                                builders_or_callback, next_stmt_id,
+                            )
+                        };
+
+                        let stmt_id = next_stmt_id.get_and_increment();
+                        let partition_ident = syn::Ident::new(
+                            &format!("stream_{}_partition", stmt_id),
+                            Span::call_site(),
+                        );
+
+                        let stmt_id = next_stmt_id.get_and_increment();
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                graph_builders.add_dfir_at(
+                                    &out_location,
+                                    parse_quote! {
+                                        #partition_ident = #inner_ident -> partition(|__item, __num_outputs| if (#f_tokens)(__item) { 0_usize } else { 1_usize });
+                                    },
+                                    Some(&stmt_id.to_string()),
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+                        ident_stack.push(partition_ident);
                     }
 
                     HydroNode::Chain { .. } => {
@@ -5525,6 +5559,7 @@ impl HydroNode {
             | HydroNode::Enumerate { .. }
             | HydroNode::Unique { .. }
             | HydroNode::Sort { .. }
+            | HydroNode::PartitionSide { .. }
             | HydroNode::VersionedNetworkFork { .. }
             | HydroNode::VersionedNetwork { .. } => {}
             HydroNode::Map { f, .. }
@@ -5533,7 +5568,7 @@ impl HydroNode {
             | HydroNode::Filter { f, .. }
             | HydroNode::FilterMap { f, .. }
             | HydroNode::Inspect { f, .. }
-            | HydroNode::Partition { f, .. }
+            | HydroNode::PartitionShared { f, .. }
             | HydroNode::Reduce { f, .. }
             | HydroNode::ReduceKeyed { f, .. }
             | HydroNode::ReduceKeyedWatermark { f, .. } => {
@@ -5595,7 +5630,8 @@ impl HydroNode {
             | HydroNode::CycleSource { metadata, .. }
             | HydroNode::Tee { metadata, .. }
             | HydroNode::Reference { metadata, .. }
-            | HydroNode::Partition { metadata, .. }
+            | HydroNode::PartitionSide { metadata, .. }
+            | HydroNode::PartitionShared { metadata, .. }
             | HydroNode::YieldConcat { metadata, .. }
             | HydroNode::BeginAtomic { metadata, .. }
             | HydroNode::EndAtomic { metadata, .. }
@@ -5655,7 +5691,8 @@ impl HydroNode {
             | HydroNode::CycleSource { metadata, .. }
             | HydroNode::Tee { metadata, .. }
             | HydroNode::Reference { metadata, .. }
-            | HydroNode::Partition { metadata, .. }
+            | HydroNode::PartitionSide { metadata, .. }
+            | HydroNode::PartitionShared { metadata, .. }
             | HydroNode::YieldConcat { metadata, .. }
             | HydroNode::BeginAtomic { metadata, .. }
             | HydroNode::EndAtomic { metadata, .. }
@@ -5706,7 +5743,8 @@ impl HydroNode {
             | HydroNode::CycleSource { .. }
             | HydroNode::Tee { .. }
             | HydroNode::Reference { .. }
-            | HydroNode::Partition { .. }
+            | HydroNode::PartitionSide { .. }
+            | HydroNode::PartitionShared { .. }
             | HydroNode::VersionedNetwork { .. } => {
                 // Tee/Partition/VersionedNetwork find their input in separate special ways
                 vec![]
@@ -5786,7 +5824,7 @@ impl HydroNode {
     /// by another consumer and does not need a Null sink.
     pub fn is_shared_with_others(&self) -> bool {
         match self {
-            HydroNode::Tee { inner, .. } | HydroNode::Partition { inner, .. } => {
+            HydroNode::Tee { inner, .. } | HydroNode::PartitionSide { inner, .. } => {
                 Rc::strong_count(&inner.0) > 1
             }
             // A zero-output reference node is valid in DFIR (it drains itself at
@@ -5821,9 +5859,14 @@ impl HydroNode {
             HydroNode::Reference { inner, kind, .. } => {
                 format!("Reference({:?}, {})", kind, inner.0.borrow().print_root())
             }
-            HydroNode::Partition { f, is_true, .. } => {
-                format!("Partition({:?}, is_true={})", f, is_true)
+            HydroNode::PartitionSide { inner, is_true, .. } => {
+                format!(
+                    "PartitionSide(is_true={}, {})",
+                    is_true,
+                    inner.0.borrow().print_root(),
+                )
             }
+            HydroNode::PartitionShared { f, .. } => format!("PartitionShared({:?})", f),
             HydroNode::YieldConcat { .. } => "YieldConcat()".to_owned(),
             HydroNode::BeginAtomic { .. } => "BeginAtomic()".to_owned(),
             HydroNode::EndAtomic { .. } => "EndAtomic()".to_owned(),
