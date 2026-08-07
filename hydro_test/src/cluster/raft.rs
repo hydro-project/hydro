@@ -2643,7 +2643,7 @@ mod tests {
             snapshot_suffix => "replica_mermaid"
         }, {
             hydro_build_utils::assert_snapshot!(
-                preview.dfir_for(&replicas).to_mermaid(&WriteConfig {
+                preview.dfir_for(&replicas).unwrap().to_mermaid(&WriteConfig {
                     no_subgraphs: true,
                     no_pull_push: true,
                     no_handoffs: true,

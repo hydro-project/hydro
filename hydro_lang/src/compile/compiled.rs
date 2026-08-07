@@ -1,4 +1,4 @@
-use dfir_lang::graph::DfirGraph;
+use dfir_lang::graph::{DfirGraph, PartitionError};
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::Stmt;
 
@@ -7,7 +7,12 @@ use crate::staging_util::Invariant;
 
 pub struct CompiledFlow<'a> {
     /// The DFIR graph for each location.
-    pub(super) dfir: SecondaryMap<LocationKey, DfirGraph>,
+    ///
+    /// Each entry is `Ok(partitioned_graph)` on success, or `Err(PartitionError)` if
+    /// partitioning failed (e.g. an intra-tick cycle). The error still carries the
+    /// renderable flat graph and the diagnostic, so a failed location can be visualized
+    /// and diagnosed rather than aborting the whole compile.
+    pub(super) dfir: SecondaryMap<LocationKey, Result<DfirGraph, PartitionError>>,
 
     /// Extra statements to be added above the DFIR graph code, for each location.
     pub(super) extra_stmts: SparseSecondaryMap<LocationKey, Vec<Stmt>>,
@@ -19,11 +24,28 @@ pub struct CompiledFlow<'a> {
 }
 
 impl<'a> CompiledFlow<'a> {
-    pub fn dfir_for(&self, location: &impl Location<'a>) -> &DfirGraph {
-        self.dfir.get(Location::id(location).key()).unwrap()
+    /// Returns the DFIR graph for the given location.
+    ///
+    /// - `Ok(&partitioned_graph)` if partitioning succeeded.
+    /// - `Err(&PartitionError)` if partitioning failed. The error still exposes the
+    ///   (renderable) flat graph via [`PartitionError::flat_graph`] and the reason via
+    ///   [`PartitionError::diagnostic`], so the graph can be visualized to diagnose the
+    ///   failure — e.g.
+    ///   ```ignore
+    ///   let mermaid = match compiled.dfir_for(&process) {
+    ///       Ok(graph) => graph.to_mermaid(&Default::default()),
+    ///       Err(err) => err.flat_graph.to_mermaid(&Default::default()),
+    ///   };
+    ///   ```
+    pub fn dfir_for(&self, location: &impl Location<'a>) -> Result<&DfirGraph, &PartitionError> {
+        self.dfir
+            .get(Location::id(location).key())
+            .unwrap()
+            .as_ref()
     }
 
-    pub fn all_dfir(&self) -> &SecondaryMap<LocationKey, DfirGraph> {
+    /// Returns the DFIR graph (or [`PartitionError`]) for every location.
+    pub fn all_dfir(&self) -> &SecondaryMap<LocationKey, Result<DfirGraph, PartitionError>> {
         &self.dfir
     }
 }

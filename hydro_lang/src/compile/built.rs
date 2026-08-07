@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use dfir_lang::graph::{
-    DfirGraph, FlatGraphBuilderOutput, eliminate_extra_unions_tees, partition_graph,
+    DfirGraph, FlatGraphBuilderOutput, PartitionError, eliminate_extra_unions_tees, partition_graph,
 };
 use slotmap::{SecondaryMap, SlotMap};
 
@@ -42,16 +42,26 @@ pub struct BuiltFlow<'a> {
     pub(super) _phantom: Invariant<'a>,
 }
 
-pub(crate) fn build_inner(ir: &mut Vec<HydroRoot>) -> SecondaryMap<LocationKey, DfirGraph> {
+/// Builds the DFIR graph for each location.
+///
+/// Each location's graph is partitioned into subgraphs. Partitioning can fail (e.g. an
+/// intra-tick cycle), so the result is stored per-location as a [`Result`]:
+/// - `Ok(partitioned_graph)` on success.
+/// - `Err(PartitionError)` on failure, which still carries the (renderable) flat graph
+///   plus the diagnostic. This lets callers such as [`preview_compile`] obtain a meta
+///   graph to *diagnose* the failure instead of panicking with the information discarded.
+///
+/// [`preview_compile`]: super::deploy::DeployFlow::preview_compile
+pub(crate) fn build_inner(
+    ir: &mut Vec<HydroRoot>,
+) -> SecondaryMap<LocationKey, Result<DfirGraph, PartitionError>> {
     emit(ir)
         .into_iter()
         .map(|(k, v)| {
             let FlatGraphBuilderOutput { mut flat_graph, .. } =
                 v.build().expect("Failed to build DFIR flat graph.");
             eliminate_extra_unions_tees(&mut flat_graph);
-            let partitioned_graph =
-                partition_graph(flat_graph).expect("Failed to partition (cycle detected).");
-            (k, partitioned_graph)
+            (k, partition_graph(flat_graph))
         })
         .collect()
 }

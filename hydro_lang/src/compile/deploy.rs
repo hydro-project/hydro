@@ -400,6 +400,9 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                 .into_iter()
                 .filter(|&(node_key, ref node)| {
                     if let Some(ir) = compiled.remove(node_key) {
+                        let ir = ir.unwrap_or_else(|err| {
+                            panic!("Failed to partition DFIR graph: {}", err.diagnostic)
+                        });
                         node.instantiate(
                             env,
                             &mut meta,
@@ -417,6 +420,9 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                 .into_iter()
                 .filter(|&(cluster_key, ref cluster)| {
                     if let Some(ir) = compiled.remove(cluster_key) {
+                        let ir = ir.unwrap_or_else(|err| {
+                            panic!("Failed to partition DFIR graph: {}", err.diagnostic)
+                        });
                         cluster.instantiate(
                             env,
                             &mut meta,
