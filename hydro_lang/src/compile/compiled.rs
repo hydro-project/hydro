@@ -32,10 +32,10 @@ impl<'a> CompiledFlow<'a> {
     ///   [`PartitionError::diagnostic`], so the graph can be visualized to diagnose the
     ///   failure — e.g.
     ///   ```ignore
-    ///   let mermaid = match compiled.dfir_for(&process) {
-    ///       Ok(graph) => graph.to_mermaid(&Default::default()),
-    ///       Err(err) => err.flat_graph.to_mermaid(&Default::default()),
-    ///   };
+///   let mermaid = match compiled.dfir_for(&process) {
+///       Ok(graph) => graph.to_mermaid(&Default::default()),
+///       Err(err) => err.flat_graph.mermaid_string_flat(),
+///   };
     ///   ```
     pub fn dfir_for(&self, location: &impl Location<'a>) -> Result<&DfirGraph, &PartitionError> {
         self.dfir
