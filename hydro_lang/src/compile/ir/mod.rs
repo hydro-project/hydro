@@ -1592,6 +1592,7 @@ impl HydroRoot {
     pub fn emit_core(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<
+            '_,
             impl FnMut(&mut HydroRoot, &mut crate::Counter<StmtId>),
             impl FnMut(&mut HydroNode, &mut crate::Counter<StmtId>),
         >,
@@ -2958,6 +2959,7 @@ fn maybe_observe_for_mut(
     in_kind: &CollectionKind,
     op_meta: &HydroIrOpMetadata,
     builders_or_callback: &mut BuildersOrCallback<
+        '_,
         impl FnMut(&mut HydroRoot, &mut crate::Counter<StmtId>),
         impl FnMut(&mut HydroNode, &mut crate::Counter<StmtId>),
     >,
@@ -3587,6 +3589,7 @@ impl HydroNode {
     pub fn emit_core(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<
+            '_,
             impl FnMut(&mut HydroRoot, &mut crate::Counter<StmtId>),
             impl FnMut(&mut HydroNode, &mut crate::Counter<StmtId>),
         >,

@@ -247,7 +247,7 @@ impl<C> IsCluster for Cluster<'_, C> {
 
 /// A free variable representing the cluster's own ID. When spliced in
 /// a quoted snippet that will run on a cluster, this turns into a [`MemberId`].
-pub static CLUSTER_SELF_ID: ClusterSelfId = ClusterSelfId { _private: &() };
+pub static CLUSTER_SELF_ID: ClusterSelfId<'static> = ClusterSelfId { _private: &() };
 
 /// The concrete type behind [`CLUSTER_SELF_ID`].
 ///

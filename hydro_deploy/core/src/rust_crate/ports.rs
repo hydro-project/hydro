@@ -399,7 +399,7 @@ pub enum ServerConfig {
 
 impl ServerConfig {
     pub fn from_strategy(
-        strategy: &ClientStrategy,
+        strategy: &ClientStrategy<'_>,
         server: Arc<dyn RustCrateServer>,
     ) -> ServerConfig {
         match strategy {

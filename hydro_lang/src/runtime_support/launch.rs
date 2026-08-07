@@ -105,7 +105,7 @@ pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T
     std::io::stdin().read_line(&mut input).unwrap();
     let trimmed = input.trim();
 
-    let bind_config = serde_json::from_str::<InitConfig>(trimmed).unwrap();
+    let bind_config = serde_json::from_str::<InitConfig<'_>>(trimmed).unwrap();
 
     // config telling other services how to connect to me
     let mut bind_results: HashMap<String, ServerPort> = HashMap::new();

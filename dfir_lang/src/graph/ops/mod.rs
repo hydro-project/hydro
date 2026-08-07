@@ -151,7 +151,7 @@ pub fn identity_write_iterator_fn(
                 ..
             },
         ..
-    }: &WriteContextArgs,
+    }: &WriteContextArgs<'_>,
 ) -> TokenStream {
     let generic_type = type_args
         .first()
@@ -212,7 +212,7 @@ pub fn null_write_iterator_fn(
                 ..
             },
         ..
-    }: &WriteContextArgs,
+    }: &WriteContextArgs<'_>,
 ) -> TokenStream {
     let default_type = parse_quote_spanned! {op_span=> _};
     let iter_type = type_args.first().unwrap_or(&default_type);

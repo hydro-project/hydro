@@ -960,7 +960,7 @@ impl HydroNode {
         }
 
         // Single-input transform with no expressions
-        fn build_simple_transform(params: TransformParams) -> VizNodeKey {
+        fn build_simple_transform(params: TransformParams<'_>) -> VizNodeKey {
             let input_id = params.input.build_graph_structure(
                 params.structure,
                 params.seen_tees,
@@ -987,7 +987,10 @@ impl HydroNode {
         }
 
         // Single-input transform with one expression
-        fn build_single_expr_transform(params: TransformParams, expr: &DebugExpr) -> VizNodeKey {
+        fn build_single_expr_transform(
+            params: TransformParams<'_>,
+            expr: &DebugExpr,
+        ) -> VizNodeKey {
             let input_id = params.input.build_graph_structure(
                 params.structure,
                 params.seen_tees,
@@ -1015,7 +1018,7 @@ impl HydroNode {
 
         // Single-input transform with two expressions
         fn build_dual_expr_transform(
-            params: TransformParams,
+            params: TransformParams<'_>,
             expr1: &DebugExpr,
             expr2: &DebugExpr,
         ) -> VizNodeKey {
@@ -1792,19 +1795,23 @@ macro_rules! write_hydro_ir {
 render_hydro_ir!(render_hydro_ir_mermaid, write_hydro_ir_mermaid);
 write_hydro_ir!(
     write_hydro_ir_mermaid,
-    HydroMermaid<_>,
+    HydroMermaid<'_, _>,
     HydroMermaid::new_with_config
 );
 
 render_hydro_ir!(render_hydro_ir_dot, write_hydro_ir_dot);
-write_hydro_ir!(write_hydro_ir_dot, HydroDot<_>, HydroDot::new_with_config);
+write_hydro_ir!(
+    write_hydro_ir_dot,
+    HydroDot<'_, _>,
+    HydroDot::new_with_config
+);
 
 // Legacy hydroscope function - now uses HydroJson for consistency
 render_hydro_ir!(render_hydro_ir_hydroscope, write_hydro_ir_json);
 
 // JSON rendering
 render_hydro_ir!(render_hydro_ir_json, write_hydro_ir_json);
-write_hydro_ir!(write_hydro_ir_json, HydroJson<_>, HydroJson::new);
+write_hydro_ir!(write_hydro_ir_json, HydroJson<'_, _>, HydroJson::new);
 
 fn write_hydro_ir_graph<W>(
     graph_write: W,

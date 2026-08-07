@@ -557,7 +557,7 @@ pub trait Location<'a>: DynLocation {
     #[cfg(feature = "tokio")]
     fn source_external_bytes<L>(
         &self,
-        from: &External<L>,
+        from: &External<'_, L>,
     ) -> (
         ExternalBytesPort,
         Stream<BytesMut, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>,
@@ -582,7 +582,7 @@ pub trait Location<'a>: DynLocation {
     #[cfg(feature = "tokio")]
     fn source_external_bincode<L, T, O: Ordering, R: Retries>(
         &self,
-        from: &External<L>,
+        from: &External<'_, L>,
     ) -> (
         ExternalBincodeSink<T, NotMany, O, R>,
         Stream<T, Self::DropConsistency, Unbounded, O, R>,
@@ -733,7 +733,7 @@ pub trait Location<'a>: DynLocation {
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bind_single_client<L, T, Codec: Encoder<T> + Decoder>(
         &self,
-        from: &External<L>,
+        from: &External<'_, L>,
         port_hint: NetworkHint,
     ) -> (
         ExternalBytesPort<NotMany>,
@@ -818,7 +818,7 @@ pub trait Location<'a>: DynLocation {
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bind_single_client_bincode<L, InT: DeserializeOwned, OutT: Serialize>(
         &self,
-        from: &External<L>,
+        from: &External<'_, L>,
     ) -> (
         ExternalBincodeBidi<InT, OutT, NotMany>,
         Stream<InT, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>,
@@ -917,7 +917,7 @@ pub trait Location<'a>: DynLocation {
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bidi_external_many_bytes<L, T, Codec: Encoder<T> + Decoder>(
         &self,
-        from: &External<L>,
+        from: &External<'_, L>,
         port_hint: NetworkHint,
     ) -> (
         ExternalBytesPort<Many>,
@@ -1068,7 +1068,7 @@ pub trait Location<'a>: DynLocation {
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bidi_external_many_bincode<L, InT: DeserializeOwned, OutT: Serialize>(
         &self,
-        from: &External<L>,
+        from: &External<'_, L>,
     ) -> (
         ExternalBincodeBidi<InT, OutT, Many>,
         KeyedStream<u64, InT, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>,

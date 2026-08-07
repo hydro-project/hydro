@@ -343,7 +343,7 @@ impl<'a> FlowBuilder<'a> {
 
     pub fn with_process<P, D: Deploy<'a>>(
         self,
-        process: &Process<P>,
+        process: &Process<'_, P>,
         spec: impl IntoProcessSpec<'a, D>,
     ) -> DeployFlow<'a, D> {
         self.with_default_optimize().with_process(process, spec)
@@ -358,7 +358,7 @@ impl<'a> FlowBuilder<'a> {
 
     pub fn with_external<P, D: Deploy<'a>>(
         self,
-        process: &External<P>,
+        process: &External<'_, P>,
         spec: impl ExternalSpec<'a, D>,
     ) -> DeployFlow<'a, D> {
         self.with_default_optimize().with_external(process, spec)
@@ -373,7 +373,7 @@ impl<'a> FlowBuilder<'a> {
 
     pub fn with_cluster<C, D: Deploy<'a>>(
         self,
-        cluster: &Cluster<C>,
+        cluster: &Cluster<'_, C>,
         spec: impl ClusterSpec<'a, D>,
     ) -> DeployFlow<'a, D> {
         self.with_default_optimize().with_cluster(cluster, spec)
@@ -401,7 +401,7 @@ impl<'a> FlowBuilder<'a> {
         self.finalize().sim()
     }
 
-    pub fn from_built<'b>(built: &super::built::BuiltFlow) -> FlowBuilder<'b> {
+    pub fn from_built<'b>(built: &super::built::BuiltFlow<'_>) -> FlowBuilder<'b> {
         FlowBuilder {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
                 roots: None,

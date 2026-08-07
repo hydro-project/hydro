@@ -450,7 +450,10 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # });
     /// # }
     /// ```
-    pub fn send_bincode_external<L2>(self, other: &External<L2>) -> ExternalBincodeStream<T, O, R>
+    pub fn send_bincode_external<L2>(
+        self,
+        other: &External<'_, L2>,
+    ) -> ExternalBincodeStream<T, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -1303,7 +1306,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
 
     #[cfg(feature = "sim")]
     /// Sends elements of this cluster stream to an external location using bincode serialization.
-    fn send_bincode_external<L2>(self, other: &External<L2>) -> ExternalBincodeStream<T, O, R>
+    fn send_bincode_external<L2>(self, other: &External<'_, L2>) -> ExternalBincodeStream<T, O, R>
     where
         T: Serialize + DeserializeOwned,
     {

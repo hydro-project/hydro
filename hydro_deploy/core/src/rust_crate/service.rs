@@ -230,7 +230,7 @@ impl Service for RustCrateService {
                             })
                             .collect::<HashMap<_, _>>();
 
-                        let formatted_bind_config = serde_json::to_string::<InitConfig>(&(
+                        let formatted_bind_config = serde_json::to_string::<InitConfig<'_>>(&(
                             bind_config,
                             self.meta.get().map(|s| s.as_str().into()),
                         ))

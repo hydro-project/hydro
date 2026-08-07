@@ -67,7 +67,7 @@ impl<'de, const SIZE: usize> DeserializeSeed<'de> for KvsRequestDeserializer<SIZ
         impl<'de, const SIZE: usize> Visitor<'de> for KvsRequestVisitor<SIZE> {
             type Value = KvsRequest<SIZE>;
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 formatter.write_str("KvsRequest enum")
             }
 
@@ -119,7 +119,7 @@ struct KvsRequestFieldVisitor;
 impl Visitor<'_> for KvsRequestFieldVisitor {
     type Value = KvsRequestField;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str("field identifier")
     }
 

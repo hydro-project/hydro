@@ -30,7 +30,7 @@ impl<'de, const SIZE: usize> DeserializeSeed<'de> for AutoReturnBufferDeserializ
         impl<'de, const SIZE: usize> Visitor<'de> for BytesVisitor<SIZE> {
             type Value = [u8; SIZE];
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 formatter.write_str(std::any::type_name::<Self::Value>())
             }
 

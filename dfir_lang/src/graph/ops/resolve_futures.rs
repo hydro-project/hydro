@@ -41,7 +41,7 @@ pub fn resolve_futures_writer(
         outputs,
         is_pull,
         ..
-    }: &WriteContextArgs,
+    }: &WriteContextArgs<'_>,
 ) -> Result<OperatorWriteOutput, ()> {
     let futures_ident = wc.make_ident("futures");
 

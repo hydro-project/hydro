@@ -61,7 +61,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
     pub fn with_process<P>(
         mut self,
-        process: &Process<P>,
+        process: &Process<'_, P>,
         spec: impl IntoProcessSpec<'a, D>,
     ) -> Self {
         self.processes.insert(
@@ -111,7 +111,11 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         self
     }
 
-    pub fn with_cluster<C>(mut self, cluster: &Cluster<C>, spec: impl ClusterSpec<'a, D>) -> Self {
+    pub fn with_cluster<C>(
+        mut self,
+        cluster: &Cluster<'_, C>,
+        spec: impl ClusterSpec<'a, D>,
+    ) -> Self {
         self.clusters.insert(
             cluster.key,
             spec.build(cluster.key, &self.location_names[cluster.key]),
@@ -157,7 +161,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
     pub fn with_external<P>(
         mut self,
-        external: &External<P>,
+        external: &External<'_, P>,
         spec: impl ExternalSpec<'a, D>,
     ) -> Self {
         self.externals.insert(
@@ -232,12 +236,12 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     }
 
     /// Adds a [`Sidecar`] to a specific process in the flow.
-    pub fn with_sidecar_process(self, process: &Process<()>, sidecar: &impl Sidecar) -> Self {
+    pub fn with_sidecar_process(self, process: &Process<'_, ()>, sidecar: &impl Sidecar) -> Self {
         self.with_sidecar_internal(process.key, sidecar)
     }
 
     /// Adds a [`Sidecar`] to a specific cluster in the flow.
-    pub fn with_sidecar_cluster(self, cluster: &Cluster<()>, sidecar: &impl Sidecar) -> Self {
+    pub fn with_sidecar_cluster(self, cluster: &Cluster<'_, ()>, sidecar: &impl Sidecar) -> Self {
         self.with_sidecar_internal(cluster.key, sidecar)
     }
 
@@ -487,7 +491,7 @@ pub struct DeployResult<'a, D: Deploy<'a>> {
 }
 
 impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
-    pub fn get_process<P>(&self, p: &Process<P>) -> &D::Process {
+    pub fn get_process<P>(&self, p: &Process<'_, P>) -> &D::Process {
         let LocationId::Process(location_key) = p.id() else {
             panic!("Process ID expected")
         };
@@ -501,7 +505,7 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
         self.clusters.get(location_key).unwrap()
     }
 
-    pub fn get_external<P>(&self, e: &External<P>) -> &D::External {
+    pub fn get_external<P>(&self, e: &External<'_, P>) -> &D::External {
         self.externals.get(e.key).unwrap()
     }
 
