@@ -624,6 +624,37 @@ mod tests {
             .preview_compile();
     }
 
+    /// Regression test: a singleton ref captured by a partition predicate must be
+    /// spliced correctly during DFIR emission. The `PartitionShared` emit previously
+    /// drained the ident stack in the wrong order (calling `emit_tokens` before popping
+    /// the input ident), so the partition's *input* ident was consumed as if it were the
+    /// closure's singleton ref. This test drives the flow through full DFIR emission
+    /// (which `flow.finalize()` alone does not) to cover that path.
+    #[cfg(feature = "deploy")]
+    #[test]
+    fn singleton_by_ref_partition_emits() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let threshold = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let threshold_ref = threshold.by_ref();
+
+        let (above, below) = node
+            .source_iter(q!(1..=10i32))
+            .partition(q!(|x| *x > *threshold_ref));
+
+        above.for_each(q!(|_| {}));
+        below.for_each(q!(|_| {}));
+        threshold.into_stream().for_each(q!(|_| {}));
+
+        let _ = flow
+            .finalize()
+            .with_default_optimize::<crate::deploy::HydroDeploy>()
+            .preview_compile();
+    }
+
     /// Compile-only test: singleton by_ref inside scan closures.
     #[test]
     fn singleton_by_ref_scan() {

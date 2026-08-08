@@ -4160,9 +4160,10 @@ impl HydroNode {
                     }
 
                     HydroNode::PartitionShared { input, f, metadata } => {
-                        let f_tokens = f.emit_tokens(&mut ident_stack);
-
+                        // Pop input ident (pushed last by transform_children) before
+                        // draining the closure's singleton ref idents below it.
                         let inner_ident = ident_stack.pop().unwrap();
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let inner_ident = {
                             maybe_observe_for_mut(
