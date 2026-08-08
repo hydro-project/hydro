@@ -624,6 +624,37 @@ mod tests {
             .preview_compile();
     }
 
+    /// Regression test: a singleton ref captured by a partition predicate must be
+    /// spliced correctly during DFIR emission. The `PartitionShared` emit previously
+    /// drained the ident stack in the wrong order (calling `emit_tokens` before popping
+    /// the input ident), so the partition's *input* ident was consumed as if it were the
+    /// closure's singleton ref. This test drives the flow through full DFIR emission
+    /// (which `flow.finalize()` alone does not) to cover that path.
+    #[cfg(feature = "deploy")]
+    #[test]
+    fn singleton_by_ref_partition_emits() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let threshold = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let threshold_ref = threshold.by_ref();
+
+        let (above, below) = node
+            .source_iter(q!(1..=10i32))
+            .partition(q!(|x| *x > *threshold_ref));
+
+        above.for_each(q!(|_| {}));
+        below.for_each(q!(|_| {}));
+        threshold.into_stream().for_each(q!(|_| {}));
+
+        let _ = flow
+            .finalize()
+            .with_default_optimize::<crate::deploy::HydroDeploy>()
+            .preview_compile();
+    }
+
     /// Compile-only test: singleton by_ref inside scan closures.
     #[test]
     fn singleton_by_ref_scan() {
@@ -770,5 +801,109 @@ mod tests {
 
         threshold.into_stream().for_each(q!(|_| {}));
         let _built = flow.finalize();
+    }
+
+    /// Regression test for the `Partition` dedup path in `HydroNode::transform_children`.
+    ///
+    /// A `partition` whose predicate closure captures a `by_ref` singleton produces two output
+    /// branches that share the partition's `inner` but each own their own clone of the closure.
+    /// When the shared `inner` is rewritten (during `finalize` → `unify_atomic_ticks` →
+    /// `transform_bottom_up`), the first branch's closure is transformed and the referenced cell
+    /// is emptied to `HydroNode::Placeholder`. The *deduplicated* second branch used to be skipped
+    /// entirely, leaving its captured `singleton_ref` dangling at that `Placeholder` cell. This
+    /// asserts that no closure `singleton_ref` resolves to a `Placeholder` after finalization.
+    #[test]
+    fn partition_dedup_does_not_leave_placeholder_refs() {
+        use std::cell::RefCell;
+        use std::collections::HashSet;
+
+        use crate::compile::ir::{ClosureExpr, HydroNode};
+
+        fn closures(node: &HydroNode) -> Vec<&ClosureExpr> {
+            match node {
+                HydroNode::Map { f, .. }
+                | HydroNode::FlatMap { f, .. }
+                | HydroNode::FlatMapStreamBlocking { f, .. }
+                | HydroNode::Filter { f, .. }
+                | HydroNode::FilterMap { f, .. }
+                | HydroNode::Inspect { f, .. }
+                | HydroNode::Reduce { f, .. }
+                | HydroNode::ReduceKeyed { f, .. }
+                | HydroNode::ReduceKeyedWatermark { f, .. }
+                | HydroNode::PartitionShared { f, .. } => vec![f],
+                HydroNode::Fold { init, acc, .. }
+                | HydroNode::FoldKeyed { init, acc, .. }
+                | HydroNode::Scan { init, acc, .. }
+                | HydroNode::ScanAsyncBlocking { init, acc, .. } => vec![init, acc],
+                _ => vec![],
+            }
+        }
+
+        fn count_placeholder_refs(
+            node: &HydroNode,
+            visited: &mut HashSet<*const RefCell<HydroNode>>,
+            count: &mut usize,
+        ) {
+            // A captured `singleton_ref` should never resolve to a `Placeholder`.
+            for f in closures(node) {
+                for (ref_node, _is_mut) in &f.singleton_refs {
+                    if let HydroNode::Reference { inner, .. } = ref_node
+                        && matches!(&*inner.0.borrow(), HydroNode::Placeholder)
+                    {
+                        *count += 1;
+                    }
+                }
+            }
+
+            // Recurse the (owned) tree children.
+            for child in node.input() {
+                count_placeholder_refs(child, visited, count);
+            }
+
+            // Recurse the shared inner once, guarding against `Placeholder` / revisits.
+            let shared_inner = match node {
+                HydroNode::Tee { inner, .. }
+                | HydroNode::Reference { inner, .. }
+                | HydroNode::PartitionSide { inner, .. } => Some(inner),
+                _ => None,
+            };
+            if let Some(inner) = shared_inner
+                && visited.insert(inner.as_ptr())
+            {
+                let borrowed = inner.0.borrow();
+                if !matches!(&*borrowed, HydroNode::Placeholder) {
+                    count_placeholder_refs(&borrowed, visited, count);
+                }
+            }
+        }
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let threshold = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let threshold_ref = threshold.by_ref();
+
+        let (above, below) = node
+            .source_iter(q!(vec![5i32, 8, 10, 11, 15, 3]))
+            .partition(q!(|x| *x > *threshold_ref));
+
+        above.for_each(q!(|_| {}));
+        below.for_each(q!(|_| {}));
+        threshold.into_stream().for_each(q!(|_| {}));
+
+        let built = flow.finalize();
+
+        let mut visited = HashSet::new();
+        let mut count = 0usize;
+        for root in built.ir() {
+            count_placeholder_refs(root.input(), &mut visited, &mut count);
+        }
+
+        assert_eq!(
+            count, 0,
+            "partition's deduplicated branch left {count} closure singleton_ref(s) dangling at a Placeholder cell"
+        );
     }
 }

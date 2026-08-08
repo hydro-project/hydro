@@ -1161,7 +1161,7 @@ impl HydroNode {
                 tee_id
             }
 
-            HydroNode::Partition {
+            HydroNode::PartitionSide {
                 inner, metadata, ..
             } => {
                 let ptr = inner.as_ptr();
@@ -1195,6 +1195,10 @@ impl HydroNode {
                 drop(inner_borrow);
 
                 partition_id
+            }
+            HydroNode::PartitionShared { input, .. } => {
+                // Transparent pass-thru.
+                input.build_graph_structure(structure, seen_tees, config)
             }
 
             // Non-deterministic operation
