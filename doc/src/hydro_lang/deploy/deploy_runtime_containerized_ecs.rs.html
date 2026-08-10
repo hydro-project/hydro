@@ -17,8 +17,8 @@
 <a href=#17 id=17 data-nosnippet>17</a>
 <a href=#18 id=18 data-nosnippet>18</a><span class="kw">pub use </span><span class="kw">super</span>::deploy_runtime_containerized::{
 <a href=#19 id=19 data-nosnippet>19</a>    CHANNEL_MAGIC, CHANNEL_MUX_PORT, CHANNEL_PROTOCOL_VERSION, ChannelHandshake, ChannelMagic,
-<a href=#20 id=20 data-nosnippet>20</a>    ChannelMux, ChannelProtocolVersion, SocketIdent, cluster_ids, get_or_init_channel_mux,
-<a href=#21 id=21 data-nosnippet>21</a>    send_handshake,
+<a href=#20 id=20 data-nosnippet>20</a>    ChannelMux, ChannelProtocolVersion, SocketIdent, cluster_ids, connect_channel,
+<a href=#21 id=21 data-nosnippet>21</a>    get_or_init_channel_mux, send_handshake,
 <a href=#22 id=22 data-nosnippet>22</a>};
 <a href=#23 id=23 data-nosnippet>23</a><span class="kw">use </span><span class="kw">crate</span>::location::dynamic::LocationId;
 <a href=#24 id=24 data-nosnippet>24</a><span class="kw">use </span><span class="kw">crate</span>::location::member_id::TaglessMemberId;
@@ -38,7 +38,7 @@
 <a href=#38 id=38 data-nosnippet>38</a>                <span class="kw">let </span>target = <span class="macro">format!</span>(<span class="string">"{}:{}"</span>, ip, <span class="self">self</span>::CHANNEL_MUX_PORT);
 <a href=#39 id=39 data-nosnippet>39</a>                <span class="macro">debug!</span>(name: <span class="string">"connecting"</span>, %target, %target_task_family, %task_id, %channel_name);
 <a href=#40 id=40 data-nosnippet>40</a>
-<a href=#41 id=41 data-nosnippet>41</a>                <span class="kw">let </span>stream = TcpStream::connect(<span class="kw-2">&amp;</span>target).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#41 id=41 data-nosnippet>41</a>                <span class="kw">let </span>stream = <span class="self">self</span>::connect_channel(<span class="kw-2">&amp;</span>target).<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#42 id=42 data-nosnippet>42</a>                <span class="kw">let </span><span class="kw-2">mut </span>sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 <a href=#43 id=43 data-nosnippet>43</a>
 <a href=#44 id=44 data-nosnippet>44</a>                <span class="self">self</span>::send_handshake(<span class="kw-2">&amp;mut </span>sink, channel_name, <span class="prelude-val">None</span>).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -78,7 +78,7 @@
 <a href=#78 id=78 data-nosnippet>78</a>                        <span class="kw">let </span>target = <span class="macro">format!</span>(<span class="string">"{}:{}"</span>, ip, <span class="self">self</span>::CHANNEL_MUX_PORT);
 <a href=#79 id=79 data-nosnippet>79</a>                        <span class="macro">debug!</span>(name: <span class="string">"connecting"</span>, %target, %task_id, channel_name = %channel_name);
 <a href=#80 id=80 data-nosnippet>80</a>
-<a href=#81 id=81 data-nosnippet>81</a>                        <span class="kw">let </span>stream = TcpStream::connect(<span class="kw-2">&amp;</span>target).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#81 id=81 data-nosnippet>81</a>                        <span class="kw">let </span>stream = <span class="self">self</span>::connect_channel(<span class="kw-2">&amp;</span>target).<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#82 id=82 data-nosnippet>82</a>                        <span class="kw">let </span><span class="kw-2">mut </span>sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 <a href=#83 id=83 data-nosnippet>83</a>
 <a href=#84 id=84 data-nosnippet>84</a>                        <span class="self">self</span>::send_handshake(<span class="kw-2">&amp;mut </span>sink, <span class="kw-2">&amp;</span>channel_name, <span class="prelude-val">None</span>).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -120,7 +120,7 @@
 <a href=#120 id=120 data-nosnippet>120</a>                <span class="kw">let </span>target = <span class="macro">format!</span>(<span class="string">"{}:{}"</span>, ip, <span class="self">self</span>::CHANNEL_MUX_PORT);
 <a href=#121 id=121 data-nosnippet>121</a>                <span class="macro">debug!</span>(name: <span class="string">"connecting"</span>, %target, %target_task_family, %target_task_id, %channel_name);
 <a href=#122 id=122 data-nosnippet>122</a>
-<a href=#123 id=123 data-nosnippet>123</a>                <span class="kw">let </span>stream = TcpStream::connect(<span class="kw-2">&amp;</span>target).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#123 id=123 data-nosnippet>123</a>                <span class="kw">let </span>stream = <span class="self">self</span>::connect_channel(<span class="kw-2">&amp;</span>target).<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#124 id=124 data-nosnippet>124</a>                <span class="kw">let </span><span class="kw-2">mut </span>sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 <a href=#125 id=125 data-nosnippet>125</a>
 <a href=#126 id=126 data-nosnippet>126</a>                <span class="kw">let </span>self_task_id = <span class="self">self</span>::get_self_task_id();
@@ -173,7 +173,7 @@
 <a href=#173 id=173 data-nosnippet>173</a>                        <span class="kw">let </span>target = <span class="macro">format!</span>(<span class="string">"{}:{}"</span>, ip, <span class="self">self</span>::CHANNEL_MUX_PORT);
 <a href=#174 id=174 data-nosnippet>174</a>                        <span class="macro">debug!</span>(name: <span class="string">"connecting"</span>, %target, %task_id, channel_name = %channel_name);
 <a href=#175 id=175 data-nosnippet>175</a>
-<a href=#176 id=176 data-nosnippet>176</a>                        <span class="kw">let </span>stream = TcpStream::connect(<span class="kw-2">&amp;</span>target).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#176 id=176 data-nosnippet>176</a>                        <span class="kw">let </span>stream = <span class="self">self</span>::connect_channel(<span class="kw-2">&amp;</span>target).<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#177 id=177 data-nosnippet>177</a>                        <span class="kw">let </span><span class="kw-2">mut </span>sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 <a href=#178 id=178 data-nosnippet>178</a>
 <a href=#179 id=179 data-nosnippet>179</a>                        <span class="kw">let </span>self_task_id = <span class="self">self</span>::get_self_task_id();
