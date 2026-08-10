@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/live_collections/stream/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-650bd49d.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (84b36a78a 2026-08-06)" data-channel="nightly" data-search-js="search-cf4fc35e.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-d4bd101e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/live_collections/stream/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Definitions for the [`Stream`] live collection.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/live_collections/stream/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-650bd49d.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (969b803cb 2026-08-09)" data-channel="nightly" data-search-js="search-cf4fc35e.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-d4bd101e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/live_collections/stream/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Definitions for the [`Stream`] live collection.
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>std::cell::RefCell;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>std::future::Future;
@@ -914,25 +914,25 @@
 <a href=#914 id=914 data-nosnippet>914</a>            proof.register_proof(<span class="kw-2">&amp;</span>expr);
 <a href=#915 id=915 data-nosnippet>915</a>            expr.into()
 <a href=#916 id=916 data-nosnippet>916</a>        });
-<a href=#917 id=917 data-nosnippet>917</a>        <span class="kw">let </span>shared = SharedNode(Rc::new(RefCell::new(
-<a href=#918 id=918 data-nosnippet>918</a>            <span class="self">self</span>.ir_node.replace(HydroNode::Placeholder),
-<a href=#919 id=919 data-nosnippet>919</a>        )));
-<a href=#920 id=920 data-nosnippet>920</a>
-<a href=#921 id=921 data-nosnippet>921</a>        <span class="kw">let </span>true_stream = Stream::new(
-<a href=#922 id=922 data-nosnippet>922</a>            <span class="self">self</span>.location.clone(),
-<a href=#923 id=923 data-nosnippet>923</a>            HydroNode::Partition {
-<a href=#924 id=924 data-nosnippet>924</a>                inner: SharedNode(shared.<span class="number">0</span>.clone()),
-<a href=#925 id=925 data-nosnippet>925</a>                f: f.clone(),
-<a href=#926 id=926 data-nosnippet>926</a>                is_true: <span class="bool-val">true</span>,
-<a href=#927 id=927 data-nosnippet>927</a>                metadata: <span class="self">self</span>.location.new_node_metadata(<span class="self">Self</span>::collection_kind()),
-<a href=#928 id=928 data-nosnippet>928</a>            },
-<a href=#929 id=929 data-nosnippet>929</a>        );
-<a href=#930 id=930 data-nosnippet>930</a>
-<a href=#931 id=931 data-nosnippet>931</a>        <span class="kw">let </span>false_stream = Stream::new(
-<a href=#932 id=932 data-nosnippet>932</a>            <span class="self">self</span>.location.clone(),
-<a href=#933 id=933 data-nosnippet>933</a>            HydroNode::Partition {
-<a href=#934 id=934 data-nosnippet>934</a>                inner: SharedNode(shared.<span class="number">0</span>),
-<a href=#935 id=935 data-nosnippet>935</a>                f,
+<a href=#917 id=917 data-nosnippet>917</a>        <span class="kw">let </span>shared = Rc::new(RefCell::new(HydroNode::PartitionShared {
+<a href=#918 id=918 data-nosnippet>918</a>            input: Box::new(<span class="self">self</span>.ir_node.replace(HydroNode::Placeholder)),
+<a href=#919 id=919 data-nosnippet>919</a>            f,
+<a href=#920 id=920 data-nosnippet>920</a>            metadata: <span class="self">self</span>.location.new_node_metadata(<span class="self">Self</span>::collection_kind()),
+<a href=#921 id=921 data-nosnippet>921</a>        }));
+<a href=#922 id=922 data-nosnippet>922</a>
+<a href=#923 id=923 data-nosnippet>923</a>        <span class="kw">let </span>true_stream = Stream::new(
+<a href=#924 id=924 data-nosnippet>924</a>            <span class="self">self</span>.location.clone(),
+<a href=#925 id=925 data-nosnippet>925</a>            HydroNode::PartitionSide {
+<a href=#926 id=926 data-nosnippet>926</a>                inner: SharedNode(Rc::clone(<span class="kw-2">&amp;</span>shared)),
+<a href=#927 id=927 data-nosnippet>927</a>                is_true: <span class="bool-val">true</span>,
+<a href=#928 id=928 data-nosnippet>928</a>                metadata: <span class="self">self</span>.location.new_node_metadata(<span class="self">Self</span>::collection_kind()),
+<a href=#929 id=929 data-nosnippet>929</a>            },
+<a href=#930 id=930 data-nosnippet>930</a>        );
+<a href=#931 id=931 data-nosnippet>931</a>
+<a href=#932 id=932 data-nosnippet>932</a>        <span class="kw">let </span>false_stream = Stream::new(
+<a href=#933 id=933 data-nosnippet>933</a>            <span class="self">self</span>.location.clone(),
+<a href=#934 id=934 data-nosnippet>934</a>            HydroNode::PartitionSide {
+<a href=#935 id=935 data-nosnippet>935</a>                inner: SharedNode(shared),
 <a href=#936 id=936 data-nosnippet>936</a>                is_true: <span class="bool-val">false</span>,
 <a href=#937 id=937 data-nosnippet>937</a>                metadata: <span class="self">self</span>.location.new_node_metadata(<span class="self">Self</span>::collection_kind()),
 <a href=#938 id=938 data-nosnippet>938</a>            },
