@@ -17,8 +17,8 @@ use tracing::{Instrument, debug, instrument, span, trace, trace_span};
 
 pub use super::deploy_runtime_containerized::{
     CHANNEL_MAGIC, CHANNEL_MUX_PORT, CHANNEL_PROTOCOL_VERSION, ChannelHandshake, ChannelMagic,
-    ChannelMux, ChannelProtocolVersion, SocketIdent, cluster_ids, get_or_init_channel_mux,
-    send_handshake,
+    ChannelMux, ChannelProtocolVersion, SocketIdent, cluster_ids, connect_channel,
+    get_or_init_channel_mux, send_handshake,
 };
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
@@ -38,7 +38,7 @@ pub fn deploy_containerized_o2o(
                 let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
                 debug!(name: "connecting", %target, %target_task_family, %task_id, %channel_name);
 
-                let stream = TcpStream::connect(&target).await?;
+                let stream = self::connect_channel(&target).await?;
                 let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
                 self::send_handshake(&mut sink, channel_name, None).await?;
@@ -78,7 +78,7 @@ pub fn deploy_containerized_o2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
                         let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
                         debug!(name: "connecting", %target, %task_id, channel_name = %channel_name);
 
-                        let stream = TcpStream::connect(&target).await?;
+                        let stream = self::connect_channel(&target).await?;
                         let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
                         self::send_handshake(&mut sink, &channel_name, None).await?;
@@ -120,7 +120,7 @@ pub fn deploy_containerized_m2o(
                 let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
                 debug!(name: "connecting", %target, %target_task_family, %target_task_id, %channel_name);
 
-                let stream = TcpStream::connect(&target).await?;
+                let stream = self::connect_channel(&target).await?;
                 let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
                 let self_task_id = self::get_self_task_id();
@@ -173,7 +173,7 @@ pub fn deploy_containerized_m2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
                         let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
                         debug!(name: "connecting", %target, %task_id, channel_name = %channel_name);
 
-                        let stream = TcpStream::connect(&target).await?;
+                        let stream = self::connect_channel(&target).await?;
                         let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
                         let self_task_id = self::get_self_task_id();
