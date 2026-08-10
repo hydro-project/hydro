@@ -3002,12 +3002,16 @@ where
     /// #   .into_keyed()
     /// #   .batch(&tick, nondet!(/** test */))
     /// #   .defer_tick(); // appears on the second tick
-    /// let input = batch_first_tick.chain(batch_second_tick).all_ticks();
+    /// let input = batch_first_tick.chain(batch_second_tick);
     ///
-    /// input.batch(&tick, nondet!(/** test */))
-    ///     .across_ticks(|s| s.reduce(q!(|sum, new| {
-    ///         *sum += new;
-    ///     }))).entries().all_ticks()
+    /// input
+    ///     .across_ticks(|s| {
+    ///         s.reduce(q!(|sum, new| {
+    ///             *sum += new;
+    ///         }))
+    ///     })
+    ///     .entries()
+    ///     .all_ticks()
     /// # }, |mut stream| async move {
     /// // First tick: [(0, 1), (1, 2), (2, 3), (3, 4)]
     /// # let mut results = Vec::new();
