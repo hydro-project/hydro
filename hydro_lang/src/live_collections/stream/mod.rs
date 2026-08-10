@@ -3289,10 +3289,9 @@ where
     /// #   .batch(&tick, nondet!(/** test */))
     /// #   .defer_tick(); // appears on the second tick
     /// let input = // [1, 2, 3, 4 (first batch), 5, 6, 7 (second batch)]
-    /// # batch_first_tick.chain(batch_second_tick).all_ticks();
+    /// # batch_first_tick.chain(batch_second_tick);
     ///
-    /// input.batch(&tick, nondet!(/** test */))
-    ///     .across_ticks(|s| s.count()).all_ticks()
+    /// input.across_ticks(|s| s.count()).all_ticks()
     /// # }, |mut stream| async move {
     /// // [4, 7]
     /// assert_eq!(stream.next().await.unwrap(), 4);
