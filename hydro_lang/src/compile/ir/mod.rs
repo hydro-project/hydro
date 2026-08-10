@@ -4118,7 +4118,7 @@ impl HydroNode {
                             let idx = if is_true { 0 } else { 1 };
                             built_idents[idx].clone()
                         } else {
-                            // The `PartitionShared`` node was already processed by transform_bottom_up,
+                            // The `PartitionShared` node was already processed by transform_bottom_up,
                             // so its ident is on the stack
                             let partition_ident = ident_stack.pop().unwrap();
 
@@ -5745,9 +5745,8 @@ impl HydroNode {
             | HydroNode::Tee { .. }
             | HydroNode::Reference { .. }
             | HydroNode::PartitionSide { .. }
-            | HydroNode::PartitionShared { .. }
             | HydroNode::VersionedNetwork { .. } => {
-                // Tee/Partition/VersionedNetwork find their input in separate special ways
+                // Tee/PartitionSide/VersionedNetwork find their input in separate special ways
                 vec![]
             }
             HydroNode::Cast { inner, .. }
@@ -5760,13 +5759,9 @@ impl HydroNode {
             | HydroNode::AssertIsConsistent { inner, .. } => {
                 vec![inner]
             }
-            HydroNode::Chain { first, second, .. } => {
-                vec![first, second]
-            }
-            HydroNode::MergeOrdered { first, second, .. } => {
-                vec![first, second]
-            }
-            HydroNode::ChainFirst { first, second, .. } => {
+            HydroNode::Chain { first, second, .. }
+            | HydroNode::MergeOrdered { first, second, .. }
+            | HydroNode::ChainFirst { first, second, .. } => {
                 vec![first, second]
             }
             HydroNode::CrossProduct { left, right, .. }
@@ -5778,27 +5773,28 @@ impl HydroNode {
             HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. } => {
                 vec![pos, neg]
             }
-            HydroNode::Map { input, .. }
-            | HydroNode::FlatMap { input, .. }
-            | HydroNode::FlatMapStreamBlocking { input, .. }
-            | HydroNode::Filter { input, .. }
-            | HydroNode::FilterMap { input, .. }
-            | HydroNode::Sort { input, .. }
+            HydroNode::Counter { input, .. }
             | HydroNode::DeferTick { input, .. }
             | HydroNode::Enumerate { input, .. }
+            | HydroNode::Filter { input, .. }
+            | HydroNode::FilterMap { input, .. }
+            | HydroNode::FlatMap { input, .. }
+            | HydroNode::FlatMapStreamBlocking { input, .. }
+            | HydroNode::Fold { input, .. }
+            | HydroNode::FoldKeyed { input, .. }
             | HydroNode::Inspect { input, .. }
-            | HydroNode::Unique { input, .. }
+            | HydroNode::Map { input, .. }
             | HydroNode::Network { input, .. }
-            | HydroNode::Counter { input, .. }
+            | HydroNode::PartitionShared { input, .. }
+            | HydroNode::Reduce { input, .. }
+            | HydroNode::ReduceKeyed { input, .. }
             | HydroNode::ResolveFutures { input, .. }
             | HydroNode::ResolveFuturesBlocking { input, .. }
             | HydroNode::ResolveFuturesOrdered { input, .. }
-            | HydroNode::Fold { input, .. }
-            | HydroNode::FoldKeyed { input, .. }
-            | HydroNode::Reduce { input, .. }
-            | HydroNode::ReduceKeyed { input, .. }
             | HydroNode::Scan { input, .. }
-            | HydroNode::ScanAsyncBlocking { input, .. } => {
+            | HydroNode::ScanAsyncBlocking { input, .. }
+            | HydroNode::Sort { input, .. }
+            | HydroNode::Unique { input, .. } => {
                 vec![input]
             }
             HydroNode::ReduceKeyedWatermark {
