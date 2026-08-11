@@ -102,7 +102,7 @@ use crate::compile::builder::ExternalPortId;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder};
 use crate::location::dynamic::LocationId;
 use crate::sim::graph::{SimExternalPort, SimExternalPortRegistry};
-use crate::sim::runtime::SimHook;
+use crate::sim::runtime::{SimHook, SimInlineHook};
 
 struct QuiescenceState {
     /// Set to true when the scheduler reaches quiescence; reset to false when new input is sent.
@@ -980,11 +980,30 @@ impl<'a> CompiledSimInstance<'a> {
     /// Consumes this instance and constructs the [`LaunchedSim`] state struct, which is
     /// advanced incrementally via [`LaunchedSim::step`].
     fn start<W: std::io::Write>(mut self, log_override: Option<W>) -> LaunchedSim<W> {
-        let (async_dfirs, tick_dfirs, hooks, inline_hooks) = self.dylib_result.take().unwrap();
+        let (async_dfirs, tick_dfirs, mut hooks, mut inline_hooks) =
+            self.dylib_result.take().unwrap();
 
-        let not_ready_observation = async_dfirs
-            .iter()
-            .map(|(lid, c_id, _)| (serde_json::from_str(lid).unwrap(), *c_id))
+        // The generated code keys hooks and tick DFIRs by the same serialized location
+        // strings, so we can move each tick's / observation's hooks out of the maps and
+        // attach them directly. This lets the scheduler's hot paths avoid keyed lookups
+        // (which would clone `LocationId`s) entirely.
+        let not_ready_ticks = tick_dfirs
+            .into_iter()
+            .map(|(lid, cluster_id, dfir)| {
+                let location: LocationId = serde_json::from_str(lid).unwrap();
+                let LocationId::Tick(_, parent_location) = location else {
+                    unreachable!("tick DFIRs are always keyed by a tick location")
+                };
+                SimTick {
+                    parent_location: *parent_location,
+                    cluster_id,
+                    dfir,
+                    hooks: hooks
+                        .remove(&(lid, cluster_id))
+                        .expect("every tick DFIR must have at least one hook"),
+                    inline_hooks: inline_hooks.remove(&(lid, cluster_id)).unwrap_or_default(),
+                }
+            })
             .collect();
 
         let quiescence = CURRENT_SIM_CONNECTIONS.with(|connections| {
@@ -992,26 +1011,29 @@ impl<'a> CompiledSimInstance<'a> {
             connections.quiescence.clone()
         });
 
+        let not_ready_observations = async_dfirs
+            .iter()
+            .map(|(lid, cluster_id, _)| SimObservation {
+                location: serde_json::from_str(lid).unwrap(),
+                cluster_id: *cluster_id,
+                hooks: hooks.remove(&(*lid, *cluster_id)).unwrap_or_default(),
+            })
+            .collect();
+
+        debug_assert!(
+            hooks.is_empty() && inline_hooks.is_empty(),
+            "all hooks should belong to either a tick DFIR or a top-level location"
+        );
+
         LaunchedSim {
             async_dfirs: async_dfirs
                 .into_iter()
                 .map(|(lid, c_id, dfir)| (serde_json::from_str(lid).unwrap(), c_id, dfir))
                 .collect(),
             possibly_ready_ticks: vec![],
-            not_ready_ticks: tick_dfirs
-                .into_iter()
-                .map(|(lid, c_id, dfir)| (serde_json::from_str(lid).unwrap(), c_id, dfir))
-                .collect(),
-            possibly_ready_observation: vec![],
-            not_ready_observation,
-            hooks: hooks
-                .into_iter()
-                .map(|((lid, cid), hs)| ((serde_json::from_str(lid).unwrap(), cid), hs))
-                .collect(),
-            inline_hooks: inline_hooks
-                .into_iter()
-                .map(|((lid, cid), hs)| ((serde_json::from_str(lid).unwrap(), cid), hs))
-                .collect(),
+            not_ready_ticks,
+            possibly_ready_observations: vec![],
+            not_ready_observations,
             log: if self.log {
                 if let Some(w) = log_override {
                     LogKind::Custom(w)
@@ -1775,6 +1797,60 @@ impl<W: std::io::Write> std::fmt::Write for LogKind<W> {
     }
 }
 
+/// A tick-scoped DFIR together with the hooks that feed it data.
+struct SimTick {
+    /// The location of the process/cluster the tick lives on, used to match this tick
+    /// against the async DFIR that produces its input data.
+    parent_location: LocationId,
+    /// The cluster member ID, if the tick lives on a cluster.
+    cluster_id: Option<u32>,
+    /// The tick DFIR, executed once per tick.
+    dfir: DfirErased,
+    /// Hooks (e.g. from `batch`) resolved *before* the tick runs, deciding what data to
+    /// release into it.
+    hooks: Vec<Box<dyn SimHook>>,
+    /// Hooks (e.g. from `assume_ordering` inside the tick) resolved *while* the tick DFIR
+    /// is running, via a `tokio::select!` loop, for operators that block on ordering
+    /// decisions mid-tick.
+    inline_hooks: Vec<Box<dyn SimInlineHook>>,
+}
+
+impl SimTick {
+    /// Whether the scheduler can execute this tick right now.
+    fn can_run(&self) -> bool {
+        // All hooks must be ready (have received input or have a last value)...
+        self.hooks.iter().all(|hook| hook.is_ready())
+            // ...and at least one hook must be able to release data into the tick.
+            && self.hooks.iter().any(|hook| hook_can_release(&**hook))
+    }
+}
+
+/// A top-level location whose hooks (e.g. from `assume_ordering` on a non-tick stream)
+/// need scheduling decisions, but which has no tick DFIR to execute. The scheduler just
+/// resolves the hooks.
+struct SimObservation {
+    /// The top-level location, used to match this observation against the async DFIR that
+    /// produces its input data.
+    location: LocationId,
+    /// The cluster member ID, if the location is a cluster.
+    cluster_id: Option<u32>,
+    /// Hooks resolved when the scheduler selects this observation.
+    hooks: Vec<Box<dyn SimHook>>,
+}
+
+impl SimObservation {
+    /// Whether the scheduler can resolve any of this observation's hooks right now.
+    fn can_run(&self) -> bool {
+        self.hooks.iter().any(|hook| hook_can_release(&**hook))
+    }
+}
+
+/// Whether the hook has already decided to release data, or has pending input that would
+/// allow it to decide to do so.
+fn hook_can_release(hook: &dyn SimHook) -> bool {
+    hook.current_decision().unwrap_or(false) || hook.can_make_nontrivial_decision()
+}
+
 /// A running simulation, which manages the async DFIRs, tick DFIRs, and hook-based
 /// scheduling decisions for non-deterministic operators like `batch` and `assume_ordering`.
 ///
@@ -1791,24 +1867,16 @@ struct LaunchedSim<W: std::io::Write> {
     /// Top-level async DFIRs, one per process/cluster member. These run continuously and
     /// produce data that feeds into ticks and observations.
     async_dfirs: Vec<(LocationId, Option<u32>, DfirErased)>,
-    /// Tick DFIRs whose parent async DFIR has made progress, so they may be ready to run.
+    /// Ticks whose parent async DFIR has made progress, so they may be ready to run.
     /// The scheduler further filters these by checking whether their hooks have pending decisions.
-    possibly_ready_ticks: Vec<(LocationId, Option<u32>, DfirErased)>,
-    /// Tick DFIRs whose parent async DFIR has not yet made progress since they were last checked.
-    not_ready_ticks: Vec<(LocationId, Option<u32>, DfirErased)>,
-    /// Top-level locations whose async DFIR has made progress and whose hooks (from top-level
-    /// `assume_ordering`) may have ordering decisions to resolve. Unlike ticks, these have no
-    /// DFIR to execute — only hook resolution.
-    possibly_ready_observation: Vec<(LocationId, Option<u32>)>,
-    /// Top-level locations whose async DFIR has not yet made progress since they were last checked.
-    not_ready_observation: Vec<(LocationId, Option<u32>)>,
-    /// Hooks keyed by (location, cluster_member_id). These are resolved *before* a tick runs
-    /// (for `batch` hooks) or standalone (for top-level `assume_ordering` hooks via observations).
-    hooks: Hooks<LocationId>,
-    /// Inline hooks keyed by (tick location, cluster_member_id). These are resolved *during*
-    /// tick execution via a `tokio::select!` loop, for operators like `assume_ordering` inside
-    /// a tick that block on ordering decisions while the tick DFIR is running.
-    inline_hooks: InlineHooks<LocationId>,
+    possibly_ready_ticks: Vec<SimTick>,
+    /// Ticks whose parent async DFIR has not yet made progress since they were last checked.
+    not_ready_ticks: Vec<SimTick>,
+    /// Observations whose async DFIR has made progress, so their hooks may have decisions
+    /// to resolve.
+    possibly_ready_observations: Vec<SimObservation>,
+    /// Observations whose async DFIR has not yet made progress since they were last checked.
+    not_ready_observations: Vec<SimObservation>,
     log: LogKind<W>,
     /// Represents quiescence state of the simulation.
     quiescence: Rc<QuiescenceState>,
@@ -1830,26 +1898,17 @@ impl<W: std::io::Write> LaunchedSim<W> {
         for (loc, c_id, dfir) in &mut self.async_dfirs {
             if dfir.run_tick().await {
                 any_made_progress = true;
-                let (now_ready, still_not_ready): (Vec<_>, Vec<_>) = self
-                    .not_ready_ticks
-                    .drain(..)
-                    .partition(|(tick_loc, tick_c_id, _)| {
-                        let LocationId::Tick(_, outer) = tick_loc else {
-                            unreachable!()
-                        };
-                        outer.as_ref() == loc && tick_c_id == c_id
-                    });
 
-                self.possibly_ready_ticks.extend(now_ready);
-                self.not_ready_ticks.extend(still_not_ready);
-
-                let (now_ready_obs, still_not_ready_obs): (Vec<_>, Vec<_>) = self
-                    .not_ready_observation
-                    .drain(..)
-                    .partition(|(obs_loc, obs_c_id)| obs_loc == loc && obs_c_id == c_id);
-
-                self.possibly_ready_observation.extend(now_ready_obs);
-                self.not_ready_observation.extend(still_not_ready_obs);
+                // This async DFIR may have produced new data, so the ticks and observations
+                // it feeds may now be ready.
+                self.possibly_ready_ticks
+                    .extend(self.not_ready_ticks.extract_if(.., |tick| {
+                        tick.parent_location == *loc && tick.cluster_id == *c_id
+                    }));
+                self.possibly_ready_observations.extend(
+                    self.not_ready_observations
+                        .extract_if(.., |obs| obs.location == *loc && obs.cluster_id == *c_id),
+                );
             }
         }
 
@@ -1859,47 +1918,22 @@ impl<W: std::io::Write> LaunchedSim<W> {
 
         use bolero::generator::*;
 
-        let (ready_tick, mut not_ready_tick): (Vec<_>, Vec<_>) = self
-            .possibly_ready_ticks
-            .drain(..)
-            .partition(|(name, cid, _)| {
-                let hooks = self.hooks.get(&(name.clone(), *cid)).unwrap();
-                // All hooks must be ready (have received input or have a last value)
-                hooks.iter().all(|hook| hook.is_ready())
-                    // And at least one hook must be able to make progress
-                    && hooks.iter().any(|hook| {
-                        hook.current_decision().unwrap_or(false)
-                            || hook.can_make_nontrivial_decision()
-                    })
-            });
+        // Send anything that can't make a scheduling decision back to the not-ready lists.
+        self.not_ready_ticks.extend(
+            self.possibly_ready_ticks
+                .extract_if(.., |tick| !tick.can_run()),
+        );
+        self.not_ready_observations.extend(
+            self.possibly_ready_observations
+                .extract_if(.., |obs| !obs.can_run()),
+        );
 
-        self.possibly_ready_ticks = ready_tick;
-        self.not_ready_ticks.append(&mut not_ready_tick);
-
-        let (ready_obs, mut not_ready_obs): (Vec<_>, Vec<_>) = self
-            .possibly_ready_observation
-            .drain(..)
-            .partition(|(name, cid)| {
-                self.hooks
-                    .get(&(name.clone(), *cid))
-                    .into_iter()
-                    .flatten()
-                    .any(|hook| {
-                        hook.current_decision().unwrap_or(false)
-                            || hook.can_make_nontrivial_decision()
-                    })
-            });
-
-        self.possibly_ready_observation = ready_obs;
-        self.not_ready_observation.append(&mut not_ready_obs);
-
-        if self.possibly_ready_ticks.is_empty() && self.possibly_ready_observation.is_empty() {
+        if self.possibly_ready_ticks.is_empty() && self.possibly_ready_observations.is_empty() {
             // If any tick is blocked because a hook is not ready, that's a
             // simulator bug — it means a singleton never received a value.
-            for (name, cid, _) in &self.not_ready_ticks {
-                let hooks = self.hooks.get(&(name.clone(), *cid)).unwrap();
+            for tick in &self.not_ready_ticks {
                 abort_assert!(
-                    hooks.iter().all(|hook| hook.is_ready()),
+                    tick.hooks.iter().all(|hook| hook.is_ready()),
                     "tick has a hook that never became ready"
                 );
             }
@@ -1916,17 +1950,16 @@ impl<W: std::io::Write> LaunchedSim<W> {
             self.quiescence.wake_settled();
         } else {
             let next_tick_or_obs = (0..(self.possibly_ready_ticks.len()
-                + self.possibly_ready_observation.len()))
+                + self.possibly_ready_observations.len()))
                 .any();
 
             if next_tick_or_obs < self.possibly_ready_ticks.len() {
-                let next_tick = next_tick_or_obs;
-                let mut removed = self.possibly_ready_ticks.remove(next_tick);
+                let mut tick = self.possibly_ready_ticks.remove(next_tick_or_obs);
 
                 match &mut self.log {
                     LogKind::Null => {}
                     LogKind::Stderr => {
-                        if let Some(cid) = &removed.1 {
+                        if let Some(cid) = &tick.cluster_id {
                             eprintln!(
                                 "\n{}",
                                 format!("Running Tick (Cluster Member {})", cid)
@@ -1958,13 +1991,10 @@ impl<W: std::io::Write> LaunchedSim<W> {
                     })
                 });
 
-                let hooks = self.hooks.get_mut(&(removed.0.clone(), removed.1)).unwrap();
-                run_hooks(tick_decision_writer.as_mut(), hooks);
+                run_hooks(tick_decision_writer.as_mut(), &mut tick.hooks);
 
-                let run_tick_future = removed.2.run_tick();
-                if let Some(inline_hooks) =
-                    self.inline_hooks.get_mut(&(removed.0.clone(), removed.1))
-                {
+                let run_tick_future = tick.dfir.run_tick();
+                if !tick.inline_hooks.is_empty() {
                     let mut run_tick_future_pinned = pin!(run_tick_future);
 
                     loop {
@@ -1976,7 +2006,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                             }
                             _ = async {} => {
                                 bolero_generator::any::scope::borrow_with(|driver| {
-                                    for hook in inline_hooks.iter_mut() {
+                                    for hook in tick.inline_hooks.iter_mut() {
                                         if hook.pending_decision() {
                                             if !hook.has_decision() {
                                                 hook.autonomous_decision(driver);
@@ -1997,17 +2027,14 @@ impl<W: std::io::Write> LaunchedSim<W> {
                     abort_assert!(run_tick_future.await, "tick DFIR run_tick() returned false");
                 }
 
-                self.possibly_ready_ticks.push(removed);
+                self.possibly_ready_ticks.push(tick);
             } else {
                 let next_obs = next_tick_or_obs - self.possibly_ready_ticks.len();
-                let mut default_hooks = vec![];
-                let hooks = self
-                    .hooks
-                    .get_mut(&self.possibly_ready_observation[next_obs])
-                    .unwrap_or(&mut default_hooks);
-
                 let log_writer = (!matches!(self.log, LogKind::Null)).then_some(&mut self.log);
-                run_hooks(log_writer, hooks);
+                run_hooks(
+                    log_writer,
+                    &mut self.possibly_ready_observations[next_obs].hooks,
+                );
             }
         }
     }
@@ -2015,7 +2042,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
 
 fn run_hooks<W: std::fmt::Write>(
     mut tick_decision_writer: Option<&mut W>,
-    hooks: &mut Vec<Box<dyn SimHook>>,
+    hooks: &mut [Box<dyn SimHook>],
 ) {
     let mut remaining_decision_count = hooks.len();
     let mut made_nontrivial_decision = false;
