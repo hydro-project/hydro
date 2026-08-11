@@ -1,0 +1,359 @@
+---
+sidebar_position: 3
+---
+
+# Scripted Simulations
+
+By default, the simulator treats every `nondet!` decision point as a dimension to explore: `exhaustive()` tries every choice and `fuzz()` searches through them. Often, though, a test is really about one *specific* scenario. Perhaps a bug report says "a read observed the counter after the first increment but before the second", and you want a regression test that replays exactly that interleaving. Or you are documenting a subtle protocol behavior and want the test to spell out, step by step, the execution it demonstrates.
+
+**Simulator hooks** make this possible. A hook attaches to a single decision point and lets the test body script its decisions one at a time, while every decision point left unhooked continues to be explored automatically.
+
+## Binding Hooks to Operators
+
+Every non-deterministic operator takes a [`NonDet` guard](../correctness/nondet.md) created with `nondet!`. A guard can optionally carry a **hook handle**, which is created from the `FlowBuilder` with `flow.sim_hook()` *before* the program under test is constructed, and attached to the operator it controls with the `nondet!(... hook = handle)` syntax.
+
+Handles are small `Copy` values containing no simulator machinery: the same handle is passed into the program during construction and used later inside the test body to script decisions. Binding a hook in a flow that is *deployed* rather than simulated is harmless metadata that other backends ignore, so components can expose hookable signatures without any test-only code paths. There is a handle type for each kind of decision:
+
+- **`BatchHook<T>`** controls which buffered elements a `batch` releases into each tick
+- **`SnapshotHook<T>`** controls which version of a `Singleton` each `snapshot` reveals
+- **`OrderingHook<T>`** controls the order chosen by an `assume_ordering`
+
+A component that wants to be scriptable declares its `NonDet` parameters with the hook payload matching the operator each one controls, and passes each guard directly to its operator. As with any [non-determinism forwarded to callers](../correctness/nondet.md#forwarding-non-determinism-to-callers), the parameters are documented in a `# Non-Determinism` section of the function's Rustdoc:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::sim_hooks::{BatchHook, SnapshotHook};
+/// A counter service that responds to read requests with the current count.
+///
+/// # Non-Determinism
+/// - `nondet_batch`: how read requests are batched is observable in responses
+/// - `nondet_snapshot`: reads may observe any version of the count
+fn counter_service<'a>(
+    increments: Stream<u64, Process<'a>>,
+    get_requests: Stream<u32, Process<'a>>,
+    nondet_batch: NonDet<Option<BatchHook<u32>>>,
+    nondet_snapshot: NonDet<Option<SnapshotHook<u64>>>,
+) -> Stream<(u32, u64), Process<'a>> {
+    let current_count = increments.fold(q!(|| 0), q!(|acc, v| *acc += v));
+
+    sliced! {
+        let request_batch = use::batch(get_requests, nondet_batch);
+        let count_snapshot = use::snapshot(current_count, nondet_snapshot);
+
+        request_batch.cross_singleton(count_snapshot)
+    }
+}
+#
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+# let batch_hook: BatchHook<u32> = flow.sim_hook();
+# let snapshot_hook: SnapshotHook<u64> = flow.sim_hook();
+# let (inc_send, increments) = node.sim_input();
+# let (get_send, get_requests) = node.sim_input();
+# let out = counter_service(
+#     increments,
+#     get_requests,
+#     nondet!(/** scripted by the test */ hook = batch_hook),
+#     nondet!(/** scripted by the test */ hook = snapshot_hook),
+# )
+# .sim_output();
+# flow.sim().deterministic(async || {
+#     inc_send.send(1u64);
+#     get_send.send(0u32);
+#     snapshot_hook.reveal(1u64).await;
+#     batch_hook.release(1).await;
+#     out.assert_yields_only([(0u32, 1u64)]).await;
+# });
+```
+
+Outside the simulator, a hookable `NonDet<Option<BatchHook<u32>>>` behaves exactly like a plain `NonDet`; callers that do not care about scripting just pass `nondet!(/** reason */)` and the payload defaults to "no hook". Since the parameter's type names exactly the decision it controls, forwarding it directly to the operator needs no further ceremony: the signature and its `# Non-Determinism` section are the documentation.
+
+A component with several unsafe operators behind a single form of non-determinism can instead take one guard with a tuple payload (such as `NonDet<(Option<BatchHook<u32>>, Option<SnapshotHook<u64>>)>`), split it with `take_hook()`, and attach each part with `nondet!(/** reason */ hook = part)`. Hooks can only be bound where the binding is visible in the code, and binding the same handle to two operators is a build-time error.
+
+For components with many decision points, a struct of handles can serve as the component's testing interface by implementing `SimHook`, which lets the whole struct be created in a single `flow.sim_hook()` call. Its fields are `Option`s, so the struct doubles as a composite hook payload (its `Default` is "no hooks"):
+
+```rust,ignore
+#[derive(Clone, Copy, Default)]
+pub struct CounterHooks {
+    pub batch: Option<BatchHook<u32>>,
+    pub snapshot: Option<SnapshotHook<u64>>,
+}
+
+impl SimHook for CounterHooks {
+    fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
+        CounterHooks {
+            batch: SimHook::create(next_id),
+            snapshot: SimHook::create(next_id),
+        }
+    }
+}
+```
+
+Such structs nest (a field can itself be a struct of handles), and since handles are `Copy` a test can pass the struct around or destructure it freely.
+
+## Scripting Decisions
+
+Inside the test body, each handle offers methods that script the corresponding operator's next decision. Here is a complete test for the counter service above, pinning the "read between two increments" scenario:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::sim_hooks::{BatchHook, SnapshotHook};
+# /// A counter service that responds to read requests with the current count.
+# ///
+# /// # Non-Determinism
+# /// - `nondet_batch`: how read requests are batched is observable in responses
+# /// - `nondet_snapshot`: reads may observe any version of the count
+# fn counter_service<'a>(
+#     increments: Stream<u64, Process<'a>>,
+#     get_requests: Stream<u32, Process<'a>>,
+#     nondet_batch: NonDet<Option<BatchHook<u32>>>,
+#     nondet_snapshot: NonDet<Option<SnapshotHook<u64>>>,
+# ) -> Stream<(u32, u64), Process<'a>> {
+#     let current_count = increments.fold(q!(|| 0), q!(|acc, v| *acc += v));
+#     sliced! {
+#         let request_batch = use::batch(get_requests, nondet_batch);
+#         let count_snapshot = use::snapshot(current_count, nondet_snapshot);
+#         request_batch.cross_singleton(count_snapshot)
+#     }
+# }
+let mut flow = FlowBuilder::new();
+let node = flow.process::<()>();
+let batch_hook: BatchHook<u32> = flow.sim_hook();
+let snapshot_hook: SnapshotHook<u64> = flow.sim_hook();
+
+let (inc_send, increments) = node.sim_input();
+let (get_send, get_requests) = node.sim_input();
+let out = counter_service(
+    increments,
+    get_requests,
+    nondet!(/** scripted by the test */ hook = batch_hook),
+    nondet!(/** scripted by the test */ hook = snapshot_hook),
+)
+.sim_output();
+
+flow.sim().deterministic(async || {
+    inc_send.send_many([1, 1]);
+    get_send.send(0);
+
+    snapshot_hook.reveal(1u64).await; // the read observes count = 1 (not the latest, 2!)
+    batch_hook.release(1).await; // ...and the batch contains exactly the one read request
+
+    // Version 2 stays buffered at the snapshot; holding data past a point where the
+    // operator could have fired requires an explicit declaration (see below).
+    snapshot_hook.pause();
+
+    out.assert_yields_only([(0, 1u64)]).await;
+});
+```
+
+Batch hooks offer several ways to describe the next batch:
+
+- `release(n)` releases the next `n` buffered elements of an ordered stream
+- `release_values(values)` names the exact expected contents, panicking if the buffered elements do not match (this makes scripts robust against upstream changes); on unordered streams, the values are matched as a multiset, independently of arrival order
+- `release_all()` releases everything that has arrived by the time the tick fires
+- `release_empty()` runs the tick with an empty batch, keeping everything buffered
+
+Snapshot hooks choose which version of a piece of state a tick observes:
+
+- `reveal(value)` scans forward through the buffered versions and releases the first one equal to `value`, skipping over versions the test does not care to observe
+- `reveal_next()` observes the next buffered version
+- `reveal_latest()` observes the newest version that has arrived
+- `keep()` re-observes the previously revealed version, simulating state updates that lag behind
+
+`reveal(value)` is a combined assertion and release, and the recommended way to script snapshots: a script written with the positional `reveal_next()` breaks silently when the program changes how often the state updates, while `reveal(value)` names the state it means and any mis-synchronization fails loudly at the reveal.
+
+Note that in the example, `reveal(1)` is awaited before any increments have necessarily been processed. This is fine: a decision may be scripted before the data it names exists, and the tick simply fires at the first moment the decision can be honored in full. A decision that can *never* be honored is reported as a test failure once the simulation runs out of other work, attributed to the test line that is suspended waiting on it.
+
+## The Script Is a Schedule
+
+Decision calls are `async`, and the sequence of decision calls in the test body reads as a **schedule** for the simulation, in program order:
+
+- Consecutive decisions that target *different hooks of the same tick* form a **group**: one execution of that tick consumes all of them together. This is why the `reveal` and `release` in the counter test above describe a single tick execution.
+- A decision that targets a different tick, or scripts a hook that already has a decision in the current group, starts a **new group**. The `.await` on the first decision of a new group suspends the test until the previous group's tick execution has actually happened, so the test body advances in lockstep with the execution it describes.
+- Awaiting an output (with `next()`, `assert_yields()`, and friends) acts as a **barrier**: it completes only after every decision scripted so far has been consumed.
+
+This grouping is what lets a script describe several executions of the same tick. The following test runs the counter tick twice, pairing each revealed count with one released read request:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::sim_hooks::{BatchHook, SnapshotHook};
+# /// A counter service that responds to read requests with the current count.
+# ///
+# /// # Non-Determinism
+# /// - `nondet_batch`: how read requests are batched is observable in responses
+# /// - `nondet_snapshot`: reads may observe any version of the count
+# fn counter_service<'a>(
+#     increments: Stream<u64, Process<'a>>,
+#     get_requests: Stream<u32, Process<'a>>,
+#     nondet_batch: NonDet<Option<BatchHook<u32>>>,
+#     nondet_snapshot: NonDet<Option<SnapshotHook<u64>>>,
+# ) -> Stream<(u32, u64), Process<'a>> {
+#     let current_count = increments.fold(q!(|| 0), q!(|acc, v| *acc += v));
+#     sliced! {
+#         let request_batch = use::batch(get_requests, nondet_batch);
+#         let count_snapshot = use::snapshot(current_count, nondet_snapshot);
+#         request_batch.cross_singleton(count_snapshot)
+#     }
+# }
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+# let batch_hook: BatchHook<u32> = flow.sim_hook();
+# let snapshot_hook: SnapshotHook<u64> = flow.sim_hook();
+# let (inc_send, increments) = node.sim_input();
+# let (get_send, get_requests) = node.sim_input();
+# let out = counter_service(
+#     increments,
+#     get_requests,
+#     nondet!(/** scripted by the test */ hook = batch_hook),
+#     nondet!(/** scripted by the test */ hook = snapshot_hook),
+# )
+# .sim_output();
+flow.sim().deterministic(async || {
+    inc_send.send_many([1, 1, 1]);
+    get_send.send_many([7, 8]);
+
+    snapshot_hook.reveal(1u64).await; // 1st execution: reveal count = 1
+    batch_hook.release(1).await; // 1st execution: get 7 → (7, 1)   (same group: no waiting)
+
+    snapshot_hook.reveal(3u64).await; // 2nd execution: reveal count = 3 (suspends until
+    batch_hook.release(1).await; // the 1st execution has actually run)
+
+    out.assert_yields_only([(7, 1u64), (8, 3u64)]).await;
+});
+```
+
+The second `reveal` targets a hook that already has a decision pending, so it opens a new group and suspends until the first execution completes. It also asks for count = 3, silently skipping over the unobserved version 2: the script names the states it cares about, not every state the program passes through.
+
+## Holding Data on Purpose
+
+A hook that has buffered input but no scripted decision is an error, reported at every scheduling boundary:
+
+```text
+scripted hook has buffered input but no decision
+```
+
+This protection exists because silently holding data would make tests pass for the wrong reason. Consider a test that scripts a few decisions and then asserts `out.assert_no_more().await`. If a forgotten hook could quietly hold its buffered input forever, the assertion would succeed vacuously: no more output arrives because the simulator never ran the operator, not because the program actually produces nothing more. The forgotten-hook error confronts the test author instead.
+
+When buffering *is* the scenario you want (requests intentionally piling up while other work proceeds), you declare it with the `pause` family:
+
+- `pause()` exempts the hook from the forgotten-hook error. While paused, the hook never causes its tick to run; if its tick runs anyway because *other* hooks feed it, the paused hook contributes its "nothing new" behavior each time (an empty batch, or an unchanged snapshot). Scripting any decision implicitly resumes the hook, and `resume()` ends the pause explicitly.
+- `pause_while(body)` brackets a buffering phase, resuming even if the body panics, so a paused hook cannot leak past the phase it was declared for.
+- `auto_pause()` sets a standing mode where the hook only ever acts when scripted, with every decision leaving a fresh hold in place behind it. This deliberately opts out of the forgotten-hook protection; the one `auto_pause()` line at the top of a test is the reviewer-visible marker that the hook's timing is entirely script-driven.
+
+Sometimes the right decision is not knowable upfront and the script needs to wait for the simulation to reach a certain state. `pause_until(predicate)` pauses the hook and resolves at the first scheduling point where the hook's pending-input status satisfies the predicate. The shorthands `pause_until_count(n)` (at least `n` elements buffered at a batch) and `pause_until_versions(n)` (at least `n` unobserved versions buffered at a snapshot) cover the common cases.
+
+If the simulation can no longer satisfy the wait, the test fails with a message naming the hook and what it was waiting for.
+
+## Composing with Exploration
+
+Scripted hooks are not limited to fully scripted tests: under `fuzz()` and `exhaustive()`, hooks pin their decision points while every unhooked decision point remains explored. This lets a test hold one dimension of the scenario fixed (the part the test is *about*) while the simulator varies everything else around it:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::stream::{ExactlyOnce, TotalOrder};
+# use hydro_lang::sim_hooks::BatchHook;
+let mut flow = FlowBuilder::new();
+let node = flow.process::<()>();
+let batch_hook: BatchHook<i32> = flow.sim_hook();
+
+let (in1_send, in1) = node.sim_input();
+let (in2_send, in2) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
+
+let scripted_out = sliced! {
+    let batch = use::batch(in1, nondet!(/** scripted */ hook = batch_hook));
+    batch.fold(q!(|| 0), q!(|acc, v| *acc += v)).into_stream()
+}
+.sim_output();
+let fuzzed_out = sliced! {
+    let batch = use::batch(in2, nondet!(/** fuzzed */));
+    batch.fold(q!(|| 0), q!(|acc, v| *acc += v)).into_stream()
+}
+.sim_output();
+
+flow.sim().exhaustive(async || {
+    in1_send.send_many([1, 2]);
+    in2_send.send_many([10, 20]);
+
+    // The scripted batch releases identical contents in every explored execution.
+    batch_hook.release(2).await;
+    scripted_out.assert_yields([3]).await;
+
+    // The unhooked batch remains fully explored: it may arrive as [30] or [10, 20].
+    let fuzzed: Vec<i32> = fuzzed_out.collect().await;
+    assert!(fuzzed == [30] || fuzzed == [10, 20]);
+});
+```
+
+Waiting for a scripted execution is a genuinely free-running wait: the simulator keeps exploring the schedule of unhooked ticks while a scripted group waits its turn, and every legal placement of the scripted execution among the explored ones is itself explored.
+
+This matters for schedule-dependent decisions like `release_all()` and `reveal_latest()`. *When* the scripted tick fires relative to the explored ticks around it changes *what* it releases, so under exploration their contents co-vary with the schedule. Use `release(n)`, `release_values(values)`, or `reveal(value)` when the script should name its data exactly.
+
+The interaction between scripts and exploration is also policed in the other direction. If an unhooked or fuzzed part of the program feeds data into a scripted hook's operator, the forgotten-hook error still applies: the simulator will not silently prune executions where that data sits buffered behind the script. Either the script accounts for the data with a decision, or the test declares the buffering with a pause.
+
+## Ordering Hooks and Commutativity Proofs
+
+`OrderingHook` scripts the order chosen by `assume_ordering::<TotalOrder>`. At the top level (outside any tick), each `next(value)` decision releases exactly *one* buffered element, the one equal to `value`. Releasing one element per decision preserves the opportunities for ticks and network feedback to interleave with the remaining buffered input, so a script can express things like "the reply to the first message overtakes the second message":
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
+# use hydro_lang::sim_hooks::OrderingHook;
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+let ordering: OrderingHook<u32> = flow.sim_hook();
+let (input_send, input) = node.sim_input::<_, NoOrder, _>();
+let output = input
+    .assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = ordering))
+    .sim_output();
+
+flow.sim().deterministic(async || {
+    input_send.send_many_unordered([1, 2, 3]);
+    ordering.next(2).await;
+    ordering.next(1).await;
+    ordering.next(3).await;
+    output.assert_yields_only([2, 1, 3]).await;
+});
+```
+
+Inside a tick, the input to an `assume_ordering` is bounded (the tick's batch), so the hook type is `OrderingHook<T, Bounded>` and the single decision `order(values)` supplies one complete permutation of everything the operator receives during that tick. The decision joins the same group as the batch decisions feeding the tick.
+
+An in-tick ordering with two or more elements and no scripted decision fails the tick, since there is a genuine choice the script did not make; zero or one elements need no decision.
+
+Ordering hooks also attach to **commutativity proofs**. When you pass `commutative = manual_proof!(...)` to `fold` or `reduce`, you are asserting that the combinator tolerates any order; the simulator does not take your word for it, and explores orders (or lets you script them) to check that the claim holds. The `manual_proof!` macro accepts the same `hook =` argument as `nondet!`:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::stream::NoOrder;
+# use hydro_lang::sim_hooks::{BatchHook, OrderingHook};
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+let batch_hook: BatchHook<u32, NoOrder> = flow.sim_hook();
+let ordering: OrderingHook<u32, Bounded> = flow.sim_hook();
+let (input_send, input) = node.sim_input::<_, NoOrder, _>();
+let output = sliced! {
+    let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+    b.fold(
+        q!(|| Vec::new()),
+        q!(
+            |acc, v| acc.push(v),
+            // Not actually commutative: the scripted order is observable in the Vec,
+            // demonstrating that the simulator does not trust the proof.
+            commutative = manual_proof!(
+                /// scripted by the test
+                hook = ordering
+            )
+        ),
+    )
+    .into_stream()
+}
+.sim_output();
+
+flow.sim().deterministic(async || {
+    input_send.send_many_unordered([1, 2, 3]);
+    batch_hook.release_values([1, 2, 3]).await;
+    ordering.order([2, 3, 1]).await;
+    output.assert_yields_only([vec![2, 3, 1]]).await;
+});
+```
+
+For a fold *outside* any tick, the hook behaves like a top-level ordering hook: each `next(value)` decision feeds one named element into the fold, so intermediate accumulator states become observable at exactly the script's release points. This is particularly useful together with a `SnapshotHook` downstream of the fold, revealing the accumulator after each scripted step.

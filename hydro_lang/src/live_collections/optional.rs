@@ -453,7 +453,12 @@ where
     /// ```
     pub fn flat_map_ordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, Bounded>, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, Bounded>,
+            StreamMapFuncAlgebra<T, Bounded, C, Idemp>,
+        >,
     ) -> Stream<U, L, Bounded, TotalOrder, ExactlyOnce>
     where
         B: IsBounded,
@@ -496,7 +501,12 @@ where
     /// ```
     pub fn flat_map_unordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, Bounded>, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, Bounded>,
+            StreamMapFuncAlgebra<T, Bounded, C, Idemp>,
+        >,
     ) -> Stream<U, L, Bounded, NoOrder, ExactlyOnce>
     where
         B: IsBounded,
@@ -1365,7 +1375,18 @@ where
         let tick = self.location.tick();
 
         self.snapshot(&tick, nondet)
-            .filter_if(samples.batch(&tick, nondet).first().is_some())
+            .filter_if(
+                samples
+                    .batch(
+                        &tick,
+                        nondet!(
+                            /// sample timing is captured by the caller's guard
+                            nondet
+                        ),
+                    )
+                    .first()
+                    .is_some(),
+            )
             .all_ticks()
             .weaken_retries()
     }

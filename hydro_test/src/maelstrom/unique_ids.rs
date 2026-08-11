@@ -17,7 +17,10 @@ pub fn unique_id_server<'a, C: 'a>(
 ) -> KeyedStream<String, serde_json::Value, Cluster<'a, C>> {
     input
         .entries()
-        .assume_ordering(nondet_ids)
+        .assume_ordering(nondet!(
+            /// ids are derived from the enumeration order, captured by the caller's guard
+            nondet_ids
+        ))
         .enumerate()
         .map(q!(move |(idx, (sender, msg))| {
             let self_id = &CLUSTER_SELF_ID;
