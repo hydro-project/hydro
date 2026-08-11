@@ -103,7 +103,6 @@ if [ "$TEST_HYDRO" = true ]; then
     fi
     if [ "$TEST_MAELSTROM" = true ]; then
         export MAELSTROM_PATH="${MAELSTROM_PATH:="$HOME/maelstrom/maelstrom"}"
-        export RUSTFLAGS='--cfg=maelstrom_available'
         # Check if `MAELSTROM_PATH` exists as an executable.
         if [ ! -x "$MAELSTROM_PATH" ]; then
             echo "$0: Maelstrom executable not found at \$MAELSTROM_PATH: $MAELSTROM_PATH.

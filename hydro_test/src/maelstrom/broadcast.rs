@@ -161,9 +161,9 @@ mod tests {
 
         let mut deployment = MaelstromDeployment::new("broadcast")
             .maelstrom_path(
-                PathBuf::from_str(
-                    &std::env::var("MAELSTROM_PATH").expect("MAELSTROM_PATH env var not set"),
-                )
+                PathBuf::from_str(&std::env::var("MAELSTROM_PATH").expect(
+                    "MAELSTROM_PATH env var not set, set it to the maelstrom executable path",
+                ))
                 .unwrap(),
             )
             .node_count(1)
@@ -189,9 +189,9 @@ mod tests {
 
         let mut deployment = MaelstromDeployment::new("broadcast")
             .maelstrom_path(
-                PathBuf::from_str(
-                    &std::env::var("MAELSTROM_PATH").expect("MAELSTROM_PATH env var not set"),
-                )
+                PathBuf::from_str(&std::env::var("MAELSTROM_PATH").expect(
+                    "MAELSTROM_PATH env var not set, set it to the maelstrom executable path",
+                ))
                 .unwrap(),
             )
             .node_count(5)
@@ -217,9 +217,9 @@ mod tests {
 
         let mut deployment = MaelstromDeployment::new("broadcast")
             .maelstrom_path(
-                PathBuf::from_str(
-                    &std::env::var("MAELSTROM_PATH").expect("MAELSTROM_PATH env var not set"),
-                )
+                PathBuf::from_str(&std::env::var("MAELSTROM_PATH").expect(
+                    "MAELSTROM_PATH env var not set, set it to the maelstrom executable path",
+                ))
                 .unwrap(),
             )
             .node_count(5)
