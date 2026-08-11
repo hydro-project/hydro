@@ -873,11 +873,68 @@ impl DfirBuilder for ProdDfirBuilder {
                             },
                             None,
                         );
-                    } else {
+                    } else if matches!(in_kind, CollectionKind::KeyedSingleton { .. }) {
+                        // An unbounded keyed singleton (e.g. a cluster-membership snapshot)
+                        // is produced by a persistent root-level `fold_keyed`/`reduce_keyed`
+                        // that already re-emits its full keyed state every tick, so the lazy
+                        // window always observes the latest value when the loop fires.
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
                                 #out_ident = #in_ident -> batch_lazy();
+                            },
+                            None,
+                        );
+                    } else {
+                        // An unbounded (non-keyed) singleton/optional snapshot. Its value
+                        // supersedes over time, and the snapshot must observe the *latest*
+                        // value on every firing of the consuming loop (mirroring the
+                        // simulator's `PassthroughSingletonHook`, which always releases the
+                        // latest value).
+                        //
+                        // The producing side yields one value per source firing (e.g. via
+                        // `all_iterations()` when the singleton exits another tick's loop), so
+                        // it does not re-emit between updates. A plain `batch_lazy()` would
+                        // therefore drop the value on any tick the consuming loop does not
+                        // fire, leaving the singleton empty when a request arrives between
+                        // updates (e.g. a read landing between broadcasts).
+                        //
+                        // Persist at the root (which re-emits every tick and forces the
+                        // subgraph to run each tick; `persist` is illegal inside a loop), then
+                        // collapse the replayed history to the latest value with a per-tick
+                        // reduce, and lazily window that always-fresh latest into the loop.
+                        //
+                        // TODO(#2902): the root `persist` retains the full update history;
+                        // a keep-last-only representation would make this O(1) in memory.
+                        // The element type is needed to annotate the keep-last reduce closure;
+                        // inference alone is insufficient in the generated code (E0282).
+                        let element_type: &DebugType = match in_kind {
+                            CollectionKind::Singleton { element_type, .. }
+                            | CollectionKind::Optional { element_type, .. } => element_type,
+                            _ => unreachable!(
+                                "keyed singletons are handled above; only Singleton/Optional reach here"
+                            ),
+                        };
+                        let persisted_ident = self.intermediate_ident();
+                        let latest_ident = self.intermediate_ident();
+                        self.add_dfir_in(
+                            in_location,
+                            parse_quote! {
+                                #persisted_ident = #in_ident -> persist::<'static>();
+                            },
+                            None,
+                        );
+                        self.add_dfir_in(
+                            in_location,
+                            parse_quote! {
+                                #latest_ident = #persisted_ident -> reduce::<'tick>(|__acc: &mut #element_type, __new: #element_type| { *__acc = __new; });
+                            },
+                            None,
+                        );
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #latest_ident -> batch_lazy();
                             },
                             None,
                         );
