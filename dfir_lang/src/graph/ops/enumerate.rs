@@ -55,10 +55,10 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
             let mut #counter_ident = 0..;
         };
         let write_tick_end = match persistence {
-            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+            Persistence::Tick => quote_spanned! {op_span=>
                 #counter_ident = 0..;
             },
-            _ => Default::default(),
+            Persistence::Static => Default::default(),
         };
 
         let map_fn = quote_spanned! {op_span=>

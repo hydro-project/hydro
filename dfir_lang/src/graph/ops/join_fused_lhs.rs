@@ -59,7 +59,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         let rhs_borrow_ident = wc.make_ident("rhs_joindata_borrow_ident");
 
         let rhs_prologue = match persistences[1] {
-            Persistence::None | Persistence::Loop | Persistence::Tick => quote_spanned! {op_span=>},
+            Persistence::Tick => quote_spanned! {op_span=>},
             Persistence::Static => quote_spanned! {op_span=>
                 let mut #rhs_joindata_ident = ::std::vec::Vec::new();
             },
@@ -71,7 +71,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         let lhs_accum = &arguments[0];
 
         let write_iterator = match persistences[1] {
-            Persistence::None | Persistence::Loop | Persistence::Tick => quote_spanned! {op_span=>
+            Persistence::Tick => quote_spanned! {op_span=>
                 #lhs_pre_write_iter
 
                 let #ident = {

@@ -436,8 +436,7 @@ impl WriteContextArgs<'_> {
         )
     }
 
-    /// Returns the given number of persistence arguments, with loop-context-aware defaults
-    /// (`'none` within a `loop { ... }` context, `'tick` otherwise) when not specified.
+    /// Returns the given number of persistence arguments, defaulting to `'tick` when unspecified.
     pub fn persistence_args<const N: usize>(
         &self,
         diagnostics: &mut Diagnostics,
@@ -454,12 +453,7 @@ impl WriteContextArgs<'_> {
             ));
         }
 
-        let default_persistence = if self.loop_id.is_some() {
-            Persistence::None
-        } else {
-            Persistence::Tick
-        };
-        let mut out = [default_persistence; N];
+        let mut out = [Persistence::Tick; N];
         self.op_inst
             .generics
             .persistence_args
@@ -543,22 +537,16 @@ where
 /// Persistence lifetimes: `'none`, `'loop`, `'tick`, or `'static`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Persistence {
-    /// No persistence, for within a loop iteration.
-    None,
-    /// Persistence throughout a single loop execution, across iterations.
-    Loop,
-    /// Persistence for one tick, at the top-level only (outside any loops).
+    /// Persistence for one "tick" (or loop iteration), i.e. no persistance at all
     Tick,
-    /// Persistence across all ticks.
+    /// Persistence across the entire program execution.
     Static,
 }
 impl Persistence {
     /// Returns a lowercase string for the persistence type.
     pub fn to_str_lowercase(self) -> &'static str {
         match self {
-            Persistence::None => "none",
             Persistence::Tick => "tick",
-            Persistence::Loop => "loop",
             Persistence::Static => "static",
         }
     }

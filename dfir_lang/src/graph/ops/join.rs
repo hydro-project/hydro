@@ -95,7 +95,6 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   loop_id,
                    op_span,
                    work_fn,
                    work_fn_async,
@@ -114,13 +113,14 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                    ..
                },
                _diagnostics| {
-        let join_type =
-            type_args
-                .first()
-                .map(ToTokens::to_token_stream)
-                .unwrap_or_else(|| quote_spanned!(op_span=>
+        let join_type = type_args
+            .first()
+            .map(ToTokens::to_token_stream)
+            .unwrap_or_else(|| {
+                quote_spanned!(op_span=>
                     #root::dfir_pipes::pull::HalfSetJoinState
-                ));
+                )
+            });
 
         // TODO: This is really bad.
         // This will break if the user aliases HalfSetJoinState to something else. Temporary hacky solution.
@@ -151,14 +151,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
         };
 
         let persistences = match persistence_args[..] {
-            [] => {
-                let p = if loop_id.is_some() {
-                    Persistence::None
-                } else {
-                    Persistence::Tick
-                };
-                [p, p]
-            }
+            [] => [Persistence::Tick, Persistence::Tick],
             [a] => [a, a],
             [a, b] => [a, b],
             _ => panic!(),

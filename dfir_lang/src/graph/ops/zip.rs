@@ -58,16 +58,16 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
         };
 
         let write_tick_end_lhs = match lhs_persistence {
-            Persistence::None | Persistence::Tick => Some(quote_spanned! {op_span=>
+            Persistence::Tick => Some(quote_spanned! {op_span=>
                 #lhs_ident.clear();
             }),
-            _ => None,
+            Persistence::Static => None,
         };
         let write_tick_end_rhs = match rhs_persistence {
-            Persistence::None | Persistence::Tick => Some(quote_spanned! {op_span=>
+            Persistence::Tick => Some(quote_spanned! {op_span=>
                 #rhs_ident.clear();
             }),
-            _ => None,
+            Persistence::Static => None,
         };
 
         let lhs_input = &inputs[0];
