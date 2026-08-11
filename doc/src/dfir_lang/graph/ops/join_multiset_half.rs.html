@@ -54,8 +54,8 @@
 <a href=#54 id=54 data-nosnippet>54</a>
 <a href=#55 id=55 data-nosnippet>55</a>        <span class="comment">// persistences[0] = build (first port), persistences[1] = probe (second port)
 <a href=#56 id=56 data-nosnippet>56</a>        </span><span class="kw">let </span>probe_persist = <span class="kw">match </span>persistences[<span class="number">1</span>] {
-<a href=#57 id=57 data-nosnippet>57</a>            Persistence::None | Persistence::Tick =&gt; <span class="bool-val">false</span>,
-<a href=#58 id=58 data-nosnippet>58</a>            Persistence::Loop | Persistence::Static =&gt; <span class="bool-val">true</span>,
+<a href=#57 id=57 data-nosnippet>57</a>            Persistence::Tick =&gt; <span class="bool-val">false</span>,
+<a href=#58 id=58 data-nosnippet>58</a>            Persistence::Static =&gt; <span class="bool-val">true</span>,
 <a href=#59 id=59 data-nosnippet>59</a>        };
 <a href=#60 id=60 data-nosnippet>60</a>
 <a href=#61 id=61 data-nosnippet>61</a>        <span class="kw">let </span>write_prologue_probe = probe_persist.then(|| {
@@ -69,17 +69,17 @@
 <a href=#69 id=69 data-nosnippet>69</a>        };
 <a href=#70 id=70 data-nosnippet>70</a>
 <a href=#71 id=71 data-nosnippet>71</a>        <span class="kw">let </span>write_tick_end_build = <span class="kw">match </span>persistences[<span class="number">0</span>] {
-<a href=#72 id=72 data-nosnippet>72</a>            Persistence::None | Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#72 id=72 data-nosnippet>72</a>            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#73 id=73 data-nosnippet>73</a>                #build_ident.clear();
 <a href=#74 id=74 data-nosnippet>74</a>            },
-<a href=#75 id=75 data-nosnippet>75</a>            <span class="kw">_ </span>=&gt; Default::default(),
+<a href=#75 id=75 data-nosnippet>75</a>            Persistence::Static =&gt; Default::default(),
 <a href=#76 id=76 data-nosnippet>76</a>        };
 <a href=#77 id=77 data-nosnippet>77</a>        <span class="kw">let </span>write_tick_end_probe = <span class="kw">if </span>probe_persist {
 <a href=#78 id=78 data-nosnippet>78</a>            <span class="kw">match </span>persistences[<span class="number">1</span>] {
-<a href=#79 id=79 data-nosnippet>79</a>                Persistence::None | Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#79 id=79 data-nosnippet>79</a>                Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#80 id=80 data-nosnippet>80</a>                    #probe_ident.clear();
 <a href=#81 id=81 data-nosnippet>81</a>                },
-<a href=#82 id=82 data-nosnippet>82</a>                <span class="kw">_ </span>=&gt; Default::default(),
+<a href=#82 id=82 data-nosnippet>82</a>                Persistence::Static =&gt; Default::default(),
 <a href=#83 id=83 data-nosnippet>83</a>            }
 <a href=#84 id=84 data-nosnippet>84</a>        } <span class="kw">else </span>{
 <a href=#85 id=85 data-nosnippet>85</a>            Default::default()

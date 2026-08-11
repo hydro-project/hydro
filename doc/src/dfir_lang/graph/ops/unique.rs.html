@@ -77,10 +77,10 @@
 <a href=#77 id=77 data-nosnippet>77</a>            <span class="kw">let </span><span class="kw-2">mut </span>#uniquedata_ident = #root::rustc_hash::FxHashSet::default();
 <a href=#78 id=78 data-nosnippet>78</a>        };
 <a href=#79 id=79 data-nosnippet>79</a>        <span class="kw">let </span>write_tick_end = <span class="kw">match </span>persistence {
-<a href=#80 id=80 data-nosnippet>80</a>            Persistence::None | Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#80 id=80 data-nosnippet>80</a>            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#81 id=81 data-nosnippet>81</a>                #uniquedata_ident.clear();
 <a href=#82 id=82 data-nosnippet>82</a>            },
-<a href=#83 id=83 data-nosnippet>83</a>            <span class="kw">_ </span>=&gt; Default::default(),
+<a href=#83 id=83 data-nosnippet>83</a>            Persistence::Static =&gt; Default::default(),
 <a href=#84 id=84 data-nosnippet>84</a>        };
 <a href=#85 id=85 data-nosnippet>85</a>
 <a href=#86 id=86 data-nosnippet>86</a>        <span class="kw">let </span>filter_fn = <span class="macro">quote_spanned!</span> {op_span=&gt;

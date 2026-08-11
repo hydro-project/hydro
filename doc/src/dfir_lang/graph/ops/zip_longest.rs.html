@@ -2,8 +2,8 @@
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>syn::parse_quote;
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use super</span>::{
-<a href=#5 id=5 data-nosnippet>5</a>    OperatorCategory, OperatorConstraints,
-<a href=#6 id=6 data-nosnippet>6</a>    OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
+<a href=#5 id=5 data-nosnippet>5</a>    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0, RANGE_1,
+<a href=#6 id=6 data-nosnippet>6</a>    WriteContextArgs,
 <a href=#7 id=7 data-nosnippet>7</a>};
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 <a href=#9 id=9 data-nosnippet>9</a>
@@ -53,31 +53,28 @@
 <a href=#53 id=53 data-nosnippet>53</a>        <span class="macro">assert!</span>(is_pull);
 <a href=#54 id=54 data-nosnippet>54</a>
 <a href=#55 id=55 data-nosnippet>55</a>        <span class="kw">let </span>[persistence] = wc.persistence_args(diagnostics);
-<a href=#56 id=56 data-nosnippet>56</a>        <span class="kw">if </span>!<span class="macro">matches!</span>(persistence, Persistence::None | Persistence::Tick) {
+<a href=#56 id=56 data-nosnippet>56</a>        <span class="kw">if </span>!<span class="macro">matches!</span>(persistence, Persistence::Tick) {
 <a href=#57 id=57 data-nosnippet>57</a>            diagnostics.push(Diagnostic::spanned(
 <a href=#58 id=58 data-nosnippet>58</a>                op_span,
 <a href=#59 id=59 data-nosnippet>59</a>                Level::Error,
-<a href=#60 id=60 data-nosnippet>60</a>                <span class="macro">format!</span>(
-<a href=#61 id=61 data-nosnippet>61</a>                    <span class="string">"`{}()` can only have `'none` or `'tick` persistence."</span>,
-<a href=#62 id=62 data-nosnippet>62</a>                    op_name
-<a href=#63 id=63 data-nosnippet>63</a>                ),
-<a href=#64 id=64 data-nosnippet>64</a>            ));
-<a href=#65 id=65 data-nosnippet>65</a>            <span class="comment">// Fall-thru to still generate code.
-<a href=#66 id=66 data-nosnippet>66</a>        </span>}
-<a href=#67 id=67 data-nosnippet>67</a>
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>lhs = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
-<a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">let </span>rhs = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
-<a href=#70 id=70 data-nosnippet>70</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#71 id=71 data-nosnippet>71</a>            <span class="kw">let </span>#ident = #root::dfir_pipes::pull::Pull::zip_longest(
-<a href=#72 id=72 data-nosnippet>72</a>                #root::dfir_pipes::pull::Pull::fuse(#lhs),
-<a href=#73 id=73 data-nosnippet>73</a>                #root::dfir_pipes::pull::Pull::fuse(#rhs),
-<a href=#74 id=74 data-nosnippet>74</a>            );
-<a href=#75 id=75 data-nosnippet>75</a>        };
-<a href=#76 id=76 data-nosnippet>76</a>
-<a href=#77 id=77 data-nosnippet>77</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#78 id=78 data-nosnippet>78</a>            write_iterator,
-<a href=#79 id=79 data-nosnippet>79</a>            ..Default::default()
-<a href=#80 id=80 data-nosnippet>80</a>        })
-<a href=#81 id=81 data-nosnippet>81</a>    },
-<a href=#82 id=82 data-nosnippet>82</a>};
+<a href=#60 id=60 data-nosnippet>60</a>                <span class="macro">format!</span>(<span class="string">"`{}()` can only have `'tick` persistence."</span>, op_name),
+<a href=#61 id=61 data-nosnippet>61</a>            ));
+<a href=#62 id=62 data-nosnippet>62</a>            <span class="comment">// Fall-thru to still generate code.
+<a href=#63 id=63 data-nosnippet>63</a>        </span>}
+<a href=#64 id=64 data-nosnippet>64</a>
+<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">let </span>lhs = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
+<a href=#66 id=66 data-nosnippet>66</a>        <span class="kw">let </span>rhs = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
+<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#68 id=68 data-nosnippet>68</a>            <span class="kw">let </span>#ident = #root::dfir_pipes::pull::Pull::zip_longest(
+<a href=#69 id=69 data-nosnippet>69</a>                #root::dfir_pipes::pull::Pull::fuse(#lhs),
+<a href=#70 id=70 data-nosnippet>70</a>                #root::dfir_pipes::pull::Pull::fuse(#rhs),
+<a href=#71 id=71 data-nosnippet>71</a>            );
+<a href=#72 id=72 data-nosnippet>72</a>        };
+<a href=#73 id=73 data-nosnippet>73</a>
+<a href=#74 id=74 data-nosnippet>74</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#75 id=75 data-nosnippet>75</a>            write_iterator,
+<a href=#76 id=76 data-nosnippet>76</a>            ..Default::default()
+<a href=#77 id=77 data-nosnippet>77</a>        })
+<a href=#78 id=78 data-nosnippet>78</a>    },
+<a href=#79 id=79 data-nosnippet>79</a>};
 </code></pre></div></section></main></body></html>

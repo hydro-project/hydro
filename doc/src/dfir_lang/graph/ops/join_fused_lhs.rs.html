@@ -59,7 +59,7 @@
 <a href=#59 id=59 data-nosnippet>59</a>        <span class="kw">let </span>rhs_borrow_ident = wc.make_ident(<span class="string">"rhs_joindata_borrow_ident"</span>);
 <a href=#60 id=60 data-nosnippet>60</a>
 <a href=#61 id=61 data-nosnippet>61</a>        <span class="kw">let </span>rhs_prologue = <span class="kw">match </span>persistences[<span class="number">1</span>] {
-<a href=#62 id=62 data-nosnippet>62</a>            Persistence::None | Persistence::Loop | Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;},
+<a href=#62 id=62 data-nosnippet>62</a>            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;},
 <a href=#63 id=63 data-nosnippet>63</a>            Persistence::Static =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#64 id=64 data-nosnippet>64</a>                <span class="kw">let </span><span class="kw-2">mut </span>#rhs_joindata_ident = ::std::vec::Vec::new();
 <a href=#65 id=65 data-nosnippet>65</a>            },
@@ -71,7 +71,7 @@
 <a href=#71 id=71 data-nosnippet>71</a>        <span class="kw">let </span>lhs_accum = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
 <a href=#72 id=72 data-nosnippet>72</a>
 <a href=#73 id=73 data-nosnippet>73</a>        <span class="kw">let </span>write_iterator = <span class="kw">match </span>persistences[<span class="number">1</span>] {
-<a href=#74 id=74 data-nosnippet>74</a>            Persistence::None | Persistence::Loop | Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#74 id=74 data-nosnippet>74</a>            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#75 id=75 data-nosnippet>75</a>                #lhs_pre_write_iter
 <a href=#76 id=76 data-nosnippet>76</a>
 <a href=#77 id=77 data-nosnippet>77</a>                <span class="kw">let </span>#ident = {

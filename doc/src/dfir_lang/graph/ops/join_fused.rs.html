@@ -3,8 +3,8 @@
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>syn::{Ident, parse_quote};
 <a href=#4 id=4 data-nosnippet>4</a>
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use super</span>::{
-<a href=#6 id=6 data-nosnippet>6</a>    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
-<a href=#7 id=7 data-nosnippet>7</a>    RANGE_1, WriteContextArgs,
+<a href=#6 id=6 data-nosnippet>6</a>    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0, RANGE_1,
+<a href=#7 id=7 data-nosnippet>7</a>    WriteContextArgs,
 <a href=#8 id=8 data-nosnippet>8</a>};
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span><span class="kw">crate</span>::diagnostic::Diagnostic;
 <a href=#10 id=10 data-nosnippet>10</a>
@@ -192,39 +192,23 @@
 <a href=#192 id=192 data-nosnippet>192</a>    <span class="kw">let </span>joindata_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"joindata_{}"</span>, side));
 <a href=#193 id=193 data-nosnippet>193</a>    <span class="kw">let </span>borrow_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"joindata_{}_borrow"</span>, side));
 <a href=#194 id=194 data-nosnippet>194</a>
-<a href=#195 id=195 data-nosnippet>195</a>    <span class="kw">let </span><span class="kw-2">&amp;</span>WriteContextArgs {
-<a href=#196 id=196 data-nosnippet>196</a>        root,
-<a href=#197 id=197 data-nosnippet>197</a>        op_span,
-<a href=#198 id=198 data-nosnippet>198</a>        ..
-<a href=#199 id=199 data-nosnippet>199</a>    } = wc;
-<a href=#200 id=200 data-nosnippet>200</a>
-<a href=#201 id=201 data-nosnippet>201</a>    <span class="prelude-val">Ok</span>(<span class="kw">match </span>persistence {
-<a href=#202 id=202 data-nosnippet>202</a>        Persistence::None =&gt; (
-<a href=#203 id=203 data-nosnippet>203</a>            Default::default(),
-<a href=#204 id=204 data-nosnippet>204</a>            Default::default(),
-<a href=#205 id=205 data-nosnippet>205</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#206 id=206 data-nosnippet>206</a>                <span class="kw">let </span>#borrow_ident = <span class="kw-2">&amp;mut </span>#root::rustc_hash::FxHashMap::default();
-<a href=#207 id=207 data-nosnippet>207</a>            },
-<a href=#208 id=208 data-nosnippet>208</a>            borrow_ident,
-<a href=#209 id=209 data-nosnippet>209</a>        ),
-<a href=#210 id=210 data-nosnippet>210</a>        Persistence::Tick | Persistence::Loop | Persistence::Static =&gt; {
-<a href=#211 id=211 data-nosnippet>211</a>            <span class="kw">let </span>tick_end = <span class="kw">match </span>persistence {
-<a href=#212 id=212 data-nosnippet>212</a>                Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#213 id=213 data-nosnippet>213</a>                    #joindata_ident.clear();
-<a href=#214 id=214 data-nosnippet>214</a>                },
-<a href=#215 id=215 data-nosnippet>215</a>                <span class="kw">_ </span>=&gt; Default::default(),
-<a href=#216 id=216 data-nosnippet>216</a>            };
-<a href=#217 id=217 data-nosnippet>217</a>            (
-<a href=#218 id=218 data-nosnippet>218</a>                <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#219 id=219 data-nosnippet>219</a>                    <span class="kw">let </span><span class="kw-2">mut </span>#joindata_ident = #root::rustc_hash::FxHashMap::default();
-<a href=#220 id=220 data-nosnippet>220</a>                },
-<a href=#221 id=221 data-nosnippet>221</a>                tick_end,
-<a href=#222 id=222 data-nosnippet>222</a>                <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#223 id=223 data-nosnippet>223</a>                    <span class="kw">let </span>#borrow_ident = <span class="kw-2">&amp;mut </span>#joindata_ident;
-<a href=#224 id=224 data-nosnippet>224</a>                },
-<a href=#225 id=225 data-nosnippet>225</a>                borrow_ident
-<a href=#226 id=226 data-nosnippet>226</a>            )
-<a href=#227 id=227 data-nosnippet>227</a>        }
-<a href=#228 id=228 data-nosnippet>228</a>    })
-<a href=#229 id=229 data-nosnippet>229</a>}
+<a href=#195 id=195 data-nosnippet>195</a>    <span class="kw">let </span><span class="kw-2">&amp;</span>WriteContextArgs { root, op_span, .. } = wc;
+<a href=#196 id=196 data-nosnippet>196</a>
+<a href=#197 id=197 data-nosnippet>197</a>    <span class="kw">let </span>tick_end = <span class="kw">match </span>persistence {
+<a href=#198 id=198 data-nosnippet>198</a>        Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#199 id=199 data-nosnippet>199</a>            #joindata_ident.clear();
+<a href=#200 id=200 data-nosnippet>200</a>        },
+<a href=#201 id=201 data-nosnippet>201</a>        Persistence::Static =&gt; Default::default(),
+<a href=#202 id=202 data-nosnippet>202</a>    };
+<a href=#203 id=203 data-nosnippet>203</a>    <span class="prelude-val">Ok</span>((
+<a href=#204 id=204 data-nosnippet>204</a>        <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#205 id=205 data-nosnippet>205</a>            <span class="kw">let </span><span class="kw-2">mut </span>#joindata_ident = #root::rustc_hash::FxHashMap::default();
+<a href=#206 id=206 data-nosnippet>206</a>        },
+<a href=#207 id=207 data-nosnippet>207</a>        tick_end,
+<a href=#208 id=208 data-nosnippet>208</a>        <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#209 id=209 data-nosnippet>209</a>            <span class="kw">let </span>#borrow_ident = <span class="kw-2">&amp;mut </span>#joindata_ident;
+<a href=#210 id=210 data-nosnippet>210</a>        },
+<a href=#211 id=211 data-nosnippet>211</a>        borrow_ident,
+<a href=#212 id=212 data-nosnippet>212</a>    ))
+<a href=#213 id=213 data-nosnippet>213</a>}
 </code></pre></div></section></main></body></html>
