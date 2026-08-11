@@ -2562,6 +2562,7 @@ pub enum NetworkRecv {
     },
 }
 
+#[cfg(feature = "build")]
 impl NetworkSend {
     /// The raw payload type flowing across the channel when serialization is left to external code,
     /// or [`None`] when the channel serializes internally.
@@ -2573,6 +2574,7 @@ impl NetworkSend {
     }
 }
 
+#[cfg(feature = "build")]
 impl NetworkRecv {
     /// See [`NetworkSend::external_element_type`].
     pub(crate) fn external_element_type(&self) -> Option<&syn::Type> {
