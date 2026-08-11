@@ -14,7 +14,7 @@ pub fn partition<'a, F>(
         'a,
         F,
         OperatorContext<Cluster<'a, ()>, Unbounded>,
-        StreamMapFuncAlgebra,
+        StreamMapFuncAlgebra<(MemberId<()>, String), Unbounded>,
     >,
 ) -> (Cluster<'a, ()>, Cluster<'a, ()>)
 where

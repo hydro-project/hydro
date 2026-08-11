@@ -16,7 +16,7 @@ use crate::live_collections::singleton::SingletonBound;
 use crate::live_collections::stream::{Ordering, Retries};
 use crate::location::Location;
 use crate::location::tick::{DeferTick, Tick};
-use crate::nondet::NonDet;
+use crate::nondet::{NonDet, nondet};
 
 /// Default style wrapper that stores a collection and its non-determinism guard.
 ///
@@ -46,14 +46,14 @@ pub fn default<T>(t: T, nondet: NonDet) -> Default<T> {
 /// Batch style wrapper that stores a stream-like collection and its non-determinism guard.
 ///
 /// This is used by the `sliced!` macro when `use::batch(...)` is specified.
-pub struct Batch<T> {
+pub struct Batch<T, H = ()> {
     pub(crate) collection: T,
-    pub(crate) nondet: NonDet,
+    pub(crate) nondet: NonDet<H>,
 }
 
-impl<T> Batch<T> {
+impl<T, H> Batch<T, H> {
     /// Creates a new batch-styled wrapper.
-    pub fn new(collection: T, nondet: NonDet) -> Self {
+    pub fn new(collection: T, nondet: NonDet<H>) -> Self {
         Self { collection, nondet }
     }
 }
@@ -62,21 +62,21 @@ impl<T> Batch<T> {
 /// [`KeyedStream`](crate::live_collections::KeyedStream), or a
 /// [`KeyedSingleton`](crate::live_collections::KeyedSingleton) with bounded values) to be
 /// sliced into non-deterministic batches of asynchronously arriving elements.
-pub fn batch<T>(t: T, nondet: NonDet) -> Batch<T> {
+pub fn batch<T, H>(t: T, nondet: NonDet<H>) -> Batch<T, H> {
     Batch::new(t, nondet)
 }
 
 /// Snapshot style wrapper that stores a singleton-like collection and its non-determinism guard.
 ///
 /// This is used by the `sliced!` macro when `use::snapshot(...)` is specified.
-pub struct Snapshot<T> {
+pub struct Snapshot<T, H = ()> {
     pub(crate) collection: T,
-    pub(crate) nondet: NonDet,
+    pub(crate) nondet: NonDet<H>,
 }
 
-impl<T> Snapshot<T> {
+impl<T, H> Snapshot<T, H> {
     /// Creates a new snapshot-styled wrapper.
-    pub fn new(collection: T, nondet: NonDet) -> Self {
+    pub fn new(collection: T, nondet: NonDet<H>) -> Self {
         Self { collection, nondet }
     }
 }
@@ -86,7 +86,7 @@ impl<T> Snapshot<T> {
 /// [`Optional`](crate::live_collections::Optional), or a
 /// [`KeyedSingleton`](crate::live_collections::KeyedSingleton) with asynchronously updated
 /// values) to be sliced into non-deterministic snapshots of its continuously changing value.
-pub fn snapshot<T>(t: T, nondet: NonDet) -> Snapshot<T> {
+pub fn snapshot<T, H>(t: T, nondet: NonDet<H>) -> Snapshot<T, H> {
     Snapshot::new(t, nondet)
 }
 
@@ -213,7 +213,11 @@ impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         self.collection.location().drop_consistency()
     }
     fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
-        let out = self.collection.batch(tick, self.nondet);
+        let _ = self.nondet;
+        let out = self.collection.batch(
+            tick,
+            nondet!(/** justified by the guard stored in this style wrapper */),
+        );
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
@@ -229,7 +233,11 @@ impl<'a, T, L: Location<'a>, B: SingletonBound> Slicable<'a, L::DropConsistency>
         self.collection.location().drop_consistency()
     }
     fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
-        let out = self.collection.snapshot(tick, self.nondet);
+        let _ = self.nondet;
+        let out = self.collection.snapshot(
+            tick,
+            nondet!(/** justified by the guard stored in this style wrapper */),
+        );
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
@@ -310,7 +318,11 @@ impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
 // ============================================================================
 
 impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
-    Slicable<'a, L::DropConsistency> for Batch<crate::live_collections::Stream<T, L, B, O, R>>
+    Slicable<'a, L::DropConsistency>
+    for Batch<
+        crate::live_collections::Stream<T, L, B, O, R>,
+        Option<crate::sim_hooks::BatchHook<T, O, R>>,
+    >
 {
     type Slice = crate::live_collections::Stream<T, Tick<L::DropConsistency>, Bounded, O, R>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
@@ -367,7 +379,10 @@ impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
 // ============================================================================
 
 impl<'a, T, L: Location<'a>, B: SingletonBound> Slicable<'a, L::DropConsistency>
-    for Snapshot<crate::live_collections::Singleton<T, L, B>>
+    for Snapshot<
+        crate::live_collections::Singleton<T, L, B>,
+        Option<crate::sim_hooks::SnapshotHook<T>>,
+    >
 {
     type Slice = crate::live_collections::Singleton<T, Tick<L::DropConsistency>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
@@ -430,7 +445,11 @@ impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 
     fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
-        let out = self.collection.batch_atomic(tick, self.nondet);
+        let _ = self.nondet;
+        let out = self.collection.batch_atomic(
+            tick,
+            nondet!(/** justified by the guard stored in this style wrapper */),
+        );
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
@@ -446,7 +465,11 @@ impl<'a, T, L: Location<'a>, B: SingletonBound> Slicable<'a, L::DropConsistency>
     }
 
     fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
-        let out = self.collection.snapshot_atomic(tick, self.nondet);
+        let _ = self.nondet;
+        let out = self.collection.snapshot_atomic(
+            tick,
+            nondet!(/** justified by the guard stored in this style wrapper */),
+        );
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }

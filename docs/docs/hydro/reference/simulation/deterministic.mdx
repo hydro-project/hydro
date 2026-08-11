@@ -1,0 +1,104 @@
+---
+sidebar_position: 4
+---
+
+# Deterministic Simulation
+
+When a test [scripts](./scripting.mdx) *every* decision the program makes, there is nothing left to explore: the script describes exactly one execution. **Deterministic mode** runs that one execution, once. Instead of `exhaustive()` or `fuzz()`, the test calls `deterministic()`:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::sim_hooks::BatchHook;
+let mut flow = FlowBuilder::new();
+let node = flow.process::<()>();
+let batch_hook: BatchHook<i32> = flow.sim_hook();
+
+let (in_send, input) = node.sim_input();
+let out = sliced! {
+    let batch = use::batch(input, nondet!(/** scripted by the test */ hook = batch_hook));
+    batch.fold(q!(|| 0), q!(|acc, v| *acc += v)).into_stream()
+}
+.sim_output();
+
+flow.sim().deterministic(async || {
+    in_send.send_many([1, 2, 3]);
+    batch_hook.release(2).await; // 1st tick: sums [1, 2]
+    batch_hook.release(1).await; // 2nd tick: sums [3]
+    out.assert_yields_only([3, 3]).await;
+});
+```
+
+The test body runs exactly once (the closure is `AsyncFnOnce`, so it may freely move values in), and the simulator never draws a single bit of randomness: there is no fuzzing engine underneath, no exploration, and no entropy source at all. A deterministic test that passes on your machine passes on every machine, every time.
+
+This makes deterministic mode the natural home for:
+
+- **unit tests** of individual components
+- **regression tests** that pin down the exact interleaving from a bug report
+- **executable documentation** where the test body spells out a protocol trace step by step
+
+Deterministic mode is a complement to exploration, not a replacement for it. A deterministic test checks one carefully chosen execution; `exhaustive()` and `fuzz()` check the executions you did not think of. A healthy test suite typically pairs a few deterministic tests that document the interesting scenarios with exploration-based tests that guard the full space.
+
+## Every Decision Must Be Scripted
+
+Since deterministic mode has no way to make choices on its own, every non-deterministic operator that faces a genuine choice must be bound to a hook and scripted. If the simulation reaches a point where an *unhooked* operator has pending input and would need a decision, the test fails immediately, naming the operator:
+
+```text
+deterministic simulation encountered an unsafe operator with pending input that is not bound to a sim hook:
+--> src/counter.rs:42:5
+ |     let request_batch = use::batch(get_requests, nondet!(/** ... */));
+ |                             ^ this operator must make a non-deterministic decision
+help: bind a sim hook to this operator (`nondet!(... hook = handle)`) and script its
+decisions, or run under `fuzz` / `exhaustive` instead
+```
+
+Failing loudly is the point: silently picking a default (such as "release everything" or "reveal the latest version") would turn the test into a check of one arbitrary, unstated execution, and the test would keep passing while quietly checking something other than what its author wrote down.
+
+Decisions that are *forced* need no script. An operator whose only possible behavior is trivial makes it implicitly: a batch with nothing buffered contributes an empty batch when other hooks drive its tick, a snapshot with no newer versions re-observes its current one, and an in-tick ordering over zero or one elements has nothing to decide.
+
+Together, these rules give a crisp characterization of what deterministic mode demands: you script exactly the decisions that could have gone more than one way, and nothing else. Purely deterministic parts of the program (everything without a `nondet!`) run under the hood with no ceremony, exactly as they would in a [regular exhaustive test with no decision points](./writing.mdx#deterministic-exploration).
+
+All the scripting machinery behaves identically in deterministic mode, including the safeguards. A hook with buffered input and no decision is still a forgotten-hook error, so a deterministic test cannot vacuously pass by never running an operator; intentional buffering still requires `pause()` or its relatives. Assertions like `assert_yields_only` and `assert_no_more` do not need to fork the search the way they do under `exhaustive()`, since there is nothing to fork: once the script is consumed, the simulation settles deterministically and the check is exact.
+
+## The Script Is the Entire Schedule
+
+In deterministic mode, the schedule of the whole simulation is read off the test body. Sends from `sim_input` ports, scripted decision groups, and output awaits follow program order, and at any point at most one action is runnable: either the head of the script, or forced work like network propagation.
+
+Ticks fire only after asynchronous propagation has fully quiesced, so "everything that has arrived" is a well-defined set at every point in the script. This makes the schedule-dependent decisions that are fuzzy under exploration exact here: `release_all()` releases precisely the elements causally available at that point in the script, and `reveal_latest()` observes precisely the newest version.
+
+One consequence worth internalizing is that the *interleaving* of a deterministic test is part of its meaning. Reordering two decision groups, or moving a `send` across an `.await`, changes which execution the test checks.
+
+This is a feature: the test body is a readable, reviewable transcript of one distributed execution, and the simulator guarantees the transcript is honored exactly. The failure trace (with `HYDRO_SIM_LOG=1`, or automatically on failure) prints the same execution in the same order, so a failing deterministic test reads like a diff against the scenario you wrote.
+
+Scripts can also synchronize on simulation state rather than fixed positions. The `pause_until` family (`pause_until_count(n)`, `pause_until_versions(n)`, or an arbitrary predicate over the hook's status) waits for buffered input to reach a described state before the script continues, which keeps scripts robust when the exact number of propagation steps is not worth pinning down:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::sim_hooks::BatchHook;
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+# let batch_hook: BatchHook<i32> = flow.sim_hook();
+# let (in_send, input) = node.sim_input();
+# let out = sliced! {
+#     let batch = use::batch(input, nondet!(/** scripted by the test */ hook = batch_hook));
+#     batch.fold(q!(|| 0), q!(|acc, v| *acc += v)).into_stream()
+# }
+# .sim_output();
+flow.sim().deterministic(async || {
+    in_send.send_many([1, 2, 3]);
+    batch_hook.pause_until_count(3).await; // wait until all three have propagated
+    batch_hook.release_all().await; // then release them in one batch
+    out.assert_yields_only([6]).await;
+});
+```
+
+If a wait can never be satisfied (the simulation runs out of work with the predicate still false), the test fails with a message naming the hook, its buffered contents, and the wait that got stuck, attributed to the `.await` in the test body.
+
+## Choosing a Mode
+
+The three modes form a spectrum of control. `fuzz()` hands every decision to a coverage-guided search, `exhaustive()` enumerates every combination, and `deterministic()` hands every decision to the test author. Scripted hooks let you move smoothly along this spectrum: a test under `exhaustive()` with some hooks scripted pins those dimensions while exploring the rest, and when the script covers everything, switching to `deterministic()` makes that totality explicit, with the simulator enforcing it rather than trusting it.
+
+A useful workflow is to develop in deterministic mode and then widen:
+
+1. Start by scripting the happy-path scenario end to end; the script doubles as documentation of how the component is supposed to behave.
+2. Once it passes, clone the test, drop the scripted decisions, and pass plain `nondet!` guards (without `hook =`) so the decision points return to the explored pool. Run it under `exhaustive()` or `fuzz()` to search the neighborhood of the scenario for interleavings you did not consider.
+3. When exploration finds a failure, the trace it prints converts directly into a new deterministic regression test: every decision in the trace corresponds to one scripted decision in the test body.

@@ -717,6 +717,9 @@ fn compile_sim_graph_trybuild(
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
             #root::sim::runtime::Hooks<&'static str>,
             #root::sim::runtime::InlineHooks<&'static str>,
+            #root::sim::runtime::ScriptedTickHooks<&'static str>,
+            #root::sim::runtime::ScriptedInlineHooks<&'static str>,
+            #root::sim::runtime::ScriptedHookRegistry,
         ) {
             macro_rules! println {
                 ($($arg:tt)*) => ({
@@ -762,15 +765,18 @@ fn compile_sim_graph_trybuild(
                 };
             }
 
-            let mut __hydro_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn #root::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
+            let mut __hydro_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn #root::sim::runtime::RuntimeHook>>> = ::std::collections::HashMap::new();
             let mut __hydro_inline_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn #root::sim::runtime::SimInlineHook>>> = ::std::collections::HashMap::new();
+            let mut __hydro_scripted_hooks: #root::sim::runtime::ScriptedTickHooks<&'static str> = ::std::collections::HashMap::new();
+            let mut __hydro_scripted_inline_hooks: #root::sim::runtime::ScriptedInlineHooks<&'static str> = ::std::collections::HashMap::new();
+            let mut __hydro_scripted_registry: #root::sim::runtime::ScriptedHookRegistry = ::std::collections::BTreeMap::new();
             #(#extra_stmts_global)*
             #(#cluster_ids_stmts)*
 
             let mut __async_dfirs = vec![#(#process_dfir_exprs),*];
             let mut __tick_dfirs = vec![#(#process_tick_dfir_exprs),*];
             #(#cluster_dfir_stmts)*
-            (__async_dfirs, __tick_dfirs, __hydro_hooks, __hydro_inline_hooks)
+            (__async_dfirs, __tick_dfirs, __hydro_hooks, __hydro_inline_hooks, __hydro_scripted_hooks, __hydro_scripted_inline_hooks, __hydro_scripted_registry)
         }
 
         #[unsafe(no_mangle)]
@@ -787,6 +793,9 @@ fn compile_sim_graph_trybuild(
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
             #root::sim::runtime::Hooks<&'static str>,
             #root::sim::runtime::InlineHooks<&'static str>,
+            #root::sim::runtime::ScriptedTickHooks<&'static str>,
+            #root::sim::runtime::ScriptedInlineHooks<&'static str>,
+            #root::sim::runtime::ScriptedHookRegistry,
         ) {
             #root::runtime_support::colored::control::set_override(should_color);
             __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __hydro_cluster_external_out, __hydro_cluster_external_in, __println_handler, __eprintln_handler)

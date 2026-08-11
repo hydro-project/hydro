@@ -53,6 +53,9 @@ pub(crate) mod graph;
 pub mod flow;
 
 #[cfg(stageleft_runtime)]
+pub mod hooks;
+
+#[cfg(stageleft_runtime)]
 pub(crate) mod versioned_network;
 
 #[cfg(stageleft_runtime)]
