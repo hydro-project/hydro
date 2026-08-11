@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1786339366145,
+  "lastUpdate": 1786424748692,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -303756,6 +303756,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 216980,
             "range": "± 962.08",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "953c44396cf6cae89c2a274cd203243a01b06034",
+          "message": "refactor(hydro_lang): drive sim scheduler via biased poll over single steps instead of a spawned task (#3115)\n\nPreviously, the sim scheduler ran as an infinite loop\n(`LaunchedSim::scheduler()`) spawned via `tokio::task::spawn_local`\ninside a `LocalSet`, yielding control back to the user's test body once\nper iteration via `tokio::task::yield_now()`.\n\nNow the scheduler is driven explicitly, one step at a time, by a biased\n`tokio::select!` where the user's thunk is always polled first:\n\n- `LaunchedSim::scheduler()` (infinite loop) becomes\n`LaunchedSim::step()`, a single scheduler step: advance all async DFIRs;\nif none made progress, run one ready tick or observation; if fully\nquiescent, signal quiescence and wait for new input. The `LaunchedSim`\nstruct holds all simulator state across steps.\n- `CompiledSimInstance::start()` constructs the `LaunchedSim` state\nstruct (formerly the tail of `schedule_with_maybe_logger`).\n- New driver `run_with_scheduler[_and_logger]` runs a loop so the thunk\nis structurally re-polled between every pair of steps — no `yield_now`\nneeded anywhere.\n- `launch()` (spawn_local) and `schedule_with_logger` (monolithic\nnever-ending scheduler future) are removed. The trace tests that\npreviously raced `schedule_with_logger` against a test body with their\nown outer `select!` now use `run_with_scheduler_and_logger(log, fut)`\ninstead.\n- The `LocalSet` wrapper in `run_without_launching` is removed since\nnothing is spawned anymore; the `CURRENT_SIM_CONNECTIONS` task-local\nscope remains (it's how `SimSender`/`SimReceiver` handles find their\nqueues).\n\nThe quiescence Notify machinery is unchanged: when a step reaches\nquiescence it notifies waiting receivers (so their streams end) and\nparks on `resume_notify` until the thunk sends new input, which keeps\nthe select from busy-looping.\n\nNote on the monolithic-future pitfall this refactor avoids: a bare `loop\n{ step().await }` future runs many steps within a single poll (steps\nusually complete without hitting a pending await), starving anything\nraced against it — this is why `schedule_with_logger` was replaced by\nthe thunk-taking driver rather than just dropping the `yield_now`.\n\nAll 36 sim tests pass, including the trace snapshot tests, whose\nsnapshots are unchanged.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-08-11T01:10:05Z",
+          "url": "https://github.com/hydro-project/hydro/commit/953c44396cf6cae89c2a274cd203243a01b06034"
+        },
+        "date": 1786424748641,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311451,
+            "range": "± 5049",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6536776,
+            "range": "± 38918",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6882383,
+            "range": "± 57776",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 45078,
+            "range": "± 2060",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 8518661,
+            "range": "± 47528",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 994475,
+            "range": "± 9109",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1068495,
+            "range": "± 16879",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 45137608,
+            "range": "± 1002523",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6816461,
+            "range": "± 104961",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 13173587,
+            "range": "± 1333472",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6535104,
+            "range": "± 10193",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6995521,
+            "range": "± 10472",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 41568043,
+            "range": "± 729571",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 4033,
+            "range": "± 68",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22657,
+            "range": "± 306",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4121,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6714,
+            "range": "± 83",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 373156,
+            "range": "± 2167",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55601,
+            "range": "± 449",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 42200,
+            "range": "± 561",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 15203,
+            "range": "± 178",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6999,
+            "range": "± 64",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7282,
+            "range": "± 92",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72217,
+            "range": "± 304",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 78865,
+            "range": "± 798",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7521,
+            "range": "± 185",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15537,
+            "range": "± 191",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 63582,
+            "range": "± 2870",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7483,
+            "range": "± 116",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 203800,
+            "range": "± 606.63",
             "unit": "ops/s"
           }
         ]
