@@ -160,7 +160,12 @@ mod tests {
             .complete(broadcast_server(&cluster, input).assume_ordering(nondet!(/** test */)));
 
         let mut deployment = MaelstromDeployment::new("broadcast")
-            .maelstrom_path(PathBuf::from_str(&std::env::var("MAELSTROM_PATH").unwrap()).unwrap())
+            .maelstrom_path(
+                PathBuf::from_str(&std::env::var("MAELSTROM_PATH").expect(
+                    "MAELSTROM_PATH env var not set, set it to the maelstrom executable path",
+                ))
+                .unwrap(),
+            )
             .node_count(1)
             .time_limit(20)
             .rate(10);
@@ -183,7 +188,12 @@ mod tests {
             .complete(broadcast_server(&cluster, input).assume_ordering(nondet!(/** test */)));
 
         let mut deployment = MaelstromDeployment::new("broadcast")
-            .maelstrom_path(PathBuf::from_str(&std::env::var("MAELSTROM_PATH").unwrap()).unwrap())
+            .maelstrom_path(
+                PathBuf::from_str(&std::env::var("MAELSTROM_PATH").expect(
+                    "MAELSTROM_PATH env var not set, set it to the maelstrom executable path",
+                ))
+                .unwrap(),
+            )
             .node_count(5)
             .time_limit(20)
             .rate(10);
@@ -206,7 +216,12 @@ mod tests {
             .complete(broadcast_server(&cluster, input).assume_ordering(nondet!(/** test */)));
 
         let mut deployment = MaelstromDeployment::new("broadcast")
-            .maelstrom_path(PathBuf::from_str(&std::env::var("MAELSTROM_PATH").unwrap()).unwrap())
+            .maelstrom_path(
+                PathBuf::from_str(&std::env::var("MAELSTROM_PATH").expect(
+                    "MAELSTROM_PATH env var not set, set it to the maelstrom executable path",
+                ))
+                .unwrap(),
+            )
             .node_count(5)
             .time_limit(20)
             .rate(10)

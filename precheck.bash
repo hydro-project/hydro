@@ -10,6 +10,7 @@ Run pre-check tests for the given targets.
   --hydro         Run Hydro tests
     --docker      Run Docker tests (requires --hydro)
     --ecs         Run ECS tests (requires --hydro)
+    --maelstrom   Run Maelstrom tests (requires --hydro)
   --website       Run Website tests
   --help          Display this help message
 "
@@ -18,6 +19,7 @@ TEST_DFIR=false
 TEST_HYDRO=false
 TEST_DOCKER=false
 TEST_ECS=false
+TEST_MAELSTROM=false
 TEST_WEBSITE=false
 TEST_WASM=false
 TEST_ALL=false
@@ -36,6 +38,9 @@ while (( $# )); do
         --ecs)
             TEST_ECS=true
         ;;
+        --maelstrom)
+            TEST_MAELSTROM=true
+        ;;
         --website)
             TEST_WEBSITE=true
         ;;
@@ -47,6 +52,7 @@ while (( $# )); do
             TEST_HYDRO=true
             TEST_DOCKER=true
             TEST_ECS=true
+            TEST_MAELSTROM=true
             TEST_WEBSITE=true
             TEST_WASM=true
             TEST_ALL=true
@@ -65,16 +71,16 @@ Try '$0 --help' for more information.
     shift
 done
 
-# If either `--docker` or `--ecs`, ensure `--hydro` was also included.
-if ( [ "$TEST_DOCKER" = true ] || [ "$TEST_ECS" = true ] ) && [ "$TEST_HYDRO" = false ]; then
-    echo "$0: --docker and --ecs require --hydro.
+# If `--docker`/`--ecs`/`--maelstrom`, then ensure `--hydro` was also included.
+if ( [ "$TEST_DOCKER" = true ] || [ "$TEST_ECS" = true ] || [ "$TEST_MAELSTROM" = true ] ) && [ "$TEST_HYDRO" = false ]; then
+    echo "$0: --hydro is required for any of --docker, --ecs, --maelstrom.
 Try '$0 --help' for more information.
 "
     exit 3
 fi
 # If `--wasm`, ensure `--dfir` was also included.
 if [ "$TEST_WASM" = true ] && [ "$TEST_DFIR" = false ]; then
-    echo "$0: --wasm requires --dfir.
+    echo "$0: --dfir is required for --wasm.
 Try '$0 --help' for more information.
 "
     exit 4
@@ -94,6 +100,21 @@ if [ "$TEST_HYDRO" = true ]; then
     fi
     if [ "$TEST_ECS" = true ]; then
         FEATURES="$FEATURES --features ecs"
+    fi
+    if [ "$TEST_MAELSTROM" = true ]; then
+        export MAELSTROM_PATH="${MAELSTROM_PATH:="$HOME/maelstrom/maelstrom"}"
+        # Check if `MAELSTROM_PATH` exists as an executable.
+        if [ ! -x "$MAELSTROM_PATH" ]; then
+            echo "$0: Maelstrom executable not found at \$MAELSTROM_PATH: $MAELSTROM_PATH.
+Download Maelstrom from https://github.com/jepsen-io/maelstrom/releases and
+extract it to \$HOME, or set \$MAELSTROM_PATH, and make sure it is executable."
+            exit 5
+        fi
+        # Check if `java` is installed.
+        if ! command -v java &> /dev/null; then
+            echo "$0: Java could not be found. Please install Java to run Maelstrom tests."
+            exit 6
+        fi
     fi
 fi
 if [ "$TEST_WEBSITE" = true ]; then
