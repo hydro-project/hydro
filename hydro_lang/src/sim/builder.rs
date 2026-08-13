@@ -310,6 +310,27 @@ impl DfirBuilder for SimBuilder {
             .add_dfir(dfir, None, operator_tag);
     }
 
+    /// Places the source directly in the tick's own graph.
+    fn add_tick_source(
+        &mut self,
+        location: &LocationId,
+        source_rhs: proc_macro2::TokenStream,
+        out_ident: &syn::Ident,
+        replay_each_tick: bool,
+        operator_tag: Option<&str>,
+    ) {
+        let dfir = if replay_each_tick {
+            parse_quote! {
+                #out_ident = #source_rhs -> persist::<'static>();
+            }
+        } else {
+            parse_quote! {
+                #out_ident = #source_rhs;
+            }
+        };
+        self.add_dfir_at(location, dfir, operator_tag);
+    }
+
     fn batch(
         &mut self,
         in_ident: syn::Ident,
@@ -670,6 +691,17 @@ impl DfirBuilder for SimBuilder {
             }
             o => todo!("Not yet supported, yield collection type {:?}", o),
         }
+    }
+
+    /// This implementation is the identity: simulation does not emit production
+    /// `loop { ... }` contexts, so no un-windowing operator is required.
+    fn unwindow_for_consume(
+        &mut self,
+        in_ident: syn::Ident,
+        _in_location: &LocationId,
+        _out_location: &LocationId,
+    ) -> syn::Ident {
+        in_ident
     }
 
     fn begin_atomic(
