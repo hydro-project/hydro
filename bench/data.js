@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1786512631975,
+  "lastUpdate": 1786599162839,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -304160,6 +304160,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 201100,
             "range": "± 732.12",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mingwei Samuel",
+            "username": "MingweiSamuel",
+            "email": "mingwei.samuel@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "99dcd3de68e4eff037efe186082e221345e50640",
+          "message": "refactor(dfir_lang): remove `'loop`, `'none` lifetimes (#3138)\n\nPreviously we distinguished between lifetimes at the top level (`'tick`,\n`'static`) versus\nwithin loops (`'none`, `'loop`). However there is no meaningful\ndifference between `'tick`\nand `'none` in the codegen, and `'loop` vs `'static` is only meaningful\nwith nested loops\n(not yet used by Hydro). Having these redundant variants resulted in\nextra buggy codepaths,\nwhich this change removes.\n\nIn the future we will need to re-add the `'loop` lifetime for nested\nloops, which survive\nacross multiple _iterations_ of the parent loop, but get reset across\ndifferent _executions_\nof the loop (when the loop is entered again because the _parent_ loop\niterated).\n\nWip for #2902",
+          "timestamp": "2026-08-11T21:16:46Z",
+          "url": "https://github.com/hydro-project/hydro/commit/99dcd3de68e4eff037efe186082e221345e50640"
+        },
+        "date": 1786599162788,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 189970,
+            "range": "± 3505",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 3211349,
+            "range": "± 172692",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 3435750,
+            "range": "± 92445",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 36840,
+            "range": "± 2115",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 9457427,
+            "range": "± 589649",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1030205,
+            "range": "± 42538",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1315796,
+            "range": "± 52546",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 40224329,
+            "range": "± 1057656",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 3292140,
+            "range": "± 58793",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 11312903,
+            "range": "± 1136833",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 2954858,
+            "range": "± 99146",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 3484100,
+            "range": "± 95579",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 36035725,
+            "range": "± 1392378",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 5280,
+            "range": "± 165",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 18994,
+            "range": "± 418",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 3769,
+            "range": "± 132",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6195,
+            "range": "± 79",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 395569,
+            "range": "± 4979",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 46972,
+            "range": "± 2792",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 40369,
+            "range": "± 1733",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 30579,
+            "range": "± 1320",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 5288,
+            "range": "± 133",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 20932,
+            "range": "± 382",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 68253,
+            "range": "± 1885",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 74273,
+            "range": "± 2810",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 5731,
+            "range": "± 183",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15232,
+            "range": "± 373",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 57780,
+            "range": "± 3531",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 4759,
+            "range": "± 177",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 281300,
+            "range": "± 12654.96",
             "unit": "ops/s"
           }
         ]
