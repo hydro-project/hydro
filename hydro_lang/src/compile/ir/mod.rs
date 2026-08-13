@@ -1935,6 +1935,25 @@ fn remap_location(loc: &mut LocationId, uf: &mut HashMap<ClockId, ClockId>) {
         LocationId::Tick(id, inner) => {
             *id = uf_find(uf, *id);
             remap_location(inner, uf);
+            // Normalize a tick that was created *on top of* an atomic region rather than a
+            // top-level location, e.g. `Tick(N, Atomic(Tick(M, base)))`. This shape arises when
+            // `try_tick()` is called on an `Atomic` location (as `Optional::or` /
+            // `Optional::into_singleton` do internally): the atomic region reports itself as
+            // "top-level", so the resulting tick wraps the atomic region instead of the base
+            // location.
+            //
+            // Such a sub-tick runs synchronously with the wrapping tick, and is always connected
+            // to it through the atomic `Batch`/`YieldConcat` boundary, so the two clock IDs get
+            // unified above. Once unified (`M == N` after remapping) they denote the same tick, so
+            // collapse the location to its canonical `Tick(N, base)` form. Without this,
+            // downstream `LocationId` comparisons (e.g. checking that a `Batch` stays within one
+            // unified tick) would spuriously fail on the structural difference.
+            if let LocationId::Atomic(atomic_inner) = inner.as_ref()
+                && let LocationId::Tick(inner_id, base) = atomic_inner.as_ref()
+                && *inner_id == *id
+            {
+                **inner = base.as_ref().clone();
+            }
         }
         LocationId::Atomic(inner) => {
             remap_location(inner, uf);
