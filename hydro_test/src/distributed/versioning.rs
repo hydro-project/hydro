@@ -238,9 +238,8 @@ mod tests {
 
                 inputter.send(0, Request::Write { value: 42 });
 
-                let r1 = output.collect_n_sorted::<Vec<_>>(0, 1).await;
-                match r1.as_slice() {
-                    [Response { value: 42 }] => {
+                match output.next_only(0).await {
+                    Response { value: 42 } => {
                         write_confirmed = true;
                     }
                     other => panic!("unexpected write response: {other:?}"),
@@ -311,10 +310,8 @@ mod tests {
 
                 inputter.send(0, Request::Write { value: 42 });
 
-                let r1 = output.collect_n_sorted::<Vec<_>>(0, 1).await;
-                match r1.as_slice() {
-                    [] => return,
-                    [Response { value: 42 }] => {
+                match output.next_only(0).await {
+                    Response { value: 42 } => {
                         write_confirmed = true;
                     }
                     other => panic!("unexpected write response: {other:?}"),
@@ -384,9 +381,8 @@ mod tests {
 
                 inputter.send(0, Request::Write { value: 42 });
 
-                let r1 = output.collect_n_sorted::<Vec<_>>(0, 1).await;
-                match r1.as_slice() {
-                    [Response { value: 42 }] => {
+                match output.next_only(0).await {
+                    Response { value: 42 } => {
                         write_confirmed = true;
                     }
                     other => panic!("unexpected write response: {other:?}"),
@@ -471,9 +467,8 @@ mod tests {
 
                 inputter.send(0, Request::Write { value: 42 });
 
-                let r1 = output.collect_n_sorted::<Vec<_>>(0, 1).await;
-                match r1.as_slice() {
-                    [Response { value: 42 }] => {
+                match output.next_only(0).await {
+                    Response { value: 42 } => {
                         write_confirmed = true;
                     }
                     other => panic!("unexpected write response: {other:?}"),

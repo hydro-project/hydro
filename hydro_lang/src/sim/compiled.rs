@@ -1433,19 +1433,24 @@ impl<F1: Future<Output = ()>, F2: Future<Output = ()>> Future for ChainedFuture<
 }
 
 impl<T: Serialize + DeserializeOwned> SimReceiver<T, NoOrder, ExactlyOnce> {
-    /// Receives the next `n` messages, sorted, waiting (and letting the scheduler run any
-    /// pending simulation work) until they are available. If the simulation becomes quiescent
-    /// before `n` messages arrive, the test fails.
+    /// Receives the next `n` messages, sorted, and then asserts that the stream ends (like
+    /// [`SimReceiver::assert_no_more`], forking the search in exhaustive mode). If the
+    /// simulation becomes quiescent before `n` messages arrive, the test fails.
     ///
-    /// Like [`SimReceiver::next`], this is safe to use in the middle of a test.
-    pub fn collect_n_sorted<C: Default + Extend<T> + AsMut<[T]>>(
-        &self,
-        n: usize,
-    ) -> impl use<'_, T, C> + Future<Output = C>
+    /// Unlike [`collect_n`](SimReceiver::collect_n) on ordered streams, there is no variant
+    /// of this API that skips the end-of-stream check. On an unordered stream, the set of
+    /// messages that arrives *first* is not well-defined, so observing a strict prefix of
+    /// the output would be sensitive to arrival orders that the simulator does not explore
+    /// (delivery into the port is FIFO, with no ordering hook); sorting normalizes the
+    /// permutation of the received messages, but not the choice of *subset*. The quiescence
+    /// check makes the observation sound: it proves the `n` messages are *all* the messages
+    /// the program can produce from the input so far, a set which does not depend on
+    /// arrival order.
+    pub async fn collect_n_sorted_only<C: Default + Extend<T> + AsMut<[T]>>(self, n: usize) -> C
     where
-        T: Ord,
+        T: Debug + Ord,
     {
-        FutureTrackingCaller {
+        let out = FutureTrackingCaller {
             future: async move {
                 let mut out = C::default();
                 for i in 0..n {
@@ -1464,6 +1469,26 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, NoOrder, ExactlyOnce> {
                 Ok(out)
             },
         }
+        .await;
+        self.assert_no_more().await;
+        out
+    }
+
+    /// Receives the next message, and then asserts that the stream ends (like
+    /// [`SimReceiver::assert_no_more`], forking the search in exhaustive mode). If the
+    /// simulation becomes quiescent without producing a message, the test fails.
+    ///
+    /// This is a shortcut for [`Self::collect_n_sorted_only`] with `n = 1`. Unlike
+    /// [`next`](SimReceiver::next) on ordered streams, there is no variant that skips the
+    /// end-of-stream check, because on an unordered stream *which* message arrives first is
+    /// not well-defined; the check proves the message is the *only* one the program can
+    /// produce from the input so far.
+    pub async fn next_only(self) -> T
+    where
+        T: Debug + Ord,
+    {
+        let mut out: Vec<T> = self.collect_n_sorted_only(1).await;
+        out.remove(0)
     }
 
     /// Collects all remaining messages from the external bincode stream into a collection,
@@ -1627,6 +1652,32 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterReceive
             .await
             .map(|bytes| bincode::deserialize(&bytes).unwrap())
     }
+
+    /// Asserts that the stream from a specific cluster member has ended and no more messages
+    /// can possibly arrive.
+    ///
+    /// If the check cannot be answered without running pending nondeterministic work (such
+    /// as ticks with buffered inputs):
+    /// - Under [`CompiledSim::exhaustive`], the search forks: one instance performs the
+    ///   check and ends there, while sibling instances skip the check and continue.
+    /// - In other modes, the pending work runs; afterwards, sending more input and then
+    ///   attempting to receive output will panic.
+    pub fn assert_no_more(self, member_id: u32) -> impl Future<Output = ()>
+    where
+        T: Debug,
+    {
+        QuiescenceCheckFuture::new(FutureTrackingCaller {
+            future: async move {
+                if let Some(next) = self.try_next_impl(member_id).await {
+                    return Err(format!(
+                        "Stream yielded unexpected message: {:?}, expected termination",
+                        next
+                    ));
+                }
+                Ok(())
+            },
+        })
+    }
 }
 
 impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, TotalOrder, ExactlyOnce> {
@@ -1674,20 +1725,23 @@ impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, TotalOrder, ExactlyO
 }
 
 impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, NoOrder, ExactlyOnce> {
-    /// Receives the next `n` values from a specific cluster member, sorted, waiting (and
-    /// letting the scheduler run any pending simulation work) until they are available. If
-    /// the simulation becomes quiescent before `n` values arrive, the test fails.
+    /// Receives the next `n` values from a specific cluster member, sorted, and then
+    /// asserts that the stream ends (like [`Self::assert_no_more`], forking the search in
+    /// exhaustive mode). If the simulation becomes quiescent before `n` values arrive, the
+    /// test fails.
     ///
-    /// Like [`SimReceiver::next`], this is safe to use in the middle of a test.
-    pub fn collect_n_sorted<C: Default + Extend<T> + AsMut<[T]>>(
-        &self,
+    /// There is no variant of this API that skips the end-of-stream check; see
+    /// [`SimReceiver::collect_n_sorted_only`] for why observing a strict prefix of an
+    /// unordered stream would be unsound.
+    pub async fn collect_n_sorted_only<C: Default + Extend<T> + AsMut<[T]>>(
+        self,
         member_id: u32,
         n: usize,
-    ) -> impl use<'_, T, C> + Future<Output = C>
+    ) -> C
     where
-        T: Ord,
+        T: Debug + Ord,
     {
-        FutureTrackingCaller {
+        let out = FutureTrackingCaller {
             future: async move {
                 let mut out = C::default();
                 for i in 0..n {
@@ -1707,6 +1761,24 @@ impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, NoOrder, ExactlyOnce
                 Ok(out)
             },
         }
+        .await;
+        self.assert_no_more(member_id).await;
+        out
+    }
+
+    /// Receives the next value from a specific cluster member, and then asserts that the
+    /// stream ends (like [`Self::assert_no_more`], forking the search in exhaustive mode).
+    /// If the simulation becomes quiescent without producing a value, the test fails.
+    ///
+    /// This is a shortcut for [`Self::collect_n_sorted_only`] with `n = 1`; see
+    /// [`SimReceiver::next_only`] for why there is no variant that skips the end-of-stream
+    /// check.
+    pub async fn next_only(self, member_id: u32) -> T
+    where
+        T: Debug + Ord,
+    {
+        let mut out: Vec<T> = self.collect_n_sorted_only(member_id, 1).await;
+        out.remove(0)
     }
 
     /// Collects all remaining values from a specific cluster member, sorted, waiting until no
