@@ -63,7 +63,7 @@ This enables adding or removing cluster members at runtime — something impossi
 
 ### Example
 
-```rust
+```rust,ignore
 use hydro_lang::deploy::{DockerDeploy, DockerNetwork};
 
 let network = DockerNetwork::new("my-app".to_owned());
@@ -129,7 +129,7 @@ The task definition ARN follows the naming convention: `hy-{name_hint}-loc{idx}v
 
 ### Example
 
-```rust
+```rust,ignore
 use hydro_lang::deploy::EcsDeploy;
 
 let mut deployment = EcsDeploy::new();
@@ -226,7 +226,7 @@ The legacy deployment mode uses an external orchestrator process that manages th
 
 ### Example (legacy)
 
-```rust
+```rust,ignore
 use hydro_deploy::Deployment;
 use hydro_lang::deploy::TrybuildHost;
 
