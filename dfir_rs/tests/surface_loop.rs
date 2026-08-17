@@ -239,6 +239,80 @@ pub fn test_batch_lazy() {
     assert_eq!(out, Vec::<i32>::new());
 }
 
+/// Test batch_eager: the loop fires every tick, even when the eager input is empty.
+/// A `fold` inside the loop should emit output on every tick regardless of input.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_batch_eager() {
+    let (eager_send, eager_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
+
+    let mut df = dfir_syntax! {
+        eager_inp = source_stream(eager_recv);
+        loop {
+            // Count the batch each tick. With `batch_eager()` the loop fires even when
+            // the batch is empty, so we should observe a count on every tick.
+            eager_inp -> batch_eager() -> fold(|| 0usize, |acc, _| *acc += 1)
+                -> for_each(|c| out_send.send(c).unwrap());
+        };
+    };
+
+    // Tick 1: no data — loop should STILL fire (count 0).
+    df.run_tick_sync();
+    let out: Vec<usize> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, vec![0]);
+
+    // Tick 2: two elements — loop fires, count 2.
+    eager_send.send(1).unwrap();
+    eager_send.send(2).unwrap();
+    df.run_tick_sync();
+    let out: Vec<usize> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, vec![2]);
+
+    // Tick 3: no data again — loop still fires (count 0).
+    df.run_tick_sync();
+    let out: Vec<usize> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, vec![0]);
+}
+
+/// Test batch_eager combined with batch_lazy: the eager input always fires the loop,
+/// making the lazy data visible on every tick it is present.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_batch_eager_with_lazy() {
+    let (eager_send, eager_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (lazy_send, lazy_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+
+    let mut df = dfir_syntax! {
+        eager_inp = source_stream(eager_recv);
+        lazy_inp = source_stream(lazy_recv);
+        loop {
+            merged = union();
+            eager_inp -> batch_eager() -> merged;
+            lazy_inp -> batch_lazy() -> merged;
+            merged -> for_each(|x| out_send.send(x).unwrap());
+        };
+    };
+
+    // Tick 1: only lazy data — loop fires anyway (eager), so lazy data is visible.
+    lazy_send.send(100).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, vec![100]);
+
+    // Tick 2: no data at all — loop still fires (eager), but there is nothing to emit.
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, Vec::<i32>::new());
+
+    // Tick 3: both eager and lazy data.
+    eager_send.send(1).unwrap();
+    lazy_send.send(200).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![1, 200]);
+}
+
 /// Test all_iterations: collects output from all loop iterations and emits
 /// it outside the loop after the loop completes.
 /// Note: defer_tick only works in nested loops, so we use a nested structure.
