@@ -1101,7 +1101,24 @@ impl DfirGraph {
             }
         }
 
-        if gate_checks.is_empty() {
+        // An eager windowing operator (`batch_eager()`) forces the loop to fire unconditionally,
+        // even when its windowed input is empty. It is only valid at the entry of a root-level
+        // loop (disallowed in nested loops during validation, since forcing a nested loop to
+        // always fire would prevent its fixpoint iteration from terminating).
+        let has_eager = entry_handoffs.iter().any(|&hoff_id| {
+            self.node_successors(hoff_id)
+                .next()
+                .and_then(|(_, succ)| self.node_op_inst(succ))
+                .is_some_and(|op_inst| {
+                    op_inst.op_constraints.flo_type == Some(FloType::WindowingEager)
+                })
+        });
+
+        if has_eager && is_root_loop {
+            // Eager entry: always run the loop body (gate forced true).
+            output.extend(child_body);
+            output.extend(quote! { #( #swap_code )* });
+        } else if gate_checks.is_empty() {
             // No entry handoffs — always run.
             output.extend(child_body);
             output.extend(quote! { #( #swap_code )* });

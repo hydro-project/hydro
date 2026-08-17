@@ -276,6 +276,7 @@ declare_ops![
     assert::ASSERT,
     assert_eq::ASSERT_EQ,
     batch::BATCH,
+    batch_eager::BATCH_EAGER,
     batch_lazy::BATCH_LAZY,
     chain::CHAIN,
     chain_first_n::CHAIN_FIRST_N,
@@ -615,6 +616,10 @@ pub enum FloType {
     /// A lazy windowing operator — moves data into a loop context but does not trigger the loop.
     /// Data is dropped if the loop does not fire that tick.
     WindowingLazy,
+    /// An eager windowing operator — moves data into a loop context and always triggers the loop,
+    /// even when the windowed input is empty. Only valid at the entry of a root-level loop (it is
+    /// disallowed in nested loops, where it would prevent the fixpoint iteration from terminating).
+    WindowingEager,
     /// An un-windowing operator, for moving data out of a loop context.
     Unwindowing,
 }
