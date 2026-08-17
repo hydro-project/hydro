@@ -143,6 +143,15 @@ where
     }
 }
 
+impl<'a, T, L> From<Optional<T, L, InitNone>> for Optional<T, L, Unbounded>
+where
+    L: Location<'a>,
+{
+    fn from(value: Optional<T, L, InitNone>) -> Self {
+        value.ignore_init_none()
+    }
+}
+
 impl<'a, T, L> DeferTick for Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,

@@ -1504,7 +1504,7 @@ where
     pub fn reduce<F, C, Idemp>(
         self,
         comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<C, Idemp>>,
-    ) -> Optional<T, L, B>
+    ) -> Optional<T, L, B::AggregatedOptional>
     where
         F: Fn(&mut T, T) + 'a,
         C: ValidCommutativityFor<O>,
@@ -1521,9 +1521,9 @@ where
         let core = HydroNode::Reduce {
             f: f.into(),
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
-            metadata: ordered_etc
-                .location
-                .new_node_metadata(Optional::<T, L::DropConsistency, B>::collection_kind()),
+            metadata: ordered_etc.location.new_node_metadata(
+                Optional::<T, L::DropConsistency, B::AggregatedOptional>::collection_kind(),
+            ),
         };
 
         Optional::new(ordered_etc.location.clone(), core)
@@ -1549,7 +1549,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn max(self) -> Optional<T, L, B>
+    pub fn max(self) -> Optional<T, L, B::AggregatedOptional>
     where
         T: Ord,
     {
@@ -1583,7 +1583,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn min(self) -> Optional<T, L, B>
+    pub fn min(self) -> Optional<T, L, B::AggregatedOptional>
     where
         T: Ord,
     {
@@ -1620,7 +1620,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn first(self) -> Optional<T, L, B>
+    pub fn first(self) -> Optional<T, L, B::AggregatedOptional>
     where
         O: IsOrdered,
     {
@@ -1652,7 +1652,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn last(self) -> Optional<T, L, B>
+    pub fn last(self) -> Optional<T, L, B::AggregatedOptional>
     where
         O: IsOrdered,
     {
