@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1786854299383,
+  "lastUpdate": 1786940943134,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -304967,6 +304967,208 @@
             "name": "paxos_bench",
             "value": 191860,
             "range": "± 9888.7",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "f5ab62468cefaada690d93144072efcb05df40ba",
+          "message": "feat(hydro_lang)!: add sound `collect_n_sorted_only` / `next_only` for unordered sim receivers (#3135)\n\n## API changes\n\n- **`SimReceiver<T, NoOrder, ExactlyOnce>`**\n- Added `collect_n_sorted_only(n)`: receives the next `n` messages,\nsorts them, then asserts the stream ends (like `assert_no_more`, forking\nthe search in exhaustive mode).\n- Added `next_only()`: shortcut for `collect_n_sorted_only` with `n = 1`\nthat returns the single message directly.\n- Removed the public `collect_n_sorted(n)` (inlined into\n`collect_n_sorted_only`).\n- **`SimClusterReceiver<T, O, R>`**\n- Added `assert_no_more(member_id)`, mirroring\n`SimReceiver::assert_no_more` (was missing entirely).\n- Added `collect_n_sorted_only(member_id, n)` and `next_only(member_id)`\non the `NoOrder` impl; removed the public `collect_n_sorted(member_id,\nn)`.\n\n## Why the bare `collect_n_sorted` was unsound\n\nOn an unordered stream, \"the first `n` messages\" is not a well-defined\nobservation: when more than `n` messages can eventually arrive, *which*\n`n` land in the external port first depends on arrival order. Delivery\ninto external ports is compiled as a plain FIFO `for_each -> try_send`\nwith no ordering hook (hooks are only inserted at observation points\nlike `batch` / `assume_ordering`), so the simulator does not fork over\nthe alternative prefix subsets — sorting normalizes the permutation of\nthe received messages but not the choice of *subset*. A test could\ntherefore pass exhaustively while a real execution delivers a different\nfirst-`n`.\n\nThe trailing quiescence check fixes this: it proves the `n` messages are\n*all* the messages the program can produce from the input so far — a set\nthat does not depend on arrival order. Accordingly, only the `_only`\nvariants are exposed, and their docs explain why no check-skipping\nvariant exists (unlike `collect_n` on ordered streams).\n\n## Call-site updates\n\n- `hydro_test/src/distributed/versioning.rs`: the four gossip tests now\nuse `output.next_only(0)` instead of `collect_n_sorted::<Vec<_>>(0, 1)`,\nmatching on the response directly (a dead `[] => return` arm,\nunreachable since quiescence already failed the test, was dropped). All\n8 versioning tests pass, including the `should_panic` multi-version\nlinearizability test.\n\nBREAKING CHANGE: `SimReceiver::collect_n_sorted` and\n`SimClusterReceiver::collect_n_sorted` have been removed; use\n`collect_n_sorted_only` (or `next_only` for a single message), which\nadditionally asserts that the stream ends. The bare variants were\nunsound: they observed an order-dependent subset of an unordered stream\nthat the simulator does not exhaustively explore.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-08-14T19:04:12Z",
+          "url": "https://github.com/hydro-project/hydro/commit/f5ab62468cefaada690d93144072efcb05df40ba"
+        },
+        "date": 1786940943080,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311254,
+            "range": "± 15419",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6532470,
+            "range": "± 91224",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6877721,
+            "range": "± 144631",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 50603,
+            "range": "± 1747",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 14120038,
+            "range": "± 332381",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1553496,
+            "range": "± 18968",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1617967,
+            "range": "± 35600",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 43758768,
+            "range": "± 380904",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6818057,
+            "range": "± 402322",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 13516257,
+            "range": "± 1417979",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6533627,
+            "range": "± 58837",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6998905,
+            "range": "± 33250",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 42534517,
+            "range": "± 415755",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 6442,
+            "range": "± 125",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22628,
+            "range": "± 914",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4097,
+            "range": "± 58",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6671,
+            "range": "± 60",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 529965,
+            "range": "± 3944",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55637,
+            "range": "± 2848",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 44589,
+            "range": "± 388",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 17193,
+            "range": "± 614",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6963,
+            "range": "± 97",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7360,
+            "range": "± 109",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72496,
+            "range": "± 1214",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 77604,
+            "range": "± 731",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7446,
+            "range": "± 166",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15395,
+            "range": "± 84",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 61659,
+            "range": "± 2623",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7494,
+            "range": "± 104",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 188960,
+            "range": "± 11453.31",
             "unit": "ops/s"
           }
         ]
