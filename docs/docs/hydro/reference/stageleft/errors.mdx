@@ -1,5 +1,9 @@
-# Quoting Errors
-Quoting relies on advanced features of Rust, and can sometimes emit strange type errors. This page covers the current limitations and workarounds for common quoting errors.
+---
+sidebar_position: 2
+---
+
+# Quoting Limitations
+Quoting relies on advanced features of Rust, and can sometimes emit strange type errors. This page covers the current limitations and workarounds for common quoting gotchas. Each limitation links to a tracking issue on the [Stageleft repository](https://github.com/hydro-project/stageleft), where we aim to eventually fix these edge cases.
 
 :::note
 
@@ -7,9 +11,8 @@ The Hydro team is also working with members of the Rust language team to explore
 
 :::
 
-
 ## References to Local Functions
-Currently, code inside a `q!` macro must use `self::` paths when invoking a local function. For example, in this code invoking `foo` will not compile but `self::foo` works as expected:
+Currently, code inside a `q!` macro must use `self::` paths when invoking a local function. For example, in this code invoking `foo` will not compile but `self::foo` works as expected ([stageleft#93](https://github.com/hydro-project/stageleft/issues/93)):
 
 ```rust,ignore
 # use stageleft::*;
@@ -22,7 +25,7 @@ fn uses_foo_quoted() {
 ```
 
 ## Local Imports Inside Functions
-Imports (`use` statements) inside a function body are not visible to `q!`. Any symbols referenced inside `q!` must be imported at the module level.
+Imports (`use` statements) inside a function body are not visible to `q!`. Any symbols referenced inside `q!` must be imported at the module level ([stageleft#94](https://github.com/hydro-project/stageleft/issues/94)).
 
 ```rust,ignore
 # use stageleft::*;
@@ -37,8 +40,82 @@ fn uses_module_import() {
 }
 ```
 
+## Public Types Must Be Used Through Their Public API
+Quoted code is eventually compiled as part of a *generated* crate, not the crate where you wrote it. For `pub` types, this means quoted code can only use their **public** fields and methods — even when the `q!` block is written inside the crate that defines the type, where private fields would normally be visible.
+
+Code that touches a private field of a `pub` type will typecheck where you write it, but fail later when the deployed binaries are compiled (including in Hydro's simulator), with an error like ``field `max_size` of struct ... is private`` pointing into generated code ([stageleft#96](https://github.com/hydro-project/stageleft/issues/96)):
+
+```rust,ignore
+pub struct Config {
+    max_size: usize, // private field of a pub struct
+}
+
+// in the same crate that defines Config:
+q!(|c: Config| c.max_size) // typechecks, but fails during staged compilation
+q!(|c: Config| c.get_max_size()) // works if get_max_size is pub
+```
+
+To fix this, make the fields `pub` or expose public accessors and constructors for anything quoted code needs to touch.
+
+Relatedly, `pub` types declared inside private modules ([stageleft#18](https://github.com/hydro-project/stageleft/issues/18)) or inside `#[cfg(test)]` modules ([stageleft#43](https://github.com/hydro-project/stageleft/issues/43)) may fail to resolve during staged compilation.
+
+## Methods on Private Types
+The situation for fully private (non-`pub`) types is reversed: quoted code **can** construct them and access their fields (even private ones), but methods from handwritten `impl` blocks are not available, failing during staged compilation with a `no method found` error ([stageleft#97](https://github.com/hydro-project/stageleft/issues/97)):
+
+```rust,ignore
+struct SessionState {
+    count: u32,
+}
+
+impl SessionState {
+    fn bump(&mut self) { self.count += 1; }
+}
+
+q!(|s: &mut SessionState| s.count += 1) // works, field access is fine
+q!(|s: &mut SessionState| s.bump()) // fails during staged compilation
+```
+
+Traits implemented via `#[derive(...)]` (such as `Clone` or `Debug`) **do** work on private types. To use handwritten methods, make the type `pub` (and follow the public-API rule above), or refactor the logic into free functions.
+
+## Capturing Unsupported Types
+As described in [Quoting Code](./quoting.mdx#supported-types), only certain types can be captured by quoted code: integers, strings, and Hydro's special handles. Capturing anything else — including `bool` ([stageleft#99](https://github.com/hydro-project/stageleft/issues/99)), floats, `Duration` ([stageleft#55](https://github.com/hydro-project/stageleft/issues/55)), collections, or your own types ([stageleft#45](https://github.com/hydro-project/stageleft/issues/45)) — fails with an unsatisfied `FreeVariable...` trait bound at the `q!` site:
+
+```rust,ignore
+let debug_mode = true;
+// error[E0277]: the trait bound `bool: FreeVariableWithContextWithProps<_, ()>` is not satisfied
+q!(move |x| if debug_mode { dbg!(x) } else { x })
+```
+
+Workarounds: construct the value inside the quote, or capture the primitive components it is built from (e.g. capture a `u64` of milliseconds instead of a `Duration`).
+
+## Captures Require `move` Closures
+When a quoted closure captures a free variable — even a `Copy` type like an integer or `CLUSTER_SELF_ID` — the closure must be marked `move`, or you will get a borrow-checking error mentioning a variable with a `__free` suffix ([stageleft#98](https://github.com/hydro-project/stageleft/issues/98)):
+
+```rust,ignore
+let multiplier = 10;
+q!(|x| x * multiplier) // error[E0373]: closure may outlive the current function...
+q!(move |x| x * multiplier) // works!
+```
+
+## Generic Type Parameters
+Quoted code cannot *name* a generic type parameter of the enclosing function. The quote typechecks where you write it, but the generated code has no way to refer to `T`, so staged compilation fails with ``failed to resolve: use of undeclared type `T` `` ([stageleft#47](https://github.com/hydro-project/stageleft/issues/47)):
+
+```rust,ignore
+fn sum_stream<'a, T: Default + Add<Output = T>>(
+    stream: Stream<T, Process<'a, ()>>,
+) -> Singleton<T, Process<'a, ()>, Bounded> {
+    stream.fold(q!(|| T::default()), q!(|acc, x| *acc = *acc + x)) // fails during staged compilation
+}
+```
+
+Type *inference* involving generics works fine — only explicit mentions of the parameter are a problem. You can usually let the compiler infer the type instead:
+
+```rust,ignore
+stream.fold(q!(|| Default::default()), q!(|acc, x| *acc = *acc + x)) // works!
+```
+
 ## References to Free Variables in Macros
-Quoted code can refer to special types of external variables called "free variables". These include primitives such as integers and strings, as well as special types such as `CLUSTER_SELF_ID`. Stageleft does not currently handle references to these variables directly inside macros with custom syntax. To work around this, you should first load the free variable into a local variable and then use it from the macro.
+Quoted code can refer to special types of external variables called "free variables". These include primitives such as integers and strings, as well as special types such as `CLUSTER_SELF_ID`. Stageleft does not currently handle references to these variables directly inside macros with custom syntax ([stageleft#95](https://github.com/hydro-project/stageleft/issues/95)). To work around this, you should first load the free variable into a local variable and then use it from the macro.
 
 ```rust,ignore
 # use stageleft::*;
@@ -50,3 +127,65 @@ fn uses_free_variable() {
   }) // works!
 }
 ```
+
+## Private Declarative Macros
+A `macro_rules!` macro that is shared across modules with `pub(crate) use my_macro;` (instead of `#[macro_export]`) will break during staged compilation ([stageleft#48](https://github.com/hydro-project/stageleft/issues/48)). The workaround is to export the macro but hide it from documentation:
+
+```rust,ignore
+#[macro_export]
+#[doc(hidden)]
+macro_rules! my_macro { /* ... */ }
+```
+
+## Helper Functions Returning `impl Trait`
+Calling a function from your crate that returns `-> impl Trait` inside quoted code can fail during staged compilation with a "mismatched types ... found opaque type" error, because the return type is partially expanded in the generated code ([stageleft#63](https://github.com/hydro-project/stageleft/issues/63)). As a workaround, return a concrete type (e.g. a boxed trait object) from helpers called inside `q!`.
+
+## Types Defined in Private Modules
+The generated code sometimes needs to spell out the full name of a type that flows across a `q!` boundary (for example, the element type of a stream). Rust reports a type's name based on the module where it is *defined* — but many libraries (including the standard library) define types in private modules and only expose them through public re-exports. Naively naming such a type would produce an uncompilable path.
+
+To handle this, Stageleft maintains a table of **rewrite rules** that map private definition paths to their public re-export paths. Common cases in `std`, `tokio`, and `bytes` are covered out of the box (e.g. `std::collections::hash::map::HashMap` is rewritten to `std::collections::hash_map::HashMap`, and iterator types like the one returned by `std::iter::repeat` are rewritten to their `std::iter` re-exports), and `hydro_lang` registers additional rules for its dependencies. But the table is not exhaustive: if quoted code produces a type without a rewrite rule, staged compilation fails with a ``module ... is private`` error pointing into generated code ([stageleft#72](https://github.com/hydro-project/stageleft/issues/72) is an example of such a missing rule, since fixed).
+
+The simplest workaround is to avoid exposing the problematic type across the `q!` boundary, e.g. by collecting into a `Vec` inside the quote. If you are writing a **library** built on Hydro, you can also register your own rewrite rule using a `ctor` (a function that runs at program startup), exactly like `hydro_lang` does for its dependencies:
+
+```rust,ignore
+ctor::declarative::ctor!(
+    #[ctor(unsafe)]
+    fn init_rewrites() {
+        // `LinesCodec` is defined in the private module `tokio_util::codec::lines_codec`
+        // but publicly re-exported from `tokio_util::codec`
+        stageleft::add_private_reexport(
+            vec!["tokio_util", "codec", "lines_codec"],
+            vec!["tokio_util", "codec"],
+        );
+    }
+);
+```
+
+## Combining `#[cfg(stageleft_runtime)]` with Other Conditions
+The `#[cfg(stageleft_runtime)]` marker (used, for example, around `hydro_lang::setup!()` and for items that should not be visible to quoted code) is only recognized when written as a standalone attribute. Combining it with other conditions inside `all(...)` is not detected ([stageleft#6](https://github.com/hydro-project/stageleft/issues/6)). Stack separate attributes instead:
+
+```rust,ignore
+#[cfg(all(stageleft_runtime, feature = "deploy"))] // don't do this, not detected
+mod deploy_utils;
+
+#[cfg(stageleft_runtime)] // works!
+#[cfg(feature = "deploy")]
+mod deploy_utils;
+```
+
+## Self-Dependencies in `[dev-dependencies]`
+A crate that lists *itself* in `[dev-dependencies]` (a common trick to enable extra features in tests) may not be handled correctly by staged compilation ([stageleft#39](https://github.com/hydro-project/stageleft/issues/39)).
+
+## Multiple Statements Without a Block
+The `q!` macro accepts a single Rust *expression*. Passing multiple top-level statements can crash staged compilation instead of producing a clean error ([stageleft#20](https://github.com/hydro-project/stageleft/issues/20)). Wrap multi-statement snippets in a block:
+
+```rust,ignore
+q!(let x = 123; move |a: usize| a + x) // don't do this, may crash
+q!({
+  let x = 123;
+  move |a: usize| a + x
+}) // works!
+```
+
+## Spurious Warnings in Generated Code
+When compiling deployment binaries, you may see `unused_braces` warnings ("unnecessary braces around block return value") pointing into generated files ([stageleft#91](https://github.com/hydro-project/stageleft/issues/91)). These are harmless artifacts of code generation and can be ignored.
