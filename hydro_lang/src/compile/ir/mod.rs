@@ -483,6 +483,26 @@ pub trait DfirBuilder {
         operator_tag: Option<&str>,
     );
 
+    /// Emits a source operator (e.g. `source_iter(...)`) that logically lives inside a tick.
+    ///
+    /// * `source_rhs` is the source pipeline (the right-hand side of the `=` assignment, e.g.
+    ///   `source_iter([123])`).
+    /// * `replay_each_tick` selects whether the value is re-emitted on every tick/firing
+    ///   (persisted) or delivered only on the first tick/firing.
+    ///
+    /// The default (simulation) emission places the source directly in the tick's own graph.
+    /// Production overrides this since DFIR sources must be at the root level, outside of the
+    /// tick's `loop { ... }` context: it emits the source at the root and windows it into the
+    /// loop.
+    fn add_tick_source(
+        &mut self,
+        location: &LocationId,
+        source_rhs: TokenStream,
+        out_ident: &syn::Ident,
+        replay_each_tick: bool,
+        operator_tag: Option<&str>,
+    );
+
     /// The DFIR persistence lifetime for operator state scoped to a single tick, for an operator
     /// at `op_location`.
     ///
@@ -513,6 +533,7 @@ pub trait DfirBuilder {
         op_meta: &HydroIrOpMetadata,
         fold_hooked_idents: &HashSet<String>,
     );
+
     fn yield_from_tick(
         &mut self,
         in_ident: syn::Ident,
@@ -521,6 +542,20 @@ pub trait DfirBuilder {
         out_ident: &syn::Ident,
         out_location: &LocationId,
     );
+
+    /// Un-windows an ident when it is produced inside a tick's `loop { ... }` context
+    /// (`in_location`) but is about to be consumed by an operator emitted at a location
+    /// (`out_location`) outside that loop. Returns the ident to use downstream.
+    ///
+    /// This is needed for operators (e.g. [`HydroNode::ReduceKeyedWatermark`])
+    /// where the generated code must sit inside a logical tick, while the output is not in a
+    /// tick, and so we need this method.
+    fn unwindow_for_consume(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        out_location: &LocationId,
+    ) -> syn::Ident;
 
     fn begin_atomic(
         &mut self,
@@ -663,6 +698,12 @@ pub trait DfirBuilder {
 pub struct ProdDfirBuilder {
     /// The DFIR graph builder for each root location.
     pub graphs: SecondaryMap<LocationKey, FlatGraphBuilder>,
+    /// The `loop { ... }` context emitted for each (unified) tick location. Keyed by the tick's
+    /// [`LocationId`] (which carries the `ClockId`), so multiple ticks on the same root location
+    /// each get their own sibling root-level loop within that root's graph.
+    tick_loops: HashMap<LocationId, dfir_lang::graph::GraphLoopId>,
+    /// Counter for generating unique intermediate idents at loop boundaries.
+    next_intermediate_id: usize,
 }
 
 #[cfg(feature = "build")]
@@ -673,6 +714,52 @@ impl ProdDfirBuilder {
             .entry(location.root().key())
             .expect("location was removed")
             .or_default()
+    }
+
+    /// Returns the (unified) tick location that `location` belongs to: the location itself for
+    /// tick locations, the wrapped tick for atomic locations, and `None` for root (top-level)
+    /// locations.
+    ///
+    /// Note this is distinct from the module-level `tick_of` (which extracts a raw [`ClockId`]);
+    /// here we need the full [`LocationId`] so it can be used as the loop-map key.
+    fn tick_of(location: &LocationId) -> Option<&LocationId> {
+        match location {
+            LocationId::Tick(_, _) => Some(location),
+            LocationId::Atomic(tick) => Self::tick_of(tick),
+            LocationId::Process(_) | LocationId::Cluster(_) => None,
+        }
+    }
+
+    /// Returns the `loop { ... }` context for the given location, creating it (as a root-level
+    /// loop in the location's root graph) if necessary. Returns `None` for top-level locations.
+    fn loop_context(&mut self, location: &LocationId) -> Option<dfir_lang::graph::GraphLoopId> {
+        let tick_location = Self::tick_of(location)?.clone();
+        if let Some(&loop_id) = self.tick_loops.get(&tick_location) {
+            return Some(loop_id);
+        }
+        let loop_id = self.graph_mut(location).insert_loop(None);
+        self.tick_loops.insert(tick_location, loop_id);
+        Some(loop_id)
+    }
+
+    /// Adds the DFIR statements to the graph for the given location, inside the tick's loop
+    /// context if the location is a tick or atomic location (otherwise at the root level).
+    fn add_dfir_in(
+        &mut self,
+        location: &LocationId,
+        dfir: dfir_lang::parse::DfirCode,
+        operator_tag: Option<&str>,
+    ) {
+        let loop_context = self.loop_context(location);
+        self.graph_mut(location)
+            .add_dfir(dfir, loop_context, operator_tag);
+    }
+
+    /// Generates a unique intermediate identifier for loop-boundary plumbing.
+    fn intermediate_ident(&mut self) -> syn::Ident {
+        let id = self.next_intermediate_id;
+        self.next_intermediate_id += 1;
+        syn::Ident::new(&format!("__loop_boundary_{}", id), Span::call_site())
     }
 }
 
@@ -688,7 +775,43 @@ impl DfirBuilder for ProdDfirBuilder {
         dfir: dfir_lang::parse::DfirCode,
         operator_tag: Option<&str>,
     ) {
-        self.graph_mut(location).add_dfir(dfir, None, operator_tag);
+        // Place tick/atomic-located statements inside the tick's loop context; everything else
+        // at the root level.
+        self.add_dfir_in(location, dfir, operator_tag);
+    }
+
+    /// In production, DFIR sources must be at the root level, outside of the tick's
+    /// `loop { ... }` context: it emits the source at the root and windows it into the loop.
+    fn add_tick_source(
+        &mut self,
+        location: &LocationId,
+        source_rhs: TokenStream,
+        out_ident: &syn::Ident,
+        replay_each_tick: bool,
+        operator_tag: Option<&str>,
+    ) {
+        // DFIR sources must be at the root level, not inside a `loop { ... }` context. Emit the
+        // source at the root (persisting it there when it should replay every tick, since
+        // `persist` is not permitted inside a loop), then window it into the tick's loop.
+        let source_ident = self.intermediate_ident();
+        let source_stmt = if replay_each_tick {
+            parse_quote! {
+                #source_ident = #source_rhs -> persist::<'static>();
+            }
+        } else {
+            parse_quote! {
+                #source_ident = #source_rhs;
+            }
+        };
+        self.graph_mut(location)
+            .add_dfir(source_stmt, None, operator_tag);
+        self.add_dfir_in(
+            location,
+            parse_quote! {
+                #out_ident = #source_ident -> batch();
+            },
+            None,
+        );
     }
 
     fn batch(
@@ -697,35 +820,138 @@ impl DfirBuilder for ProdDfirBuilder {
         in_location: &LocationId,
         in_kind: &CollectionKind,
         out_ident: &syn::Ident,
-        _out_location: &LocationId,
+        out_location: &LocationId,
         _op_meta: &HydroIrOpMetadata,
         _fold_hooked_idents: &HashSet<String>,
     ) {
-        let builder = self.graph_mut(in_location.root());
-        if in_kind.is_bounded()
-            && matches!(
-                in_kind,
-                CollectionKind::Singleton { .. }
-                    | CollectionKind::Optional { .. }
-                    | CollectionKind::KeyedSingleton { .. }
-            )
-        {
-            assert!(in_location.is_top_level());
-            builder.add_dfir(
-                parse_quote! {
-                    #out_ident = #in_ident -> persist::<'static>();
-                },
-                None,
-                None,
-            );
-        } else {
-            builder.add_dfir(
-                parse_quote! {
-                    #out_ident = #in_ident;
-                },
-                None,
-                None,
-            );
+        let is_singleton_like = matches!(
+            in_kind,
+            CollectionKind::Singleton { .. }
+                | CollectionKind::Optional { .. }
+                | CollectionKind::KeyedSingleton { .. }
+        );
+
+        match (Self::tick_of(in_location), Self::tick_of(out_location)) {
+            (Some(in_tick), Some(out_tick)) => {
+                // Within the same (unified) tick, e.g. entering the tick from its associated
+                // atomic region: both sides live in the same loop.
+                assert_eq!(
+                    in_tick, out_tick,
+                    "batch between distinct ticks should have been unified"
+                );
+                // NOTE(#2902): a bounded singleton-like value produced once inside the
+                // loop (e.g. by `fold_no_replay` in an atomic region) needs to be held across
+                // firings. Operators in atomic regions have `'static` lifetimes so they should
+                // be persisted and replayed properly.
+                self.add_dfir_in(
+                    out_location,
+                    parse_quote! {
+                        #out_ident = #in_ident;
+                    },
+                    None,
+                );
+            }
+            (None, Some(_)) => {
+                // Entering the tick's loop from the top level: emit a windowing operator.
+                if is_singleton_like {
+                    if in_kind.is_bounded() {
+                        // The bounded value is produced exactly once. Persist it at the root (a
+                        // `loop { ... }` context cannot contain `persist`) so it remains available,
+                        // then window it into the loop on each firing.
+                        let persisted_ident = self.intermediate_ident();
+                        self.add_dfir_in(
+                            in_location,
+                            parse_quote! {
+                                #persisted_ident = #in_ident -> persist::<'static>();
+                            },
+                            None,
+                        );
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #persisted_ident -> batch_lazy();
+                            },
+                            None,
+                        );
+                    } else if matches!(in_kind, CollectionKind::KeyedSingleton { .. }) {
+                        // An unbounded keyed singleton (e.g. a cluster-membership snapshot)
+                        // is produced by a persistent root-level `fold_keyed`/`reduce_keyed`
+                        // that already re-emits its full keyed state every tick, so the lazy
+                        // window always observes the latest value when the loop fires.
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #in_ident -> batch_lazy();
+                            },
+                            None,
+                        );
+                    } else {
+                        // An unbounded (non-keyed) singleton/optional snapshot. Its value
+                        // supersedes over time, and the snapshot must observe the *latest*
+                        // value on every firing of the consuming loop (mirroring the
+                        // simulator's `PassthroughSingletonHook`, which always releases the
+                        // latest value).
+                        //
+                        // The producing side yields one value per source firing (e.g. via
+                        // `all_iterations()` when the singleton exits another tick's loop), so
+                        // it does not re-emit between updates. A plain `batch_lazy()` would
+                        // therefore drop the value on any tick the consuming loop does not
+                        // fire, leaving the singleton empty when a request arrives between
+                        // updates (e.g. a read landing between broadcasts).
+                        //
+                        // Persist at the root (which re-emits every tick and forces the
+                        // subgraph to run each tick; `persist` is illegal inside a loop), then
+                        // collapse the replayed history to the latest value with a per-tick
+                        // reduce, and lazily window that always-fresh latest into the loop.
+                        //
+                        // TODO(#2902): the root `persist` retains the full update history;
+                        // a keep-last-only representation would make this O(1) in memory.
+                        // The element type is needed to annotate the keep-last reduce closure;
+                        // inference alone is insufficient in the generated code (E0282).
+                        let element_type: &DebugType = match in_kind {
+                            CollectionKind::Singleton { element_type, .. }
+                            | CollectionKind::Optional { element_type, .. } => element_type,
+                            _ => unreachable!(
+                                "keyed singletons are handled above; only Singleton/Optional reach here"
+                            ),
+                        };
+                        let persisted_ident = self.intermediate_ident();
+                        let latest_ident = self.intermediate_ident();
+                        self.add_dfir_in(
+                            in_location,
+                            parse_quote! {
+                                #persisted_ident = #in_ident -> persist::<'static>();
+                            },
+                            None,
+                        );
+                        self.add_dfir_in(
+                            in_location,
+                            parse_quote! {
+                                #latest_ident = #persisted_ident -> reduce::<'tick>(|__acc: &mut #element_type, __new: #element_type| { *__acc = __new; });
+                            },
+                            None,
+                        );
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #latest_ident -> batch_lazy();
+                            },
+                            None,
+                        );
+                    }
+                } else {
+                    self.add_dfir_in(
+                        out_location,
+                        parse_quote! {
+                            #out_ident = #in_ident -> batch();
+                        },
+                        None,
+                    );
+                }
+            }
+            (Some(_), None) | (None, None) => {
+                unreachable!("batch must target a tick location");
+            }
         }
     }
 
@@ -735,16 +961,70 @@ impl DfirBuilder for ProdDfirBuilder {
         in_location: &LocationId,
         _in_kind: &CollectionKind,
         out_ident: &syn::Ident,
-        _out_location: &LocationId,
+        out_location: &LocationId,
     ) {
-        let builder = self.graph_mut(in_location.root());
-        builder.add_dfir(
-            parse_quote! {
-                #out_ident = #in_ident;
-            },
-            None,
-            None,
-        );
+        // A `YieldConcat` may target either the top level (`latest`/`all_ticks`) or an atomic
+        // region wrapping the *same* tick (`latest_atomic`/`all_ticks_atomic`). The atomic region
+        // is fused with (runs synchronously inside) its tick's loop, so a yield into it stays in
+        // the loop and is emitted as identity — emitting `all_iterations()` there would illegally
+        // exit the loop even though the consumer lives inside it. This mirrors the simulation
+        // builder, which also emits identity for a same-tick atomic yield.
+        //
+        // TODO(#2902 phase 2): singleton/optional yields to the top level need held-state
+        // semantics (observe the latest value *between* firings), not plain event semantics.
+        match (Self::tick_of(in_location), Self::tick_of(out_location)) {
+            (Some(in_tick), Some(out_tick)) => {
+                assert_eq!(
+                    in_tick, out_tick,
+                    "atomic yield to a different tick should have been unified"
+                );
+                self.add_dfir_in(
+                    out_location,
+                    parse_quote! {
+                        #out_ident = #in_ident;
+                    },
+                    None,
+                );
+            }
+            _ => {
+                // Exit the tick's loop back to the top level. `in_ident` is produced inside the
+                // loop; `all_iterations()` is the un-windowing operator, emitted at the root level.
+                self.graph_mut(in_location).add_dfir(
+                    parse_quote! {
+                        #out_ident = #in_ident -> all_iterations();
+                    },
+                    None,
+                    None,
+                );
+            }
+        }
+    }
+
+    fn unwindow_for_consume(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        out_location: &LocationId,
+    ) -> syn::Ident {
+        // If the input lives inside a tick's loop context but the consumer is emitted outside
+        // that loop, the raw edge would illegally exit the loop. Insert an `all_iterations()`
+        // un-windowing operator (emitted at the root level of the input's graph, just like
+        // `yield_from_tick`) so the boundary crossing is explicit and legal.
+        let in_loop = self.loop_context(in_location);
+        let out_loop = self.loop_context(out_location);
+        if in_loop.is_some() && in_loop != out_loop {
+            let out_ident = self.intermediate_ident();
+            self.graph_mut(in_location).add_dfir(
+                parse_quote! {
+                    #out_ident = #in_ident -> all_iterations();
+                },
+                None,
+                None,
+            );
+            out_ident
+        } else {
+            in_ident
+        }
     }
 
     fn begin_atomic(
@@ -753,17 +1033,31 @@ impl DfirBuilder for ProdDfirBuilder {
         in_location: &LocationId,
         _in_kind: &CollectionKind,
         out_ident: &syn::Ident,
-        _out_location: &LocationId,
+        out_location: &LocationId,
         _op_meta: &HydroIrOpMetadata,
     ) {
-        let builder = self.graph_mut(in_location.root());
-        builder.add_dfir(
-            parse_quote! {
-                #out_ident = #in_ident;
-            },
-            None,
-            None,
-        );
+        // An atomic region is fused with (runs synchronously inside) its tick's loop. Entering it
+        // from the top level windows data in; entering from within the same tick is identity.
+        match (Self::tick_of(in_location), Self::tick_of(out_location)) {
+            (None, Some(_)) => {
+                self.add_dfir_in(
+                    out_location,
+                    parse_quote! {
+                        #out_ident = #in_ident -> batch();
+                    },
+                    None,
+                );
+            }
+            _ => {
+                self.add_dfir_in(
+                    out_location,
+                    parse_quote! {
+                        #out_ident = #in_ident;
+                    },
+                    None,
+                );
+            }
+        }
     }
 
     fn end_atomic(
@@ -773,10 +1067,10 @@ impl DfirBuilder for ProdDfirBuilder {
         _in_kind: &CollectionKind,
         out_ident: &syn::Ident,
     ) {
-        let builder = self.graph_mut(in_location.root());
-        builder.add_dfir(
+        // Exit the atomic region (and thus the tick's loop) back to the top level.
+        self.graph_mut(in_location).add_dfir(
             parse_quote! {
-                #out_ident = #in_ident;
+                #out_ident = #in_ident -> all_iterations();
             },
             None,
             None,
@@ -3840,6 +4134,11 @@ impl HydroNode {
                             let source_ident =
                                 syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
+                            // For tick-located sources, holds the source pipeline (RHS) so that
+                            // production codegen can hoist it to the root and window it into the
+                            // tick's loop (DFIR sources may not live inside a `loop { ... }`).
+                            let mut tick_source_rhs: Option<TokenStream> = None;
+
                             let source_stmt = match source {
                                 HydroSource::Stream(expr) => {
                                     debug_assert!(metadata.location_id.is_top_level());
@@ -3858,7 +4157,8 @@ impl HydroNode {
                                             #source_ident = source_iter(#expr);
                                         }
                                     } else {
-                                        // TODO(shadaj): a more natural semantics would be to to re-evaluate the expression on each tick
+                                        // TODO(shadaj): a more natural semantics would be to re-evaluate the expression on each tick
+                                        tick_source_rhs = Some(quote! { source_iter(#expr) });
                                         parse_quote! {
                                             #source_ident = source_iter(#expr) -> persist::<'static>();
                                         }
@@ -3915,11 +4215,21 @@ impl HydroNode {
 
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(graph_builders) => {
-                                    graph_builders.add_dfir_at(
-                                        &out_location,
-                                        source_stmt,
-                                        Some(&stmt_id.to_string()),
-                                    );
+                                    if let Some(source_rhs) = tick_source_rhs {
+                                        graph_builders.add_tick_source(
+                                            &out_location,
+                                            source_rhs,
+                                            &source_ident,
+                                            true,
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    } else {
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
+                                            source_stmt,
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    }
                                 }
                                 BuildersOrCallback::Callback(_, node_callback) => {
                                     node_callback(node, next_stmt_id);
@@ -3942,25 +4252,40 @@ impl HydroNode {
                                         !metadata.location_id.is_top_level(),
                                         "first_tick_only SingletonSource must be inside a tick"
                                     );
-                                }
-
-                                if *first_tick_only
-                                    || (metadata.location_id.is_top_level()
-                                        && metadata.collection_kind.is_bounded())
-                                {
-                                    graph_builders.add_dfir_at(
+                                    // Delivered only on the first execution of the tick region.
+                                    graph_builders.add_tick_source(
                                         &out_location,
-                                        parse_quote! {
-                                            #source_ident = source_iter([#value]);
-                                        },
+                                        quote! { source_iter([#value]) },
+                                        &source_ident,
+                                        false,
                                         Some(&stmt_id.to_string()),
                                     );
+                                } else if metadata.location_id.is_top_level() {
+                                    if metadata.collection_kind.is_bounded() {
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
+                                            parse_quote! {
+                                                #source_ident = source_iter([#value]);
+                                            },
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    } else {
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
+                                            parse_quote! {
+                                                #source_ident = source_iter([#value]) -> persist::<'static>();
+                                            },
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    }
                                 } else {
-                                    graph_builders.add_dfir_at(
+                                    // A tick-located singleton source that yields its value on
+                                    // every tick.
+                                    graph_builders.add_tick_source(
                                         &out_location,
-                                        parse_quote! {
-                                            #source_ident = source_iter([#value]) -> persist::<'static>();
-                                        },
+                                        quote! { source_iter([#value]) },
+                                        &source_ident,
+                                        true,
                                         Some(&stmt_id.to_string()),
                                     );
                                 }
@@ -4894,7 +5219,7 @@ impl HydroNode {
 
                     HydroNode::Fold { .. } | HydroNode::FoldKeyed { .. } | HydroNode::Scan { .. } | HydroNode::ScanAsyncBlocking { .. } => {
                         let operator: syn::Ident = if let HydroNode::Fold { input, .. } = node {
-                            if input.metadata().location_id.is_top_level()
+                            if input.metadata().location_id.is_root()
                                 && input.metadata().collection_kind.is_bounded()
                             {
                                 parse_quote!(fold_no_replay)
@@ -4906,7 +5231,7 @@ impl HydroNode {
                         } else if matches!(node, HydroNode::ScanAsyncBlocking { .. }) {
                             parse_quote!(scan_async_blocking)
                         } else if let HydroNode::FoldKeyed { input, .. } = node {
-                            if input.metadata().location_id.is_top_level()
+                            if input.metadata().location_id.is_root()
                                 && input.metadata().collection_kind.is_bounded()
                             {
                                 todo!("Fold keyed on a top-level bounded collection is not yet supported")
@@ -4953,8 +5278,7 @@ impl HydroNode {
                                 };
 
                                 if matches!(node, HydroNode::Fold { .. })
-                                    && node.metadata().location_id.is_top_level()
-                                    && !(matches!(node.metadata().location_id, LocationId::Atomic(_)))
+                                    && node.metadata().location_id.is_root()
                                     && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
                                 {
@@ -5005,8 +5329,7 @@ impl HydroNode {
                                         fold_hooked_idents.insert(fold_ident.to_string());
                                     }
                                 } else if matches!(node, HydroNode::FoldKeyed { .. })
-                                    && node.metadata().location_id.is_top_level()
-                                    && !(matches!(node.metadata().location_id, LocationId::Atomic(_)))
+                                    && node.metadata().location_id.is_root()
                                     && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
                                 {
@@ -5095,7 +5418,7 @@ impl HydroNode {
 
                     HydroNode::Reduce { .. } | HydroNode::ReduceKeyed { .. } => {
                         let operator: syn::Ident = if let HydroNode::Reduce { input, .. } = node {
-                            if input.metadata().location_id.is_top_level()
+                            if input.metadata().location_id.is_root()
                                 && input.metadata().collection_kind.is_bounded()
                             {
                                 parse_quote!(reduce_no_replay)
@@ -5103,7 +5426,7 @@ impl HydroNode {
                                 parse_quote!(reduce)
                             }
                         } else if let HydroNode::ReduceKeyed { input, .. } = node {
-                            if input.metadata().location_id.is_top_level()
+                            if input.metadata().location_id.is_root()
                                 && input.metadata().collection_kind.is_bounded()
                             {
                                 todo!(
@@ -5145,8 +5468,7 @@ impl HydroNode {
                                 };
 
                                 if matches!(node, HydroNode::Reduce { .. })
-                                    && node.metadata().location_id.is_top_level()
-                                    && !(matches!(node.metadata().location_id, LocationId::Atomic(_)))
+                                    && node.metadata().location_id.is_root()
                                     && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
                                 {
@@ -5154,8 +5476,7 @@ impl HydroNode {
                                         "Reduce with optional intermediates is not yet supported in simulator"
                                     );
                                 } else if matches!(node, HydroNode::ReduceKeyed { .. })
-                                    && node.metadata().location_id.is_top_level()
-                                    && !(matches!(node.metadata().location_id, LocationId::Atomic(_)))
+                                    && node.metadata().location_id.is_root()
                                     && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
                                 {
@@ -5180,18 +5501,18 @@ impl HydroNode {
                         ident_stack.push(reduce_ident);
                     }
 
-                    HydroNode::ReduceKeyedWatermark {
-                        f,
-                        input,
-                        metadata,
-                        ..
-                    } => {
-                        let input_top_level = input.metadata().location_id.is_top_level();
+                      HydroNode::ReduceKeyedWatermark {
+                          f,
+                          input,
+                          watermark,
+                          metadata,
+                      } => {
 
-                        // watermark is processed second, so it's on top
-                        let watermark_ident = ident_stack.pop().unwrap();
-                        let input_ident = ident_stack.pop().unwrap();
-                        let f_tokens = f.emit_tokens(&mut ident_stack);
+                          // watermark is processed second, so it's on top
+                          let watermark_ident = ident_stack.pop().unwrap();
+                          let watermark_location = watermark.metadata().location_id.clone();
+                          let input_ident = ident_stack.pop().unwrap();
+                          let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let stmt_id = next_stmt_id.get_and_increment();
                         let chain_ident = syn::Ident::new(
@@ -5202,7 +5523,7 @@ impl HydroNode {
                         let fold_ident =
                             syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
-                        let agg_operator: syn::Ident = if input.metadata().location_id.is_top_level()
+                        let agg_operator: syn::Ident = if input.metadata().location_id.is_root()
                             && input.metadata().collection_kind.is_bounded()
                         {
                             parse_quote!(fold_no_replay)
@@ -5210,19 +5531,28 @@ impl HydroNode {
                             parse_quote!(fold)
                         };
 
-                        match builders_or_callback {
-                            BuildersOrCallback::Builders(graph_builders) => {
-                                let lifetime = if input_top_level {
-                                    graph_builders.cross_tick_state_lifetime(&out_location)
-                                } else {
-                                    graph_builders.tick_state_lifetime(&out_location)
-                                };
+                          match builders_or_callback {
+                              BuildersOrCallback::Builders(graph_builders) => {
+                                  // The watermark lives at its own (tick) location; if that is a
+                                  // different loop context than where this reduce is emitted
+                                  // (`out_location`), un-window it so the edge does not illegally
+                                  // exit the loop.
+                                  let watermark_ident = graph_builders.unwindow_for_consume(
+                                      watermark_ident,
+                                      &watermark_location,
+                                      &out_location,
+                                  );
 
-                                if metadata.location_id.is_top_level()
-                                    && !(matches!(metadata.location_id, LocationId::Atomic(_)))
-                                    && graph_builders.singleton_intermediates()
-                                    && !metadata.collection_kind.is_bounded()
-                                {
+                                  let lifetime = if input.metadata().location_id.is_top_level() {
+                                      graph_builders.cross_tick_state_lifetime(&out_location)
+                                  } else {
+                                      graph_builders.tick_state_lifetime(&out_location)
+                                  };
+
+                                  if metadata.location_id.is_root()
+                                      && graph_builders.singleton_intermediates()
+                                      && !metadata.collection_kind.is_bounded()
+                                  {
                                     todo!(
                                         "Reduce keyed watermarked on a top-level bounded collection is not yet supported"
                                     )
