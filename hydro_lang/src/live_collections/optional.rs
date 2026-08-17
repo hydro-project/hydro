@@ -37,8 +37,8 @@ use crate::properties::{StreamMapFuncAlgebra, ValidMutCommutativityFor, ValidMut
 /// becoming null again), this also includes additional variants that constrain how the
 /// optional's *presence* (whether it is null) and value evolve over time.
 ///
-/// The currently defined variants form a hierarchy of increasing strength, all of which erase
-/// to [`Unbounded`]:
+/// The currently defined variants form a hierarchy of increasing strength; variants other than
+/// [`Bounded`] erase to [`Unbounded`]:
 /// - [`Unbounded`]: the optional may become null and non-null arbitrarily, with an arbitrary
 ///   value whenever it is non-null.
 /// - [`InitNone`]: the optional starts null, but once it becomes non-null it stays
@@ -71,7 +71,7 @@ impl OptionalBound for Bounded {
 /// non-null forever, although the non-null value may still change arbitrarily over time.
 ///
 /// This erases to [`Unbounded`], since the value (when present) is still asynchronously changing.
-pub struct InitNone;
+pub enum InitNone {}
 
 impl OptionalBound for InitNone {
     type UnderlyingBound = Unbounded;
@@ -111,7 +111,8 @@ impl<B: IsBounded> IsInitNone for B {}
 /// Type Parameters:
 /// - `Type`: the type of the value in this optional (when it is not null)
 /// - `Loc`: the [`Location`] where the optional is materialized
-/// - `Bound`: tracks whether the value is [`Bounded`] (fixed) or [`Unbounded`] (changing asynchronously)
+/// - `Bound`: tracks whether the value is [`Bounded`] (fixed) or [`Unbounded`] (changing
+///   asynchronously) or something in between (see [`OptionalBoundKind`]).
 pub struct Optional<Type, Loc, Bound: OptionalBound> {
     pub(crate) location: Loc,
     pub(crate) ir_node: Rc<RefCell<HydroNode>>,
@@ -140,6 +141,15 @@ where
     fn from(value: Optional<T, L, Bounded>) -> Self {
         let tick = value.location().tick();
         value.clone_into_tick(&tick).latest()
+    }
+}
+
+impl<'a, T, L> From<Optional<T, L, InitNone>> for Optional<T, L, Unbounded>
+where
+    L: Location<'a>,
+{
+    fn from(value: Optional<T, L, InitNone>) -> Self {
+        value.ignore_init_none()
     }
 }
 

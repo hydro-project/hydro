@@ -63,7 +63,8 @@ pub trait PaxosLike<'a>: Sized {
                             "Client notified that leader was elected: {:?}",
                             ballot
                         )))
-                        .max(),
+                        .max()
+                        .into(),
                 );
 
                 let payloads_at_proposer = sliced! {
