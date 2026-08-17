@@ -2316,6 +2316,15 @@ pub enum BoundKind {
 }
 
 #[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
+pub enum OptionalBoundKind {
+    Unbounded,
+    /// The optional starts out null, but once it becomes non-null it will remain non-null
+    /// forever (though the non-null value may change arbitrarily). Erases to [`BoundKind::Unbounded`].
+    InitNone,
+    Bounded,
+}
+
+#[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
 pub enum StreamOrder {
     NoOrder,
     TotalOrder,
@@ -2356,7 +2365,7 @@ pub enum CollectionKind {
         element_type: DebugType,
     },
     Optional {
-        bound: BoundKind,
+        bound: OptionalBoundKind,
         element_type: DebugType,
     },
     KeyedStream {
@@ -2384,7 +2393,7 @@ impl CollectionKind {
                 bound: SingletonBoundKind::Bounded,
                 ..
             } | CollectionKind::Optional {
-                bound: BoundKind::Bounded,
+                bound: OptionalBoundKind::Bounded,
                 ..
             } | CollectionKind::KeyedStream {
                 bound: BoundKind::Bounded,

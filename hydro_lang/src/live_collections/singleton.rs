@@ -15,7 +15,8 @@ use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
-    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode, SingletonBoundKind,
+    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, OptionalBoundKind, SharedNode,
+    SingletonBoundKind,
 };
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
@@ -854,7 +855,7 @@ where
                     left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                     right: Box::new(Self::other_ir_node(other)),
                     metadata: self.location.new_node_metadata(CollectionKind::Optional {
-                        bound: B::BOUND_KIND,
+                        bound: OptionalBoundKind::Bounded,
                         element_type: stageleft::quote_type::<
                             <Self as ZipResult<'a, O>>::ElementType,
                         >()
