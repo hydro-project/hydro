@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["distributed_echo","first_ten","versioning"]};
+window.SIDEBAR_ITEMS = {"mod":["distributed_echo","event_log","first_ten","versioning"]};
