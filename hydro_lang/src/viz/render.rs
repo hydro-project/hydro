@@ -385,7 +385,7 @@ pub fn extract_edge_properties_from_collection_kind(
         }
         CollectionKind::Optional { bound, .. } => {
             properties.insert(HydroEdgeProp::Optional);
-            add_bound_property(&mut properties, bound);
+            add_optional_bound_property(&mut properties, bound);
             // Optionals have implicit TotalOrder
             properties.insert(HydroEdgeProp::TotalOrder);
         }
@@ -413,6 +413,23 @@ fn add_bound_property(
             properties.insert(HydroEdgeProp::Bounded);
         }
         BoundKind::Unbounded => {
+            properties.insert(HydroEdgeProp::Unbounded);
+        }
+    }
+}
+
+/// Helper function to add bound property for Optional based on OptionalBoundKind.
+fn add_optional_bound_property(
+    properties: &mut HashSet<HydroEdgeProp>,
+    bound: &crate::compile::ir::OptionalBoundKind,
+) {
+    use crate::compile::ir::OptionalBoundKind;
+
+    match bound {
+        OptionalBoundKind::Bounded => {
+            properties.insert(HydroEdgeProp::Bounded);
+        }
+        OptionalBoundKind::InitNone | OptionalBoundKind::Unbounded => {
             properties.insert(HydroEdgeProp::Unbounded);
         }
     }

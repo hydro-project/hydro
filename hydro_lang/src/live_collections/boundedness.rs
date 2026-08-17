@@ -4,6 +4,7 @@
 use sealed::sealed;
 
 use super::keyed_singleton::KeyedSingletonBound;
+use super::optional::OptionalBound;
 use crate::compile::ir::BoundKind;
 use crate::live_collections::singleton::SingletonBound;
 
@@ -12,7 +13,9 @@ use crate::live_collections::singleton::SingletonBound;
 /// Implementors of this trait use it to signal the boundedness property of a stream.
 #[sealed]
 pub trait Boundedness:
-    SingletonBound<UnderlyingBound = Self> + KeyedSingletonBound<UnderlyingBound = Self>
+    SingletonBound<UnderlyingBound = Self>
+    + KeyedSingletonBound<UnderlyingBound = Self>
+    + OptionalBound<UnderlyingBound = Self>
 {
     /// `true` if the bound is [`Bounded`], `false` if it is [`Unbounded`].
     const BOUNDED: bool;
