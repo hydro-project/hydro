@@ -125,6 +125,10 @@ pub mod forward_handle;
 
 pub mod compile;
 
+#[cfg(feature = "embedded_runtime")]
+#[cfg_attr(docsrs, doc(cfg(feature = "embedded_runtime")))]
+pub mod embedded;
+
 pub mod handoff_ref;
 
 mod manual_expr;
