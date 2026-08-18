@@ -823,7 +823,7 @@ impl DfirBuilder for SimBuilder {
                     ..
                 } => {
                     // Only `InitNone` optionals (null prefix, then monotone presence) are
-                    // supported: their monotone presence is what `OptionalHook` models. A general
+                    // supported: their monotone presence is what `OptionalInitNoneHook` models. A general
                     // `Unbounded` optional can return to null, which this hook does not represent,
                     // so it stays rejected below.
                     debug_assert!(in_location.is_top_level());
@@ -847,10 +847,10 @@ impl DfirBuilder for SimBuilder {
                         in_location,
                         out_location,
                         syn::parse_quote!(
-                            Box::new(#root::sim::runtime::OptionalHook::<_>::new(
+                            Box::new(#root::sim::runtime::OptionalInitNoneHook::<_>::new(
                                 #buffered_ident.clone(),
                                 #hoff_send_ident,
-                                (#batch_location, #line, #caret),
+                                #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
                                 #root::__maybe_debug__!(#element_type),
                             ))
                         ),
@@ -951,7 +951,7 @@ impl DfirBuilder for SimBuilder {
                 } else {
                     // NOTE: `Optional::latest()` is non-monotone (it reflects the latest tick's
                     // value, "including whether the optional is null or not"), so it cannot be
-                    // modeled by the monotone `OptionalHook`. Simulating it soundly needs a
+                    // modeled by the monotone `OptionalInitNoneHook`. Simulating it soundly needs a
                     // representation that conveys per-tick nullness, which is not yet implemented.
                     // (`Singleton::latest()` lowering yields via the `Singleton` arm above, so it
                     // does not depend on this path.)

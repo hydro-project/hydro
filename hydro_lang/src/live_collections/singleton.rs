@@ -10,7 +10,7 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q}
 
 use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
-use super::optional::Optional;
+use super::optional::{InitNone, Optional};
 use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::{CycleId, FlowState};
@@ -1543,8 +1543,13 @@ where
         self.into_stream().all_ticks_atomic()
     }
 
-    /// Asynchronously yields this singleton outside the tick as an unbounded singleton, which will
-    /// be asynchronously updated with the latest value of the singleton inside the tick.
+    /// Asynchronously yields this singleton outside the tick as an unbounded [`Optional`], which
+    /// will be asynchronously updated with the latest value of the singleton inside the tick.
+    ///
+    /// The result is an [`Optional`] rather than a [`Singleton`] because the producing tick does
+    /// not have to have run yet: before its first run there is no value, so the optional is null.
+    /// Once the tick has run the optional becomes non-null and stays non-null (its value tracks
+    /// the latest tick), hence the [`InitNone`] boundedness.
     ///
     /// This converts a bounded value _inside_ a tick into an asynchronous value outside the
     /// tick that tracks the inner value. This is useful for getting the value as of the
@@ -1570,6 +1575,7 @@ where
     /// input_batch // first tick: [1], second tick: [1, 2, 3]
     ///     .count()
     ///     .latest()
+    ///     .unwrap_or(process.singleton(q!(0usize)).into())
     /// # .sample_eager(nondet!(/** test */))
     /// # }, |mut stream| async move {
     /// // asynchronously changes from 1 ~> 3
@@ -1579,35 +1585,36 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn latest(self) -> Singleton<T, L, Unbounded> {
-        Singleton::new(
+    pub fn latest(self) -> Optional<T, L, InitNone> {
+        Optional::new(
             self.location.parent_location().clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
                     .parent_location()
-                    .new_node_metadata(Singleton::<T, L, Unbounded>::collection_kind()),
+                    .new_node_metadata(Optional::<T, L, InitNone>::collection_kind()),
             },
         )
     }
 
-    /// Synchronously yields this singleton outside the tick as an unbounded singleton, which will
-    /// be updated with the latest value of the singleton inside the tick.
+    /// Synchronously yields this singleton outside the tick as an unbounded [`Optional`], which
+    /// will be updated with the latest value of the singleton inside the tick.
     ///
-    /// Unlike [`Singleton::latest`], this preserves synchronous execution, as the output singleton
+    /// Unlike [`Singleton::latest`], this preserves synchronous execution, as the output optional
     /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
-    /// singleton's [`Tick`] context.
-    pub fn latest_atomic(self) -> Singleton<T, Atomic<L>, Unbounded> {
+    /// singleton's [`Tick`] context. As with [`Singleton::latest`], the result is an [`Optional`]
+    /// ([`InitNone`]) because it is null until the producing tick first runs.
+    pub fn latest_atomic(self) -> Optional<T, Atomic<L>, InitNone> {
         let out_location = Atomic {
             tick: self.location.clone(),
         };
-        Singleton::new(
+        Optional::new(
             out_location.clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: out_location
-                    .new_node_metadata(Singleton::<T, Atomic<L>, Unbounded>::collection_kind()),
+                    .new_node_metadata(Optional::<T, Atomic<L>, InitNone>::collection_kind()),
             },
         )
     }

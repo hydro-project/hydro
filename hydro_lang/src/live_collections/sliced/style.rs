@@ -12,6 +12,7 @@ use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
 use crate::forward_handle::{TickCycle, TickCycleHandle};
 use crate::live_collections::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::live_collections::keyed_singleton::{BoundedValue, KeyedSingletonBound};
+use crate::live_collections::optional::OptionalBound;
 use crate::live_collections::singleton::SingletonBound;
 use crate::live_collections::stream::{Ordering, Retries};
 use crate::location::Location;
@@ -243,7 +244,7 @@ impl<'a, T, L: Location<'a>, B: SingletonBound> Slicable<'a, L::DropConsistency>
     }
 }
 
-impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L::DropConsistency>
+impl<'a, T, L: Location<'a>, B: OptionalBound> Slicable<'a, L::DropConsistency>
     for Default<crate::live_collections::Optional<T, L, B>>
 {
     type Slice = crate::live_collections::Optional<T, Tick<L::DropConsistency>, Bounded>;
@@ -397,7 +398,7 @@ impl<'a, T, L: Location<'a>, B: SingletonBound> Slicable<'a, L::DropConsistency>
     }
 }
 
-impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L::DropConsistency>
+impl<'a, T, L: Location<'a>, B: OptionalBound> Slicable<'a, L::DropConsistency>
     for Snapshot<crate::live_collections::Optional<T, L, B>>
 {
     type Slice = crate::live_collections::Optional<T, Tick<L::DropConsistency>, Bounded>;
@@ -475,7 +476,7 @@ impl<'a, T, L: Location<'a>, B: SingletonBound> Slicable<'a, L::DropConsistency>
     }
 }
 
-impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L::DropConsistency>
+impl<'a, T, L: Location<'a>, B: OptionalBound> Slicable<'a, L::DropConsistency>
     for Atomic<crate::live_collections::Optional<T, crate::location::Atomic<L>, B>>
 {
     type Slice = crate::live_collections::Optional<T, Tick<L::DropConsistency>, Bounded>;

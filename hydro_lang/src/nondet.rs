@@ -128,6 +128,7 @@ pub use crate::__nondet__ as nondet;
 ///         non-deterministic samples will eventually resolve to stable result
 ///     */))
 ///     .last()
+///     .into()
 /// }
 /// ```
 ///

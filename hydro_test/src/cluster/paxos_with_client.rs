@@ -29,7 +29,7 @@ pub trait PaxosLike<'a>: Sized {
     /// # Non-Determinism
     /// During leader-reelection, the latest known leader may be stale, which may
     /// result in non-deterministic dropping of payloads.
-    fn build<P: PaxosPayload>(
+    fn build<P: PaxosPayload + 'a>(
         self,
         payload_generator: impl FnOnce(
             Stream<Self::Ballot, Cluster<'a, Self::PaxosIn>, Unbounded>,
@@ -43,7 +43,7 @@ pub trait PaxosLike<'a>: Sized {
     /// During leader-reelection, the latest known leader may be stale, which may
     /// result in non-deterministic dropping of payloads. Also, payloads across
     /// clients will be arbitrarily interleaved as they arrive at the leader.
-    fn with_client<C: 'a, P: PaxosPayload>(
+    fn with_client<C: 'a, P: PaxosPayload + 'a>(
         self,
         clients: &Cluster<'a, C>,
         payloads: Stream<P, Cluster<'a, C>, Unbounded>,
