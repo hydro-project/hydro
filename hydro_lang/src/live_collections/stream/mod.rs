@@ -1521,9 +1521,11 @@ where
         let core = HydroNode::Reduce {
             f: f.into(),
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
-            metadata: ordered_etc.location.new_node_metadata(
-                Optional::<T, L::DropConsistency, B::AggregatedOptional>::collection_kind(),
-            ),
+            metadata: ordered_etc.location.new_node_metadata(Optional::<
+                T,
+                L::DropConsistency,
+                B::AggregatedOptional,
+            >::collection_kind()),
         };
 
         Optional::new(ordered_etc.location.clone(), core)

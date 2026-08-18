@@ -2410,7 +2410,10 @@ mod optional_hook_tests {
     #[test]
     fn optional_hook_is_always_ready() {
         let (input, hook) = make_hook();
-        assert!(hook.is_ready(), "an optional hook is ready even with no value");
+        assert!(
+            hook.is_ready(),
+            "an optional hook is ready even with no value"
+        );
         input.borrow_mut().push_back(42);
         assert!(hook.is_ready());
     }

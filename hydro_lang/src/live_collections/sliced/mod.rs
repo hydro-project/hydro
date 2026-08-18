@@ -451,7 +451,7 @@ impl<'a, T, L: Location<'a>, O: Ordering, R: Retries> Unslicable
 }
 
 impl<'a, T, L: Location<'a>> Unslicable for super::Singleton<T, Tick<L>, Bounded> {
-    type Unsliced = super::Singleton<T, L, Unbounded>;
+    type Unsliced = super::Optional<T, L, crate::live_collections::optional::InitNone>;
 
     fn unslice(self) -> Self::Unsliced {
         self.latest()
@@ -488,7 +488,8 @@ impl<'a, T, L: Location<'a>, O: Ordering, R: Retries> Unslicable
 }
 
 impl<'a, T, L: Location<'a>> Unslicable for style::Atomic<super::Singleton<T, Tick<L>, Bounded>> {
-    type Unsliced = super::Singleton<T, crate::location::Atomic<L>, Unbounded>;
+    type Unsliced =
+        super::Optional<T, crate::location::Atomic<L>, crate::live_collections::optional::InitNone>;
 
     fn unslice(self) -> Self::Unsliced {
         self.collection.latest_atomic()
