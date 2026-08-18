@@ -55,6 +55,9 @@ fn broadcast_core<'a, C: 'a>(
             set.insert(v);
         }, commutative = manual_proof!(/** TODO */)))
     };
+    // Before the first tick has run there is no accumulated state yet (`InitNone`); treat that
+    // as the empty set so the rest of the pipeline sees an always-present `Singleton`.
+    let cur_state = cur_state.unwrap_or(cluster.singleton(q!(HashSet::new())).into());
 
     broadcasted_forward.complete(
         cur_state
