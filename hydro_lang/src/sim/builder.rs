@@ -8,7 +8,7 @@ use syn::parse_quote;
 use crate::compile::builder::{HandoffId, StmtId};
 use crate::compile::ir::{
     CollectionKind, DebugExpr, DfirBuilder, HydroIrOpMetadata, KeyedSingletonBoundKind,
-    StreamOrder, StreamRetry,
+    OptionalBoundKind, StreamOrder, StreamRetry,
 };
 use crate::location::dynamic::LocationId;
 use crate::staging_util::get_this_crate;
@@ -817,6 +817,61 @@ impl DfirBuilder for SimBuilder {
                         None,
                     );
                 }
+                CollectionKind::Optional {
+                    bound: OptionalBoundKind::InitNone,
+                    element_type,
+                    ..
+                } => {
+                    // Only `InitNone` optionals (null prefix, then monotone presence) are
+                    // supported: their monotone presence is what `OptionalHook` models. A general
+                    // `Unbounded` optional can return to null, which this hook does not represent,
+                    // so it stays rejected below.
+                    debug_assert!(in_location.is_top_level());
+
+                    let hoff_id = self.next_hoff_id.get_and_increment();
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+                    });
+                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                    });
+                    self.add_hook(
+                        in_location,
+                        out_location,
+                        syn::parse_quote!(
+                            Box::new(#root::sim::runtime::OptionalHook::<_>::new(
+                                #buffered_ident.clone(),
+                                #hoff_send_ident,
+                                (#batch_location, #line, #caret),
+                                #root::__maybe_debug__!(#element_type),
+                            ))
+                        ),
+                    );
+
+                    self.get_dfir_mut(in_location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.get_dfir_mut(out_location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
+                }
                 _ => {
                     eprintln!("{:?}", op_meta.backtrace.elements().collect::<Vec<_>>());
                     todo!("batch not implemented for kind {:?}", in_kind)
@@ -894,6 +949,12 @@ impl DfirBuilder for SimBuilder {
                         todo!("atomic yield to a different tick is not yet supported");
                     }
                 } else {
+                    // NOTE: `Optional::latest()` is non-monotone (it reflects the latest tick's
+                    // value, "including whether the optional is null or not"), so it cannot be
+                    // modeled by the monotone `OptionalHook`. Simulating it soundly needs a
+                    // representation that conveys per-tick nullness, which is not yet implemented.
+                    // (`Singleton::latest()` lowering yields via the `Singleton` arm above, so it
+                    // does not depend on this path.)
                     todo!("Non-atomic yield of an Optional is not yet supported");
                 }
             }
