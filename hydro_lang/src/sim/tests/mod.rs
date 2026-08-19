@@ -985,15 +985,18 @@ fn sim_fold_in_tick_catches_false_commutativity() {
     );
 }
 
-/// Minimal repro for the singleton empty-on-first-tick bug.
+/// A `sliced!` block that folds into a (per-tick) singleton produces an `InitNone` optional when
+/// unsliced: null until the producing tick first runs, then monotonically present. This mirrors
+/// `Singleton::latest()`.
 ///
-/// The bug: when one `sliced!` block emits a singleton that is consumed by
-/// another `sliced!` block, the second tick may be scheduled before the first
-/// has run. At that point the singleton has no value yet, but the IR marks it
-/// as `Singleton` (which must always have a value). The SingletonHook panics
-/// with "No input and no last released item to re-release".
+/// Previously the unsliced result was typed as an always-present `Singleton`, so consuming it from
+/// another `sliced!` block before the producer had run was ill-defined: the `SingletonHook` had to
+/// block until the producer ran, otherwise it panicked with "No input and no last released item to
+/// re-release". Now the `OptionalHook` models the null prefix directly, so a consumer scheduled
+/// before the producer simply observes *null* (the `cross_singleton` produces nothing) rather than
+/// blocking or panicking. The exhaustive engine must witness both the null and the present case.
 #[test]
-fn sim_singleton_not_ready_until_producer_runs() {
+fn sim_sliced_singleton_is_init_none_optional() {
     use crate::live_collections::stream::NoOrder;
 
     let mut flow = FlowBuilder::new();
@@ -1002,33 +1005,110 @@ fn sim_singleton_not_ready_until_producer_runs() {
     let (in_port, in_stream) = p.sim_input::<u32, TotalOrder, _>();
     let in_no_order = in_stream.weaken_ordering::<NoOrder>();
 
-    // First sliced block: produces an Unbounded Singleton
+    // First sliced block: folds into a per-tick singleton, which unslices to an `InitNone` optional.
     let produced_singleton = sliced! {
         let batch = use::batch(in_no_order.clone(), nondet!(/** batch */));
         batch.assume_ordering::<TotalOrder>(nondet!(/** order */))
             .fold(q!(|| 0u32), q!(|acc, v| *acc += v))
     };
 
-    // Second sliced block: consumes the singleton via use(singleton, nondet).
-    // If the simulator schedules this tick before the first one has run,
-    // the SingletonHook has no value → panic.
+    // Second sliced block: consumes the optional. `cross_singleton` with a *null* optional produces
+    // nothing, so a tick scheduled before the producer yields an empty output instead of panicking.
     let out = sliced! {
         let trigger = use::batch(in_no_order, nondet!(/** batch */));
         let snapshot = use::snapshot(produced_singleton, nondet!(/** snapshot */));
         trigger.cross_singleton(snapshot)
     }
-    .assume_ordering::<TotalOrder>(nondet!(/** test */));
+    .assume_ordering::<TotalOrder>(nondet!(/** test */))
+    .sim_output();
 
-    let out_port = out.sim_output();
+    let mut observed_null = false;
+    let mut observed_value = false;
 
     flow.sim().exhaustive(async || {
         in_port.send(42);
-        let _ = out_port.next().await;
+        let all: Vec<(u32, u32)> = out.collect().await;
+        if all.is_empty() {
+            observed_null = true;
+        } else {
+            observed_value = true;
+            assert_eq!(all, vec![(42, 42)]);
+        }
     });
+
+    assert!(
+        observed_null,
+        "a consumer scheduled before the producer must observe null (empty output)"
+    );
+    assert!(
+        observed_value,
+        "a consumer scheduled after the producer must observe the folded value"
+    );
 }
 
-/// The simulator does not yet support `Unbounded` keyed singletons (where keys can be removed).
-/// This snapshot test verifies the panic message when attempting to simulate one.
+/// Positive counterpart to `sim_singleton_not_ready_until_producer_runs`.
+///
+/// Lifting a per-tick `Singleton` to a top-level optional via `Singleton::latest()` yields an
+/// `InitNone` optional (null until the producing tick first runs, then monotonically present).
+/// Unlike `SingletonHook` — which panics if consumed before its producer runs — the `OptionalHook`
+/// backing an `InitNone` optional is always ready and releases *null* before the producer runs.
+/// So a consumer scheduled before the producer observes `None` (rather than panicking), and once
+/// the producer runs it observes `Some(sum)`. The exhaustive engine must witness both.
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn sim_singleton_latest_is_init_none_optional() {
+    use std::collections::HashSet;
+
+    use crate::live_collections::stream::NoOrder;
+
+    let mut flow = FlowBuilder::new();
+    let p = flow.process::<()>();
+
+    let (in_port, in_stream) = p.sim_input::<u32, TotalOrder, _>();
+    let in_no_order = in_stream.weaken_ordering::<NoOrder>();
+
+    let tick = p.tick();
+    // Per-tick `Singleton` (the fold has an initial value, so it is always present *within* the
+    // tick), lifted to a top-level `Optional<_, _, InitNone>` via `latest()`.
+    let latest = in_no_order
+        .clone()
+        .batch(&tick, nondet!(/** test */))
+        .assume_ordering::<TotalOrder>(nondet!(/** test */))
+        .fold(q!(|| 0u32), q!(|acc, v| *acc += v))
+        .latest();
+
+    // Consume the optional from a *separate* slice. `into_singleton()` turns the null/non-null
+    // snapshot into an always-present `Option<u32>`, making both outcomes observable in the output.
+    let out = sliced! {
+        let trigger = use::batch(in_no_order, nondet!(/** test */));
+        let snapshot = use::snapshot(latest, nondet!(/** test */));
+        trigger
+            .cross_singleton(snapshot.into_singleton())
+            .map(q!(|(_, o)| o))
+    }
+    .assume_ordering::<TotalOrder>(nondet!(/** test */))
+    .sim_output();
+
+    let mut observed = HashSet::new();
+
+    flow.sim().exhaustive(async || {
+        in_port.send(42);
+        let all: Vec<Option<u32>> = out.collect().await;
+        for v in all {
+            observed.insert(v);
+        }
+    });
+
+    assert!(
+        observed.contains(&None),
+        "OptionalHook should release null before the producing tick runs; observed: {observed:?}"
+    );
+    assert!(
+        observed.contains(&Some(42)),
+        "once the producing tick runs, the snapshot must be Some(sum); observed: {observed:?}"
+    );
+}
+
 #[test]
 #[cfg_attr(target_os = "windows", ignore)]
 fn sim_unbounded_keyed_singleton_rejected_snapshot() {

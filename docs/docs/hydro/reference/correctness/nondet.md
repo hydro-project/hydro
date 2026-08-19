@@ -27,6 +27,7 @@ fn singleton_with_delay<T, L>(
       /// eventually resolves to the final value of the input singleton
     ))
     .last()
+    .into()
 }
 ```
 

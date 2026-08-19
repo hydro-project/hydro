@@ -673,6 +673,170 @@ impl<T: Clone> SimHook for SingletonHook<T> {
     }
 }
 
+/// A hook for batching / snapshotting an [`Optional`](crate::live_collections::Optional) into a
+/// tick.
+///
+/// This is the [`SingletonHook`] analog for optionals whose *presence* is monotone (the
+/// `InitNone` bound): the optional starts null and, once it becomes non-null, stays non-null.
+/// It differs from [`SingletonHook`] in two ways:
+///
+/// - It is **always ready** ([`SimHook::is_ready`] returns `true`). A consuming tick is never
+///   blocked waiting for the producer; before the first value arrives the snapshot is simply
+///   null (the hook releases nothing into the tick).
+/// - Its released value is optional. Before the first non-null value it releases *null*
+///   (sending nothing into the tick's `source_stream`, so the downstream optional is empty).
+///   Once it has released a value, presence is monotone, so it only ever re-releases or
+///   advances to a newer value — never back to null.
+pub struct OptionalHook<T> {
+    input: Rc<RefCell<VecDeque<T>>>,
+    to_release: Option<(Option<T>, bool)>, // (value or null, is new)
+    last_released: Option<T>,              // last non-null value released (None until the first)
+    skipped_states: Vec<T>,
+    output: Sender<T>,
+    batch_location: HookLocationMeta,
+    format_item_debug: fn(&T) -> Option<String>,
+}
+
+impl<T: Clone> OptionalHook<T> {
+    pub fn new(
+        input: Rc<RefCell<VecDeque<T>>>,
+        output: Sender<T>,
+        batch_location: HookLocationMeta,
+        format_item_debug: fn(&T) -> Option<String>,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            last_released: None,
+            skipped_states: vec![],
+            output,
+            batch_location,
+            format_item_debug,
+        }
+    }
+}
+
+impl<T: Clone> SimHook for OptionalHook<T> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|(_, is_new)| *is_new)
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        // Only advancing to a new value is nontrivial; releasing null (or re-releasing the
+        // latest value) does not, by itself, drive a tick.
+        !self.input.borrow().is_empty()
+    }
+
+    fn is_ready(&self) -> bool {
+        // Unlike a singleton, an optional can always participate in a tick: before its first
+        // value it is simply null, so it never blocks the consuming tick.
+        true
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        driver: &mut Borrowed<'a>,
+        force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+        if current_input.is_empty() {
+            if force_nontrivial {
+                panic!("Cannot make nontrivial decision when there is no input");
+            }
+
+            if let Some(last) = &self.last_released {
+                // Presence is monotone: once non-null, re-release the latest value.
+                self.to_release = Some((Some(last.clone()), false));
+            } else {
+                // Still in the initial-null prefix.
+                self.to_release = Some((None, false));
+            }
+            false
+        } else if !force_nontrivial
+            && let Some(last) = &self.last_released
+            && produce().generate(driver).unwrap()
+        {
+            // Already non-null; re-release the latest value (models snapshot lag).
+            self.to_release = Some((Some(last.clone()), false));
+            false
+        } else if !force_nontrivial
+            && self.last_released.is_none()
+            && produce().generate(driver).unwrap()
+        {
+            // Still in the initial-null prefix even though a value is buffered: models a
+            // snapshot that does not yet include the first value.
+            self.to_release = Some((None, false));
+            false
+        } else {
+            // Advance to a new value.
+            let idx_to_release = (0..current_input.len()).generate(driver).unwrap();
+            self.skipped_states = current_input.drain(0..idx_to_release).collect(); // Drop earlier items
+            let item = current_input.pop_front().unwrap();
+            self.to_release = Some((Some(item), true));
+            true
+        }
+    }
+
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
+        let Some((to_release, is_new)) = self.to_release.take() else {
+            panic!("No decision to release");
+        };
+
+        if let Some(value) = &to_release {
+            self.last_released = Some(value.clone());
+        }
+
+        if let Some(log_writer) = log_writer {
+            let (batch_location, line, caret_indent) = self.batch_location;
+            let note_str = match (&to_release, is_new) {
+                (None, _) => "^ releasing null snapshot".to_owned(),
+                (Some(value), true) => {
+                    if self.skipped_states.is_empty() {
+                        format!(
+                            "^ releasing snapshot: {:?}",
+                            ManualDebug(value, self.format_item_debug)
+                        )
+                    } else {
+                        format!(
+                            "^ releasing snapshot: {:?} (skipping earlier states: {:?})",
+                            ManualDebug(value, self.format_item_debug),
+                            self.skipped_states
+                                .iter()
+                                .map(|s| ManualDebug(s, self.format_item_debug))
+                                .collect::<Vec<_>>()
+                        )
+                    }
+                }
+                (Some(value), false) => format!(
+                    "^ releasing unchanged snapshot: {:?}",
+                    ManualDebug(value, self.format_item_debug)
+                ),
+            };
+
+            let _ = writeln!(
+                log_writer,
+                "{} {}",
+                "-->".color(colored::Color::Blue),
+                batch_location
+            );
+
+            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+            let _ = writeln!(
+                log_writer,
+                " {}{}{}",
+                "|".color(colored::Color::Blue),
+                caret_indent,
+                note_str.color(colored::Color::Green)
+            );
+        }
+
+        if let Some(value) = to_release {
+            self.output.try_send(value).unwrap();
+        }
+    }
+}
+
 /// A passthrough singleton hook for fold outputs that are already controlled by a
 /// `TopLevelFoldHook`. Always releases the latest value without any non-deterministic
 /// decisions, since the fold hook already made the only meaningful choice (which subset
@@ -2213,5 +2377,61 @@ mod maybe_debug_tests {
     fn test_primitive_debug() {
         let fmt_fn: fn(&i32) -> Option<String> = crate::__maybe_debug__!(i32);
         assert_eq!(fmt_fn(&42), Some("42".to_owned()));
+    }
+}
+
+#[cfg(test)]
+mod optional_hook_tests {
+    use std::cell::RefCell;
+    use std::collections::VecDeque;
+    use std::rc::Rc;
+
+    use dfir_rs::util::unsync::mpsc::unbounded;
+
+    use super::{OptionalHook, SimHook};
+
+    fn make_hook() -> (Rc<RefCell<VecDeque<i32>>>, OptionalHook<i32>) {
+        let input = Rc::new(RefCell::new(VecDeque::new()));
+        let (send, recv) = unbounded::<i32>();
+        // Keep the receiver alive for the duration of the test so the channel stays open.
+        std::mem::forget(recv);
+        let hook = OptionalHook::new(
+            input.clone(),
+            send,
+            ("loc", "line", "caret"),
+            crate::__maybe_debug__!(i32),
+        );
+        (input, hook)
+    }
+
+    /// Unlike a singleton, an optional never blocks the consuming tick: before its first value
+    /// it is simply null. This is the property that lets a consumer observe `None` before the
+    /// producing tick has run.
+    #[test]
+    fn optional_hook_is_always_ready() {
+        let (input, hook) = make_hook();
+        assert!(
+            hook.is_ready(),
+            "an optional hook is ready even with no value"
+        );
+        input.borrow_mut().push_back(42);
+        assert!(hook.is_ready());
+    }
+
+    #[test]
+    fn optional_hook_no_decision_initially() {
+        let (_input, hook) = make_hook();
+        assert_eq!(hook.current_decision(), None);
+    }
+
+    /// With no buffered value the hook cannot drive a tick on its own (releasing null is
+    /// trivial); once a value is buffered it can make a nontrivial decision, exactly like a
+    /// singleton.
+    #[test]
+    fn optional_hook_null_prefix_cannot_drive_tick() {
+        let (input, hook) = make_hook();
+        assert!(!hook.can_make_nontrivial_decision());
+        input.borrow_mut().push_back(42);
+        assert!(hook.can_make_nontrivial_decision());
     }
 }

@@ -636,9 +636,14 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             let me: KeyedSingleton<K, V, L, MonotonicKeys> =
                 KeyedSingleton::new(location.clone(), ir_node);
 
-            let out =
-                key_count_inside_tick(me.snapshot(&tick, nondet!(/** eventually stabilizes */)))
-                    .latest();
+            let out = key_count_inside_tick(me.snapshot(&tick, nondet!(/** eventually stabilizes */)))
+                    .latest()
+                    // The key count is folded with an initial value, so it is always present
+                    // (0 when there are no keys). `latest()` is null until the producing tick
+                    // first runs; fill that prefix with 0 to recover an always-present count.
+                    .unwrap_or(location.singleton(q!(0usize)).into());
+            // Re-tag the node from the concrete `Unbounded` singleton to the `B::UnderlyingBound`
+            // that this method returns (equal at runtime for this branch).
             Singleton::new(location, out.ir_node.replace(HydroNode::Placeholder))
         } else {
             panic!("BoundedValue or Unbounded KeyedSingleton inside a tick, not supported");
@@ -672,7 +677,8 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// ```
     pub fn into_singleton(self) -> Singleton<HashMap<K, V>, L, B::UnderlyingBound>
     where
-        K: Eq + Hash,
+        K: Eq + Hash + Clone + 'a,
+        V: Clone + 'a,
     {
         if B::ValueBound::BOUNDED {
             let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
@@ -715,7 +721,13 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             let out = into_singleton_inside_tick(
                 me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
             )
-            .latest();
+            .latest()
+            // The map is folded with an initial value, so it is always present (empty when
+            // there are no keys). `latest()` is null until the producing tick first runs; fill
+            // that prefix with an empty map to recover an always-present map.
+            .unwrap_or(location.singleton(q!(HashMap::new())).into());
+            // Re-tag the node from the concrete `Unbounded` singleton to the `B::UnderlyingBound`
+            // that this method returns (equal at runtime for this branch).
             Singleton::new(location, out.ir_node.replace(HydroNode::Placeholder))
         } else {
             panic!("BoundedValue or Unbounded KeyedSingleton inside a tick, not supported");
@@ -1594,6 +1606,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
                 },
                 idempotent = manual_proof!(/** repeated elements are ignored */)
             ))
+            .ignore_init_none()
     }
 
     /// Converts this keyed singleton into a [`KeyedStream`] with each group having a single
