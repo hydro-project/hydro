@@ -13,7 +13,10 @@ use crate::location::{Location, Process};
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::{Bounded, FlowBuilder, Unbounded};
 use crate::sim::{SimReceiver, SimSender};
-use crate::sim_hooks::{BatchHook, OrderingHook, SimHook, SnapshotHook};
+use crate::sim_hooks::{
+    BatchHook, KeyedBatchHook, KeyedMergeOrderedHook, KeyedOrderingHook, KeyedSnapshotHook,
+    MergeOrderedHook, OrderingHook, PartialOrderingHook, SimHook, SnapshotHook,
+};
 
 /// A commutativity proof does not exempt a fold from simulation: the ordering hook on the
 /// proof scripts the exploration, releasing one named element per decision so intermediate
@@ -1784,5 +1787,665 @@ fn scripted_t1_t2_fuzzed_feeder_acknowledged() {
         // deliberately left unobserved.
         snapshot_hook.pause();
         out.assert_no_more().await;
+    });
+}
+
+// ============================================================================
+// Keyed and merge hooks: scripting the keyed batch / snapshot / ordering /
+// partially-ordered / merge-ordered operator kinds.
+// ============================================================================
+
+/// A keyed batch over totally ordered values can also be scripted positionally with
+/// `release`, naming per-key counts: each key releases that many values from its
+/// buffered prefix, waiting until every named key has enough buffered.
+#[test]
+fn scripted_keyed_batch_release_counts() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), TotalOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input.into_keyed(), nondet!(/** scripted */ hook = batch_hook));
+        b.entries().sort().collect_vec().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 'a'), (2, 'x')]);
+        // (1, 'b') has not arrived yet: the decision waits until key 1 has 2 buffered.
+        let release = batch_hook.release([(1, 2), (2, 1)]);
+        in_send.send((1, 'b'));
+        release.await;
+        output
+            .assert_yields_only([vec![(1, 'a'), (1, 'b'), (2, 'x')]])
+            .await;
+    });
+}
+
+/// A keyed `release` naming the same key twice in one decision is rejected at the
+/// scripting call: each key takes exactly one decision per tick.
+#[test]
+#[should_panic(expected = "appears more than once")]
+fn scripted_keyed_batch_release_duplicate_key_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), TotalOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let b = use::batch(input.into_keyed(), nondet!(/** scripted */ hook = batch_hook));
+        b.entries().sort().collect_vec().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 'a'), (1, 'b')]);
+        batch_hook.release([(1, 1), (1, 1)]).await;
+    });
+}
+
+/// A keyed batch over totally ordered values is scripted with `release_values`, naming
+/// `(key, value)` entries: each key's values must match that key's buffered prefix in
+/// order, while the cross-key interleaving in the script is irrelevant. Ticks consume
+/// one decision each.
+#[test]
+fn scripted_keyed_batch_release_values_ordered() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), TotalOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input.into_keyed(), nondet!(/** scripted */ hook = batch_hook));
+        b.entries().sort().collect_vec().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 'a'), (2, 'x'), (1, 'b')]);
+        batch_hook.release_values([(1, 'a'), (2, 'x')]).await;
+        batch_hook.release_values([(1, 'b')]).await;
+        output
+            .assert_yields_only([vec![(1, 'a'), (2, 'x')], vec![(1, 'b')]])
+            .await;
+    });
+}
+
+/// A keyed `release_values` that names a value out of its key's buffered order fails
+/// loudly: within a key, values must match the buffered prefix in order.
+#[test]
+#[should_panic(expected = "did not match the expected value")]
+fn scripted_keyed_batch_release_values_ordered_mismatch_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), TotalOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let b = use::batch(input.into_keyed(), nondet!(/** scripted */ hook = batch_hook));
+        b.entries().sort().collect_vec().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 'a'), (1, 'b')]);
+        batch_hook.release_values([(1, 'b')]).await;
+    });
+}
+
+/// A keyed batch over unordered values matches `release_values` per key as multisets:
+/// entries can be named independently of their arrival order within each key.
+#[test]
+fn scripted_keyed_batch_release_values_unordered() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char, NoOrder> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), NoOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input.into_keyed(), nondet!(/** scripted */ hook = batch_hook));
+        b.entries().sort().collect_vec().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([(1, 'a'), (1, 'b'), (2, 'x')]);
+        // 'b' is named before 'a' even though it arrived after: unordered values are
+        // matched as per-key multisets.
+        batch_hook.release_values([(1, 'b'), (2, 'x')]).await;
+        batch_hook.release_values([(1, 'a')]).await;
+        output
+            .assert_yields_only([vec![(1, 'b'), (2, 'x')], vec![(1, 'a')]])
+            .await;
+    });
+}
+
+/// A keyed snapshot is scripted with `reveal`, naming the version each key observes:
+/// one decision can advance several keys at once, and unnamed keys observe their
+/// previously revealed version again.
+#[test]
+fn scripted_keyed_snapshot_reveal_advances_named_keys() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let snapshot_hook: KeyedSnapshotHook<u32, u32> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let folded = input.into_keyed().fold(q!(|| 0u32), q!(|acc, v| *acc += v));
+    let output = sliced! {
+        let snap = use::snapshot(folded, nondet!(/** scripted */ hook = snapshot_hook));
+        snap.entries().sort().collect_vec().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send((1, 1));
+        snapshot_hook.reveal([(1, 1)]).await;
+
+        // One decision advances both keys at once (key 1 to its updated accumulator).
+        in_send.send_many([(2, 5), (1, 2)]);
+        snapshot_hook.reveal([(1, 3), (2, 5)]).await;
+
+        // Key 1 is not named: it observes its previously revealed version again.
+        in_send.send((2, 7));
+        snapshot_hook.reveal([(2, 12)]).await;
+
+        output
+            .assert_yields_only([vec![(1, 1)], vec![(1, 3), (2, 5)], vec![(1, 3), (2, 12)]])
+            .await;
+    });
+}
+
+/// A keyed snapshot `reveal` naming a version the state never passes through can never
+/// be satisfied, and fails loudly at quiescence.
+#[test]
+#[should_panic(expected = "can never be satisfied")]
+fn scripted_keyed_snapshot_reveal_mismatch_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let snapshot_hook: KeyedSnapshotHook<u32, u32> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let folded = input.into_keyed().fold(q!(|| 0u32), q!(|acc, v| *acc += v));
+    let output = sliced! {
+        let snap = use::snapshot(folded, nondet!(/** scripted */ hook = snapshot_hook));
+        snap.entries().sort().collect_vec().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send((1, 1));
+        snapshot_hook.reveal([(1, 5)]).await; // key 1's accumulator only passes through 1
+        output.next().await;
+    });
+}
+
+/// A keyed `reveal` naming the same key twice in one decision is rejected at the
+/// scripting call: a key observes exactly one version per tick.
+#[test]
+#[should_panic(expected = "appears more than once")]
+fn scripted_keyed_snapshot_reveal_duplicate_key_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let snapshot_hook: KeyedSnapshotHook<u32, u32> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let folded = input.into_keyed().fold(q!(|| 0u32), q!(|acc, v| *acc += v));
+    let _output = sliced! {
+        let snap = use::snapshot(folded, nondet!(/** scripted */ hook = snapshot_hook));
+        snap.entries().sort().collect_vec().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 1), (1, 2)]);
+        snapshot_hook.reveal([(1, 1), (1, 3)]).await;
+    });
+}
+
+/// A top-level keyed `assume_ordering` releases one named `(key, value)` entry per
+/// decision, pinning down each key's order while everything downstream (here an
+/// unhooked `entries_partially_ordered`) continues to be explored.
+#[test]
+fn scripted_top_level_keyed_ordering_releases_named_entries() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let ordering: KeyedOrderingHook<u32, u32> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, u32), NoOrder, ExactlyOnce>();
+    let output = input
+        .into_keyed()
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = ordering
+        ))
+        .entries_partially_ordered(nondet!(/** fuzzed: cross-key interleaving is explored */))
+        .sim_output();
+
+    let mut interleavings = std::collections::HashSet::new();
+    flow.sim().exhaustive(async || {
+        in_send.send_many_unordered([(1, 10), (1, 20), (2, 30)]);
+
+        // The keyed ordering hook may release a key's values in any order (the input is
+        // unordered within each key); each decision names exactly one entry.
+        ordering.next(1, 20).await;
+        ordering.next(2, 30).await;
+        ordering.next(1, 10).await;
+
+        let out: Vec<(u32, u32)> = output.collect().await;
+        let key1: Vec<u32> = out
+            .iter()
+            .filter(|(k, _)| *k == 1)
+            .map(|(_, v)| *v)
+            .collect();
+        assert_eq!(
+            key1,
+            [20, 10],
+            "scripted within-key order violated: {:?}",
+            out
+        );
+        interleavings.insert(out);
+    });
+
+    assert!(
+        interleavings.len() > 1,
+        "the unhooked cross-key interleaving was not explored"
+    );
+}
+
+/// A top-level `entries_partially_ordered` releases the front entry of one named key per
+/// decision, scripting the cross-key interleaving while preserving within-key order.
+#[test]
+fn scripted_top_level_partial_ordering_interleaves_keys() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let partial: PartialOrderingHook<u32, u32> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let output = input
+        .into_keyed()
+        .entries_partially_ordered(nondet!(
+            /// scripted
+            hook = partial
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 10), (2, 30), (1, 20)]);
+        partial.next(2, 30).await;
+        partial.next(1, 10).await;
+        partial.next(1, 20).await;
+        output.assert_yields_only([(2, 30), (1, 10), (1, 20)]).await;
+    });
+}
+
+/// A top-level `entries_partially_ordered` decision that names a value other than the
+/// front of its key's buffer can never be honored (within-key order is preserved), and
+/// fails loudly.
+#[test]
+#[should_panic(expected = "did not match the front")]
+fn scripted_top_level_partial_ordering_front_mismatch_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let partial: PartialOrderingHook<u32, u32> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let _output = input
+        .into_keyed()
+        .entries_partially_ordered(nondet!(
+            /// scripted
+            hook = partial
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 10), (1, 20)]);
+        partial.next(1, 20).await;
+    });
+}
+
+/// An in-tick keyed `assume_ordering` is scripted with a single `order` decision naming
+/// all of the tick's entries; each key's values are released in the scripted per-key
+/// order.
+#[test]
+fn scripted_inline_keyed_ordering_orders_within_keys() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, u32, NoOrder> = flow.sim_hook();
+    let ordering: KeyedOrderingHook<u32, u32, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, u32), NoOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input.into_keyed(), nondet!(/** scripted */ hook = batch_hook));
+        b.assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = ordering))
+            .fold(q!(|| vec![]), q!(|acc, v| acc.push(v)))
+            .entries()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([(1, 10), (1, 20), (2, 30)]);
+        batch_hook.release_values([(1, 10), (1, 20), (2, 30)]).await;
+        ordering.order([(1, 20), (2, 30), (1, 10)]).await;
+        output
+            .assert_yields_only_unordered([(1, vec![20, 10]), (2, vec![30])])
+            .await;
+    });
+}
+
+/// An in-tick keyed `assume_ordering` decision must name exactly the tick's entries; a
+/// wrong multiset is rejected.
+#[test]
+#[should_panic(expected = "must contain exactly all pending input entries")]
+fn scripted_inline_keyed_ordering_wrong_entries_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, u32, NoOrder> = flow.sim_hook();
+    let ordering: KeyedOrderingHook<u32, u32, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, u32), NoOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let b = use::batch(input.into_keyed(), nondet!(/** scripted */ hook = batch_hook));
+        b.assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = ordering))
+            .fold(q!(|| vec![]), q!(|acc, v| acc.push(v)))
+            .entries()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([(1, 10), (1, 20)]);
+        batch_hook.release_values([(1, 10), (1, 20)]).await;
+        ordering.order([(1, 10), (1, 99)]).await; // (1, 99) was never in the tick
+    });
+}
+
+/// An in-tick `entries_partially_ordered` is scripted with a single `order` decision
+/// supplying the complete interleaving, which must preserve each key's within-key order.
+#[test]
+fn scripted_inline_partial_ordering_interleaves_keys() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, u32> = flow.sim_hook();
+    let partial: PartialOrderingHook<u32, u32, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input.into_keyed(), nondet!(/** scripted */ hook = batch_hook));
+        b.entries_partially_ordered(nondet!(/** scripted */ hook = partial))
+            .collect_vec()
+            .into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 10), (1, 20), (2, 30)]);
+        batch_hook.release_values([(1, 10), (1, 20), (2, 30)]).await;
+        partial.order([(2, 30), (1, 10), (1, 20)]).await;
+        output
+            .assert_yields_only([vec![(2, 30), (1, 10), (1, 20)]])
+            .await;
+    });
+}
+
+/// An in-tick `entries_partially_ordered` decision that breaks a key's within-key order
+/// is rejected.
+#[test]
+#[should_panic(expected = "preserves each key's order")]
+fn scripted_inline_partial_ordering_invalid_interleaving_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, u32> = flow.sim_hook();
+    let partial: PartialOrderingHook<u32, u32, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let b = use::batch(input.into_keyed(), nondet!(/** scripted */ hook = batch_hook));
+        b.entries_partially_ordered(nondet!(/** scripted */ hook = partial))
+            .collect_vec()
+            .into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 10), (1, 20), (2, 30)]);
+        batch_hook.release_values([(1, 10), (1, 20), (2, 30)]).await;
+        partial.order([(1, 20), (2, 30), (1, 10)]).await;
+    });
+}
+
+/// A top-level `merge_ordered` is scripted one element at a time with `next_first` /
+/// `next_second` (naming the front of the chosen input's buffer) or `advance_first` /
+/// `advance_second` (releasing it without asserting its value).
+#[test]
+fn scripted_top_level_merge_ordered_interleaves_inputs() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let merge: MergeOrderedHook<u32> = flow.sim_hook();
+    let (first_send, first) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let (second_send, second) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = first
+        .merge_ordered(
+            second,
+            nondet!(
+                /// scripted
+                hook = merge
+            ),
+        )
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        first_send.send_many([1, 3]);
+        second_send.send_many([2]);
+        merge.next_first(1).await;
+        merge.advance_second().await;
+        merge.next_first(3).await;
+        output.assert_yields_only([1, 2, 3]).await;
+    });
+}
+
+/// A top-level `merge_ordered` decision that names a value other than the front of its
+/// input's buffer can never be honored (per-input order is preserved), and fails loudly.
+#[test]
+#[should_panic(expected = "did not match the front")]
+fn scripted_top_level_merge_ordered_front_mismatch_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let merge: MergeOrderedHook<u32> = flow.sim_hook();
+    let (first_send, first) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let (_second_send, second) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let _output = first
+        .merge_ordered(
+            second,
+            nondet!(
+                /// scripted
+                hook = merge
+            ),
+        )
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        first_send.send_many([1, 3]);
+        merge.next_first(3).await;
+    });
+}
+
+/// An in-tick `merge_ordered` is scripted with a single `order` decision supplying the
+/// complete merged sequence, with each value labeled by the input it comes from; the
+/// decision joins the same script group as the batch decisions feeding the tick.
+#[test]
+fn scripted_inline_merge_ordered_joins_tick_group() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let first_batch: BatchHook<u32> = flow.sim_hook();
+    let second_batch: BatchHook<u32> = flow.sim_hook();
+    let merge: MergeOrderedHook<u32, Bounded> = flow.sim_hook();
+    let (first_send, first) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let (second_send, second) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = sliced! {
+        let a = use::batch(first, nondet!(/** scripted */ hook = first_batch));
+        let b = use::batch(second, nondet!(/** scripted */ hook = second_batch));
+        a.merge_ordered(b, nondet!(/** scripted */ hook = merge))
+            .collect_vec()
+            .into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        first_send.send_many([1, 3]);
+        second_send.send_many([2]);
+        first_batch.release_values([1, 3]).await;
+        second_batch.release_values([2]).await;
+        merge.order([(false, 1), (true, 2), (false, 3)]).await;
+        output.assert_yields_only([vec![1, 2, 3]]).await;
+    });
+}
+
+/// An in-tick `merge_ordered` decision must draw each input's values from the side it
+/// labels; a value attributed to the wrong input is rejected.
+#[test]
+#[should_panic(expected = "must consume exactly the two inputs' values")]
+fn scripted_inline_merge_ordered_wrong_side_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let first_batch: BatchHook<u32> = flow.sim_hook();
+    let second_batch: BatchHook<u32> = flow.sim_hook();
+    let merge: MergeOrderedHook<u32, Bounded> = flow.sim_hook();
+    let (first_send, first) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let (second_send, second) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let a = use::batch(first, nondet!(/** scripted */ hook = first_batch));
+        let b = use::batch(second, nondet!(/** scripted */ hook = second_batch));
+        a.merge_ordered(b, nondet!(/** scripted */ hook = merge))
+            .collect_vec()
+            .into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        first_send.send_many([1]);
+        second_send.send_many([2]);
+        first_batch.release_values([1]).await;
+        second_batch.release_values([2]).await;
+        merge.order([(true, 1), (false, 2)]).await; // sides swapped
+    });
+}
+
+/// A top-level keyed `merge_ordered` is scripted one entry at a time with `next_first` /
+/// `next_second` (naming the front of that key's buffer in the chosen input) or
+/// `advance_first` / `advance_second` (releasing a key's front without asserting its
+/// value); the downstream (unhooked) `entries_partially_ordered` preserves the single
+/// key's scripted order.
+#[test]
+fn scripted_top_level_keyed_merge_ordered_interleaves_within_key() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let merge: KeyedMergeOrderedHook<u32, u32> = flow.sim_hook();
+    let (first_send, first) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let (second_send, second) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let output = first
+        .into_keyed()
+        .merge_ordered(
+            second.into_keyed(),
+            nondet!(
+                /// scripted
+                hook = merge
+            ),
+        )
+        .entries_partially_ordered(
+            nondet!(/** fuzzed: a single key leaves no interleaving choice */),
+        )
+        .sim_output();
+
+    flow.sim().exhaustive(async || {
+        first_send.send_many([(1, 10), (1, 20)]);
+        second_send.send_many([(1, 30)]);
+
+        merge.next_first(1, 10).await;
+        merge.advance_second(1).await;
+        merge.next_first(1, 20).await;
+
+        let out: Vec<(u32, u32)> = output.collect().await;
+        assert_eq!(out, [(1, 10), (1, 30), (1, 20)]);
+    });
+}
+
+/// A top-level keyed `merge_ordered` decision that names a value other than the front of
+/// its key's buffer in that input can never be honored (per-input within-key order is
+/// preserved), and fails loudly.
+#[test]
+#[should_panic(expected = "front of its key's buffer")]
+fn scripted_top_level_keyed_merge_ordered_front_mismatch_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let merge: KeyedMergeOrderedHook<u32, u32> = flow.sim_hook();
+    let (first_send, first) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let (_second_send, second) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let _output = first
+        .into_keyed()
+        .merge_ordered(
+            second.into_keyed(),
+            nondet!(
+                /// scripted
+                hook = merge
+            ),
+        )
+        .entries()
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        first_send.send_many([(1, 10), (1, 20)]);
+        merge.next_first(1, 20).await;
+    });
+}
+
+/// An in-tick keyed `merge_ordered` is scripted with a single `order` decision, with
+/// each entry labeled by the input it comes from; each input's labeled entries must
+/// preserve that input's per-key order.
+#[test]
+fn scripted_inline_keyed_merge_ordered_orders_within_keys() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let first_batch: KeyedBatchHook<u32, u32> = flow.sim_hook();
+    let second_batch: KeyedBatchHook<u32, u32> = flow.sim_hook();
+    let merge: KeyedMergeOrderedHook<u32, u32, Bounded> = flow.sim_hook();
+    let (first_send, first) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let (second_send, second) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let output = sliced! {
+        let a = use::batch(first.into_keyed(), nondet!(/** scripted */ hook = first_batch));
+        let b = use::batch(second.into_keyed(), nondet!(/** scripted */ hook = second_batch));
+        a.merge_ordered(b, nondet!(/** scripted */ hook = merge))
+            .fold(q!(|| vec![]), q!(|acc, v| acc.push(v)))
+            .entries()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        first_send.send_many([(1, 10), (1, 20)]);
+        second_send.send_many([(1, 30)]);
+        first_batch.release_values([(1, 10), (1, 20)]).await;
+        second_batch.release_values([(1, 30)]).await;
+        merge
+            .order([(true, 1, 30), (false, 1, 10), (false, 1, 20)])
+            .await;
+        output
+            .assert_yields_only_unordered([(1, vec![30, 10, 20])])
+            .await;
+    });
+}
+
+/// An in-tick keyed `merge_ordered` decision must preserve each input's within-key
+/// order; reordering one input's values for a key is rejected.
+#[test]
+#[should_panic(expected = "original per-key order")]
+fn scripted_inline_keyed_merge_ordered_wrong_per_key_order_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let first_batch: KeyedBatchHook<u32, u32> = flow.sim_hook();
+    let second_batch: KeyedBatchHook<u32, u32> = flow.sim_hook();
+    let merge: KeyedMergeOrderedHook<u32, u32, Bounded> = flow.sim_hook();
+    let (first_send, first) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let (second_send, second) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let a = use::batch(first.into_keyed(), nondet!(/** scripted */ hook = first_batch));
+        let b = use::batch(second.into_keyed(), nondet!(/** scripted */ hook = second_batch));
+        a.merge_ordered(b, nondet!(/** scripted */ hook = merge))
+            .fold(q!(|| vec![]), q!(|acc, v| acc.push(v)))
+            .entries()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        first_send.send_many([(1, 10), (1, 20)]);
+        second_send.send_many([(1, 30)]);
+        first_batch.release_values([(1, 10), (1, 20)]).await;
+        second_batch.release_values([(1, 30)]).await;
+        merge
+            .order([(false, 1, 20), (true, 1, 30), (false, 1, 10)]) // first input's 20 before its 10
+            .await;
     });
 }

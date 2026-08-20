@@ -2640,6 +2640,10 @@ impl<'a, T, L: Location<'a>, B: Boundedness, R: Retries> Stream<T, L, B, TotalOr
     /// but emits an unordered stream. For deterministic first-then-second ordering on
     /// bounded streams, use [`Stream::chain`].
     ///
+    /// In simulation tests, the interleaving decisions can be scripted by attaching a
+    /// [`MergeOrderedHook`](crate::sim_hooks::MergeOrderedHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -2660,24 +2664,26 @@ impl<'a, T, L: Location<'a>, B: Boundedness, R: Retries> Stream<T, L, B, TotalOr
     pub fn merge_ordered<R2: Retries>(
         self,
         other: Stream<T, L, B, TotalOrder, R2>,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::MergeOrderedHook<T, B>>>,
     ) -> Stream<T, L::DropConsistency, B, TotalOrder, <R as MinRetries<R2>>::Min>
     where
         R: MinRetries<R2>,
     {
         let target_location = self.location().drop_consistency();
+        let mut metadata = target_location.new_node_metadata(Stream::<
+            T,
+            L::DropConsistency,
+            B,
+            TotalOrder,
+            <R as MinRetries<R2>>::Min,
+        >::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|hook| hook.id);
         Stream::new(
-            target_location.clone(),
+            target_location,
             HydroNode::MergeOrdered {
                 first: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 second: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
-                metadata: target_location.new_node_metadata(Stream::<
-                    T,
-                    L::DropConsistency,
-                    B,
-                    TotalOrder,
-                    <R as MinRetries<R2>>::Min,
-                >::collection_kind()),
+                metadata,
             },
         )
     }
