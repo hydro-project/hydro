@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1787113528958,
+  "lastUpdate": 1787199873966,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -305573,6 +305573,208 @@
             "name": "paxos_bench",
             "value": 237800,
             "range": "± 20122.92",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "4e611d5c4d03e7d31ddb07c56abaa6088318f944",
+          "message": "docs: redesign landing page as scrollytelling walkthrough with pinned morphing dataflow graph (#3129)\n\nReplaces the landing page (`docs/src/pages/index.js`) with a\nscroll-driven story: a shortened hero followed by five sections —\n\"Today's frameworks make networks implicit\" (gRPC code on node 1/node 2\nwith a greyed-out implicit network), \"Hydro is global\" (one\nlocation-typed function spanning both machines), \"Compile-time\ndistributed correctness\" (non-commutative `fold` over a `NoOrder` UDP\nstream rejected with an inline rustc-style error), \"Hydro lets you write\ndistributed tests\" (deterministic simulator exploring nondet decisions),\nand \"Native cloud infrastructure\" (`EcsDeploy` script with ECS badges\nand regions) — ending with the retained \"Research Backed. Production\nReady.\" panel.\n\n## Pinned morphing diagram (`docs/src/components/landing/`)\n\n- **`PinnedFlowGraph.jsx`** — purpose-built SVG renderer (independent of\nthe docs animation framework). Scene elements are matched by stable IDs:\npersisting elements morph via CSS transitions (positions, sizes, colors,\nsolid→dashed borders), line endpoints tween via animejs,\nentering/exiting elements fade — no static layout or node count is\nassumed. Sits on an \"island\" card (background, border radius, drop\nshadow) that smoothly animates its height as per-scene sub-panels\nappear, and stays vertically centered with each section (sections match\nthe sticky box height exactly, so centers align before pinning, while\npinned, and at release).\n- **`scenes.js`** — declarative scenes: solid grey node boxes with\nimperative-code bars → dashed location groups with operator nodes,\noperators like `map(to_uppercase)` drawn as labeled *edges* (4-node\nlayout with fixed vertical network arrows), cluster rendered as a\nparallax card stack (members peeking from beneath the front card, each\ntinted with its member color), ECS badges + region sublabels for the\ncloud scene.\n- **Correctness scene** — the two in-flight packets stay pinned beside\nthe UDP arrow and continually swap positions along true elliptical arcs\n(shared rAF wall-clock in `swap-clock.js`, smoothstep-eased,\nswap-and-swap-back rather than circular), perfectly synchronized with\nthe output preview where the concat letters `\"ab\"` physically swap.\n- **Sim scene** — replays the real test at\n`hydro_test/src/distributed/event_log.rs`: each send line animates one\nat a time with the sending member's card glowing in its color; messages\naccumulate at the input of `entries_partially_ordered`; the operator and\nthe `nondet!` code line flash on each release decision as the chosen\npacket passes through; the trace panel mirrors real `HYDRO_SIM_LOG=1`\noutput (`==== New Simulation Instance ====`, `^ observed interleaving:\n[(MemberId(0), \"a1\")]`) with a true \"instance n/3\" counter.\n- **`CodePanel.jsx`** — prism-react-renderer panels with semantic token\npaints matching diagram colors, dynamic + flashing line highlights, and\na red-squiggle error callout; file-path headers only where they add\nmeaning (the two gRPC files, and `src/echo.rs` to emphasize one file\nspanning machines).\n\n## Verified example (`hydro_test/src/distributed/event_log.rs`)\n\nNew `ordered_event_log` module + sim test backing the landing page's sim\nsection: a cluster's events flow into a totally-ordered server log via\n`entries_partially_ordered(nondet!(…))`, asserting per-member prefix\norder holds in every interleaving. The test pins `exhaustive()` to\nexactly 3 explored instances (with cluster size 3), keeping the landing\npage's displayed instance count honest.\n\nCode snippets are stylized but track real Hydro APIs verified against\nthe repo (`TCP.fail_stop().bincode()`, `UDP.lossy_delayed_forever()`,\n`sim_input`/`sim_output`/`exhaustive`/`with_cluster_size`,\n`EcsDeploy::new()`/`add_ecs_process()`). Mobile currently hides the\ngraph column (treatment deferred). Validated via the docs dev server (no\nnew compile errors; remaining ones are pre-existing broken links to\nungenerated `surface_ops_gen.md`) and `cargo test -p hydro_test\ntest_per_member_prefix_order`.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-08-17T17:44:03Z",
+          "url": "https://github.com/hydro-project/hydro/commit/4e611d5c4d03e7d31ddb07c56abaa6088318f944"
+        },
+        "date": 1787199873913,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311139,
+            "range": "± 531",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6536264,
+            "range": "± 11355",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6881123,
+            "range": "± 26975",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 50864,
+            "range": "± 1657",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 14110246,
+            "range": "± 27904",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1552990,
+            "range": "± 20367",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1617634,
+            "range": "± 8476",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 43704372,
+            "range": "± 393277",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6824851,
+            "range": "± 14634",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 12898348,
+            "range": "± 1451118",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6534344,
+            "range": "± 29492",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6995782,
+            "range": "± 11310",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 42090670,
+            "range": "± 353967",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 6444,
+            "range": "± 58",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22906,
+            "range": "± 308",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4113,
+            "range": "± 60",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6547,
+            "range": "± 90",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 530395,
+            "range": "± 7061",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55730,
+            "range": "± 441",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 44479,
+            "range": "± 322",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 17201,
+            "range": "± 159",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6975,
+            "range": "± 166",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7346,
+            "range": "± 197",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72167,
+            "range": "± 260",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 78891,
+            "range": "± 329",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7379,
+            "range": "± 168",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15414,
+            "range": "± 107",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 61154,
+            "range": "± 2535",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7510,
+            "range": "± 103",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 201260,
+            "range": "± 640.62",
             "unit": "ops/s"
           }
         ]
