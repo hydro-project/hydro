@@ -304,6 +304,25 @@ macro_rules! abort {
 }
 pub(crate) use abort;
 
+/// The total number of buffered items across a keyed hook's per-key queues.
+pub(crate) fn keyed_buffer_len<K: std::hash::Hash + Eq, V>(
+    input: &dfir_rs::rustc_hash::FxHashMap<K, std::collections::VecDeque<V>>,
+) -> usize {
+    #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+    input.values().map(std::collections::VecDeque::len).sum()
+}
+
+/// A pending-input description for a keyed hook's buffer (`None` when nothing is
+/// buffered), used by the forgotten-hook and stuck-decision error messages.
+pub(crate) fn describe_keyed_pending<K: std::hash::Hash + Eq, V>(
+    input: &dfir_rs::rustc_hash::FxHashMap<K, std::collections::VecDeque<V>>,
+) -> Option<String> {
+    let total = keyed_buffer_len(input);
+    #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+    let keys = input.values().filter(|q| !q.is_empty()).count();
+    (total > 0).then(|| format!("{} buffered item(s) across {} key(s)", total, keys))
+}
+
 /// Writes the standard release-log source block: the `--> location` header, the source
 /// line, and a caret note (colored `note_color`) under the operator.
 pub(crate) fn log_release(

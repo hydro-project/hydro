@@ -17,6 +17,12 @@ Handles are small `Copy` values containing no simulator machinery: the same hand
 - **`BatchHook<T>`** controls which buffered elements a `batch` releases into each tick
 - **`SnapshotHook<T>`** controls which version of a `Singleton` each `snapshot` reveals
 - **`OrderingHook<T>`** controls the order chosen by an `assume_ordering`
+- **`KeyedBatchHook<K, V>`** controls which buffered entries a keyed `batch` releases into each tick
+- **`KeyedSnapshotHook<K, V>`** controls which version of each key's state a `KeyedSingleton` `snapshot` (or `batch`) reveals
+- **`KeyedOrderingHook<K, V>`** controls the per-key order chosen by a keyed `assume_ordering`
+- **`PartialOrderingHook<K, V>`** controls the cross-key interleaving chosen by `entries_partially_ordered`
+- **`MergeOrderedHook<T>`** controls the interleaving chosen by a `merge_ordered`
+- **`KeyedMergeOrderedHook<K, V>`** controls the per-key interleaving chosen by a keyed `merge_ordered`
 
 A component that wants to be scriptable declares its `NonDet` parameters with the hook payload matching the operator each one controls, and passes each guard directly to its operator. As with any [non-determinism forwarded to callers](../correctness/nondet.md#forwarding-non-determinism-to-callers), the parameters are documented in a `# Non-Determinism` section of the function's Rustdoc:
 
@@ -357,3 +363,12 @@ flow.sim().deterministic(async || {
 ```
 
 For a fold *outside* any tick, the hook behaves like a top-level ordering hook: each `next(value)` decision feeds one named element into the fold, so intermediate accumulator states become observable at exactly the script's release points. This is particularly useful together with a `SnapshotHook` downstream of the fold, revealing the accumulator after each scripted step.
+
+## Keyed and Merge Hooks
+
+The remaining hook kinds follow the same top-level / in-tick split as `OrderingHook`:
+
+- At the **top level**, every decision releases exactly one element, named by value, preserving the opportunities for ticks and feedback to interleave with the remaining buffered input. `KeyedOrderingHook::next(key, value)` releases any buffered entry under `key` equal to `value` (the input is unordered within each key), while `PartialOrderingHook::next(key, value)` and the merge hooks' `next_first(..)` / `next_second(..)` must name the *front* of the corresponding buffer, since those operators preserve the order they are interleaving; naming anything else fails immediately. The merge hooks also offer positional `advance_first(..)` / `advance_second(..)` decisions that release the chosen front *without* asserting its value (analogous to `reveal_next()` on a snapshot); prefer the value-naming forms, which fail loudly when the script falls out of sync with the program.
+- **Inside a tick** (`Bounded` handles), a single `order(values)` decision supplies the complete result for that tick's input: a per-key ordering for `KeyedOrderingHook`, an interleaving preserving each key's order for `PartialOrderingHook`, and — for `MergeOrderedHook` / `KeyedMergeOrderedHook` — the merged sequence with each value labeled by the input it is drawn from (`false` = first, `true` = second), where each input's labeled values must be exactly that input's batch in order. As with in-tick orderings, an operator that faces a genuine choice with no scripted decision fails the tick.
+
+`KeyedBatchHook` mirrors `BatchHook`, with `release_values` naming `(key, value)` entries: for streams ordered within each key the entries must match each key's buffered prefix in order (and a positional `release([(key, count), ...])` releases each named key's prefix by count), and for unordered streams they are matched per key as multisets. `KeyedSnapshotHook::reveal(entries)` names the version each key observes next, scanning forward through that key's buffered versions; keys that are not named observe their previously revealed version again.
