@@ -1943,11 +1943,17 @@ fn remap_location(loc: &mut LocationId, uf: &mut HashMap<ClockId, ClockId>) {
             // location.
             //
             // Such a sub-tick runs synchronously with the wrapping tick, and is always connected
-            // to it through the atomic `Batch`/`YieldConcat` boundary, so the two clock IDs get
-            // unified above. Once unified (`M == N` after remapping) they denote the same tick, so
+            // to it through the atomic `Batch`/`YieldConcat` boundary, so pass 1 of
+            // `unify_atomic_ticks` unions `M` and `N`. Once unified they denote the same tick, so
             // collapse the location to its canonical `Tick(N, base)` form. Without this,
             // downstream `LocationId` comparisons (e.g. checking that a `Batch` stays within one
             // unified tick) would spuriously fail on the structural difference.
+            //
+            // Note that this check must happen *after* the `uf_find` rewrites above: the raw
+            // clock IDs `M` and `N` are distinct, and only compare equal once both have been
+            // replaced by their canonical representative. Checking after the recursive call also
+            // lets nested collapses cascade outward in a single pass, since `inner` has already
+            // been normalized by the time it is inspected here.
             if let LocationId::Atomic(atomic_inner) = inner.as_ref()
                 && let LocationId::Tick(inner_id, base) = atomic_inner.as_ref()
                 && *inner_id == *id
@@ -6190,5 +6196,64 @@ mod test {
         .splice_fn1_ctx(&());
         let result = simplify_q_macro(stageleft_call);
         hydro_build_utils::assert_snapshot!(result.to_token_stream().to_string());
+    }
+
+    /// Regression test for <https://github.com/hydro-project/hydro/issues/3144>.
+    ///
+    /// Calling `try_tick()` on an `Atomic` location (as `Optional::or` /
+    /// `Optional::into_singleton` do internally) produces the shape
+    /// `Tick(N, Atomic(Tick(M, base)))`. Once `M` and `N` are unified by
+    /// `unify_atomic_ticks`, `remap_location` must collapse the location to its
+    /// canonical `Tick(N, base)` form.
+    #[cfg(feature = "build")]
+    #[test]
+    fn remap_location_collapses_tick_on_atomic_after_unification() {
+        use crate::Countable;
+
+        let clock = |n: usize| ClockId::from_count(n);
+        let base = LocationId::Process(LocationKey::default());
+        let mut loc = LocationId::Tick(
+            clock(1),
+            Box::new(LocationId::Atomic(Box::new(LocationId::Tick(
+                clock(0),
+                Box::new(base.clone()),
+            )))),
+        );
+
+        // Pass 1 of `unify_atomic_ticks` unions the two clock IDs at the atomic
+        // `Batch`/`YieldConcat` boundary.
+        let mut uf = HashMap::new();
+        uf_union(&mut uf, clock(1), clock(0));
+
+        remap_location(&mut loc, &mut uf);
+
+        assert_eq!(loc, LocationId::Tick(clock(0), Box::new(base)));
+    }
+
+    /// Negative case for `remap_location`: when the wrapping tick's clock ID is
+    /// *not* unified with the inner tick's, the `Tick(N, Atomic(Tick(M, base)))`
+    /// structure must be preserved.
+    #[cfg(feature = "build")]
+    #[test]
+    fn remap_location_preserves_tick_on_atomic_without_unification() {
+        use crate::Countable;
+
+        let clock = |n: usize| ClockId::from_count(n);
+        let base = LocationId::Process(LocationKey::default());
+        let mut loc = LocationId::Tick(
+            clock(1),
+            Box::new(LocationId::Atomic(Box::new(LocationId::Tick(
+                clock(0),
+                Box::new(base),
+            )))),
+        );
+        let expected = loc.clone();
+
+        // Empty union-find: every clock ID is its own representative, so `M != N`
+        // and no collapse should occur.
+        let mut uf = HashMap::new();
+        remap_location(&mut loc, &mut uf);
+
+        assert_eq!(loc, expected);
     }
 }
