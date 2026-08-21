@@ -1013,10 +1013,17 @@ impl<'a> CompiledSimInstance<'a> {
 
         let not_ready_observations = async_dfirs
             .iter()
-            .map(|(lid, cluster_id, _)| SimObservation {
-                location: serde_json::from_str(lid).unwrap(),
-                cluster_id: *cluster_id,
-                hooks: hooks.remove(&(*lid, *cluster_id)).unwrap_or_default(),
+            .flat_map(|(lid, cluster_id, _)| {
+                let location: LocationId = serde_json::from_str(lid).unwrap();
+                hooks
+                    .remove(&(*lid, *cluster_id))
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(move |hook| SimObservation {
+                        location: location.clone(),
+                        cluster_id: *cluster_id,
+                        hook,
+                    })
             })
             .collect();
 
@@ -1825,23 +1832,34 @@ impl SimTick {
     }
 }
 
-/// A top-level location whose hooks (e.g. from `assume_ordering` on a non-tick stream)
-/// need scheduling decisions, but which has no tick DFIR to execute. The scheduler just
-/// resolves the hooks.
+/// A single top-level hook (e.g. from `assume_ordering` on a non-tick stream) that needs
+/// scheduling decisions, but has no tick DFIR to execute. The scheduler just resolves the
+/// hook.
+///
+/// Each top-level hook is its own observation ("its own virtual tick"), even when several
+/// hooks live at the same location: unlike a tick's hooks, which one atomic tick
+/// execution consumes together, co-located top-level hooks are causally independent
+/// operators, so resolving them jointly would only couple their decisions. Grouping them
+/// would both add redundant schedules (releasing jointly is equivalent to releasing in
+/// consecutive steps, which is explored anyway) and *lose* schedules for hook kinds whose
+/// decisions always release when resolved (a fold could never stay silent while a
+/// co-located sibling acts). With one hook per observation, "act" and "stay silent" are
+/// expressed purely by the scheduler picking or not picking the observation, and a picked
+/// observation always makes a nontrivial decision.
 struct SimObservation {
     /// The top-level location, used to match this observation against the async DFIR that
     /// produces its input data.
     location: LocationId,
     /// The cluster member ID, if the location is a cluster.
     cluster_id: Option<u32>,
-    /// Hooks resolved when the scheduler selects this observation.
-    hooks: Vec<Box<dyn SimHook>>,
+    /// The hook resolved when the scheduler selects this observation.
+    hook: Box<dyn SimHook>,
 }
 
 impl SimObservation {
-    /// Whether the scheduler can resolve any of this observation's hooks right now.
+    /// Whether the scheduler can resolve this observation's hook right now.
     fn can_run(&self) -> bool {
-        self.hooks.iter().any(|hook| hook_can_release(&**hook))
+        hook_can_release(&*self.hook)
     }
 }
 
@@ -2033,7 +2051,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                 let log_writer = (!matches!(self.log, LogKind::Null)).then_some(&mut self.log);
                 run_hooks(
                     log_writer,
-                    &mut self.possibly_ready_observations[next_obs].hooks,
+                    std::slice::from_mut(&mut self.possibly_ready_observations[next_obs].hook),
                 );
             }
         }

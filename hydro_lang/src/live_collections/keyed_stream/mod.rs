@@ -3823,7 +3823,7 @@ mod tests {
         });
 
         assert!(saw, "did not see an instance with (1, 1) before (1, 2)");
-        assert_eq!(instance_count, 78);
+        assert_eq!(instance_count, 28);
     }
 
     /// Tests that `merge_ordered` on a keyed stream explores every valid
@@ -3883,7 +3883,7 @@ mod tests {
         assert!(saw_first, "did not observe [a, b, c]");
         assert!(saw_interleaved, "did not observe [a, c, b]");
         assert!(saw_second_first, "did not observe [c, a, b]");
-        assert_eq!(instances, 33);
+        assert_eq!(instances, 15);
     }
 
     /// Tests that `merge_ordered` on a keyed stream interleaves each group
@@ -3947,6 +3947,6 @@ mod tests {
             saw_independent,
             "did not observe per-key-independent interleaving"
         );
-        assert_eq!(instances, 2944);
+        assert_eq!(instances, 1120);
     }
 }

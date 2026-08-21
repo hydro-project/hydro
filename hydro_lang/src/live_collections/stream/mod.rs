@@ -4080,7 +4080,7 @@ mod tests {
         });
 
         assert!(saw, "did not see an instance with 0, 3, 1 in order");
-        assert_eq!(instance_count, 24);
+        assert_eq!(instance_count, 15);
     }
 
     #[cfg(feature = "sim")]

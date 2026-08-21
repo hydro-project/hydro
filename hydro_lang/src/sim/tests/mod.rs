@@ -721,6 +721,79 @@ fn sim_fold_sample_eager_state_count() {
     assert_eq!(count, 108, "Exhaustive states explored");
 }
 
+/// A top-level fold co-located with another observation hook must be able to *withhold*
+/// its buffered input while the sibling releases. The witness is the accumulator version
+/// `[11]`: it exists only in executions where the fold held back its direct input `5`
+/// while the sibling released `10` (which cycles in as `11`) *and* the fold then released
+/// `11` alone — so observing it proves the withholding interleaving is explored.
+///
+/// This reproduces a coverage gap when all top-level hooks at one location are resolved
+/// together as a single observation: a fold's autonomous decision always releases a
+/// non-empty subset whenever it runs, so the fold can never stay silent while the
+/// co-located sibling acts — its first release is always exactly `[5]`, and version
+/// `[11]` can never exist.
+#[test]
+fn sim_colocated_fold_can_withhold_while_sibling_observation_releases() {
+    use crate::live_collections::stream::NoOrder;
+    use crate::properties::manual_proof;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (direct_send, direct_in) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let (u_send, u_in) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+
+    // The sibling: an unscripted top-level ordering whose releases feed the fold.
+    let cycled = u_in
+        .assume_ordering::<TotalOrder>(nondet!(/** fuzzed */))
+        .map(q!(|v| v + 1))
+        .weaken_ordering::<NoOrder>();
+
+    let folded = direct_in.merge_unordered(cycled).fold(
+        q!(|| Vec::new()),
+        q!(
+            |acc, v| {
+                acc.push(v);
+                acc.sort();
+            },
+            commutative = manual_proof!(
+                /// a sorted vector accumulates a multiset, so insertion order is invisible
+            )
+        ),
+    );
+
+    let out = sliced! {
+        let state = use::snapshot(folded, nondet!(/** fuzzed */));
+        state.into_stream()
+    }
+    .sim_output();
+
+    let mut saw_fold_alone_first = false;
+    let mut saw_fold_withholding = false;
+
+    flow.sim().exhaustive(async || {
+        direct_send.send_many_unordered([5u32]);
+        u_send.send_many_unordered([10u32]);
+
+        let versions: Vec<Vec<u32>> = out.collect().await;
+        if versions.iter().any(|v| v.as_slice() == [5]) {
+            saw_fold_alone_first = true;
+        }
+        if versions.iter().any(|v| v.as_slice() == [11]) {
+            saw_fold_withholding = true;
+        }
+    });
+
+    assert!(
+        saw_fold_alone_first,
+        "never explored the fold releasing its direct input first"
+    );
+    assert!(
+        saw_fold_withholding,
+        "the fold never withheld its buffered input while the co-located hook released"
+    );
+}
+
 #[test]
 fn sim_fold_commutative_explores_all_subset_sums() {
     use std::collections::HashSet;
