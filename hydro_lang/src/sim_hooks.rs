@@ -162,3 +162,217 @@ impl<T, B: Boundedness> SimHook for OrderingHook<T, B> {
         }
     }
 }
+
+/// A hook handle controlling a `batch` operator over a keyed stream with keys `K`, values
+/// `V`, per-key value ordering `O`, and retry guarantee `R` (mirroring the type of the
+/// keyed stream being batched).
+///
+/// A decision for a keyed batch hook says which buffered `(key, value)` entries form the
+/// next batch released into the tick. See `hydro_lang::sim::hooks` for the decisions
+/// offered.
+pub struct KeyedBatchHook<K, V, O: Ordering = TotalOrder, R: Retries = ExactlyOnce> {
+    pub(crate) id: usize,
+    pub(crate) _phantom: PhantomData<fn(K, V, O, R)>,
+}
+
+impl<K, V, O: Ordering, R: Retries> Clone for KeyedBatchHook<K, V, O, R> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<K, V, O: Ordering, R: Retries> Copy for KeyedBatchHook<K, V, O, R> {}
+
+impl<K, V, O: Ordering, R: Retries> std::fmt::Debug for KeyedBatchHook<K, V, O, R> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KeyedBatchHook")
+            .field("id", &self.id)
+            .finish()
+    }
+}
+
+impl<K, V, O: Ordering, R: Retries> SimHook for KeyedBatchHook<K, V, O, R> {
+    fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
+        KeyedBatchHook {
+            id: next_id(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+/// A hook handle controlling a `snapshot` (or `batch`) operator over a keyed singleton
+/// with keys `K` and values `V`.
+///
+/// A decision for a keyed snapshot hook picks which buffered version of each key's state
+/// the next tick execution observes. See `hydro_lang::sim::hooks` for the decisions
+/// offered.
+pub struct KeyedSnapshotHook<K, V> {
+    pub(crate) id: usize,
+    pub(crate) _phantom: PhantomData<fn(K, V)>,
+}
+
+impl<K, V> Clone for KeyedSnapshotHook<K, V> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<K, V> Copy for KeyedSnapshotHook<K, V> {}
+
+impl<K, V> std::fmt::Debug for KeyedSnapshotHook<K, V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KeyedSnapshotHook")
+            .field("id", &self.id)
+            .finish()
+    }
+}
+
+impl<K, V> SimHook for KeyedSnapshotHook<K, V> {
+    fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
+        KeyedSnapshotHook {
+            id: next_id(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+/// A hook handle controlling an `assume_ordering` operator over a keyed stream with keys
+/// `K` and values `V`.
+///
+/// A top-level decision selects the next buffered `(key, value)` entry to release. An
+/// `assume_ordering` inside a tick instead takes one exhaustive per-key ordering of that
+/// tick's complete input. See `hydro_lang::sim::hooks` for the decisions offered.
+pub struct KeyedOrderingHook<K, V, B: Boundedness = Unbounded> {
+    pub(crate) id: usize,
+    pub(crate) _phantom: PhantomData<fn(K, V, B)>,
+}
+
+impl<K, V, B: Boundedness> Clone for KeyedOrderingHook<K, V, B> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<K, V, B: Boundedness> Copy for KeyedOrderingHook<K, V, B> {}
+
+impl<K, V, B: Boundedness> std::fmt::Debug for KeyedOrderingHook<K, V, B> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KeyedOrderingHook")
+            .field("id", &self.id)
+            .finish()
+    }
+}
+
+impl<K, V, B: Boundedness> SimHook for KeyedOrderingHook<K, V, B> {
+    fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
+        KeyedOrderingHook {
+            id: next_id(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+/// A hook handle controlling an `entries_partially_ordered` operator over a keyed stream
+/// with keys `K` and values `V`.
+///
+/// The operator preserves the order of values within each key while interleaving across
+/// keys non-deterministically. A top-level decision releases the front entry of one key's
+/// buffer; inside a tick, a single decision supplies the complete interleaving. See
+/// `hydro_lang::sim::hooks` for the decisions offered.
+pub struct PartialOrderingHook<K, V, B: Boundedness = Unbounded> {
+    pub(crate) id: usize,
+    pub(crate) _phantom: PhantomData<fn(K, V, B)>,
+}
+
+impl<K, V, B: Boundedness> Clone for PartialOrderingHook<K, V, B> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<K, V, B: Boundedness> Copy for PartialOrderingHook<K, V, B> {}
+
+impl<K, V, B: Boundedness> std::fmt::Debug for PartialOrderingHook<K, V, B> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PartialOrderingHook")
+            .field("id", &self.id)
+            .finish()
+    }
+}
+
+impl<K, V, B: Boundedness> SimHook for PartialOrderingHook<K, V, B> {
+    fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
+        PartialOrderingHook {
+            id: next_id(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+/// A hook handle controlling a `merge_ordered` operator over streams of `T` elements.
+///
+/// The operator preserves the order of each input while interleaving the two inputs
+/// non-deterministically. A top-level decision releases the front element of one input's
+/// buffer; inside a tick, a single decision supplies the complete interleaving. See
+/// `hydro_lang::sim::hooks` for the decisions offered.
+pub struct MergeOrderedHook<T, B: Boundedness = Unbounded> {
+    pub(crate) id: usize,
+    pub(crate) _phantom: PhantomData<fn(T, B)>,
+}
+
+impl<T, B: Boundedness> Clone for MergeOrderedHook<T, B> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<T, B: Boundedness> Copy for MergeOrderedHook<T, B> {}
+
+impl<T, B: Boundedness> std::fmt::Debug for MergeOrderedHook<T, B> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MergeOrderedHook")
+            .field("id", &self.id)
+            .finish()
+    }
+}
+
+impl<T, B: Boundedness> SimHook for MergeOrderedHook<T, B> {
+    fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
+        MergeOrderedHook {
+            id: next_id(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+/// A hook handle controlling a `merge_ordered` operator over keyed streams with keys `K`
+/// and values `V`.
+///
+/// The operator preserves each input's order within every key while interleaving the two
+/// inputs non-deterministically (cross-key order is unconstrained). A top-level decision
+/// releases the front entry of one key's buffer in one input; inside a tick, a single
+/// decision supplies the complete interleaving. See `hydro_lang::sim::hooks` for the
+/// decisions offered.
+pub struct KeyedMergeOrderedHook<K, V, B: Boundedness = Unbounded> {
+    pub(crate) id: usize,
+    pub(crate) _phantom: PhantomData<fn(K, V, B)>,
+}
+
+impl<K, V, B: Boundedness> Clone for KeyedMergeOrderedHook<K, V, B> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<K, V, B: Boundedness> Copy for KeyedMergeOrderedHook<K, V, B> {}
+
+impl<K, V, B: Boundedness> std::fmt::Debug for KeyedMergeOrderedHook<K, V, B> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KeyedMergeOrderedHook")
+            .field("id", &self.id)
+            .finish()
+    }
+}
+
+impl<K, V, B: Boundedness> SimHook for KeyedMergeOrderedHook<K, V, B> {
+    fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
+        KeyedMergeOrderedHook {
+            id: next_id(),
+            _phantom: PhantomData,
+        }
+    }
+}

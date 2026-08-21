@@ -801,6 +801,220 @@ impl<K: Hash + Eq + Clone, V> RuntimeHook for KeyedStreamHook<K, V, NoOrder> {
     }
 }
 
+/// A scripted decision for a keyed batch hook. Values are named as `(key, value)` entries;
+/// how they are matched against the buffer depends on the ordering guarantee of the keyed
+/// stream being batched (in-order prefixes per key for `TotalOrder` values, multisets per
+/// key for `NoOrder` values).
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum KeyedBatchDecision<K, V> {
+    /// Release exactly these `(key, value)` entries.
+    Values(Vec<(K, V)>),
+    /// Release everything that has arrived by the time the tick fires.
+    All,
+    /// Release an empty batch, holding everything buffered.
+    Empty,
+}
+
+impl<K, V> ScriptDecision for KeyedBatchDecision<K, V>
+where
+    K: serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            KeyedBatchDecision::Values(values) => {
+                format!("release_values({} entr(ies))", values.len())
+            }
+            KeyedBatchDecision::All => "release_all()".to_owned(),
+            KeyedBatchDecision::Empty => "release_empty()".to_owned(),
+        }
+    }
+}
+
+fn keyed_buffer_len<K: Hash + Eq, V>(input: &FxHashMap<K, VecDeque<V>>) -> usize {
+    #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+    input.values().map(VecDeque::len).sum()
+}
+
+fn describe_keyed_pending<K: Hash + Eq, V>(input: &FxHashMap<K, VecDeque<V>>) -> Option<String> {
+    let total = keyed_buffer_len(input);
+    #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+    let keys = input.values().filter(|q| !q.is_empty()).count();
+    (total > 0).then(|| format!("{} buffered item(s) across {} key(s)", total, keys))
+}
+
+impl<K, V> ScriptableHook for KeyedStreamHook<K, V, TotalOrder>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = KeyedBatchDecision<K, V>;
+    type Status = BatchStatus;
+
+    fn is_honorable(&self, decision: &KeyedBatchDecision<K, V>) -> Result<bool, String> {
+        let input = self.input.borrow();
+        match decision {
+            KeyedBatchDecision::Values(values) => {
+                // Each key's scripted values must match that key's buffered prefix in
+                // order (cross-key interleaving in the script is irrelevant).
+                let mut consumed: FxHashMap<&K, usize> = FxHashMap::default();
+                for (position, (key, expected)) in values.iter().enumerate() {
+                    let offset = consumed.entry(key).or_insert(0);
+                    match input.get(key).and_then(|queue| queue.get(*offset)) {
+                        Some(buffered) if buffered == expected => {}
+                        Some(_) => {
+                            return Err(format!(
+                                "release_values: buffered item at per-key prefix position {} did not match the expected value (scripted entry {})",
+                                *offset, position
+                            ));
+                        }
+                        None => return Ok(false),
+                    }
+                    *offset += 1;
+                }
+                Ok(true)
+            }
+            KeyedBatchDecision::All | KeyedBatchDecision::Empty => Ok(true),
+        }
+    }
+
+    fn is_nontrivial(&self, decision: &KeyedBatchDecision<K, V>) -> bool {
+        match decision {
+            KeyedBatchDecision::Values(values) => !values.is_empty(),
+            KeyedBatchDecision::All => self.can_make_nontrivial_decision(),
+            KeyedBatchDecision::Empty => false,
+        }
+    }
+
+    fn apply(&mut self, decision: KeyedBatchDecision<K, V>) -> bool {
+        let mut input = self.input.borrow_mut();
+        let out: Vec<(K, V)> = match decision {
+            KeyedBatchDecision::Values(values) => values
+                .into_iter()
+                .map(|(key, _expected)| {
+                    // `is_honorable` verified each key's scripted values match that
+                    // key's buffered prefix, so popping fronts in script order releases
+                    // exactly the named items.
+                    let item = input.get_mut(&key).unwrap().pop_front().unwrap();
+                    (key, item)
+                })
+                .collect(),
+            KeyedBatchDecision::All => {
+                let mut out = vec![];
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                for (key, queue) in input.iter_mut() {
+                    out.extend(queue.drain(..).map(|v| (key.clone(), v)));
+                }
+                out
+            }
+            KeyedBatchDecision::Empty => vec![],
+        };
+
+        let nontrivial = !out.is_empty();
+        self.to_release = Some(out);
+        nontrivial
+    }
+
+    fn implicit(&mut self) -> bool {
+        self.to_release = Some(vec![]);
+        false
+    }
+
+    fn status(&self) -> BatchStatus {
+        BatchStatus {
+            buffered: keyed_buffer_len(&self.input.borrow()),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        describe_keyed_pending(&self.input.borrow())
+    }
+}
+
+impl<K, V> ScriptableHook for KeyedStreamHook<K, V, NoOrder>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = KeyedBatchDecision<K, V>;
+    type Status = BatchStatus;
+
+    fn is_honorable(&self, decision: &KeyedBatchDecision<K, V>) -> Result<bool, String> {
+        match decision {
+            KeyedBatchDecision::Values(values) => {
+                // Values are matched per key as multisets: duplicates request the
+                // corresponding number of equal buffered items under that key.
+                let input = self.input.borrow();
+                let mut unmatched: Vec<(&K, &V)> = values.iter().map(|(k, v)| (k, v)).collect();
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                for (key, queue) in input.iter() {
+                    for buffered in queue {
+                        if let Some(idx) = unmatched
+                            .iter()
+                            .position(|(k, v)| *k == key && *v == buffered)
+                        {
+                            unmatched.swap_remove(idx);
+                        }
+                    }
+                }
+                Ok(unmatched.is_empty())
+            }
+            KeyedBatchDecision::All | KeyedBatchDecision::Empty => Ok(true),
+        }
+    }
+
+    fn is_nontrivial(&self, decision: &KeyedBatchDecision<K, V>) -> bool {
+        match decision {
+            KeyedBatchDecision::Values(values) => !values.is_empty(),
+            KeyedBatchDecision::All => self.can_make_nontrivial_decision(),
+            KeyedBatchDecision::Empty => false,
+        }
+    }
+
+    fn apply(&mut self, decision: KeyedBatchDecision<K, V>) -> bool {
+        let mut input = self.input.borrow_mut();
+        let out: Vec<(K, V)> = match decision {
+            KeyedBatchDecision::Values(values) => values
+                .into_iter()
+                .map(|(key, expected)| {
+                    let queue = input.get_mut(&key).unwrap();
+                    let idx = queue.iter().position(|item| *item == expected).unwrap();
+                    let item = queue.remove(idx).unwrap();
+                    (key, item)
+                })
+                .collect(),
+            KeyedBatchDecision::All => {
+                let mut out = vec![];
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                for (key, queue) in input.iter_mut() {
+                    out.extend(queue.drain(..).map(|v| (key.clone(), v)));
+                }
+                out
+            }
+            KeyedBatchDecision::Empty => vec![],
+        };
+
+        let nontrivial = !out.is_empty();
+        self.to_release = Some(out);
+        nontrivial
+    }
+
+    fn implicit(&mut self) -> bool {
+        self.to_release = Some(vec![]);
+        false
+    }
+
+    fn status(&self) -> BatchStatus {
+        BatchStatus {
+            buffered: keyed_buffer_len(&self.input.borrow()),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        describe_keyed_pending(&self.input.borrow())
+    }
+}
+
 pub struct SingletonHook<T> {
     input: Rc<RefCell<VecDeque<T>>>,
     to_release: Option<(T, bool)>, // (data, is new)
@@ -1304,6 +1518,183 @@ impl<K: Hash + Eq + Clone, V: Clone> RuntimeHook for KeyedSingletonHook<K, V> {
         } else {
             panic!("No decision to release");
         }
+    }
+}
+
+/// A scripted decision for a keyed snapshot hook: which buffered version each key's next
+/// tick execution observes.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum KeyedSnapshotDecision {
+    /// For each named key, reveal the first buffered version equal to the named value
+    /// (bincode-serialized `Vec<(K, V)>`, since it crosses the handle/hook boundary),
+    /// skipping over earlier versions. Keys that are not named observe their previously
+    /// revealed version again (or stay absent if they have never been revealed).
+    Reveal(Vec<u8>),
+    /// For every key, reveal the newest version that has arrived by the time the tick
+    /// fires (keys with nothing newer observe their previously revealed version again).
+    RevealLatest,
+    /// Every key observes its previously revealed version again.
+    Keep,
+}
+
+impl ScriptDecision for KeyedSnapshotDecision {
+    fn describe(&self) -> String {
+        match self {
+            KeyedSnapshotDecision::Reveal(_) => "reveal(..)".to_owned(),
+            KeyedSnapshotDecision::RevealLatest => "reveal_latest()".to_owned(),
+            KeyedSnapshotDecision::Keep => "keep()".to_owned(),
+        }
+    }
+}
+
+/// The pending-input view a keyed snapshot hook reports to its test-side handle (see
+/// [`ScriptableHook::status`]), used by `pause_until_*` predicates.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct KeyedSnapshotStatus {
+    /// The total number of buffered versions (across all keys) newer than the last
+    /// revealed ones.
+    pub newer_versions: usize,
+    /// The number of keys with at least one newer buffered version.
+    pub keys_with_newer_versions: usize,
+}
+
+impl<K, V> ScriptableHook for KeyedSingletonHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: Clone + PartialEq + serde::Serialize + serde::de::DeserializeOwned,
+{
+    type Decision = KeyedSnapshotDecision;
+    type Status = KeyedSnapshotStatus;
+
+    fn is_honorable(&self, decision: &KeyedSnapshotDecision) -> Result<bool, String> {
+        let input = self.input.borrow();
+        Ok(match decision {
+            KeyedSnapshotDecision::Reveal(bytes) => {
+                let entries: Vec<(K, V)> = bincode::deserialize(bytes)
+                    .expect("failed to deserialize the reveal() target entries");
+                entries.iter().all(|(key, target)| {
+                    input
+                        .get(key)
+                        .is_some_and(|queue| queue.iter().any(|version| version == target))
+                })
+            }
+            KeyedSnapshotDecision::RevealLatest => {
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                let any_newer = input.values().any(|q| !q.is_empty());
+                any_newer || !self.last_released.is_empty()
+            }
+            KeyedSnapshotDecision::Keep => true,
+        })
+    }
+
+    fn is_nontrivial(&self, decision: &KeyedSnapshotDecision) -> bool {
+        match decision {
+            KeyedSnapshotDecision::Reveal(bytes) => {
+                let entries: Vec<(K, V)> = bincode::deserialize(bytes)
+                    .expect("failed to deserialize the reveal() target entries");
+                !entries.is_empty()
+            }
+            KeyedSnapshotDecision::RevealLatest => {
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                let any_newer = self.input.borrow().values().any(|q| !q.is_empty());
+                any_newer
+            }
+            KeyedSnapshotDecision::Keep => false,
+        }
+    }
+
+    fn apply(&mut self, decision: KeyedSnapshotDecision) -> bool {
+        let mut input = self.input.borrow_mut();
+        match decision {
+            KeyedSnapshotDecision::Reveal(bytes) => {
+                let entries: Vec<(K, V)> = bincode::deserialize(&bytes)
+                    .expect("failed to deserialize the reveal() target entries");
+                let mut to_release = vec![];
+                let mut named: Vec<K> = vec![];
+                for (key, target) in entries {
+                    let queue = input.get_mut(&key).unwrap();
+                    let idx = queue.iter().position(|version| *version == target).unwrap();
+                    let skipped: Vec<V> = queue.drain(0..idx).collect();
+                    let item = queue.pop_front().unwrap();
+                    self.skipped_states.insert(key.clone(), skipped);
+                    self.last_released.insert(key.clone(), item.clone());
+                    to_release.push((key.clone(), item, true));
+                    named.push(key);
+                }
+                // Unnamed keys observe their previously revealed version again.
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                for (key, last) in self.last_released.iter() {
+                    if !named.contains(key) {
+                        to_release.push((key.clone(), last.clone(), false));
+                    }
+                }
+                let nontrivial = !named.is_empty();
+                self.to_release = Some(to_release);
+                nontrivial
+            }
+            KeyedSnapshotDecision::RevealLatest => {
+                let mut to_release = vec![];
+                let mut any_nontrivial = false;
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                for (key, queue) in input.iter_mut() {
+                    if queue.is_empty() {
+                        if let Some(last) = self.last_released.get(key) {
+                            to_release.push((key.clone(), last.clone(), false));
+                        }
+                    } else {
+                        let skip_count = queue.len() - 1;
+                        let skipped: Vec<V> = queue.drain(0..skip_count).collect();
+                        let item = queue.pop_front().unwrap();
+                        self.skipped_states.insert(key.clone(), skipped);
+                        self.last_released.insert(key.clone(), item.clone());
+                        to_release.push((key.clone(), item, true));
+                        any_nontrivial = true;
+                    }
+                }
+                self.to_release = Some(to_release);
+                any_nontrivial
+            }
+            KeyedSnapshotDecision::Keep => {
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                let to_release = self
+                    .last_released
+                    .iter()
+                    .map(|(key, last)| (key.clone(), last.clone(), false))
+                    .collect();
+                self.to_release = Some(to_release);
+                false
+            }
+        }
+    }
+
+    fn implicit(&mut self) -> bool {
+        // "Nothing new": every previously revealed key observes its value again.
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let to_release = self
+            .last_released
+            .iter()
+            .map(|(key, last)| (key.clone(), last.clone(), false))
+            .collect();
+        self.to_release = Some(to_release);
+        false
+    }
+
+    fn status(&self) -> KeyedSnapshotStatus {
+        let input = self.input.borrow();
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let keys_with_newer_versions = input.values().filter(|q| !q.is_empty()).count();
+        KeyedSnapshotStatus {
+            newer_versions: keyed_buffer_len(&input),
+            keys_with_newer_versions,
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        let total = keyed_buffer_len(&input);
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let keys = input.values().filter(|q| !q.is_empty()).count();
+        (total > 0).then(|| format!("{} buffered version(s) across {} key(s)", total, keys))
     }
 }
 
@@ -2340,6 +2731,120 @@ impl<K: Hash + Eq + Clone, V> RuntimeHook for TopLevelPartiallyOrderedStreamHook
     }
 }
 
+/// Keyed variant of [`TopLevelStreamOrderHook`]'s scripting: a top-level keyed
+/// `assume_ordering` decision names one `(key, value)` entry to release; values within a
+/// key may be matched at any buffered position (the input is unordered within each key).
+impl<K, V> ScriptableHook for TopLevelKeyedStreamOrderHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = TopLevelOrderingDecision<(K, V)>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        let TopLevelOrderingDecision::Next((key, expected)) = decision;
+        Ok(self
+            .input
+            .borrow()
+            .get(key)
+            .is_some_and(|queue| queue.iter().any(|item| item == expected)))
+    }
+
+    fn is_nontrivial(&self, _decision: &Self::Decision) -> bool {
+        true
+    }
+
+    fn apply(&mut self, decision: Self::Decision) -> bool {
+        let TopLevelOrderingDecision::Next((key, expected)) = decision;
+        let mut input = self.input.borrow_mut();
+        let queue = input.get_mut(&key).unwrap();
+        let index = queue.iter().position(|item| item == &expected).unwrap();
+        let item = queue.remove(index).unwrap();
+        self.to_release = Some(vec![(key, item)]);
+        true
+    }
+
+    fn implicit(&mut self) -> bool {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        eprintln!(
+            "Simulator internal error: implicit decision invoked on a top-level keyed ordering hook"
+        );
+        std::process::abort();
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: keyed_buffer_len(&self.input.borrow()),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        describe_keyed_pending(&self.input.borrow())
+    }
+}
+
+/// Scripting for a top-level `entries_partially_ordered`: each decision names one
+/// `(key, value)` entry to release, and the value must be the *front* of that key's
+/// buffered queue since within-key order is preserved.
+impl<K, V> ScriptableHook for TopLevelPartiallyOrderedStreamHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = TopLevelOrderingDecision<(K, V)>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        let TopLevelOrderingDecision::Next((key, expected)) = decision;
+        match self.input.borrow().get(key).and_then(VecDeque::front) {
+            Some(front) if front == expected => Ok(true),
+            // Within-key order is preserved, so a mismatching front can never be
+            // released ahead of the named value: the decision is permanently stuck.
+            Some(_) => Err(
+                "next: the named value did not match the front of its key's buffered queue \
+                 (within-key order is preserved by this operator)"
+                    .to_owned(),
+            ),
+            None => Ok(false),
+        }
+    }
+
+    fn is_nontrivial(&self, _decision: &Self::Decision) -> bool {
+        true
+    }
+
+    fn apply(&mut self, decision: Self::Decision) -> bool {
+        let TopLevelOrderingDecision::Next((key, _expected)) = decision;
+        let mut input = self.input.borrow_mut();
+        let item = input.get_mut(&key).unwrap().pop_front().unwrap();
+        self.to_release = Some(vec![(key, item)]);
+        true
+    }
+
+    fn implicit(&mut self) -> bool {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        eprintln!(
+            "Simulator internal error: implicit decision invoked on a top-level partially-ordered hook"
+        );
+        std::process::abort();
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: keyed_buffer_len(&self.input.borrow()),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        describe_keyed_pending(&self.input.borrow())
+    }
+}
+
 /// Top-level merge-ordered hook. Releases one element at a time, picking from
 /// the front of either the first or second input queue. This preserves per-input
 /// order while allowing feedback cycles to deliver elements between releases.
@@ -2442,6 +2947,125 @@ impl<T> RuntimeHook for TopLevelMergeOrderedHook<T> {
         } else {
             panic!("No decision to release");
         }
+    }
+}
+
+/// A scripted decision for a top-level `merge_ordered` observation: which input the next
+/// released element comes from. The element may be named ([`Self::First`] /
+/// [`Self::Second`], asserting it equals the front of that input's buffer) or released
+/// positionally ([`Self::FirstNext`] / [`Self::SecondNext`], releasing the front without
+/// asserting its value). `S` selects *which* front for keyed merges (the key), and is `()`
+/// for plain streams.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum MergeDecision<T, S = ()> {
+    /// Release the front of the first (left) input's buffer, which must equal this value.
+    First(T),
+    /// Release the front of the second (right) input's buffer, which must equal this value.
+    Second(T),
+    /// Release the front of the first (left) input's buffer, whatever it is.
+    FirstNext(S),
+    /// Release the front of the second (right) input's buffer, whatever it is.
+    SecondNext(S),
+}
+
+impl<T, S> ScriptDecision for MergeDecision<T, S>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+    S: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            MergeDecision::First(_) => "next_first(value)".to_owned(),
+            MergeDecision::Second(_) => "next_second(value)".to_owned(),
+            MergeDecision::FirstNext(_) => "advance_first(..)".to_owned(),
+            MergeDecision::SecondNext(_) => "advance_second(..)".to_owned(),
+        }
+    }
+}
+
+/// The pending-input view a top-level merge hook reports to its test-side handle (see
+/// [`ScriptableHook::status`]), used by `pause_until_*` predicates.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct MergeStatus {
+    /// The number of elements buffered from the first (left) input.
+    pub first_buffered: usize,
+    /// The number of elements buffered from the second (right) input.
+    pub second_buffered: usize,
+}
+
+impl<T> ScriptableHook for TopLevelMergeOrderedHook<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = MergeDecision<T>;
+    type Status = MergeStatus;
+
+    fn is_honorable(&self, decision: &MergeDecision<T>) -> Result<bool, String> {
+        let (buffer, expected) = match decision {
+            MergeDecision::First(expected) => (&self.first, Some(expected)),
+            MergeDecision::Second(expected) => (&self.second, Some(expected)),
+            MergeDecision::FirstNext(()) => (&self.first, None),
+            MergeDecision::SecondNext(()) => (&self.second, None),
+        };
+        match (buffer.borrow().front(), expected) {
+            (Some(_), None) => Ok(true),
+            (Some(front), Some(expected)) if front == expected => Ok(true),
+            // Per-input order is preserved, so a mismatching front can never be released
+            // ahead of the named value: the decision is permanently stuck.
+            (Some(_), Some(_)) => Err(
+                "next_first/next_second: the named value did not match the front of that \
+                 input's buffer (per-input order is preserved by merge_ordered)"
+                    .to_owned(),
+            ),
+            (None, _) => Ok(false),
+        }
+    }
+
+    fn is_nontrivial(&self, _decision: &MergeDecision<T>) -> bool {
+        true
+    }
+
+    fn apply(&mut self, decision: MergeDecision<T>) -> bool {
+        let (item, source) = match decision {
+            MergeDecision::First(_) | MergeDecision::FirstNext(()) => {
+                (self.first.borrow_mut().pop_front().unwrap(), "l")
+            }
+            MergeDecision::Second(_) | MergeDecision::SecondNext(()) => {
+                (self.second.borrow_mut().pop_front().unwrap(), "r")
+            }
+        };
+        self.to_release = Some(vec![item]);
+        self.release_source = Some(source);
+        true
+    }
+
+    fn implicit(&mut self) -> bool {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        eprintln!(
+            "Simulator internal error: implicit decision invoked on a top-level merge-ordered hook"
+        );
+        std::process::abort();
+    }
+
+    fn status(&self) -> MergeStatus {
+        MergeStatus {
+            first_buffered: self.first.borrow().len(),
+            second_buffered: self.second.borrow().len(),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let first = self.first.borrow();
+        let second = self.second.borrow();
+        (!first.is_empty() || !second.is_empty()).then(|| {
+            format!(
+                "{} + {} buffered item(s) (first + second input)",
+                first.len(),
+                second.len()
+            )
+        })
     }
 }
 
@@ -2740,6 +3364,88 @@ impl<K: Hash + Eq + Clone, V> RuntimeHook for TopLevelKeyedMergeOrderedHook<K, V
         } else {
             panic!("No decision to release");
         }
+    }
+}
+
+impl<K, V> ScriptableHook for TopLevelKeyedMergeOrderedHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = MergeDecision<(K, V), K>;
+    type Status = MergeStatus;
+
+    fn is_honorable(&self, decision: &MergeDecision<(K, V), K>) -> Result<bool, String> {
+        let (buffer, key, expected) = match decision {
+            MergeDecision::First((key, expected)) => (&self.first, key, Some(expected)),
+            MergeDecision::Second((key, expected)) => (&self.second, key, Some(expected)),
+            MergeDecision::FirstNext(key) => (&self.first, key, None),
+            MergeDecision::SecondNext(key) => (&self.second, key, None),
+        };
+        match (buffer.borrow().get(key).and_then(VecDeque::front), expected) {
+            (Some(_), None) => Ok(true),
+            (Some(front), Some(expected)) if front == expected => Ok(true),
+            // Per-input order within a key is preserved, so a mismatching front can
+            // never be released ahead of the named value: the decision is permanently
+            // stuck.
+            (Some(_), Some(_)) => Err(
+                "next_first/next_second: the named value did not match the front of its \
+                 key's buffer in that input (per-input within-key order is preserved by \
+                 merge_ordered)"
+                    .to_owned(),
+            ),
+            (None, _) => Ok(false),
+        }
+    }
+
+    fn is_nontrivial(&self, _decision: &MergeDecision<(K, V), K>) -> bool {
+        true
+    }
+
+    fn apply(&mut self, decision: MergeDecision<(K, V), K>) -> bool {
+        let (buffer, key, source) = match decision {
+            MergeDecision::First((key, _)) => (&self.first, key, "l"),
+            MergeDecision::Second((key, _)) => (&self.second, key, "r"),
+            MergeDecision::FirstNext(key) => (&self.first, key, "l"),
+            MergeDecision::SecondNext(key) => (&self.second, key, "r"),
+        };
+        let item = buffer
+            .borrow_mut()
+            .get_mut(&key)
+            .unwrap()
+            .pop_front()
+            .unwrap();
+        self.to_release = Some(vec![(key, item)]);
+        self.release_source = Some(source);
+        true
+    }
+
+    fn implicit(&mut self) -> bool {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        eprintln!(
+            "Simulator internal error: implicit decision invoked on a top-level keyed merge-ordered hook"
+        );
+        std::process::abort();
+    }
+
+    fn status(&self) -> MergeStatus {
+        MergeStatus {
+            first_buffered: keyed_buffer_len(&self.first.borrow()),
+            second_buffered: keyed_buffer_len(&self.second.borrow()),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let first = keyed_buffer_len(&self.first.borrow());
+        let second = keyed_buffer_len(&self.second.borrow());
+        (first + second > 0).then(|| {
+            format!(
+                "{} + {} buffered item(s) (first + second input)",
+                first, second
+            )
+        })
     }
 }
 
@@ -3068,84 +3774,39 @@ impl<H: ScriptableHook> ScriptedRuntimeHook for Scripted<H> {
     }
 }
 
-pub struct ScriptedInline<T> {
-    core: StreamOrderHook<T>,
-    target: ScriptTarget,
-    next_decision: Option<InlineOrderingDecision<T>>,
+/// The per-kind scripted-decision semantics of an inline (in-tick) hook, implemented
+/// directly on the ordinary inline hook types ([`StreamOrderHook`],
+/// [`MergeOrderedHook`], ...). The generic [`ScriptedInline<H>`] shell turns any
+/// implementor into a scripted inline hook.
+pub trait ScriptableInlineHook: SimInlineHook {
+    /// The decisions a handle can script for this kind of inline hook.
+    type Decision: ScriptDecision;
+
+    /// Consumes the pending in-tick input together with the queued decision (`None` when
+    /// the test scripted nothing, which is only valid when the decision is forced),
+    /// staging the release. Returns an error message instead of panicking: this code is
+    /// monomorphized into the generated dylib, and a panic must not unwind across that
+    /// boundary — the host scheduler reports the error.
+    fn apply_scripted(&mut self, decision: Option<Self::Decision>) -> Result<(), String>;
+
+    /// A human-readable rendering of the pending, undecided input, or `None` when there
+    /// is nothing pending.
+    fn describe_pending(&self) -> Option<String>;
+
+    /// The current pending-input view, bincode-serialized for the type-erased registry
+    /// surface (the handle statically knows the matching status type).
+    fn status_blob(&self) -> Vec<u8>;
 }
 
-impl<T> ScriptedInline<T> {
-    pub fn new(core: StreamOrderHook<T>, target: ScriptTarget) -> Self {
-        Self {
-            core,
-            target,
-            next_decision: None,
-        }
-    }
-}
-
-impl<T> ScriptedHookControl for ScriptedInline<T>
+impl<T> ScriptableInlineHook for StreamOrderHook<T>
 where
     T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
 {
-    fn target(&self) -> ScriptTarget {
-        self.target
-    }
+    type Decision = InlineOrderingDecision<T>;
 
-    fn location_meta(&self) -> Option<HookLocationMeta> {
-        Some(self.core.location_meta())
-    }
-
-    fn has_decision(&self) -> bool {
-        self.next_decision.is_some()
-    }
-
-    fn describe_decision(&self) -> Option<String> {
-        self.next_decision.as_ref().map(ScriptDecision::describe)
-    }
-
-    fn describe_pending(&self) -> Option<String> {
-        let input = self.core.input.borrow();
-        input.as_ref().map(|values| {
-            format!(
-                "{} in-tick ordering item(s): {:?}",
-                values.len(),
-                TruncatedVecDebug(RefCell::new(Some(values.iter())), 8, self.core.format_debug,)
-            )
-        })
-    }
-
-    fn install_decision(&mut self, decision_blob: &[u8]) {
-        assert!(self.next_decision.is_none());
-        self.next_decision = Some(
-            bincode::deserialize(decision_blob)
-                .expect("internal error: scripted inline ordering decision had the wrong type"),
-        );
-    }
-
-    fn status_blob(&self) -> Vec<u8> {
-        bincode::serialize(&OrderingStatus {
-            buffered: self.core.input.borrow().as_ref().map_or(0, Vec::len),
-        })
-        .unwrap()
-    }
-
-    fn set_hold(&mut self, _hold: bool) {}
-    fn release_hold(&mut self) {}
-    fn set_auto_pause(&mut self, _auto_pause: bool) {}
-}
-
-impl<T> ScriptedInlineHook for ScriptedInline<T>
-where
-    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
-{
-    fn pending_decision(&self) -> bool {
-        self.core.pending_decision()
-    }
-
-    fn run_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) -> Result<(), String> {
-        let input = self.core.input.borrow_mut().take().unwrap();
-        let output = match self.next_decision.take() {
+    fn apply_scripted(&mut self, decision: Option<Self::Decision>) -> Result<(), String> {
+        let input = self.input.borrow_mut().take().unwrap();
+        let output = match decision {
             Some(InlineOrderingDecision::Order(values)) => {
                 if !same_multiset(&input, &values) {
                     return Err(format!(
@@ -3159,7 +3820,7 @@ where
             None if input.len() <= 1 => input,
             None => {
                 return Err(render_forgotten_error(
-                    self.core.batch_location,
+                    self.batch_location,
                     &format!(
                         "{} in-tick values require an explicit ordering",
                         input.len()
@@ -3167,13 +3828,496 @@ where
                 ));
             }
         };
-        self.core.to_release = Some(output);
+        self.to_release = Some(output);
+        Ok(())
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        input.as_ref().map(|values| {
+            format!(
+                "{} in-tick ordering item(s): {:?}",
+                values.len(),
+                TruncatedVecDebug(RefCell::new(Some(values.iter())), 8, self.format_debug)
+            )
+        })
+    }
+
+    fn status_blob(&self) -> Vec<u8> {
+        bincode::serialize(&OrderingStatus {
+            buffered: self.input.borrow().as_ref().map_or(0, Vec::len),
+        })
+        .unwrap()
+    }
+}
+
+impl<K, V> ScriptableInlineHook for KeyedStreamOrderHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = InlineOrderingDecision<(K, V)>;
+
+    fn apply_scripted(&mut self, decision: Option<Self::Decision>) -> Result<(), String> {
+        let input = self.input.borrow_mut().take().unwrap();
+        let ordered: Vec<(K, V)> = match decision {
+            Some(InlineOrderingDecision::Order(values)) => {
+                if !same_multiset(&input, &values) {
+                    return Err(format!(
+                        "scripted in-tick keyed ordering decision must contain exactly all pending input entries ({} pending, {} scripted)",
+                        input.len(),
+                        values.len(),
+                    ));
+                }
+                values
+            }
+            None => {
+                // Only forced when no key has more than one element (then per-key order
+                // is not a choice).
+                let mut seen_keys: Vec<&K> = vec![];
+                for (k, _) in &input {
+                    if seen_keys.contains(&k) {
+                        return Err(render_forgotten_error(
+                            self.batch_location,
+                            &format!(
+                                "{} in-tick entries require an explicit ordering",
+                                input.len()
+                            ),
+                        ));
+                    }
+                    seen_keys.push(k);
+                }
+                input
+            }
+        };
+
+        let mut grouped: FxHashMap<K, Vec<V>> = FxHashMap::default();
+        for (k, v) in ordered {
+            grouped.entry(k).or_default().push(v);
+        }
+        self.to_release = Some(grouped);
+        Ok(())
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        input
+            .as_ref()
+            .map(|values| format!("{} in-tick keyed ordering entr(ies)", values.len()))
+    }
+
+    fn status_blob(&self) -> Vec<u8> {
+        bincode::serialize(&OrderingStatus {
+            buffered: self.input.borrow().as_ref().map_or(0, Vec::len),
+        })
+        .unwrap()
+    }
+}
+
+impl<K, V> ScriptableInlineHook for PartiallyOrderedStreamHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = InlineOrderingDecision<(K, V)>;
+
+    fn apply_scripted(&mut self, decision: Option<Self::Decision>) -> Result<(), String> {
+        let input = self.input.borrow_mut().take().unwrap();
+        let output = match decision {
+            Some(InlineOrderingDecision::Order(values)) => {
+                // The scripted sequence must be a valid interleaving: same entries, and
+                // each key's subsequence must preserve that key's input order.
+                let valid = values.len() == input.len() && {
+                    let mut distinct_keys: Vec<&K> = vec![];
+                    for (k, _) in &input {
+                        if !distinct_keys.contains(&k) {
+                            distinct_keys.push(k);
+                        }
+                    }
+                    distinct_keys.iter().all(|key| {
+                        let input_seq: Vec<&V> = input
+                            .iter()
+                            .filter(|(k, _)| k == *key)
+                            .map(|(_, v)| v)
+                            .collect();
+                        let scripted_seq: Vec<&V> = values
+                            .iter()
+                            .filter(|(k, _)| k == *key)
+                            .map(|(_, v)| v)
+                            .collect();
+                        input_seq == scripted_seq
+                    })
+                };
+                if !valid {
+                    return Err(format!(
+                        "scripted in-tick partially-ordered decision must be an interleaving of all pending entries that preserves each key's order ({} pending, {} scripted)",
+                        input.len(),
+                        values.len(),
+                    ));
+                }
+                values
+            }
+            None => {
+                // Only forced when at most one distinct key is present (then the
+                // interleaving is not a choice).
+                let mut distinct_keys: Vec<&K> = vec![];
+                for (k, _) in &input {
+                    if !distinct_keys.contains(&k) {
+                        distinct_keys.push(k);
+                    }
+                }
+                if distinct_keys.len() > 1 {
+                    return Err(render_forgotten_error(
+                        self.batch_location,
+                        &format!(
+                            "{} in-tick entries require an explicit interleaving",
+                            input.len()
+                        ),
+                    ));
+                }
+                input
+            }
+        };
+        self.to_release = Some(output);
+        Ok(())
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        input
+            .as_ref()
+            .map(|values| format!("{} in-tick partially-ordered entr(ies)", values.len()))
+    }
+
+    fn status_blob(&self) -> Vec<u8> {
+        bincode::serialize(&OrderingStatus {
+            buffered: self.input.borrow().as_ref().map_or(0, Vec::len),
+        })
+        .unwrap()
+    }
+}
+
+/// Computes, for a scripted `merged` sequence, which source each element is drawn from
+/// (`false` = first, `true` = second) such that `merged` is a valid interleaving of
+/// `first` and `second` preserving each input's order. Returns `None` when no such
+/// assignment exists. Equal values on both fronts are resolved by dynamic programming
+/// over reachable `(i, j)` prefixes, so any valid interleaving is accepted.
+fn interleaving_sources<T: PartialEq>(
+    first: &[T],
+    second: &[T],
+    merged: &[T],
+) -> Option<Vec<bool>> {
+    if merged.len() != first.len() + second.len() {
+        return None;
+    }
+
+    let n = first.len();
+    let m = second.len();
+    let mut reachable = vec![false; (n + 1) * (m + 1)];
+    let at = |i: usize, j: usize| i * (m + 1) + j;
+    reachable[at(0, 0)] = true;
+    for i in 0..=n {
+        for j in 0..=m {
+            if !reachable[at(i, j)] {
+                continue;
+            }
+            let k = i + j;
+            if k == merged.len() {
+                continue;
+            }
+            if i < n && first[i] == merged[k] {
+                reachable[at(i + 1, j)] = true;
+            }
+            if j < m && second[j] == merged[k] {
+                reachable[at(i, j + 1)] = true;
+            }
+        }
+    }
+
+    if !reachable[at(n, m)] {
+        return None;
+    }
+
+    // Walk backwards from the full state; any reachable predecessor with a matching
+    // transition lies on a complete path.
+    let mut sources = vec![false; merged.len()];
+    let (mut i, mut j) = (n, m);
+    while i + j > 0 {
+        let k = i + j - 1;
+        if i > 0 && reachable[at(i - 1, j)] && first[i - 1] == merged[k] {
+            sources[k] = false;
+            i -= 1;
+        } else {
+            sources[k] = true;
+            j -= 1;
+        }
+    }
+    Some(sources)
+}
+
+impl<T> ScriptableInlineHook for MergeOrderedHook<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = InlineOrderingDecision<T>;
+
+    fn apply_scripted(&mut self, decision: Option<Self::Decision>) -> Result<(), String> {
+        let first = self.first.borrow_mut().take().unwrap();
+        let second = self.second.borrow_mut().take().unwrap();
+        match decision {
+            Some(InlineOrderingDecision::Order(values)) => {
+                let Some(sources) = interleaving_sources(&first, &second, &values) else {
+                    return Err(format!(
+                        "scripted in-tick merge decision must be an interleaving of the two inputs that preserves each input's order ({} + {} pending, {} scripted)",
+                        first.len(),
+                        second.len(),
+                        values.len(),
+                    ));
+                };
+                self.to_release = Some(values);
+                self.release_sources = Some(sources);
+            }
+            None => {
+                // Only forced when at most one input has elements (then the
+                // interleaving is not a choice).
+                if !first.is_empty() && !second.is_empty() {
+                    return Err(render_forgotten_error(
+                        self.batch_location,
+                        &format!(
+                            "{} + {} in-tick values require an explicit merge order",
+                            first.len(),
+                            second.len()
+                        ),
+                    ));
+                }
+                let mut sources = vec![false; first.len()];
+                sources.extend(std::iter::repeat_n(true, second.len()));
+                let mut result = first;
+                result.extend(second);
+                self.to_release = Some(result);
+                self.release_sources = Some(sources);
+            }
+        }
+        Ok(())
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let first = self.first.borrow();
+        let second = self.second.borrow();
+        match (first.as_ref(), second.as_ref()) {
+            (Some(first), Some(second)) => Some(format!(
+                "{} + {} in-tick merge value(s) (first + second input)",
+                first.len(),
+                second.len()
+            )),
+            _ => None,
+        }
+    }
+
+    fn status_blob(&self) -> Vec<u8> {
+        bincode::serialize(&MergeStatus {
+            first_buffered: self.first.borrow().as_ref().map_or(0, Vec::len),
+            second_buffered: self.second.borrow().as_ref().map_or(0, Vec::len),
+        })
+        .unwrap()
+    }
+}
+
+impl<K, V> ScriptableInlineHook for KeyedMergeOrderedHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = InlineOrderingDecision<(K, V)>;
+
+    fn apply_scripted(&mut self, decision: Option<Self::Decision>) -> Result<(), String> {
+        let first = self.first.borrow_mut().take().unwrap();
+        let second = self.second.borrow_mut().take().unwrap();
+        match decision {
+            Some(InlineOrderingDecision::Order(values)) => {
+                // Validate per key: each key's scripted subsequence must be a valid
+                // interleaving of that key's subsequences from the two inputs
+                // (cross-key order is unobservable for keyed streams).
+                let error = || {
+                    format!(
+                        "scripted in-tick keyed merge decision must, for every key, be an interleaving of that key's entries from the two inputs that preserves each input's order ({} + {} pending, {} scripted)",
+                        first.len(),
+                        second.len(),
+                        values.len(),
+                    )
+                };
+                if values.len() != first.len() + second.len() {
+                    return Err(error());
+                }
+
+                let mut distinct_keys: Vec<&K> = vec![];
+                for (k, _) in first.iter().chain(&second).chain(&values) {
+                    if !distinct_keys.contains(&k) {
+                        distinct_keys.push(k);
+                    }
+                }
+
+                // Per-key source assignments, consumed in scripted order below.
+                let mut per_key_sources: Vec<(&K, VecDeque<bool>)> = vec![];
+                for key in distinct_keys {
+                    let first_seq: Vec<&V> = first
+                        .iter()
+                        .filter(|(k, _)| k == key)
+                        .map(|(_, v)| v)
+                        .collect();
+                    let second_seq: Vec<&V> = second
+                        .iter()
+                        .filter(|(k, _)| k == key)
+                        .map(|(_, v)| v)
+                        .collect();
+                    let scripted_seq: Vec<&V> = values
+                        .iter()
+                        .filter(|(k, _)| k == key)
+                        .map(|(_, v)| v)
+                        .collect();
+                    let Some(sources) =
+                        interleaving_sources(&first_seq, &second_seq, &scripted_seq)
+                    else {
+                        return Err(error());
+                    };
+                    per_key_sources.push((key, sources.into()));
+                }
+
+                let sources: Vec<bool> = values
+                    .iter()
+                    .map(|(k, _)| {
+                        per_key_sources
+                            .iter_mut()
+                            .find(|(key, _)| *key == k)
+                            .unwrap()
+                            .1
+                            .pop_front()
+                            .unwrap()
+                    })
+                    .collect();
+
+                self.to_release = Some(values);
+                self.release_sources = Some(sources);
+            }
+            None => {
+                // Only forced when no key appears in both inputs (then no per-key
+                // interleaving is a choice).
+                if first
+                    .iter()
+                    .any(|(k, _)| second.iter().any(|(k2, _)| k2 == k))
+                {
+                    return Err(render_forgotten_error(
+                        self.batch_location,
+                        &format!(
+                            "{} + {} in-tick entries require an explicit merge order",
+                            first.len(),
+                            second.len()
+                        ),
+                    ));
+                }
+                let mut sources = vec![false; first.len()];
+                sources.extend(std::iter::repeat_n(true, second.len()));
+                let mut result = first;
+                result.extend(second);
+                self.to_release = Some(result);
+                self.release_sources = Some(sources);
+            }
+        }
+        Ok(())
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let first = self.first.borrow();
+        let second = self.second.borrow();
+        match (first.as_ref(), second.as_ref()) {
+            (Some(first), Some(second)) => Some(format!(
+                "{} + {} in-tick keyed merge entr(ies) (first + second input)",
+                first.len(),
+                second.len()
+            )),
+            _ => None,
+        }
+    }
+
+    fn status_blob(&self) -> Vec<u8> {
+        bincode::serialize(&MergeStatus {
+            first_buffered: self.first.borrow().as_ref().map_or(0, Vec::len),
+            second_buffered: self.second.borrow().as_ref().map_or(0, Vec::len),
+        })
+        .unwrap()
+    }
+}
+
+/// The scripted variation of an inline (in-tick) hook: wraps the ordinary inline hook
+/// type (which owns the buffers and implements the decision semantics via
+/// [`ScriptableInlineHook`]) together with at most one queued decision.
+pub struct ScriptedInline<H: ScriptableInlineHook> {
+    core: H,
+    target: ScriptTarget,
+    next_decision: Option<H::Decision>,
+}
+
+impl<H: ScriptableInlineHook> ScriptedInline<H> {
+    pub fn new(core: H, target: ScriptTarget) -> Self {
+        Self {
+            core,
+            target,
+            next_decision: None,
+        }
+    }
+}
+
+impl<H: ScriptableInlineHook> ScriptedHookControl for ScriptedInline<H> {
+    fn target(&self) -> ScriptTarget {
+        self.target
+    }
+
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(SimInlineHook::location_meta(&self.core))
+    }
+
+    fn has_decision(&self) -> bool {
+        self.next_decision.is_some()
+    }
+
+    fn describe_decision(&self) -> Option<String> {
+        self.next_decision.as_ref().map(ScriptDecision::describe)
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        self.core.describe_pending()
+    }
+
+    fn install_decision(&mut self, decision_blob: &[u8]) {
+        assert!(self.next_decision.is_none());
+        self.next_decision = Some(
+            bincode::deserialize(decision_blob)
+                .expect("internal error: scripted inline decision had the wrong type"),
+        );
+    }
+
+    fn status_blob(&self) -> Vec<u8> {
+        self.core.status_blob()
+    }
+
+    fn set_hold(&mut self, _hold: bool) {}
+    fn release_hold(&mut self) {}
+    fn set_auto_pause(&mut self, _auto_pause: bool) {}
+}
+
+impl<H: ScriptableInlineHook> ScriptedInlineHook for ScriptedInline<H> {
+    fn pending_decision(&self) -> bool {
+        self.core.pending_decision()
+    }
+
+    fn run_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) -> Result<(), String> {
+        self.core.apply_scripted(self.next_decision.take())?;
         self.core.release_decision(log_writer);
         Ok(())
     }
 
     fn location_meta(&self) -> HookLocationMeta {
-        self.core.location_meta()
+        SimInlineHook::location_meta(&self.core)
     }
 }
 

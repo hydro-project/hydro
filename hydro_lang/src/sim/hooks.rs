@@ -51,11 +51,17 @@ use crate::live_collections::boundedness::{Bounded, Unbounded};
 use crate::live_collections::stream::{NoOrder, Ordering, Retries, TotalOrder};
 use crate::sim::compiled::{ScheduleDecision, script_ctx};
 use crate::sim::runtime::{
-    BatchDecision, InlineOrderingDecision, ScriptDecision, SnapshotDecision,
-    TopLevelOrderingDecision, UnorderedBatchDecision,
+    BatchDecision, InlineOrderingDecision, KeyedBatchDecision, KeyedSnapshotDecision,
+    MergeDecision, ScriptDecision, SnapshotDecision, TopLevelOrderingDecision,
+    UnorderedBatchDecision,
 };
-pub use crate::sim::runtime::{BatchStatus, OrderingStatus, SnapshotStatus};
-pub use crate::sim_hooks::{BatchHook, OrderingHook, SimHook, SnapshotHook};
+pub use crate::sim::runtime::{
+    BatchStatus, KeyedSnapshotStatus, MergeStatus, OrderingStatus, SnapshotStatus,
+};
+pub use crate::sim_hooks::{
+    BatchHook, KeyedBatchHook, KeyedMergeOrderedHook, KeyedOrderingHook, KeyedSnapshotHook,
+    MergeOrderedHook, OrderingHook, PartialOrderingHook, SimHook, SnapshotHook,
+};
 
 /// A scripted decision that has been issued but not yet installed into the schedule.
 ///
@@ -408,5 +414,350 @@ impl<T> SnapshotHook<T> {
         self.pause_until_labeled(format!("pause_until_versions({})", n), move |status| {
             status.newer_versions >= n
         })
+    }
+}
+
+impl<K, V, O: Ordering, R: Retries> KeyedBatchHook<K, V, O, R> {
+    pause_family!(BatchStatus);
+
+    /// Pauses the hook and returns a future that resolves once at least `n` entries are
+    /// buffered (in total, across all keys); see [`Self::pause_until`].
+    pub fn pause_until_count(
+        &self,
+        n: usize,
+    ) -> PauseUntilFuture<BatchStatus, impl Fn(&BatchStatus) -> bool + Unpin> {
+        self.pause_until_labeled(format!("pause_until_count({})", n), move |status| {
+            status.buffered >= n
+        })
+    }
+}
+
+impl<K, V, R: Retries> KeyedBatchHook<K, V, TotalOrder, R>
+where
+    K: Serialize + DeserializeOwned + PartialEq,
+    V: Serialize + DeserializeOwned + PartialEq,
+{
+    /// Scripts the next batch to be exactly these `(key, value)` entries. Each key's
+    /// values must match that key's buffered prefix in order (the interleaving of
+    /// *different* keys in the scripted sequence is irrelevant): a mismatching available
+    /// value panics immediately, while a matching but incomplete prefix waits for the
+    /// remaining values to arrive.
+    pub fn release_values(&self, entries: impl IntoIterator<Item = (K, V)>) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            &KeyedBatchDecision::Values(entries.into_iter().collect()),
+        )
+    }
+
+    /// Scripts the next batch to be everything that has arrived by the time the tick
+    /// fires. Under fuzzing, the released contents co-vary with the schedule being
+    /// explored; use [`Self::release_values`] to name them exactly.
+    pub fn release_all(&self) -> DecisionFuture {
+        DecisionFuture::new(self.id, &KeyedBatchDecision::<K, V>::All)
+    }
+
+    /// Scripts the next batch to be empty, holding everything buffered.
+    pub fn release_empty(&self) -> DecisionFuture {
+        DecisionFuture::new(self.id, &KeyedBatchDecision::<K, V>::Empty)
+    }
+}
+
+impl<K, V, R: Retries> KeyedBatchHook<K, V, NoOrder, R>
+where
+    K: Serialize + DeserializeOwned + PartialEq,
+    V: Serialize + DeserializeOwned + PartialEq,
+{
+    /// Scripts the next batch to contain exactly these `(key, value)` entries. Values are
+    /// matched per key as multisets (independently of arrival order); duplicates request
+    /// the corresponding number of equal buffered items. The tick fires once every
+    /// requested entry exists.
+    pub fn release_values(&self, entries: impl IntoIterator<Item = (K, V)>) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            &KeyedBatchDecision::Values(entries.into_iter().collect()),
+        )
+    }
+
+    /// Scripts the next batch to be everything that has arrived by the time the tick
+    /// fires. Under fuzzing, the released contents co-vary with the schedule being
+    /// explored; use [`Self::release_values`] to name them exactly.
+    pub fn release_all(&self) -> DecisionFuture {
+        DecisionFuture::new(self.id, &KeyedBatchDecision::<K, V>::All)
+    }
+
+    /// Scripts the next batch to be empty, holding everything buffered.
+    pub fn release_empty(&self) -> DecisionFuture {
+        DecisionFuture::new(self.id, &KeyedBatchDecision::<K, V>::Empty)
+    }
+}
+
+impl<K, V> KeyedSnapshotHook<K, V> {
+    /// Scripts the next tick execution to observe, for each named key, the buffered
+    /// version equal to the named value: scans forward from that key's currently-revealed
+    /// version through the buffered ones and releases the first equal version, skipping
+    /// over earlier versions. Keys that are not named observe their previously revealed
+    /// version again (or stay absent if they have never been revealed).
+    ///
+    /// This is a combined assertion and release, and the recommended way to script keyed
+    /// snapshots: naming the state each key means makes any mis-synchronization fail
+    /// loudly at the reveal.
+    pub fn reveal(&self, entries: impl IntoIterator<Item = (K, V)>) -> DecisionFuture
+    where
+        K: Serialize,
+        V: Serialize,
+    {
+        DecisionFuture::new(
+            self.id,
+            &KeyedSnapshotDecision::Reveal(
+                bincode::serialize(&entries.into_iter().collect::<Vec<_>>()).unwrap(),
+            ),
+        )
+    }
+
+    /// Scripts the next tick execution to observe, for every key, the newest version that
+    /// has arrived by the time the tick fires (keys with nothing newer observe their
+    /// previously revealed version again). Under fuzzing, which versions are newest
+    /// co-varies with the schedule being explored; use [`Self::reveal`] to name them
+    /// exactly.
+    pub fn reveal_latest(&self) -> DecisionFuture {
+        DecisionFuture::new(self.id, &KeyedSnapshotDecision::RevealLatest)
+    }
+
+    /// Scripts the next tick execution to observe every key's previously revealed version
+    /// again.
+    pub fn keep(&self) -> DecisionFuture {
+        DecisionFuture::new(self.id, &KeyedSnapshotDecision::Keep)
+    }
+
+    pause_family!(KeyedSnapshotStatus);
+
+    /// Pauses the hook and returns a future that resolves once at least `n` newer
+    /// versions are buffered (in total, across all keys); see [`Self::pause_until`].
+    pub fn pause_until_versions(
+        &self,
+        n: usize,
+    ) -> PauseUntilFuture<KeyedSnapshotStatus, impl Fn(&KeyedSnapshotStatus) -> bool + Unpin> {
+        self.pause_until_labeled(format!("pause_until_versions({})", n), move |status| {
+            status.newer_versions >= n
+        })
+    }
+}
+
+impl<K, V> KeyedOrderingHook<K, V, Unbounded>
+where
+    K: Serialize + DeserializeOwned,
+    V: Serialize + DeserializeOwned,
+{
+    /// Scripts a top-level keyed `assume_ordering` action to release the buffered entry
+    /// under `key` equal to `value`. Exactly one entry is released, preserving
+    /// opportunities for ticks and feedback to interleave with the remaining buffered
+    /// input.
+    pub fn next(&self, key: K, value: V) -> DecisionFuture {
+        DecisionFuture::new(self.id, &TopLevelOrderingDecision::Next((key, value)))
+    }
+
+    pause_family!(OrderingStatus);
+
+    /// Pauses a top-level keyed ordering hook until at least `n` entries are buffered (in
+    /// total, across all keys); see [`Self::pause_until`].
+    pub fn pause_until_count(
+        &self,
+        n: usize,
+    ) -> PauseUntilFuture<OrderingStatus, impl Fn(&OrderingStatus) -> bool + Unpin> {
+        self.pause_until_labeled(format!("pause_until_count({})", n), move |status| {
+            status.buffered >= n
+        })
+    }
+}
+
+impl<K, V> KeyedOrderingHook<K, V, Bounded>
+where
+    K: Serialize + DeserializeOwned,
+    V: Serialize + DeserializeOwned,
+{
+    /// Scripts an in-tick keyed `assume_ordering` observation to consume its complete
+    /// input with each key's values in exactly the scripted per-key order. The supplied
+    /// entries must contain exactly all `(key, value)` entries received by the operator
+    /// during that tick; the relative order of *different* keys in the scripted sequence
+    /// is irrelevant (a keyed stream carries no cross-key ordering).
+    pub fn order(&self, entries: impl IntoIterator<Item = (K, V)>) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            &InlineOrderingDecision::Order(entries.into_iter().collect()),
+        )
+    }
+}
+
+impl<K, V> PartialOrderingHook<K, V, Unbounded>
+where
+    K: Serialize + DeserializeOwned,
+    V: Serialize + DeserializeOwned,
+{
+    /// Scripts a top-level `entries_partially_ordered` action to release the front entry
+    /// of `key`'s buffer, which must equal `value` (within-key order is preserved, so a
+    /// mismatch panics). Exactly one entry is released, preserving opportunities for
+    /// ticks and feedback to interleave with the remaining buffered input.
+    pub fn next(&self, key: K, value: V) -> DecisionFuture {
+        DecisionFuture::new(self.id, &TopLevelOrderingDecision::Next((key, value)))
+    }
+
+    pause_family!(OrderingStatus);
+
+    /// Pauses a top-level partially-ordered hook until at least `n` entries are buffered
+    /// (in total, across all keys); see [`Self::pause_until`].
+    pub fn pause_until_count(
+        &self,
+        n: usize,
+    ) -> PauseUntilFuture<OrderingStatus, impl Fn(&OrderingStatus) -> bool + Unpin> {
+        self.pause_until_labeled(format!("pause_until_count({})", n), move |status| {
+            status.buffered >= n
+        })
+    }
+}
+
+impl<K, V> PartialOrderingHook<K, V, Bounded>
+where
+    K: Serialize + DeserializeOwned,
+    V: Serialize + DeserializeOwned,
+{
+    /// Scripts an in-tick `entries_partially_ordered` observation to consume its complete
+    /// input in exactly this interleaving. The supplied entries must be a permutation of
+    /// all `(key, value)` entries received by the operator during that tick that preserves
+    /// each key's within-key order.
+    pub fn order(&self, entries: impl IntoIterator<Item = (K, V)>) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            &InlineOrderingDecision::Order(entries.into_iter().collect()),
+        )
+    }
+}
+
+impl<T> MergeOrderedHook<T, Unbounded>
+where
+    T: Serialize + DeserializeOwned,
+{
+    /// Scripts a top-level `merge_ordered` action to release the front element of the
+    /// *first* input's buffer, which must equal `value` (per-input order is preserved, so
+    /// a mismatch panics). Exactly one element is released, preserving opportunities for
+    /// ticks and feedback to interleave with the remaining buffered input.
+    pub fn next_first(&self, value: T) -> DecisionFuture {
+        DecisionFuture::new(self.id, &MergeDecision::<T>::First(value))
+    }
+
+    /// Scripts a top-level `merge_ordered` action to release the front element of the
+    /// *second* input's buffer, which must equal `value`; see [`Self::next_first`].
+    pub fn next_second(&self, value: T) -> DecisionFuture {
+        DecisionFuture::new(self.id, &MergeDecision::<T>::Second(value))
+    }
+
+    /// Scripts a top-level `merge_ordered` action to release the front element of the
+    /// *first* input's buffer, whatever it is (waiting for one to arrive if that input is
+    /// empty). Unlike [`Self::next_first`], this does not assert the released value; use
+    /// `next_first(value)` to name it exactly and fail loudly on mis-synchronization.
+    pub fn advance_first(&self) -> DecisionFuture {
+        DecisionFuture::new(self.id, &MergeDecision::<T>::FirstNext(()))
+    }
+
+    /// Scripts a top-level `merge_ordered` action to release the front element of the
+    /// *second* input's buffer, whatever it is; see [`Self::advance_first`].
+    pub fn advance_second(&self) -> DecisionFuture {
+        DecisionFuture::new(self.id, &MergeDecision::<T>::SecondNext(()))
+    }
+
+    pause_family!(MergeStatus);
+
+    /// Pauses a top-level merge hook until at least `n` elements are buffered (in total,
+    /// across both inputs); see [`Self::pause_until`].
+    pub fn pause_until_count(
+        &self,
+        n: usize,
+    ) -> PauseUntilFuture<MergeStatus, impl Fn(&MergeStatus) -> bool + Unpin> {
+        self.pause_until_labeled(format!("pause_until_count({})", n), move |status| {
+            status.first_buffered + status.second_buffered >= n
+        })
+    }
+}
+
+impl<T> MergeOrderedHook<T, Bounded>
+where
+    T: Serialize + DeserializeOwned,
+{
+    /// Scripts an in-tick `merge_ordered` observation to consume its complete input in
+    /// exactly this interleaving. The supplied values must be an interleaving of the two
+    /// inputs' tick-local batches that preserves each input's order.
+    pub fn order(&self, values: impl IntoIterator<Item = T>) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            &InlineOrderingDecision::Order(values.into_iter().collect()),
+        )
+    }
+}
+
+impl<K, V> KeyedMergeOrderedHook<K, V, Unbounded>
+where
+    K: Serialize + DeserializeOwned,
+    V: Serialize + DeserializeOwned,
+{
+    /// Scripts a top-level keyed `merge_ordered` action to release the front entry of
+    /// `key`'s buffer in the *first* input, which must equal `value` (per-input
+    /// within-key order is preserved, so a mismatch panics). Exactly one entry is
+    /// released, preserving opportunities for ticks and feedback to interleave with the
+    /// remaining buffered input.
+    pub fn next_first(&self, key: K, value: V) -> DecisionFuture {
+        DecisionFuture::new(self.id, &MergeDecision::<(K, V), K>::First((key, value)))
+    }
+
+    /// Scripts a top-level keyed `merge_ordered` action to release the front entry of
+    /// `key`'s buffer in the *second* input, which must equal `value`; see
+    /// [`Self::next_first`].
+    pub fn next_second(&self, key: K, value: V) -> DecisionFuture {
+        DecisionFuture::new(self.id, &MergeDecision::<(K, V), K>::Second((key, value)))
+    }
+
+    /// Scripts a top-level keyed `merge_ordered` action to release the front entry of
+    /// `key`'s buffer in the *first* input, whatever its value (waiting for one to arrive
+    /// if that key's buffer is empty). Unlike [`Self::next_first`], this does not assert
+    /// the released value; use `next_first(key, value)` to name it exactly and fail
+    /// loudly on mis-synchronization.
+    pub fn advance_first(&self, key: K) -> DecisionFuture {
+        DecisionFuture::new(self.id, &MergeDecision::<(K, V), K>::FirstNext(key))
+    }
+
+    /// Scripts a top-level keyed `merge_ordered` action to release the front entry of
+    /// `key`'s buffer in the *second* input, whatever its value; see
+    /// [`Self::advance_first`].
+    pub fn advance_second(&self, key: K) -> DecisionFuture {
+        DecisionFuture::new(self.id, &MergeDecision::<(K, V), K>::SecondNext(key))
+    }
+
+    pause_family!(MergeStatus);
+
+    /// Pauses a top-level keyed merge hook until at least `n` entries are buffered (in
+    /// total, across both inputs and all keys); see [`Self::pause_until`].
+    pub fn pause_until_count(
+        &self,
+        n: usize,
+    ) -> PauseUntilFuture<MergeStatus, impl Fn(&MergeStatus) -> bool + Unpin> {
+        self.pause_until_labeled(format!("pause_until_count({})", n), move |status| {
+            status.first_buffered + status.second_buffered >= n
+        })
+    }
+}
+
+impl<K, V> KeyedMergeOrderedHook<K, V, Bounded>
+where
+    K: Serialize + DeserializeOwned,
+    V: Serialize + DeserializeOwned,
+{
+    /// Scripts an in-tick keyed `merge_ordered` observation to consume its complete input
+    /// in exactly this interleaving. For every key, the supplied entries' subsequence for
+    /// that key must be an interleaving of that key's entries from the two inputs that
+    /// preserves each input's order; the relative order of *different* keys is irrelevant
+    /// (a keyed stream carries no cross-key ordering).
+    pub fn order(&self, entries: impl IntoIterator<Item = (K, V)>) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            &InlineOrderingDecision::Order(entries.into_iter().collect()),
+        )
     }
 }

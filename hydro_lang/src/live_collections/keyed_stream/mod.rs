@@ -453,9 +453,13 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
+    ///
+    /// In simulation tests, the ordering decisions can be scripted by attaching a
+    /// [`KeyedOrderingHook`](crate::sim_hooks::KeyedOrderingHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn assume_ordering<O2: Ordering>(
         self,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedOrderingHook<K, V, B>>>,
     ) -> KeyedStream<K, V, L::DropConsistency, B, O2, R> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
             self.use_ordering_type().weaken_consistency()
@@ -472,13 +476,15 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             )
         } else {
             let target_location = self.location.drop_consistency();
+            let mut metadata = target_location
+                .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind());
+            metadata.op.sim_hook_id = nondet.take_hook().map(|hook| hook.id);
             KeyedStream::new(
-                target_location.clone(),
+                target_location,
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                     trusted: false,
-                    metadata: target_location
-                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
+                    metadata,
                 },
             )
         }
@@ -717,21 +723,27 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # Non-Determinism
     /// The interleaving of entries across different keys is non-deterministic.
     /// Within each key, the original order is preserved.
+    ///
+    /// In simulation tests, the interleaving decisions can be scripted by attaching a
+    /// [`PartialOrderingHook`](crate::sim_hooks::PartialOrderingHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn entries_partially_ordered(
         self,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::PartialOrderingHook<K, V, B>>>,
     ) -> Stream<(K, V), L::DropConsistency, B, TotalOrder, R>
     where
         O: IsOrdered,
     {
         let target_location = self.location.drop_consistency();
+        let mut metadata = target_location
+            .new_node_metadata(Stream::<(K, V), L, B, TotalOrder, R>::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|hook| hook.id);
         Stream::new(
-            target_location.clone(),
+            target_location,
             HydroNode::ObserveNonDet {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 trusted: false,
-                metadata: target_location
-                    .new_node_metadata(Stream::<(K, V), L, B, TotalOrder, R>::collection_kind()),
+                metadata,
             },
         )
     }
@@ -2690,20 +2702,24 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
+    ///
+    /// In simulation tests, the batching decisions can be scripted by attaching a
+    /// [`KeyedBatchHook`](crate::sim_hooks::KeyedBatchHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedBatchHook<K, V, O, R>>>,
     ) -> KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R> {
-        let _ = nondet;
         assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        let mut metadata =
+            tick.new_node_metadata(KeyedStream::<K, V, Tick<L>, Bounded, O, R>::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         KeyedStream::new(
             tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick.new_node_metadata(
-                    KeyedStream::<K, V, Tick<L>, Bounded, O, R>::collection_kind(),
-                ),
+                metadata,
             },
         )
     }
@@ -2830,6 +2846,10 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, R: Retries> KeyedStream<K, V, L,
     /// [`KeyedStream::merge_unordered`] instead, which is deterministic but emits an unordered
     /// keyed stream.
     ///
+    /// In simulation tests, the interleaving decisions can be scripted by attaching a
+    /// [`KeyedMergeOrderedHook`](crate::sim_hooks::KeyedMergeOrderedHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -2856,25 +2876,27 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, R: Retries> KeyedStream<K, V, L,
     pub fn merge_ordered<R2: Retries>(
         self,
         other: KeyedStream<K, V, L, B, TotalOrder, R2>,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedMergeOrderedHook<K, V, B>>>,
     ) -> KeyedStream<K, V, L::DropConsistency, B, TotalOrder, <R as MinRetries<R2>>::Min>
     where
         R: MinRetries<R2>,
     {
         let target_location = self.location.drop_consistency();
+        let mut metadata = target_location.new_node_metadata(KeyedStream::<
+            K,
+            V,
+            L::DropConsistency,
+            B,
+            TotalOrder,
+            <R as MinRetries<R2>>::Min,
+        >::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|hook| hook.id);
         KeyedStream::new(
-            target_location.clone(),
+            target_location,
             HydroNode::MergeOrdered {
                 first: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 second: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
-                metadata: target_location.new_node_metadata(KeyedStream::<
-                    K,
-                    V,
-                    L::DropConsistency,
-                    B,
-                    TotalOrder,
-                    <R as MinRetries<R2>>::Min,
-                >::collection_kind()),
+                metadata,
             },
         )
     }

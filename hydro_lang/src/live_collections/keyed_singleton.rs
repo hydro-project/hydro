@@ -1760,18 +1760,24 @@ where
     /// # Non-Determinism
     /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
     /// non-deterministic set of entries since each snapshot can be at an arbitrary point in time.
+    ///
+    /// In simulation tests, the snapshot decisions can be scripted by attaching a
+    /// [`KeyedSnapshotHook`](crate::sim_hooks::KeyedSnapshotHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn snapshot<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedSnapshotHook<K, V>>>,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
         assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        let mut metadata =
+            tick.new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick
-                    .new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind()),
+                metadata,
             },
         )
     }
@@ -1948,18 +1954,24 @@ where
     /// # Non-Determinism
     /// Because this picks a batch of asynchronously added entries, each output keyed singleton
     /// has a non-deterministic set of key-value pairs.
+    ///
+    /// In simulation tests, the batching decisions can be scripted by attaching a
+    /// [`KeyedSnapshotHook`](crate::sim_hooks::KeyedSnapshotHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedSnapshotHook<K, V>>>,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
         assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        let mut metadata =
+            tick.new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick
-                    .new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind()),
+                metadata,
             },
         )
     }
