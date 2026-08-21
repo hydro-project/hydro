@@ -203,7 +203,7 @@ pub fn yield_atomic<T>(t: T) -> style::Atomic<T> {
     style::Atomic {
         collection: t,
         // yield_atomic doesn't need a nondet since it's for output, not input
-        nondet: crate::nondet::NonDet,
+        nondet: crate::nondet::NonDet::unhooked(),
     }
 }
 

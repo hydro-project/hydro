@@ -17,7 +17,7 @@ pub trait PartitionStream<'a, T, C1, C2, Order: Ordering> {
             'a,
             F,
             OperatorContext<Cluster<'a, C1>, Unbounded>,
-            StreamMapFuncAlgebra,
+            StreamMapFuncAlgebra<(MemberId<C2>, T), Unbounded>,
         >,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, NoOrder>
     where
@@ -35,7 +35,7 @@ impl<'a, T, C1, C2, Order: Ordering> PartitionStream<'a, T, C1, C2, Order>
             'a,
             F,
             OperatorContext<Cluster<'a, C1>, Unbounded>,
-            StreamMapFuncAlgebra,
+            StreamMapFuncAlgebra<(MemberId<C2>, T), Unbounded>,
         >,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, NoOrder>
     where

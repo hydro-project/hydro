@@ -2489,6 +2489,11 @@ pub struct HydroIrOpMetadata {
     pub cpu_usage: Option<f64>,
     pub network_recv_cpu_usage: Option<f64>,
     pub id: Option<usize>,
+    /// When set, this unsafe operator (e.g. `batch` / `snapshot`) is bound to a simulator
+    /// hook handle with this ID, letting simulation tests script its decisions. Ignored by
+    /// non-simulator backends.
+    #[serde(skip)]
+    pub sim_hook_id: Option<usize>,
 }
 
 impl HydroIrOpMetadata {
@@ -2506,6 +2511,7 @@ impl HydroIrOpMetadata {
             cpu_usage: None,
             network_recv_cpu_usage: None,
             id: None,
+            sim_hook_id: None,
         }
     }
 }
@@ -4999,7 +5005,13 @@ impl HydroNode {
                                         Some(&stmt_id.to_string()),
                                     );
 
-                                    if hooked_input_ident.is_some() {
+                                    // A *scripted* fold releases exactly one element per
+                                    // decision, producing one new version per release, so
+                                    // its snapshot takes the ordinary (scriptable) path
+                                    // rather than the fuzz-passthrough shortcut.
+                                    if hooked_input_ident.is_some()
+                                        && node.metadata().op.sim_hook_id.is_none()
+                                    {
                                         fold_hooked_idents.insert(fold_ident.to_string());
                                     }
                                 } else if matches!(node, HydroNode::FoldKeyed { .. })
@@ -6129,7 +6141,7 @@ mod test {
         ignore = "expects inclusion of feature-gated fields"
     )]
     fn hydro_node_size() {
-        assert_eq!(size_of::<HydroNode>(), 264);
+        assert_eq!(size_of::<HydroNode>(), 280);
     }
 
     #[test]
@@ -6138,7 +6150,7 @@ mod test {
         ignore = "expects inclusion of feature-gated fields"
     )]
     fn hydro_root_size() {
-        assert_eq!(size_of::<HydroRoot>(), 136);
+        assert_eq!(size_of::<HydroRoot>(), 152);
     }
 
     #[test]

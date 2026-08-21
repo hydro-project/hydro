@@ -1353,3 +1353,5 @@ fn sim_continue_if_failure_in_fuzz_repro_is_reported() {
                 .await;
         });
 }
+
+mod scripted;

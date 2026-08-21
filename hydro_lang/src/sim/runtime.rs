@@ -12,7 +12,7 @@ use dfir_rs::util::unsync::mpsc::Sender;
 
 use crate::live_collections::stream::{NoOrder, Ordering, TotalOrder};
 
-pub type Hooks<Key> = HashMap<(Key, Option<u32>), Vec<Box<dyn SimHook>>>;
+pub type Hooks<Key> = HashMap<(Key, Option<u32>), Vec<Box<dyn RuntimeHook>>>;
 pub type InlineHooks<Key> = HashMap<(Key, Option<u32>), Vec<Box<dyn SimInlineHook>>>;
 
 #[doc(hidden)]
@@ -58,7 +58,7 @@ macro_rules! __maybe_debug__ {
     }};
 }
 
-pub trait SimHook {
+pub trait RuntimeHook {
     fn current_decision(&self) -> Option<bool>;
     fn can_make_nontrivial_decision(&self) -> bool;
     fn autonomous_decision<'a>(
@@ -78,6 +78,21 @@ pub trait SimHook {
     fn is_ready(&self) -> bool {
         true
     }
+
+    /// The source location of the operator this hook simulates, used to attribute errors
+    /// (e.g. an unhooked non-deterministic operator in deterministic mode).
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        None
+    }
+}
+
+/// Renders the error for an unsafe operator that needs a non-deterministic decision in
+/// deterministic mode.
+pub(crate) fn render_unhooked_nondet_error(location: HookLocationMeta) -> String {
+    let (loc, line, caret) = location;
+    format!(
+        "deterministic simulation encountered an unsafe operator with pending input that is not bound to a sim hook:\n--> {loc}\n |{line}\n |{caret}^ this operator must make a non-deterministic decision\nhelp: bind a sim hook to this operator (`nondet!(... hook = handle)`) and script its decisions, or run under `fuzz` / `exhaustive` instead"
+    )
 }
 
 /// A hook that can make inline decisions during the execution of a tick.
@@ -92,6 +107,14 @@ pub trait SimInlineHook {
 
     /// Make an autonomous decision.
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>);
+
+    /// Whether the pending decision is *forced* (e.g. ordering zero or one elements):
+    /// deterministic mode allows autonomous decisions only when there is nothing to
+    /// decide, and panics (naming the operator) otherwise.
+    fn decision_is_forced(&self) -> bool;
+
+    /// The source location of the operator this hook simulates.
+    fn location_meta(&self) -> HookLocationMeta;
 
     /// Release the decision that was made, logging to `log_writer`. A `None`
     /// writer means logging is disabled, allowing the hook to skip formatting
@@ -180,6 +203,34 @@ impl<'a, T, I: Iterator<Item = (&'static str, &'a T)>> Debug
 
 type HookLocationMeta = (&'static str, &'static str, &'static str);
 
+/// Writes the standard release-log source block: the `--> location` header, the source
+/// line, and a caret note (colored `note_color`) under the operator.
+fn log_release(
+    log_writer: &mut dyn std::fmt::Write,
+    location: &str,
+    line: &str,
+    caret_indent: &str,
+    note: &str,
+    note_color: colored::Color,
+) {
+    let _ = writeln!(
+        log_writer,
+        "{} {}",
+        "-->".color(colored::Color::Blue),
+        location
+    );
+
+    let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+    let _ = writeln!(
+        log_writer,
+        " {}{}{}",
+        "|".color(colored::Color::Blue),
+        caret_indent,
+        note.color(note_color)
+    );
+}
+
 pub struct StreamHook<T, Order: Ordering> {
     pub input: Rc<RefCell<VecDeque<T>>>,
     pub to_release: Option<Vec<T>>,
@@ -189,7 +240,11 @@ pub struct StreamHook<T, Order: Ordering> {
     pub _order: std::marker::PhantomData<Order>,
 }
 
-impl<T> SimHook for StreamHook<T, TotalOrder> {
+impl<T> RuntimeHook for StreamHook<T, TotalOrder> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.batch_location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|v| !v.is_empty())
     }
@@ -229,21 +284,13 @@ impl<T> SimHook for StreamHook<T, TotalOrder> {
                     )
                 };
 
-                let _ = writeln!(
+                log_release(
                     log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -256,7 +303,11 @@ impl<T> SimHook for StreamHook<T, TotalOrder> {
     }
 }
 
-impl<T> SimHook for StreamHook<T, NoOrder> {
+impl<T> RuntimeHook for StreamHook<T, NoOrder> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.batch_location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|v| !v.is_empty())
     }
@@ -315,21 +366,13 @@ impl<T> SimHook for StreamHook<T, NoOrder> {
                     )
                 };
 
-                let _ = writeln!(
+                log_release(
                     log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -342,6 +385,230 @@ impl<T> SimHook for StreamHook<T, NoOrder> {
     }
 }
 
+/// A scripted decision for a totally ordered batch hook.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum BatchDecision<T> {
+    /// Release the next `n` buffered elements.
+    Prefix(usize),
+    /// Release this exact sequence of values from the front of the buffer.
+    Values(Vec<T>),
+    /// Release everything that has arrived by the time the tick fires.
+    All,
+    /// Release an empty batch, holding everything buffered.
+    Empty,
+}
+
+impl<T> ScriptDecision for BatchDecision<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            BatchDecision::Prefix(n) => format!("release({})", n),
+            BatchDecision::Values(values) => {
+                format!("release_values({} value(s))", values.len())
+            }
+            BatchDecision::All => "release_all()".to_owned(),
+            BatchDecision::Empty => "release_empty()".to_owned(),
+        }
+    }
+}
+
+/// A scripted decision for an unordered batch hook.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum UnorderedBatchDecision<T> {
+    /// Release this multiset of values. Duplicate values name duplicate buffered items.
+    Values(Vec<T>),
+    /// Release everything that has arrived by the time the tick fires.
+    All,
+    /// Release an empty batch, holding everything buffered.
+    Empty,
+}
+
+impl<T> ScriptDecision for UnorderedBatchDecision<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            UnorderedBatchDecision::Values(values) => {
+                format!("release_values({} value(s))", values.len())
+            }
+            UnorderedBatchDecision::All => "release_all()".to_owned(),
+            UnorderedBatchDecision::Empty => "release_empty()".to_owned(),
+        }
+    }
+}
+
+/// The pending-input view a batch hook reports to its test-side handle (see
+/// [`ScriptableHook::status`]), used by `pause_until_*` predicates.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct BatchStatus {
+    /// The number of buffered elements.
+    pub buffered: usize,
+}
+
+impl<T> ScriptableHook for StreamHook<T, TotalOrder>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = BatchDecision<T>;
+    type Status = BatchStatus;
+
+    fn is_honorable(&self, decision: &BatchDecision<T>) -> Result<bool, String> {
+        let input = self.input.borrow();
+        match decision {
+            BatchDecision::Prefix(n) => Ok(input.len() >= *n),
+            BatchDecision::Values(values) => {
+                if let Some(idx) = input
+                    .iter()
+                    .zip(values)
+                    .position(|(buffered, expected)| buffered != expected)
+                {
+                    Err(format!(
+                        "release_values: buffered item at prefix position {} did not match the expected value",
+                        idx
+                    ))
+                } else {
+                    Ok(input.len() >= values.len())
+                }
+            }
+            BatchDecision::All | BatchDecision::Empty => Ok(true),
+        }
+    }
+
+    fn is_nontrivial(&self, decision: &BatchDecision<T>) -> bool {
+        match decision {
+            BatchDecision::Prefix(n) => *n > 0,
+            BatchDecision::Values(values) => !values.is_empty(),
+            BatchDecision::All => !self.input.borrow().is_empty(),
+            BatchDecision::Empty => false,
+        }
+    }
+
+    fn apply(&mut self, decision: BatchDecision<T>) -> bool {
+        let mut input = self.input.borrow_mut();
+        let out: Vec<T> = match decision {
+            BatchDecision::Prefix(n) => input.drain(0..n).collect(),
+            BatchDecision::Values(values) => input.drain(0..values.len()).collect(),
+            BatchDecision::All => input.drain(..).collect(),
+            BatchDecision::Empty => vec![],
+        };
+
+        let nontrivial = !out.is_empty();
+        self.to_release = Some(out);
+        nontrivial
+    }
+
+    fn implicit(&mut self) -> bool {
+        self.to_release = Some(vec![]);
+        false
+    }
+
+    fn status(&self) -> BatchStatus {
+        BatchStatus {
+            buffered: self.input.borrow().len(),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        (!input.is_empty()).then(|| {
+            format!(
+                "{} buffered item(s): {:?}",
+                input.len(),
+                TruncatedVecDebug(RefCell::new(Some(input.iter())), 8, self.format_item_debug)
+            )
+        })
+    }
+}
+
+impl<T> ScriptableHook for StreamHook<T, NoOrder>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = UnorderedBatchDecision<T>;
+    type Status = BatchStatus;
+
+    fn is_honorable(&self, decision: &UnorderedBatchDecision<T>) -> Result<bool, String> {
+        Ok(match decision {
+            UnorderedBatchDecision::Values(values) => {
+                let mut unmatched: Vec<&T> = values.iter().collect();
+                for buffered in self.input.borrow().iter() {
+                    if let Some(idx) = unmatched
+                        .iter()
+                        .position(|requested| *requested == buffered)
+                    {
+                        unmatched.swap_remove(idx);
+                    }
+                }
+                unmatched.is_empty()
+            }
+            UnorderedBatchDecision::All | UnorderedBatchDecision::Empty => true,
+        })
+    }
+
+    fn is_nontrivial(&self, decision: &UnorderedBatchDecision<T>) -> bool {
+        match decision {
+            UnorderedBatchDecision::Values(values) => !values.is_empty(),
+            UnorderedBatchDecision::All => !self.input.borrow().is_empty(),
+            UnorderedBatchDecision::Empty => false,
+        }
+    }
+
+    fn apply(&mut self, decision: UnorderedBatchDecision<T>) -> bool {
+        let mut input = self.input.borrow_mut();
+        let out: Vec<T> = match decision {
+            UnorderedBatchDecision::Values(mut values) => {
+                let (selected, remaining): (Vec<_>, Vec<_>) =
+                    input.drain(..).partition(|buffered| {
+                        values
+                            .iter()
+                            .position(|requested| requested == buffered)
+                            .is_some_and(|idx| {
+                                values.swap_remove(idx);
+                                true
+                            })
+                    });
+                assert!(
+                    values.is_empty(),
+                    "scripted unordered batch decision was not honorable"
+                );
+                *input = remaining.into();
+                selected
+            }
+            UnorderedBatchDecision::All => input.drain(..).collect(),
+            UnorderedBatchDecision::Empty => vec![],
+        };
+
+        let nontrivial = !out.is_empty();
+        self.to_release = Some(out);
+        nontrivial
+    }
+
+    fn implicit(&mut self) -> bool {
+        self.to_release = Some(vec![]);
+        false
+    }
+
+    fn status(&self) -> BatchStatus {
+        BatchStatus {
+            buffered: self.input.borrow().len(),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        (!input.is_empty()).then(|| {
+            format!(
+                "{} buffered item(s): {:?}",
+                input.len(),
+                TruncatedVecDebug(RefCell::new(Some(input.iter())), 8, self.format_item_debug)
+            )
+        })
+    }
+}
+
 pub struct KeyedStreamHook<K: Hash + Eq + Clone, V, Order: Ordering> {
     pub input: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>, // FxHasher is deterministic
     pub to_release: Option<Vec<(K, V)>>,
@@ -351,7 +618,11 @@ pub struct KeyedStreamHook<K: Hash + Eq + Clone, V, Order: Ordering> {
     pub _order: std::marker::PhantomData<Order>,
 }
 
-impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, TotalOrder> {
+impl<K: Hash + Eq + Clone, V> RuntimeHook for KeyedStreamHook<K, V, TotalOrder> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.batch_location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|v| !v.is_empty())
     }
@@ -416,21 +687,13 @@ impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, TotalOrder> {
                     )
                 };
 
-                let _ = writeln!(
+                log_release(
                     log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -443,7 +706,11 @@ impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, TotalOrder> {
     }
 }
 
-impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, NoOrder> {
+impl<K: Hash + Eq + Clone, V> RuntimeHook for KeyedStreamHook<K, V, NoOrder> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.batch_location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|v| !v.is_empty())
     }
@@ -515,21 +782,13 @@ impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, NoOrder> {
                     )
                 };
 
-                let _ = writeln!(
+                log_release(
                     log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -571,7 +830,11 @@ impl<T: Clone> SingletonHook<T> {
     }
 }
 
-impl<T: Clone> SimHook for SingletonHook<T> {
+impl<T: Clone> RuntimeHook for SingletonHook<T> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.batch_location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|t| t.1)
     }
@@ -648,21 +911,13 @@ impl<T: Clone> SimHook for SingletonHook<T> {
                     )
                 };
 
-                let _ = writeln!(
+                log_release(
                     log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -670,6 +925,140 @@ impl<T: Clone> SimHook for SingletonHook<T> {
         } else {
             panic!("No decision to release");
         }
+    }
+}
+
+/// A scripted decision for a snapshot hook: which buffered version of the state the next
+/// tick execution observes.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum SnapshotDecision {
+    /// Reveal the first buffered version equal to this value (bincode-serialized, since it
+    /// crosses the handle/hook boundary), skipping over earlier versions.
+    Reveal(Vec<u8>),
+    /// Advance to the next buffered version.
+    RevealNext,
+    /// Reveal the newest version that has arrived by the time the tick fires.
+    RevealLatest,
+    /// Observe the previously revealed version again.
+    Keep,
+}
+
+impl ScriptDecision for SnapshotDecision {
+    fn describe(&self) -> String {
+        match self {
+            SnapshotDecision::Reveal(_) => "reveal(..)".to_owned(),
+            SnapshotDecision::RevealNext => "reveal_next()".to_owned(),
+            SnapshotDecision::RevealLatest => "reveal_latest()".to_owned(),
+            SnapshotDecision::Keep => "keep()".to_owned(),
+        }
+    }
+}
+
+/// The pending-input view a snapshot hook reports to its test-side handle (see
+/// [`ScriptableHook::status`]), used by `pause_until_*` predicates.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct SnapshotStatus {
+    /// The number of buffered versions newer than the last revealed one.
+    pub newer_versions: usize,
+}
+
+impl<T: Clone + PartialEq + serde::de::DeserializeOwned> ScriptableHook for SingletonHook<T> {
+    type Decision = SnapshotDecision;
+    type Status = SnapshotStatus;
+
+    fn is_honorable(&self, decision: &SnapshotDecision) -> Result<bool, String> {
+        let input = self.input.borrow();
+        Ok(match decision {
+            SnapshotDecision::Reveal(bytes) => {
+                let target: T = bincode::deserialize(bytes)
+                    .expect("failed to deserialize the reveal() target value");
+                input.iter().any(|version| *version == target)
+            }
+            SnapshotDecision::RevealNext => !input.is_empty(),
+            SnapshotDecision::RevealLatest => !input.is_empty() || self.last_released.is_some(),
+            SnapshotDecision::Keep => self.last_released.is_some(),
+        })
+    }
+
+    fn is_nontrivial(&self, decision: &SnapshotDecision) -> bool {
+        match decision {
+            SnapshotDecision::Reveal(_) | SnapshotDecision::RevealNext => true,
+            SnapshotDecision::RevealLatest => !self.input.borrow().is_empty(),
+            SnapshotDecision::Keep => false,
+        }
+    }
+
+    fn apply(&mut self, decision: SnapshotDecision) -> bool {
+        match decision {
+            SnapshotDecision::Reveal(bytes) => {
+                let target: T = bincode::deserialize(&bytes)
+                    .expect("failed to deserialize the reveal() target value");
+                let mut input = self.input.borrow_mut();
+                let idx = input.iter().position(|version| *version == target).unwrap();
+                self.skipped_states = input.drain(0..idx).collect();
+                let item = input.pop_front().unwrap();
+                self.to_release = Some((item, true));
+                true
+            }
+            SnapshotDecision::RevealNext => {
+                let mut input = self.input.borrow_mut();
+                self.skipped_states = vec![];
+                let item = input.pop_front().unwrap();
+                self.to_release = Some((item, true));
+                true
+            }
+            SnapshotDecision::RevealLatest => {
+                let mut input = self.input.borrow_mut();
+                if input.is_empty() {
+                    self.skipped_states = vec![];
+                    self.to_release = Some((self.last_released.clone().unwrap(), false));
+                    false
+                } else {
+                    let skip_count = input.len() - 1;
+                    self.skipped_states = input.drain(0..skip_count).collect();
+                    let item = input.pop_front().unwrap();
+                    self.to_release = Some((item, true));
+                    true
+                }
+            }
+            SnapshotDecision::Keep => {
+                self.skipped_states = vec![];
+                self.to_release = Some((self.last_released.clone().unwrap(), false));
+                false
+            }
+        }
+    }
+
+    fn implicit(&mut self) -> bool {
+        if let Some(last) = &self.last_released {
+            self.skipped_states = vec![];
+            self.to_release = Some((last.clone(), false));
+        } else {
+            // `is_ready()` prevents the tick from running before the singleton has a
+            // value, so this is unreachable.
+            eprintln!(
+                "Simulator internal error: scripted snapshot hook asked for implicit behavior with no revealed value"
+            );
+            std::process::abort();
+        }
+        false
+    }
+
+    fn status(&self) -> SnapshotStatus {
+        SnapshotStatus {
+            newer_versions: self.input.borrow().len(),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        (!input.is_empty()).then(|| {
+            format!(
+                "{} buffered version(s): {:?}",
+                input.len(),
+                TruncatedVecDebug(RefCell::new(Some(input.iter())), 8, self.format_item_debug)
+            )
+        })
     }
 }
 
@@ -702,7 +1091,11 @@ impl<T> PassthroughSingletonHook<T> {
     }
 }
 
-impl<T> SimHook for PassthroughSingletonHook<T> {
+impl<T> RuntimeHook for PassthroughSingletonHook<T> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.batch_location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|_| true)
     }
@@ -736,21 +1129,13 @@ impl<T> SimHook for PassthroughSingletonHook<T> {
                     ManualDebug(&to_release, self.format_item_debug)
                 );
 
-                let _ = writeln!(
+                log_release(
                     log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -793,7 +1178,11 @@ impl<K: Hash + Eq + Clone, V: Clone> KeyedSingletonHook<K, V> {
     }
 }
 
-impl<K: Hash + Eq + Clone, V: Clone> SimHook for KeyedSingletonHook<K, V> {
+impl<K: Hash + Eq + Clone, V: Clone> RuntimeHook for KeyedSingletonHook<K, V> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.batch_location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release
             .as_ref()
@@ -899,21 +1288,13 @@ impl<K: Hash + Eq + Clone, V: Clone> SimHook for KeyedSingletonHook<K, V> {
                     format!("^ releasing items: {{ {} }}", mapping_text)
                 };
 
-                let _ = writeln!(
+                log_release(
                     log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -952,6 +1333,17 @@ impl<T> StreamOrderHook<T> {
 }
 
 impl<T> SimInlineHook for StreamOrderHook<T> {
+    fn decision_is_forced(&self) -> bool {
+        self.input
+            .borrow()
+            .as_ref()
+            .is_none_or(|inputs| inputs.len() <= 1)
+    }
+
+    fn location_meta(&self) -> HookLocationMeta {
+        self.batch_location
+    }
+
     fn pending_decision(&self) -> bool {
         self.input.borrow().is_some()
     }
@@ -984,21 +1376,13 @@ impl<T> SimInlineHook for StreamOrderHook<T> {
                     TruncatedVecDebug(RefCell::new(Some(to_release.iter())), 8, self.format_debug)
                 );
 
-                let _ = writeln!(
+                log_release(
                     log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Cyan)
+                    &note_str,
+                    colored::Color::Cyan,
                 );
             }
 
@@ -1040,6 +1424,16 @@ impl<T> MergeOrderedHook<T> {
 }
 
 impl<T> SimInlineHook for MergeOrderedHook<T> {
+    fn decision_is_forced(&self) -> bool {
+        // The interleaving is only a choice when both inputs have elements.
+        self.first.borrow().as_ref().is_none_or(|f| f.is_empty())
+            || self.second.borrow().as_ref().is_none_or(|s| s.is_empty())
+    }
+
+    fn location_meta(&self) -> HookLocationMeta {
+        self.batch_location
+    }
+
     fn pending_decision(&self) -> bool {
         self.first.borrow().is_some() && self.second.borrow().is_some()
     }
@@ -1115,21 +1509,13 @@ impl<T> SimInlineHook for MergeOrderedHook<T> {
                     )
                 );
 
-                let _ = writeln!(
+                log_release(
                     log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Cyan)
+                    &note_str,
+                    colored::Color::Cyan,
                 );
             }
 
@@ -1171,6 +1557,24 @@ impl<K: Hash + Eq + Clone, V> KeyedStreamOrderHook<K, V> {
 }
 
 impl<K: Hash + Eq + Clone, V> SimInlineHook for KeyedStreamOrderHook<K, V> {
+    fn decision_is_forced(&self) -> bool {
+        // Ordering is only unobservable when no key has more than one element.
+        self.input.borrow().as_ref().is_none_or(|inputs| {
+            let mut seen_keys: Vec<&K> = vec![];
+            for (k, _) in inputs {
+                if seen_keys.contains(&k) {
+                    return false;
+                }
+                seen_keys.push(k);
+            }
+            true
+        })
+    }
+
+    fn location_meta(&self) -> HookLocationMeta {
+        self.batch_location
+    }
+
     fn pending_decision(&self) -> bool {
         self.input.borrow().is_some()
     }
@@ -1225,21 +1629,13 @@ impl<K: Hash + Eq + Clone, V> SimInlineHook for KeyedStreamOrderHook<K, V> {
                 }
                 note_str = format!("^ observed non-deterministic order: {{ {} }}", note_str);
 
-                let _ = writeln!(
+                log_release(
                     log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Cyan)
+                    &note_str,
+                    colored::Color::Cyan,
                 );
             }
 
@@ -1287,6 +1683,24 @@ impl<K: Hash + Eq + Clone, V> PartiallyOrderedStreamHook<K, V> {
 }
 
 impl<K: Hash + Eq + Clone, V> SimInlineHook for PartiallyOrderedStreamHook<K, V> {
+    fn decision_is_forced(&self) -> bool {
+        // The interleaving across keys is the only choice; a single distinct key (or no
+        // input) leaves nothing to decide.
+        self.input.borrow().as_ref().is_none_or(|inputs| {
+            let mut distinct_keys: Vec<&K> = vec![];
+            for (k, _) in inputs {
+                if !distinct_keys.contains(&k) {
+                    distinct_keys.push(k);
+                }
+            }
+            distinct_keys.len() <= 1
+        })
+    }
+
+    fn location_meta(&self) -> HookLocationMeta {
+        self.batch_location
+    }
+
     fn pending_decision(&self) -> bool {
         self.input.borrow().is_some()
     }
@@ -1350,21 +1764,13 @@ impl<K: Hash + Eq + Clone, V> SimInlineHook for PartiallyOrderedStreamHook<K, V>
                 }
                 note_str = format!("^ observed partially-ordered interleaving: [{}]", note_str);
 
-                let _ = writeln!(
+                log_release(
                     log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Cyan)
+                    &note_str,
+                    colored::Color::Cyan,
                 );
             }
 
@@ -1401,7 +1807,11 @@ pub struct TopLevelStreamOrderHook<T> {
     pub format_item_debug: fn(&T) -> Option<String>,
 }
 
-impl<T> SimHook for TopLevelStreamOrderHook<T> {
+impl<T> RuntimeHook for TopLevelStreamOrderHook<T> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|v| !v.is_empty())
     }
@@ -1451,21 +1861,14 @@ impl<T> SimHook for TopLevelStreamOrderHook<T> {
                     )
                 );
 
-                let _ = writeln!(
+                let _ = writeln!(log_writer);
+                log_release(
                     log_writer,
-                    "\n{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -1475,6 +1878,108 @@ impl<T> SimHook for TopLevelStreamOrderHook<T> {
         } else {
             panic!("No decision to release");
         }
+    }
+}
+
+/// A scripted decision for a top-level `assume_ordering` observation.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum TopLevelOrderingDecision<T> {
+    Next(T),
+}
+
+impl<T> ScriptDecision for TopLevelOrderingDecision<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        "next(value)".to_owned()
+    }
+}
+
+/// A scripted decision for an `assume_ordering` reached inside a tick.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum InlineOrderingDecision<T> {
+    Order(Vec<T>),
+}
+
+impl<T> ScriptDecision for InlineOrderingDecision<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        let InlineOrderingDecision::Order(values) = self;
+        format!("order({} value(s))", values.len())
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct OrderingStatus {
+    pub buffered: usize,
+}
+
+fn same_multiset<T: PartialEq>(left: &[T], right: &[T]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    let mut unmatched: Vec<&T> = right.iter().collect();
+    for item in left {
+        let Some(index) = unmatched.iter().position(|other| *other == item) else {
+            return false;
+        };
+        unmatched.swap_remove(index);
+    }
+    true
+}
+
+impl<T> ScriptableHook for TopLevelStreamOrderHook<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = TopLevelOrderingDecision<T>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        let TopLevelOrderingDecision::Next(expected) = decision;
+        Ok(self.input.borrow().iter().any(|item| item == expected))
+    }
+
+    fn is_nontrivial(&self, _decision: &Self::Decision) -> bool {
+        true
+    }
+
+    fn apply(&mut self, decision: Self::Decision) -> bool {
+        let mut input = self.input.borrow_mut();
+        let TopLevelOrderingDecision::Next(expected) = decision;
+        let index = input.iter().position(|item| item == &expected).unwrap();
+        self.to_release = Some(vec![input.remove(index).unwrap()]);
+        true
+    }
+
+    fn implicit(&mut self) -> bool {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        eprintln!(
+            "Simulator internal error: implicit decision invoked on a top-level ordering hook"
+        );
+        std::process::abort();
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: self.input.borrow().len(),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        (!input.is_empty()).then(|| {
+            format!(
+                "{} buffered ordering item(s): {:?}",
+                input.len(),
+                TruncatedVecDebug(RefCell::new(Some(input.iter())), 8, self.format_item_debug)
+            )
+        })
     }
 }
 
@@ -1489,7 +1994,11 @@ pub struct TopLevelFoldHook<T> {
     pub format_item_debug: fn(&T) -> Option<String>,
 }
 
-impl<T> SimHook for TopLevelFoldHook<T> {
+impl<T> RuntimeHook for TopLevelFoldHook<T> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|v| !v.is_empty())
     }
@@ -1562,21 +2071,14 @@ impl<T> SimHook for TopLevelFoldHook<T> {
                     )
                 );
 
-                let _ = writeln!(
+                let _ = writeln!(log_writer);
+                log_release(
                     log_writer,
-                    "\n{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -1584,6 +2086,60 @@ impl<T> SimHook for TopLevelFoldHook<T> {
         } else {
             panic!("No decision to release");
         }
+    }
+}
+
+/// Scripting a top-level fold releases exactly **one named element per decision**
+/// (like a top-level `assume_ordering`), so intermediate fold states become observable
+/// exactly at the script's release points. The autonomous subset-and-permute path is
+/// never used: it is only sound when the fuzzer explores every subset split.
+impl<T> ScriptableHook for TopLevelFoldHook<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = TopLevelOrderingDecision<T>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        let TopLevelOrderingDecision::Next(expected) = decision;
+        Ok(self.input.borrow().iter().any(|item| item == expected))
+    }
+
+    fn is_nontrivial(&self, _decision: &Self::Decision) -> bool {
+        true
+    }
+
+    fn apply(&mut self, decision: Self::Decision) -> bool {
+        let TopLevelOrderingDecision::Next(expected) = decision;
+        let mut input = self.input.borrow_mut();
+        let index = input.iter().position(|item| item == &expected).unwrap();
+        self.to_release = Some(vec![input.remove(index).unwrap()]);
+        true
+    }
+
+    fn implicit(&mut self) -> bool {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        eprintln!("Simulator internal error: implicit decision invoked on a top-level fold hook");
+        std::process::abort();
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: self.input.borrow().len(),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        (!input.is_empty()).then(|| {
+            format!(
+                "{} buffered fold input(s): {:?}",
+                input.len(),
+                TruncatedVecDebug(RefCell::new(Some(input.iter())), 8, self.format_item_debug)
+            )
+        })
     }
 }
 
@@ -1598,7 +2154,11 @@ pub struct TopLevelKeyedStreamOrderHook<K: Hash + Eq + Clone, V> {
     pub format_item_debug: fn(&(K, V)) -> Option<String>,
 }
 
-impl<K: Hash + Eq + Clone, V> SimHook for TopLevelKeyedStreamOrderHook<K, V> {
+impl<K: Hash + Eq + Clone, V> RuntimeHook for TopLevelKeyedStreamOrderHook<K, V> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|v| !v.is_empty())
     }
@@ -1665,21 +2225,14 @@ impl<K: Hash + Eq + Clone, V> SimHook for TopLevelKeyedStreamOrderHook<K, V> {
                     )
                 );
 
-                let _ = writeln!(
+                let _ = writeln!(log_writer);
+                log_release(
                     log_writer,
-                    "\n{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -1703,7 +2256,11 @@ pub struct TopLevelPartiallyOrderedStreamHook<K: Hash + Eq + Clone, V> {
     pub format_item_debug: fn(&(K, V)) -> Option<String>,
 }
 
-impl<K: Hash + Eq + Clone, V> SimHook for TopLevelPartiallyOrderedStreamHook<K, V> {
+impl<K: Hash + Eq + Clone, V> RuntimeHook for TopLevelPartiallyOrderedStreamHook<K, V> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|v| !v.is_empty())
     }
@@ -1763,21 +2320,14 @@ impl<K: Hash + Eq + Clone, V> SimHook for TopLevelPartiallyOrderedStreamHook<K, 
                     )
                 );
 
-                let _ = writeln!(
+                let _ = writeln!(log_writer);
+                log_release(
                     log_writer,
-                    "\n{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -1803,7 +2353,11 @@ pub struct TopLevelMergeOrderedHook<T> {
     pub format_item_debug: fn(&T) -> Option<String>,
 }
 
-impl<T> SimHook for TopLevelMergeOrderedHook<T> {
+impl<T> RuntimeHook for TopLevelMergeOrderedHook<T> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|v| !v.is_empty())
     }
@@ -1871,21 +2425,14 @@ impl<T> SimHook for TopLevelMergeOrderedHook<T> {
                     )
                 );
 
-                let _ = writeln!(
+                let _ = writeln!(log_writer);
+                log_release(
                     log_writer,
-                    "\n{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -1937,6 +2484,23 @@ impl<K: Hash + Eq + Clone, V> KeyedMergeOrderedHook<K, V> {
 }
 
 impl<K: Hash + Eq + Clone, V> SimInlineHook for KeyedMergeOrderedHook<K, V> {
+    fn decision_is_forced(&self) -> bool {
+        // The interleaving within a key is the only observable ordering choice, so the
+        // decision is forced when no key appears in both inputs.
+        let first = self.first.borrow();
+        let second = self.second.borrow();
+        match (first.as_ref(), second.as_ref()) {
+            (Some(first), Some(second)) => !first
+                .iter()
+                .any(|(k, _)| second.iter().any(|(k2, _)| k2 == k)),
+            _ => true,
+        }
+    }
+
+    fn location_meta(&self) -> HookLocationMeta {
+        self.batch_location
+    }
+
     fn pending_decision(&self) -> bool {
         self.first.borrow().is_some() && self.second.borrow().is_some()
     }
@@ -2028,21 +2592,13 @@ impl<K: Hash + Eq + Clone, V> SimInlineHook for KeyedMergeOrderedHook<K, V> {
                     )
                 );
 
-                let _ = writeln!(
+                log_release(
                     log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Cyan)
+                    &note_str,
+                    colored::Color::Cyan,
                 );
             }
 
@@ -2069,7 +2625,11 @@ pub struct TopLevelKeyedMergeOrderedHook<K: Hash + Eq + Clone, V> {
     pub format_item_debug: fn(&(K, V)) -> Option<String>,
 }
 
-impl<K: Hash + Eq + Clone, V> SimHook for TopLevelKeyedMergeOrderedHook<K, V> {
+impl<K: Hash + Eq + Clone, V> RuntimeHook for TopLevelKeyedMergeOrderedHook<K, V> {
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.location)
+    }
+
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|v| !v.is_empty())
     }
@@ -2163,21 +2723,14 @@ impl<K: Hash + Eq + Clone, V> SimHook for TopLevelKeyedMergeOrderedHook<K, V> {
                     )
                 );
 
-                let _ = writeln!(
+                let _ = writeln!(log_writer);
+                log_release(
                     log_writer,
-                    "\n{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
-
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
-
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
+                    batch_location,
+                    line,
                     caret_indent,
-                    note_str.color(colored::Color::Green)
+                    &note_str,
+                    colored::Color::Green,
                 );
             }
 
@@ -2187,6 +2740,440 @@ impl<K: Hash + Eq + Clone, V> SimHook for TopLevelKeyedMergeOrderedHook<K, V> {
         } else {
             panic!("No decision to release");
         }
+    }
+}
+
+// ============================================================================
+// Scripted hooks: manual control of unsafe operators from simulation tests.
+//
+// A hook that is bound to a test-side handle (`nondet!(... hook = handle)`) is emitted as
+// [`Scripted<H>`] wrapping the ordinary hook type, which implements [`ScriptableHook`]
+// (the per-kind decision semantics). The scripted hook is shared, via `Rc<RefCell<dyn
+// ScriptedRuntimeHook>>`, between the scheduler's tick lists and a per-instance registry
+// keyed by handle ID, so test-side handles can install decisions and read status
+// on demand. Kind-specific payloads (decisions in, status out) cross the registry's
+// type-erased surface bincode-serialized: the handle and the hook statically know the
+// same types (the `NonDet` typing guarantees a handle can only bind to a matching
+// operator), so no runtime dispatch is needed.
+//
+// A scripted hook never makes a decision on its own — no fuzzer entropy is ever spent on
+// it; everything it releases was scripted, with one narrow exception: when there is only
+// one thing the hook could possibly do (empty buffer → empty batch; no newer versions →
+// re-reveal), it does that implicitly.
+// ============================================================================
+
+/// The decisions a test-side handle can script for one kind of hook. Serialized when
+/// crossing the type-erased registry surface (see [`ScriptedHookControl::install_decision`]).
+pub trait ScriptDecision: serde::Serialize + serde::de::DeserializeOwned {
+    /// A short human-readable rendering for error messages.
+    fn describe(&self) -> String;
+}
+
+/// The per-kind decision semantics of a hook that can be driven by a test-side handle,
+/// implemented directly on the ordinary hook types ([`StreamHook`], [`SingletonHook`]).
+/// The generic [`Scripted<H>`] shell turns any implementor into a scripted hook.
+pub trait ScriptableHook: RuntimeHook {
+    /// The decisions a handle can script for this kind of hook.
+    type Decision: ScriptDecision;
+    /// This kind's view of its pending, undecided input, read on demand by the test-side
+    /// handle (for `pause_until_*` predicates).
+    type Status: serde::Serialize;
+
+    /// Whether the decision could be honored right now, against the current buffer.
+    /// Returns an error when the decision is already known to be invalid rather than
+    /// merely waiting for more input. The host scheduler reports that error without
+    /// unwinding through the generated dylib boundary.
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String>;
+    /// Whether applying this currently honorable decision would release new data. Used to
+    /// decide whether this hook can make its tick runnable; empty/keep decisions are only
+    /// consumed when another hook makes the same tick run.
+    fn is_nontrivial(&self, decision: &Self::Decision) -> bool;
+    /// Applies the decision, staging the release. Returns whether it was nontrivial.
+    fn apply(&mut self, decision: Self::Decision) -> bool;
+    /// Stages the only-possibility implicit behavior (empty batch / re-reveal). Called
+    /// only when the hook's tick was forced to run by *other* hooks while this hook had
+    /// no queued decision (nothing to decide, or held). Top-level observation hooks abort
+    /// here: an observation consists of exactly one hook, so nothing can force it to run
+    /// without a scripted decision.
+    fn implicit(&mut self) -> bool;
+    /// The current pending-input view.
+    fn status(&self) -> Self::Status;
+    /// A human-readable rendering of the pending, undecided input (e.g. `2 buffered
+    /// item(s): [1, 2]`), or `None` when there is nothing pending. Used by the
+    /// forgotten-hook and stuck-decision error messages.
+    fn describe_pending(&self) -> Option<String>;
+}
+
+/// The scheduler action selected by a scripted decision.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScriptTarget {
+    /// A real tick. Multiple decisions for different hooks may join one tick group.
+    Tick((&'static str, Option<u32>)),
+    /// One top-level observation hook, treated as its own virtual tick.
+    Observation {
+        location: (&'static str, Option<u32>),
+        hook_id: usize,
+    },
+}
+
+impl ScriptTarget {
+    pub fn location(self) -> (&'static str, Option<u32>) {
+        match self {
+            ScriptTarget::Tick(location) | ScriptTarget::Observation { location, .. } => location,
+        }
+    }
+}
+
+/// Handle-facing state shared by pre-tick, top-level observation, and inline scripted hooks.
+pub trait ScriptedHookControl {
+    fn target(&self) -> ScriptTarget;
+    fn location_meta(&self) -> Option<HookLocationMeta>;
+    fn has_decision(&self) -> bool;
+    fn describe_decision(&self) -> Option<String>;
+    fn describe_pending(&self) -> Option<String>;
+    fn install_decision(&mut self, decision_blob: &[u8]);
+    fn status_blob(&self) -> Vec<u8>;
+    fn set_hold(&mut self, hold: bool);
+    fn release_hold(&mut self);
+    fn set_auto_pause(&mut self, auto_pause: bool);
+}
+
+/// The scheduler-facing interface of a pre-tick or top-level observation scripted hook.
+pub trait ScriptedRuntimeHook: RuntimeHook + ScriptedHookControl {
+    /// Executes and releases this hook's queued (or implicit forced) scripted decision,
+    /// without consulting the entropy driver. Returns whether it was nontrivial.
+    fn run_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) -> bool;
+
+    /// Whether this hook currently *blocks* its tick from running: a queued decision that
+    /// is not yet honorable prevents the tick from executing at all, so the decision can
+    /// never be skipped over or paired with a different execution.
+    fn blocks_tick(&self) -> bool;
+
+    /// Called at every scheduling boundary (async dataflows exhausted, ticks about to be
+    /// considered). Reports an error if the hook is *forgotten*: it faces a meaningful
+    /// choice (pending input) with no queued decision and no hold.
+    fn boundary_check(&self) -> Result<(), String>;
+}
+
+/// A scripted observation reached while a tick DFIR is executing.
+pub trait ScriptedInlineHook: ScriptedHookControl {
+    fn pending_decision(&self) -> bool;
+    /// Consumes the queued decision (or the forced implicit behavior) and releases it.
+    /// Returns an error message instead of panicking: this code is monomorphized into the
+    /// generated dylib, and a panic must not unwind across that boundary — the host
+    /// scheduler reports the error.
+    fn run_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) -> Result<(), String>;
+    fn location_meta(&self) -> HookLocationMeta;
+}
+
+/// Scripted hooks keyed by the scheduler action they feed. Top-level locations become
+/// observations; tick locations become ordinary tick inputs.
+pub type ScriptedTickHooks<Key> =
+    HashMap<(Key, Option<u32>), Vec<Rc<RefCell<dyn ScriptedRuntimeHook>>>>;
+
+pub type ScriptedInlineHooks<Key> =
+    HashMap<(Key, Option<u32>), Vec<Rc<RefCell<dyn ScriptedInlineHook>>>>;
+
+/// The per-instance registry of every scripted hook, keyed by handle ID.
+pub type ScriptedHookRegistry =
+    std::collections::BTreeMap<usize, Rc<RefCell<dyn ScriptedHookControl>>>;
+
+fn render_forgotten_error(location: HookLocationMeta, pending: &str) -> String {
+    let (loc, line, caret) = location;
+    format!(
+        "scripted hook has buffered input but no decision:\n--> {loc}\n |{line}\n |{caret}^ {pending}\nhelp: script a decision (e.g. `.release(..)` / `.reveal(..)`) or call `.pause()` if buffering is intended"
+    )
+}
+
+/// The scripted variation of a hook: wraps the ordinary hook type (which owns the buffers
+/// and implements the decision semantics via [`ScriptableHook`]) together with the script
+/// state: at most one queued decision (decisions are installed group by group, and a
+/// hook's earlier decision is always consumed before its next one arrives), plus a `hold`
+/// flag for the `pause()` family. The fields are consulted in order — decision present →
+/// normal decision semantics; otherwise hold set → held; otherwise pending input → the
+/// *forgotten* state, which the scheduler's boundary scan reports as an error.
+pub struct Scripted<H: ScriptableHook> {
+    core: H,
+    target: ScriptTarget,
+    next_decision: Option<H::Decision>,
+    hold: bool,
+    auto_pause: bool,
+}
+
+impl<H: ScriptableHook> Scripted<H> {
+    /// Wraps `core` for scripting. `tick` is the execution unit the hook feeds. Called
+    /// from generated code.
+    pub fn new(core: H, target: ScriptTarget) -> Self {
+        Scripted {
+            core,
+            target,
+            next_decision: None,
+            hold: false,
+            auto_pause: false,
+        }
+    }
+
+    /// Consumes the queued decision if honorable (or the implicit only-possibility
+    /// behavior if none is queued), staging the release on the core hook.
+    fn scripted_step(&mut self) -> bool {
+        match self.next_decision.take() {
+            Some(decision) if matches!(self.core.is_honorable(&decision), Ok(true)) => {
+                self.core.apply(decision)
+            }
+            Some(decision) => {
+                // `blocks_tick()` prevents the tick from running while a queued decision
+                // is not honorable, so this is unreachable.
+                eprintln!(
+                    "Simulator internal error: tick ran while scripted decision {} was not honorable",
+                    decision.describe()
+                );
+                std::process::abort();
+            }
+            None => {
+                // The boundary scan guarantees this hook either has nothing pending or is
+                // held, so the implicit "nothing new" behavior is the only possibility.
+                self.core.implicit()
+            }
+        }
+    }
+}
+
+impl<H: ScriptableHook> RuntimeHook for Scripted<H> {
+    fn current_decision(&self) -> Option<bool> {
+        self.core.current_decision()
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        // Pending input alone never makes a scripted hook offer work (the boundary scan is
+        // the mechanism that reacts to it). Only an honorable queued decision that releases
+        // new data makes the tick runnable; empty/keep decisions are consumed when another
+        // hook on the same tick makes it run.
+        self.next_decision.as_ref().is_some_and(|decision| {
+            matches!(self.core.is_honorable(decision), Ok(true))
+                && self.core.is_nontrivial(decision)
+        })
+    }
+
+    fn is_ready(&self) -> bool {
+        self.core.is_ready()
+    }
+
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        self.core.location_meta()
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        _driver: &mut Borrowed<'a>,
+        _force_nontrivial: bool,
+    ) -> bool {
+        eprintln!("Simulator internal error: autonomous_decision called on a scripted hook");
+        std::process::abort();
+    }
+
+    fn release_decision(&mut self, mut log_writer: Option<&mut dyn std::fmt::Write>) {
+        if let Some(w) = log_writer.as_mut() {
+            let _ = writeln!(w, "{}", "(scripted)".color(colored::Color::Cyan));
+        }
+        self.core.release_decision(log_writer);
+    }
+}
+
+impl<H: ScriptableHook> ScriptedHookControl for Scripted<H> {
+    fn target(&self) -> ScriptTarget {
+        self.target
+    }
+
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        self.core.location_meta()
+    }
+
+    fn has_decision(&self) -> bool {
+        self.next_decision.is_some()
+    }
+
+    fn describe_decision(&self) -> Option<String> {
+        self.next_decision.as_ref().map(|d| d.describe())
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        self.core.describe_pending()
+    }
+
+    fn install_decision(&mut self, decision_blob: &[u8]) {
+        assert!(
+            self.next_decision.is_none(),
+            "internal error: installed a scripted decision while one was still queued"
+        );
+        self.next_decision = Some(bincode::deserialize(decision_blob).expect(
+            "internal error: scripted decision blob did not match the hook's decision type",
+        ));
+        self.hold = self.auto_pause;
+    }
+
+    fn status_blob(&self) -> Vec<u8> {
+        bincode::serialize(&self.core.status()).unwrap()
+    }
+
+    fn set_hold(&mut self, hold: bool) {
+        self.hold = hold;
+    }
+
+    fn release_hold(&mut self) {
+        self.hold = self.auto_pause;
+    }
+
+    fn set_auto_pause(&mut self, auto_pause: bool) {
+        self.auto_pause = auto_pause;
+    }
+}
+
+impl<H: ScriptableHook> ScriptedRuntimeHook for Scripted<H> {
+    fn run_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) -> bool {
+        let made_nontrivial_decision = self.scripted_step();
+        self.release_decision(log_writer);
+        made_nontrivial_decision
+    }
+
+    fn blocks_tick(&self) -> bool {
+        self.next_decision
+            .as_ref()
+            .is_some_and(|d| matches!(self.core.is_honorable(d), Ok(false)))
+    }
+
+    fn boundary_check(&self) -> Result<(), String> {
+        if let Some(Err(message)) = self
+            .next_decision
+            .as_ref()
+            .map(|decision| self.core.is_honorable(decision))
+        {
+            return Err(message);
+        }
+
+        // "Faces a meaningful choice" is exactly the autonomous question
+        // `can_make_nontrivial_decision` — for any hook kind.
+        if self.next_decision.is_none() && !self.hold && self.core.can_make_nontrivial_decision() {
+            Err(render_forgotten_error(
+                self.core
+                    .location_meta()
+                    .unwrap_or(("unknown location", "", "")),
+                &self
+                    .core
+                    .describe_pending()
+                    .unwrap_or_else(|| "pending input".to_owned()),
+            ))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+pub struct ScriptedInline<T> {
+    core: StreamOrderHook<T>,
+    target: ScriptTarget,
+    next_decision: Option<InlineOrderingDecision<T>>,
+}
+
+impl<T> ScriptedInline<T> {
+    pub fn new(core: StreamOrderHook<T>, target: ScriptTarget) -> Self {
+        Self {
+            core,
+            target,
+            next_decision: None,
+        }
+    }
+}
+
+impl<T> ScriptedHookControl for ScriptedInline<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    fn target(&self) -> ScriptTarget {
+        self.target
+    }
+
+    fn location_meta(&self) -> Option<HookLocationMeta> {
+        Some(self.core.location_meta())
+    }
+
+    fn has_decision(&self) -> bool {
+        self.next_decision.is_some()
+    }
+
+    fn describe_decision(&self) -> Option<String> {
+        self.next_decision.as_ref().map(ScriptDecision::describe)
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.core.input.borrow();
+        input.as_ref().map(|values| {
+            format!(
+                "{} in-tick ordering item(s): {:?}",
+                values.len(),
+                TruncatedVecDebug(RefCell::new(Some(values.iter())), 8, self.core.format_debug,)
+            )
+        })
+    }
+
+    fn install_decision(&mut self, decision_blob: &[u8]) {
+        assert!(self.next_decision.is_none());
+        self.next_decision = Some(
+            bincode::deserialize(decision_blob)
+                .expect("internal error: scripted inline ordering decision had the wrong type"),
+        );
+    }
+
+    fn status_blob(&self) -> Vec<u8> {
+        bincode::serialize(&OrderingStatus {
+            buffered: self.core.input.borrow().as_ref().map_or(0, Vec::len),
+        })
+        .unwrap()
+    }
+
+    fn set_hold(&mut self, _hold: bool) {}
+    fn release_hold(&mut self) {}
+    fn set_auto_pause(&mut self, _auto_pause: bool) {}
+}
+
+impl<T> ScriptedInlineHook for ScriptedInline<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    fn pending_decision(&self) -> bool {
+        self.core.pending_decision()
+    }
+
+    fn run_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) -> Result<(), String> {
+        let input = self.core.input.borrow_mut().take().unwrap();
+        let output = match self.next_decision.take() {
+            Some(InlineOrderingDecision::Order(values)) => {
+                if !same_multiset(&input, &values) {
+                    return Err(format!(
+                        "scripted in-tick ordering decision must contain exactly all pending input values ({} pending, {} scripted)",
+                        input.len(),
+                        values.len(),
+                    ));
+                }
+                values
+            }
+            None if input.len() <= 1 => input,
+            None => {
+                return Err(render_forgotten_error(
+                    self.core.batch_location,
+                    &format!(
+                        "{} in-tick values require an explicit ordering",
+                        input.len()
+                    ),
+                ));
+            }
+        };
+        self.core.to_release = Some(output);
+        self.core.release_decision(log_writer);
+        Ok(())
+    }
+
+    fn location_meta(&self) -> HookLocationMeta {
+        self.core.location_meta()
     }
 }
 

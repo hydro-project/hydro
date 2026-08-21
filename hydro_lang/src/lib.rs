@@ -121,6 +121,8 @@ pub mod deploy;
 #[cfg_attr(docsrs, doc(cfg(feature = "sim")))]
 pub mod sim;
 
+pub mod sim_hooks;
+
 pub mod forward_handle;
 
 pub mod compile;

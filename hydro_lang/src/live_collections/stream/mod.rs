@@ -582,7 +582,7 @@ where
     /// ```
     pub fn map<U, F, C, I, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, I>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, I>>,
     ) -> Stream<U, L, B, O, R>
     where
         F: FnMut(T) -> U + 'a,
@@ -633,7 +633,7 @@ where
     /// ```
     pub fn flat_map_ordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, Idemp>>,
     ) -> Stream<U, L, B, O, R>
     where
         I: IntoIterator<Item = U>,
@@ -687,7 +687,7 @@ where
     /// ```
     pub fn flat_map_unordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, Idemp>>,
     ) -> Stream<U, L, B, NoOrder, R>
     where
         I: IntoIterator<Item = U>,
@@ -780,7 +780,7 @@ where
     /// `Pending`, this operator yields as well.
     pub fn flat_map_stream_blocking<U, S, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, Idemp>>,
     ) -> Stream<U, L, B, O, R>
     where
         S: futures::Stream<Item = U>,
@@ -842,7 +842,7 @@ where
     /// ```
     pub fn filter<F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, Idemp>>,
     ) -> Self
     where
         F: FnMut(&T) -> bool + 'a,
@@ -901,7 +901,7 @@ where
     /// ```
     pub fn partition<F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, Idemp>>,
     ) -> (Stream<T, L, B, O, R>, Stream<T, L, B, O, R>)
     where
         F: FnMut(&T) -> bool + 'a,
@@ -962,7 +962,7 @@ where
     /// ```
     pub fn filter_map<U, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, Idemp>>,
     ) -> Stream<U, L, B, O, R>
     where
         F: FnMut(T) -> Option<U> + 'a,
@@ -1288,7 +1288,7 @@ where
             'a,
             F,
             OperatorContext<L::DropConsistency, B>,
-            StreamMapFuncAlgebra<C, Idemp>,
+            StreamMapFuncAlgebra<T, B, C, Idemp>,
         >,
     ) -> Self
     where
@@ -1334,7 +1334,7 @@ where
     /// stream.
     pub fn for_each<F: FnMut(T) + 'a, C, I>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<C, I>>,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<T, B, C, I>>,
     ) where
         C: ValidCommutativityFor<O>,
         I: ValidIdempotenceFor<R>,
@@ -1441,7 +1441,7 @@ where
     pub fn fold<A, I, F, C, Idemp, M, B2: SingletonBound>(
         self,
         init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>>,
-        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<C, Idemp, M>>,
+        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<T, B, C, Idemp, M>>,
     ) -> Singleton<A, L, B2>
     where
         I: Fn() -> A + 'a,
@@ -1455,20 +1455,24 @@ where
             .into();
         let (comb, proof) =
             comb.splice_fn2_borrow_mut_ctx_props(&OperatorContext::<L, B>::new(&self.location));
-        proof.register_proof(&comb);
+        let ordering_hook = proof.register_proof(&comb);
 
         // Only assume_retries (for idempotence), not assume_ordering.
-        // The fold hook in the simulator handles ordering non-determinism directly.
+        // The fold hook in the simulator handles ordering non-determinism directly, so an
+        // ordering hook on the commutativity proof binds to the fold operator itself.
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
         let retried: Stream<T, L::DropConsistency, B, O, ExactlyOnce> = self.assume_retries(nondet);
+
+        let mut metadata = retried
+            .location
+            .new_node_metadata(Singleton::<A, L::DropConsistency, B2>::collection_kind());
+        metadata.op.sim_hook_id = ordering_hook.map(|hook| hook.id);
 
         let core = HydroNode::Fold {
             init,
             acc: comb.into(),
             input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
-            metadata: retried
-                .location
-                .new_node_metadata(Singleton::<A, L::DropConsistency, B2>::collection_kind()),
+            metadata,
             // we do not guarantee consistency at this point because if the algebraic properties
             // do not hold in practice, replica consistency may fail to be maintained, so we
             // would like the simulator to assert consistency; in the future, this will be dynamic
@@ -1503,7 +1507,7 @@ where
     /// ```
     pub fn reduce<F, C, Idemp>(
         self,
-        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<C, Idemp>>,
+        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<T, B, C, Idemp>>,
     ) -> Optional<T, L, B>
     where
         F: Fn(&mut T, T) + 'a,
@@ -1512,11 +1516,15 @@ where
     {
         let (f, proof) =
             comb.splice_fn2_borrow_mut_ctx_props(&OperatorContext::<L, B>::new(&self.location));
-        proof.register_proof(&f);
+        let ordering_hook = proof.register_proof(&f);
 
-        let nondet = nondet!(/** the combinator function is commutative and idempotent */);
+        let nondet_retries = nondet!(/** the combinator function is commutative and idempotent */);
         let ordered_etc: Stream<T, L::DropConsistency, B> =
-            self.assume_retries(nondet).assume_ordering(nondet);
+            self.assume_retries(nondet_retries).assume_ordering(nondet!(
+                /// the combinator function is commutative; the simulator still explores
+                /// (or scripts, via the proof's hook) the ordering
+                hook = ordering_hook
+            ));
 
         let core = HydroNode::Reduce {
             f: f.into(),
@@ -2050,22 +2058,47 @@ where
     /// # Non-Determinism
     /// The output stream is non-deterministic in which elements are sampled, since this
     /// is controlled by a clock.
+    ///
+    /// In simulation tests, the internal batching of elements and of clock samples can be
+    /// scripted through the guard's composite hook payload, e.g.
+    /// `nondet!(/** reason */ hook = (elements_hook.into(), None))`.
     #[cfg(feature = "tokio")]
     pub fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
-        nondet: NonDet,
+        mut nondet: NonDet<(
+            Option<crate::sim_hooks::BatchHook<T, O, R>>,
+            Option<crate::sim_hooks::BatchHook<()>>,
+        )>,
     ) -> Stream<T, L::DropConsistency, Unbounded, O, AtLeastOnce>
     where
         L: TopLevel<'a>,
     {
         let samples = self.location.source_interval(interval);
+        let (elements_hook, samples_hook) = nondet.take_hook();
 
         let tick = self.location.tick();
-        self.batch(&tick, nondet)
-            .filter_if(samples.batch(&tick, nondet).first().is_some())
-            .all_ticks()
-            .weaken_retries()
+        self.batch(
+            &tick,
+            nondet!(
+                /// which elements are batched between samples is captured by the caller's guard
+                hook = elements_hook
+            ),
+        )
+        .filter_if(
+            samples
+                .batch(
+                    &tick,
+                    nondet!(
+                        /// sample timing is captured by the caller's guard
+                        hook = samples_hook
+                    ),
+                )
+                .first()
+                .is_some(),
+        )
+        .all_ticks()
+        .weaken_retries()
     }
 
     /// Given a timeout duration, returns an [`Optional`]  which will have a value if the
@@ -2104,7 +2137,13 @@ where
         );
 
         latest_received
-            .snapshot(&tick, nondet)
+            .snapshot(
+                &tick,
+                nondet!(
+                    /// sampling timing is captured by the caller's guard
+                    nondet
+                ),
+            )
             .filter_map(q!(move |latest_received| {
                 if let Some(latest_received) = latest_received {
                     if Instant::now().duration_since(latest_received) > duration {
@@ -2149,18 +2188,24 @@ where
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
+    ///
+    /// In simulation tests, the batching decisions can be scripted by attaching a
+    /// [`BatchHook`](crate::sim_hooks::BatchHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::BatchHook<T, O, R>>>,
     ) -> Stream<T, Tick<L::DropConsistency>, Bounded, O, R> {
         assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        let mut metadata =
+            tick.new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         Stream::new(
             tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick
-                    .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
+                metadata,
             },
         )
     }
@@ -2219,7 +2264,7 @@ where
     /// for the rest of the program.
     pub fn assume_ordering<O2: Ordering>(
         self,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::OrderingHook<T, B>>>,
     ) -> Stream<T, L::DropConsistency, B, O2, R> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
             self.use_ordering_type().weaken_consistency()
@@ -2236,13 +2281,15 @@ where
             )
         } else {
             let target_location = self.location().drop_consistency();
+            let mut metadata =
+                target_location.new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind());
+            metadata.op.sim_hook_id = nondet.take_hook().map(|hook| hook.id);
             Stream::new(
-                target_location.clone(),
+                target_location,
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                     trusted: false,
-                    metadata: target_location
-                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
+                    metadata,
                 },
             )
         }
@@ -2258,7 +2305,10 @@ where
             self.assume_ordering_trusted(nondet)
         } else {
             let self_location = self.location.clone();
-            let inner: Stream<T, L::DropConsistency, B, O2, R> = self.assume_ordering(nondet);
+            let inner: Stream<T, L::DropConsistency, B, O2, R> = self.assume_ordering(nondet!(
+                /// the unbounded stream exposes ordering non-determinism in intermediate states
+                nondet
+            ));
             Stream::new(self_location, inner.ir_node.replace(HydroNode::Placeholder))
         }
     }
@@ -3106,14 +3156,16 @@ where
     pub fn batch_atomic<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::BatchHook<T, O, R>>>,
     ) -> Stream<T, Tick<L::DropConsistency>, Bounded, O, R> {
+        let mut metadata =
+            tick.new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         Stream::new(
             tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick
-                    .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
+                metadata,
             },
         )
     }
