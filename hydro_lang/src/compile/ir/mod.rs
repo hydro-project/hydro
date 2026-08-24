@@ -1923,7 +1923,19 @@ impl HydroRoot {
 #[cfg(feature = "build")]
 fn tick_of(loc: &LocationId) -> Option<ClockId> {
     match loc {
-        LocationId::Tick(id, _) => Some(*id),
+        // Regular tick.
+        &LocationId::Tick {
+            tick: Some(tick),
+            parent_location: _,
+        } => Some(tick),
+        // Tick around atomic.
+        LocationId::Tick {
+            tick: None,
+            parent_location,
+        } => Some(
+            tick_of(parent_location)
+                .expect("Tick should have either own clock ID or clock ID within parent_location."),
+        ),
         LocationId::Atomic(inner) => tick_of(inner),
         _ => None,
     }
@@ -1932,9 +1944,14 @@ fn tick_of(loc: &LocationId) -> Option<ClockId> {
 #[cfg(feature = "build")]
 fn remap_location(loc: &mut LocationId, uf: &mut HashMap<ClockId, ClockId>) {
     match loc {
-        LocationId::Tick(id, inner) => {
-            *id = uf_find(uf, *id);
-            remap_location(inner, uf);
+        LocationId::Tick {
+            tick,
+            parent_location,
+        } => {
+            if let Some(tick) = tick {
+                *tick = uf_find(uf, *tick);
+            }
+            remap_location(parent_location, uf);
         }
         LocationId::Atomic(inner) => {
             remap_location(inner, uf);
@@ -6127,8 +6144,8 @@ where
                 D::m2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
-        (LocationId::Tick(_, _), _) => panic!(),
-        (_, LocationId::Tick(_, _)) => panic!(),
+        (LocationId::Tick { .. }, _) => panic!(),
+        (_, LocationId::Tick { .. }) => panic!(),
         (LocationId::Atomic(_), _) => panic!(),
         (_, LocationId::Atomic(_)) => panic!(),
     };

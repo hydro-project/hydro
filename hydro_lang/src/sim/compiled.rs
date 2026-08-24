@@ -1325,7 +1325,11 @@ impl<'a> CompiledSimInstance<'a> {
                     location,
                     cluster_id,
                 };
-                let LocationId::Tick(_, parent_location) = &key.location else {
+                let LocationId::Tick {
+                    tick: _,
+                    parent_location,
+                } = &key.location
+                else {
                     unreachable!("tick DFIRs are always keyed by a tick location")
                 };
                 let parent_location = (**parent_location).clone();

@@ -54,7 +54,10 @@ impl SimBuilder {
             LocationId::Process(_) => self.process_graphs.entry(location.clone()).or_default(),
             LocationId::Cluster(_) => self.cluster_graphs.entry(location.clone()).or_default(),
             LocationId::Atomic(tick) => self.get_dfir_mut(tick.as_ref()),
-            LocationId::Tick(_, l) => match l.root() {
+            LocationId::Tick {
+                tick: _,
+                parent_location,
+            } => match parent_location.root() {
                 LocationId::Process(_) => {
                     self.process_tick_dfirs.entry(location.clone()).or_default()
                 }
@@ -88,7 +91,7 @@ impl SimBuilder {
         // top-level process/cluster location. Route each to the map with the matching
         // trait-object type (`TickInputHook` vs `ObservationHook`).
         let map: syn::Ident = match out_location {
-            LocationId::Tick(_, _) => syn::parse_quote!(__hydro_hooks),
+            LocationId::Tick { .. } => syn::parse_quote!(__hydro_hooks),
             LocationId::Process(_) | LocationId::Cluster(_) => {
                 syn::parse_quote!(__hydro_observation_hooks)
             }
@@ -145,7 +148,7 @@ impl SimBuilder {
         // Like `add_hook`, tick-input and observation hooks go to separately typed maps
         // (`ScriptedTickHooks` vs `ScriptedObservationHooks`), matching the target kind.
         let (target, map): (syn::Expr, syn::Ident) = match out_location {
-            LocationId::Tick(_, _) => (
+            LocationId::Tick { .. } => (
                 syn::parse_quote! {
                     #root::sim::runtime::ScriptTarget::Tick {
                         location: #root::sim::runtime::SimLocation {
@@ -257,17 +260,20 @@ impl SimBuilder {
         let root = get_this_crate();
         let tick_location_ser = serde_json::to_string(tick_location).unwrap();
         match tick_location {
-            LocationId::Tick(_, l) => match l.root() {
+            LocationId::Tick {
+                tick: _,
+                parent_location,
+            } => match parent_location.root() {
                 LocationId::Process(_) => {
                     self.add_extra_stmt_internal(
-                        l.root(),
+                        parent_location.root(),
                         syn::parse_quote! {
                             __hydro_inline_hooks.entry(#root::sim::runtime::SimLocation { location: #root::sim::runtime::parse_location(#tick_location_ser), cluster_id: None }).or_default().push(#expr);
                         },
                     );
                 }
                 LocationId::Cluster(_) => {
-                    self.add_extra_stmt_internal(l.root(), syn::parse_quote! {
+                    self.add_extra_stmt_internal(parent_location.root(), syn::parse_quote! {
                         __hydro_inline_hooks.entry(#root::sim::runtime::SimLocation { location: #root::sim::runtime::parse_location(#tick_location_ser), cluster_id: Some(__current_cluster_id) }).or_default().push(#expr);
                     });
                 }
@@ -924,9 +930,18 @@ impl DfirBuilder for SimBuilder {
         out_ident: &syn::Ident,
     ) {
         if let LocationId::Atomic(tick) = in_location
-            && let LocationId::Tick(_, outer) = tick.as_ref()
+            && let LocationId::Tick {
+                tick: _,
+                parent_location,
+            } = tick.as_ref()
         {
-            self.yield_from_tick(in_ident, in_location, in_kind, out_ident, outer.as_ref());
+            self.yield_from_tick(
+                in_ident,
+                in_location,
+                in_kind,
+                out_ident,
+                parent_location.as_ref(),
+            );
         } else {
             unreachable!()
         }
