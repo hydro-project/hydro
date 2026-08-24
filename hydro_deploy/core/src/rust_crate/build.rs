@@ -34,8 +34,9 @@ pub struct BuildParams {
     no_default_features: bool,
     /// `--target <linux>` if cross-compiling for linux ([`HostTargetType::Linux`]).
     target_type: HostTargetType,
-    /// True is the build should use dynamic linking.
-    is_dylib: bool,
+    /// If set, the build uses dynamic linking: `src` is a generated trybuild `dylib-examples`
+    /// crate whose examples link against the trybuild dylib with this cargo package name.
+    dylib_package: Option<String>,
     /// `--features` flags, will be comma-delimited.
     features: Option<Vec<String>>,
     /// `--config` flag
@@ -55,7 +56,7 @@ impl BuildParams {
         build_env: Vec<(String, String)>,
         no_default_features: bool,
         target_type: HostTargetType,
-        is_dylib: bool,
+        dylib_package: Option<String>,
         features: Option<Vec<String>>,
         config: Vec<String>,
     ) -> Self {
@@ -90,7 +91,7 @@ impl BuildParams {
             build_env,
             no_default_features,
             target_type,
-            is_dylib,
+            dylib_package,
             features,
             config,
         }
@@ -103,8 +104,9 @@ pub struct BuildOutput {
     pub bin_data: Vec<u8>,
     /// The path to the binary file. [`Self::bin_data`] has a copy of the content.
     pub bin_path: PathBuf,
-    /// Shared library path, containing any necessary dylibs.
-    pub shared_library_path: Option<PathBuf>,
+    /// Directories to put on the dynamic library search path when running the binary,
+    /// containing any necessary dylibs (empty for statically linked builds).
+    pub shared_library_paths: Vec<PathBuf>,
 }
 impl BuildOutput {
     /// A unique ID for the binary, based its contents.
@@ -135,7 +137,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     // Only use prebuild + per-job target dirs for dylib mode.
                     // Without dylib, build directly into the base target dir.
-                    let (per_job_target_dir, _prebuild_guard, _cargo_lock) = if params.is_dylib {
+                    let (per_job_target_dir, _prebuild_guard, _cargo_lock) = if params.dylib_package.is_some() {
                         let shared_debug = base_target_dir.join("debug");
                         let jobs_dir = base_target_dir.join("jobs");
                         let per_job = hydro_concurrent_cargo::setup_job_dir(&jobs_dir, job_name, &shared_debug);
@@ -228,7 +230,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                     hydro_concurrent_cargo::log_build_event(&base_target_dir, "deploy: starting final build");
 
                     // Populate per-job build/ dir. Hold guard for entire final build.
-                    let _job_build_guard = if params.is_dylib {
+                    let _job_build_guard = if params.dylib_package.is_some() {
                         let shared_debug = base_target_dir.join("debug");
                         Some(hydro_concurrent_cargo::populate_job_build_dir(&per_job_target_dir.join("debug"), &shared_debug))
                     } else {
@@ -236,7 +238,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                     };
 
                     let mut command = Command::new("cargo");
-                    command.args(["build", if params.is_dylib { "--frozen" } else { "--locked" }]);
+                    command.args(["build", if params.dylib_package.is_some() { "--frozen" } else { "--locked" }]);
 
                     if let Some(profile) = params.profile.as_ref() {
                         command.args(["--profile", profile]);
@@ -327,7 +329,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     let stderr_lines = stderr_worker.join().unwrap();
 
                                     // Check for unexpected recompilations (only in dylib mode with prebuild).
-                                    if params.is_dylib {
+                                    if params.dylib_package.is_some() {
                                         for line in &stderr_lines {
                                             if line.contains("Compiling") {
                                                 assert!(
@@ -345,10 +347,14 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     return Ok(BuildOutput {
                                         bin_data: data,
                                         bin_path: path_buf,
-                                        shared_library_path: if params.is_dylib {
-                                            Some(per_job_target_dir.join("debug").join("deps"))
+                                        shared_library_paths: if let Some(dylib_package) = &params.dylib_package {
+                                            hydro_concurrent_cargo::dylib_search_dirs(
+                                                dylib_package,
+                                                &per_job_target_dir.join("debug"),
+                                                &base_target_dir.join("debug"),
+                                            )
                                         } else {
-                                            None
+                                            Vec::new()
                                         },
                                     });
                                 }

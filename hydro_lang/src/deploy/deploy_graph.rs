@@ -31,7 +31,7 @@ use crate::compile::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
 use crate::compile::trybuild::generate::{
-    HYDRO_RUNTIME_FEATURES, LinkingMode, create_graph_trybuild,
+    HYDRO_RUNTIME_FEATURES, LinkingMode, TrybuildConfig, create_graph_trybuild,
 };
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
@@ -925,17 +925,7 @@ impl Node for DeployNode {
                     linking_mode,
                 );
                 let host = trybuild.host.clone();
-                (
-                    create_trybuild_service(
-                        trybuild,
-                        &config.project_dir,
-                        &config.target_dir,
-                        config.features.as_deref(),
-                        &bin_name,
-                        &config.linking_mode,
-                    ),
-                    host,
-                )
+                (create_trybuild_service(trybuild, &config, &bin_name), host)
             }
         };
 
@@ -1048,17 +1038,7 @@ impl Node for DeployCluster {
                     CrateOrTrybuild::Trybuild(trybuild) => {
                         let (bin_name, config) = maybe_trybuild.as_ref().unwrap();
                         let host = trybuild.host.clone();
-                        (
-                            create_trybuild_service(
-                                trybuild,
-                                &config.project_dir,
-                                &config.target_dir,
-                                config.features.as_deref(),
-                                bin_name,
-                                &config.linking_mode,
-                            ),
-                            host,
-                        )
+                        (create_trybuild_service(trybuild, config, bin_name), host)
                     }
                 };
 
@@ -1172,24 +1152,24 @@ impl<T: Into<TrybuildHost>, I: IntoIterator<Item = T>> ClusterSpec<'_, HydroDepl
 
 fn create_trybuild_service(
     trybuild: TrybuildHost,
-    dir: &std::path::Path,
-    target_dir: &std::path::PathBuf,
-    features: Option<&[String]>,
+    config: &TrybuildConfig,
     bin_name: &str,
-    linking_mode: &LinkingMode,
 ) -> RustCrate {
+    let dir = &config.project_dir;
     // For dynamic linking, use the dylib-examples crate; for static, use the base crate
-    let crate_dir = match linking_mode {
+    let crate_dir = match config.linking_mode {
         LinkingMode::Dynamic => dir.join("dylib-examples"),
-        LinkingMode::Static => dir.to_path_buf(),
+        LinkingMode::Static => dir.clone(),
     };
 
     let mut ret = RustCrate::new(&crate_dir, dir)
-        .target_dir(target_dir)
+        .target_dir(&config.target_dir)
         .example(bin_name)
         .no_default_features();
 
-    ret = ret.set_is_dylib(matches!(linking_mode, LinkingMode::Dynamic));
+    if matches!(config.linking_mode, LinkingMode::Dynamic) {
+        ret = ret.dylib_package(&config.dylib_package_name);
+    }
 
     if let Some(display_name) = trybuild.display_name {
         ret = ret.display_name(display_name);
@@ -1246,7 +1226,7 @@ fn create_trybuild_service(
     ret = ret.build_env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
     ret = ret.config("build.incremental = false");
 
-    if let Some(features) = features {
+    if let Some(features) = config.features.as_deref() {
         ret = ret.features(features);
     }
 

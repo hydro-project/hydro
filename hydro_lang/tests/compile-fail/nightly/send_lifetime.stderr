@@ -29,4 +29,10 @@ error: lifetime may not live long enough
    = note: the struct `hydro_lang::prelude::Process<'a, ProcessTag>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-help: `'a` and `'b` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+ --> tests/compile-fail/nightly/send_lifetime.rs:8:4
+  |
+8 | fn test<'a, 'b>(p1: &Process<'a, P1>, p2: &Process<'b, P2>) {
+  |    ^^^^
+  |
+  = help: `'a` and `'b` must be the same: replace one with the other

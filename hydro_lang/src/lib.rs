@@ -164,6 +164,15 @@ ctor::declarative::ctor!(
             vec!["core", "io", "error", "Error"],
             vec!["std", "io", "Error"],
         );
+        // Nightly moved `Rc`/`Arc` (and their `Weak`s) into a private `alloc::rcs` module, so
+        // `type_name` reports `alloc::rcs::rc::Rc` / `alloc::rcs::arc::Arc`. Stageleft's
+        // built-in `alloc -> std` rule runs first and recurses, so match the rewritten form.
+        // TODO: remove once stageleft ships these rules (or the paths stabilize).
+        #[cfg(nightly)]
+        {
+            stageleft::add_private_reexport(vec!["std", "rcs", "rc"], vec!["std", "rc"]);
+            stageleft::add_private_reexport(vec!["std", "rcs", "arc"], vec!["std", "sync"]);
+        }
     }
 );
 
