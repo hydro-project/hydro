@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1787459184013,
+  "lastUpdate": 1787546275686,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -306382,6 +306382,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 181500,
             "range": "± 11353.77",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "883a5e0fed854a2c9a5e17865c837a868c09e1a2",
+          "message": "fix(hydro_lang): make each top-level sim hook its own observation (#3149)\n\nAll top-level hooks at one location were grouped into a single\n`SimObservation` and resolved together whenever the scheduler selected\nthat location. This both bloated and pruned the explored schedule space:\n\n- **Redundant schedules**: co-located hooks releasing jointly in one\nstep\n  is state-equivalent to releasing in consecutive steps (releases only\n  append to disjoint downstream buffers, and propagation happens after\n  the step), so the joint combinations added `a*b` redundant branches on\n  top of the `a+b` sequential ones.\n- **Lost schedules**: hook kinds whose autonomous decision always\nreleases\n  when resolved (e.g. the top-level fold hook, which always selects a\n  non-empty subset) could never stay silent while a co-located sibling\nacted, so interleavings where the sibling's output cycles into the hook\n  before its first release were silently never explored.\n\nUnlike a tick, whose hooks one atomic execution consumes together, a\ntop-level location has no joint consumer: co-located observation hooks\nare causally independent operators. So each hook is now its own\n`SimObservation` (\"its own virtual tick\"): the scheduler picks a single\nhook, and a picked hook always makes a nontrivial decision — staying\nsilent is expressed by picking a different candidate, not by a trivial\ndecision drawn from entropy.\n\nAdds\n`sim_colocated_fold_can_withhold_while_sibling_observation_releases`,\nwhich fails before this change (the witness accumulator version `[11]`,\nthe fold withholding its direct input while the sibling's release cycles\nin, is never explored) and passes after.\n\nExhaustive instance counts in four existing tests shrink accordingly\n(their semantic coverage assertions are unchanged and still pass):\n`sim_top_level_assume_ordering_multiple` 24→15,\n`sim_entries_partially_ordered_cycle_back` 78→28,\n`sim_keyed_merge_ordered` 33→15,\n`sim_keyed_merge_ordered_independent_keys` 2944→1120.\n\nFull hydro_lang lib suite passes; clippy clean.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-08-21T23:50:04Z",
+          "url": "https://github.com/hydro-project/hydro/commit/883a5e0fed854a2c9a5e17865c837a868c09e1a2"
+        },
+        "date": 1787546275629,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 220528,
+            "range": "± 4245",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 3724435,
+            "range": "± 17834",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 3952295,
+            "range": "± 119589",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 42461,
+            "range": "± 2499",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 11187030,
+            "range": "± 475107",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1220863,
+            "range": "± 35522",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1476091,
+            "range": "± 49995",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 46605812,
+            "range": "± 644828",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 3816878,
+            "range": "± 17677",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 17354293,
+            "range": "± 1978966",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 3421064,
+            "range": "± 55416",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 4027041,
+            "range": "± 64990",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 42093307,
+            "range": "± 355619",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 6134,
+            "range": "± 134",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22270,
+            "range": "± 325",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4471,
+            "range": "± 114",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 7235,
+            "range": "± 90",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 461683,
+            "range": "± 4038",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 54631,
+            "range": "± 544",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 46424,
+            "range": "± 639",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 31860,
+            "range": "± 944",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6248,
+            "range": "± 109",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 24402,
+            "range": "± 172",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 80110,
+            "range": "± 1017",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 86441,
+            "range": "± 713",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 6709,
+            "range": "± 93",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 17885,
+            "range": "± 202",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 67941,
+            "range": "± 3048",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 5601,
+            "range": "± 93",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 245440,
+            "range": "± 12340.76",
             "unit": "ops/s"
           }
         ]
