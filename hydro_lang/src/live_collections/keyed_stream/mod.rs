@@ -2670,12 +2670,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     where
         L: TopLevel<'a>,
     {
-        let id = self.location.flow_state().borrow_mut().next_clock_id();
         let out_location = Atomic {
-            tick: Tick {
-                id,
-                l: self.location.clone(),
-            },
+            tick: self.location.tick(),
         };
         KeyedStream::new(
             out_location.clone(),

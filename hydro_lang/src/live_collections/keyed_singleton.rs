@@ -1660,12 +1660,8 @@ where
     where
         L: TopLevel<'a>,
     {
-        let id = self.location.flow_state().borrow_mut().next_clock_id();
         let out_location = Atomic {
-            tick: Tick {
-                id,
-                l: self.location.clone(),
-            },
+            tick: self.location.tick(),
         };
         KeyedSingleton::new(
             out_location.clone(),
