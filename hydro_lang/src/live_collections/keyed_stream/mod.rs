@@ -2897,6 +2897,10 @@ where
         nondet: NonDet,
     ) -> KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R> {
         let _ = nondet;
+        assert_eq!(
+            Location::id(tick.outer()),
+            Location::id(self.location.tick.outer())
+        );
         KeyedStream::new(
             tick.drop_consistency(),
             HydroNode::Batch {

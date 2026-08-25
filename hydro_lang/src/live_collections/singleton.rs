@@ -1227,6 +1227,10 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> Singleton<T, Tick<L::DropConsistency>, Bounded> {
+        assert_eq!(
+            Location::id(tick.outer()),
+            Location::id(self.location.tick.outer())
+        );
         Singleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {

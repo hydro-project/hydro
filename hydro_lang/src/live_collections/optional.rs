@@ -1422,6 +1422,10 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> Optional<T, Tick<L::DropConsistency>, Bounded> {
+        assert_eq!(
+            Location::id(tick.outer()),
+            Location::id(self.location.tick.outer())
+        );
         Optional::new(
             tick.drop_consistency(),
             HydroNode::Batch {
