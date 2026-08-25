@@ -28,7 +28,7 @@ use crate::live_collections::stream::{Ordering, Retries};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::DeferTick;
-use crate::location::{Atomic, Location, Tick, check_matching_location};
+use crate::location::{Atomic, Location, Tick, TopLevel, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::properties::manual_proof;
@@ -1656,7 +1656,10 @@ where
     ///
     /// This is useful to enforce local consistency constraints, such as ensuring that a write is
     /// processed before an acknowledgement is emitted.
-    pub fn atomic(self) -> KeyedSingleton<K, V, Atomic<L>, B> {
+    pub fn atomic(self) -> KeyedSingleton<K, V, Atomic<L>, B>
+    where
+        L: TopLevel<'a>,
+    {
         let id = self.location.flow_state().borrow_mut().next_clock_id();
         let out_location = Atomic {
             tick: Tick {
