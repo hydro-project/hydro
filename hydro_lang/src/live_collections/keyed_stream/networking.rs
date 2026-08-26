@@ -116,7 +116,6 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
@@ -263,8 +262,6 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         R,
     >
     where
-        K: Serialize + DeserializeOwned,
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
@@ -444,7 +441,6 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
@@ -634,8 +630,6 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         R,
     >
     where
-        K: Serialize + DeserializeOwned,
-        V: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();

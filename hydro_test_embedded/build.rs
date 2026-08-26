@@ -116,6 +116,31 @@ fn generate_embedded() {
         .unwrap();
     }
 
+    // --- o2m_demux_embedded (process -> cluster demux, `.embedded()` serialization) ---
+    // The payload type has no serde derives; constructing this flow in a build script
+    // (a non-test context) is the regression scenario for hydro-project/hydro#3158.
+    {
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<hydro_test::embedded::o2m_demux_embedded::Src>();
+        let cluster = flow.cluster::<hydro_test::embedded::o2m_demux_embedded::Dst>();
+        hydro_test::embedded::o2m_demux_embedded::o2m_demux_embedded(
+            &cluster,
+            process.embedded_input("input"),
+        )
+        .embedded_output("output");
+
+        let code = flow
+            .with_process(&process, "o2m_demux_sender")
+            .with_cluster(&cluster, "o2m_demux_receiver")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/o2m_demux_embedded.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
     // --- m2o_send (cluster -> process) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
