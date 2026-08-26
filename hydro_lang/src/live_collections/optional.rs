@@ -1422,10 +1422,6 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> Optional<T, Tick<L::DropConsistency>, Bounded> {
-        assert_eq!(
-            Location::id(tick.parent_location()),
-            Location::id(self.location.tick.parent_location())
-        );
         Optional::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -1454,10 +1450,7 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> Optional<T, Tick<L::DropConsistency>, Bounded> {
-        assert_eq!(
-            Location::id(tick.parent_location()),
-            Location::id(&self.location)
-        );
+        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
         Optional::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -1605,12 +1598,12 @@ where
     /// ```
     pub fn latest(self) -> Optional<T, L, Unbounded> {
         Optional::new(
-            self.location.parent_location().clone(),
+            self.location.outer().clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .parent_location()
+                    .outer()
                     .new_node_metadata(Optional::<T, L, Unbounded>::collection_kind()),
             },
         )

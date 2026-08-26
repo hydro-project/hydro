@@ -2173,7 +2173,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         Idemp: ValidIdempotenceFor<R>,
     {
         let other: Optional<O2, Tick<L::Root>, Bounded> = other.into();
-        check_matching_location(&self.location.root(), other.location.parent_location());
+        check_matching_location(&self.location.root(), other.location.outer());
         let (f, proof) =
             comb.splice_fn2_borrow_mut_ctx_props(&OperatorContext::<L, B>::new(&self.location));
         proof.register_proof(&f);
@@ -2696,10 +2696,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         nondet: NonDet,
     ) -> KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R> {
         let _ = nondet;
-        assert_eq!(
-            Location::id(tick.parent_location()),
-            Location::id(&self.location)
-        );
+        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
         KeyedStream::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -2900,10 +2897,6 @@ where
         nondet: NonDet,
     ) -> KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R> {
         let _ = nondet;
-        assert_eq!(
-            Location::id(tick.parent_location()),
-            Location::id(self.location.tick.parent_location())
-        );
         KeyedStream::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -2941,13 +2934,18 @@ where
     /// each key.
     pub fn all_ticks(self) -> KeyedStream<K, V, L, Unbounded, O, R> {
         KeyedStream::new(
-            self.location.parent_location().clone(),
+            self.location.outer().clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .parent_location()
-                    .new_node_metadata(KeyedStream::<K, V, L, Unbounded, O, R>::collection_kind()),
+                metadata: self.location.outer().new_node_metadata(KeyedStream::<
+                    K,
+                    V,
+                    L,
+                    Unbounded,
+                    O,
+                    R,
+                >::collection_kind(
+                )),
             },
         )
     }

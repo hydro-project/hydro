@@ -2156,10 +2156,7 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> Stream<T, Tick<L::DropConsistency>, Bounded, O, R> {
-        assert_eq!(
-            Location::id(tick.parent_location()),
-            Location::id(&self.location)
-        );
+        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
         Stream::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -3113,10 +3110,6 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> Stream<T, Tick<L::DropConsistency>, Bounded, O, R> {
-        assert_eq!(
-            Location::id(tick.parent_location()),
-            Location::id(self.location.tick.parent_location())
-        );
         Stream::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -3242,17 +3235,13 @@ where
     /// which will stream all the elements across _all_ tick iterations by concatenating the batches.
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, O, R> {
         Stream::new(
-            self.location.parent_location().clone(),
+            self.location.outer().clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self.location.parent_location().new_node_metadata(Stream::<
-                    T,
-                    L,
-                    Unbounded,
-                    O,
-                    R,
-                >::collection_kind(
-                )),
+                metadata: self
+                    .location
+                    .outer()
+                    .new_node_metadata(Stream::<T, L, Unbounded, O, R>::collection_kind()),
             },
         )
     }
