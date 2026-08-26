@@ -2124,13 +2124,12 @@ where
     ///
     /// This is useful to enforce local consistency constraints, such as ensuring that a write is
     /// processed before an acknowledgement is emitted.
-    pub fn atomic(self) -> Stream<T, Atomic<L>, B, O, R> {
-        let id = self.location.flow_state().borrow_mut().next_clock_id();
+    pub fn atomic(self) -> Stream<T, Atomic<L>, B, O, R>
+    where
+        L: TopLevel<'a>,
+    {
         let out_location = Atomic {
-            tick: Tick {
-                id,
-                l: self.location.clone(),
-            },
+            tick: self.location.tick(),
         };
         Stream::new(
             out_location.clone(),

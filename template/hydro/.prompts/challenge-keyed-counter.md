@@ -34,12 +34,12 @@ You are helping the developer build a keyed counter service where a single serve
 
 ```rust
 use hydro_lang::live_collections::stream::NoOrder;
-use hydro_lang::location::Location;
+use hydro_lang::location::TopLevel;
 use hydro_lang::prelude::*;
 
 pub struct CounterServer;
 
-pub fn keyed_counter_service<'a, L: Location<'a>>(
+pub fn keyed_counter_service<'a, L: TopLevel<'a>>(
     increment_requests: KeyedStream<u32, String, L, Unbounded>,
     get_requests: KeyedStream<u32, String, L, Unbounded>,
 ) -> (
