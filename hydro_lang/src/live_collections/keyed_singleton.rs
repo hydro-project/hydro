@@ -97,7 +97,7 @@ impl KeyedSingletonBound for Bounded {
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key appears,
 /// its value is bounded and will never change, but new entries may appear asynchronously
-pub struct BoundedValue;
+pub enum BoundedValue {}
 
 impl KeyedSingletonBound for BoundedValue {
     type UnderlyingBound = Unbounded;
@@ -114,7 +114,7 @@ impl KeyedSingletonBound for BoundedValue {
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key appears,
 /// it will never be removed, and the corresponding value will only increase monotonically.
-pub struct MonotonicValue;
+pub enum MonotonicValue {}
 
 impl KeyedSingletonBound for MonotonicValue {
     type UnderlyingBound = Unbounded;
@@ -131,7 +131,7 @@ impl KeyedSingletonBound for MonotonicValue {
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key
 /// appears, it will never be removed, but the corresponding value may change arbitrarily.
-pub struct MonotonicKeys;
+pub enum MonotonicKeys {}
 
 impl KeyedSingletonBound for MonotonicKeys {
     type UnderlyingBound = Unbounded;
