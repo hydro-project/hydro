@@ -248,7 +248,7 @@ impl<'a> SimFlow<'a> {
         let out = compile_sim(bin, trybuild).unwrap();
         let lib = {
             let _span = tracing::debug_span!(target: "hydro_build", "load_dylib").entered();
-            unsafe { Library::new(&out).unwrap() }
+            unsafe { Library::new(&*out).unwrap() }
         };
         drop(compiled_span);
 
