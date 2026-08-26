@@ -68,7 +68,7 @@ impl SingletonBound for Bounded {
 }
 
 /// Marks that the [`Singleton`] is monotonic, which means that its value will only grow over time.
-pub struct Monotonic;
+pub enum Monotonic {}
 
 impl SingletonBound for Monotonic {
     type UnderlyingBound = Unbounded;
