@@ -6,7 +6,7 @@ sidebar_position: 2
 
 Hydro's standard deployment model compiles each location into a standalone binary and manages networking automatically. But sometimes you need more control — maybe you're integrating Hydro into an existing Rust application, or you need to wire up custom I/O like DPDK, a game engine's event loop, or a hardware interface. Embedded mode is designed for these cases.
 
-Instead of producing self-contained binaries, embedded mode generates a Rust source file containing one plain function per location. Each function returns a `Dfir` dataflow graph that you drive manually. You decide when to tick it, how to feed it data, and where the outputs go.
+Instead of producing self-contained binaries, embedded mode generates a Rust source file containing one plain function per location. Each function returns a [`Dfir`](rust:dfir_rs::scheduled::context::Dfir) dataflow graph that you drive manually. You decide when to tick it, how to feed it data, and where the outputs go.
 
 ## When to Use Embedded Mode
 - **Incremental adoption**: You have an existing Rust codebase and want to introduce Hydro for a specific computation without restructuring your application around Hydro Deploy.
@@ -18,8 +18,8 @@ When your Hydro program sends data between processes, the generated functions ga
 ## How It Works
 Embedded mode uses a `build.rs` script to compile your Hydro program at build time. The generated code is then `include!`-ed into your crate. The workflow has three parts:
 
-1. **Define your Hydro logic** using `embedded_input` and `embedded_output` to mark where data enters and leaves the dataflow.
-2. **Generate code** in `build.rs` using `generate_embedded`.
+1. **Define your Hydro logic** using [`Location::embedded_input`](rust:hydro_lang::location::Location::embedded_input) and [`Stream::embedded_output`](rust:hydro_lang::live_collections::Stream::embedded_output) to mark where data enters and leaves the dataflow.
+2. **Generate code** in `build.rs` using [`generate_embedded`](rust:hydro_lang::compile::deploy::DeployFlow::generate_embedded).
 3. **Call the generated function** from your application, passing in streams and output callbacks.
 
 Let's walk through a complete example that capitalizes strings using Hydro in embedded mode.
@@ -37,7 +37,7 @@ pub fn capitalize<'a>(input: Stream<String, Process<'a, ()>>) {
 }
 ```
 
-`embedded_input` creates a stream parameter on the generated function — the name you pass (`"input"`) becomes the parameter name. Similarly, `embedded_output` creates a field on a generated `EmbeddedOutputs` struct — the name (`"output"`) becomes the field name. The output field accepts an `impl FnMut(T)` closure that will be called for each emitted element.
+[`embedded_input`](rust:hydro_lang::location::Location::embedded_input) creates a stream parameter on the generated function — the name you pass (`"input"`) becomes the parameter name. Similarly, [`embedded_output`](rust:hydro_lang::live_collections::Stream::embedded_output) creates a field on a generated `EmbeddedOutputs` struct — the name (`"output"`) becomes the field name. The output field accepts an `impl FnMut(T)` closure that will be called for each emitted element.
 
 Your base crate also needs to declare an empty `stageleft_macro_entrypoint` feature. This is required by the Stageleft code generation machinery to set up the correct re-exports:
 
@@ -68,7 +68,7 @@ tokio = { version = "1", features = ["full"] }
 
 The `runtime_support` feature is needed at runtime to provide the DFIR runtime. The `build` feature is needed in `build-dependencies` for the code generation APIs.
 
-In its `build.rs`, construct a `FlowBuilder`, wire up the logic, and call `generate_embedded`:
+In its `build.rs`, construct a [`FlowBuilder`](rust:hydro_lang::compile::builder::FlowBuilder), wire up the logic, and call [`generate_embedded`](rust:hydro_lang::compile::deploy::DeployFlow::generate_embedded):
 
 ```rust title="my_wrapper_crate/build.rs"
 use hydro_lang::location::Location;
@@ -96,7 +96,7 @@ fn main() {
 }
 ```
 
-The string `"capitalize"` passed to `with_process` becomes the name of the generated function. The argument to `generate_embedded` is the name of the crate containing your Hydro logic (hyphens are automatically replaced with underscores).
+The string `"capitalize"` passed to [`with_process`](rust:hydro_lang::compile::builder::FlowBuilder::with_process) becomes the name of the generated function. The argument to `generate_embedded` is the name of the crate containing your Hydro logic (hyphens are automatically replaced with underscores).
 
 ### 3. Include and Use the Generated Code
 In your wrapper crate's `lib.rs`, include the generated file:
@@ -139,14 +139,14 @@ async fn run() {
 }
 ```
 
-The generated function accepts your input streams as `impl Stream<Item = T> + Unpin` parameters and a mutable reference to the `EmbeddedOutputs` struct. It returns a `Dfir` graph that you run with `run_available()` (or tick manually).
+The generated function accepts your input streams as `impl Stream<Item = T> + Unpin` parameters and a mutable reference to the `EmbeddedOutputs` struct. It returns a [`Dfir`](rust:dfir_rs::scheduled::context::Dfir) graph that you run with [`run_available()`](rust:dfir_rs::scheduled::context::Dfir::run_available) (or tick manually).
 
 
 ## Singleton Inputs
 
 In addition to stream inputs, you can pass singleton values into embedded mode. A **singleton input** becomes a plain `T` parameter on the generated function — no stream wrapping needed. This is useful for configuration values, thresholds, or any fixed data that the dataflow needs.
 
-Use `embedded_singleton_input` instead of `embedded_input`:
+Use [`Location::embedded_singleton_input`](rust:hydro_lang::location::Location::embedded_singleton_input) instead of `embedded_input`:
 
 ```rust title="my_hydro_crate/src/lib.rs"
 use hydro_lang::prelude::*;
@@ -197,10 +197,10 @@ Singleton inputs appear before stream inputs in the generated function signature
 
 ## Clusters
 
-When a location is a cluster (registered with `with_cluster` in `build.rs`), the generated function receives additional parameters for the cluster's identity and membership information.
+When a location is a cluster (registered with [`with_cluster`](rust:hydro_lang::compile::builder::FlowBuilder::with_cluster) in `build.rs`), the generated function receives additional parameters for the cluster's identity and membership information.
 
 ### Self ID
-A function generated for a cluster location receives a `__cluster_self_id: &TaglessMemberId` parameter. This tells the running instance which member of the cluster it is. You provide this when you call the generated function:
+A function generated for a cluster location receives a `__cluster_self_id` parameter of type [`&TaglessMemberId`](rust:hydro_lang::location::member_id::TaglessMemberId). This tells the running instance which member of the cluster it is. You provide this when you call the generated function:
 
 ```rust,ignore
 let member_id = TaglessMemberId::from_raw_id(0);
@@ -208,7 +208,7 @@ let mut flow = my_cluster_fn(&member_id, input, &mut outputs);
 ```
 
 ### Membership Streams
-When a location (process or cluster) needs to know the members of another cluster — for example, to broadcast to it — the generated function receives an `EmbeddedMembershipStreams` struct parameter. This struct has one field per cluster whose membership is needed, named after that cluster's function name. Each field is a `Stream<Item = (TaglessMemberId, MembershipEvent)>`:
+When a location (process or cluster) needs to know the members of another cluster — for example, to broadcast to it — the generated function receives an `EmbeddedMembershipStreams` struct parameter. This struct has one field per cluster whose membership is needed, named after that cluster's function name. Each field is a stream of ([`TaglessMemberId`](rust:hydro_lang::location::member_id::TaglessMemberId), [`MembershipEvent`](rust:hydro_lang::location::MembershipEvent)) pairs:
 
 ```rust,ignore
 pub mod my_sender {
@@ -249,9 +249,9 @@ let code = flow
 
 ## Networking
 
-When your Hydro program uses `.send()` between locations, the generated functions get extra parameters so you can wire up the transport yourself. By default (with `.bincode()` serialization), Hydro automatically handles serialization — just shuttle the raw bytes between sender and receiver. Alternatively, [`.embedded()` serialization](#embedded-serialization) exposes the raw element type instead of bytes, so you can perform serialization yourself. In either case, you must ensure that you are preserving any guarantees of the network protocol specified in the Hydro program. For example, if the channel uses `TCP`, you must ensure that your networking mechanism preserves ordering and exactly-once delivery.
+When your Hydro program uses [`.send()`](rust:hydro_lang::live_collections::Stream::send) between locations, the generated functions get extra parameters so you can wire up the transport yourself. By default (with [`.bincode()`](rust:hydro_lang::networking::NetworkingConfig::bincode) serialization), Hydro automatically handles serialization — just shuttle the raw bytes between sender and receiver. Alternatively, [`.embedded()` serialization](#embedded-serialization) exposes the raw element type instead of bytes, so you can perform serialization yourself. In either case, you must ensure that you are preserving any guarantees of the network protocol specified in the Hydro program. For example, if the channel uses [`TCP`](rust:hydro_lang::networking::TCP), you must ensure that your networking mechanism preserves ordering and exactly-once delivery.
 
-Network channels in embedded mode **must be named**. Use `.name()` on the networking config:
+Network channels in embedded mode **must be named**. Use [`.name()`](rust:hydro_lang::networking::NetworkingConfig::name) on the networking config:
 
 ```rust,ignore
 input.send(receiver, TCP.fail_stop().bincode().name("messages"))
@@ -369,7 +369,7 @@ Your transport layer must handle both directions: route outgoing `(target_id, by
 
 ### Embedded Serialization
 
-By default, network channels use `.bincode()` serialization: Hydro serializes each element to `Bytes` before handing it to your transport, and deserializes the `BytesMut` your transport delivers on the other side. If you want to control the wire format yourself — for example to use a zero-copy encoding, integrate with an existing protocol, or hand off to a transport that carries typed messages — configure the channel with [`.embedded()` serialization](../locations/network-configuration.md#embedded) instead:
+By default, network channels use [`.bincode()`](rust:hydro_lang::networking::NetworkingConfig::bincode) serialization: Hydro serializes each element to `Bytes` before handing it to your transport, and deserializes the `BytesMut` your transport delivers on the other side. If you want to control the wire format yourself — for example to use a zero-copy encoding, integrate with an existing protocol, or hand off to a transport that carries typed messages — configure the channel with [`.embedded()` serialization](../locations/network-configuration.md#embedded) instead:
 
 ```rust,ignore
 input.send(receiver, TCP.fail_stop().embedded().name("messages"))
@@ -406,7 +406,7 @@ pub mod echo_receiver {
 }
 ```
 
-Embedded serialization can be combined with any transport configuration, including `UDP`. As with all embedded-mode networking, the transport and fault policy declared in the Hydro program describe a contract your wiring must uphold: a `TCP.fail_stop()` embedded channel requires your transport to deliver an in-order prefix of the sent elements, while a `UDP` embedded channel permits drops and reordering (and the received stream is typed as `NoOrder` accordingly).
+Embedded serialization can be combined with any transport configuration, including [`UDP`](rust:hydro_lang::networking::UDP). As with all embedded-mode networking, the transport and fault policy declared in the Hydro program describe a contract your wiring must uphold: a `TCP.fail_stop()` embedded channel requires your transport to deliver an in-order prefix of the sent elements, while a `UDP` embedded channel permits drops and reordering (and the received stream is typed as [`NoOrder`](rust:hydro_lang::live_collections::stream::NoOrder) accordingly).
 
 :::note
 
