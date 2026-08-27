@@ -84,13 +84,13 @@
   letter-spacing: 0.4px;
 }
 
-.swapOutLetter {
+.previewValue {
   font-family: var(--ifm-font-family-monospace);
   font-size: 15px;
   font-weight: 800;
 }
 
-.swapOutQuote {
+.previewMuted {
   font-family: var(--ifm-font-family-monospace);
   font-size: 15px;
   font-weight: 800;
@@ -219,15 +219,9 @@
   }
 }
 
-/* ===== Swapping in-flight packets (correctness scene) =====
- *
- * Motion is computed per-frame from the shared swap clock
- * (swap-clock.ts) — true elliptical arcs with smoothstep easing —
- * so packets and output letters stay perfectly in sync. Only the
- * enter-fade and static chip layout live in CSS.
- */
+/* ===== Ghost overlay (correctness scene) ===== */
 
-.swapPacketsEnter {
+.ghostEnter {
   /* Opacity-only fade: this group is positioned via its SVG transform
      attribute, which a CSS transform animation would override. */
   animation: lpFadeInOpacity 0.5s ease both;
@@ -240,6 +234,52 @@
   to {
     opacity: 1;
   }
+}
+
+/* ===== Ghost delivery (non-deterministic cardinality) =====
+ *
+ * A retried/uncertain message pulses between barely-there and fully
+ * delivered; the paired cardinality preview crossfades between two values
+ * using the inverse keyframes with the same duration, staying in sync. */
+
+.ghostPulse {
+  animation: lpGhostPulse 4s ease-in-out infinite;
+}
+
+.ghostPulseInverse {
+  animation: lpGhostPulseInverse 4s ease-in-out infinite;
+}
+
+@keyframes lpGhostPulse {
+  0%,
+  18%,
+  82%,
+  100% {
+    opacity: 0.18;
+  }
+  42%,
+  58% {
+    opacity: 1;
+  }
+}
+
+@keyframes lpGhostPulseInverse {
+  0%,
+  18%,
+  82%,
+  100% {
+    opacity: 1;
+  }
+  42%,
+  58% {
+    opacity: 0.12;
+  }
+}
+
+.ghostNote {
+  font-size: 11px;
+  font-style: italic;
+  fill: var(--lp-muted);
 }
 
 /* ===== Panels under the graph (output preview / sim log) ===== */
@@ -383,6 +423,17 @@
   animation: lpFadeInOpacity 0.35s ease both;
 }
 
+.logFail {
+  color: var(--lp-error);
+  font-weight: 700;
+  animation: lpFadeInOpacity 0.35s ease both;
+}
+
+.instanceChipFail {
+  color: var(--lp-error) !important;
+  border-color: var(--lp-error) !important;
+}
+
 /* ===== Code panels ===== */
 
 .codePanel {
@@ -441,6 +492,13 @@
 .codeLineStatic {
   background: var(--lp-line-static);
   border-left-color: var(--lp-aws);
+}
+
+/* A failing assertion line (sim scene): held in red while the trace shows
+ * the failure. */
+.codeLineFail {
+  background: var(--lp-error-bg);
+  border-left-color: var(--lp-error);
 }
 
 /* Flash of the `nondet!` line whenever the simulator makes a decision;
