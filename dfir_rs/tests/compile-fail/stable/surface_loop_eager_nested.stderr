@@ -1,0 +1,5 @@
+error: Eager windowing operator `batch_eager(...)` is only allowed at the entry of a root-level `loop { ... }` context, not a nested loop.
+ --> tests/compile-fail/stable/surface_loop_eager_nested.rs:8:22
+  |
+8 |                 b -> batch_eager() -> null();
+  |                      ^^^^^^^^^^^

@@ -1132,6 +1132,33 @@ impl FlatGraphBuilder {
                         ));
                     }
                 }
+                Some(FloType::WindowingEager) => {
+                    if !is_input {
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            format!(
+                                "Windowing operator `{}(...)` must be the first input operator into a `loop {{ ... }}` context.",
+                                op_inst.op_constraints.name
+                            )
+                        ));
+                    } else if loop_id
+                        .and_then(|lid| self.flat_graph.loop_parent(lid))
+                        .is_some()
+                    {
+                        // An eager windowing operator forces the loop to always fire. In a nested
+                        // loop this would prevent the fixpoint iteration from ever terminating, so
+                        // it is only allowed at the entry of a root-level loop.
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            format!(
+                                "Eager windowing operator `{}(...)` is only allowed at the entry of a root-level `loop {{ ... }}` context, not a nested loop.",
+                                op_inst.op_constraints.name
+                            )
+                        ));
+                    }
+                }
                 Some(FloType::Unwindowing) => {
                     if !is_output {
                         self.diagnostics.push(Diagnostic::spanned(
