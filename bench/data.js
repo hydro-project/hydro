@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1787718396071,
+  "lastUpdate": 1787841831275,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -306988,6 +306988,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 217740,
             "range": "± 338.23",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mingwei Samuel",
+            "username": "MingweiSamuel",
+            "email": "mingwei.samuel@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "b700d7805aad361a0d3ab4a0c76730461de73abe",
+          "message": "fix(hydro_lang)!: require top-level locations for `.atomic()` on live collections (#3153)\n\nPreviously, `Stream::atomic`, `KeyedStream::atomic`, and\n`KeyedSingleton::atomic`\nwere available for any `L: Location<'a>`, allowing them to be called on\ncollections already located in a `Tick` or `Atomic` context. This could\nconstruct invalid locations:\n\n- `.atomic()` on a `Tick<L>`-located collection minted a fresh clock\nwrapping\nthe existing tick, producing `Atomic<Tick<L>>` — i.e. an invalid\ndirectly\n  nested `Tick(Tick(..))` location.\n- `.atomic()` on an `Atomic<L>`-located collection produced a redundant\n  `Atomic<Atomic<L>>`.\n\nThe sim backend caught both cases only at flow-compile time, with\ninternal\ncompiler panics (`assertion failed: in_location.is_top_level()` in\n`begin_atomic`, and `todo!(\"atomic yield to a different tick is not yet\nsupported\")` in `yield_from_tick`). The deploy backend was worse: it\nsilently\ncompiled such programs, erasing the atomic boundary entirely (begin/end\natomic\nare identity ops in DFIR codegen, and the fresh clock ID was never\nunified\nwith the surrounding tick by `unify_atomic_ticks`), so the atomicity\nguarantee\nwas silently dropped.\n\nFix: add a `L: TopLevel<'a>` bound to all three `.atomic()` methods,\nmaking\nboth invalid constructions compile errors. Intentionally valid nestings\nlike\n`Tick(Atomic(Tick(L)))` remain constructible through their intended\npaths\n(`all_ticks_atomic`, `latest_atomic`, ticks created on atomic\nlocations),\nwhich reuse the existing clock rather than minting a nested one.\n\nAlso:\n- Tighten `keyed_counter_service` in\n`hydro_test/src/tutorials/keyed_counter.rs`\nfrom `L: Location<'a>` to `L: TopLevel<'a>`, since it calls `.atomic()`\non\n  its generic location.\n- Add two trybuild compile-fail tests (`atomic_on_tick_location.rs`,\n`atomic_on_atomic_location.rs`) with stable and nightly stderr\nsnapshots.\n\nVerified: full workspace `cargo check --all-targets` passes, existing\natomic/sliced sim tests and the keyed_counter tutorial tests pass, and\nthe\ncompile-fail suite passes on both stable and nightly.\n\nBREAKING CHANGE: `Stream::atomic`, `KeyedStream::atomic`, and\n`KeyedSingleton::atomic` now require the collection's location to\nimplement\n`TopLevel` (i.e. `Process` or `Cluster`). Code generic over `L:\nLocation<'a>`\nthat calls `.atomic()` must tighten its bound to `L: TopLevel<'a>`;\ncalls on\n`Tick`- or `Atomic`-located collections (previously invalid or\nredundant, and\nmiscompiled by the deploy backend) no longer compile.\n\n---------\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-08-26T23:05:12Z",
+          "url": "https://github.com/hydro-project/hydro/commit/b700d7805aad361a0d3ab4a0c76730461de73abe"
+        },
+        "date": 1787841831231,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 272654,
+            "range": "± 401",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 5727626,
+            "range": "± 68623",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6031124,
+            "range": "± 33278",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 39664,
+            "range": "± 1585",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 12370607,
+            "range": "± 284200",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1351883,
+            "range": "± 15700",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1394995,
+            "range": "± 15783",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 36296402,
+            "range": "± 858536",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 5956736,
+            "range": "± 83026",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 9746037,
+            "range": "± 1079098",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 5725222,
+            "range": "± 5472",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6121297,
+            "range": "± 13025",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 34944733,
+            "range": "± 160149",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 5603,
+            "range": "± 94",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 19227,
+            "range": "± 78",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 3418,
+            "range": "± 109",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 5709,
+            "range": "± 223",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 462169,
+            "range": "± 1487",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 47293,
+            "range": "± 232",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 35198,
+            "range": "± 205",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 14636,
+            "range": "± 157",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 5626,
+            "range": "± 58",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 5825,
+            "range": "± 52",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 61116,
+            "range": "± 336",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 77348,
+            "range": "± 2719",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 5993,
+            "range": "± 103",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 13062,
+            "range": "± 75",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 48316,
+            "range": "± 1555",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 4831,
+            "range": "± 87",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 272120,
+            "range": "± 13895.96",
             "unit": "ops/s"
           }
         ]
