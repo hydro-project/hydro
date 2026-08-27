@@ -83,7 +83,7 @@ fn scripted_exhaustive_ticks_interleave_around_observation_cycle() {
 
     let (in_send, input) = node.sim_input::<u32, NoOrder, _>();
 
-    let (complete_cycle_back, cycle_back) = node.forward_ref::<Stream<_, _, _, NoOrder>>();
+    let (cycle_back_sender, cycle_back) = node.channel::<Stream<_, _, _, NoOrder>>();
     let ordered = input
         .merge_unordered(cycle_back)
         .assume_ordering::<TotalOrder>(nondet!(
@@ -99,7 +99,7 @@ fn scripted_exhaustive_ticks_interleave_around_observation_cycle() {
         (b.clone(), b.collect_vec().into_stream())
     };
     let (cycle_src, batches) = tick_outputs;
-    complete_cycle_back.complete(
+    cycle_back_sender.send(
         cycle_src
             .map(q!(|v| v + 1))
             .filter(q!(|v| *v == 1))
@@ -748,7 +748,7 @@ fn scripted_pause_until_cannot_be_satisfied_by_the_state_its_own_decision_consum
 
     let (in_send, input) = node.sim_input::<u32, NoOrder, _>();
 
-    let (complete_cycle_back, cycle_back) = node.forward_ref::<Stream<_, _, _, NoOrder>>();
+    let (cycle_back_sender, cycle_back) = node.channel::<Stream<_, _, _, NoOrder>>();
     let merged = input.merge_unordered(cycle_back);
 
     let released = sliced! {
@@ -756,7 +756,7 @@ fn scripted_pause_until_cannot_be_satisfied_by_the_state_its_own_decision_consum
         batch
     };
     // Only seed 1 cycles back, as a single element.
-    complete_cycle_back.complete(
+    cycle_back_sender.send(
         released
             .clone()
             .filter(q!(|v| *v == 1))
@@ -1324,12 +1324,12 @@ fn scripted_prefed_input_behind_waiting_group_confronts_schedule_pruning() {
     let (a_send, a_input) = node.sim_input::<u32, TotalOrder, _>();
     let (b_send, b_input) = node.sim_input::<u32, TotalOrder, _>();
 
-    let (complete_cycle, cycled) = node.forward_ref::<Stream<_, _, _, NoOrder>>();
+    let (cycle_sender, cycled) = node.channel::<Stream<_, _, _, NoOrder>>();
     let b_out = sliced! {
         let released = use::batch(b_input, nondet!(/** scripted */ hook = b_hook));
         released
     };
-    complete_cycle.complete(
+    cycle_sender.send(
         b_out
             .map(q!(|v| v + 100))
             .send(&node2, TCP.fail_stop().bincode())
@@ -1377,12 +1377,12 @@ fn scripted_pause_spans_waiting_group_and_releases_on_install() {
     let (a_send, a_input) = node.sim_input::<u32, TotalOrder, _>();
     let (b_send, b_input) = node.sim_input::<u32, TotalOrder, _>();
 
-    let (complete_cycle, cycled) = node.forward_ref::<Stream<_, _, _, NoOrder>>();
+    let (cycle_sender, cycled) = node.channel::<Stream<_, _, _, NoOrder>>();
     let b_out = sliced! {
         let released = use::batch(b_input, nondet!(/** scripted */ hook = b_hook));
         released
     };
-    complete_cycle.complete(
+    cycle_sender.send(
         b_out
             .map(q!(|v| v + 100))
             .send(&node2, TCP.fail_stop().bincode())

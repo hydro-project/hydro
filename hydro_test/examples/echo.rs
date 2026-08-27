@@ -74,7 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (port, input, membership, output_ref) =
         process.bidi_external_many_bytes::<_, _, LinesCodec>(&external, NetworkHint::Auto);
 
-    output_ref.complete(hydro_test::external_client::echo::echo_server(
+    output_ref.send(hydro_test::external_client::echo::echo_server(
         input, membership,
     ));
 

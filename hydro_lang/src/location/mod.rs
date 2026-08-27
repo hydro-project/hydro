@@ -38,14 +38,14 @@ use syn::parse_quote;
 #[cfg(feature = "tokio")]
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
+use crate::channel::ForwardRef;
+#[cfg(stageleft_runtime)]
+use crate::channel::{ChannelSender, CreateChannelSender, CycleCollection};
 #[cfg(feature = "tokio")]
 use crate::compile::ir::DebugInstantiate;
 use crate::compile::ir::{
     ClusterMembersState, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource,
 };
-use crate::forward_handle::ForwardRef;
-#[cfg(stageleft_runtime)]
-use crate::forward_handle::{CycleCollection, ForwardHandle};
 use crate::live_collections::boundedness::{Bounded, Unbounded};
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
@@ -564,7 +564,8 @@ pub trait Location<'a>: DynLocation {
         let (port, stream, sink) =
             self.bind_single_client::<_, Bytes, LengthDelimitedCodec>(from, NetworkHint::Auto);
 
-        sink.complete(stream.location().source_iter(q!([])));
+        // This is a one-way connection, so nothing is ever sent back to the client.
+        drop(sink);
 
         (port, stream)
     }
@@ -588,7 +589,9 @@ pub trait Location<'a>: DynLocation {
         T: Serialize + DeserializeOwned,
     {
         let (port, stream, sink) = self.bind_single_client_bincode::<_, T, ()>(from);
-        sink.complete(stream.location().source_iter(q!([])));
+
+        // This is a one-way connection, so nothing is ever sent back to the client.
+        drop(sink);
 
         (
             ExternalBincodeSink {
@@ -701,7 +704,7 @@ pub trait Location<'a>: DynLocation {
     /// let external = flow.external::<()>();
     /// let (port, incoming, outgoing) =
     ///     node.bind_single_client::<_, Bytes, LengthDelimitedCodec>(&external, NetworkHint::Auto);
-    /// outgoing.complete(incoming.map(q!(|data /* : Bytes */| {
+    /// outgoing.send(incoming.map(q!(|data /* : Bytes */| {
     ///     let mut resp: Vec<u8> = data.into();
     ///     resp.push(42);
     ///     resp.into() // : Bytes
@@ -734,7 +737,7 @@ pub trait Location<'a>: DynLocation {
     ) -> (
         ExternalBytesPort<NotMany>,
         Stream<<Codec as Decoder>::Item, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>,
-        ForwardHandle<'a, Stream<T, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>>,
+        ChannelSender<'a, Stream<T, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>>,
     )
     where
         Self: TopLevel<'a> + Sized,
@@ -742,13 +745,9 @@ pub trait Location<'a>: DynLocation {
         let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
         let target_consistency = self.drop_consistency();
 
-        let (fwd_ref, to_sink) = target_consistency.forward_ref::<Stream<
-            T,
-            Self::DropConsistency,
-            Unbounded,
-            TotalOrder,
-            ExactlyOnce,
-        >>();
+        let (fwd_ref, to_sink) =
+            target_consistency
+                .channel::<Stream<T, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>>();
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
         flow_state_borrow.push_root(HydroRoot::SendExternal {
@@ -818,7 +817,7 @@ pub trait Location<'a>: DynLocation {
     ) -> (
         ExternalBincodeBidi<InT, OutT, NotMany>,
         Stream<InT, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>,
-        ForwardHandle<'a, Stream<OutT, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>>,
+        ChannelSender<'a, Stream<OutT, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>>,
     )
     where
         Self: TopLevel<'a> + Sized,
@@ -826,7 +825,7 @@ pub trait Location<'a>: DynLocation {
         let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
 
         let target_consistency = self.drop_consistency();
-        let (fwd_ref, to_sink) = target_consistency.forward_ref::<Stream<
+        let (fwd_ref, to_sink) = target_consistency.channel::<Stream<
             OutT,
             Self::DropConsistency,
             Unbounded,
@@ -933,7 +932,7 @@ pub trait Location<'a>: DynLocation {
             TotalOrder,
             ExactlyOnce,
         >,
-        ForwardHandle<
+        ChannelSender<
             'a,
             KeyedStream<u64, T, Self::DropConsistency, Unbounded, NoOrder, ExactlyOnce>,
         >,
@@ -944,7 +943,7 @@ pub trait Location<'a>: DynLocation {
         let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
 
         let target_consistency = self.drop_consistency();
-        let (fwd_ref, to_sink) = target_consistency.forward_ref::<KeyedStream<
+        let (fwd_ref, to_sink) = target_consistency.channel::<KeyedStream<
             u64,
             T,
             Self::DropConsistency,
@@ -1076,7 +1075,7 @@ pub trait Location<'a>: DynLocation {
             TotalOrder,
             ExactlyOnce,
         >,
-        ForwardHandle<
+        ChannelSender<
             'a,
             KeyedStream<u64, OutT, Self::DropConsistency, Unbounded, NoOrder, ExactlyOnce>,
         >,
@@ -1087,7 +1086,7 @@ pub trait Location<'a>: DynLocation {
         let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
 
         let target_consistency = self.drop_consistency();
-        let (fwd_ref, to_sink) = target_consistency.forward_ref::<KeyedStream<
+        let (fwd_ref, to_sink) = target_consistency.channel::<KeyedStream<
             u64,
             OutT,
             Self::DropConsistency,
@@ -1219,7 +1218,7 @@ pub trait Location<'a>: DynLocation {
     ///
     /// # Returns
     /// - A `Stream<InT>` carrying items from the sidecar into the dataflow.
-    /// - A [`ForwardHandle`] expecting a `Stream<OutT>` that the user completes
+    /// - A [`ChannelSender`] expecting a `Stream<OutT>` that the user completes
     ///   with items destined for the sidecar.
     ///
     /// # Example
@@ -1249,7 +1248,7 @@ pub trait Location<'a>: DynLocation {
     ///
     /// // Send "hello" into the sidecar via the response channel.
     /// let input = process.source_stream(q!(futures::stream::iter(vec!["hello".to_string()])));
-    /// response_handle.complete(input);
+    /// response_handle.send(input);
     ///
     /// // The sidecar echoes it back — assert we get "hello" out.
     /// inbound
@@ -1263,7 +1262,7 @@ pub trait Location<'a>: DynLocation {
         sidecar: impl QuotedWithContext<'a, F, Self>,
     ) -> (
         Stream<InT, Self, Unbounded, TotalOrder, ExactlyOnce>,
-        ForwardHandle<'a, Stream<OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
+        ChannelSender<'a, Stream<OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
     )
     where
         Self: Sized + TopLevel<'a>,
@@ -1301,11 +1300,11 @@ pub trait Location<'a>: DynLocation {
             },
         );
 
-        // Outbound: forward_ref cycle feeding the sink returned by the sidecar closure
+        // Outbound: channel feeding the sink returned by the sidecar closure
         let (fwd_ref, to_sink): (
-            ForwardHandle<'a, Stream<OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
+            ChannelSender<'a, Stream<OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
             Stream<OutT, Self, Unbounded, NoOrder, ExactlyOnce>,
-        ) = self.forward_ref();
+        ) = self.channel();
 
         let sink_expr: syn::Expr = parse_quote! {
             #sink_ident
@@ -1451,18 +1450,31 @@ pub trait Location<'a>: DynLocation {
         )
     }
 
-    /// Creates a forward reference, allowing a stream to be used before its source is defined.
+    /// Creates a channel, whose receiving end is a collection that can be used before the
+    /// data sent into the channel is defined. This is helpful for creating a forward
+    /// reference, when a collection needs to be used before its source is defined.
     ///
-    /// Returns a `(handle, placeholder)` pair. Use the placeholder in the dataflow graph,
-    /// then call `handle.complete(actual_stream)` to wire in the real source.
+    /// Returns a `(sender, receiver)` pair. Use the receiver in the dataflow graph, then
+    /// call `sender.send(actual_collection)` to wire in the real source. If the sender is
+    /// dropped without sending anything, the receiver acts as a null input and never
+    /// receives any elements. The exception is [`Singleton`] targets, which must always
+    /// have a value and so cannot act as a null input: their sender (a
+    /// [`crate::channel::RequiredChannelSender`]) panics if dropped without sending.
+    ///
+    /// If the target collection is *ordered* (such as a [`Stream`] with [`TotalOrder`]),
+    /// `send` consumes the sender, since only a single collection can supply the elements
+    /// without introducing non-deterministic ordering. If the target collection is
+    /// *unordered* (such as a [`Stream`] with [`NoOrder`]), `send` takes the sender by
+    /// reference and can be called several times; the sent collections are merged as
+    /// unordered streams.
     ///
     /// This is useful for mutually-dependent dataflows or when the definition order
     /// doesn't match the data flow direction. For feedback loops, prefer [`Tick::cycle`]
     /// instead, which automatically defers values by one tick.
     ///
     /// # Panics
-    /// Panics if the forward reference creates a synchronous cycle (i.e., the completed
-    /// stream transitively depends on the placeholder without a `defer_tick` or network
+    /// Panics if the channel creates a synchronous cycle (i.e., a sent collection
+    /// transitively depends on the receiver without a `defer_tick` or network
     /// hop in between).
     ///
     /// # Example
@@ -1472,15 +1484,15 @@ pub trait Location<'a>: DynLocation {
     /// # use hydro_lang::live_collections::stream::NoOrder;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// // Create a forward reference to define a stream that will be completed later
-    /// let (complete, forward_stream) = process.forward_ref::<Stream<i32, _, _, NoOrder>>();
+    /// // Create a channel whose receiving end can be used before data is sent
+    /// let (sender, forward_stream) = process.channel::<Stream<i32, _, _, NoOrder>>();
     ///
-    /// // Use the forward reference as input to another computation
+    /// // Use the receiver as input to another computation
     /// let output: Stream<_, _, _, NoOrder> = forward_stream.map(q!(|x| x * 2));
     ///
-    /// // Complete the forward reference with the actual source
+    /// // Send the actual source into the channel
     /// let source: Stream<_, _, Unbounded> = process.source_iter(q!([1, 2, 3])).into();
-    /// complete.complete(source);
+    /// sender.send(source);
     /// output
     /// # }, |mut stream| async move {
     /// // 2, 4, 6
@@ -1490,13 +1502,32 @@ pub trait Location<'a>: DynLocation {
     /// # }));
     /// # }
     /// ```
-    fn forward_ref<S>(&self) -> (ForwardHandle<'a, S>, S)
+    fn channel<S>(&self) -> (S::Sender, S)
     where
-        S: CycleCollection<'a, ForwardRef, Location = Self>,
+        S: CycleCollection<'a, ForwardRef, Location = Self> + CreateChannelSender<'a>,
     {
         let cycle_id = self.flow_state().borrow_mut().next_cycle_id();
+
+        // Register the sink for the channel immediately, with a null input; sending into
+        // the channel will fill in (or extend) the input. If nothing is ever sent, the
+        // receiver simply never receives any elements.
+        let collection_kind = S::collection_kind();
+        let elem_type = collection_kind.dfir_element_type();
+        let null_source: syn::Expr = parse_quote!(::std::iter::empty::<#elem_type>());
+        let sink_id = self
+            .flow_state()
+            .borrow_mut()
+            .push_root(HydroRoot::CycleSink {
+                cycle_id,
+                input: Box::new(HydroNode::Source {
+                    source: HydroSource::Iter(null_source.into()),
+                    metadata: self.new_node_metadata(collection_kind),
+                }),
+                op_metadata: HydroIrOpMetadata::new(),
+            });
+
         (
-            ForwardHandle::new(cycle_id, Location::id(self)),
+            S::create_sender(sink_id, Location::id(self)),
             S::create_source(cycle_id, self.clone()),
         )
     }
@@ -1513,9 +1544,68 @@ mod tests {
     use tokio_util::codec::LengthDelimitedCodec;
 
     use crate::compile::builder::FlowBuilder;
-    use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
+    use crate::live_collections::boundedness::Unbounded;
+    use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
     use crate::location::{Location, NetworkHint};
     use crate::nondet::nondet;
+
+    #[test]
+    fn unsent_singleton_channel_panics() {
+        crate::test_util::assert_panics_with_message(
+            || {
+                let mut flow = FlowBuilder::new();
+                let process = flow.process::<()>();
+                let (sender, _receiver) = process
+                    .channel::<crate::live_collections::singleton::Singleton<i32, _, Unbounded>>();
+                drop(sender);
+                let _ = flow.finalize();
+            },
+            "channel sender dropped without sending a value",
+        );
+    }
+
+    #[tokio::test]
+    async fn unsent_channel_acts_as_null_input() {
+        crate::test_util::stream_transform_test(
+            |process| {
+                let (sender, receiver) = process.channel::<Stream<i32, _, _, NoOrder>>();
+                drop(sender);
+
+                let source: Stream<i32, _, Unbounded> = process.source_iter(q!([1, 2, 3])).into();
+                source.merge_unordered(receiver)
+            },
+            |mut stream| async move {
+                let mut results = Vec::new();
+                for _ in 0..3 {
+                    results.push(stream.next().await.unwrap());
+                }
+                results.sort();
+                assert_eq!(results, vec![1, 2, 3]);
+            },
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn multiple_sends_into_unordered_channel() {
+        crate::test_util::stream_transform_test(
+            |process| {
+                let (sender, receiver) = process.channel::<Stream<i32, _, _, NoOrder>>();
+                sender.send(process.source_iter(q!([1, 2])));
+                sender.send(process.source_iter(q!([3, 4])));
+                receiver
+            },
+            |mut stream| async move {
+                let mut results = Vec::new();
+                for _ in 0..4 {
+                    results.push(stream.next().await.unwrap());
+                }
+                results.sort();
+                assert_eq!(results, vec![1, 2, 3, 4]);
+            },
+        )
+        .await;
+    }
 
     #[tokio::test]
     async fn top_level_singleton_replay_cardinality() {
@@ -1637,7 +1727,7 @@ mod tests {
         let (in_port, input, _membership, complete_sink) =
             first_node.bidi_external_many_bincode(&external);
         let out = input.entries().send_bincode_external(&external);
-        complete_sink.complete(
+        complete_sink.send(
             first_node
                 .source_iter::<(u64, ()), _>(q!([]))
                 .into_keyed()
@@ -1677,7 +1767,7 @@ mod tests {
         let (in_port, input, _membership, complete_sink) =
             first_node.bidi_external_many_bincode(&external);
         let out = input.entries().send_bincode_external(&external);
-        complete_sink.complete(
+        complete_sink.send(
             first_node
                 .source_iter::<(u64, ()), _>(q!([]))
                 .into_keyed()
@@ -1714,7 +1804,7 @@ mod tests {
         let (in_port, input, _membership, complete_sink) = first_node
             .bidi_external_many_bytes::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
         let out = input.entries().send_bincode_external(&external);
-        complete_sink.complete(
+        complete_sink.send(
             first_node
                 .source_iter(q!([]))
                 .into_keyed()
@@ -1756,7 +1846,7 @@ mod tests {
         let external = flow.external::<()>();
         let (port, input, complete_sink) = first_node
             .bind_single_client::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
-        complete_sink.complete(input.map(q!(|data| {
+        complete_sink.send(input.map(q!(|data| {
             let mut resp: Vec<u8> = data.into();
             resp.push(42);
             resp.into() // : Bytes
@@ -1789,8 +1879,7 @@ mod tests {
 
         let (port, input, _membership, complete_sink) = first_node
             .bidi_external_many_bytes::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
-        complete_sink
-            .complete(input.map(q!(|bytes| { bytes.into_iter().map(|x| x + 1).collect() })));
+        complete_sink.send(input.map(q!(|bytes| { bytes.into_iter().map(|x| x + 1).collect() })));
 
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())
@@ -1821,7 +1910,7 @@ mod tests {
 
         let (port, input, _membership, complete_sink) =
             first_node.bidi_external_many_bincode(&external);
-        complete_sink.complete(input.map(q!(|text: String| { text.to_uppercase() })));
+        complete_sink.send(input.map(q!(|text: String| { text.to_uppercase() })));
 
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())

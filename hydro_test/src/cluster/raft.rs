@@ -28,7 +28,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use hydro_lang::forward_handle::ForwardHandle;
+use hydro_lang::channel::ChannelSender;
 use hydro_lang::live_collections::stream::{MinOrder, NoOrder, Ordering, TotalOrder};
 use hydro_lang::location::cluster::{
     CLUSTER_SELF_ID, ClusterIds, Consistency, EventualConsistency, NoConsistency,
@@ -863,13 +863,13 @@ where
         nondet_raft
     ));
 
-    // All intra-cluster traffic flows over a single channel. The forward_ref closes
+    // All intra-cluster traffic flows over a single channel. The forward reference closes
     // the loop: the sliced! block below both consumes received messages and produces
     // the outbound messages that feed the channel (through the network — an async
     // boundary, so this is not an in-tick cycle).
-    #[expect(clippy::type_complexity, reason = "forward_ref requires the full type")]
+    #[expect(clippy::type_complexity, reason = "channel requires the full type")]
     let (traffic_handle, traffic): (
-        ForwardHandle<
+        ChannelSender<
             'a,
             Stream<
                 (MemberId<ClusterTag>, RaftRpc<T, ClusterTag>),
@@ -884,7 +884,7 @@ where
             Unbounded,
             NoOrder,
         >,
-    ) = cluster.forward_ref();
+    ) = cluster.channel();
 
     // The cluster membership list, resolved on each member at runtime (identical
     // everywhere, since it comes from deploy/sim metadata).
@@ -1025,7 +1025,7 @@ where
         (outbound, committed, redirected, view_transitions)
     };
 
-    traffic_handle.complete(outbound_messages
+    traffic_handle.send(outbound_messages
             .into_keyed()
             // The channel's fault model is chosen by the caller: sim tests use
             // `TCP.fail_stop()` (the simulator cannot explore lossy channels without
@@ -2243,7 +2243,7 @@ mod tests {
                 );
 
                 // Phase 3: the phase-2 heartbeats carried member 0's identity through
-                // the forward_ref loop into member 1's LeaderView; a misdirected
+                // the channel loop into member 1's LeaderView; a misdirected
                 // request must come back with that learned hint.
                 request_send.send(1, "misdirected".to_owned());
                 hydro_lang::sim::quiesce().await;

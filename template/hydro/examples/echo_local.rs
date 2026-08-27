@@ -12,7 +12,7 @@ async fn main() {
 
     let (_port, input, output) =
         process.bind_single_client::<_, _, LinesCodec>(&external, NetworkHint::TcpPort(Some(4000)));
-    output.complete(hydro_template::echo_capitalize(input));
+    output.send(hydro_template::echo_capitalize(input));
 
     let _nodes = flow
         .with_process(&process, deployment.Localhost())

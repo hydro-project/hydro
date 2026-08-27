@@ -13,14 +13,17 @@ use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::optional::{InitNone, Optional};
 use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::compile::builder::{CycleId, FlowState};
+#[cfg(stageleft_runtime)]
+use crate::channel::{
+    ChannelTarget, CreateChannelSender, CycleCollection, CycleCollectionWithInitial,
+    ReceiverComplete, RequiredChannelSender,
+};
+use crate::channel::{ForwardRef, TickCycle};
+use crate::compile::builder::{CycleId, FlowState, RootId};
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, OptionalBoundKind, SharedNode,
     SingletonBoundKind,
 };
-#[cfg(stageleft_runtime)]
-use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
-use crate::forward_handle::{ForwardRef, TickCycle};
 #[cfg(feature = "tokio")]
 use crate::location::TopLevel;
 #[cfg(stageleft_runtime)]
@@ -204,6 +207,10 @@ where
 {
     type Location = L;
 
+    fn collection_kind() -> CollectionKind {
+        Self::collection_kind()
+    }
+
     fn create_source(cycle_id: CycleId, location: L) -> Self {
         Singleton::new(
             location.clone(),
@@ -219,20 +226,54 @@ impl<'a, T, L, B: SingletonBound> ReceiverComplete<'a, ForwardRef> for Singleton
 where
     L: Location<'a>,
 {
-    fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
+    fn complete(self, sink_id: RootId, expected_location: LocationId) {
         assert_eq!(
             Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
-        self.location
+        *self
+            .location
             .flow_state()
             .borrow_mut()
-            .push_root(HydroRoot::CycleSink {
-                cycle_id,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                op_metadata: HydroIrOpMetadata::new(),
-            });
+            .cycle_sink_input_mut(sink_id) = self.ir_node.replace(HydroNode::Placeholder);
+    }
+}
+
+impl<'a, T, L, B: SingletonBound> ChannelTarget<'a> for Singleton<T, L, B>
+where
+    L: Location<'a>,
+{
+    type Sender = RequiredChannelSender<'a, Self>;
+}
+
+impl<'a, T, L, B: SingletonBound> CreateChannelSender<'a> for Singleton<T, L, B>
+where
+    L: Location<'a>,
+{
+    fn create_sender(sink_id: RootId, expected_location: LocationId) -> Self::Sender {
+        RequiredChannelSender::new(sink_id, expected_location)
+    }
+}
+
+impl<'a, T, L, B: SingletonBound> RequiredChannelSender<'a, Singleton<T, L, B>>
+where
+    L: Location<'a>,
+{
+    /// Sends the given singleton into the channel, resolving the receiving end created by
+    /// [`Location::channel`].
+    ///
+    /// Because the target is a [`Singleton`], sending consumes the sender; only a single
+    /// collection can supply the value. Unlike other channel targets, a [`Singleton`]
+    /// channel **must** be sent a value, since a singleton always has a value and cannot
+    /// act as a null input; dropping the sender without sending will panic.
+    ///
+    /// The provided singleton **must not** depend _synchronously_ (in the same tick) on
+    /// the receiving end of the channel, as doing so would create a dependency cycle.
+    /// Asynchronous cycles (outside a tick) are allowed, since the program can continue
+    /// running while the cycle is processed.
+    pub fn send(self, value: impl Into<Singleton<T, L, B>>) {
+        self.send_exclusive(value.into());
     }
 }
 

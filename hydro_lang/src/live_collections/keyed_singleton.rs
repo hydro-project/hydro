@@ -17,13 +17,15 @@ use super::optional::Optional;
 use super::singleton::Singleton;
 use super::sliced::sliced;
 use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::compile::builder::{CycleId, FlowState};
+#[cfg(stageleft_runtime)]
+use crate::channel::{
+    ChannelSender, ChannelTarget, CreateChannelSender, CycleCollection, ReceiverComplete,
+};
+use crate::channel::{ForwardRef, TickCycle};
+use crate::compile::builder::{CycleId, FlowState, RootId};
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, KeyedSingletonBoundKind, SharedNode,
 };
-#[cfg(stageleft_runtime)]
-use crate::forward_handle::{CycleCollection, ReceiverComplete};
-use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::stream::{Ordering, Retries};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
@@ -242,6 +244,10 @@ where
 {
     type Location = L;
 
+    fn collection_kind() -> CollectionKind {
+        Self::collection_kind()
+    }
+
     fn create_source(cycle_id: CycleId, location: L) -> Self {
         let flow_state = location.flow_state().clone();
         KeyedSingleton {
@@ -264,6 +270,10 @@ where
     L: Location<'a>,
 {
     type Location = Tick<L>;
+
+    fn collection_kind() -> CollectionKind {
+        Self::collection_kind()
+    }
 
     fn create_source(cycle_id: CycleId, location: Tick<L>) -> Self {
         KeyedSingleton::new(
@@ -290,20 +300,52 @@ impl<'a, K, V, L, B: KeyedSingletonBound> ReceiverComplete<'a, ForwardRef>
 where
     L: Location<'a>,
 {
-    fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
+    fn complete(self, sink_id: RootId, expected_location: LocationId) {
         assert_eq!(
             Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
-        self.location
+        *self
+            .location
             .flow_state()
             .borrow_mut()
-            .push_root(HydroRoot::CycleSink {
-                cycle_id,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                op_metadata: HydroIrOpMetadata::new(),
-            });
+            .cycle_sink_input_mut(sink_id) = self.ir_node.replace(HydroNode::Placeholder);
+    }
+}
+
+impl<'a, K, V, L, B: KeyedSingletonBound> ChannelTarget<'a> for KeyedSingleton<K, V, L, B>
+where
+    L: Location<'a>,
+{
+    type Sender = ChannelSender<'a, Self>;
+}
+
+impl<'a, K, V, L, B: KeyedSingletonBound> CreateChannelSender<'a> for KeyedSingleton<K, V, L, B>
+where
+    L: Location<'a>,
+{
+    fn create_sender(sink_id: RootId, expected_location: LocationId) -> Self::Sender {
+        ChannelSender::new(sink_id, expected_location)
+    }
+}
+
+impl<'a, K, V, L, B: KeyedSingletonBound> ChannelSender<'a, KeyedSingleton<K, V, L, B>>
+where
+    L: Location<'a>,
+{
+    /// Sends the given keyed singleton into the channel, resolving the receiving end
+    /// created by [`Location::channel`].
+    ///
+    /// Because the target is a [`KeyedSingleton`], sending consumes the sender; only a
+    /// single collection can supply the value for each key.
+    ///
+    /// The provided keyed singleton **must not** depend _synchronously_ (in the same tick)
+    /// on the receiving end of the channel, as doing so would create a dependency cycle.
+    /// Asynchronous cycles (outside a tick) are allowed, since the program can continue
+    /// running while the cycle is processed.
+    pub fn send(self, value: impl Into<KeyedSingleton<K, V, L, B>>) {
+        self.send_exclusive(value.into());
     }
 }
 

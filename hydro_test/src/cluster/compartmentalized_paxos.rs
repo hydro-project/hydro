@@ -131,10 +131,9 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload + 'a>(
     let proxy_leader_tick = proxy_leaders.tick();
     let acceptor_tick = acceptors.tick();
 
-    let (sequencing_max_ballot_complete_cycle, sequencing_max_ballot_forward_reference) =
-        proposers.forward_ref::<Stream<Ballot, _, _, NoOrder>>();
-    let (a_log_complete_cycle, a_log_forward_reference) =
-        acceptor_tick.forward_ref::<Singleton<_, _, _>>();
+    let (sequencing_max_ballot_sender, sequencing_max_ballot_forward_reference) =
+        proposers.channel::<Stream<Ballot, _, _, NoOrder>>();
+    let (a_log_sender, a_log_forward_reference) = acceptor_tick.channel::<Singleton<_, _, _>>();
 
     let (p_ballot, p_is_leader, p_relevant_p1bs, a_max_ballot) = leader_election(
         proposers,
@@ -196,7 +195,7 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload + 'a>(
         ),
     );
 
-    a_log_complete_cycle.complete(
+    a_log_sender.send(
         a_log
             .snapshot_atomic(
                 &acceptor_tick,
@@ -208,7 +207,7 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload + 'a>(
             )
             .unwrap_or(acceptor_tick.singleton(q!((None, HashMap::new())))),
     );
-    sequencing_max_ballot_complete_cycle.complete(sequencing_max_ballots);
+    sequencing_max_ballot_sender.send(sequencing_max_ballots);
 
     (
         // Only tell the clients once when leader election concludes

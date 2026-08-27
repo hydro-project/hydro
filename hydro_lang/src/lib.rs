@@ -123,7 +123,7 @@ pub mod sim;
 
 pub mod sim_hooks;
 
-pub mod forward_handle;
+pub mod channel;
 
 pub mod compile;
 

@@ -382,7 +382,7 @@ macro_rules! impl_cycles_for_tuple {
             }
         }
 
-        impl<$($H: crate::forward_handle::CompleteCycle<$S>, $S),*> CompleteCycles<($($S,)*)> for ($($H,)*) {
+        impl<$($H: crate::channel::CompleteCycle<$S>, $S),*> CompleteCycles<($($S,)*)> for ($($H,)*) {
             #[expect(clippy::allow_attributes, reason = "macro codegen")]
             #[allow(non_snake_case, reason = "macro codegen")]
             fn complete(self, states: ($($S,)*)) {

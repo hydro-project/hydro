@@ -160,10 +160,9 @@ pub fn paxos_core<'a, P: PaxosPayload + 'a>(
     let proposer_tick = proposers.tick();
     let acceptor_tick = acceptors.tick();
 
-    let (sequencing_max_ballot_complete_cycle, sequencing_max_ballot_forward_reference) =
-        proposers.forward_ref::<Stream<Ballot, _, _, NoOrder>>();
-    let (a_log_complete_cycle, a_log_forward_reference) =
-        acceptor_tick.forward_ref::<Singleton<_, _, _>>();
+    let (sequencing_max_ballot_sender, sequencing_max_ballot_forward_reference) =
+        proposers.channel::<Stream<Ballot, _, _, NoOrder>>();
+    let (a_log_sender, a_log_forward_reference) = acceptor_tick.channel::<Singleton<_, _, _>>();
 
     let (p_ballot, p_is_leader, p_relevant_p1bs, a_max_ballot) = leader_election(
         proposers,
@@ -224,7 +223,7 @@ pub fn paxos_core<'a, P: PaxosPayload + 'a>(
         ),
     );
 
-    a_log_complete_cycle.complete(
+    a_log_sender.send(
         a_log
             .snapshot_atomic(
                 &acceptor_tick,
@@ -236,7 +235,7 @@ pub fn paxos_core<'a, P: PaxosPayload + 'a>(
             )
             .unwrap_or(acceptor_tick.singleton(q!((None, HashMap::new())))),
     );
-    sequencing_max_ballot_complete_cycle.complete(sequencing_max_ballots);
+    sequencing_max_ballot_sender.send(sequencing_max_ballots);
 
     (
         // Only tell the clients once when leader election concludes
@@ -268,12 +267,11 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
     Stream<(Option<usize>, L), Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
     Singleton<Option<Ballot>, Tick<Cluster<'a, Acceptor>>, Bounded>,
 ) {
-    let (p1b_fail_complete, p1b_fail) =
-        proposers.forward_ref::<Stream<Ballot, _, Unbounded, NoOrder>>();
-    let (p_to_proposers_i_am_leader_complete_cycle, p_to_proposers_i_am_leader_forward_ref) =
-        proposers.forward_ref::<Stream<_, _, _, NoOrder, AtLeastOnce>>();
-    let (p_is_leader_complete_cycle, p_is_leader_forward_ref) =
-        proposer_tick.forward_ref::<Singleton<bool, _, _>>();
+    let (p1b_fail_sender, p1b_fail) = proposers.channel::<Stream<Ballot, _, Unbounded, NoOrder>>();
+    let (p_to_proposers_i_am_leader_sender, p_to_proposers_i_am_leader_forward_ref) =
+        proposers.channel::<Stream<_, _, _, NoOrder, AtLeastOnce>>();
+    let (p_is_leader_sender, p_is_leader_forward_ref) =
+        proposer_tick.channel::<Singleton<bool, _, _>>();
     // a_to_proposers_p2b.clone().for_each(q!(|(_, p2b): (u32, P2b)| println!("Proposer received P2b: {:?}", p2b)));
     // p_to_proposers_i_am_leader.clone().for_each(q!(|ballot: Ballot| println!("Proposer received I am leader: {:?}", ballot)));
     // c_to_proposers.clone().for_each(q!(|payload: ClientPayload| println!("Client sent proposer payload: {:?}", payload)));
@@ -306,7 +304,7 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
         ),
     );
 
-    p_to_proposers_i_am_leader_complete_cycle.complete(p_to_proposers_i_am_leader);
+    p_to_proposers_i_am_leader_sender.send(p_to_proposers_i_am_leader);
 
     let p_to_acceptors_p1a = p_ballot
         .clone()
@@ -338,8 +336,8 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
         quorum_size,
         num_quorum_participants,
     );
-    p_is_leader_complete_cycle.complete(p_is_leader.clone());
-    p1b_fail_complete.complete(fail_ballots);
+    p_is_leader_sender.send(p_is_leader.clone());
+    p1b_fail_sender.send(fail_ballots);
 
     (p_ballot, p_is_leader, p_accepted_values, a_max_ballot)
 }

@@ -86,15 +86,15 @@ where
         new_virtual_client.into_stream().into_keyed()
     };
 
-    let (protocol_outputs_complete, protocol_outputs) =
-        clients.forward_ref::<KeyedStream<u32, Output, Cluster<'a, Client>, Unbounded, NoOrder>>();
+    let (protocol_outputs_sender, protocol_outputs) =
+        clients.channel::<KeyedStream<u32, Output, Cluster<'a, Client>, Unbounded, NoOrder>>();
     // Use new payload IDS and previous outputs to generate new payloads
     let protocol_inputs = workload_generator(
         new_payload_ids.merge_unordered(protocol_outputs.map(q!(|payload| Some(payload)))),
     );
     // Feed new payloads to the protocol
     let protocol_outputs = protocol(protocol_inputs.clone());
-    protocol_outputs_complete.complete(protocol_outputs.clone());
+    protocol_outputs_sender.send(protocol_outputs.clone());
 
     // Persist start latency, overwrite on new value. Memory footprint = O(num_clients_per_node)
     let start_times = protocol_inputs.fold(

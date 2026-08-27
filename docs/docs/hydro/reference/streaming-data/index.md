@@ -10,6 +10,8 @@ Hydro provides three streaming collection types, each capturing a different shap
 
 All three types can be sent between [locations](../locations/index.md) (processes and clusters), with the type system tracking how the network affects ordering and retries.
 
+When a streaming collection needs to be used before its source is defined — such as when closing a feedback loop across the network — you can wire it up with a **[Channel](./channels.md)**, whose receiving end is an ordinary live collection.
+
 :::tip
 
 Streaming data is about elements that are processed once and flow onward. When you need values that are **updated in place** — counters, caches, session state — you'll aggregate streaming data into state collections like `Singleton`. See [State Management](../state-management/index.md).

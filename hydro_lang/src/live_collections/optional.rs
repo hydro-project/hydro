@@ -13,13 +13,16 @@ use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::singleton::Singleton;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::compile::builder::{CycleId, FlowState};
+#[cfg(stageleft_runtime)]
+use crate::channel::{
+    ChannelSender, ChannelTarget, CreateChannelSender, CycleCollection, CycleCollectionWithInitial,
+    ReceiverComplete,
+};
+use crate::channel::{ForwardRef, TickCycle};
+use crate::compile::builder::{CycleId, FlowState, RootId};
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, OptionalBoundKind, SharedNode,
 };
-#[cfg(stageleft_runtime)]
-use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
-use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::singleton::SingletonBound;
 #[cfg(feature = "tokio")]
 use crate::location::TopLevel;
@@ -168,6 +171,10 @@ where
 {
     type Location = Tick<L>;
 
+    fn collection_kind() -> CollectionKind {
+        Self::collection_kind()
+    }
+
     fn create_source(cycle_id: CycleId, location: Tick<L>) -> Self {
         Optional::new(
             location.clone(),
@@ -233,6 +240,10 @@ where
 {
     type Location = L;
 
+    fn collection_kind() -> CollectionKind {
+        Self::collection_kind()
+    }
+
     fn create_source(cycle_id: CycleId, location: L) -> Self {
         Optional::new(
             location.clone(),
@@ -248,20 +259,52 @@ impl<'a, T, L, B: OptionalBound> ReceiverComplete<'a, ForwardRef> for Optional<T
 where
     L: Location<'a>,
 {
-    fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
+    fn complete(self, sink_id: RootId, expected_location: LocationId) {
         assert_eq!(
             Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
-        self.location
+        *self
+            .location
             .flow_state()
             .borrow_mut()
-            .push_root(HydroRoot::CycleSink {
-                cycle_id,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                op_metadata: HydroIrOpMetadata::new(),
-            });
+            .cycle_sink_input_mut(sink_id) = self.ir_node.replace(HydroNode::Placeholder);
+    }
+}
+
+impl<'a, T, L, B: OptionalBound> ChannelTarget<'a> for Optional<T, L, B>
+where
+    L: Location<'a>,
+{
+    type Sender = ChannelSender<'a, Self>;
+}
+
+impl<'a, T, L, B: OptionalBound> CreateChannelSender<'a> for Optional<T, L, B>
+where
+    L: Location<'a>,
+{
+    fn create_sender(sink_id: RootId, expected_location: LocationId) -> Self::Sender {
+        ChannelSender::new(sink_id, expected_location)
+    }
+}
+
+impl<'a, T, L, B: Boundedness> ChannelSender<'a, Optional<T, L, B>>
+where
+    L: Location<'a>,
+{
+    /// Sends the given optional into the channel, resolving the receiving end created by
+    /// [`Location::channel`].
+    ///
+    /// Because the target is an [`Optional`], sending consumes the sender; only a single
+    /// collection can supply the value.
+    ///
+    /// The provided optional **must not** depend _synchronously_ (in the same tick) on
+    /// the receiving end of the channel, as doing so would create a dependency cycle.
+    /// Asynchronous cycles (outside a tick) are allowed, since the program can continue
+    /// running while the cycle is processed.
+    pub fn send(self, value: impl Into<Optional<T, L, B>>) {
+        self.send_exclusive(value.into());
     }
 }
 

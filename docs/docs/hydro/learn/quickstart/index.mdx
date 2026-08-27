@@ -189,7 +189,7 @@ In a deployment script, you create a `Deployment` object which tracks the physic
 } showLineNumbers={13}>{getLines(echoLocalSrc, 13, 15, `
     let (_port, input, output) =
         process.bind_single_client::<_, _, LinesCodec>(&external, NetworkHint::TcpPort(Some(4000)));
-    output.complete(hydro_template::echo_capitalize(input));
+    output.send(hydro_template::echo_capitalize(input));
 `)}</CodeBlock>
 
 The `bind_single_client` method creates a server that receives messages from a single external client. It returns a port handle, a stream of incoming messages, and a sink for sending responses. The method takes a codec (`LinesCodec`) that encodes and decodes the raw bytes (in this case, treating each line of text as a message). The `NetworkHint` specifies that the server should listen on port 4000.

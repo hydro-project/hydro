@@ -80,7 +80,7 @@ async fn localhost() {
             hydro_test::external_client::sidecar_demo::create(9000)
         }));
     let proc_responses = proc_inbound.map(q!(|msg: String| format!("process: {}", msg)));
-    proc_response_handle.complete(proc_responses);
+    proc_response_handle.send(proc_responses);
 
     // Cluster sidecar on port 9001: echoes with "cluster: " prefix
     let (cluster_inbound, cluster_response_handle) =
@@ -88,7 +88,7 @@ async fn localhost() {
             hydro_test::external_client::sidecar_demo::create(9001)
         }));
     let cluster_responses = cluster_inbound.map(q!(|msg: String| format!("cluster: {}", msg)));
-    cluster_response_handle.complete(cluster_responses);
+    cluster_response_handle.send(cluster_responses);
 
     let built = flow.finalize();
 
@@ -148,7 +148,7 @@ async fn docker() {
             hydro_test::external_client::sidecar_demo::create(9000)
         }));
     let proc_responses = proc_inbound.map(q!(|msg: String| format!("process: {}", msg)));
-    proc_response_handle.complete(proc_responses);
+    proc_response_handle.send(proc_responses);
 
     // Cluster sidecar on port 9000: echoes with "cluster: " prefix
     // Each cluster instance is a separate container, so port 9000 doesn't conflict.
@@ -157,7 +157,7 @@ async fn docker() {
             hydro_test::external_client::sidecar_demo::create(9000)
         }));
     let cluster_responses = cluster_inbound.map(q!(|msg: String| format!("cluster: {}", msg)));
-    cluster_response_handle.complete(cluster_responses);
+    cluster_response_handle.send(cluster_responses);
 
     let built = flow.finalize();
 
