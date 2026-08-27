@@ -9,28 +9,35 @@
 <a href=#9 id=9 data-nosnippet>9</a>/// does not fire for another reason (e.g., a non-lazy `batch` or `defer_tick`
 <a href=#10 id=10 data-nosnippet>10</a>/// has data), the lazy-batched data is available. If the loop never fires that
 <a href=#11 id=11 data-nosnippet>11</a>/// tick, the data is simply dropped (reclaimed by the bump allocator at tick end).
-<a href=#12 id=12 data-nosnippet>12</a></span><span class="kw">pub const </span>BATCH_LAZY: OperatorConstraints = OperatorConstraints {
-<a href=#13 id=13 data-nosnippet>13</a>    name: <span class="string">"batch_lazy"</span>,
-<a href=#14 id=14 data-nosnippet>14</a>    categories: <span class="kw-2">&amp;</span>[OperatorCategory::Windowing],
-<a href=#15 id=15 data-nosnippet>15</a>    hard_range_inn: RANGE_1,
-<a href=#16 id=16 data-nosnippet>16</a>    soft_range_inn: RANGE_1,
-<a href=#17 id=17 data-nosnippet>17</a>    hard_range_out: RANGE_1,
-<a href=#18 id=18 data-nosnippet>18</a>    soft_range_out: RANGE_1,
-<a href=#19 id=19 data-nosnippet>19</a>    num_args: <span class="number">0</span>,
-<a href=#20 id=20 data-nosnippet>20</a>    persistence_args: RANGE_0,
-<a href=#21 id=21 data-nosnippet>21</a>    type_args: RANGE_0,
-<a href=#22 id=22 data-nosnippet>22</a>    is_external_input: <span class="bool-val">false</span>,
-<a href=#23 id=23 data-nosnippet>23</a>    flo_type: <span class="prelude-val">Some</span>(FloType::WindowingLazy),
-<a href=#24 id=24 data-nosnippet>24</a>    ports_inn: <span class="prelude-val">None</span>,
-<a href=#25 id=25 data-nosnippet>25</a>    ports_out: <span class="prelude-val">None</span>,
-<a href=#26 id=26 data-nosnippet>26</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
-<a href=#27 id=27 data-nosnippet>27</a>    <span class="comment">// Same as batch() — identity in inline codegen.
-<a href=#28 id=28 data-nosnippet>28</a>    </span>write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs { .. }, _diagnostics| {
-<a href=#29 id=29 data-nosnippet>29</a>        <span class="kw">let </span>write_iterator = identity_write_iterator_fn(wc);
-<a href=#30 id=30 data-nosnippet>30</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#31 id=31 data-nosnippet>31</a>            write_iterator,
-<a href=#32 id=32 data-nosnippet>32</a>            ..Default::default()
-<a href=#33 id=33 data-nosnippet>33</a>        })
-<a href=#34 id=34 data-nosnippet>34</a>    },
-<a href=#35 id=35 data-nosnippet>35</a>};
+<a href=#12 id=12 data-nosnippet>12</a>///
+<a href=#13 id=13 data-nosnippet>13</a>/// `batch_lazy()` is one of three loop-ingress ("windowing") operators, which differ only in
+<a href=#14 id=14 data-nosnippet>14</a>/// whether they cause the surrounding `loop { ... }` to fire:
+<a href=#15 id=15 data-nosnippet>15</a>/// - `batch()` triggers the loop only when its windowed input is non-empty.
+<a href=#16 id=16 data-nosnippet>16</a>/// - `batch_lazy()` never triggers the loop on its own; its data is only observed if the loop
+<a href=#17 id=17 data-nosnippet>17</a>///   fires for some other reason (otherwise dropped at tick end).
+<a href=#18 id=18 data-nosnippet>18</a>/// - `batch_eager()` always triggers the loop, even when the windowed input is empty.
+<a href=#19 id=19 data-nosnippet>19</a></span><span class="kw">pub const </span>BATCH_LAZY: OperatorConstraints = OperatorConstraints {
+<a href=#20 id=20 data-nosnippet>20</a>    name: <span class="string">"batch_lazy"</span>,
+<a href=#21 id=21 data-nosnippet>21</a>    categories: <span class="kw-2">&amp;</span>[OperatorCategory::Windowing],
+<a href=#22 id=22 data-nosnippet>22</a>    hard_range_inn: RANGE_1,
+<a href=#23 id=23 data-nosnippet>23</a>    soft_range_inn: RANGE_1,
+<a href=#24 id=24 data-nosnippet>24</a>    hard_range_out: RANGE_1,
+<a href=#25 id=25 data-nosnippet>25</a>    soft_range_out: RANGE_1,
+<a href=#26 id=26 data-nosnippet>26</a>    num_args: <span class="number">0</span>,
+<a href=#27 id=27 data-nosnippet>27</a>    persistence_args: RANGE_0,
+<a href=#28 id=28 data-nosnippet>28</a>    type_args: RANGE_0,
+<a href=#29 id=29 data-nosnippet>29</a>    is_external_input: <span class="bool-val">false</span>,
+<a href=#30 id=30 data-nosnippet>30</a>    flo_type: <span class="prelude-val">Some</span>(FloType::WindowingLazy),
+<a href=#31 id=31 data-nosnippet>31</a>    ports_inn: <span class="prelude-val">None</span>,
+<a href=#32 id=32 data-nosnippet>32</a>    ports_out: <span class="prelude-val">None</span>,
+<a href=#33 id=33 data-nosnippet>33</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
+<a href=#34 id=34 data-nosnippet>34</a>    <span class="comment">// Same as batch() — identity in inline codegen.
+<a href=#35 id=35 data-nosnippet>35</a>    </span>write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs { .. }, _diagnostics| {
+<a href=#36 id=36 data-nosnippet>36</a>        <span class="kw">let </span>write_iterator = identity_write_iterator_fn(wc);
+<a href=#37 id=37 data-nosnippet>37</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#38 id=38 data-nosnippet>38</a>            write_iterator,
+<a href=#39 id=39 data-nosnippet>39</a>            ..Default::default()
+<a href=#40 id=40 data-nosnippet>40</a>        })
+<a href=#41 id=41 data-nosnippet>41</a>    },
+<a href=#42 id=42 data-nosnippet>42</a>};
 </code></pre></div></section></main></body></html>
