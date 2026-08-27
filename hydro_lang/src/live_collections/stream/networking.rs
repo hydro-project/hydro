@@ -167,7 +167,6 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         via: N,
     ) -> Stream<T, Process<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
     where
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
@@ -318,7 +317,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         nondet_membership: NonDet,
     ) -> Stream<T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
     where
-        T: Clone + Serialize + DeserializeOwned,
+        T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let ids = track_membership(self.location.source_cluster_membership_stream(
@@ -393,7 +392,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         R,
     >
     where
-        T: Clone + Serialize + DeserializeOwned,
+        T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let cluster_ids = ClusterIds {
@@ -619,7 +618,6 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         self.into_keyed().demux(to, via)
@@ -734,10 +732,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
         to: &Cluster<'a, L2>,
         via: N,
         nondet_membership: NonDet,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce>
-    where
-        T: Serialize + DeserializeOwned,
-    {
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce> {
         let ids = track_membership(self.location.source_cluster_membership_stream(
             to,
             nondet!(/** dropped prefixes don't affect broadcast */),
@@ -883,8 +878,6 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
         via: N,
         nondet_membership: NonDet,
     ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce>
-    where
-        T: Serialize + DeserializeOwned,
     {
         let ids = track_membership(self.location.source_cluster_membership_stream(
             to,
@@ -1048,7 +1041,6 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
@@ -1228,7 +1220,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Clone + Serialize + DeserializeOwned,
+        T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let ids = track_membership(self.location.source_cluster_membership_stream(
@@ -1276,7 +1268,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Clone + Serialize + DeserializeOwned,
+        T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let cluster_ids = ClusterIds {
@@ -1471,7 +1463,6 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         self.into_keyed().demux(to, via)
