@@ -211,7 +211,7 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
     aggregator: &Process<'a, Aggregator>,
     output_interval_millis: u64,
 ) -> BenchResult<Process<'a, Aggregator>> {
-    let nondet_sampling: NonDet = nondet!(/** non-deterministic samping only affects logging */);
+    let nondet_sampling: NonDet = nondet!(/** non-deterministic sampling only affects logging */);
     let punctuation = aggregator.source_interval(q!(Duration::from_millis(output_interval_millis)));
 
     let a_throughputs = results
