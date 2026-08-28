@@ -10,7 +10,6 @@ use quote::quote;
 use sha2::{Digest, Sha256};
 use slotmap::SparseSecondaryMap;
 use stageleft::QuotedWithContext;
-use tempfile::TempPath;
 use trybuild_internals_api::{cargo, dependencies, path};
 
 use crate::compile::builder::ExternalPortId;
@@ -18,8 +17,8 @@ use crate::compile::deploy_provider::{Deploy, DynSourceSink, Node, RegisterPort}
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use crate::compile::trybuild::generate::LinkingMode;
 use crate::compile::trybuild::generate::{
-    CONCURRENT_TEST_LOCK, ExampleBuildConfig, IS_TEST, TrybuildConfig, compile_trybuild_example,
-    create_trybuild, write_atomic, write_staged_source_cached,
+    BuiltArtifact, CONCURRENT_TEST_LOCK, ExampleBuildConfig, IS_TEST, TrybuildConfig,
+    compile_trybuild_example, create_trybuild, write_atomic, write_staged_source_cached,
 };
 use crate::deploy::deploy_runtime::cluster_membership_stream;
 use crate::location::dynamic::LocationId;
@@ -432,7 +431,7 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 }
 
-pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempPath, ()> {
+pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<BuiltArtifact, ()> {
     compile_trybuild_example(ExampleBuildConfig {
         trybuild,
         bin_name: bin,

@@ -375,15 +375,57 @@ fn rustc_target_libdir() -> Option<String> {
         .clone()
 }
 
+/// The built artifact returned by [`compile_trybuild_example`].
+///
+/// Outside coverage runs this is a delete-on-drop temporary copy: every build
+/// reuses the same example artifact path in the shared target dir (e.g. the
+/// simulator always builds `sim-dylib`, varying only `TRYBUILD_LIB_NAME`), so
+/// the caller gets a private copy that a later build cannot clobber.
+///
+/// In coverage runs the copy is instead persisted (keyed by the generated
+/// source's hash, which `bin_name` embeds) under the main target dir's
+/// `debug/deps`, and must outlive the process: the coverage mapping needed to
+/// resolve profile data lives in the artifact itself, and report-time tools
+/// (e.g. `grcov --binary-path target/debug` or `target/debug/deps`, both
+/// scanned recursively) run only after all test processes have exited.
+pub enum BuiltArtifact {
+    /// A delete-on-drop temporary copy of the artifact.
+    Temp(tempfile::TempPath),
+    /// A persistent copy that survives process exit, for coverage reporters.
+    Persisted(PathBuf),
+}
+
+impl std::ops::Deref for BuiltArtifact {
+    type Target = Path;
+
+    fn deref(&self) -> &Path {
+        match self {
+            BuiltArtifact::Temp(path) => path,
+            BuiltArtifact::Persisted(path) => path,
+        }
+    }
+}
+
+impl BuiltArtifact {
+    /// Persist the artifact at its current path, returning that path (the
+    /// temporary copy is kept rather than deleted on drop).
+    pub fn keep(self) -> Result<PathBuf, std::io::Error> {
+        match self {
+            BuiltArtifact::Temp(path) => path.keep().map_err(|e| e.error),
+            BuiltArtifact::Persisted(path) => Ok(path),
+        }
+    }
+}
+
 /// Compiles a generated trybuild example against the prebuilt dylib crate,
 /// using the shared parallel-compilation machinery (per-job target dirs with
 /// symlinked shared artifacts, plus a prebuild of the dylib dependencies).
 ///
-/// Returns the path to a temporary copy of the built artifact (a `cdylib` for
-/// the simulator, or an executable for Maelstrom). The copy allows the caller
-/// to hold onto the artifact independently of the shared target directory.
+/// Returns a [`BuiltArtifact`] handle to a copy of the built artifact (a
+/// `cdylib` for the simulator, or an executable for Maelstrom), which the
+/// caller can hold onto independently of the shared target directory.
 #[cfg(any(feature = "sim", feature = "maelstrom"))]
-pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfile::TempPath, ()> {
+pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltArtifact, ()> {
     use std::process::{Command, Stdio};
 
     let ExampleBuildConfig {
@@ -399,7 +441,36 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
     let is_fuzz = allow_fuzz && std::env::var("BOLERO_FUZZER").is_ok();
     // When RUSTFLAGS is set, our prebuild fingerprint doesn't account for it, so skip the
     // parallel build machinery entirely and build directly into the shared target dir.
-    let has_custom_rustflags = std::env::var("RUSTFLAGS").is_ok();
+    //
+    // Coverage instrumentation needs the same treatment, but the host's
+    // `-C instrument-coverage` often never reaches this child build: pipelines that inject
+    // it via cargo CLI config (`--config build.rustflags=[...]`) or a
+    // `RUSTC_WORKSPACE_WRAPPER` leave the test process's environment untouched, so code
+    // exercised only through the compiled dylib would silently report zero coverage. The
+    // coverage *runtime* does leave a reliable footprint, though: `LLVM_PROFILE_FILE` is
+    // set for the test process and inherited here. When present, synthesize
+    // `-C instrument-coverage` into the child build's RUSTFLAGS (unless the inherited
+    // RUSTFLAGS already carries an instrument-coverage flag, as with `cargo llvm-cov`).
+    // Skipping the prebuild machinery keeps this simple, but coverage builds must also
+    // be isolated from the shared target dir (see below), and the covmap-bearing
+    // artifact is copied to a stable location where coverage reporters can find it.
+    // See https://github.com/hydro-project/hydro/issues/3160.
+    let mut custom_rustflags = std::env::var("RUSTFLAGS").ok();
+    if std::env::var_os("LLVM_PROFILE_FILE").is_some()
+        && !custom_rustflags
+            .as_deref()
+            .is_some_and(|flags| flags.contains("instrument-coverage"))
+    {
+        let flags = custom_rustflags.get_or_insert_default();
+        if !flags.is_empty() {
+            flags.push(' ');
+        }
+        flags.push_str("-Cinstrument-coverage");
+    }
+    let has_custom_rustflags = custom_rustflags.is_some();
+    let coverage_enabled = custom_rustflags
+        .as_deref()
+        .is_some_and(|flags| flags.contains("instrument-coverage"));
 
     // Run from dylib-examples crate which has the dylib as a dev-dependency (only if not fuzzing)
     let crate_to_compile = if is_fuzz {
@@ -473,7 +544,16 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
         drop(prebuild_span);
         (per_job, Some(guard), Some(cargo_lock))
     } else {
-        (trybuild.target_dir.clone(), None, None)
+        // Coverage builds get an isolated target dir: flags differ from prebuild-mode
+        // builds, so building into the shared target dir would clobber the shared
+        // artifacts that prebuild-mode builds symlink against, breaking interleaved
+        // non-coverage runs (and forcing full rebuilds in both directions).
+        let target_dir = if coverage_enabled {
+            path!(trybuild.target_dir / "coverage")
+        } else {
+            trybuild.target_dir.clone()
+        };
+        (target_dir, None, None)
     };
 
     // Populate per-job build/ dir right before final build. Hold guard for entire build.
@@ -527,6 +607,14 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
             .join(","),
     ]);
     command.args(["--config", "build.incremental = false"]);
+    if let Some(flags) = &custom_rustflags {
+        // Covers both inherited RUSTFLAGS (a no-op re-set) and the synthesized
+        // instrument-coverage case, where the flag must apply to the whole child build
+        // graph — in particular the crate under test, which the generated project pulls
+        // in as a path dependency at its real source location (so coverage regions map
+        // back to the original files).
+        command.env("RUSTFLAGS", flags);
+    }
     if let Some(crate_type) = crate_type {
         command.args(["--crate-type", crate_type]);
     }
@@ -571,6 +659,16 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
                 // https://github.com/rust-lang/rust/issues/91979
                 "-Clink-args=-Wl,-z,nodelete",
             );
+        }
+
+        if coverage_enabled && cfg!(target_os = "linux") {
+            // The dynamic loader resolves the example's trybuild-dylib dependency by
+            // soname, and cargo puts the *host* target dir's deps/ on LD_LIBRARY_PATH
+            // when running tests — which outranks DT_RUNPATH and would shadow the
+            // isolated coverage build's dylib with the same-soname uninstrumented one.
+            // Emit legacy DT_RPATH, which outranks LD_LIBRARY_PATH, so the rpath baked
+            // above (pointing into the coverage target dir) wins.
+            command.arg("-Clink-arg=-Wl,--disable-new-dtags");
         }
     }
 
@@ -675,9 +773,32 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
         panic!("final build failed to produce binary.\nstderr:\n{stderr_output}");
     }
 
+    if coverage_enabled {
+        // The coverage mapping needed to resolve profile data at report time lives in
+        // the artifact itself, and reporters run only after all test processes have
+        // exited — so the copy must be persistent, not a delete-on-drop temp file.
+        // Persist it keyed by the generated source's hash (embedded in `bin_name`;
+        // the shared artifact path itself is reused by every build and would be
+        // clobbered), under the main target dir's `debug/deps` so reporters find
+        // every mapping whether they scan `target/debug` or the narrower
+        // `target/debug/deps` (both are common `grcov --binary-path` conventions,
+        // and both are scanned recursively). This persisted copy doubles as the
+        // artifact handed to the caller.
+        let coverage_dir = path!(trybuild.target_dir / "debug" / "deps" / "hydro-coverage");
+        fs::create_dir_all(&coverage_dir).unwrap();
+        let artifact_name = out.as_ref().unwrap().file_name().unwrap().to_str().unwrap();
+        let persisted = path!(coverage_dir / format!("{bin_name}-{artifact_name}"));
+        // Write via a unique temp file + rename so concurrent test processes
+        // building the same flow never observe a partially-copied artifact.
+        let staging = tempfile::NamedTempFile::new_in(&coverage_dir).unwrap();
+        fs::copy(out.as_ref().unwrap(), staging.path()).unwrap();
+        staging.persist(&persisted).unwrap();
+        return Ok(BuiltArtifact::Persisted(persisted));
+    }
+
     let out_file = tempfile::NamedTempFile::new().unwrap().into_temp_path();
     fs::copy(out.as_ref().unwrap(), &out_file).unwrap();
-    Ok(out_file)
+    Ok(BuiltArtifact::Temp(out_file))
 }
 
 /// Generates the inlined `__staged.rs` source for the source crate and writes it into the

@@ -15,7 +15,8 @@ use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
-    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode, SingletonBoundKind,
+    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, OptionalBoundKind, SharedNode,
+    SingletonBoundKind,
 };
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
@@ -68,7 +69,7 @@ impl SingletonBound for Bounded {
 }
 
 /// Marks that the [`Singleton`] is monotonic, which means that its value will only grow over time.
-pub struct Monotonic;
+pub enum Monotonic {}
 
 impl SingletonBound for Monotonic {
     type UnderlyingBound = Unbounded;
@@ -864,7 +865,7 @@ where
                     left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                     right: Box::new(Self::other_ir_node(other)),
                     metadata: self.location.new_node_metadata(CollectionKind::Optional {
-                        bound: B::BOUND_KIND,
+                        bound: OptionalBoundKind::Bounded,
                         element_type: stageleft::quote_type::<
                             <Self as ZipResult<'a, O>>::ElementType,
                         >()
@@ -1236,8 +1237,14 @@ where
         tick: &Tick<L2>,
         mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T>>>,
     ) -> Singleton<T, Tick<L::DropConsistency>, Bounded> {
-        let mut metadata =
+      assert_eq!(
+          Location::id(tick.parent_location()),
+          Location::id(self.location.tick.parent_location())
+      );
+
+      let mut metadata =
             tick.new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind());
+
         metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         Singleton::new(
             tick.drop_consistency(),
@@ -1270,7 +1277,11 @@ where
         tick: &Tick<L2>,
         mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T>>>,
     ) -> Singleton<T, Tick<L::DropConsistency>, Bounded> {
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(&self.location)
+        );
+
         let mut metadata =
             tick.new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind());
         metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
@@ -1570,12 +1581,12 @@ where
     /// ```
     pub fn latest(self) -> Singleton<T, L, Unbounded> {
         Singleton::new(
-            self.location.outer().clone(),
+            self.location.parent_location().clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .outer()
+                    .parent_location()
                     .new_node_metadata(Singleton::<T, L, Unbounded>::collection_kind()),
             },
         )

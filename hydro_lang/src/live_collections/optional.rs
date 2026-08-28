@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
+use sealed::sealed;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use syn::parse_quote;
 
@@ -13,7 +14,9 @@ use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::singleton::Singleton;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::{CycleId, FlowState};
-use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode};
+use crate::compile::ir::{
+    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, OptionalBoundKind, SharedNode,
+};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
@@ -28,6 +31,74 @@ use crate::nondet::{NonDet, nondet};
 use crate::prelude::KeyedSingleton;
 use crate::properties::{StreamMapFuncAlgebra, ValidMutCommutativityFor, ValidMutIdempotenceFor};
 
+/// A marker trait indicating the boundedness of an [`Optional`].
+///
+/// In addition to [`Bounded`] (immutable) and [`Unbounded`] (arbitrarily mutable, including
+/// becoming null again), this also includes additional variants that constrain how the
+/// optional's *presence* (whether it is null) and value evolve over time.
+///
+/// The currently defined variants form a hierarchy of increasing strength; variants other than
+/// [`Bounded`] erase to [`Unbounded`]:
+/// - [`Unbounded`]: the optional may become null and non-null arbitrarily, with an arbitrary
+///   value whenever it is non-null.
+/// - [`InitNone`]: the optional starts null, but once it becomes non-null it stays
+///   non-null forever; the non-null value may still change arbitrarily.
+pub trait OptionalBound {
+    /// The [`Boundedness`] that this [`Optional`] would be erased to.
+    type UnderlyingBound: Boundedness;
+
+    /// Returns the [`OptionalBoundKind`] corresponding to this type.
+    fn bound_kind() -> OptionalBoundKind;
+}
+
+impl OptionalBound for Unbounded {
+    type UnderlyingBound = Unbounded;
+
+    fn bound_kind() -> OptionalBoundKind {
+        OptionalBoundKind::Unbounded
+    }
+}
+
+impl OptionalBound for Bounded {
+    type UnderlyingBound = Bounded;
+
+    fn bound_kind() -> OptionalBoundKind {
+        OptionalBoundKind::Bounded
+    }
+}
+
+/// Marks that the [`Optional`] is null only initially: once it becomes non-null it will remain
+/// non-null forever, although the non-null value may still change arbitrarily over time.
+///
+/// This erases to [`Unbounded`], since the value (when present) is still asynchronously changing.
+pub enum InitNone {}
+
+impl OptionalBound for InitNone {
+    type UnderlyingBound = Unbounded;
+
+    fn bound_kind() -> OptionalBoundKind {
+        OptionalBoundKind::InitNone
+    }
+}
+
+#[sealed]
+#[diagnostic::on_unimplemented(
+    message = "The optional must be null-only-initially (`InitNone`) or bounded (`Bounded`), but has bound `{Self}`. Strengthen the guarantee upstream or consider a different API.",
+    label = "required here",
+    note = "To intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region. This introduces non-determinism so avoid unless necessary."
+)]
+/// Marker trait that is implemented for [`OptionalBound`] types that are null only initially:
+/// once the optional becomes non-null it remains non-null (or it is [`Bounded`]).
+pub trait IsInitNone: OptionalBound {}
+
+#[sealed]
+#[diagnostic::do_not_recommend]
+impl IsInitNone for InitNone {}
+
+#[sealed]
+#[diagnostic::do_not_recommend]
+impl<B: IsBounded> IsInitNone for B {}
+
 /// A *nullable* Rust value that can asynchronously change over time.
 ///
 /// Optionals are the live collection equivalent of [`Option`]. If the optional is [`Bounded`],
@@ -40,8 +111,9 @@ use crate::properties::{StreamMapFuncAlgebra, ValidMutCommutativityFor, ValidMut
 /// Type Parameters:
 /// - `Type`: the type of the value in this optional (when it is not null)
 /// - `Loc`: the [`Location`] where the optional is materialized
-/// - `Bound`: tracks whether the value is [`Bounded`] (fixed) or [`Unbounded`] (changing asynchronously)
-pub struct Optional<Type, Loc, Bound: Boundedness> {
+/// - `Bound`: tracks whether the value is [`Bounded`] (fixed) or [`Unbounded`] (changing
+///   asynchronously) or something in between (see [`OptionalBoundKind`]).
+pub struct Optional<Type, Loc, Bound: OptionalBound> {
     pub(crate) location: Loc,
     pub(crate) ir_node: Rc<RefCell<HydroNode>>,
     pub(crate) flow_state: FlowState,
@@ -49,7 +121,7 @@ pub struct Optional<Type, Loc, Bound: Boundedness> {
     _phantom: PhantomData<(Type, Loc, Bound)>,
 }
 
-impl<T, L, B: Boundedness> Drop for Optional<T, L, B> {
+impl<T, L, B: OptionalBound> Drop for Optional<T, L, B> {
     fn drop(&mut self) {
         let ir_node = self.ir_node.replace(HydroNode::Placeholder);
         if !matches!(ir_node, HydroNode::Placeholder) && !ir_node.is_shared_with_others() {
@@ -69,6 +141,15 @@ where
     fn from(value: Optional<T, L, Bounded>) -> Self {
         let tick = value.location().tick();
         value.clone_into_tick(&tick).latest()
+    }
+}
+
+impl<'a, T, L> From<Optional<T, L, InitNone>> for Optional<T, L, Unbounded>
+where
+    L: Location<'a>,
+{
+    fn from(value: Optional<T, L, InitNone>) -> Self {
+        value.ignore_init_none()
     }
 }
 
@@ -146,7 +227,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRef> for Optional<T, L, B>
+impl<'a, T, L, B: OptionalBound> CycleCollection<'a, ForwardRef> for Optional<T, L, B>
 where
     L: Location<'a>,
 {
@@ -163,7 +244,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> ReceiverComplete<'a, ForwardRef> for Optional<T, L, B>
+impl<'a, T, L, B: OptionalBound> ReceiverComplete<'a, ForwardRef> for Optional<T, L, B>
 where
     L: Location<'a>,
 {
@@ -239,7 +320,7 @@ fn or_inside_tick<'a, T, L: Location<'a>, B: Boundedness>(
     )
 }
 
-impl<'a, T, L, B: Boundedness> Clone for Optional<T, L, B>
+impl<'a, T, L, B: OptionalBound> Clone for Optional<T, L, B>
 where
     T: Clone,
     L: Location<'a>,
@@ -272,7 +353,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> Optional<T, L, B>
+impl<'a, T, L, B: OptionalBound> Optional<T, L, B>
 where
     L: Location<'a>,
 {
@@ -291,7 +372,7 @@ where
 
     pub(crate) fn collection_kind() -> CollectionKind {
         CollectionKind::Optional {
-            bound: B::BOUND_KIND,
+            bound: <B as OptionalBound>::bound_kind(),
             element_type: stageleft::quote_type::<T>().into(),
         }
     }
@@ -404,12 +485,17 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>>) -> Optional<U, L, B>
+    pub fn map<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>>,
+    ) -> Optional<U, L, B>
     where
         F: Fn(T) -> U + 'a,
     {
         let f = f
-            .splice_fn1_ctx(&OperatorContext::<L, B>::new(&self.location))
+            .splice_fn1_ctx(&OperatorContext::<L, B::UnderlyingBound>::new(
+                &self.location,
+            ))
             .into();
         Optional::new(
             self.location.clone(),
@@ -615,19 +701,26 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>>) -> Optional<T, L, B>
+    pub fn filter<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>>,
+    ) -> Optional<T, L, B::UnderlyingBound>
     where
         F: Fn(&T) -> bool + 'a,
     {
         let f = f
-            .splice_fn1_borrow_ctx(&OperatorContext::<L, B>::new(&self.location))
+            .splice_fn1_borrow_ctx(&OperatorContext::<L, B::UnderlyingBound>::new(
+                &self.location,
+            ))
             .into();
         Optional::new(
             self.location.clone(),
             HydroNode::Filter {
                 f,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self.location.new_node_metadata(Self::collection_kind()),
+                metadata: self
+                    .location
+                    .new_node_metadata(Optional::<T, L, B::UnderlyingBound>::collection_kind()),
             },
         )
     }
@@ -658,13 +751,15 @@ where
     /// ```
     pub fn filter_map<U, F>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>>,
-    ) -> Optional<U, L, B>
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>>,
+    ) -> Optional<U, L, B::UnderlyingBound>
     where
         F: Fn(T) -> Option<U> + 'a,
     {
         let f = f
-            .splice_fn1_ctx(&OperatorContext::<L, B>::new(&self.location))
+            .splice_fn1_ctx(&OperatorContext::<L, B::UnderlyingBound>::new(
+                &self.location,
+            ))
             .into();
         Optional::new(
             self.location.clone(),
@@ -673,7 +768,7 @@ where
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .new_node_metadata(Optional::<U, L, B>::collection_kind()),
+                    .new_node_metadata(Optional::<U, L, B::UnderlyingBound>::collection_kind()),
             },
         )
     }
@@ -757,16 +852,20 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn or(self, other: Optional<T, L, B>) -> Optional<T, L, B> {
-        check_matching_location(&self.location, &other.location);
+    pub fn or(
+        self,
+        other: Optional<T, L, B::UnderlyingBound>,
+    ) -> Optional<T, L, B::UnderlyingBound> {
+        let me = self.ignore_init_none();
+        check_matching_location(&me.location, &other.location);
 
         if L::is_top_level()
-            && !B::BOUNDED // only if unbounded we need to use a tick
-            && let Some(tick) = self.location.try_tick()
+            && !<B::UnderlyingBound as Boundedness>::BOUNDED // only if unbounded we need to use a tick
+            && let Some(tick) = me.location.try_tick()
         {
-            let self_location = self.location().clone();
+            let self_location = me.location().clone();
             let out = or_inside_tick(
-                self.snapshot(&tick, nondet!(/** eventually stabilizes */)),
+                me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
                 other.snapshot(&tick, nondet!(/** eventually stabilizes */)),
             )
             .latest();
@@ -774,11 +873,13 @@ where
             Optional::new(self_location, out.ir_node.replace(HydroNode::Placeholder))
         } else {
             Optional::new(
-                self.location.clone(),
+                me.location.clone(),
                 HydroNode::ChainFirst {
-                    first: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    first: Box::new(me.ir_node.replace(HydroNode::Placeholder)),
                     second: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: self.location.new_node_metadata(Self::collection_kind()),
+                    metadata: me
+                        .location
+                        .new_node_metadata(Optional::<T, L, B::UnderlyingBound>::collection_kind()),
                 },
             )
         }
@@ -814,15 +915,21 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn unwrap_or(self, other: Singleton<T, L, B>) -> Singleton<T, L, B> {
+    pub fn unwrap_or(
+        self,
+        other: Singleton<T, L, B::UnderlyingBound>,
+    ) -> Singleton<T, L, B::UnderlyingBound> {
         let res_option = self.or(other.into());
         Singleton::new(
             res_option.location.clone(),
             HydroNode::Cast {
                 inner: Box::new(res_option.ir_node.replace(HydroNode::Placeholder)),
-                metadata: res_option
-                    .location
-                    .new_node_metadata(Singleton::<T, L, B>::collection_kind()),
+                metadata: res_option.location.new_node_metadata(Singleton::<
+                    T,
+                    L,
+                    B::UnderlyingBound,
+                >::collection_kind(
+                )),
             },
         )
     }
@@ -852,7 +959,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn unwrap_or_default(self) -> Singleton<T, L, B>
+    pub fn unwrap_or_default(self) -> Singleton<T, L, B::UnderlyingBound>
     where
         T: Default + Clone,
     {
@@ -885,7 +992,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn into_singleton(self) -> Singleton<Option<T>, L, B>
+    pub fn into_singleton(self) -> Singleton<Option<T>, L, B::UnderlyingBound>
     where
         T: Clone,
     {
@@ -896,9 +1003,11 @@ where
             HydroNode::SingletonSource {
                 value: none.into(),
                 first_tick_only: false,
-                metadata: self
-                    .location
-                    .new_node_metadata(Singleton::<Option<T>, L, B>::collection_kind()),
+                metadata: self.location.new_node_metadata(Singleton::<
+                    Option<T>,
+                    L,
+                    B::UnderlyingBound,
+                >::collection_kind()),
             },
         );
 
@@ -928,7 +1037,7 @@ where
     /// # }
     /// ```
     #[expect(clippy::wrong_self_convention, reason = "Stream naming")]
-    pub fn is_some(self) -> Singleton<bool, L, B> {
+    pub fn is_some(self) -> Singleton<bool, L, B::UnderlyingBound> {
         self.map(q!(|_| ()))
             .into_singleton()
             .map(q!(|o| o.is_some()))
@@ -957,7 +1066,7 @@ where
     /// # }
     /// ```
     #[expect(clippy::wrong_self_convention, reason = "Stream naming")]
-    pub fn is_none(self) -> Singleton<bool, L, B> {
+    pub fn is_none(self) -> Singleton<bool, L, B::UnderlyingBound> {
         self.map(q!(|_| ()))
             .into_singleton()
             .map(q!(|o| o.is_none()))
@@ -1007,6 +1116,28 @@ where
             metadata.tag = Some(name.to_owned());
         }
         self
+    }
+
+    /// Drops the [`InitNone`] guarantee of the [`Optional`], erasing it to its
+    /// [`OptionalBound::UnderlyingBound`] (i.e. [`Unbounded`] for [`InitNone`]).
+    pub fn ignore_init_none(self) -> Optional<T, L, B::UnderlyingBound> {
+        if <B as OptionalBound>::bound_kind() == <B::UnderlyingBound as OptionalBound>::bound_kind()
+        {
+            Optional::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            Optional::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self
+                        .location
+                        .new_node_metadata(Optional::<T, L, B::UnderlyingBound>::collection_kind()),
+                },
+            )
+        }
     }
 
     /// Strengthens the boundedness guarantee to `Bounded`, given that `B: IsBounded`, which
@@ -1256,7 +1387,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B: Boundedness> Optional<(K, V), L, B>
+impl<'a, K, V, L, B: OptionalBound> Optional<(K, V), L, B>
 where
     L: Location<'a>,
 {
@@ -1267,20 +1398,23 @@ where
     /// if it is [`Unbounded`], the [`KeyedSingleton`] will be [`Unbounded`], which means that
     /// the entry will be updated and appear / disappear according to the state of the
     /// [`Optional`].
-    pub fn into_keyed_singleton(self) -> KeyedSingleton<K, V, L, B> {
+    pub fn into_keyed_singleton(self) -> KeyedSingleton<K, V, L, B::UnderlyingBound> {
         KeyedSingleton::new(
             self.location.clone(),
             HydroNode::Cast {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
+                metadata: self.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    V,
+                    L,
+                    B::UnderlyingBound,
+                >::collection_kind()),
             },
         )
     }
 }
 
-impl<'a, T, L, B: Boundedness> Optional<T, Atomic<L>, B>
+impl<'a, T, L, B: OptionalBound> Optional<T, Atomic<L>, B>
 where
     L: Location<'a>,
 {
@@ -1299,6 +1433,10 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> Optional<T, Tick<L::DropConsistency>, Bounded> {
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(self.location.tick.parent_location())
+        );
         Optional::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -1310,7 +1448,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> Optional<T, L, B>
+impl<'a, T, L, B: OptionalBound> Optional<T, L, B>
 where
     L: Location<'a>,
 {
@@ -1327,7 +1465,10 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> Optional<T, Tick<L::DropConsistency>, Bounded> {
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(&self.location)
+        );
         Optional::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -1486,12 +1627,12 @@ where
     /// ```
     pub fn latest(self) -> Optional<T, L, Unbounded> {
         Optional::new(
-            self.location.outer().clone(),
+            self.location.parent_location().clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .outer()
+                    .parent_location()
                     .new_node_metadata(Optional::<T, L, Unbounded>::collection_kind()),
             },
         )

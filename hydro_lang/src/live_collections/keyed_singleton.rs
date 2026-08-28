@@ -28,7 +28,7 @@ use crate::live_collections::stream::{Ordering, Retries};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::DeferTick;
-use crate::location::{Atomic, Location, Tick, check_matching_location};
+use crate::location::{Atomic, Location, Tick, TopLevel, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::properties::manual_proof;
@@ -97,7 +97,7 @@ impl KeyedSingletonBound for Bounded {
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key appears,
 /// its value is bounded and will never change, but new entries may appear asynchronously
-pub struct BoundedValue;
+pub enum BoundedValue {}
 
 impl KeyedSingletonBound for BoundedValue {
     type UnderlyingBound = Unbounded;
@@ -114,7 +114,7 @@ impl KeyedSingletonBound for BoundedValue {
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key appears,
 /// it will never be removed, and the corresponding value will only increase monotonically.
-pub struct MonotonicValue;
+pub enum MonotonicValue {}
 
 impl KeyedSingletonBound for MonotonicValue {
     type UnderlyingBound = Unbounded;
@@ -131,7 +131,7 @@ impl KeyedSingletonBound for MonotonicValue {
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key
 /// appears, it will never be removed, but the corresponding value may change arbitrarily.
-pub struct MonotonicKeys;
+pub enum MonotonicKeys {}
 
 impl KeyedSingletonBound for MonotonicKeys {
     type UnderlyingBound = Unbounded;
@@ -1594,6 +1594,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
                 },
                 idempotent = manual_proof!(/** repeated elements are ignored */)
             ))
+            .ignore_init_none()
     }
 
     /// Converts this keyed singleton into a [`KeyedStream`] with each group having a single
@@ -1656,13 +1657,12 @@ where
     ///
     /// This is useful to enforce local consistency constraints, such as ensuring that a write is
     /// processed before an acknowledgement is emitted.
-    pub fn atomic(self) -> KeyedSingleton<K, V, Atomic<L>, B> {
-        let id = self.location.flow_state().borrow_mut().next_clock_id();
+    pub fn atomic(self) -> KeyedSingleton<K, V, Atomic<L>, B>
+    where
+        L: TopLevel<'a>,
+    {
         let out_location = Atomic {
-            tick: Tick {
-                id,
-                l: self.location.clone(),
-            },
+            tick: self.location.tick(),
         };
         KeyedSingleton::new(
             out_location.clone(),
@@ -1765,7 +1765,10 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(&self.location)
+        );
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -1792,6 +1795,10 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(self.location.tick.parent_location())
+        );
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -1953,7 +1960,10 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(&self.location)
+        );
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -1984,6 +1994,10 @@ where
         nondet: NonDet,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
         let _ = nondet;
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(self.location.tick.parent_location())
+        );
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {

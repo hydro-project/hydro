@@ -20,7 +20,7 @@ use std::time::Duration;
 
 fn singleton_with_delay<T, L>(
   singleton: Singleton<T, Process<L>, Unbounded>
-) -> Optional<T, Process<L>, Unbounded> {
+) -> Optional<T, Process<L>, InitNone> {
   singleton
     .sample_every(q!(Duration::from_secs(1)), nondet!(
       /// which intermediate values are sampled is non-deterministic, but `.last()`

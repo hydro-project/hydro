@@ -1507,8 +1507,8 @@ where
     /// ```
     pub fn reduce<F, C, Idemp>(
         self,
-        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<T, B, C, Idemp>>,
-    ) -> Optional<T, L, B>
+        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<C, B, C, Idemp>>,
+    ) -> Optional<T, L, B::AggregatedOptional>
     where
         F: Fn(&mut T, T) + 'a,
         C: ValidCommutativityFor<O>,
@@ -1529,9 +1529,11 @@ where
         let core = HydroNode::Reduce {
             f: f.into(),
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
-            metadata: ordered_etc
-                .location
-                .new_node_metadata(Optional::<T, L::DropConsistency, B>::collection_kind()),
+            metadata: ordered_etc.location.new_node_metadata(Optional::<
+                T,
+                L::DropConsistency,
+                B::AggregatedOptional,
+            >::collection_kind()),
         };
 
         Optional::new(ordered_etc.location.clone(), core)
@@ -1557,7 +1559,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn max(self) -> Optional<T, L, B>
+    pub fn max(self) -> Optional<T, L, B::AggregatedOptional>
     where
         T: Ord,
     {
@@ -1591,7 +1593,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn min(self) -> Optional<T, L, B>
+    pub fn min(self) -> Optional<T, L, B::AggregatedOptional>
     where
         T: Ord,
     {
@@ -1628,7 +1630,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn first(self) -> Optional<T, L, B>
+    pub fn first(self) -> Optional<T, L, B::AggregatedOptional>
     where
         O: IsOrdered,
     {
@@ -1660,7 +1662,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn last(self) -> Optional<T, L, B>
+    pub fn last(self) -> Optional<T, L, B::AggregatedOptional>
     where
         O: IsOrdered,
     {
@@ -2163,13 +2165,12 @@ where
     ///
     /// This is useful to enforce local consistency constraints, such as ensuring that a write is
     /// processed before an acknowledgement is emitted.
-    pub fn atomic(self) -> Stream<T, Atomic<L>, B, O, R> {
-        let id = self.location.flow_state().borrow_mut().next_clock_id();
+    pub fn atomic(self) -> Stream<T, Atomic<L>, B, O, R>
+    where
+        L: TopLevel<'a>,
+    {
         let out_location = Atomic {
-            tick: Tick {
-                id,
-                l: self.location.clone(),
-            },
+            tick: self.location.tick(),
         };
         Stream::new(
             out_location.clone(),
@@ -2197,7 +2198,11 @@ where
         tick: &Tick<L2>,
         mut nondet: NonDet<Option<crate::sim_hooks::BatchHook<T, O, R>>>,
     ) -> Stream<T, Tick<L::DropConsistency>, Bounded, O, R> {
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(&self.location)
+        );
+
         let mut metadata =
             tick.new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind());
         metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
@@ -3158,8 +3163,14 @@ where
         tick: &Tick<L2>,
         mut nondet: NonDet<Option<crate::sim_hooks::BatchHook<T, O, R>>>,
     ) -> Stream<T, Tick<L::DropConsistency>, Bounded, O, R> {
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(self.location.tick.parent_location())
+        );
+
         let mut metadata =
             tick.new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind());
+
         metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         Stream::new(
             tick.drop_consistency(),
@@ -3285,13 +3296,17 @@ where
     /// which will stream all the elements across _all_ tick iterations by concatenating the batches.
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, O, R> {
         Stream::new(
-            self.location.outer().clone(),
+            self.location.parent_location().clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .outer()
-                    .new_node_metadata(Stream::<T, L, Unbounded, O, R>::collection_kind()),
+                metadata: self.location.parent_location().new_node_metadata(Stream::<
+                    T,
+                    L,
+                    Unbounded,
+                    O,
+                    R,
+                >::collection_kind(
+                )),
             },
         )
     }

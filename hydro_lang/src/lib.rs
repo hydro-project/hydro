@@ -55,7 +55,7 @@ pub mod prelude {
     pub use crate::live_collections::boundedness::{Bounded, Unbounded};
     pub use crate::live_collections::keyed_singleton::{KeyedSingleton, MonotonicKeys};
     pub use crate::live_collections::keyed_stream::KeyedStream;
-    pub use crate::live_collections::optional::Optional;
+    pub use crate::live_collections::optional::{InitNone, Optional};
     pub use crate::live_collections::singleton::Singleton;
     pub use crate::live_collections::sliced::sliced;
     pub use crate::live_collections::stream::Stream;

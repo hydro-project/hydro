@@ -195,7 +195,7 @@ expression: built.ir()
                                         metadata: HydroIrMetadata {
                                             location_id: Process(loc2v1),
                                             collection_kind: Optional {
-                                                bound: Unbounded,
+                                                bound: InitNone,
                                                 element_type: (u64 , u64),
                                             },
                                         },

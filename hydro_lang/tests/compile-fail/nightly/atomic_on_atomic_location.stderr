@@ -1,0 +1,24 @@
+error[E0277]: the trait bound `hydro_lang::location::Atomic<hydro_lang::prelude::Process<'a, P1>>: TopLevel<'_>` is not satisfied
+  --> tests/compile-fail/nightly/atomic_on_atomic_location.rs:10:48
+   |
+10 |     let _ = p1.source_iter(q!(0..10)).atomic().atomic();
+   |                                                ^^^^^^ the trait `TopLevel<'_>` is not implemented for `hydro_lang::location::Atomic<hydro_lang::prelude::Process<'a, P1>>`
+   |
+help: the following other types implement trait `TopLevel<'a>`
+  --> src/location/process.rs
+   |
+   | impl<'a, P> TopLevel<'a> for Process<'a, P> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::prelude::Process<'a, P>`
+   |
+  ::: src/location/cluster.rs
+   |
+   | impl<'a, C, Con: Consistency> TopLevel<'a> for Cluster<'a, C, Con> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::prelude::Cluster<'a, C, Con>`
+note: required by a bound in `hydro_lang::prelude::Stream::<T, L, B, O, R>::atomic`
+  --> src/live_collections/stream/mod.rs
+   |
+   |     pub fn atomic(self) -> Stream<T, Atomic<L>, B, O, R>
+   |            ------ required by a bound in this associated function
+   |     where
+   |         L: TopLevel<'a>,
+   |            ^^^^^^^^^^^^ required by this bound in `Stream::<T, L, B, O, R>::atomic`

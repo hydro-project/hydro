@@ -176,12 +176,18 @@ impl<'a, L> Tick<L>
 where
     L: Location<'a>,
 {
-    /// Returns a reference to the outer (parent) location that this tick is nested within.
+    /// Returns a reference to the parent location that this tick is located at.
     ///
     /// For example, if a `Tick` was created from a `Process`, this returns a reference
     /// to that `Process`.
-    pub fn outer(&self) -> &L {
+    pub fn parent_location(&self) -> &L {
         &self.l
+    }
+
+    /// Use [`Self::parent_location`] instead.
+    #[deprecated(note = "use `.parent_location()` instead")]
+    pub fn outer(&self) -> &L {
+        self.parent_location()
     }
 
     /// Creates a bounded stream of `()` values inside this tick, with a fixed batch size.

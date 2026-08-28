@@ -93,7 +93,6 @@ use futures::StreamExt;
 use libloading::Library;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use tempfile::TempPath;
 use tokio::sync::{Mutex, Notify};
 
 use super::runtime::{
@@ -102,6 +101,7 @@ use super::runtime::{
 };
 use super::{SimClusterReceiver, SimClusterSender, SimReceiver, SimSender};
 use crate::compile::builder::ExternalPortId;
+use crate::compile::trybuild::generate::BuiltArtifact;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder};
 use crate::location::dynamic::LocationId;
 use crate::sim::graph::{SimExternalPort, SimExternalPortRegistry};
@@ -737,7 +737,7 @@ tokio::task_local! {
 
 /// A handle to a compiled Hydro simulation, which can be instantiated and run.
 pub struct CompiledSim {
-    pub(super) _path: TempPath,
+    pub(super) _path: BuiltArtifact,
     pub(super) lib: Library,
     pub(super) externals_port_registry: SimExternalPortRegistry,
     pub(super) unit_test_fuzz_iterations: usize,
