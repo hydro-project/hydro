@@ -320,13 +320,23 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
     {
+        // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
+        // sim hooks do not exist yet. Once they do, expose a composite hook payload here
+        // (`NonDet<(Option<KeyedSnapshotHook<..>>, Option<BatchHook<T, O, R>>)>`) so tests
+        // can script the membership snapshot and the element batching independently.
         let ids = track_membership(self.location.source_cluster_membership_stream(
             to,
             nondet!(/** dropped prefixes don't affect broadcast */),
         ));
         sliced! {
-            let members_snapshot = use::snapshot(ids, nondet_membership);
-            let elements = use::batch(self, nondet_membership);
+            let members_snapshot = use::snapshot(ids, nondet!(
+                /// membership timing is captured by the caller's guard
+                nondet_membership
+            ));
+            let elements = use::batch(self, nondet!(
+                /// batching timing is captured by the caller's guard
+                nondet_membership
+            ));
 
             let current_members = members_snapshot.filter(q!(|b| *b));
             elements.repeat_with_keys(current_members)
@@ -733,18 +743,28 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
         via: N,
         nondet_membership: NonDet,
     ) -> Stream<T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce> {
+        // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
+        // sim hooks do not exist yet. Once they do, expose a composite hook payload here
+        // (`NonDet<(Option<KeyedSnapshotHook<..>>, Option<BatchHook<T, O, R>>)>`) so tests
+        // can script the membership snapshot and the element batching independently.
         let ids = track_membership(self.location.source_cluster_membership_stream(
             to,
             nondet!(/** dropped prefixes don't affect broadcast */),
         ));
         sliced! {
-            let members_snapshot = use::snapshot(ids, nondet_membership);
-            let elements = use::batch(self.enumerate(), nondet_membership);
+            let members_snapshot = use::snapshot(ids, nondet!(
+                /// membership timing is captured by the caller's guard
+                nondet_membership
+            ));
+            let elements = use::batch(self.enumerate(), nondet!(
+                /// batching timing is captured by the caller's guard
+                nondet_membership
+            ));
 
             let current_members = members_snapshot
                 .filter(q!(|b| *b))
                 .keys()
-                .assume_ordering::<TotalOrder>(nondet_membership)
+                .assume_ordering::<TotalOrder>(nondet!(/** membership timing is captured by the caller guard */ nondet_membership))
                 .collect_vec();
 
             elements
@@ -879,18 +899,28 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
         nondet_membership: NonDet,
     ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce>
     {
+        // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
+        // sim hooks do not exist yet. Once they do, expose a composite hook payload here
+        // (`NonDet<(Option<KeyedSnapshotHook<..>>, Option<BatchHook<T, O, R>>)>`) so tests
+        // can script the membership snapshot and the element batching independently.
         let ids = track_membership(self.location.source_cluster_membership_stream(
             to,
             nondet!(/** dropped prefixes don't affect broadcast */),
         ));
         sliced! {
-            let members_snapshot = use::snapshot(ids, nondet_membership);
-            let elements = use::batch(self.enumerate(), nondet_membership);
+            let members_snapshot = use::snapshot(ids, nondet!(
+                /// membership timing is captured by the caller's guard
+                nondet_membership
+            ));
+            let elements = use::batch(self.enumerate(), nondet!(
+                /// batching timing is captured by the caller's guard
+                nondet_membership
+            ));
 
             let current_members = members_snapshot
                 .filter(q!(|b| *b))
                 .keys()
-                .assume_ordering::<TotalOrder>(nondet_membership)
+                .assume_ordering::<TotalOrder>(nondet!(/** membership timing is captured by the caller guard */ nondet_membership))
                 .collect_vec();
 
             elements
@@ -1223,13 +1253,23 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
     {
+        // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
+        // sim hooks do not exist yet. Once they do, expose a composite hook payload here
+        // (`NonDet<(Option<KeyedSnapshotHook<..>>, Option<BatchHook<T, O, R>>)>`) so tests
+        // can script the membership snapshot and the element batching independently.
         let ids = track_membership(self.location.source_cluster_membership_stream(
             to,
             nondet!(/** dropped prefixes don't affect broadcast */),
         ));
         sliced! {
-            let members_snapshot = use::snapshot(ids, nondet_membership);
-            let elements = use::batch(self, nondet_membership);
+            let members_snapshot = use::snapshot(ids, nondet!(
+                /// membership timing is captured by the caller's guard
+                nondet_membership
+            ));
+            let elements = use::batch(self, nondet!(
+                /// batching timing is captured by the caller's guard
+                nondet_membership
+            ));
 
             let current_members = members_snapshot.filter(q!(|b| *b));
             elements.repeat_with_keys(current_members)

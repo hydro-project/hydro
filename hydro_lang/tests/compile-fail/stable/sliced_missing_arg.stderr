@@ -79,6 +79,8 @@ error[E0308]: mismatched types
    |                     |
    |                     arguments to this function are incorrect
    |
+   = note: expected struct `NonDet`
+                found type `{integer}`
 note: function defined here
   --> src/live_collections/sliced/style.rs
    |
@@ -93,6 +95,8 @@ error[E0308]: mismatched types
    |                      |
    |                      arguments to this function are incorrect
    |
+   = note: expected struct `NonDet`
+                found type `{integer}`
 note: function defined here
   --> src/live_collections/sliced/style.rs
    |

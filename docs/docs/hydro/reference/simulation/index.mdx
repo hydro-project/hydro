@@ -3,6 +3,8 @@ Hydro comes with a built-in deterministic simulation environment that lets you t
 
 In many cases, the Hydro simulator can perform **exhaustive** checks, which ensure that your application will behave correctly in _all_ possible distributed executions. For particularly complex tests where there are too many scenarios to check, the Hydro simulator can use [coverage-guided fuzzing](https://en.wikipedia.org/wiki/Fuzzing) to _intelligently_ explore the space of executions and find bugs.
 
+Beyond automatic exploration, tests can take manual control of individual decision points with [simulator hooks](./scripting.mdx), pinning a specific scenario while everything else continues to be explored. A test that scripts every decision can run in [deterministic mode](./deterministic.mdx), which executes exactly one interleaving with no exploration at all.
+
 Writing a simulation test involves three steps:
 1. Defining your Hydro application, with regular Hydro APIs
 2. Creating external inputs / outputs that you will use in the test

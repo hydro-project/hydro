@@ -8,14 +8,23 @@ use crate::live_collections::boundedness::Boundedness;
 use crate::live_collections::keyed_singleton::KeyedSingletonBound;
 use crate::live_collections::singleton::SingletonBound;
 use crate::live_collections::stream::{ExactlyOnce, Ordering, Retries, TotalOrder};
+use crate::sim_hooks::OrderingHook;
 
 /// A trait for proof mechanisms that can validate commutativity.
+///
+/// `T` and `B` name the element type and boundedness of the stream the commutative
+/// function consumes. The simulator does not trust commutativity proofs — it still
+/// explores the input ordering — so a proof may carry an [`OrderingHook`] for scripting
+/// that exploration, surfaced through [`Self::take_hook`].
 #[sealed::sealed]
-pub trait CommutativeProof {
+pub trait CommutativeProof<T, B: Boundedness> {
     /// Registers the expression with the proof mechanism.
     ///
     /// This should not perform any blocking analysis; it is only intended to record the expression for later processing.
     fn register_proof(&self, expr: &syn::Expr);
+
+    /// Takes the simulator ordering hook attached to this proof, if any.
+    fn take_hook(&mut self) -> Option<OrderingHook<T, B>>;
 }
 
 /// A trait for proof mechanisms that can validate idempotence.
@@ -53,10 +62,47 @@ pub trait ConsistencyProof {}
 ///
 /// To create a manual proof, use the [`manual_proof!`] macro, which takes in a doc comment
 /// explaining why the property holds.
-pub struct ManualProof();
+///
+/// Manual proofs are not trusted by the simulator, which still explores the guarded
+/// non-determinism. `H` is the simulator hook payload (like [`crate::nondet::NonDet`]) so a
+/// commutativity proof can carry an ordering hook for scripting that exploration.
+pub struct ManualProof<H = ()> {
+    hook: H,
+}
+
+impl<H> ManualProof<H> {
+    #[doc(hidden)]
+    pub fn unhooked() -> Self
+    where
+        H: Default,
+    {
+        ManualProof { hook: H::default() }
+    }
+}
+
+impl<T, B: Boundedness> ManualProof<Option<OrderingHook<T, B>>> {
+    #[doc(hidden)]
+    pub fn hooked(hook: impl Into<Option<OrderingHook<T, B>>>) -> Self {
+        ManualProof { hook: hook.into() }
+    }
+}
+
 #[sealed::sealed]
-impl CommutativeProof for ManualProof {
+impl<T, B: Boundedness> CommutativeProof<T, B> for ManualProof<Option<OrderingHook<T, B>>> {
     fn register_proof(&self, _expr: &syn::Expr) {}
+
+    fn take_hook(&mut self) -> Option<OrderingHook<T, B>> {
+        self.hook.take()
+    }
+}
+
+#[sealed::sealed]
+impl<T, B: Boundedness> CommutativeProof<T, B> for ManualProof {
+    fn register_proof(&self, _expr: &syn::Expr) {}
+
+    fn take_hook(&mut self) -> Option<OrderingHook<T, B>> {
+        None
+    }
 }
 #[sealed::sealed]
 impl IdempotentProof for ManualProof {
@@ -105,9 +151,20 @@ pub use crate::__manual_proof__ as manual_proof;
 /// # }));
 /// # }
 /// ```
+/// An optional trailing `hook = ...` argument attaches a **simulator ordering hook** to a
+/// commutativity proof (see `hydro_lang::sim::hooks`). The simulator does not trust manual
+/// proofs — it still explores the input ordering — so the hook lets a simulation test
+/// script that exploration:
+///
+/// ```rust,ignore
+/// commutative = manual_proof!(/** set insert is commutative */ hook = my_ordering_hook)
+/// ```
 macro_rules! __manual_proof__ {
+    ($(#[doc = $doc:expr])+hook = $hook:expr $(,)?) => {
+        $crate::properties::ManualProof::hooked($hook)
+    };
     ($(#[doc = $doc:expr])+) => {
-        $crate::properties::ManualProof()
+        $crate::properties::ManualProof::<()>::unhooked()
     };
 }
 
@@ -134,36 +191,51 @@ pub enum Proved {}
 /// f(a, &mut state);
 /// // state1 must be equal to state
 /// ```
-pub struct AggFuncAlgebra<Commutative = NotProved, Idempotent = NotProved, Monotone = NotProved>(
-    Option<Box<dyn CommutativeProof>>,
+pub struct AggFuncAlgebra<
+    T = (),
+    B: Boundedness = crate::live_collections::boundedness::Unbounded,
+    Commutative = NotProved,
+    Idempotent = NotProved,
+    Monotone = NotProved,
+>(
+    Option<Box<dyn CommutativeProof<T, B>>>,
     Option<Box<dyn IdempotentProof>>,
     Option<Box<dyn MonotoneProof>>,
     PhantomData<(Commutative, Idempotent, Monotone)>,
 );
 
-impl<C, I, M> AggFuncAlgebra<C, I, M> {
+impl<T, B: Boundedness, C, I, M> AggFuncAlgebra<T, B, C, I, M> {
     /// Marks the function as being commutative, with the given proof mechanism.
     pub fn commutative(
         self,
-        proof: impl CommutativeProof + 'static,
-    ) -> AggFuncAlgebra<Proved, I, M> {
+        proof: impl CommutativeProof<T, B> + 'static,
+    ) -> AggFuncAlgebra<T, B, Proved, I, M> {
         AggFuncAlgebra(Some(Box::new(proof)), self.1, self.2, PhantomData)
     }
 
     /// Marks the function as being idempotent, with the given proof mechanism.
-    pub fn idempotent(self, proof: impl IdempotentProof + 'static) -> AggFuncAlgebra<C, Proved, M> {
+    pub fn idempotent(
+        self,
+        proof: impl IdempotentProof + 'static,
+    ) -> AggFuncAlgebra<T, B, C, Proved, M> {
         AggFuncAlgebra(self.0, Some(Box::new(proof)), self.2, PhantomData)
     }
 
     /// Marks the function as being monotone, with the given proof mechanism.
-    pub fn monotone(self, proof: impl MonotoneProof + 'static) -> AggFuncAlgebra<C, I, Proved> {
+    pub fn monotone(
+        self,
+        proof: impl MonotoneProof + 'static,
+    ) -> AggFuncAlgebra<T, B, C, I, Proved> {
         AggFuncAlgebra(self.0, self.1, Some(Box::new(proof)), PhantomData)
     }
 
-    /// Registers the expression with the underlying proof mechanisms.
-    pub(crate) fn register_proof(self, expr: &syn::Expr) {
-        if let Some(comm_proof) = self.0 {
+    /// Registers the expression with the underlying proof mechanisms, and takes the
+    /// simulator ordering hook attached to the commutativity proof, if any.
+    pub(crate) fn register_proof(self, expr: &syn::Expr) -> Option<OrderingHook<T, B>> {
+        let mut hook = None;
+        if let Some(mut comm_proof) = self.0 {
             comm_proof.register_proof(expr);
+            hook = comm_proof.take_hook();
         }
 
         if let Some(idem_proof) = self.1 {
@@ -173,11 +245,13 @@ impl<C, I, M> AggFuncAlgebra<C, I, M> {
         if let Some(monotone_proof) = self.2 {
             monotone_proof.register_proof(expr);
         }
+
+        hook
     }
 }
 
-impl<C, I, M> Property for AggFuncAlgebra<C, I, M> {
-    type Root = AggFuncAlgebra;
+impl<T, B: Boundedness, C, I, M> Property for AggFuncAlgebra<T, B, C, I, M> {
+    type Root = AggFuncAlgebra<T, B>;
 
     fn make_root(_target: &mut Option<Self>) -> Self::Root {
         AggFuncAlgebra(None, None, None, PhantomData)
@@ -188,30 +262,32 @@ impl<C, I, M> Property for AggFuncAlgebra<C, I, M> {
 ///
 /// Order-preserving means that if the input grows monotonically, the output also grows monotonically.
 pub struct SingletonMapFuncAlgebra<
+    T = (),
+    B: Boundedness = crate::live_collections::boundedness::Unbounded,
     OrderPreserving = NotProved,
     Commutative = NotProved,
     Idempotent = NotProved,
 >(
     Option<Box<dyn OrderPreservingProof>>,
-    Option<Box<dyn CommutativeProof>>,
+    Option<Box<dyn CommutativeProof<T, B>>>,
     Option<Box<dyn IdempotentProof>>,
     PhantomData<(OrderPreserving, Commutative, Idempotent)>,
 );
 
-impl<O, C, I> SingletonMapFuncAlgebra<O, C, I> {
+impl<T, B: Boundedness, O, C, I> SingletonMapFuncAlgebra<T, B, O, C, I> {
     /// Marks the function as being order-preserving, with the given proof mechanism.
     pub fn order_preserving(
         self,
         proof: impl OrderPreservingProof + 'static,
-    ) -> SingletonMapFuncAlgebra<Proved, C, I> {
+    ) -> SingletonMapFuncAlgebra<T, B, Proved, C, I> {
         SingletonMapFuncAlgebra(Some(Box::new(proof)), self.1, self.2, PhantomData)
     }
 
     /// Marks the function as being commutative, with the given proof mechanism.
     pub fn commutative(
         self,
-        proof: impl CommutativeProof + 'static,
-    ) -> SingletonMapFuncAlgebra<O, Proved, I> {
+        proof: impl CommutativeProof<T, B> + 'static,
+    ) -> SingletonMapFuncAlgebra<T, B, O, Proved, I> {
         SingletonMapFuncAlgebra(self.0, Some(Box::new(proof)), self.2, PhantomData)
     }
 
@@ -219,20 +295,25 @@ impl<O, C, I> SingletonMapFuncAlgebra<O, C, I> {
     pub fn idempotent(
         self,
         proof: impl IdempotentProof + 'static,
-    ) -> SingletonMapFuncAlgebra<O, C, Proved> {
+    ) -> SingletonMapFuncAlgebra<T, B, O, C, Proved> {
         SingletonMapFuncAlgebra(self.0, self.1, Some(Box::new(proof)), PhantomData)
     }
 
-    /// Registers the expression with the underlying proof mechanisms.
-    pub(crate) fn register_proof(self, expr: &syn::Expr) {
+    /// Registers the expression with the underlying proof mechanisms, and takes the
+    /// simulator ordering hook attached to the commutativity proof, if any.
+    pub(crate) fn register_proof(self, expr: &syn::Expr) -> Option<OrderingHook<T, B>> {
         if let Some(proof) = self.0 {
             proof.register_proof(expr);
         }
+        self.1.and_then(|mut proof| {
+            proof.register_proof(expr);
+            proof.take_hook()
+        })
     }
 }
 
-impl<O, C, I> Property for SingletonMapFuncAlgebra<O, C, I> {
-    type Root = SingletonMapFuncAlgebra;
+impl<T, B: Boundedness, O, C, I> Property for SingletonMapFuncAlgebra<T, B, O, C, I> {
+    type Root = SingletonMapFuncAlgebra<T, B>;
 
     fn make_root(_target: &mut Option<Self>) -> Self::Root {
         SingletonMapFuncAlgebra(None, None, None, PhantomData)
@@ -240,18 +321,23 @@ impl<O, C, I> Property for SingletonMapFuncAlgebra<O, C, I> {
 }
 
 /// Algebraic properties for a stream map function of type T -> U.
-pub struct StreamMapFuncAlgebra<Commutative = NotProved, Idempotent = NotProved>(
-    Option<Box<dyn CommutativeProof>>,
+pub struct StreamMapFuncAlgebra<
+    T = (),
+    B: Boundedness = crate::live_collections::boundedness::Unbounded,
+    Commutative = NotProved,
+    Idempotent = NotProved,
+>(
+    Option<Box<dyn CommutativeProof<T, B>>>,
     Option<Box<dyn IdempotentProof>>,
     PhantomData<(Commutative, Idempotent)>,
 );
 
-impl<C, I> StreamMapFuncAlgebra<C, I> {
+impl<T, B: Boundedness, C, I> StreamMapFuncAlgebra<T, B, C, I> {
     /// Marks the function as being commutative, with the given proof mechanism.
     pub fn commutative(
         self,
-        proof: impl CommutativeProof + 'static,
-    ) -> StreamMapFuncAlgebra<Proved, I> {
+        proof: impl CommutativeProof<T, B> + 'static,
+    ) -> StreamMapFuncAlgebra<T, B, Proved, I> {
         StreamMapFuncAlgebra(Some(Box::new(proof)), self.1, PhantomData)
     }
 
@@ -259,23 +345,26 @@ impl<C, I> StreamMapFuncAlgebra<C, I> {
     pub fn idempotent(
         self,
         proof: impl IdempotentProof + 'static,
-    ) -> StreamMapFuncAlgebra<C, Proved> {
+    ) -> StreamMapFuncAlgebra<T, B, C, Proved> {
         StreamMapFuncAlgebra(self.0, Some(Box::new(proof)), PhantomData)
     }
 
-    /// Registers the expression with the underlying proof mechanisms.
-    pub(crate) fn register_proof(self, expr: &syn::Expr) {
-        if let Some(proof) = self.0 {
+    /// Registers the expression with the underlying proof mechanisms, and takes the
+    /// simulator ordering hook attached to the commutativity proof, if any.
+    pub(crate) fn register_proof(self, expr: &syn::Expr) -> Option<OrderingHook<T, B>> {
+        let hook = self.0.and_then(|mut proof| {
             proof.register_proof(expr);
-        }
+            proof.take_hook()
+        });
         if let Some(proof) = self.1 {
             proof.register_proof(expr);
         }
+        hook
     }
 }
 
-impl<C, I> Property for StreamMapFuncAlgebra<C, I> {
-    type Root = StreamMapFuncAlgebra;
+impl<T, B: Boundedness, C, I> Property for StreamMapFuncAlgebra<T, B, C, I> {
+    type Root = StreamMapFuncAlgebra<T, B>;
 
     fn make_root(_target: &mut Option<Self>) -> Self::Root {
         StreamMapFuncAlgebra(None, None, PhantomData)

@@ -128,6 +128,13 @@ impl<'a> SimFlow<'a> {
         self.compiled().exhaustive(thunk)
     }
 
+    /// Runs the test body against exactly **one** execution of the program, with no fuzzer
+    /// involved anywhere. Requires every unsafe operator that receives data to be bound to
+    /// a sim hook and scripted; see [`crate::sim::compiled::CompiledSim::deterministic`].
+    pub fn deterministic(self, thunk: impl AsyncFnOnce() + RefUnwindSafe) {
+        self.compiled().deterministic(thunk)
+    }
+
     /// Compiles the simulation into a dynamically loadable library, and returns a handle to it.
     pub fn compiled(mut self) -> CompiledSim {
         use dfir_lang::graph::{eliminate_extra_unions_tees, partition_graph};
@@ -148,6 +155,7 @@ impl<'a> SimFlow<'a> {
             test_safety_only: self.test_safety_only,
             skip_consistency_assertions: self.skip_consistency_assertions,
             channel_tables: BTreeMap::new(),
+            bound_sim_hooks: HashMap::new(),
         };
 
         // Ensure the default (0) external is always present.

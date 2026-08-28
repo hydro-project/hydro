@@ -578,12 +578,13 @@ fn compile_sim_graph_trybuild(
         }
     };
 
+    let root = get_this_crate();
     let process_dfir_exprs = process_graphs
         .into_iter()
         .map(|(lid, g)| {
             let dfir_expr = dfir_into_code_erased(&g);
             let ser_lid = serde_json::to_string(&lid).unwrap();
-            syn::parse_quote!((#ser_lid, None, #dfir_expr))
+            syn::parse_quote!((#root::sim::runtime::parse_location(#ser_lid), None, #dfir_expr))
         })
         .collect::<Vec<syn::Expr>>();
 
@@ -615,7 +616,7 @@ fn compile_sim_graph_trybuild(
                     let ser_tick_lid = serde_json::to_string(&tick_lid).unwrap();
                     syn::parse_quote! {
                         __tick_dfirs.push((
-                            #ser_tick_lid,
+                            #root::sim::runtime::parse_location(#ser_tick_lid),
                             Some(__current_cluster_id),
                             #tick_dfir_expr
                         ));
@@ -638,7 +639,7 @@ fn compile_sim_graph_trybuild(
             syn::parse_quote! {
                 for __current_cluster_id in [#(#member_ids),*] {
                     __async_dfirs.push((
-                        #ser_lid,
+                        #root::sim::runtime::parse_location(#ser_lid),
                         Some(__current_cluster_id),
                         {
                             #(#extra_stmts_per_cluster)*
@@ -659,7 +660,7 @@ fn compile_sim_graph_trybuild(
         .map(|(lid, g)| {
             let dfir_expr = dfir_into_code_erased(&g);
             let ser_lid = serde_json::to_string(&lid).unwrap();
-            syn::parse_quote!((#ser_lid, None, #dfir_expr))
+            syn::parse_quote!((#root::sim::runtime::parse_location(#ser_lid), None, #dfir_expr))
         })
         .collect::<Vec<syn::Expr>>();
 
@@ -712,10 +713,15 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            #root::sim::runtime::Hooks<&'static str>,
-            #root::sim::runtime::InlineHooks<&'static str>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            #root::sim::runtime::Hooks,
+            #root::sim::runtime::ObservationHooks,
+            #root::sim::runtime::InlineHooks,
+            #root::sim::runtime::ScriptedTickHooks,
+            #root::sim::runtime::ScriptedObservationHooks,
+            #root::sim::runtime::ScriptedInlineHooks,
+            #root::sim::runtime::ScriptedHookRegistry,
         ) {
             macro_rules! println {
                 ($($arg:tt)*) => ({
@@ -761,15 +767,20 @@ fn compile_sim_graph_trybuild(
                 };
             }
 
-            let mut __hydro_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn #root::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
-            let mut __hydro_inline_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn #root::sim::runtime::SimInlineHook>>> = ::std::collections::HashMap::new();
+            let mut __hydro_hooks: #root::sim::runtime::Hooks = ::std::collections::HashMap::new();
+            let mut __hydro_observation_hooks: #root::sim::runtime::ObservationHooks = ::std::collections::HashMap::new();
+            let mut __hydro_inline_hooks: #root::sim::runtime::InlineHooks = ::std::collections::HashMap::new();
+            let mut __hydro_scripted_hooks: #root::sim::runtime::ScriptedTickHooks = ::std::collections::HashMap::new();
+            let mut __hydro_scripted_observation_hooks: #root::sim::runtime::ScriptedObservationHooks = ::std::collections::HashMap::new();
+            let mut __hydro_scripted_inline_hooks: #root::sim::runtime::ScriptedInlineHooks = ::std::collections::HashMap::new();
+            let mut __hydro_scripted_registry: #root::sim::runtime::ScriptedHookRegistry = ::std::collections::BTreeMap::new();
             #(#extra_stmts_global)*
             #(#cluster_ids_stmts)*
 
             let mut __async_dfirs = vec![#(#process_dfir_exprs),*];
             let mut __tick_dfirs = vec![#(#process_tick_dfir_exprs),*];
             #(#cluster_dfir_stmts)*
-            (__async_dfirs, __tick_dfirs, __hydro_hooks, __hydro_inline_hooks)
+            (__async_dfirs, __tick_dfirs, __hydro_hooks, __hydro_observation_hooks, __hydro_inline_hooks, __hydro_scripted_hooks, __hydro_scripted_observation_hooks, __hydro_scripted_inline_hooks, __hydro_scripted_registry)
         }
 
         #[unsafe(no_mangle)]
@@ -782,10 +793,15 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            #root::sim::runtime::Hooks<&'static str>,
-            #root::sim::runtime::InlineHooks<&'static str>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            #root::sim::runtime::Hooks,
+            #root::sim::runtime::ObservationHooks,
+            #root::sim::runtime::InlineHooks,
+            #root::sim::runtime::ScriptedTickHooks,
+            #root::sim::runtime::ScriptedObservationHooks,
+            #root::sim::runtime::ScriptedInlineHooks,
+            #root::sim::runtime::ScriptedHookRegistry,
         ) {
             #root::runtime_support::colored::control::set_override(should_color);
             __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __hydro_cluster_external_out, __hydro_cluster_external_in, __println_handler, __eprintln_handler)

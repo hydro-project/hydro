@@ -517,7 +517,7 @@ where
             'a,
             F,
             OperatorContext<L, <B as SingletonBound>::UnderlyingBound>,
-            SingletonMapFuncAlgebra<OP>,
+            SingletonMapFuncAlgebra<T, <B as SingletonBound>::UnderlyingBound, OP>,
         >,
     ) -> Singleton<U, L, B2>
     where
@@ -528,7 +528,7 @@ where
             .splice_fn1_ctx_props(
                 &OperatorContext::<L, <B as SingletonBound>::UnderlyingBound>::new(&self.location),
             );
-        proof.register_proof(&f);
+        let _ = proof.register_proof(&f);
         let f = f.into();
         Singleton::new(
             self.location.clone(),
@@ -571,7 +571,12 @@ where
     /// ```
     pub fn flat_map_ordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, Bounded>, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, Bounded>,
+            StreamMapFuncAlgebra<T, Bounded, C, Idemp>,
+        >,
     ) -> Stream<U, L, Bounded, TotalOrder, ExactlyOnce>
     where
         B: IsBounded,
@@ -613,7 +618,12 @@ where
     /// ```
     pub fn flat_map_unordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, Bounded>, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, Bounded>,
+            StreamMapFuncAlgebra<T, Bounded, C, Idemp>,
+        >,
     ) -> Stream<U, L, Bounded, NoOrder, ExactlyOnce>
     where
         B: IsBounded,
@@ -1225,18 +1235,22 @@ where
     pub fn snapshot_atomic<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T>>>,
     ) -> Singleton<T, Tick<L::DropConsistency>, Bounded> {
         assert_eq!(
             Location::id(tick.parent_location()),
             Location::id(self.location.tick.parent_location())
         );
+
+        let mut metadata =
+            tick.new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind());
+
+        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         Singleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick
-                    .new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind()),
+                metadata,
             },
         )
     }
@@ -1254,21 +1268,28 @@ where
     /// Because this picks a snapshot of a singleton whose value is continuously changing,
     /// the output singleton has a non-deterministic value since the snapshot can be at an
     /// arbitrary point in time.
+    ///
+    /// In simulation tests, the snapshot decisions can be scripted by attaching a
+    /// [`SnapshotHook`](crate::sim_hooks::SnapshotHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn snapshot<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T>>>,
     ) -> Singleton<T, Tick<L::DropConsistency>, Bounded> {
         assert_eq!(
             Location::id(tick.parent_location()),
             Location::id(&self.location)
         );
+
+        let mut metadata =
+            tick.new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         Singleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick
-                    .new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind()),
+                metadata,
             },
         )
     }
@@ -1280,12 +1301,20 @@ where
     /// At runtime, the singleton will be arbitrarily sampled as fast as possible, but due
     /// to non-deterministic batching and arrival of inputs, the output stream is
     /// non-deterministic.
+    ///
+    /// In simulation tests, the internal snapshot decisions can be scripted by attaching
+    /// a [`SnapshotHook`](crate::sim_hooks::SnapshotHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn sample_eager(
         self,
-        nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T>>>,
     ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce> {
+        let snapshot_hook = nondet.take_hook();
         sliced! {
-            let snapshot = use::snapshot(self, nondet);
+            let snapshot = use::snapshot(self, nondet!(
+                /// which snapshots are sampled is captured by the caller's guard
+                hook = snapshot_hook
+            ));
             snapshot.into_stream()
         }
         .weaken_retries()
@@ -1300,19 +1329,33 @@ where
     /// # Non-Determinism
     /// The output stream is non-deterministic in which elements are sampled, since this
     /// is controlled by a clock.
+    ///
+    /// In simulation tests, the internal snapshot decisions and the batching of clock
+    /// samples can be scripted through the guard's composite hook payload, e.g.
+    /// `nondet!(/** reason */ hook = (snapshot_hook.into(), None))`.
     #[cfg(feature = "tokio")]
     pub fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
-        nondet: NonDet,
+        mut nondet: NonDet<(
+            Option<crate::sim_hooks::SnapshotHook<T>>,
+            Option<crate::sim_hooks::BatchHook<()>>,
+        )>,
     ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce>
     where
         L: TopLevel<'a>,
     {
         let samples = self.location.source_interval(interval);
+        let (snapshot_hook, samples_hook) = nondet.take_hook();
         sliced! {
-            let snapshot = use::snapshot(self, nondet);
-            let sample_batch = use::batch(samples, nondet);
+            let snapshot = use::snapshot(self, nondet!(
+                /// which snapshots are sampled is captured by the caller's guard
+                hook = snapshot_hook
+            ));
+            let sample_batch = use::batch(samples, nondet!(
+                /// sample timing is captured by the caller's guard
+                hook = samples_hook
+            ));
 
             snapshot.filter_if(sample_batch.first().is_some()).into_stream()
         }
