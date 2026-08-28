@@ -1237,12 +1237,12 @@ where
         tick: &Tick<L2>,
         mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T>>>,
     ) -> Singleton<T, Tick<L::DropConsistency>, Bounded> {
-      assert_eq!(
-          Location::id(tick.parent_location()),
-          Location::id(self.location.tick.parent_location())
-      );
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(self.location.tick.parent_location())
+        );
 
-      let mut metadata =
+        let mut metadata =
             tick.new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind());
 
         metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
