@@ -43,7 +43,7 @@ pub use crate::__nondet__ as nondet;
 /// # #[cfg(feature = "tokio")]
 /// fn singleton_with_delay<T, L>(
 ///   singleton: Singleton<T, Process<L>, Unbounded>
-/// ) -> Optional<T, Process<L>, Unbounded> {
+/// ) -> Optional<T, Process<L>, InitNone> {
 ///   singleton
 ///     .sample_every(q!(Duration::from_secs(1)), nondet!(/**
 ///         non-deterministic samples will eventually resolve to stable result
