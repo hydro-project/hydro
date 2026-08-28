@@ -15,7 +15,7 @@ is locally resolved, you should document <em>why</em> this is the case.</p>
 
 <span class="kw">fn </span>singleton_with_delay&lt;T, L&gt;(
   singleton: Singleton&lt;T, Process&lt;L&gt;, Unbounded&gt;
-) -&gt; Optional&lt;T, Process&lt;L&gt;, Unbounded&gt; {
+) -&gt; Optional&lt;T, Process&lt;L&gt;, InitNone&gt; {
   singleton
     .sample_every(<span class="macro">q!</span>(Duration::from_secs(<span class="number">1</span>)), <span class="macro">nondet!</span>(<span class="doccomment">/**
         non-deterministic samples will eventually resolve to stable result
