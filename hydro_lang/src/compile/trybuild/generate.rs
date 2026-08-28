@@ -793,6 +793,40 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
         let staging = tempfile::NamedTempFile::new_in(&coverage_dir).unwrap();
         fs::copy(out.as_ref().unwrap(), staging.path()).unwrap();
         staging.persist(&persisted).unwrap();
+
+        // Since the switch to dynamic linking (#3040), examples link the trybuild
+        // dylib instead of compiling the crate under test into themselves — so the
+        // bulk of that crate's code, and its coverage mapping, lives in the
+        // dependency dylib rather than the example artifact. Unlike the example
+        // artifacts, nothing clobbers it within a run — but it exists only in the
+        // isolated coverage target dir above, which no reporter scans (grcov
+        // `--binary-path` conventions are `target/debug` or `target/debug/deps`),
+        // so copy it next to the example copies where reporters already look. The
+        // content-hash key is not about clobbering either: it retains distinct
+        // mappings when several invocations share one report window (different
+        // feature sets, or sources edited between runs), and rebuilds of identical
+        // content dedupe.
+        if !is_fuzz {
+            let crate_name = trybuild.project_dir.file_name().unwrap().to_str().unwrap();
+            let dep_dylib_name = format!(
+                "{}{}_hydro_trybuild_dylib{}",
+                std::env::consts::DLL_PREFIX,
+                crate_name.replace('-', "_"),
+                std::env::consts::DLL_SUFFIX
+            );
+            let dep_dylib = path!(final_target_dir / "debug" / "deps" / dep_dylib_name);
+            if let Ok(bytes) = fs::read(&dep_dylib) {
+                let content_hash = format!("{:X}", Sha256::digest(&bytes));
+                let dest =
+                    path!(coverage_dir / format!("{}-{}", &content_hash[..16], dep_dylib_name));
+                if !dest.exists() {
+                    let staging = tempfile::NamedTempFile::new_in(&coverage_dir).unwrap();
+                    fs::write(staging.path(), &bytes).unwrap();
+                    staging.persist(&dest).unwrap();
+                }
+            }
+        }
+
         return Ok(BuiltArtifact::Persisted(persisted));
     }
 
