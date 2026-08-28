@@ -67,7 +67,7 @@ impl<T> RuntimeHook for TopLevelStreamOrderHook<T> {
                     caret_indent,
                 } = self.location;
                 let note_str = format!(
-                    "^ observered non-deterministic order: {:?}",
+                    "^ observed non-deterministic order: {:?}",
                     TruncatedVecDebug(
                         RefCell::new(Some(to_release.iter())),
                         8,
