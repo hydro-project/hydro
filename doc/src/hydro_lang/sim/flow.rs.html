@@ -248,7 +248,7 @@
 <a href=#248 id=248 data-nosnippet>248</a>        <span class="kw">let </span>out = compile_sim(bin, trybuild).unwrap();
 <a href=#249 id=249 data-nosnippet>249</a>        <span class="kw">let </span>lib = {
 <a href=#250 id=250 data-nosnippet>250</a>            <span class="kw">let </span>_span = <span class="macro">tracing::debug_span!</span>(target: <span class="string">"hydro_build"</span>, <span class="string">"load_dylib"</span>).entered();
-<a href=#251 id=251 data-nosnippet>251</a>            <span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>out).unwrap() }
+<a href=#251 id=251 data-nosnippet>251</a>            <span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;*</span>out).unwrap() }
 <a href=#252 id=252 data-nosnippet>252</a>        };
 <a href=#253 id=253 data-nosnippet>253</a>        drop(compiled_span);
 <a href=#254 id=254 data-nosnippet>254</a>
