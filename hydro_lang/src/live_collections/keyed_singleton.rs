@@ -1764,7 +1764,10 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(&self.location)
+        );
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -1791,6 +1794,10 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(self.location.tick.parent_location())
+        );
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -1952,7 +1959,10 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(&self.location)
+        );
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -1983,6 +1993,10 @@ where
         nondet: NonDet,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
         let _ = nondet;
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(self.location.tick.parent_location())
+        );
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
