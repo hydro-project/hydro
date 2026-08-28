@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1787841831275,
+  "lastUpdate": 1787932334666,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -307190,6 +307190,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 272120,
             "range": "± 13895.96",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Aanand Kainth",
+            "username": "akainth015",
+            "email": "aakainth@amazon.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "c812c8578b267416051b1346708585dab2bca2a0",
+          "message": "fix(hydro_lang): propagate coverage instrumentation to trybuild dylib builds (#3166)\n\nFixes #3160.\n\nCode executed by the simulator was invisible to coverage instrumentation\nbecause the trybuild dylib is compiled by a child `cargo` invocation\nthat never receives `-C instrument-coverage` when the flag is injected\nvia cargo CLI config (`--config build.rustflags=[...]`) or a\n`RUSTC_WORKSPACE_WRAPPER`-based selective scheme — neither channel is\nvisible in the test process's environment, so the existing `RUSTFLAGS`\nenv passthrough never fires. (And even when `RUSTFLAGS` *is* a real env\nvar, a workspace-wrapper scheme would still skip the crate under test,\nsince it's an external path dependency of the generated project rather\nthan a workspace member.)\n\n### Changes (`hydro_lang/src/compile/trybuild/generate.rs`)\n\n- **Detection**: treat `LLVM_PROFILE_FILE` being set in the env as the\nsignal that the host build is coverage-instrumented (it is inherited by\nthe test process regardless of how the rustc flag was injected), and\nsynthesize `-C instrument-coverage` into the child build's `RUSTFLAGS` —\nmerged with any inherited `RUSTFLAGS`, and skipped if it already carries\nthe flag, so `cargo llvm-cov` behavior is unchanged.\n- **Isolation**: coverage builds go to `<target>/coverage` instead of\nthe shared trybuild target dir; instrumented artifacts previously\nclobbered the shared prebuild cache, breaking subsequent non-coverage\nruns with dlopen undefined-symbol errors.\n- **Loader precedence** (Linux): link coverage builds with\n`--disable-new-dtags` so `DT_RPATH` outranks the `LD_LIBRARY_PATH` cargo\nsets for test processes, which otherwise shadowed the isolated\ninstrumented dylib with the same-soname uninstrumented one from\n`target/debug/deps`.\n- **Report-time discovery**: persist a per-build covmap-bearing copy of\nthe dylib under `target/debug/deps/hydro-coverage/` (every sim build\nreuses the same `sim-dylib` artifact path, so later builds overwrite\nearlier coverage mappings). Coverage reporters (grcov / `llvm-cov report\n--object`) can point at these.\n- Documented the coverage workflow in\n`docs/docs/hydro/reference/simulation/index.mdx`.\n\nBecause the generated project depends on the crate under test as a path\ndependency at its real source location, coverage regions map back to the\noriginal files with no path remapping.\n\n### Validation\n\nLinux, `hydro_lang`'s `sim_atomic_stream` test, with `LLVM_PROFILE_FILE`\nset and **no** `RUSTFLAGS` (the previously-broken scenario): profraws\nare emitted and `llvm-profdata merge` + `llvm-cov report --object\n<persisted dylib>` attributes coverage to real source files (e.g.\ndfir_pipes push/pull operators at ~90–100%). Interleaved coverage →\nnon-coverage → coverage runs all pass with intact caches in both modes\n(second coverage run fully cached). `cargo check`/`clippy`/`fmt` clean\nfor `hydro_lang` with `sim,maelstrom` features.\n\nCaveat: the `--disable-new-dtags` linker arg is gated to Linux; on macOS\n`DYLD_FALLBACK_LIBRARY_PATH` has lower precedence than rpath, so the\nshadowing problem shouldn't arise there, but I couldn't verify on\nhardware.\n\n\n### Update: validated against a real CI coverage pipeline\n\nTested end-to-end in a downstream CI pipeline that injects `-C\ninstrument-coverage` via cargo CLI config plus selective workspace\ninstrumentation (the exact scenario from #3160), reporting with `grcov\n--binary-path target/debug/deps`:\n\n- sim-executed functions that previously reported 0% flipped to covered:\nthe affected module went from ~49% to **99% line coverage**, and\nfunctions invoked only inside `q!()` closures now report hits;\n- the `LLVM_PROFILE_FILE`-based detection fired as designed (profraws\nemitted for both the test binary and the dylib flush);\n- one adjustment came out of it: the persisted covmap copies now live\nunder `target/debug/deps/hydro-coverage/` instead of\n`target/debug/hydro-coverage/`, since `--binary-path` conventions vary\nbetween `target/debug` and `target/debug/deps` — the `deps` location is\nfound recursively by both (and by `cargo llvm-cov`);\n- overhead: the instrumented sim child builds (uncached by design) added\n~1.6 min to that crate's coverage run, and the persisted dylib copies\ncost a few hundred MB per run.",
+          "timestamp": "2026-08-28T00:30:48Z",
+          "url": "https://github.com/hydro-project/hydro/commit/c812c8578b267416051b1346708585dab2bca2a0"
+        },
+        "date": 1787932334601,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311031,
+            "range": "± 476",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6533366,
+            "range": "± 17103",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6877906,
+            "range": "± 9809",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 50791,
+            "range": "± 1635",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 14108757,
+            "range": "± 71518",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1552922,
+            "range": "± 31676",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1620135,
+            "range": "± 17590",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 43748751,
+            "range": "± 157702",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6827671,
+            "range": "± 53896",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 13188393,
+            "range": "± 1494902",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6533928,
+            "range": "± 19512",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6998107,
+            "range": "± 14176",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 42586211,
+            "range": "± 353086",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 6448,
+            "range": "± 77",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22673,
+            "range": "± 240",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4128,
+            "range": "± 69",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6581,
+            "range": "± 94",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 530750,
+            "range": "± 1361",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55659,
+            "range": "± 485",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 44599,
+            "range": "± 392",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 17154,
+            "range": "± 228",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6990,
+            "range": "± 122",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7368,
+            "range": "± 69",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72432,
+            "range": "± 3758",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 78701,
+            "range": "± 428",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7383,
+            "range": "± 196",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15423,
+            "range": "± 119",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 60979,
+            "range": "± 2609",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7503,
+            "range": "± 158",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 201860,
+            "range": "± 1757.95",
             "unit": "ops/s"
           }
         ]
