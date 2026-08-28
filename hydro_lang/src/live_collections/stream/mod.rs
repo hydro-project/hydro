@@ -1507,7 +1507,7 @@ where
     /// ```
     pub fn reduce<F, C, Idemp>(
         self,
-        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<C, B, C, Idemp>>,
+        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<T, B, C, Idemp>>,
     ) -> Optional<T, L, B::AggregatedOptional>
     where
         F: Fn(&mut T, T) + 'a,
