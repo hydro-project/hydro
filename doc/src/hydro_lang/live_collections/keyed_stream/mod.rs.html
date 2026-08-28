@@ -2036,7 +2036,7 @@
 <a href=#2036 id=2036 data-nosnippet>2036</a>    </span><span class="kw">pub fn </span>fold&lt;A, I: Fn() -&gt; A + <span class="lifetime">'a</span>, F: <span class="lifetime">'a </span>+ Fn(<span class="kw-2">&amp;mut </span>A, V), C, Idemp, M, B2: KeyedSingletonBound&gt;(
 <a href=#2037 id=2037 data-nosnippet>2037</a>        <span class="self">self</span>,
 <a href=#2038 id=2038 data-nosnippet>2038</a>        init: <span class="kw">impl </span>IntoQuotedMut&lt;<span class="lifetime">'a</span>, I, OperatorContext&lt;L, B&gt;&gt;,
-<a href=#2039 id=2039 data-nosnippet>2039</a>        comb: <span class="kw">impl </span>IntoQuotedMut&lt;<span class="lifetime">'a</span>, F, OperatorContext&lt;L, B&gt;, AggFuncAlgebra&lt;C, Idemp, M&gt;&gt;,
+<a href=#2039 id=2039 data-nosnippet>2039</a>        comb: <span class="kw">impl </span>IntoQuotedMut&lt;<span class="lifetime">'a</span>, F, OperatorContext&lt;L, B&gt;, AggFuncAlgebra&lt;V, B, C, Idemp, M&gt;&gt;,
 <a href=#2040 id=2040 data-nosnippet>2040</a>    ) -&gt; KeyedSingleton&lt;K, A, L, B2&gt;
 <a href=#2041 id=2041 data-nosnippet>2041</a>    <span class="kw">where
 <a href=#2042 id=2042 data-nosnippet>2042</a>        </span>K: Eq + Hash,
@@ -2104,7 +2104,7 @@
 <a href=#2104 id=2104 data-nosnippet>2104</a>    /// ```
 <a href=#2105 id=2105 data-nosnippet>2105</a>    </span><span class="kw">pub fn </span>reduce&lt;F: Fn(<span class="kw-2">&amp;mut </span>V, V) + <span class="lifetime">'a</span>, C, Idemp&gt;(
 <a href=#2106 id=2106 data-nosnippet>2106</a>        <span class="self">self</span>,
-<a href=#2107 id=2107 data-nosnippet>2107</a>        comb: <span class="kw">impl </span>IntoQuotedMut&lt;<span class="lifetime">'a</span>, F, OperatorContext&lt;L, B&gt;, AggFuncAlgebra&lt;C, Idemp&gt;&gt;,
+<a href=#2107 id=2107 data-nosnippet>2107</a>        comb: <span class="kw">impl </span>IntoQuotedMut&lt;<span class="lifetime">'a</span>, F, OperatorContext&lt;L, B&gt;, AggFuncAlgebra&lt;V, B, C, Idemp&gt;&gt;,
 <a href=#2108 id=2108 data-nosnippet>2108</a>    ) -&gt; KeyedSingleton&lt;K, V, L, B&gt;
 <a href=#2109 id=2109 data-nosnippet>2109</a>    <span class="kw">where
 <a href=#2110 id=2110 data-nosnippet>2110</a>        </span>K: Eq + Hash,
@@ -2163,7 +2163,7 @@
 <a href=#2163 id=2163 data-nosnippet>2163</a>    </span><span class="kw">pub fn </span>reduce_watermark&lt;O2, F, C, Idemp&gt;(
 <a href=#2164 id=2164 data-nosnippet>2164</a>        <span class="self">self</span>,
 <a href=#2165 id=2165 data-nosnippet>2165</a>        other: <span class="kw">impl </span>Into&lt;Optional&lt;O2, Tick&lt;L::Root&gt;, Bounded&gt;&gt;,
-<a href=#2166 id=2166 data-nosnippet>2166</a>        comb: <span class="kw">impl </span>IntoQuotedMut&lt;<span class="lifetime">'a</span>, F, OperatorContext&lt;L, B&gt;, AggFuncAlgebra&lt;C, Idemp&gt;&gt;,
+<a href=#2166 id=2166 data-nosnippet>2166</a>        comb: <span class="kw">impl </span>IntoQuotedMut&lt;<span class="lifetime">'a</span>, F, OperatorContext&lt;L, B&gt;, AggFuncAlgebra&lt;V, B, C, Idemp&gt;&gt;,
 <a href=#2167 id=2167 data-nosnippet>2167</a>    ) -&gt; KeyedSingleton&lt;K, V, L, B&gt;
 <a href=#2168 id=2168 data-nosnippet>2168</a>    <span class="kw">where
 <a href=#2169 id=2169 data-nosnippet>2169</a>        </span>K: Eq + Hash,
