@@ -1,5 +1,7 @@
 # Finite round-trip deadlock in Hydro's deployed scheduler
 
+N.B. this document was not written by a human and may or may not be helpful!
+
 A finite `A -> B -> A` network round trip deadlocks once enough bytes are in
 flight; the identical one-way `A -> B` never does. Root-caused to the deployed
 DFIR scheduler awaiting a process's subgraphs **sequentially within one tick**:
