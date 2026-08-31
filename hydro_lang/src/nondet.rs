@@ -134,10 +134,10 @@ pub use crate::__nondet__ as nondet;
 /// Forwarded non-determinism:
 /// ```rust
 /// # use hydro_lang::prelude::*;
-/// use hydro_lang::live_collections::stream::ExactlyOnce;
-///
 /// use std::fmt::Debug;
 /// use std::time::Duration;
+///
+/// use hydro_lang::live_collections::stream::ExactlyOnce;
 ///
 /// /// ...
 /// ///
@@ -146,19 +146,22 @@ pub use crate::__nondet__ as nondet;
 /// ///   from the stream according to a timer
 /// # #[cfg(feature = "tokio")]
 /// fn print_samples<T: Debug, L>(
-///   stream: Stream<T, Process<L>, Unbounded>,
-///   nondet_samples: NonDet
+///     stream: Stream<T, Process<L>, Unbounded>,
+///     nondet_samples: NonDet,
 /// ) {
-///   stream
-///     .sample_every(q!(Duration::from_secs(1)), nondet!(
-///       /// non-deterministic timing will result in non-determistic samples printed
-///       nondet_samples
-///     ))
-///     .assume_retries::<ExactlyOnce>(nondet!(
-///         /// non-deterministic duplicated logs are okay
-///         nondet_samples
-///     ))
-///     .for_each(q!(|v| println!("Sample: {:?}", v)))
+///     stream
+///         .sample_every(
+///             q!(Duration::from_secs(1)),
+///             nondet!(
+///                 /// non-deterministic timing will result in non-determistic samples printed
+///                 nondet_samples
+///             ),
+///         )
+///         .assume_retries::<ExactlyOnce>(nondet!(
+///             /// non-deterministic duplicated logs are okay
+///             nondet_samples
+///         ))
+///         .for_each(q!(|v| println!("Sample: {:?}", v)))
 /// }
 /// ```
 macro_rules! __nondet__ {
