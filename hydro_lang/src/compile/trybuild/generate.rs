@@ -1,3 +1,7 @@
+#[cfg(any(feature = "sim", feature = "maelstrom"))]
+use std::collections::BTreeMap;
+#[cfg(any(feature = "sim", feature = "maelstrom"))]
+use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -99,6 +103,9 @@ pub struct TrybuildConfig {
     pub project_dir: PathBuf,
     pub target_dir: PathBuf,
     pub features: Option<Vec<String>>,
+    /// Overrides applied only to generated child Cargo commands.
+    #[cfg(any(feature = "sim", feature = "maelstrom"))]
+    pub(crate) environment_overrides: BTreeMap<String, Option<OsString>>,
     #[cfg(any(feature = "deploy", feature = "maelstrom"))]
     // Only the deploy backends read this field; Maelstrom-only builds derive the
     // linking behavior directly.
@@ -189,6 +196,8 @@ pub fn create_graph_trybuild(
             project_dir,
             target_dir,
             features: cur_bin_enabled_features,
+            #[cfg(any(feature = "sim", feature = "maelstrom"))]
+            environment_overrides: BTreeMap::new(),
             #[cfg(any(feature = "deploy", feature = "maelstrom"))]
             linking_mode,
         },
@@ -417,6 +426,20 @@ impl BuiltArtifact {
     }
 }
 
+#[cfg(any(feature = "sim", feature = "maelstrom"))]
+fn apply_child_build_environment(
+    command: &mut std::process::Command,
+    environment: &BTreeMap<String, Option<OsString>>,
+) {
+    for (name, value) in environment {
+        if let Some(value) = value {
+            command.env(name, value);
+        } else {
+            command.env_remove(name);
+        }
+    }
+}
+
 /// Compiles a generated trybuild example against the prebuilt dylib crate,
 /// using the shared parallel-compilation machinery (per-job target dirs with
 /// symlinked shared artifacts, plus a prebuild of the dylib dependencies).
@@ -455,22 +478,26 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
     // be isolated from the shared target dir (see below), and the covmap-bearing
     // artifact is copied to a stable location where coverage reporters can find it.
     // See https://github.com/hydro-project/hydro/issues/3160.
-    let mut custom_rustflags = std::env::var("RUSTFLAGS").ok();
+    let mut custom_rustflags = trybuild
+        .environment_overrides
+        .get("RUSTFLAGS")
+        .cloned()
+        .unwrap_or_else(|| std::env::var_os("RUSTFLAGS"));
     if std::env::var_os("LLVM_PROFILE_FILE").is_some()
         && !custom_rustflags
             .as_deref()
-            .is_some_and(|flags| flags.contains("instrument-coverage"))
+            .is_some_and(|flags| flags.to_string_lossy().contains("instrument-coverage"))
     {
         let flags = custom_rustflags.get_or_insert_default();
         if !flags.is_empty() {
-            flags.push(' ');
+            flags.push(" ");
         }
-        flags.push_str("-Cinstrument-coverage");
+        flags.push("-Cinstrument-coverage");
     }
     let has_custom_rustflags = custom_rustflags.is_some();
     let coverage_enabled = custom_rustflags
         .as_deref()
-        .is_some_and(|flags| flags.contains("instrument-coverage"));
+        .is_some_and(|flags| flags.to_string_lossy().contains("instrument-coverage"));
 
     // Run from dylib-examples crate which has the dylib as a dev-dependency (only if not fuzzing)
     let crate_to_compile = if is_fuzz {
@@ -530,6 +557,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
                 lib_cmd.arg("--no-default-features");
                 lib_cmd.args(["--features", &features_str]);
                 lib_cmd.args(["--config", "build.incremental = false"]);
+                apply_child_build_environment(&mut lib_cmd, &trybuild.environment_overrides);
                 lib_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
                 let status = lib_cmd.stdin(Stdio::null()).status().unwrap();
                 if !status.success() {
@@ -607,6 +635,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
             .join(","),
     ]);
     command.args(["--config", "build.incremental = false"]);
+    apply_child_build_environment(&mut command, &trybuild.environment_overrides);
     if let Some(flags) = &custom_rustflags {
         // Covers both inherited RUSTFLAGS (a no-op re-set) and the synthesized
         // instrument-coverage case, where the flag must apply to the whole child build

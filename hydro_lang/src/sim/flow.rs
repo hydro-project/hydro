@@ -136,7 +136,23 @@ impl<'a> SimFlow<'a> {
     }
 
     /// Compiles the simulation into a dynamically loadable library, and returns a handle to it.
-    pub fn compiled(mut self) -> CompiledSim {
+    pub fn compiled(self) -> CompiledSim {
+        self.compiled_with_child_environment_overrides(BTreeMap::new())
+    }
+
+    /// Compiles with environment overrides scoped to the generated child build.
+    #[cfg(test)]
+    pub(crate) fn compiled_with_child_environment(
+        self,
+        environment: impl IntoIterator<Item = (String, Option<std::ffi::OsString>)>,
+    ) -> CompiledSim {
+        self.compiled_with_child_environment_overrides(environment.into_iter().collect())
+    }
+
+    fn compiled_with_child_environment_overrides(
+        mut self,
+        environment_overrides: BTreeMap<String, Option<std::ffi::OsString>>,
+    ) -> CompiledSim {
         use dfir_lang::graph::{eliminate_extra_unions_tees, partition_graph};
 
         let compiled_span = tracing::debug_span!(target: "hydro_build", "sim_compiled").entered();
@@ -242,7 +258,7 @@ impl<'a> SimFlow<'a> {
         let (cluster_max_sizes, cluster_member_ids) = self.cluster_sizing();
         drop(flow_build_span);
 
-        let (bin, trybuild) = create_sim_graph_trybuild(
+        let (bin, mut trybuild) = create_sim_graph_trybuild(
             process_graphs,
             cluster_graphs,
             cluster_max_sizes,
@@ -252,6 +268,7 @@ impl<'a> SimFlow<'a> {
             sim_emit.extra_stmts_global,
             sim_emit.extra_stmts_cluster,
         );
+        trybuild.environment_overrides = environment_overrides;
 
         let out = compile_sim(bin, trybuild).unwrap();
         let lib = {

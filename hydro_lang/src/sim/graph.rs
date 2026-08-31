@@ -534,6 +534,7 @@ pub(super) fn create_sim_graph_trybuild(
             project_dir,
             target_dir,
             features: cur_bin_enabled_features,
+            environment_overrides: BTreeMap::new(),
             #[cfg(any(feature = "deploy", feature = "maelstrom"))]
             linking_mode: LinkingMode::Dynamic,
         },

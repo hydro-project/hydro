@@ -10,6 +10,41 @@ use crate::sim::{SimReceiver, SimSender};
 
 mod trophies;
 
+#[test]
+#[cfg_attr(not(target_os = "linux"), ignore)]
+#[should_panic(expected = "called `Result::unwrap()` on an `Err` value: DlOpen")]
+fn sim_hydro_dylib_is_not_reused_from_different_build_contexts() {
+    let rustflags_with_metadata = |metadata: &str| {
+        let encoded = std::env::var_os("CARGO_ENCODED_RUSTFLAGS");
+        let (name, separator) = if encoded.is_some() {
+            ("CARGO_ENCODED_RUSTFLAGS", "\u{1f}")
+        } else {
+            ("RUSTFLAGS", " ")
+        };
+        let mut flags =
+            encoded.unwrap_or_else(|| std::env::var_os("RUSTFLAGS").unwrap_or_default());
+        if !flags.is_empty() {
+            flags.push(separator);
+        }
+        flags.push(format!("-Cmetadata={metadata}"));
+        [(name.to_owned(), Some(flags))]
+    };
+
+    let compile_probe = |metadata| {
+        let mut flow = FlowBuilder::new();
+        flow.process::<()>();
+        flow.sim()
+            .compiled_with_child_environment(rustflags_with_metadata(metadata))
+    };
+
+    let context_a = compile_probe("context_a");
+    let context_b = compile_probe("context_b");
+    context_b.with_instance(|_| {});
+
+    // Context A must remain usable after context B's dylib has been built and loaded.
+    context_a.with_instance(|_| {});
+}
+
 // Test is currently broken in nightly.
 #[cfg(not(nightly))]
 #[test]
