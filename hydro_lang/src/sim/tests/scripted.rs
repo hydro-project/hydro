@@ -86,7 +86,10 @@ fn scripted_exhaustive_ticks_interleave_around_observation_cycle() {
     let (complete_cycle_back, cycle_back) = node.forward_ref::<Stream<_, _, _, NoOrder>>();
     let ordered = input
         .merge_unordered(cycle_back)
-        .assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = ordering));
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = ordering
+        ));
 
     let tick_outputs = sliced! {
         let b = use::batch(
@@ -151,7 +154,10 @@ fn scripted_top_level_ordering_is_a_scheduler_action() {
     let ordering: OrderingHook<u32, Unbounded> = flow.sim_hook();
     let (input_send, input) = node.sim_input::<_, NoOrder, _>();
     let output = input
-        .assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = ordering))
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = ordering
+        ))
         .sim_output();
 
     flow.sim().deterministic(async || {
@@ -181,9 +187,15 @@ fn scripted_chained_top_level_orderings_run_independently() {
     let second: OrderingHook<u32> = flow.sim_hook();
     let (in_send, input) = node.sim_input::<_, NoOrder, _>();
     let output = input
-        .assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = first))
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = first
+        ))
         .weaken_ordering::<NoOrder>()
-        .assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = second))
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = second
+        ))
         .sim_output();
 
     flow.sim().deterministic(async || {
@@ -214,7 +226,10 @@ fn scripted_paused_hook_untouched_when_colocated_fuzzed_hook_releases() {
     let (s_send, s_in) = node.sim_input::<_, NoOrder, _>();
     let (u_send, u_in) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
     let s_out = s_in
-        .assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = scripted))
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = scripted
+        ))
         .sim_output();
     let u_out = u_in
         .assume_ordering::<TotalOrder>(nondet!(/** fuzzed */))
@@ -361,8 +376,14 @@ fn counter_sim() -> CounterSim {
     let out = counter_service(
         increments,
         get_requests,
-        nondet!(/** scripted by the test */ hook = batch_hook),
-        nondet!(/** scripted by the test */ hook = snapshot_hook),
+        nondet!(
+            /// scripted by the test
+            hook = batch_hook
+        ),
+        nondet!(
+            /// scripted by the test
+            hook = snapshot_hook
+        ),
     )
     .sim_output();
 
@@ -464,8 +485,14 @@ fn scripted_hook_bundle() {
     let out = counter_service(
         increments,
         get_requests,
-        nondet!(/** scripted */ hook = hooks.batch),
-        nondet!(/** scripted */ hook = hooks.snapshot),
+        nondet!(
+            /// scripted
+            hook = hooks.batch
+        ),
+        nondet!(
+            /// scripted
+            hook = hooks.snapshot
+        ),
     )
     .sim_output();
 
@@ -505,7 +532,14 @@ fn scripted_forgotten_hook_panics() {
     let batch_hook: BatchHook<i32> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input();
-    let out = scripted_batch_sum(input, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         in_send.send_many([1, 2]);
@@ -584,7 +618,14 @@ fn scripted_auto_pause_holds_after_each_decision() {
     let batch_hook: BatchHook<i32> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input();
-    let out = scripted_batch_sum(input, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         batch_hook.auto_pause(); // this operator acts only when the script says so
@@ -604,7 +645,14 @@ fn scripted_pause_until_count() {
     let batch_hook: BatchHook<i32> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input();
-    let out = scripted_batch_sum(input, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         in_send.send_many([1, 2, 4]);
@@ -624,7 +672,14 @@ fn scripted_pause_until_count_never_satisfied() {
     let batch_hook: BatchHook<i32> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input();
-    let _out = scripted_batch_sum(input, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let _out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         in_send.send_many([1, 2]);
@@ -646,10 +701,22 @@ fn scripted_pause_until_reports_stuck_prior_group() {
 
     let (stuck_send, stuck_input) = node.sim_input();
     let (pause_send, pause_input) = node.sim_input();
-    let _stuck_out =
-        scripted_batch_sum(stuck_input, nondet!(/** scripted */ hook = stuck_hook)).sim_output();
-    let _pause_out =
-        scripted_batch_sum(pause_input, nondet!(/** scripted */ hook = pause_hook)).sim_output();
+    let _stuck_out = scripted_batch_sum(
+        stuck_input,
+        nondet!(
+            /// scripted
+            hook = stuck_hook
+        ),
+    )
+    .sim_output();
+    let _pause_out = scripted_batch_sum(
+        pause_input,
+        nondet!(
+            /// scripted
+            hook = pause_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         stuck_send.send_many([1, 2]);
@@ -718,7 +785,14 @@ fn scripted_decision_before_data_exists() {
     let batch_hook: BatchHook<i32> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input();
-    let out = scripted_batch_sum(input, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         batch_hook.release(2).await; // scripted before any data exists
@@ -737,7 +811,14 @@ fn scripted_output_wait_panics_when_decision_is_impossible() {
     let batch_hook: BatchHook<i32> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input();
-    let out = scripted_batch_sum(input, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         in_send.send_many([1, 2]);
@@ -755,7 +836,14 @@ fn scripted_final_decision_is_consumed() {
     let batch_hook: BatchHook<i32> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input();
-    let _out = scripted_batch_sum(input, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let _out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         in_send.send_many([1, 2]);
@@ -774,7 +862,14 @@ fn scripted_impossible_final_decision_panics() {
     let batch_hook: BatchHook<i32> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input();
-    let _out = scripted_batch_sum(input, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let _out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         in_send.send_many([1, 2]);
@@ -794,7 +889,14 @@ fn scripted_later_group_panics_when_prior_decision_is_impossible() {
     let batch_hook: BatchHook<i32> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input();
-    let _out = scripted_batch_sum(input, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let _out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         in_send.send_many([1, 2]);
@@ -839,7 +941,14 @@ fn scripted_unbound_handle_panics() {
     let unbound: BatchHook<i32> = flow.sim_hook(); // created but never attached
 
     let (in_send, input) = node.sim_input();
-    let out = scripted_batch_sum(input, nondet!(/** scripted */ hook = bound)).sim_output();
+    let out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = bound
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         in_send.send(1);
@@ -860,8 +969,22 @@ fn scripted_double_bind_panics_at_build() {
     let (_in_send, input) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
     let (_in_send2, input2) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
 
-    let _out = scripted_batch_sum(input, nondet!(/** scripted */ hook = batch_hook)).sim_output();
-    let _out2 = scripted_batch_sum(input2, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let _out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
+    let _out2 = scripted_batch_sum(
+        input2,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {});
 }
@@ -899,7 +1022,14 @@ fn scripted_release_all_deterministic() {
     let batch_hook: BatchHook<i32> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input();
-    let out = scripted_batch_sum(input, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         in_send.send_many([1, 2, 4]);
@@ -1105,8 +1235,21 @@ fn scripted_groups_across_ticks() {
     let second_hook: BatchHook<i32> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input();
-    let stage1 = scripted_batch_sum(input, nondet!(/** scripted */ hook = first_hook));
-    let out = scripted_batch_sum(stage1, nondet!(/** scripted */ hook = second_hook)).sim_output();
+    let stage1 = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = first_hook
+        ),
+    );
+    let out = scripted_batch_sum(
+        stage1,
+        nondet!(
+            /// scripted
+            hook = second_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         in_send.send_many([1, 2]);
@@ -1129,11 +1272,23 @@ fn scripted_waiting_group_does_not_shield_buffered_input() {
     let second_hook: BatchHook<i32> = flow.sim_hook();
 
     let (first_send, first_input) = node.sim_input();
-    let _first_out =
-        scripted_batch_sum(first_input, nondet!(/** scripted */ hook = first_hook)).sim_output();
+    let _first_out = scripted_batch_sum(
+        first_input,
+        nondet!(
+            /// scripted
+            hook = first_hook
+        ),
+    )
+    .sim_output();
     let (second_send, second_input) = node.sim_input();
-    let _second_out =
-        scripted_batch_sum(second_input, nondet!(/** scripted */ hook = second_hook)).sim_output();
+    let _second_out = scripted_batch_sum(
+        second_input,
+        nondet!(
+            /// scripted
+            hook = second_hook
+        ),
+    )
+    .sim_output();
 
     flow.sim().deterministic(async || {
         first_send.send(1);
@@ -1270,12 +1425,21 @@ fn scripted_different_tick_panics_when_prior_decision_is_impossible() {
     let independent_hook: BatchHook<i32> = flow.sim_hook();
 
     let (stuck_send, stuck_input) = node.sim_input();
-    let _stuck_out =
-        scripted_batch_sum(stuck_input, nondet!(/** scripted */ hook = stuck_hook)).sim_output();
+    let _stuck_out = scripted_batch_sum(
+        stuck_input,
+        nondet!(
+            /// scripted
+            hook = stuck_hook
+        ),
+    )
+    .sim_output();
     let (_independent_send, independent_input) = node.sim_input();
     let _independent_out = scripted_batch_sum(
         independent_input,
-        nondet!(/** scripted */ hook = independent_hook),
+        nondet!(
+            /// scripted
+            hook = independent_hook
+        ),
     )
     .sim_output();
 
@@ -1325,7 +1489,10 @@ fn scripted_composite_hook_payload() {
     // the first.
     let out = two_stage_pipeline(
         input,
-        nondet!(/** scripted */ hook = (Some(first_hook), Some(second_hook))),
+        nondet!(
+            /// scripted
+            hook = (Some(first_hook), Some(second_hook))
+        ),
     )
     .sim_output();
 
@@ -1346,7 +1513,14 @@ fn scripted_exact_script_single_execution() {
     let batch_hook: BatchHook<i32> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input();
-    let out = scripted_batch_sum(input, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let out = scripted_batch_sum(
+        input,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     let instances = flow.sim().exhaustive(async || {
         in_send.send_many([1, 2]);
@@ -1369,8 +1543,14 @@ fn scripted_hook_composes_with_fuzzing() {
     let (in1_send, in1) = node.sim_input();
     let (in2_send, in2) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
 
-    let scripted_out =
-        scripted_batch_sum(in1, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let scripted_out = scripted_batch_sum(
+        in1,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
     let fuzzed_out = sliced! {
         let batch = use::batch(in2, nondet!(/** fuzzed */));
         batch.fold(q!(|| 0), q!(|acc, v| *acc += v)).into_stream()
@@ -1424,8 +1604,14 @@ fn scripted_release_all_placement_explored() {
         let batch = use::batch(input, nondet!(/** fuzzed */));
         batch.fold(q!(|| 0), q!(|acc, v| *acc += v)).into_stream()
     };
-    let out =
-        scripted_batch_sum(fuzzed_stage, nondet!(/** scripted */ hook = batch_hook)).sim_output();
+    let out = scripted_batch_sum(
+        fuzzed_stage,
+        nondet!(
+            /// scripted
+            hook = batch_hook
+        ),
+    )
+    .sim_output();
 
     let mut saw_early_firing = false; // released before the fuzzed tick's second batch
     let mut saw_late_firing = false; // released everything the fuzzed tick produced
