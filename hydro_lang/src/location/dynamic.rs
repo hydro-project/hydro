@@ -37,7 +37,12 @@ pub enum LocationId {
         Box<LocationId>,
     ),
     /// A tick within a location.
-    Tick(ClockId, Box<LocationId>),
+    Tick {
+        /// The `ClockId` of this tick, or `None` if `parent_location` is an `Atomic`
+        tick: Option<ClockId>,
+        /// What location this tick is within.
+        parent_location: Box<LocationId>,
+    },
 }
 
 /// Implement Debug to Display-print the key, reduces snapshot verbosity.
@@ -47,7 +52,10 @@ impl std::fmt::Debug for LocationId {
             LocationId::Process(key) => write!(f, "Process({key})"),
             LocationId::Cluster(key) => write!(f, "Cluster({key})"),
             LocationId::Atomic(tick) => write!(f, "Atomic({tick:?})"),
-            LocationId::Tick(tick, id) => write!(f, "Tick({tick}, {id:?})"),
+            LocationId::Tick {
+                tick,
+                parent_location,
+            } => write!(f, "Tick({tick:?}, {parent_location:?})"),
         }
     }
 }
@@ -70,7 +78,10 @@ impl LocationId {
             LocationId::Process(_) => self,
             LocationId::Cluster(_) => self,
             LocationId::Atomic(tick) => tick.root(),
-            LocationId::Tick(_, id) => id.root(),
+            LocationId::Tick {
+                tick: _,
+                parent_location,
+            } => parent_location.root(),
         }
     }
 
@@ -78,7 +89,7 @@ impl LocationId {
         match self {
             LocationId::Process(_) | LocationId::Cluster(_) => true,
             LocationId::Atomic(_) => false,
-            LocationId::Tick(_, _) => false,
+            LocationId::Tick { .. } => false,
         }
     }
 
@@ -86,7 +97,7 @@ impl LocationId {
         match self {
             LocationId::Process(_) | LocationId::Cluster(_) => true,
             LocationId::Atomic(_) => true,
-            LocationId::Tick(_, _) => false,
+            LocationId::Tick { .. } => false,
         }
     }
 
@@ -95,14 +106,17 @@ impl LocationId {
             LocationId::Process(id) => *id,
             LocationId::Cluster(id) => *id,
             LocationId::Atomic(_) => panic!("cannot get raw id for atomic"),
-            LocationId::Tick(_, _) => panic!("cannot get raw id for tick"),
+            LocationId::Tick { .. } => panic!("cannot get raw id for tick"),
         }
     }
 
     pub fn swap_root(&mut self, new_root: LocationId) {
         match self {
-            LocationId::Tick(_, id) => {
-                id.swap_root(new_root);
+            LocationId::Tick {
+                tick: _,
+                parent_location,
+            } => {
+                parent_location.swap_root(new_root);
             }
             LocationId::Atomic(tick) => {
                 tick.swap_root(new_root);

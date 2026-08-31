@@ -244,7 +244,11 @@ pub trait Location<'a>: DynLocation {
     /// Prefer using [`Location::tick`] when you know the location is top-level.
     fn try_tick(&self) -> Option<Tick<Self>> {
         if Self::is_top_level() {
-            let id = self.flow_state().borrow_mut().next_clock_id();
+            let id = if let LocationId::Atomic { .. } = self.id() {
+                None
+            } else {
+                Some(self.flow_state().borrow_mut().next_clock_id())
+            };
             Some(Tick {
                 id,
                 l: self.clone(),
@@ -285,15 +289,7 @@ pub trait Location<'a>: DynLocation {
     /// # }
     /// ```
     fn tick(&self) -> Tick<Self> {
-        if let LocationId::Tick(_, _) = self.id() {
-            panic!("cannot create nested ticks");
-        }
-
-        let id = self.flow_state().borrow_mut().next_clock_id();
-        Tick {
-            id,
-            l: self.clone(),
-        }
+        self.try_tick().expect("cannot create nested ticks")
     }
 
     /// Creates an unbounded stream that continuously emits unit values `()`.

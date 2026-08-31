@@ -114,14 +114,18 @@ pub trait DeferTick {
 /// Marks the stream as being inside the single global clock domain.
 #[derive(Clone)]
 pub struct Tick<L> {
-    pub(crate) id: ClockId,
+    /// `None` if `l` is `Atomic`.
+    pub(crate) id: Option<ClockId>,
     /// Location.
     pub(crate) l: L,
 }
 
 impl<L: DynLocation> DynLocation for Tick<L> {
     fn dyn_id(&self) -> LocationId {
-        LocationId::Tick(self.id, Box::new(self.l.dyn_id()))
+        LocationId::Tick {
+            tick: self.id,
+            parent_location: Box::new(self.l.dyn_id()),
+        }
     }
 
     fn flow_state(&self) -> &FlowState {
