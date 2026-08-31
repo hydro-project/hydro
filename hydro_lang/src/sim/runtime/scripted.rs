@@ -324,10 +324,6 @@ impl<H: ScriptableHook> RuntimeHook for Scripted<H> {
         self.core.release_decision(log_writer);
     }
 
-    fn is_ready(&self) -> bool {
-        self.core.is_ready()
-    }
-
     fn location_meta(&self) -> HookLocationMeta {
         self.core.location_meta()
     }
