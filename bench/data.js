@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1788082906909,
+  "lastUpdate": 1788171562595,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -307796,6 +307796,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 187820,
             "range": "± 8403.9",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "ff0265b6e5902e637373ec95cc458b99bb57ca1c",
+          "message": "feat(hydro_lang): implement simulator hooks for scripting unsafe operator decisions (#1875) (#3141)\n\nImplements `docs/design/sim-hooks-1875-v2.md`: simulation tests can now\ntake manual\ncontrol of the non-deterministic decisions of specific unsafe operators\n(`batch` /\n`snapshot`), enabling deterministic, readable tests for exact\ndistributed-systems\nscenarios alongside the existing fuzz/exhaustive modes.\n\n## Program-side API\n\n- `NonDet` gains a **hook payload** type parameter: `NonDet<H = ()>`\nstores `H` directly.\nPayload types implement `Default` (\"no hook\"), which is what\n`nondet!(...)` without a\n`hook =` argument produces, so plain `NonDet` means what it always did.\n- Leaf operators take an optional handle: `Stream::batch`/`batch_atomic`\ntake\n`NonDet<Option<BatchHook<T, O, R>>>`,\n`Singleton::snapshot`/`snapshot_atomic` take\n`NonDet<Option<SnapshotHook<T>>>` (and the `sliced!`\n`use::batch`/`use::snapshot`\n    styles are generic over the payload).\n- **Composite operators use tuple payloads** so callers can hook each\ninternal\noperator independently (or not at all): `Stream::sample_every` exposes\n`(Option<BatchHook<T, O, R>>, Option<BatchHook<()>>)`,\n`Singleton::sample_every`\nexposes `(Option<SnapshotHook<T>>, Option<BatchHook<()>>)`,\n`Singleton::sample_eager`\n    exposes `Option<SnapshotHook<T>>`.\n- `NonDet::take_hook(&mut self) -> H` takes the payload out (replacing\nit with the\ndefault), which is how a component splits a composite payload and\nattaches each part\n    to the operator it controls via `nondet!(... hook = part)`.\n- `nondet!(... hook = expr)` converts the expression with `Into`, so a\nraw handle can\nbe passed where an `Option` is expected (`hook = my_hook`), as can an\nalready-built\npayload (`hook = part` from `take_hook`, or `hook = (h1.into(), None)`).\n- New ungated `hydro_lang::sim_hooks` module with `Copy` handle types\n`BatchHook<T, O, R>`\nand `SnapshotHook<T>` and a `SimHookBundle` trait;\n`FlowBuilder::sim_hook()` mints\nhandles/bundles. Bindings travel as `sim_hook_id` on\n`HydroIrOpMetadata`, ignored by\n  non-simulator backends.\n\n## Simulator runtime\n\n- Scripted operators are emitted as scripted variations of the existing\nhooks\n(`ScriptedStreamHook`/`ScriptedSingletonHook` wrap\n`StreamHook`/`SingletonHook`,\nreusing their buffers and release logic), implementing the existing\n`SimHook` trait\nplus a second `ScriptedSimHook` trait (`blocks_tick`, `boundary_check`),\nand are\nreturned from the dylib in a **separate map** from regular hooks.\nHandles talk to them\n  through small typed channels (`ScriptChannel<BatchDecision>` /\n`ScriptChannel<SnapshotDecision>`); `reveal(v)` payloads are\nbincode-serialized across\n  the boundary (mirroring `sim_input`).\n- Decisions: `release(n)`, `release_at([...])` (NoOrder only),\n`release_all()`, `skip()`;\n`reveal(v)` (assert+release, skipping earlier versions),\n`reveal_next()`,\n  `reveal_latest()`, `keep()`.\n- The script is a schedule: consecutive decisions for one tick form a\ngroup consumed by\none tick execution; the first decision of the next group suspends until\nthe previous\ngroup's execution happened (a free-running wait — other ticks stay fully\nfuzzed).\nOutput awaits are group barriers and panic on dirty quiescence (a stuck\ndecision).\n- Scheduler rules from the design: a not-yet-honorable decision blocks\nits tick (rule 1);\nthe boundary scan panics on *forgotten* hooks — buffered input, no\ndecision, no hold —\nat every scheduling boundary, consuming no entropy (rule 2);\nnever-satisfiable\ndecisions are reported at the suspended test line (rule 3);\nonly-possibility implicit\n  behaviors (empty batch / re-reveal) need no scripting.\n- Pause family: `pause()`, `resume()`, `pause_while(fut)`,\n`pause_until_count(n)` /\n`pause_until_versions(n)` (a oneshot completed directly by the hook at a\nscheduling\nboundary, which also ends the step so the test body runs before any\nfurther\nnondeterministic action), and `auto_pause()` (standing hold\nre-established after every\n  decision).\n\n## Deterministic mode\n\n`flow.sim().deterministic(async || { ... })` runs exactly one execution\nwith no fuzzer,\nsharing the ordinary scheduler code path: unscripted hooks needing a\nmeaningful decision\npanic (naming the operator), inline ordering hooks are only allowed\nchoice-free decisions\n(`SimInlineHook::decision_is_forced`), and tick selection needs no\ntie-breaking because at\nmost one tick is ever runnable.\n\n## Tests\n\n25 tests in `sim/tests/scripted.rs`, including regression tests for the\ndesign\ndiscussion's edge cases: forgotten-hook confrontation (§10.1/10.2), the\nnatural\nsequential pattern not tripping the scan, the T1/T2 fuzzed-feeder\nscenario (§10.3) in\nboth confronted and acknowledged forms, loose-decision placement\nexploration under\nexhaustive (§5.4/§10.6, using saw-scenario flags asserted after the\nsearch — which\ncaught a scheduler gap: decisions installed while the simulation is idle\nnow re-mark\nscripted ticks as runnable), exact scripts collapsing exhaustive to one\ninstance (§5.5),\nscript-with-fuzz composition (G5), composite tuple payloads split with\n`take_hook`\n(§3.1), group ordering across ticks, decisions scripted before data\nexists (G2), reveal\nmismatch / impossible decisions / unbound handles / double binds, and\nthe full pause\nfamily.\n\n## Not yet covered (follow-ups per design §8)\n\nKeyed hooks (`KeyedBatchHook`/`KeyedSnapshotHook`), `AtLeastOnce`\nredelivery,\n`Optional::snapshot` hooks, hooks on cluster-located operators\n(build-time error), the\n`#[derive(SimHookBundle)]` macro (manual impls work), and ordering/retry\nhooks.\n\n---------\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>\nCo-authored-by: Copilot Autofix powered by AI <175728472+Copilot@users.noreply.github.com>",
+          "timestamp": "2026-08-28T21:54:22Z",
+          "url": "https://github.com/hydro-project/hydro/commit/ff0265b6e5902e637373ec95cc458b99bb57ca1c"
+        },
+        "date": 1788171562526,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 274349,
+            "range": "± 13307",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 14575824,
+            "range": "± 107909",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 14041745,
+            "range": "± 50298",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 45775,
+            "range": "± 1572",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 13051335,
+            "range": "± 33495",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1416438,
+            "range": "± 23802",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1467826,
+            "range": "± 17726",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 45045020,
+            "range": "± 416853",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 3763616,
+            "range": "± 18414",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 24610959,
+            "range": "± 2639120",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 13066385,
+            "range": "± 29193",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 13622203,
+            "range": "± 33887",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 45719654,
+            "range": "± 355793",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 5899,
+            "range": "± 41",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 24389,
+            "range": "± 116",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4246,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6359,
+            "range": "± 80",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 493768,
+            "range": "± 3293",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 61605,
+            "range": "± 316",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 47511,
+            "range": "± 344",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 48464,
+            "range": "± 129",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 7361,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 25129,
+            "range": "± 83",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 77233,
+            "range": "± 349",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 87361,
+            "range": "± 372",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7198,
+            "range": "± 279",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 17585,
+            "range": "± 142",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 54284,
+            "range": "± 1766",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 5486,
+            "range": "± 69",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 222120,
+            "range": "± 22724.21",
             "unit": "ops/s"
           }
         ]
