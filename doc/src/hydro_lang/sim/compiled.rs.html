@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/sim/compiled.rs`."><title>compiled.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.100.0-nightly (908501772 2026-08-30)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/sim/</div>compiled.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Interfaces for compiled Hydro simulators and concrete simulation instances.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/sim/compiled.rs`."><title>compiled.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.100.0-nightly (0dfb098f3 2026-08-31)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/sim/</div>compiled.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Interfaces for compiled Hydro simulators and concrete simulation instances.
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! # Quiescence and observation soundness
 <a href=#4 id=4 data-nosnippet>4</a>//!
@@ -2275,642 +2275,627 @@
 <a href=#2275 id=2275 data-nosnippet>2275</a><span class="kw">impl </span>SimTick {
 <a href=#2276 id=2276 data-nosnippet>2276</a>    <span class="doccomment">/// Whether the scheduler can execute this tick right now.
 <a href=#2277 id=2277 data-nosnippet>2277</a>    </span><span class="kw">fn </span>can_run(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-<a href=#2278 id=2278 data-nosnippet>2278</a>        <span class="comment">// All hooks must be ready (have received input or have a last value)...
-<a href=#2279 id=2279 data-nosnippet>2279</a>        </span><span class="self">self</span>.hooks.iter().all(|hook| hook.is_ready())
-<a href=#2280 id=2280 data-nosnippet>2280</a>            &amp;&amp; <span class="self">self</span>.scripted_hooks.iter().all(|hook| hook.borrow().is_ready())
-<a href=#2281 id=2281 data-nosnippet>2281</a>            <span class="comment">// ...no scripted hook may have a queued decision that is not yet honorable
-<a href=#2282 id=2282 data-nosnippet>2282</a>            // (such a decision names this tick's *next* execution, so the tick must wait
-<a href=#2283 id=2283 data-nosnippet>2283</a>            // until it can be honored in full)...
-<a href=#2284 id=2284 data-nosnippet>2284</a>            </span>&amp;&amp; !<span class="self">self
-<a href=#2285 id=2285 data-nosnippet>2285</a>                </span>.scripted_hooks
-<a href=#2286 id=2286 data-nosnippet>2286</a>                .iter()
-<a href=#2287 id=2287 data-nosnippet>2287</a>                .any(|hook| hook.borrow().blocks_tick())
-<a href=#2288 id=2288 data-nosnippet>2288</a>            <span class="comment">// ...and at least one hook must be able to trigger the tick.
-<a href=#2289 id=2289 data-nosnippet>2289</a>            </span>&amp;&amp; (<span class="self">self</span>.hooks.iter().any(|hook| hook.can_trigger_tick())
-<a href=#2290 id=2290 data-nosnippet>2290</a>                || <span class="self">self
-<a href=#2291 id=2291 data-nosnippet>2291</a>                    </span>.scripted_hooks
-<a href=#2292 id=2292 data-nosnippet>2292</a>                    .iter()
-<a href=#2293 id=2293 data-nosnippet>2293</a>                    .any(|hook| hook.borrow().can_trigger_tick()))
-<a href=#2294 id=2294 data-nosnippet>2294</a>    }
-<a href=#2295 id=2295 data-nosnippet>2295</a>}
-<a href=#2296 id=2296 data-nosnippet>2296</a>
-<a href=#2297 id=2297 data-nosnippet>2297</a><span class="doccomment">/// A single top-level hook (e.g. from `assume_ordering` on a non-tick stream) that needs
-<a href=#2298 id=2298 data-nosnippet>2298</a>/// scheduling decisions, but has no tick DFIR to execute. The scheduler just resolves the
-<a href=#2299 id=2299 data-nosnippet>2299</a>/// hook.
-<a href=#2300 id=2300 data-nosnippet>2300</a>///
-<a href=#2301 id=2301 data-nosnippet>2301</a>/// Each top-level hook is its own observation ("its own virtual tick"), even when several
-<a href=#2302 id=2302 data-nosnippet>2302</a>/// hooks live at the same location: unlike a tick's hooks, which one atomic tick
-<a href=#2303 id=2303 data-nosnippet>2303</a>/// execution consumes together, co-located top-level hooks are causally independent
-<a href=#2304 id=2304 data-nosnippet>2304</a>/// operators, so resolving them jointly would only couple their decisions. Grouping them
-<a href=#2305 id=2305 data-nosnippet>2305</a>/// would both add redundant schedules (releasing jointly is equivalent to releasing in
-<a href=#2306 id=2306 data-nosnippet>2306</a>/// consecutive steps, which is explored anyway) and *lose* schedules for hook kinds whose
-<a href=#2307 id=2307 data-nosnippet>2307</a>/// decisions always release when resolved (a fold could never stay silent while a
-<a href=#2308 id=2308 data-nosnippet>2308</a>/// co-located sibling acts). With one hook per observation, "act" and "stay silent" are
-<a href=#2309 id=2309 data-nosnippet>2309</a>/// expressed purely by the scheduler picking or not picking the observation, and a picked
-<a href=#2310 id=2310 data-nosnippet>2310</a>/// observation always makes a nontrivial decision.
-<a href=#2311 id=2311 data-nosnippet>2311</a></span><span class="kw">struct </span>SimObservation {
-<a href=#2312 id=2312 data-nosnippet>2312</a>    <span class="doccomment">/// The top-level location, used to match this observation against the async DFIR that
-<a href=#2313 id=2313 data-nosnippet>2313</a>    /// produces its input data (and, for a scripted hook, against an outstanding script
-<a href=#2314 id=2314 data-nosnippet>2314</a>    /// group).
-<a href=#2315 id=2315 data-nosnippet>2315</a>    </span>location: LocationId,
-<a href=#2316 id=2316 data-nosnippet>2316</a>    <span class="doccomment">/// The cluster member ID, if the location is a cluster.
-<a href=#2317 id=2317 data-nosnippet>2317</a>    </span>cluster_id: <span class="prelude-ty">Option</span>&lt;u32&gt;,
-<a href=#2318 id=2318 data-nosnippet>2318</a>    <span class="doccomment">/// The hook resolved when the scheduler selects this observation.
-<a href=#2319 id=2319 data-nosnippet>2319</a>    </span>hook: ObservationSlot,
-<a href=#2320 id=2320 data-nosnippet>2320</a>}
-<a href=#2321 id=2321 data-nosnippet>2321</a>
-<a href=#2322 id=2322 data-nosnippet>2322</a><span class="doccomment">/// The single hook of a [`SimObservation`]: either an ordinary autonomous hook, or a
-<a href=#2323 id=2323 data-nosnippet>2323</a>/// scripted hook (bound to a test-side handle), tagged with its hook ID so a script group
-<a href=#2324 id=2324 data-nosnippet>2324</a>/// can be matched to exactly this observation.
-<a href=#2325 id=2325 data-nosnippet>2325</a></span><span class="kw">enum </span>ObservationSlot {
-<a href=#2326 id=2326 data-nosnippet>2326</a>    <span class="doccomment">/// An ordinary autonomous hook, owned by the scheduler.
-<a href=#2327 id=2327 data-nosnippet>2327</a>    </span>Unscripted { hook: Box&lt;<span class="kw">dyn </span>ObservationHook&gt; },
-<a href=#2328 id=2328 data-nosnippet>2328</a>    <span class="doccomment">/// A hook bound to a test-side handle, shared (`Rc`) with the per-instance registry.
-<a href=#2329 id=2329 data-nosnippet>2329</a>    </span>Scripted {
-<a href=#2330 id=2330 data-nosnippet>2330</a>        <span class="doccomment">/// The bound handle's ID, used to match a script group to this observation.
-<a href=#2331 id=2331 data-nosnippet>2331</a>        </span>hook_id: usize,
-<a href=#2332 id=2332 data-nosnippet>2332</a>        hook: Rc&lt;RefCell&lt;<span class="kw">dyn </span>ScriptedObservationHook&gt;&gt;,
-<a href=#2333 id=2333 data-nosnippet>2333</a>    },
-<a href=#2334 id=2334 data-nosnippet>2334</a>}
-<a href=#2335 id=2335 data-nosnippet>2335</a>
-<a href=#2336 id=2336 data-nosnippet>2336</a><span class="kw">impl </span>SimObservation {
-<a href=#2337 id=2337 data-nosnippet>2337</a>    <span class="doccomment">/// Whether the scheduler can resolve this observation's hook right now.
-<a href=#2338 id=2338 data-nosnippet>2338</a>    </span><span class="kw">fn </span>can_run(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-<a href=#2339 id=2339 data-nosnippet>2339</a>        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.hook {
-<a href=#2340 id=2340 data-nosnippet>2340</a>            <span class="comment">// Running an observation *is* releasing, so any pending input makes an
-<a href=#2341 id=2341 data-nosnippet>2341</a>            // unscripted observation runnable.
-<a href=#2342 id=2342 data-nosnippet>2342</a>            </span>ObservationSlot::Unscripted { hook } =&gt; hook.has_pending_input(),
-<a href=#2343 id=2343 data-nosnippet>2343</a>            ObservationSlot::Scripted { hook, .. } =&gt; hook.borrow().can_fire(),
-<a href=#2344 id=2344 data-nosnippet>2344</a>        }
-<a href=#2345 id=2345 data-nosnippet>2345</a>    }
-<a href=#2346 id=2346 data-nosnippet>2346</a>}
-<a href=#2347 id=2347 data-nosnippet>2347</a>
-<a href=#2348 id=2348 data-nosnippet>2348</a><span class="doccomment">/// A running simulation, which manages the async DFIRs, tick DFIRs, and hook-based
-<a href=#2349 id=2349 data-nosnippet>2349</a>/// scheduling decisions for non-deterministic operators like `batch` and `assume_ordering`.
-<a href=#2350 id=2350 data-nosnippet>2350</a>///
-<a href=#2351 id=2351 data-nosnippet>2351</a>/// This struct holds all simulator state across scheduler steps. Each [`Self::step`] performs
-<a href=#2352 id=2352 data-nosnippet>2352</a>/// one of three kinds of work:
-<a href=#2353 id=2353 data-nosnippet>2353</a>/// - **Async DFIRs**: long-running top-level dataflows (one per process/cluster member) that
-<a href=#2354 id=2354 data-nosnippet>2354</a>///   produce data consumed by ticks and observations.
-<a href=#2355 id=2355 data-nosnippet>2355</a>/// - **Ticks**: tick-scoped DFIRs that execute a single tick. Before running, their associated
-<a href=#2356 id=2356 data-nosnippet>2356</a>///   hooks (e.g. from `batch`) are resolved to decide what data to release into the tick.
-<a href=#2357 id=2357 data-nosnippet>2357</a>/// - **Observations**: top-level locations that have hooks (e.g. from `assume_ordering` on a
-<a href=#2358 id=2358 data-nosnippet>2358</a>///   non-tick stream) needing decisions, but no tick DFIR to execute. The scheduler just
-<a href=#2359 id=2359 data-nosnippet>2359</a>///   resolves their hooks.
-<a href=#2360 id=2360 data-nosnippet>2360</a></span><span class="kw">struct </span>LaunchedSim&lt;W: std::io::Write&gt; {
-<a href=#2361 id=2361 data-nosnippet>2361</a>    <span class="doccomment">/// Top-level async DFIRs, one per process/cluster member. These run continuously and
-<a href=#2362 id=2362 data-nosnippet>2362</a>    /// produce data that feeds into ticks and observations.
-<a href=#2363 id=2363 data-nosnippet>2363</a>    </span>async_dfirs: Vec&lt;(LocationId, <span class="prelude-ty">Option</span>&lt;u32&gt;, DfirErased)&gt;,
-<a href=#2364 id=2364 data-nosnippet>2364</a>    <span class="doccomment">/// Ticks whose parent async DFIR has made progress, so they may be ready to run.
-<a href=#2365 id=2365 data-nosnippet>2365</a>    /// The scheduler further filters these by checking whether their hooks have pending decisions.
-<a href=#2366 id=2366 data-nosnippet>2366</a>    </span>possibly_ready_ticks: Vec&lt;SimTick&gt;,
-<a href=#2367 id=2367 data-nosnippet>2367</a>    <span class="doccomment">/// Ticks whose parent async DFIR has not yet made progress since they were last checked.
-<a href=#2368 id=2368 data-nosnippet>2368</a>    </span>not_ready_ticks: Vec&lt;SimTick&gt;,
-<a href=#2369 id=2369 data-nosnippet>2369</a>    <span class="doccomment">/// The tick owned by the one sealed, outstanding scripted decision group. It is kept
-<a href=#2370 id=2370 data-nosnippet>2370</a>    /// outside the ordinary ready lists until it executes and consumes that group.
-<a href=#2371 id=2371 data-nosnippet>2371</a>    </span>current_scripted_tick: <span class="prelude-ty">Option</span>&lt;SimTick&gt;,
-<a href=#2372 id=2372 data-nosnippet>2372</a>    current_scripted_observation: <span class="prelude-ty">Option</span>&lt;SimObservation&gt;,
-<a href=#2373 id=2373 data-nosnippet>2373</a>    <span class="doccomment">/// Coordinates the decision group shared with test-side hook handles.
-<a href=#2374 id=2374 data-nosnippet>2374</a>    </span>script_coordinator: Rc&lt;RefCell&lt;ScriptCoordinator&gt;&gt;,
-<a href=#2375 id=2375 data-nosnippet>2375</a>    <span class="doccomment">/// Observations whose async DFIR has made progress, so their hooks may have decisions
-<a href=#2376 id=2376 data-nosnippet>2376</a>    /// to resolve.
-<a href=#2377 id=2377 data-nosnippet>2377</a>    </span>possibly_ready_observations: Vec&lt;SimObservation&gt;,
-<a href=#2378 id=2378 data-nosnippet>2378</a>    <span class="doccomment">/// Observations whose async DFIR has not yet made progress since they were last checked.
-<a href=#2379 id=2379 data-nosnippet>2379</a>    </span>not_ready_observations: Vec&lt;SimObservation&gt;,
-<a href=#2380 id=2380 data-nosnippet>2380</a>    log: LogKind&lt;W&gt;,
-<a href=#2381 id=2381 data-nosnippet>2381</a>    <span class="doccomment">/// Represents quiescence state of the simulation.
-<a href=#2382 id=2382 data-nosnippet>2382</a>    </span>quiescence: Rc&lt;QuiescenceState&gt;,
-<a href=#2383 id=2383 data-nosnippet>2383</a>    <span class="doccomment">/// When true, this simulation runs in deterministic mode: no fuzzer entropy is ever
-<a href=#2384 id=2384 data-nosnippet>2384</a>    /// drawn, every unsafe operator with meaningful input must be scripted, and at most
-<a href=#2385 id=2385 data-nosnippet>2385</a>    /// one tick is ever runnable (see `SimFlow::deterministic`).
-<a href=#2386 id=2386 data-nosnippet>2386</a>    </span>deterministic: bool,
-<a href=#2387 id=2387 data-nosnippet>2387</a>}
-<a href=#2388 id=2388 data-nosnippet>2388</a>
-<a href=#2389 id=2389 data-nosnippet>2389</a><span class="kw">impl</span>&lt;W: std::io::Write&gt; LaunchedSim&lt;W&gt; {
-<a href=#2390 id=2390 data-nosnippet>2390</a>    <span class="doccomment">/// Runs a single step of the simulation scheduler.
-<a href=#2391 id=2391 data-nosnippet>2391</a>    ///
-<a href=#2392 id=2392 data-nosnippet>2392</a>    /// A step first advances all async DFIRs; if none of them made progress, it instead runs
-<a href=#2393 id=2393 data-nosnippet>2393</a>    /// one ready tick or resolves one ready observation. If nothing at all can make progress,
-<a href=#2394 id=2394 data-nosnippet>2394</a>    /// the simulation is quiescent: this signals waiting receivers and returns; the driver is
-<a href=#2395 id=2395 data-nosnippet>2395</a>    /// responsible for parking until new external input arrives (see
-<a href=#2396 id=2396 data-nosnippet>2396</a>    /// [`QuiescenceState::resumed`]).
-<a href=#2397 id=2397 data-nosnippet>2397</a>    ///
-<a href=#2398 id=2398 data-nosnippet>2398</a>    /// This future is always awaited to completion by the driver, so a step is atomic: user
-<a href=#2399 id=2399 data-nosnippet>2399</a>    /// code never runs (and never observes intermediate state) while a step is in flight.
-<a href=#2400 id=2400 data-nosnippet>2400</a>    </span><span class="kw">async fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#2401 id=2401 data-nosnippet>2401</a>        <span class="comment">// A group remains joinable only while the test body is in the same synchronous poll
-<a href=#2402 id=2402 data-nosnippet>2402</a>        // that created it. Starting any scheduler step seals it and moves its tick out of
-<a href=#2403 id=2403 data-nosnippet>2403</a>        // the ordinary lists exactly once; `Some(current)` then means that tick exclusively
-<a href=#2404 id=2404 data-nosnippet>2404</a>        // owns the one outstanding group until it executes.
-<a href=#2405 id=2405 data-nosnippet>2405</a>        </span><span class="kw">let </span>outstanding_target = {
-<a href=#2406 id=2406 data-nosnippet>2406</a>            <span class="kw">let </span><span class="kw-2">mut </span>coordinator = <span class="self">self</span>.script_coordinator.borrow_mut();
-<a href=#2407 id=2407 data-nosnippet>2407</a>            coordinator.current.as_mut().map(|group| {
-<a href=#2408 id=2408 data-nosnippet>2408</a>                group.sealed = <span class="bool-val">true</span>;
-<a href=#2409 id=2409 data-nosnippet>2409</a>                group.target.clone()
-<a href=#2410 id=2410 data-nosnippet>2410</a>            })
-<a href=#2411 id=2411 data-nosnippet>2411</a>        };
-<a href=#2412 id=2412 data-nosnippet>2412</a>        <span class="kw">match </span>outstanding_target {
-<a href=#2413 id=2413 data-nosnippet>2413</a>            <span class="prelude-val">Some</span>(ScriptTarget::Tick {
-<a href=#2414 id=2414 data-nosnippet>2414</a>                location:
-<a href=#2415 id=2415 data-nosnippet>2415</a>                    SimLocation {
-<a href=#2416 id=2416 data-nosnippet>2416</a>                        location: group_location,
-<a href=#2417 id=2417 data-nosnippet>2417</a>                        cluster_id: group_cluster_id,
-<a href=#2418 id=2418 data-nosnippet>2418</a>                    },
-<a href=#2419 id=2419 data-nosnippet>2419</a>            }) =&gt; {
-<a href=#2420 id=2420 data-nosnippet>2420</a>                <span class="macro">abort_assert!</span>(
-<a href=#2421 id=2421 data-nosnippet>2421</a>                    <span class="self">self</span>.current_scripted_observation.is_none(),
-<a href=#2422 id=2422 data-nosnippet>2422</a>                    <span class="string">"scripted observation remained active for a tick group"
-<a href=#2423 id=2423 data-nosnippet>2423</a>                </span>);
-<a href=#2424 id=2424 data-nosnippet>2424</a>                <span class="kw">if </span><span class="self">self</span>.current_scripted_tick.is_none() {
-<a href=#2425 id=2425 data-nosnippet>2425</a>                    <span class="kw">let </span>matches_group = |tick: <span class="kw-2">&amp;</span>SimTick| {
-<a href=#2426 id=2426 data-nosnippet>2426</a>                        tick.location == group_location &amp;&amp; tick.cluster_id == group_cluster_id
-<a href=#2427 id=2427 data-nosnippet>2427</a>                    };
-<a href=#2428 id=2428 data-nosnippet>2428</a>                    <span class="self">self</span>.current_scripted_tick = <span class="self">self
-<a href=#2429 id=2429 data-nosnippet>2429</a>                        </span>.possibly_ready_ticks
-<a href=#2430 id=2430 data-nosnippet>2430</a>                        .iter()
-<a href=#2431 id=2431 data-nosnippet>2431</a>                        .position(matches_group)
-<a href=#2432 id=2432 data-nosnippet>2432</a>                        .map(|index| <span class="self">self</span>.possibly_ready_ticks.swap_remove(index))
-<a href=#2433 id=2433 data-nosnippet>2433</a>                        .or_else(|| {
-<a href=#2434 id=2434 data-nosnippet>2434</a>                            <span class="self">self</span>.not_ready_ticks
-<a href=#2435 id=2435 data-nosnippet>2435</a>                                .iter()
-<a href=#2436 id=2436 data-nosnippet>2436</a>                                .position(matches_group)
-<a href=#2437 id=2437 data-nosnippet>2437</a>                                .map(|index| <span class="self">self</span>.not_ready_ticks.swap_remove(index))
-<a href=#2438 id=2438 data-nosnippet>2438</a>                        });
-<a href=#2439 id=2439 data-nosnippet>2439</a>                }
-<a href=#2440 id=2440 data-nosnippet>2440</a>                <span class="kw">let </span>tick = <span class="self">self</span>.current_scripted_tick.as_ref().unwrap();
-<a href=#2441 id=2441 data-nosnippet>2441</a>                <span class="macro">abort_assert!</span>(
-<a href=#2442 id=2442 data-nosnippet>2442</a>                    tick.location == group_location &amp;&amp; tick.cluster_id == group_cluster_id,
-<a href=#2443 id=2443 data-nosnippet>2443</a>                    <span class="string">"outstanding scripted group changed before its tick executed"
-<a href=#2444 id=2444 data-nosnippet>2444</a>                </span>);
-<a href=#2445 id=2445 data-nosnippet>2445</a>            }
-<a href=#2446 id=2446 data-nosnippet>2446</a>            <span class="prelude-val">Some</span>(ScriptTarget::Observation {
-<a href=#2447 id=2447 data-nosnippet>2447</a>                location:
-<a href=#2448 id=2448 data-nosnippet>2448</a>                    SimLocation {
-<a href=#2449 id=2449 data-nosnippet>2449</a>                        location: group_location,
-<a href=#2450 id=2450 data-nosnippet>2450</a>                        cluster_id: group_cluster_id,
-<a href=#2451 id=2451 data-nosnippet>2451</a>                    },
-<a href=#2452 id=2452 data-nosnippet>2452</a>                hook_id,
-<a href=#2453 id=2453 data-nosnippet>2453</a>            }) =&gt; {
-<a href=#2454 id=2454 data-nosnippet>2454</a>                <span class="macro">abort_assert!</span>(
-<a href=#2455 id=2455 data-nosnippet>2455</a>                    <span class="self">self</span>.current_scripted_tick.is_none(),
-<a href=#2456 id=2456 data-nosnippet>2456</a>                    <span class="string">"scripted tick remained active for an observation group"
-<a href=#2457 id=2457 data-nosnippet>2457</a>                </span>);
-<a href=#2458 id=2458 data-nosnippet>2458</a>                <span class="kw">if </span><span class="self">self</span>.current_scripted_observation.is_none() {
-<a href=#2459 id=2459 data-nosnippet>2459</a>                    <span class="kw">let </span>matches_group = |observation: <span class="kw-2">&amp;</span>SimObservation| {
-<a href=#2460 id=2460 data-nosnippet>2460</a>                        observation.location == group_location
-<a href=#2461 id=2461 data-nosnippet>2461</a>                            &amp;&amp; observation.cluster_id == group_cluster_id
-<a href=#2462 id=2462 data-nosnippet>2462</a>                            &amp;&amp; <span class="macro">matches!</span>(observation.hook, ObservationSlot::Scripted { hook_id: id, .. } <span class="kw">if </span>id == hook_id)
-<a href=#2463 id=2463 data-nosnippet>2463</a>                    };
-<a href=#2464 id=2464 data-nosnippet>2464</a>                    <span class="self">self</span>.current_scripted_observation = <span class="self">self
-<a href=#2465 id=2465 data-nosnippet>2465</a>                        </span>.possibly_ready_observations
-<a href=#2466 id=2466 data-nosnippet>2466</a>                        .iter()
-<a href=#2467 id=2467 data-nosnippet>2467</a>                        .position(matches_group)
-<a href=#2468 id=2468 data-nosnippet>2468</a>                        .map(|index| <span class="self">self</span>.possibly_ready_observations.swap_remove(index))
-<a href=#2469 id=2469 data-nosnippet>2469</a>                        .or_else(|| {
-<a href=#2470 id=2470 data-nosnippet>2470</a>                            <span class="self">self</span>.not_ready_observations
-<a href=#2471 id=2471 data-nosnippet>2471</a>                                .iter()
-<a href=#2472 id=2472 data-nosnippet>2472</a>                                .position(matches_group)
-<a href=#2473 id=2473 data-nosnippet>2473</a>                                .map(|index| <span class="self">self</span>.not_ready_observations.swap_remove(index))
-<a href=#2474 id=2474 data-nosnippet>2474</a>                        });
-<a href=#2475 id=2475 data-nosnippet>2475</a>                }
-<a href=#2476 id=2476 data-nosnippet>2476</a>                <span class="macro">abort_assert!</span>(
-<a href=#2477 id=2477 data-nosnippet>2477</a>                    <span class="self">self</span>.current_scripted_observation.is_some(),
-<a href=#2478 id=2478 data-nosnippet>2478</a>                    <span class="string">"outstanding scripted group did not match an observation"
-<a href=#2479 id=2479 data-nosnippet>2479</a>                </span>);
-<a href=#2480 id=2480 data-nosnippet>2480</a>            }
-<a href=#2481 id=2481 data-nosnippet>2481</a>            <span class="prelude-val">None </span>=&gt; <span class="macro">abort_assert!</span>(
-<a href=#2482 id=2482 data-nosnippet>2482</a>                <span class="self">self</span>.current_scripted_tick.is_none() &amp;&amp; <span class="self">self</span>.current_scripted_observation.is_none(),
-<a href=#2483 id=2483 data-nosnippet>2483</a>                <span class="string">"scripted action remained active without an outstanding group"
-<a href=#2484 id=2484 data-nosnippet>2484</a>            </span>),
-<a href=#2485 id=2485 data-nosnippet>2485</a>        }
-<a href=#2486 id=2486 data-nosnippet>2486</a>
-<a href=#2487 id=2487 data-nosnippet>2487</a>        <span class="kw">let </span><span class="kw-2">mut </span>any_made_progress = <span class="bool-val">false</span>;
-<a href=#2488 id=2488 data-nosnippet>2488</a>        <span class="kw">for </span>(loc, c_id, dfir) <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.async_dfirs {
-<a href=#2489 id=2489 data-nosnippet>2489</a>            <span class="kw">if </span>dfir.run_tick().<span class="kw">await </span>{
-<a href=#2490 id=2490 data-nosnippet>2490</a>                any_made_progress = <span class="bool-val">true</span>;
-<a href=#2491 id=2491 data-nosnippet>2491</a>
-<a href=#2492 id=2492 data-nosnippet>2492</a>                <span class="comment">// This async DFIR may have produced new data, so the ticks and observations
-<a href=#2493 id=2493 data-nosnippet>2493</a>                // it feeds may now be ready.
-<a href=#2494 id=2494 data-nosnippet>2494</a>                </span><span class="self">self</span>.possibly_ready_ticks
-<a href=#2495 id=2495 data-nosnippet>2495</a>                    .extend(<span class="self">self</span>.not_ready_ticks.extract_if(.., |tick| {
-<a href=#2496 id=2496 data-nosnippet>2496</a>                        tick.parent_location == <span class="kw-2">*</span>loc &amp;&amp; tick.cluster_id == <span class="kw-2">*</span>c_id
-<a href=#2497 id=2497 data-nosnippet>2497</a>                    }));
-<a href=#2498 id=2498 data-nosnippet>2498</a>                <span class="self">self</span>.possibly_ready_observations.extend(
-<a href=#2499 id=2499 data-nosnippet>2499</a>                    <span class="self">self</span>.not_ready_observations
-<a href=#2500 id=2500 data-nosnippet>2500</a>                        .extract_if(.., |obs| obs.location == <span class="kw-2">*</span>loc &amp;&amp; obs.cluster_id == <span class="kw-2">*</span>c_id),
-<a href=#2501 id=2501 data-nosnippet>2501</a>                );
-<a href=#2502 id=2502 data-nosnippet>2502</a>            }
-<a href=#2503 id=2503 data-nosnippet>2503</a>        }
-<a href=#2504 id=2504 data-nosnippet>2504</a>
-<a href=#2505 id=2505 data-nosnippet>2505</a>        <span class="kw">if </span>any_made_progress {
-<a href=#2506 id=2506 data-nosnippet>2506</a>            <span class="kw">return</span>;
-<a href=#2507 id=2507 data-nosnippet>2507</a>        }
-<a href=#2508 id=2508 data-nosnippet>2508</a>
-<a href=#2509 id=2509 data-nosnippet>2509</a>        <span class="comment">// The **boundary scan**: the async dataflows have stopped making progress and we
-<a href=#2510 id=2510 data-nosnippet>2510</a>        // are about to consider running ticks — the first moment where a missing scripted
-<a href=#2511 id=2511 data-nosnippet>2511</a>        // decision could influence what happens next. Check ticks exposed by async progress,
-<a href=#2512 id=2512 data-nosnippet>2512</a>        // plus the active scripted tick (which lives outside the ordinary ready lists).
-<a href=#2513 id=2513 data-nosnippet>2513</a>        </span><span class="kw">for </span>tick <span class="kw">in </span><span class="self">self
-<a href=#2514 id=2514 data-nosnippet>2514</a>            </span>.possibly_ready_ticks
-<a href=#2515 id=2515 data-nosnippet>2515</a>            .iter()
-<a href=#2516 id=2516 data-nosnippet>2516</a>            .chain(<span class="self">self</span>.current_scripted_tick.iter())
-<a href=#2517 id=2517 data-nosnippet>2517</a>        {
-<a href=#2518 id=2518 data-nosnippet>2518</a>            <span class="kw">for </span>hook <span class="kw">in </span><span class="kw-2">&amp;</span>tick.scripted_hooks {
-<a href=#2519 id=2519 data-nosnippet>2519</a>                <span class="kw">if let </span><span class="prelude-val">Err</span>(message) = hook.borrow().boundary_check() {
-<a href=#2520 id=2520 data-nosnippet>2520</a>                    <span class="macro">panic!</span>(<span class="string">"{}"</span>, message);
-<a href=#2521 id=2521 data-nosnippet>2521</a>                }
-<a href=#2522 id=2522 data-nosnippet>2522</a>            }
-<a href=#2523 id=2523 data-nosnippet>2523</a>        }
-<a href=#2524 id=2524 data-nosnippet>2524</a>
-<a href=#2525 id=2525 data-nosnippet>2525</a>        <span class="kw">for </span>observation <span class="kw">in </span><span class="self">self
-<a href=#2526 id=2526 data-nosnippet>2526</a>            </span>.possibly_ready_observations
-<a href=#2527 id=2527 data-nosnippet>2527</a>            .iter()
-<a href=#2528 id=2528 data-nosnippet>2528</a>            .chain(<span class="self">self</span>.current_scripted_observation.iter())
-<a href=#2529 id=2529 data-nosnippet>2529</a>        {
-<a href=#2530 id=2530 data-nosnippet>2530</a>            <span class="kw">if let </span>ObservationSlot::Scripted { hook, .. } = <span class="kw-2">&amp;</span>observation.hook
-<a href=#2531 id=2531 data-nosnippet>2531</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Err</span>(message) = hook.borrow().boundary_check()
-<a href=#2532 id=2532 data-nosnippet>2532</a>            {
-<a href=#2533 id=2533 data-nosnippet>2533</a>                <span class="macro">panic!</span>(<span class="string">"{}"</span>, message);
-<a href=#2534 id=2534 data-nosnippet>2534</a>            }
-<a href=#2535 id=2535 data-nosnippet>2535</a>        }
-<a href=#2536 id=2536 data-nosnippet>2536</a>
-<a href=#2537 id=2537 data-nosnippet>2537</a>        <span class="comment">// A fully scripted tick needs at least one decision that can eventually trigger
-<a href=#2538 id=2538 data-nosnippet>2538</a>        // it. There is exactly one outstanding group, so only its owned tick can contain
-<a href=#2539 id=2539 data-nosnippet>2539</a>        // a newly installed group in which no decision can trigger.
-<a href=#2540 id=2540 data-nosnippet>2540</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(tick) = <span class="kw-2">&amp;</span><span class="self">self</span>.current_scripted_tick
-<a href=#2541 id=2541 data-nosnippet>2541</a>            &amp;&amp; tick.hooks.is_empty()
-<a href=#2542 id=2542 data-nosnippet>2542</a>        {
-<a href=#2543 id=2543 data-nosnippet>2543</a>            <span class="kw">let </span>has_pending_decision = tick
-<a href=#2544 id=2544 data-nosnippet>2544</a>                .scripted_hooks
-<a href=#2545 id=2545 data-nosnippet>2545</a>                .iter()
-<a href=#2546 id=2546 data-nosnippet>2546</a>                .any(|hook| hook.borrow().has_decision());
-<a href=#2547 id=2547 data-nosnippet>2547</a>            <span class="kw">let </span>any_pending_decision_can_eventually_trigger =
-<a href=#2548 id=2548 data-nosnippet>2548</a>                tick.scripted_hooks.iter().any(|hook| {
-<a href=#2549 id=2549 data-nosnippet>2549</a>                    <span class="kw">let </span>hook = hook.borrow();
-<a href=#2550 id=2550 data-nosnippet>2550</a>                    <span class="comment">// A decision that is not yet honorable may become honorable and
-<a href=#2551 id=2551 data-nosnippet>2551</a>                    // trigger once more data arrives, so it does not fail this check.
-<a href=#2552 id=2552 data-nosnippet>2552</a>                    </span>hook.has_decision() &amp;&amp; (hook.blocks_tick() || hook.can_trigger_tick())
-<a href=#2553 id=2553 data-nosnippet>2553</a>                });
-<a href=#2554 id=2554 data-nosnippet>2554</a>
-<a href=#2555 id=2555 data-nosnippet>2555</a>            <span class="kw">if </span>has_pending_decision &amp;&amp; !any_pending_decision_can_eventually_trigger {
-<a href=#2556 id=2556 data-nosnippet>2556</a>                <span class="kw">let </span><span class="kw-2">mut </span>details = String::new();
-<a href=#2557 id=2557 data-nosnippet>2557</a>                <span class="kw">for </span>hook <span class="kw">in </span><span class="kw-2">&amp;</span>tick.scripted_hooks {
-<a href=#2558 id=2558 data-nosnippet>2558</a>                    <span class="kw">let </span>hook = hook.borrow();
-<a href=#2559 id=2559 data-nosnippet>2559</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(decision) = hook.describe_decision() {
-<a href=#2560 id=2560 data-nosnippet>2560</a>                        <span class="kw">let </span>loc = ScriptedHookControl::location_meta(<span class="kw-2">&amp;*</span>hook).location;
-<a href=#2561 id=2561 data-nosnippet>2561</a>                        <span class="kw">use </span>std::fmt::Write;
-<a href=#2562 id=2562 data-nosnippet>2562</a>                        <span class="macro">write!</span>(details, <span class="string">"\n  {} on the hook at {}"</span>, decision, loc).unwrap();
-<a href=#2563 id=2563 data-nosnippet>2563</a>                    }
-<a href=#2564 id=2564 data-nosnippet>2564</a>                }
-<a href=#2565 id=2565 data-nosnippet>2565</a>                <span class="macro">panic!</span>(
-<a href=#2566 id=2566 data-nosnippet>2566</a>                    <span class="string">"none of the scripted decisions in this group can trigger their tick, so the tick can never run; at least one decision in the group must trigger it:{}"</span>,
-<a href=#2567 id=2567 data-nosnippet>2567</a>                    details
-<a href=#2568 id=2568 data-nosnippet>2568</a>                );
-<a href=#2569 id=2569 data-nosnippet>2569</a>            }
-<a href=#2570 id=2570 data-nosnippet>2570</a>        }
-<a href=#2571 id=2571 data-nosnippet>2571</a>
-<a href=#2572 id=2572 data-nosnippet>2572</a>        <span class="kw">use </span>bolero::generator::<span class="kw-2">*</span>;
-<a href=#2573 id=2573 data-nosnippet>2573</a>
-<a href=#2574 id=2574 data-nosnippet>2574</a>        <span class="comment">// Send anything that can't make a scheduling decision back to the not-ready lists.
-<a href=#2575 id=2575 data-nosnippet>2575</a>        </span><span class="self">self</span>.not_ready_ticks.extend(
-<a href=#2576 id=2576 data-nosnippet>2576</a>            <span class="self">self</span>.possibly_ready_ticks
-<a href=#2577 id=2577 data-nosnippet>2577</a>                .extract_if(.., |tick| !tick.can_run()),
-<a href=#2578 id=2578 data-nosnippet>2578</a>        );
-<a href=#2579 id=2579 data-nosnippet>2579</a>        <span class="self">self</span>.not_ready_observations.extend(
-<a href=#2580 id=2580 data-nosnippet>2580</a>            <span class="self">self</span>.possibly_ready_observations
-<a href=#2581 id=2581 data-nosnippet>2581</a>                .extract_if(.., |obs| !obs.can_run()),
-<a href=#2582 id=2582 data-nosnippet>2582</a>        );
-<a href=#2583 id=2583 data-nosnippet>2583</a>
-<a href=#2584 id=2584 data-nosnippet>2584</a>        <span class="kw">let </span>scripted_tick_runnable = <span class="self">self
-<a href=#2585 id=2585 data-nosnippet>2585</a>            </span>.current_scripted_tick
-<a href=#2586 id=2586 data-nosnippet>2586</a>            .as_ref()
-<a href=#2587 id=2587 data-nosnippet>2587</a>            .is_some_and(SimTick::can_run);
-<a href=#2588 id=2588 data-nosnippet>2588</a>        <span class="kw">let </span>scripted_observation_runnable = <span class="self">self
-<a href=#2589 id=2589 data-nosnippet>2589</a>            </span>.current_scripted_observation
-<a href=#2590 id=2590 data-nosnippet>2590</a>            .as_ref()
-<a href=#2591 id=2591 data-nosnippet>2591</a>            .is_some_and(SimObservation::can_run);
-<a href=#2592 id=2592 data-nosnippet>2592</a>
-<a href=#2593 id=2593 data-nosnippet>2593</a>        <span class="kw">if </span><span class="self">self</span>.possibly_ready_ticks.is_empty()
-<a href=#2594 id=2594 data-nosnippet>2594</a>            &amp;&amp; !scripted_tick_runnable
-<a href=#2595 id=2595 data-nosnippet>2595</a>            &amp;&amp; !scripted_observation_runnable
-<a href=#2596 id=2596 data-nosnippet>2596</a>            &amp;&amp; <span class="self">self</span>.possibly_ready_observations.is_empty()
-<a href=#2597 id=2597 data-nosnippet>2597</a>        {
-<a href=#2598 id=2598 data-nosnippet>2598</a>            <span class="comment">// If any tick is blocked because a hook is not ready, that's a
-<a href=#2599 id=2599 data-nosnippet>2599</a>            // simulator bug — it means a singleton never received a value. (Scripted hooks
-<a href=#2600 id=2600 data-nosnippet>2600</a>            // are exempt: a scripted snapshot may legitimately still be waiting on a
-<a href=#2601 id=2601 data-nosnippet>2601</a>            // decision that can never be honored, which is reported as a *dirty*
-<a href=#2602 id=2602 data-nosnippet>2602</a>            // quiescence error at the suspended test-side await instead.)
-<a href=#2603 id=2603 data-nosnippet>2603</a>            </span><span class="kw">for </span>tick <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.not_ready_ticks {
-<a href=#2604 id=2604 data-nosnippet>2604</a>                <span class="macro">abort_assert!</span>(
-<a href=#2605 id=2605 data-nosnippet>2605</a>                    tick.hooks.iter().all(|hook| hook.is_ready()),
-<a href=#2606 id=2606 data-nosnippet>2606</a>                    <span class="string">"tick has a hook that never became ready"
-<a href=#2607 id=2607 data-nosnippet>2607</a>                </span>);
-<a href=#2608 id=2608 data-nosnippet>2608</a>            }
+<a href=#2278 id=2278 data-nosnippet>2278</a>        <span class="comment">// No scripted hook may have a queued decision that is not yet honorable
+<a href=#2279 id=2279 data-nosnippet>2279</a>        // (such a decision names this tick's *next* execution, so the tick must wait
+<a href=#2280 id=2280 data-nosnippet>2280</a>        // until it can be honored in full)...
+<a href=#2281 id=2281 data-nosnippet>2281</a>        </span>!<span class="self">self
+<a href=#2282 id=2282 data-nosnippet>2282</a>            </span>.scripted_hooks
+<a href=#2283 id=2283 data-nosnippet>2283</a>            .iter()
+<a href=#2284 id=2284 data-nosnippet>2284</a>            .any(|hook| hook.borrow().blocks_tick())
+<a href=#2285 id=2285 data-nosnippet>2285</a>            <span class="comment">// ...and at least one hook must be able to trigger the tick.
+<a href=#2286 id=2286 data-nosnippet>2286</a>            </span>&amp;&amp; (<span class="self">self</span>.hooks.iter().any(|hook| hook.can_trigger_tick())
+<a href=#2287 id=2287 data-nosnippet>2287</a>                || <span class="self">self
+<a href=#2288 id=2288 data-nosnippet>2288</a>                    </span>.scripted_hooks
+<a href=#2289 id=2289 data-nosnippet>2289</a>                    .iter()
+<a href=#2290 id=2290 data-nosnippet>2290</a>                    .any(|hook| hook.borrow().can_trigger_tick()))
+<a href=#2291 id=2291 data-nosnippet>2291</a>    }
+<a href=#2292 id=2292 data-nosnippet>2292</a>}
+<a href=#2293 id=2293 data-nosnippet>2293</a>
+<a href=#2294 id=2294 data-nosnippet>2294</a><span class="doccomment">/// A single top-level hook (e.g. from `assume_ordering` on a non-tick stream) that needs
+<a href=#2295 id=2295 data-nosnippet>2295</a>/// scheduling decisions, but has no tick DFIR to execute. The scheduler just resolves the
+<a href=#2296 id=2296 data-nosnippet>2296</a>/// hook.
+<a href=#2297 id=2297 data-nosnippet>2297</a>///
+<a href=#2298 id=2298 data-nosnippet>2298</a>/// Each top-level hook is its own observation ("its own virtual tick"), even when several
+<a href=#2299 id=2299 data-nosnippet>2299</a>/// hooks live at the same location: unlike a tick's hooks, which one atomic tick
+<a href=#2300 id=2300 data-nosnippet>2300</a>/// execution consumes together, co-located top-level hooks are causally independent
+<a href=#2301 id=2301 data-nosnippet>2301</a>/// operators, so resolving them jointly would only couple their decisions. Grouping them
+<a href=#2302 id=2302 data-nosnippet>2302</a>/// would both add redundant schedules (releasing jointly is equivalent to releasing in
+<a href=#2303 id=2303 data-nosnippet>2303</a>/// consecutive steps, which is explored anyway) and *lose* schedules for hook kinds whose
+<a href=#2304 id=2304 data-nosnippet>2304</a>/// decisions always release when resolved (a fold could never stay silent while a
+<a href=#2305 id=2305 data-nosnippet>2305</a>/// co-located sibling acts). With one hook per observation, "act" and "stay silent" are
+<a href=#2306 id=2306 data-nosnippet>2306</a>/// expressed purely by the scheduler picking or not picking the observation, and a picked
+<a href=#2307 id=2307 data-nosnippet>2307</a>/// observation always makes a nontrivial decision.
+<a href=#2308 id=2308 data-nosnippet>2308</a></span><span class="kw">struct </span>SimObservation {
+<a href=#2309 id=2309 data-nosnippet>2309</a>    <span class="doccomment">/// The top-level location, used to match this observation against the async DFIR that
+<a href=#2310 id=2310 data-nosnippet>2310</a>    /// produces its input data (and, for a scripted hook, against an outstanding script
+<a href=#2311 id=2311 data-nosnippet>2311</a>    /// group).
+<a href=#2312 id=2312 data-nosnippet>2312</a>    </span>location: LocationId,
+<a href=#2313 id=2313 data-nosnippet>2313</a>    <span class="doccomment">/// The cluster member ID, if the location is a cluster.
+<a href=#2314 id=2314 data-nosnippet>2314</a>    </span>cluster_id: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+<a href=#2315 id=2315 data-nosnippet>2315</a>    <span class="doccomment">/// The hook resolved when the scheduler selects this observation.
+<a href=#2316 id=2316 data-nosnippet>2316</a>    </span>hook: ObservationSlot,
+<a href=#2317 id=2317 data-nosnippet>2317</a>}
+<a href=#2318 id=2318 data-nosnippet>2318</a>
+<a href=#2319 id=2319 data-nosnippet>2319</a><span class="doccomment">/// The single hook of a [`SimObservation`]: either an ordinary autonomous hook, or a
+<a href=#2320 id=2320 data-nosnippet>2320</a>/// scripted hook (bound to a test-side handle), tagged with its hook ID so a script group
+<a href=#2321 id=2321 data-nosnippet>2321</a>/// can be matched to exactly this observation.
+<a href=#2322 id=2322 data-nosnippet>2322</a></span><span class="kw">enum </span>ObservationSlot {
+<a href=#2323 id=2323 data-nosnippet>2323</a>    <span class="doccomment">/// An ordinary autonomous hook, owned by the scheduler.
+<a href=#2324 id=2324 data-nosnippet>2324</a>    </span>Unscripted { hook: Box&lt;<span class="kw">dyn </span>ObservationHook&gt; },
+<a href=#2325 id=2325 data-nosnippet>2325</a>    <span class="doccomment">/// A hook bound to a test-side handle, shared (`Rc`) with the per-instance registry.
+<a href=#2326 id=2326 data-nosnippet>2326</a>    </span>Scripted {
+<a href=#2327 id=2327 data-nosnippet>2327</a>        <span class="doccomment">/// The bound handle's ID, used to match a script group to this observation.
+<a href=#2328 id=2328 data-nosnippet>2328</a>        </span>hook_id: usize,
+<a href=#2329 id=2329 data-nosnippet>2329</a>        hook: Rc&lt;RefCell&lt;<span class="kw">dyn </span>ScriptedObservationHook&gt;&gt;,
+<a href=#2330 id=2330 data-nosnippet>2330</a>    },
+<a href=#2331 id=2331 data-nosnippet>2331</a>}
+<a href=#2332 id=2332 data-nosnippet>2332</a>
+<a href=#2333 id=2333 data-nosnippet>2333</a><span class="kw">impl </span>SimObservation {
+<a href=#2334 id=2334 data-nosnippet>2334</a>    <span class="doccomment">/// Whether the scheduler can resolve this observation's hook right now.
+<a href=#2335 id=2335 data-nosnippet>2335</a>    </span><span class="kw">fn </span>can_run(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#2336 id=2336 data-nosnippet>2336</a>        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.hook {
+<a href=#2337 id=2337 data-nosnippet>2337</a>            <span class="comment">// Running an observation *is* releasing, so any pending input makes an
+<a href=#2338 id=2338 data-nosnippet>2338</a>            // unscripted observation runnable.
+<a href=#2339 id=2339 data-nosnippet>2339</a>            </span>ObservationSlot::Unscripted { hook } =&gt; hook.has_pending_input(),
+<a href=#2340 id=2340 data-nosnippet>2340</a>            ObservationSlot::Scripted { hook, .. } =&gt; hook.borrow().can_fire(),
+<a href=#2341 id=2341 data-nosnippet>2341</a>        }
+<a href=#2342 id=2342 data-nosnippet>2342</a>    }
+<a href=#2343 id=2343 data-nosnippet>2343</a>}
+<a href=#2344 id=2344 data-nosnippet>2344</a>
+<a href=#2345 id=2345 data-nosnippet>2345</a><span class="doccomment">/// A running simulation, which manages the async DFIRs, tick DFIRs, and hook-based
+<a href=#2346 id=2346 data-nosnippet>2346</a>/// scheduling decisions for non-deterministic operators like `batch` and `assume_ordering`.
+<a href=#2347 id=2347 data-nosnippet>2347</a>///
+<a href=#2348 id=2348 data-nosnippet>2348</a>/// This struct holds all simulator state across scheduler steps. Each [`Self::step`] performs
+<a href=#2349 id=2349 data-nosnippet>2349</a>/// one of three kinds of work:
+<a href=#2350 id=2350 data-nosnippet>2350</a>/// - **Async DFIRs**: long-running top-level dataflows (one per process/cluster member) that
+<a href=#2351 id=2351 data-nosnippet>2351</a>///   produce data consumed by ticks and observations.
+<a href=#2352 id=2352 data-nosnippet>2352</a>/// - **Ticks**: tick-scoped DFIRs that execute a single tick. Before running, their associated
+<a href=#2353 id=2353 data-nosnippet>2353</a>///   hooks (e.g. from `batch`) are resolved to decide what data to release into the tick.
+<a href=#2354 id=2354 data-nosnippet>2354</a>/// - **Observations**: top-level locations that have hooks (e.g. from `assume_ordering` on a
+<a href=#2355 id=2355 data-nosnippet>2355</a>///   non-tick stream) needing decisions, but no tick DFIR to execute. The scheduler just
+<a href=#2356 id=2356 data-nosnippet>2356</a>///   resolves their hooks.
+<a href=#2357 id=2357 data-nosnippet>2357</a></span><span class="kw">struct </span>LaunchedSim&lt;W: std::io::Write&gt; {
+<a href=#2358 id=2358 data-nosnippet>2358</a>    <span class="doccomment">/// Top-level async DFIRs, one per process/cluster member. These run continuously and
+<a href=#2359 id=2359 data-nosnippet>2359</a>    /// produce data that feeds into ticks and observations.
+<a href=#2360 id=2360 data-nosnippet>2360</a>    </span>async_dfirs: Vec&lt;(LocationId, <span class="prelude-ty">Option</span>&lt;u32&gt;, DfirErased)&gt;,
+<a href=#2361 id=2361 data-nosnippet>2361</a>    <span class="doccomment">/// Ticks whose parent async DFIR has made progress, so they may be ready to run.
+<a href=#2362 id=2362 data-nosnippet>2362</a>    /// The scheduler further filters these by checking whether their hooks have pending decisions.
+<a href=#2363 id=2363 data-nosnippet>2363</a>    </span>possibly_ready_ticks: Vec&lt;SimTick&gt;,
+<a href=#2364 id=2364 data-nosnippet>2364</a>    <span class="doccomment">/// Ticks whose parent async DFIR has not yet made progress since they were last checked.
+<a href=#2365 id=2365 data-nosnippet>2365</a>    </span>not_ready_ticks: Vec&lt;SimTick&gt;,
+<a href=#2366 id=2366 data-nosnippet>2366</a>    <span class="doccomment">/// The tick owned by the one sealed, outstanding scripted decision group. It is kept
+<a href=#2367 id=2367 data-nosnippet>2367</a>    /// outside the ordinary ready lists until it executes and consumes that group.
+<a href=#2368 id=2368 data-nosnippet>2368</a>    </span>current_scripted_tick: <span class="prelude-ty">Option</span>&lt;SimTick&gt;,
+<a href=#2369 id=2369 data-nosnippet>2369</a>    current_scripted_observation: <span class="prelude-ty">Option</span>&lt;SimObservation&gt;,
+<a href=#2370 id=2370 data-nosnippet>2370</a>    <span class="doccomment">/// Coordinates the decision group shared with test-side hook handles.
+<a href=#2371 id=2371 data-nosnippet>2371</a>    </span>script_coordinator: Rc&lt;RefCell&lt;ScriptCoordinator&gt;&gt;,
+<a href=#2372 id=2372 data-nosnippet>2372</a>    <span class="doccomment">/// Observations whose async DFIR has made progress, so their hooks may have decisions
+<a href=#2373 id=2373 data-nosnippet>2373</a>    /// to resolve.
+<a href=#2374 id=2374 data-nosnippet>2374</a>    </span>possibly_ready_observations: Vec&lt;SimObservation&gt;,
+<a href=#2375 id=2375 data-nosnippet>2375</a>    <span class="doccomment">/// Observations whose async DFIR has not yet made progress since they were last checked.
+<a href=#2376 id=2376 data-nosnippet>2376</a>    </span>not_ready_observations: Vec&lt;SimObservation&gt;,
+<a href=#2377 id=2377 data-nosnippet>2377</a>    log: LogKind&lt;W&gt;,
+<a href=#2378 id=2378 data-nosnippet>2378</a>    <span class="doccomment">/// Represents quiescence state of the simulation.
+<a href=#2379 id=2379 data-nosnippet>2379</a>    </span>quiescence: Rc&lt;QuiescenceState&gt;,
+<a href=#2380 id=2380 data-nosnippet>2380</a>    <span class="doccomment">/// When true, this simulation runs in deterministic mode: no fuzzer entropy is ever
+<a href=#2381 id=2381 data-nosnippet>2381</a>    /// drawn, every unsafe operator with meaningful input must be scripted, and at most
+<a href=#2382 id=2382 data-nosnippet>2382</a>    /// one tick is ever runnable (see `SimFlow::deterministic`).
+<a href=#2383 id=2383 data-nosnippet>2383</a>    </span>deterministic: bool,
+<a href=#2384 id=2384 data-nosnippet>2384</a>}
+<a href=#2385 id=2385 data-nosnippet>2385</a>
+<a href=#2386 id=2386 data-nosnippet>2386</a><span class="kw">impl</span>&lt;W: std::io::Write&gt; LaunchedSim&lt;W&gt; {
+<a href=#2387 id=2387 data-nosnippet>2387</a>    <span class="doccomment">/// Runs a single step of the simulation scheduler.
+<a href=#2388 id=2388 data-nosnippet>2388</a>    ///
+<a href=#2389 id=2389 data-nosnippet>2389</a>    /// A step first advances all async DFIRs; if none of them made progress, it instead runs
+<a href=#2390 id=2390 data-nosnippet>2390</a>    /// one ready tick or resolves one ready observation. If nothing at all can make progress,
+<a href=#2391 id=2391 data-nosnippet>2391</a>    /// the simulation is quiescent: this signals waiting receivers and returns; the driver is
+<a href=#2392 id=2392 data-nosnippet>2392</a>    /// responsible for parking until new external input arrives (see
+<a href=#2393 id=2393 data-nosnippet>2393</a>    /// [`QuiescenceState::resumed`]).
+<a href=#2394 id=2394 data-nosnippet>2394</a>    ///
+<a href=#2395 id=2395 data-nosnippet>2395</a>    /// This future is always awaited to completion by the driver, so a step is atomic: user
+<a href=#2396 id=2396 data-nosnippet>2396</a>    /// code never runs (and never observes intermediate state) while a step is in flight.
+<a href=#2397 id=2397 data-nosnippet>2397</a>    </span><span class="kw">async fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#2398 id=2398 data-nosnippet>2398</a>        <span class="comment">// A group remains joinable only while the test body is in the same synchronous poll
+<a href=#2399 id=2399 data-nosnippet>2399</a>        // that created it. Starting any scheduler step seals it and moves its tick out of
+<a href=#2400 id=2400 data-nosnippet>2400</a>        // the ordinary lists exactly once; `Some(current)` then means that tick exclusively
+<a href=#2401 id=2401 data-nosnippet>2401</a>        // owns the one outstanding group until it executes.
+<a href=#2402 id=2402 data-nosnippet>2402</a>        </span><span class="kw">let </span>outstanding_target = {
+<a href=#2403 id=2403 data-nosnippet>2403</a>            <span class="kw">let </span><span class="kw-2">mut </span>coordinator = <span class="self">self</span>.script_coordinator.borrow_mut();
+<a href=#2404 id=2404 data-nosnippet>2404</a>            coordinator.current.as_mut().map(|group| {
+<a href=#2405 id=2405 data-nosnippet>2405</a>                group.sealed = <span class="bool-val">true</span>;
+<a href=#2406 id=2406 data-nosnippet>2406</a>                group.target.clone()
+<a href=#2407 id=2407 data-nosnippet>2407</a>            })
+<a href=#2408 id=2408 data-nosnippet>2408</a>        };
+<a href=#2409 id=2409 data-nosnippet>2409</a>        <span class="kw">match </span>outstanding_target {
+<a href=#2410 id=2410 data-nosnippet>2410</a>            <span class="prelude-val">Some</span>(ScriptTarget::Tick {
+<a href=#2411 id=2411 data-nosnippet>2411</a>                location:
+<a href=#2412 id=2412 data-nosnippet>2412</a>                    SimLocation {
+<a href=#2413 id=2413 data-nosnippet>2413</a>                        location: group_location,
+<a href=#2414 id=2414 data-nosnippet>2414</a>                        cluster_id: group_cluster_id,
+<a href=#2415 id=2415 data-nosnippet>2415</a>                    },
+<a href=#2416 id=2416 data-nosnippet>2416</a>            }) =&gt; {
+<a href=#2417 id=2417 data-nosnippet>2417</a>                <span class="macro">abort_assert!</span>(
+<a href=#2418 id=2418 data-nosnippet>2418</a>                    <span class="self">self</span>.current_scripted_observation.is_none(),
+<a href=#2419 id=2419 data-nosnippet>2419</a>                    <span class="string">"scripted observation remained active for a tick group"
+<a href=#2420 id=2420 data-nosnippet>2420</a>                </span>);
+<a href=#2421 id=2421 data-nosnippet>2421</a>                <span class="kw">if </span><span class="self">self</span>.current_scripted_tick.is_none() {
+<a href=#2422 id=2422 data-nosnippet>2422</a>                    <span class="kw">let </span>matches_group = |tick: <span class="kw-2">&amp;</span>SimTick| {
+<a href=#2423 id=2423 data-nosnippet>2423</a>                        tick.location == group_location &amp;&amp; tick.cluster_id == group_cluster_id
+<a href=#2424 id=2424 data-nosnippet>2424</a>                    };
+<a href=#2425 id=2425 data-nosnippet>2425</a>                    <span class="self">self</span>.current_scripted_tick = <span class="self">self
+<a href=#2426 id=2426 data-nosnippet>2426</a>                        </span>.possibly_ready_ticks
+<a href=#2427 id=2427 data-nosnippet>2427</a>                        .iter()
+<a href=#2428 id=2428 data-nosnippet>2428</a>                        .position(matches_group)
+<a href=#2429 id=2429 data-nosnippet>2429</a>                        .map(|index| <span class="self">self</span>.possibly_ready_ticks.swap_remove(index))
+<a href=#2430 id=2430 data-nosnippet>2430</a>                        .or_else(|| {
+<a href=#2431 id=2431 data-nosnippet>2431</a>                            <span class="self">self</span>.not_ready_ticks
+<a href=#2432 id=2432 data-nosnippet>2432</a>                                .iter()
+<a href=#2433 id=2433 data-nosnippet>2433</a>                                .position(matches_group)
+<a href=#2434 id=2434 data-nosnippet>2434</a>                                .map(|index| <span class="self">self</span>.not_ready_ticks.swap_remove(index))
+<a href=#2435 id=2435 data-nosnippet>2435</a>                        });
+<a href=#2436 id=2436 data-nosnippet>2436</a>                }
+<a href=#2437 id=2437 data-nosnippet>2437</a>                <span class="kw">let </span>tick = <span class="self">self</span>.current_scripted_tick.as_ref().unwrap();
+<a href=#2438 id=2438 data-nosnippet>2438</a>                <span class="macro">abort_assert!</span>(
+<a href=#2439 id=2439 data-nosnippet>2439</a>                    tick.location == group_location &amp;&amp; tick.cluster_id == group_cluster_id,
+<a href=#2440 id=2440 data-nosnippet>2440</a>                    <span class="string">"outstanding scripted group changed before its tick executed"
+<a href=#2441 id=2441 data-nosnippet>2441</a>                </span>);
+<a href=#2442 id=2442 data-nosnippet>2442</a>            }
+<a href=#2443 id=2443 data-nosnippet>2443</a>            <span class="prelude-val">Some</span>(ScriptTarget::Observation {
+<a href=#2444 id=2444 data-nosnippet>2444</a>                location:
+<a href=#2445 id=2445 data-nosnippet>2445</a>                    SimLocation {
+<a href=#2446 id=2446 data-nosnippet>2446</a>                        location: group_location,
+<a href=#2447 id=2447 data-nosnippet>2447</a>                        cluster_id: group_cluster_id,
+<a href=#2448 id=2448 data-nosnippet>2448</a>                    },
+<a href=#2449 id=2449 data-nosnippet>2449</a>                hook_id,
+<a href=#2450 id=2450 data-nosnippet>2450</a>            }) =&gt; {
+<a href=#2451 id=2451 data-nosnippet>2451</a>                <span class="macro">abort_assert!</span>(
+<a href=#2452 id=2452 data-nosnippet>2452</a>                    <span class="self">self</span>.current_scripted_tick.is_none(),
+<a href=#2453 id=2453 data-nosnippet>2453</a>                    <span class="string">"scripted tick remained active for an observation group"
+<a href=#2454 id=2454 data-nosnippet>2454</a>                </span>);
+<a href=#2455 id=2455 data-nosnippet>2455</a>                <span class="kw">if </span><span class="self">self</span>.current_scripted_observation.is_none() {
+<a href=#2456 id=2456 data-nosnippet>2456</a>                    <span class="kw">let </span>matches_group = |observation: <span class="kw-2">&amp;</span>SimObservation| {
+<a href=#2457 id=2457 data-nosnippet>2457</a>                        observation.location == group_location
+<a href=#2458 id=2458 data-nosnippet>2458</a>                            &amp;&amp; observation.cluster_id == group_cluster_id
+<a href=#2459 id=2459 data-nosnippet>2459</a>                            &amp;&amp; <span class="macro">matches!</span>(observation.hook, ObservationSlot::Scripted { hook_id: id, .. } <span class="kw">if </span>id == hook_id)
+<a href=#2460 id=2460 data-nosnippet>2460</a>                    };
+<a href=#2461 id=2461 data-nosnippet>2461</a>                    <span class="self">self</span>.current_scripted_observation = <span class="self">self
+<a href=#2462 id=2462 data-nosnippet>2462</a>                        </span>.possibly_ready_observations
+<a href=#2463 id=2463 data-nosnippet>2463</a>                        .iter()
+<a href=#2464 id=2464 data-nosnippet>2464</a>                        .position(matches_group)
+<a href=#2465 id=2465 data-nosnippet>2465</a>                        .map(|index| <span class="self">self</span>.possibly_ready_observations.swap_remove(index))
+<a href=#2466 id=2466 data-nosnippet>2466</a>                        .or_else(|| {
+<a href=#2467 id=2467 data-nosnippet>2467</a>                            <span class="self">self</span>.not_ready_observations
+<a href=#2468 id=2468 data-nosnippet>2468</a>                                .iter()
+<a href=#2469 id=2469 data-nosnippet>2469</a>                                .position(matches_group)
+<a href=#2470 id=2470 data-nosnippet>2470</a>                                .map(|index| <span class="self">self</span>.not_ready_observations.swap_remove(index))
+<a href=#2471 id=2471 data-nosnippet>2471</a>                        });
+<a href=#2472 id=2472 data-nosnippet>2472</a>                }
+<a href=#2473 id=2473 data-nosnippet>2473</a>                <span class="macro">abort_assert!</span>(
+<a href=#2474 id=2474 data-nosnippet>2474</a>                    <span class="self">self</span>.current_scripted_observation.is_some(),
+<a href=#2475 id=2475 data-nosnippet>2475</a>                    <span class="string">"outstanding scripted group did not match an observation"
+<a href=#2476 id=2476 data-nosnippet>2476</a>                </span>);
+<a href=#2477 id=2477 data-nosnippet>2477</a>            }
+<a href=#2478 id=2478 data-nosnippet>2478</a>            <span class="prelude-val">None </span>=&gt; <span class="macro">abort_assert!</span>(
+<a href=#2479 id=2479 data-nosnippet>2479</a>                <span class="self">self</span>.current_scripted_tick.is_none() &amp;&amp; <span class="self">self</span>.current_scripted_observation.is_none(),
+<a href=#2480 id=2480 data-nosnippet>2480</a>                <span class="string">"scripted action remained active without an outstanding group"
+<a href=#2481 id=2481 data-nosnippet>2481</a>            </span>),
+<a href=#2482 id=2482 data-nosnippet>2482</a>        }
+<a href=#2483 id=2483 data-nosnippet>2483</a>
+<a href=#2484 id=2484 data-nosnippet>2484</a>        <span class="kw">let </span><span class="kw-2">mut </span>any_made_progress = <span class="bool-val">false</span>;
+<a href=#2485 id=2485 data-nosnippet>2485</a>        <span class="kw">for </span>(loc, c_id, dfir) <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.async_dfirs {
+<a href=#2486 id=2486 data-nosnippet>2486</a>            <span class="kw">if </span>dfir.run_tick().<span class="kw">await </span>{
+<a href=#2487 id=2487 data-nosnippet>2487</a>                any_made_progress = <span class="bool-val">true</span>;
+<a href=#2488 id=2488 data-nosnippet>2488</a>
+<a href=#2489 id=2489 data-nosnippet>2489</a>                <span class="comment">// This async DFIR may have produced new data, so the ticks and observations
+<a href=#2490 id=2490 data-nosnippet>2490</a>                // it feeds may now be ready.
+<a href=#2491 id=2491 data-nosnippet>2491</a>                </span><span class="self">self</span>.possibly_ready_ticks
+<a href=#2492 id=2492 data-nosnippet>2492</a>                    .extend(<span class="self">self</span>.not_ready_ticks.extract_if(.., |tick| {
+<a href=#2493 id=2493 data-nosnippet>2493</a>                        tick.parent_location == <span class="kw-2">*</span>loc &amp;&amp; tick.cluster_id == <span class="kw-2">*</span>c_id
+<a href=#2494 id=2494 data-nosnippet>2494</a>                    }));
+<a href=#2495 id=2495 data-nosnippet>2495</a>                <span class="self">self</span>.possibly_ready_observations.extend(
+<a href=#2496 id=2496 data-nosnippet>2496</a>                    <span class="self">self</span>.not_ready_observations
+<a href=#2497 id=2497 data-nosnippet>2497</a>                        .extract_if(.., |obs| obs.location == <span class="kw-2">*</span>loc &amp;&amp; obs.cluster_id == <span class="kw-2">*</span>c_id),
+<a href=#2498 id=2498 data-nosnippet>2498</a>                );
+<a href=#2499 id=2499 data-nosnippet>2499</a>            }
+<a href=#2500 id=2500 data-nosnippet>2500</a>        }
+<a href=#2501 id=2501 data-nosnippet>2501</a>
+<a href=#2502 id=2502 data-nosnippet>2502</a>        <span class="kw">if </span>any_made_progress {
+<a href=#2503 id=2503 data-nosnippet>2503</a>            <span class="kw">return</span>;
+<a href=#2504 id=2504 data-nosnippet>2504</a>        }
+<a href=#2505 id=2505 data-nosnippet>2505</a>
+<a href=#2506 id=2506 data-nosnippet>2506</a>        <span class="comment">// The **boundary scan**: the async dataflows have stopped making progress and we
+<a href=#2507 id=2507 data-nosnippet>2507</a>        // are about to consider running ticks — the first moment where a missing scripted
+<a href=#2508 id=2508 data-nosnippet>2508</a>        // decision could influence what happens next. Check ticks exposed by async progress,
+<a href=#2509 id=2509 data-nosnippet>2509</a>        // plus the active scripted tick (which lives outside the ordinary ready lists).
+<a href=#2510 id=2510 data-nosnippet>2510</a>        </span><span class="kw">for </span>tick <span class="kw">in </span><span class="self">self
+<a href=#2511 id=2511 data-nosnippet>2511</a>            </span>.possibly_ready_ticks
+<a href=#2512 id=2512 data-nosnippet>2512</a>            .iter()
+<a href=#2513 id=2513 data-nosnippet>2513</a>            .chain(<span class="self">self</span>.current_scripted_tick.iter())
+<a href=#2514 id=2514 data-nosnippet>2514</a>        {
+<a href=#2515 id=2515 data-nosnippet>2515</a>            <span class="kw">for </span>hook <span class="kw">in </span><span class="kw-2">&amp;</span>tick.scripted_hooks {
+<a href=#2516 id=2516 data-nosnippet>2516</a>                <span class="kw">if let </span><span class="prelude-val">Err</span>(message) = hook.borrow().boundary_check() {
+<a href=#2517 id=2517 data-nosnippet>2517</a>                    <span class="macro">panic!</span>(<span class="string">"{}"</span>, message);
+<a href=#2518 id=2518 data-nosnippet>2518</a>                }
+<a href=#2519 id=2519 data-nosnippet>2519</a>            }
+<a href=#2520 id=2520 data-nosnippet>2520</a>        }
+<a href=#2521 id=2521 data-nosnippet>2521</a>
+<a href=#2522 id=2522 data-nosnippet>2522</a>        <span class="kw">for </span>observation <span class="kw">in </span><span class="self">self
+<a href=#2523 id=2523 data-nosnippet>2523</a>            </span>.possibly_ready_observations
+<a href=#2524 id=2524 data-nosnippet>2524</a>            .iter()
+<a href=#2525 id=2525 data-nosnippet>2525</a>            .chain(<span class="self">self</span>.current_scripted_observation.iter())
+<a href=#2526 id=2526 data-nosnippet>2526</a>        {
+<a href=#2527 id=2527 data-nosnippet>2527</a>            <span class="kw">if let </span>ObservationSlot::Scripted { hook, .. } = <span class="kw-2">&amp;</span>observation.hook
+<a href=#2528 id=2528 data-nosnippet>2528</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Err</span>(message) = hook.borrow().boundary_check()
+<a href=#2529 id=2529 data-nosnippet>2529</a>            {
+<a href=#2530 id=2530 data-nosnippet>2530</a>                <span class="macro">panic!</span>(<span class="string">"{}"</span>, message);
+<a href=#2531 id=2531 data-nosnippet>2531</a>            }
+<a href=#2532 id=2532 data-nosnippet>2532</a>        }
+<a href=#2533 id=2533 data-nosnippet>2533</a>
+<a href=#2534 id=2534 data-nosnippet>2534</a>        <span class="comment">// A fully scripted tick needs at least one decision that can eventually trigger
+<a href=#2535 id=2535 data-nosnippet>2535</a>        // it. There is exactly one outstanding group, so only its owned tick can contain
+<a href=#2536 id=2536 data-nosnippet>2536</a>        // a newly installed group in which no decision can trigger.
+<a href=#2537 id=2537 data-nosnippet>2537</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(tick) = <span class="kw-2">&amp;</span><span class="self">self</span>.current_scripted_tick
+<a href=#2538 id=2538 data-nosnippet>2538</a>            &amp;&amp; tick.hooks.is_empty()
+<a href=#2539 id=2539 data-nosnippet>2539</a>        {
+<a href=#2540 id=2540 data-nosnippet>2540</a>            <span class="kw">let </span>has_pending_decision = tick
+<a href=#2541 id=2541 data-nosnippet>2541</a>                .scripted_hooks
+<a href=#2542 id=2542 data-nosnippet>2542</a>                .iter()
+<a href=#2543 id=2543 data-nosnippet>2543</a>                .any(|hook| hook.borrow().has_decision());
+<a href=#2544 id=2544 data-nosnippet>2544</a>            <span class="kw">let </span>any_pending_decision_can_eventually_trigger =
+<a href=#2545 id=2545 data-nosnippet>2545</a>                tick.scripted_hooks.iter().any(|hook| {
+<a href=#2546 id=2546 data-nosnippet>2546</a>                    <span class="kw">let </span>hook = hook.borrow();
+<a href=#2547 id=2547 data-nosnippet>2547</a>                    <span class="comment">// A decision that is not yet honorable may become honorable and
+<a href=#2548 id=2548 data-nosnippet>2548</a>                    // trigger once more data arrives, so it does not fail this check.
+<a href=#2549 id=2549 data-nosnippet>2549</a>                    </span>hook.has_decision() &amp;&amp; (hook.blocks_tick() || hook.can_trigger_tick())
+<a href=#2550 id=2550 data-nosnippet>2550</a>                });
+<a href=#2551 id=2551 data-nosnippet>2551</a>
+<a href=#2552 id=2552 data-nosnippet>2552</a>            <span class="kw">if </span>has_pending_decision &amp;&amp; !any_pending_decision_can_eventually_trigger {
+<a href=#2553 id=2553 data-nosnippet>2553</a>                <span class="kw">let </span><span class="kw-2">mut </span>details = String::new();
+<a href=#2554 id=2554 data-nosnippet>2554</a>                <span class="kw">for </span>hook <span class="kw">in </span><span class="kw-2">&amp;</span>tick.scripted_hooks {
+<a href=#2555 id=2555 data-nosnippet>2555</a>                    <span class="kw">let </span>hook = hook.borrow();
+<a href=#2556 id=2556 data-nosnippet>2556</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(decision) = hook.describe_decision() {
+<a href=#2557 id=2557 data-nosnippet>2557</a>                        <span class="kw">let </span>loc = ScriptedHookControl::location_meta(<span class="kw-2">&amp;*</span>hook).location;
+<a href=#2558 id=2558 data-nosnippet>2558</a>                        <span class="kw">use </span>std::fmt::Write;
+<a href=#2559 id=2559 data-nosnippet>2559</a>                        <span class="macro">write!</span>(details, <span class="string">"\n  {} on the hook at {}"</span>, decision, loc).unwrap();
+<a href=#2560 id=2560 data-nosnippet>2560</a>                    }
+<a href=#2561 id=2561 data-nosnippet>2561</a>                }
+<a href=#2562 id=2562 data-nosnippet>2562</a>                <span class="macro">panic!</span>(
+<a href=#2563 id=2563 data-nosnippet>2563</a>                    <span class="string">"none of the scripted decisions in this group can trigger their tick, so the tick can never run; at least one decision in the group must trigger it:{}"</span>,
+<a href=#2564 id=2564 data-nosnippet>2564</a>                    details
+<a href=#2565 id=2565 data-nosnippet>2565</a>                );
+<a href=#2566 id=2566 data-nosnippet>2566</a>            }
+<a href=#2567 id=2567 data-nosnippet>2567</a>        }
+<a href=#2568 id=2568 data-nosnippet>2568</a>
+<a href=#2569 id=2569 data-nosnippet>2569</a>        <span class="kw">use </span>bolero::generator::<span class="kw-2">*</span>;
+<a href=#2570 id=2570 data-nosnippet>2570</a>
+<a href=#2571 id=2571 data-nosnippet>2571</a>        <span class="comment">// Send anything that can't make a scheduling decision back to the not-ready lists.
+<a href=#2572 id=2572 data-nosnippet>2572</a>        </span><span class="self">self</span>.not_ready_ticks.extend(
+<a href=#2573 id=2573 data-nosnippet>2573</a>            <span class="self">self</span>.possibly_ready_ticks
+<a href=#2574 id=2574 data-nosnippet>2574</a>                .extract_if(.., |tick| !tick.can_run()),
+<a href=#2575 id=2575 data-nosnippet>2575</a>        );
+<a href=#2576 id=2576 data-nosnippet>2576</a>        <span class="self">self</span>.not_ready_observations.extend(
+<a href=#2577 id=2577 data-nosnippet>2577</a>            <span class="self">self</span>.possibly_ready_observations
+<a href=#2578 id=2578 data-nosnippet>2578</a>                .extract_if(.., |obs| !obs.can_run()),
+<a href=#2579 id=2579 data-nosnippet>2579</a>        );
+<a href=#2580 id=2580 data-nosnippet>2580</a>
+<a href=#2581 id=2581 data-nosnippet>2581</a>        <span class="kw">let </span>scripted_tick_runnable = <span class="self">self
+<a href=#2582 id=2582 data-nosnippet>2582</a>            </span>.current_scripted_tick
+<a href=#2583 id=2583 data-nosnippet>2583</a>            .as_ref()
+<a href=#2584 id=2584 data-nosnippet>2584</a>            .is_some_and(SimTick::can_run);
+<a href=#2585 id=2585 data-nosnippet>2585</a>        <span class="kw">let </span>scripted_observation_runnable = <span class="self">self
+<a href=#2586 id=2586 data-nosnippet>2586</a>            </span>.current_scripted_observation
+<a href=#2587 id=2587 data-nosnippet>2587</a>            .as_ref()
+<a href=#2588 id=2588 data-nosnippet>2588</a>            .is_some_and(SimObservation::can_run);
+<a href=#2589 id=2589 data-nosnippet>2589</a>
+<a href=#2590 id=2590 data-nosnippet>2590</a>        <span class="kw">if </span><span class="self">self</span>.possibly_ready_ticks.is_empty()
+<a href=#2591 id=2591 data-nosnippet>2591</a>            &amp;&amp; !scripted_tick_runnable
+<a href=#2592 id=2592 data-nosnippet>2592</a>            &amp;&amp; !scripted_observation_runnable
+<a href=#2593 id=2593 data-nosnippet>2593</a>            &amp;&amp; <span class="self">self</span>.possibly_ready_observations.is_empty()
+<a href=#2594 id=2594 data-nosnippet>2594</a>        {
+<a href=#2595 id=2595 data-nosnippet>2595</a>            <span class="comment">// Classify why the outstanding scripted group (if any) is stuck, so the
+<a href=#2596 id=2596 data-nosnippet>2596</a>            // suspended test-side await renders the right error: `true` when every
+<a href=#2597 id=2597 data-nosnippet>2597</a>            // queued decision is satisfiable but none can trigger the tick — given
+<a href=#2598 id=2598 data-nosnippet>2598</a>            // quiescence, no unscripted input on the tick can trigger it either, or the
+<a href=#2599 id=2599 data-nosnippet>2599</a>            // tick would be runnable.
+<a href=#2600 id=2600 data-nosnippet>2600</a>            </span><span class="self">self</span>.script_coordinator.borrow_mut().stuck_cannot_trigger =
+<a href=#2601 id=2601 data-nosnippet>2601</a>                <span class="self">self</span>.current_scripted_tick.as_ref().is_some_and(|tick| {
+<a href=#2602 id=2602 data-nosnippet>2602</a>                    <span class="kw">let </span><span class="kw-2">mut </span>queued = tick
+<a href=#2603 id=2603 data-nosnippet>2603</a>                        .scripted_hooks
+<a href=#2604 id=2604 data-nosnippet>2604</a>                        .iter()
+<a href=#2605 id=2605 data-nosnippet>2605</a>                        .filter(|hook| hook.borrow().has_decision())
+<a href=#2606 id=2606 data-nosnippet>2606</a>                        .peekable();
+<a href=#2607 id=2607 data-nosnippet>2607</a>                    queued.peek().is_some() &amp;&amp; queued.all(|hook| !hook.borrow().blocks_tick())
+<a href=#2608 id=2608 data-nosnippet>2608</a>                });
 <a href=#2609 id=2609 data-nosnippet>2609</a>
-<a href=#2610 id=2610 data-nosnippet>2610</a>            <span class="comment">// Classify why the outstanding scripted group (if any) is stuck, so the
-<a href=#2611 id=2611 data-nosnippet>2611</a>            // suspended test-side await renders the right error: `true` when every
-<a href=#2612 id=2612 data-nosnippet>2612</a>            // queued decision is satisfiable but none can trigger the tick — given
-<a href=#2613 id=2613 data-nosnippet>2613</a>            // quiescence, no unscripted input on the tick can trigger it either, or the
-<a href=#2614 id=2614 data-nosnippet>2614</a>            // tick would be runnable.
-<a href=#2615 id=2615 data-nosnippet>2615</a>            </span><span class="self">self</span>.script_coordinator.borrow_mut().stuck_cannot_trigger =
-<a href=#2616 id=2616 data-nosnippet>2616</a>                <span class="self">self</span>.current_scripted_tick.as_ref().is_some_and(|tick| {
-<a href=#2617 id=2617 data-nosnippet>2617</a>                    <span class="kw">let </span><span class="kw-2">mut </span>queued = tick
-<a href=#2618 id=2618 data-nosnippet>2618</a>                        .scripted_hooks
-<a href=#2619 id=2619 data-nosnippet>2619</a>                        .iter()
-<a href=#2620 id=2620 data-nosnippet>2620</a>                        .filter(|hook| hook.borrow().has_decision())
-<a href=#2621 id=2621 data-nosnippet>2621</a>                        .peekable();
-<a href=#2622 id=2622 data-nosnippet>2622</a>                    queued.peek().is_some() &amp;&amp; queued.all(|hook| !hook.borrow().blocks_tick())
-<a href=#2623 id=2623 data-nosnippet>2623</a>                });
-<a href=#2624 id=2624 data-nosnippet>2624</a>
-<a href=#2625 id=2625 data-nosnippet>2625</a>            <span class="comment">// Signal quiescence, waking receivers waiting for data (their streams end). The
-<a href=#2626 id=2626 data-nosnippet>2626</a>            // driver is responsible for parking until new input arrives.
-<a href=#2627 id=2627 data-nosnippet>2627</a>            </span><span class="self">self</span>.quiescence.enter_quiescence();
-<a href=#2628 id=2628 data-nosnippet>2628</a>        } <span class="kw">else if </span><span class="self">self</span>.quiescence.pause_nondet.get() &gt; <span class="number">0 </span>{
-<a href=#2629 id=2629 data-nosnippet>2629</a>            <span class="comment">// The test is querying whether the simulation can quiesce without
-<a href=#2630 id=2630 data-nosnippet>2630</a>            // nondeterministic work (see `SettlePauseGuard::poll_settle`). Report that
-<a href=#2631 id=2631 data-nosnippet>2631</a>            // ticks/observations are pending and pause; the driver parks until the test
-<a href=#2632 id=2632 data-nosnippet>2632</a>            // decides how to proceed.
-<a href=#2633 id=2633 data-nosnippet>2633</a>            </span><span class="self">self</span>.quiescence.nondet_pending.set(<span class="bool-val">true</span>);
-<a href=#2634 id=2634 data-nosnippet>2634</a>            <span class="self">self</span>.quiescence.wake_settled();
-<a href=#2635 id=2635 data-nosnippet>2635</a>        } <span class="kw">else </span>{
-<a href=#2636 id=2636 data-nosnippet>2636</a>            <span class="kw">let </span>ordinary_tick_count = <span class="self">self</span>.possibly_ready_ticks.len();
-<a href=#2637 id=2637 data-nosnippet>2637</a>            <span class="kw">let </span>scripted_tick_index = ordinary_tick_count;
-<a href=#2638 id=2638 data-nosnippet>2638</a>            <span class="kw">let </span>observation_start = scripted_tick_index + usize::from(scripted_tick_runnable);
-<a href=#2639 id=2639 data-nosnippet>2639</a>            <span class="kw">let </span>scripted_observation_index =
-<a href=#2640 id=2640 data-nosnippet>2640</a>                observation_start + <span class="self">self</span>.possibly_ready_observations.len();
-<a href=#2641 id=2641 data-nosnippet>2641</a>            <span class="kw">let </span>candidate_count =
-<a href=#2642 id=2642 data-nosnippet>2642</a>                scripted_observation_index + usize::from(scripted_observation_runnable);
-<a href=#2643 id=2643 data-nosnippet>2643</a>            <span class="kw">let </span>next_tick_or_obs = <span class="kw">if </span><span class="self">self</span>.deterministic {
-<a href=#2644 id=2644 data-nosnippet>2644</a>                <span class="kw">for </span>tick <span class="kw">in </span><span class="self">self</span>.possibly_ready_ticks.iter().chain(
-<a href=#2645 id=2645 data-nosnippet>2645</a>                    <span class="self">self</span>.current_scripted_tick
-<a href=#2646 id=2646 data-nosnippet>2646</a>                        .iter()
-<a href=#2647 id=2647 data-nosnippet>2647</a>                        .filter(|<span class="kw">_</span>| scripted_tick_runnable),
-<a href=#2648 id=2648 data-nosnippet>2648</a>                ) {
-<a href=#2649 id=2649 data-nosnippet>2649</a>                    <span class="kw">for </span>hook <span class="kw">in </span><span class="kw-2">&amp;</span>tick.hooks {
-<a href=#2650 id=2650 data-nosnippet>2650</a>                        <span class="kw">if </span>!hook.only_one_possible_decision() {
-<a href=#2651 id=2651 data-nosnippet>2651</a>                            <span class="macro">panic!</span>(
-<a href=#2652 id=2652 data-nosnippet>2652</a>                                <span class="string">"{}"</span>,
-<a href=#2653 id=2653 data-nosnippet>2653</a>                                <span class="kw">crate</span>::sim::runtime::render_unhooked_nondet_error(
-<a href=#2654 id=2654 data-nosnippet>2654</a>                                    hook.location_meta()
-<a href=#2655 id=2655 data-nosnippet>2655</a>                                )
-<a href=#2656 id=2656 data-nosnippet>2656</a>                            );
-<a href=#2657 id=2657 data-nosnippet>2657</a>                        }
-<a href=#2658 id=2658 data-nosnippet>2658</a>                    }
-<a href=#2659 id=2659 data-nosnippet>2659</a>                }
-<a href=#2660 id=2660 data-nosnippet>2660</a>                <span class="kw">for </span>obs <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.possibly_ready_observations {
-<a href=#2661 id=2661 data-nosnippet>2661</a>                    <span class="kw">if let </span>ObservationSlot::Unscripted { hook } = <span class="kw-2">&amp;</span>obs.hook
-<a href=#2662 id=2662 data-nosnippet>2662</a>                        &amp;&amp; !hook.only_one_possible_decision()
-<a href=#2663 id=2663 data-nosnippet>2663</a>                    {
-<a href=#2664 id=2664 data-nosnippet>2664</a>                        <span class="macro">panic!</span>(
-<a href=#2665 id=2665 data-nosnippet>2665</a>                            <span class="string">"{}"</span>,
-<a href=#2666 id=2666 data-nosnippet>2666</a>                            <span class="kw">crate</span>::sim::runtime::render_unhooked_nondet_error(hook.location_meta())
-<a href=#2667 id=2667 data-nosnippet>2667</a>                        );
-<a href=#2668 id=2668 data-nosnippet>2668</a>                    }
-<a href=#2669 id=2669 data-nosnippet>2669</a>                }
-<a href=#2670 id=2670 data-nosnippet>2670</a>                <span class="kw">if </span>candidate_count &gt; <span class="number">1 </span>{
-<a href=#2671 id=2671 data-nosnippet>2671</a>                    <span class="comment">// Each action on its own may be free of choices, but the order in
-<a href=#2672 id=2672 data-nosnippet>2672</a>                    // which they run is not determined, and it can be observable.
-<a href=#2673 id=2673 data-nosnippet>2673</a>                    </span><span class="macro">panic!</span>(
-<a href=#2674 id=2674 data-nosnippet>2674</a>                        <span class="string">"deterministic simulation reached a state with more than one runnable tick/observation; the order in which they run is not deterministic\nhelp: script the involved operators so the schedule is explicit, or run under `fuzz` / `exhaustive` instead"
-<a href=#2675 id=2675 data-nosnippet>2675</a>                    </span>);
-<a href=#2676 id=2676 data-nosnippet>2676</a>                }
-<a href=#2677 id=2677 data-nosnippet>2677</a>                <span class="number">0
-<a href=#2678 id=2678 data-nosnippet>2678</a>            </span>} <span class="kw">else </span>{
-<a href=#2679 id=2679 data-nosnippet>2679</a>                (<span class="number">0</span>..candidate_count).any()
-<a href=#2680 id=2680 data-nosnippet>2680</a>            };
-<a href=#2681 id=2681 data-nosnippet>2681</a>
-<a href=#2682 id=2682 data-nosnippet>2682</a>            <span class="kw">if </span>next_tick_or_obs &lt; observation_start {
-<a href=#2683 id=2683 data-nosnippet>2683</a>                <span class="kw">let </span>is_scripted_tick = next_tick_or_obs == scripted_tick_index;
-<a href=#2684 id=2684 data-nosnippet>2684</a>                <span class="kw">let </span><span class="kw-2">mut </span>tick = <span class="kw">if </span>is_scripted_tick {
-<a href=#2685 id=2685 data-nosnippet>2685</a>                    <span class="self">self</span>.current_scripted_tick.take().unwrap()
-<a href=#2686 id=2686 data-nosnippet>2686</a>                } <span class="kw">else </span>{
-<a href=#2687 id=2687 data-nosnippet>2687</a>                    <span class="self">self</span>.possibly_ready_ticks.remove(next_tick_or_obs)
-<a href=#2688 id=2688 data-nosnippet>2688</a>                };
-<a href=#2689 id=2689 data-nosnippet>2689</a>
-<a href=#2690 id=2690 data-nosnippet>2690</a>                <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.log {
-<a href=#2691 id=2691 data-nosnippet>2691</a>                    LogKind::Null =&gt; {}
-<a href=#2692 id=2692 data-nosnippet>2692</a>                    LogKind::Stderr =&gt; {
-<a href=#2693 id=2693 data-nosnippet>2693</a>                        <span class="kw">if let </span><span class="prelude-val">Some</span>(cid) = <span class="kw-2">&amp;</span>tick.cluster_id {
-<a href=#2694 id=2694 data-nosnippet>2694</a>                            <span class="macro">eprintln!</span>(
-<a href=#2695 id=2695 data-nosnippet>2695</a>                                <span class="string">"\n{}"</span>,
-<a href=#2696 id=2696 data-nosnippet>2696</a>                                <span class="macro">format!</span>(<span class="string">"Running Tick (Cluster Member {})"</span>, cid)
-<a href=#2697 id=2697 data-nosnippet>2697</a>                                    .color(colored::Color::Magenta)
-<a href=#2698 id=2698 data-nosnippet>2698</a>                                    .bold()
-<a href=#2699 id=2699 data-nosnippet>2699</a>                            )
-<a href=#2700 id=2700 data-nosnippet>2700</a>                        } <span class="kw">else </span>{
-<a href=#2701 id=2701 data-nosnippet>2701</a>                            <span class="macro">eprintln!</span>(<span class="string">"\n{}"</span>, <span class="string">"Running Tick"</span>.color(colored::Color::Magenta).bold())
-<a href=#2702 id=2702 data-nosnippet>2702</a>                        }
-<a href=#2703 id=2703 data-nosnippet>2703</a>                    }
-<a href=#2704 id=2704 data-nosnippet>2704</a>                    LogKind::Custom(writer) =&gt; {
-<a href=#2705 id=2705 data-nosnippet>2705</a>                        <span class="macro">writeln!</span>(
-<a href=#2706 id=2706 data-nosnippet>2706</a>                            writer,
-<a href=#2707 id=2707 data-nosnippet>2707</a>                            <span class="string">"\n{}"</span>,
-<a href=#2708 id=2708 data-nosnippet>2708</a>                            <span class="string">"Running Tick"</span>.color(colored::Color::Magenta).bold()
-<a href=#2709 id=2709 data-nosnippet>2709</a>                        )
-<a href=#2710 id=2710 data-nosnippet>2710</a>                        .unwrap();
-<a href=#2711 id=2711 data-nosnippet>2711</a>                    }
-<a href=#2712 id=2712 data-nosnippet>2712</a>                }
-<a href=#2713 id=2713 data-nosnippet>2713</a>
-<a href=#2714 id=2714 data-nosnippet>2714</a>                <span class="kw">let </span><span class="kw-2">mut </span>asterisk_indenter = |_line_no, write: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write| {
-<a href=#2715 id=2715 data-nosnippet>2715</a>                    write.write_str(<span class="kw-2">&amp;</span><span class="string">"*"</span>.color(colored::Color::Magenta).bold())<span class="question-mark">?</span>;
-<a href=#2716 id=2716 data-nosnippet>2716</a>                    write.write_str(<span class="string">" "</span>)
-<a href=#2717 id=2717 data-nosnippet>2717</a>                };
-<a href=#2718 id=2718 data-nosnippet>2718</a>
-<a href=#2719 id=2719 data-nosnippet>2719</a>                <span class="kw">let </span><span class="kw-2">mut </span>tick_decision_writer = (!<span class="macro">matches!</span>(<span class="self">self</span>.log, LogKind::Null)).then(|| {
-<a href=#2720 id=2720 data-nosnippet>2720</a>                    indenter::indented(<span class="kw-2">&amp;mut </span><span class="self">self</span>.log).with_format(indenter::Format::Custom {
-<a href=#2721 id=2721 data-nosnippet>2721</a>                        inserter: <span class="kw-2">&amp;mut </span>asterisk_indenter,
-<a href=#2722 id=2722 data-nosnippet>2722</a>                    })
-<a href=#2723 id=2723 data-nosnippet>2723</a>                });
-<a href=#2724 id=2724 data-nosnippet>2724</a>
-<a href=#2725 id=2725 data-nosnippet>2725</a>                run_hooks(
-<a href=#2726 id=2726 data-nosnippet>2726</a>                    tick_decision_writer.as_mut(),
-<a href=#2727 id=2727 data-nosnippet>2727</a>                    <span class="kw-2">&amp;mut </span>tick.hooks,
-<a href=#2728 id=2728 data-nosnippet>2728</a>                    <span class="kw-2">&amp;</span>tick.scripted_hooks,
-<a href=#2729 id=2729 data-nosnippet>2729</a>                );
-<a href=#2730 id=2730 data-nosnippet>2730</a>
-<a href=#2731 id=2731 data-nosnippet>2731</a>                <span class="kw">let </span>run_tick_future = tick.dfir.run_tick();
-<a href=#2732 id=2732 data-nosnippet>2732</a>                <span class="kw">if </span>!tick.inline_hooks.is_empty() || !tick.scripted_inline_hooks.is_empty() {
-<a href=#2733 id=2733 data-nosnippet>2733</a>                    <span class="kw">let </span><span class="kw-2">mut </span>run_tick_future_pinned = <span class="macro">pin!</span>(run_tick_future);
-<a href=#2734 id=2734 data-nosnippet>2734</a>                    <span class="kw">let </span>deterministic = <span class="self">self</span>.deterministic;
-<a href=#2735 id=2735 data-nosnippet>2735</a>
-<a href=#2736 id=2736 data-nosnippet>2736</a>                    <span class="kw">loop </span>{
-<a href=#2737 id=2737 data-nosnippet>2737</a>                        <span class="macro">tokio::select!</span> {
-<a href=#2738 id=2738 data-nosnippet>2738</a>                            biased;
-<a href=#2739 id=2739 data-nosnippet>2739</a>                            r = <span class="kw-2">&amp;mut </span>run_tick_future_pinned =&gt; {
-<a href=#2740 id=2740 data-nosnippet>2740</a>                                <span class="macro">abort_assert!</span>(r, <span class="string">"runnable tick's DFIR run_tick() returned false"</span>);
-<a href=#2741 id=2741 data-nosnippet>2741</a>                                <span class="kw">break</span>;
-<a href=#2742 id=2742 data-nosnippet>2742</a>                            }
-<a href=#2743 id=2743 data-nosnippet>2743</a>                            <span class="kw">_ </span>= <span class="kw">async </span>{} =&gt; {
-<a href=#2744 id=2744 data-nosnippet>2744</a>                                  <span class="kw">for </span>hook <span class="kw">in </span><span class="kw-2">&amp;</span>tick.scripted_inline_hooks {
-<a href=#2745 id=2745 data-nosnippet>2745</a>                                      <span class="kw">if </span>hook.borrow().has_pending_input() {
-<a href=#2746 id=2746 data-nosnippet>2746</a>                                          <span class="kw">let </span>run = hook.borrow_mut().run_decision(
-<a href=#2747 id=2747 data-nosnippet>2747</a>                                              tick_decision_writer
-<a href=#2748 id=2748 data-nosnippet>2748</a>                                                  .as_mut()
-<a href=#2749 id=2749 data-nosnippet>2749</a>                                                  .map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write),
-<a href=#2750 id=2750 data-nosnippet>2750</a>                                          );
-<a href=#2751 id=2751 data-nosnippet>2751</a>                                          <span class="comment">// The error is reported here, on the host side of
-<a href=#2752 id=2752 data-nosnippet>2752</a>                                          // the dylib boundary (unwinding across it aborts).
-<a href=#2753 id=2753 data-nosnippet>2753</a>                                          </span><span class="kw">if let </span><span class="prelude-val">Err</span>(message) = run {
-<a href=#2754 id=2754 data-nosnippet>2754</a>                                              <span class="macro">panic!</span>(<span class="string">"{}"</span>, message);
-<a href=#2755 id=2755 data-nosnippet>2755</a>                                          }
-<a href=#2756 id=2756 data-nosnippet>2756</a>                                      }
-<a href=#2757 id=2757 data-nosnippet>2757</a>                                  }
-<a href=#2758 id=2758 data-nosnippet>2758</a>                                  <span class="kw">if </span>!tick.inline_hooks.is_empty() {
-<a href=#2759 id=2759 data-nosnippet>2759</a>                                      bolero_generator::any::scope::borrow_with(|driver| {
-<a href=#2760 id=2760 data-nosnippet>2760</a>                                          <span class="kw">for </span>hook <span class="kw">in </span>tick.inline_hooks.iter_mut() {
-<a href=#2761 id=2761 data-nosnippet>2761</a>                                              <span class="kw">if </span>hook.has_pending_input() {
-<a href=#2762 id=2762 data-nosnippet>2762</a>                                                  <span class="comment">// In deterministic mode there is no fuzzer
-<a href=#2763 id=2763 data-nosnippet>2763</a>                                                  // to decide for this operator; it may only
-<a href=#2764 id=2764 data-nosnippet>2764</a>                                                  // proceed when exactly one outcome is
-<a href=#2765 id=2765 data-nosnippet>2765</a>                                                  // possible.
-<a href=#2766 id=2766 data-nosnippet>2766</a>                                                  </span><span class="kw">if </span>deterministic &amp;&amp; !hook.only_one_possible_decision() {
-<a href=#2767 id=2767 data-nosnippet>2767</a>                                                      <span class="macro">panic!</span>(
-<a href=#2768 id=2768 data-nosnippet>2768</a>                                                          <span class="string">"{}"</span>,
-<a href=#2769 id=2769 data-nosnippet>2769</a>                                                          <span class="kw">crate</span>::sim::runtime::render_unhooked_nondet_error(
-<a href=#2770 id=2770 data-nosnippet>2770</a>                                                              hook.location_meta()
-<a href=#2771 id=2771 data-nosnippet>2771</a>                                                          )
-<a href=#2772 id=2772 data-nosnippet>2772</a>                                                      );
-<a href=#2773 id=2773 data-nosnippet>2773</a>                                                  }
-<a href=#2774 id=2774 data-nosnippet>2774</a>                                                  hook.autonomous_decision(driver);
-<a href=#2775 id=2775 data-nosnippet>2775</a>                                                  hook.release_decision(
-<a href=#2776 id=2776 data-nosnippet>2776</a>                                                      tick_decision_writer
-<a href=#2777 id=2777 data-nosnippet>2777</a>                                                          .as_mut()
-<a href=#2778 id=2778 data-nosnippet>2778</a>                                                          .map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write),
-<a href=#2779 id=2779 data-nosnippet>2779</a>                                                  );
-<a href=#2780 id=2780 data-nosnippet>2780</a>                                              }
-<a href=#2781 id=2781 data-nosnippet>2781</a>                                          }
-<a href=#2782 id=2782 data-nosnippet>2782</a>                                      });
-<a href=#2783 id=2783 data-nosnippet>2783</a>                                  }
-<a href=#2784 id=2784 data-nosnippet>2784</a>                            }
-<a href=#2785 id=2785 data-nosnippet>2785</a>                        }
+<a href=#2610 id=2610 data-nosnippet>2610</a>            <span class="comment">// Signal quiescence, waking receivers waiting for data (their streams end). The
+<a href=#2611 id=2611 data-nosnippet>2611</a>            // driver is responsible for parking until new input arrives.
+<a href=#2612 id=2612 data-nosnippet>2612</a>            </span><span class="self">self</span>.quiescence.enter_quiescence();
+<a href=#2613 id=2613 data-nosnippet>2613</a>        } <span class="kw">else if </span><span class="self">self</span>.quiescence.pause_nondet.get() &gt; <span class="number">0 </span>{
+<a href=#2614 id=2614 data-nosnippet>2614</a>            <span class="comment">// The test is querying whether the simulation can quiesce without
+<a href=#2615 id=2615 data-nosnippet>2615</a>            // nondeterministic work (see `SettlePauseGuard::poll_settle`). Report that
+<a href=#2616 id=2616 data-nosnippet>2616</a>            // ticks/observations are pending and pause; the driver parks until the test
+<a href=#2617 id=2617 data-nosnippet>2617</a>            // decides how to proceed.
+<a href=#2618 id=2618 data-nosnippet>2618</a>            </span><span class="self">self</span>.quiescence.nondet_pending.set(<span class="bool-val">true</span>);
+<a href=#2619 id=2619 data-nosnippet>2619</a>            <span class="self">self</span>.quiescence.wake_settled();
+<a href=#2620 id=2620 data-nosnippet>2620</a>        } <span class="kw">else </span>{
+<a href=#2621 id=2621 data-nosnippet>2621</a>            <span class="kw">let </span>ordinary_tick_count = <span class="self">self</span>.possibly_ready_ticks.len();
+<a href=#2622 id=2622 data-nosnippet>2622</a>            <span class="kw">let </span>scripted_tick_index = ordinary_tick_count;
+<a href=#2623 id=2623 data-nosnippet>2623</a>            <span class="kw">let </span>observation_start = scripted_tick_index + usize::from(scripted_tick_runnable);
+<a href=#2624 id=2624 data-nosnippet>2624</a>            <span class="kw">let </span>scripted_observation_index =
+<a href=#2625 id=2625 data-nosnippet>2625</a>                observation_start + <span class="self">self</span>.possibly_ready_observations.len();
+<a href=#2626 id=2626 data-nosnippet>2626</a>            <span class="kw">let </span>candidate_count =
+<a href=#2627 id=2627 data-nosnippet>2627</a>                scripted_observation_index + usize::from(scripted_observation_runnable);
+<a href=#2628 id=2628 data-nosnippet>2628</a>            <span class="kw">let </span>next_tick_or_obs = <span class="kw">if </span><span class="self">self</span>.deterministic {
+<a href=#2629 id=2629 data-nosnippet>2629</a>                <span class="kw">for </span>tick <span class="kw">in </span><span class="self">self</span>.possibly_ready_ticks.iter().chain(
+<a href=#2630 id=2630 data-nosnippet>2630</a>                    <span class="self">self</span>.current_scripted_tick
+<a href=#2631 id=2631 data-nosnippet>2631</a>                        .iter()
+<a href=#2632 id=2632 data-nosnippet>2632</a>                        .filter(|<span class="kw">_</span>| scripted_tick_runnable),
+<a href=#2633 id=2633 data-nosnippet>2633</a>                ) {
+<a href=#2634 id=2634 data-nosnippet>2634</a>                    <span class="kw">for </span>hook <span class="kw">in </span><span class="kw-2">&amp;</span>tick.hooks {
+<a href=#2635 id=2635 data-nosnippet>2635</a>                        <span class="kw">if </span>!hook.only_one_possible_decision() {
+<a href=#2636 id=2636 data-nosnippet>2636</a>                            <span class="macro">panic!</span>(
+<a href=#2637 id=2637 data-nosnippet>2637</a>                                <span class="string">"{}"</span>,
+<a href=#2638 id=2638 data-nosnippet>2638</a>                                <span class="kw">crate</span>::sim::runtime::render_unhooked_nondet_error(
+<a href=#2639 id=2639 data-nosnippet>2639</a>                                    hook.location_meta()
+<a href=#2640 id=2640 data-nosnippet>2640</a>                                )
+<a href=#2641 id=2641 data-nosnippet>2641</a>                            );
+<a href=#2642 id=2642 data-nosnippet>2642</a>                        }
+<a href=#2643 id=2643 data-nosnippet>2643</a>                    }
+<a href=#2644 id=2644 data-nosnippet>2644</a>                }
+<a href=#2645 id=2645 data-nosnippet>2645</a>                <span class="kw">for </span>obs <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.possibly_ready_observations {
+<a href=#2646 id=2646 data-nosnippet>2646</a>                    <span class="kw">if let </span>ObservationSlot::Unscripted { hook } = <span class="kw-2">&amp;</span>obs.hook
+<a href=#2647 id=2647 data-nosnippet>2647</a>                        &amp;&amp; !hook.only_one_possible_decision()
+<a href=#2648 id=2648 data-nosnippet>2648</a>                    {
+<a href=#2649 id=2649 data-nosnippet>2649</a>                        <span class="macro">panic!</span>(
+<a href=#2650 id=2650 data-nosnippet>2650</a>                            <span class="string">"{}"</span>,
+<a href=#2651 id=2651 data-nosnippet>2651</a>                            <span class="kw">crate</span>::sim::runtime::render_unhooked_nondet_error(hook.location_meta())
+<a href=#2652 id=2652 data-nosnippet>2652</a>                        );
+<a href=#2653 id=2653 data-nosnippet>2653</a>                    }
+<a href=#2654 id=2654 data-nosnippet>2654</a>                }
+<a href=#2655 id=2655 data-nosnippet>2655</a>                <span class="kw">if </span>candidate_count &gt; <span class="number">1 </span>{
+<a href=#2656 id=2656 data-nosnippet>2656</a>                    <span class="comment">// Each action on its own may be free of choices, but the order in
+<a href=#2657 id=2657 data-nosnippet>2657</a>                    // which they run is not determined, and it can be observable.
+<a href=#2658 id=2658 data-nosnippet>2658</a>                    </span><span class="macro">panic!</span>(
+<a href=#2659 id=2659 data-nosnippet>2659</a>                        <span class="string">"deterministic simulation reached a state with more than one runnable tick/observation; the order in which they run is not deterministic\nhelp: script the involved operators so the schedule is explicit, or run under `fuzz` / `exhaustive` instead"
+<a href=#2660 id=2660 data-nosnippet>2660</a>                    </span>);
+<a href=#2661 id=2661 data-nosnippet>2661</a>                }
+<a href=#2662 id=2662 data-nosnippet>2662</a>                <span class="number">0
+<a href=#2663 id=2663 data-nosnippet>2663</a>            </span>} <span class="kw">else </span>{
+<a href=#2664 id=2664 data-nosnippet>2664</a>                (<span class="number">0</span>..candidate_count).any()
+<a href=#2665 id=2665 data-nosnippet>2665</a>            };
+<a href=#2666 id=2666 data-nosnippet>2666</a>
+<a href=#2667 id=2667 data-nosnippet>2667</a>            <span class="kw">if </span>next_tick_or_obs &lt; observation_start {
+<a href=#2668 id=2668 data-nosnippet>2668</a>                <span class="kw">let </span>is_scripted_tick = next_tick_or_obs == scripted_tick_index;
+<a href=#2669 id=2669 data-nosnippet>2669</a>                <span class="kw">let </span><span class="kw-2">mut </span>tick = <span class="kw">if </span>is_scripted_tick {
+<a href=#2670 id=2670 data-nosnippet>2670</a>                    <span class="self">self</span>.current_scripted_tick.take().unwrap()
+<a href=#2671 id=2671 data-nosnippet>2671</a>                } <span class="kw">else </span>{
+<a href=#2672 id=2672 data-nosnippet>2672</a>                    <span class="self">self</span>.possibly_ready_ticks.remove(next_tick_or_obs)
+<a href=#2673 id=2673 data-nosnippet>2673</a>                };
+<a href=#2674 id=2674 data-nosnippet>2674</a>
+<a href=#2675 id=2675 data-nosnippet>2675</a>                <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.log {
+<a href=#2676 id=2676 data-nosnippet>2676</a>                    LogKind::Null =&gt; {}
+<a href=#2677 id=2677 data-nosnippet>2677</a>                    LogKind::Stderr =&gt; {
+<a href=#2678 id=2678 data-nosnippet>2678</a>                        <span class="kw">if let </span><span class="prelude-val">Some</span>(cid) = <span class="kw-2">&amp;</span>tick.cluster_id {
+<a href=#2679 id=2679 data-nosnippet>2679</a>                            <span class="macro">eprintln!</span>(
+<a href=#2680 id=2680 data-nosnippet>2680</a>                                <span class="string">"\n{}"</span>,
+<a href=#2681 id=2681 data-nosnippet>2681</a>                                <span class="macro">format!</span>(<span class="string">"Running Tick (Cluster Member {})"</span>, cid)
+<a href=#2682 id=2682 data-nosnippet>2682</a>                                    .color(colored::Color::Magenta)
+<a href=#2683 id=2683 data-nosnippet>2683</a>                                    .bold()
+<a href=#2684 id=2684 data-nosnippet>2684</a>                            )
+<a href=#2685 id=2685 data-nosnippet>2685</a>                        } <span class="kw">else </span>{
+<a href=#2686 id=2686 data-nosnippet>2686</a>                            <span class="macro">eprintln!</span>(<span class="string">"\n{}"</span>, <span class="string">"Running Tick"</span>.color(colored::Color::Magenta).bold())
+<a href=#2687 id=2687 data-nosnippet>2687</a>                        }
+<a href=#2688 id=2688 data-nosnippet>2688</a>                    }
+<a href=#2689 id=2689 data-nosnippet>2689</a>                    LogKind::Custom(writer) =&gt; {
+<a href=#2690 id=2690 data-nosnippet>2690</a>                        <span class="macro">writeln!</span>(
+<a href=#2691 id=2691 data-nosnippet>2691</a>                            writer,
+<a href=#2692 id=2692 data-nosnippet>2692</a>                            <span class="string">"\n{}"</span>,
+<a href=#2693 id=2693 data-nosnippet>2693</a>                            <span class="string">"Running Tick"</span>.color(colored::Color::Magenta).bold()
+<a href=#2694 id=2694 data-nosnippet>2694</a>                        )
+<a href=#2695 id=2695 data-nosnippet>2695</a>                        .unwrap();
+<a href=#2696 id=2696 data-nosnippet>2696</a>                    }
+<a href=#2697 id=2697 data-nosnippet>2697</a>                }
+<a href=#2698 id=2698 data-nosnippet>2698</a>
+<a href=#2699 id=2699 data-nosnippet>2699</a>                <span class="kw">let </span><span class="kw-2">mut </span>asterisk_indenter = |_line_no, write: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write| {
+<a href=#2700 id=2700 data-nosnippet>2700</a>                    write.write_str(<span class="kw-2">&amp;</span><span class="string">"*"</span>.color(colored::Color::Magenta).bold())<span class="question-mark">?</span>;
+<a href=#2701 id=2701 data-nosnippet>2701</a>                    write.write_str(<span class="string">" "</span>)
+<a href=#2702 id=2702 data-nosnippet>2702</a>                };
+<a href=#2703 id=2703 data-nosnippet>2703</a>
+<a href=#2704 id=2704 data-nosnippet>2704</a>                <span class="kw">let </span><span class="kw-2">mut </span>tick_decision_writer = (!<span class="macro">matches!</span>(<span class="self">self</span>.log, LogKind::Null)).then(|| {
+<a href=#2705 id=2705 data-nosnippet>2705</a>                    indenter::indented(<span class="kw-2">&amp;mut </span><span class="self">self</span>.log).with_format(indenter::Format::Custom {
+<a href=#2706 id=2706 data-nosnippet>2706</a>                        inserter: <span class="kw-2">&amp;mut </span>asterisk_indenter,
+<a href=#2707 id=2707 data-nosnippet>2707</a>                    })
+<a href=#2708 id=2708 data-nosnippet>2708</a>                });
+<a href=#2709 id=2709 data-nosnippet>2709</a>
+<a href=#2710 id=2710 data-nosnippet>2710</a>                run_hooks(
+<a href=#2711 id=2711 data-nosnippet>2711</a>                    tick_decision_writer.as_mut(),
+<a href=#2712 id=2712 data-nosnippet>2712</a>                    <span class="kw-2">&amp;mut </span>tick.hooks,
+<a href=#2713 id=2713 data-nosnippet>2713</a>                    <span class="kw-2">&amp;</span>tick.scripted_hooks,
+<a href=#2714 id=2714 data-nosnippet>2714</a>                );
+<a href=#2715 id=2715 data-nosnippet>2715</a>
+<a href=#2716 id=2716 data-nosnippet>2716</a>                <span class="kw">let </span>run_tick_future = tick.dfir.run_tick();
+<a href=#2717 id=2717 data-nosnippet>2717</a>                <span class="kw">if </span>!tick.inline_hooks.is_empty() || !tick.scripted_inline_hooks.is_empty() {
+<a href=#2718 id=2718 data-nosnippet>2718</a>                    <span class="kw">let </span><span class="kw-2">mut </span>run_tick_future_pinned = <span class="macro">pin!</span>(run_tick_future);
+<a href=#2719 id=2719 data-nosnippet>2719</a>                    <span class="kw">let </span>deterministic = <span class="self">self</span>.deterministic;
+<a href=#2720 id=2720 data-nosnippet>2720</a>
+<a href=#2721 id=2721 data-nosnippet>2721</a>                    <span class="kw">loop </span>{
+<a href=#2722 id=2722 data-nosnippet>2722</a>                        <span class="macro">tokio::select!</span> {
+<a href=#2723 id=2723 data-nosnippet>2723</a>                            biased;
+<a href=#2724 id=2724 data-nosnippet>2724</a>                            r = <span class="kw-2">&amp;mut </span>run_tick_future_pinned =&gt; {
+<a href=#2725 id=2725 data-nosnippet>2725</a>                                <span class="macro">abort_assert!</span>(r, <span class="string">"runnable tick's DFIR run_tick() returned false"</span>);
+<a href=#2726 id=2726 data-nosnippet>2726</a>                                <span class="kw">break</span>;
+<a href=#2727 id=2727 data-nosnippet>2727</a>                            }
+<a href=#2728 id=2728 data-nosnippet>2728</a>                            <span class="kw">_ </span>= <span class="kw">async </span>{} =&gt; {
+<a href=#2729 id=2729 data-nosnippet>2729</a>                                  <span class="kw">for </span>hook <span class="kw">in </span><span class="kw-2">&amp;</span>tick.scripted_inline_hooks {
+<a href=#2730 id=2730 data-nosnippet>2730</a>                                      <span class="kw">if </span>hook.borrow().has_pending_input() {
+<a href=#2731 id=2731 data-nosnippet>2731</a>                                          <span class="kw">let </span>run = hook.borrow_mut().run_decision(
+<a href=#2732 id=2732 data-nosnippet>2732</a>                                              tick_decision_writer
+<a href=#2733 id=2733 data-nosnippet>2733</a>                                                  .as_mut()
+<a href=#2734 id=2734 data-nosnippet>2734</a>                                                  .map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write),
+<a href=#2735 id=2735 data-nosnippet>2735</a>                                          );
+<a href=#2736 id=2736 data-nosnippet>2736</a>                                          <span class="comment">// The error is reported here, on the host side of
+<a href=#2737 id=2737 data-nosnippet>2737</a>                                          // the dylib boundary (unwinding across it aborts).
+<a href=#2738 id=2738 data-nosnippet>2738</a>                                          </span><span class="kw">if let </span><span class="prelude-val">Err</span>(message) = run {
+<a href=#2739 id=2739 data-nosnippet>2739</a>                                              <span class="macro">panic!</span>(<span class="string">"{}"</span>, message);
+<a href=#2740 id=2740 data-nosnippet>2740</a>                                          }
+<a href=#2741 id=2741 data-nosnippet>2741</a>                                      }
+<a href=#2742 id=2742 data-nosnippet>2742</a>                                  }
+<a href=#2743 id=2743 data-nosnippet>2743</a>                                  <span class="kw">if </span>!tick.inline_hooks.is_empty() {
+<a href=#2744 id=2744 data-nosnippet>2744</a>                                      bolero_generator::any::scope::borrow_with(|driver| {
+<a href=#2745 id=2745 data-nosnippet>2745</a>                                          <span class="kw">for </span>hook <span class="kw">in </span>tick.inline_hooks.iter_mut() {
+<a href=#2746 id=2746 data-nosnippet>2746</a>                                              <span class="kw">if </span>hook.has_pending_input() {
+<a href=#2747 id=2747 data-nosnippet>2747</a>                                                  <span class="comment">// In deterministic mode there is no fuzzer
+<a href=#2748 id=2748 data-nosnippet>2748</a>                                                  // to decide for this operator; it may only
+<a href=#2749 id=2749 data-nosnippet>2749</a>                                                  // proceed when exactly one outcome is
+<a href=#2750 id=2750 data-nosnippet>2750</a>                                                  // possible.
+<a href=#2751 id=2751 data-nosnippet>2751</a>                                                  </span><span class="kw">if </span>deterministic &amp;&amp; !hook.only_one_possible_decision() {
+<a href=#2752 id=2752 data-nosnippet>2752</a>                                                      <span class="macro">panic!</span>(
+<a href=#2753 id=2753 data-nosnippet>2753</a>                                                          <span class="string">"{}"</span>,
+<a href=#2754 id=2754 data-nosnippet>2754</a>                                                          <span class="kw">crate</span>::sim::runtime::render_unhooked_nondet_error(
+<a href=#2755 id=2755 data-nosnippet>2755</a>                                                              hook.location_meta()
+<a href=#2756 id=2756 data-nosnippet>2756</a>                                                          )
+<a href=#2757 id=2757 data-nosnippet>2757</a>                                                      );
+<a href=#2758 id=2758 data-nosnippet>2758</a>                                                  }
+<a href=#2759 id=2759 data-nosnippet>2759</a>                                                  hook.autonomous_decision(driver);
+<a href=#2760 id=2760 data-nosnippet>2760</a>                                                  hook.release_decision(
+<a href=#2761 id=2761 data-nosnippet>2761</a>                                                      tick_decision_writer
+<a href=#2762 id=2762 data-nosnippet>2762</a>                                                          .as_mut()
+<a href=#2763 id=2763 data-nosnippet>2763</a>                                                          .map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write),
+<a href=#2764 id=2764 data-nosnippet>2764</a>                                                  );
+<a href=#2765 id=2765 data-nosnippet>2765</a>                                              }
+<a href=#2766 id=2766 data-nosnippet>2766</a>                                          }
+<a href=#2767 id=2767 data-nosnippet>2767</a>                                      });
+<a href=#2768 id=2768 data-nosnippet>2768</a>                                  }
+<a href=#2769 id=2769 data-nosnippet>2769</a>                            }
+<a href=#2770 id=2770 data-nosnippet>2770</a>                        }
+<a href=#2771 id=2771 data-nosnippet>2771</a>                    }
+<a href=#2772 id=2772 data-nosnippet>2772</a>                } <span class="kw">else </span>{
+<a href=#2773 id=2773 data-nosnippet>2773</a>                    <span class="kw">let </span>made_progress = run_tick_future.<span class="kw">await</span>;
+<a href=#2774 id=2774 data-nosnippet>2774</a>                    <span class="macro">abort_assert!</span>(
+<a href=#2775 id=2775 data-nosnippet>2775</a>                        made_progress,
+<a href=#2776 id=2776 data-nosnippet>2776</a>                        <span class="string">"runnable tick's DFIR run_tick() returned false"
+<a href=#2777 id=2777 data-nosnippet>2777</a>                    </span>);
+<a href=#2778 id=2778 data-nosnippet>2778</a>                }
+<a href=#2779 id=2779 data-nosnippet>2779</a>
+<a href=#2780 id=2780 data-nosnippet>2780</a>                <span class="kw">if </span>is_scripted_tick {
+<a href=#2781 id=2781 data-nosnippet>2781</a>                    <span class="kw">for </span>hook <span class="kw">in </span><span class="kw-2">&amp;</span>tick.scripted_inline_hooks {
+<a href=#2782 id=2782 data-nosnippet>2782</a>                        <span class="macro">abort_assert!</span>(
+<a href=#2783 id=2783 data-nosnippet>2783</a>                            !hook.borrow().has_decision(),
+<a href=#2784 id=2784 data-nosnippet>2784</a>                            <span class="string">"tick completed without consuming a scripted inline decision"
+<a href=#2785 id=2785 data-nosnippet>2785</a>                        </span>);
 <a href=#2786 id=2786 data-nosnippet>2786</a>                    }
-<a href=#2787 id=2787 data-nosnippet>2787</a>                } <span class="kw">else </span>{
-<a href=#2788 id=2788 data-nosnippet>2788</a>                    <span class="kw">let </span>made_progress = run_tick_future.<span class="kw">await</span>;
-<a href=#2789 id=2789 data-nosnippet>2789</a>                    <span class="macro">abort_assert!</span>(
-<a href=#2790 id=2790 data-nosnippet>2790</a>                        made_progress,
-<a href=#2791 id=2791 data-nosnippet>2791</a>                        <span class="string">"runnable tick's DFIR run_tick() returned false"
-<a href=#2792 id=2792 data-nosnippet>2792</a>                    </span>);
-<a href=#2793 id=2793 data-nosnippet>2793</a>                }
-<a href=#2794 id=2794 data-nosnippet>2794</a>
-<a href=#2795 id=2795 data-nosnippet>2795</a>                <span class="kw">if </span>is_scripted_tick {
-<a href=#2796 id=2796 data-nosnippet>2796</a>                    <span class="kw">for </span>hook <span class="kw">in </span><span class="kw-2">&amp;</span>tick.scripted_inline_hooks {
-<a href=#2797 id=2797 data-nosnippet>2797</a>                        <span class="macro">abort_assert!</span>(
-<a href=#2798 id=2798 data-nosnippet>2798</a>                            !hook.borrow().has_decision(),
-<a href=#2799 id=2799 data-nosnippet>2799</a>                            <span class="string">"tick completed without consuming a scripted inline decision"
-<a href=#2800 id=2800 data-nosnippet>2800</a>                        </span>);
-<a href=#2801 id=2801 data-nosnippet>2801</a>                    }
-<a href=#2802 id=2802 data-nosnippet>2802</a>                    <span class="kw">let </span>group = <span class="self">self</span>.script_coordinator.borrow_mut().current.take();
-<a href=#2803 id=2803 data-nosnippet>2803</a>                    <span class="macro">abort_assert!</span>(
-<a href=#2804 id=2804 data-nosnippet>2804</a>                        group.is_some(),
-<a href=#2805 id=2805 data-nosnippet>2805</a>                        <span class="string">"scripted tick executed without an outstanding group"
-<a href=#2806 id=2806 data-nosnippet>2806</a>                    </span>);
-<a href=#2807 id=2807 data-nosnippet>2807</a>                }
-<a href=#2808 id=2808 data-nosnippet>2808</a>                <span class="self">self</span>.possibly_ready_ticks.push(tick);
-<a href=#2809 id=2809 data-nosnippet>2809</a>            } <span class="kw">else </span>{
-<a href=#2810 id=2810 data-nosnippet>2810</a>                <span class="kw">let </span>is_scripted_observation = next_tick_or_obs == scripted_observation_index;
-<a href=#2811 id=2811 data-nosnippet>2811</a>                <span class="kw">let </span>observation = <span class="kw">if </span>is_scripted_observation {
-<a href=#2812 id=2812 data-nosnippet>2812</a>                    <span class="self">self</span>.current_scripted_observation.as_mut().unwrap()
-<a href=#2813 id=2813 data-nosnippet>2813</a>                } <span class="kw">else </span>{
-<a href=#2814 id=2814 data-nosnippet>2814</a>                    <span class="kw-2">&amp;mut </span><span class="self">self</span>.possibly_ready_observations[next_tick_or_obs - observation_start]
-<a href=#2815 id=2815 data-nosnippet>2815</a>                };
-<a href=#2816 id=2816 data-nosnippet>2816</a>                <span class="kw">let </span>log_writer = (!<span class="macro">matches!</span>(<span class="self">self</span>.log, LogKind::Null)).then_some(<span class="kw-2">&amp;mut </span><span class="self">self</span>.log);
-<a href=#2817 id=2817 data-nosnippet>2817</a>                <span class="kw">match </span><span class="kw-2">&amp;mut </span>observation.hook {
-<a href=#2818 id=2818 data-nosnippet>2818</a>                    ObservationSlot::Unscripted { hook } =&gt; {
-<a href=#2819 id=2819 data-nosnippet>2819</a>                        run_observation_hook(log_writer, <span class="kw-2">&amp;mut **</span>hook);
-<a href=#2820 id=2820 data-nosnippet>2820</a>                    }
-<a href=#2821 id=2821 data-nosnippet>2821</a>                    ObservationSlot::Scripted { hook, .. } =&gt; {
-<a href=#2822 id=2822 data-nosnippet>2822</a>                        <span class="macro">abort_assert!</span>(
-<a href=#2823 id=2823 data-nosnippet>2823</a>                            hook.borrow().can_fire(),
-<a href=#2824 id=2824 data-nosnippet>2824</a>                            <span class="string">"scripted observation ran without a releasing decision"
-<a href=#2825 id=2825 data-nosnippet>2825</a>                        </span>);
-<a href=#2826 id=2826 data-nosnippet>2826</a>                        hook.borrow_mut()
-<a href=#2827 id=2827 data-nosnippet>2827</a>                            .run_decision(log_writer.map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write));
-<a href=#2828 id=2828 data-nosnippet>2828</a>                    }
-<a href=#2829 id=2829 data-nosnippet>2829</a>                }
-<a href=#2830 id=2830 data-nosnippet>2830</a>                <span class="kw">if </span>is_scripted_observation {
-<a href=#2831 id=2831 data-nosnippet>2831</a>                    <span class="kw">let </span>group = <span class="self">self</span>.script_coordinator.borrow_mut().current.take();
-<a href=#2832 id=2832 data-nosnippet>2832</a>                    <span class="macro">abort_assert!</span>(group.is_some(), <span class="string">"scripted observation ran without a group"</span>);
-<a href=#2833 id=2833 data-nosnippet>2833</a>                    <span class="kw">let </span>observation = <span class="self">self</span>.current_scripted_observation.take().unwrap();
-<a href=#2834 id=2834 data-nosnippet>2834</a>                    <span class="self">self</span>.possibly_ready_observations.push(observation);
-<a href=#2835 id=2835 data-nosnippet>2835</a>                }
-<a href=#2836 id=2836 data-nosnippet>2836</a>            }
-<a href=#2837 id=2837 data-nosnippet>2837</a>        }
-<a href=#2838 id=2838 data-nosnippet>2838</a>    }
-<a href=#2839 id=2839 data-nosnippet>2839</a>}
-<a href=#2840 id=2840 data-nosnippet>2840</a>
-<a href=#2841 id=2841 data-nosnippet>2841</a><span class="kw">fn </span>run_hooks&lt;W: std::fmt::Write&gt;(
-<a href=#2842 id=2842 data-nosnippet>2842</a>    <span class="kw-2">mut </span>tick_decision_writer: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>W&gt;,
-<a href=#2843 id=2843 data-nosnippet>2843</a>    hooks: <span class="kw-2">&amp;mut </span>[Box&lt;<span class="kw">dyn </span>TickInputHook&gt;],
-<a href=#2844 id=2844 data-nosnippet>2844</a>    scripted_hooks: <span class="kw-2">&amp;</span>[Rc&lt;RefCell&lt;<span class="kw">dyn </span>ScriptedTickInputHook&gt;&gt;],
-<a href=#2845 id=2845 data-nosnippet>2845</a>) {
-<a href=#2846 id=2846 data-nosnippet>2846</a>    <span class="comment">// Scripted hooks own and release their decisions without entropy. Run them completely
-<a href=#2847 id=2847 data-nosnippet>2847</a>    // before considering regular hooks; only regular hooks need a Bolero driver.
-<a href=#2848 id=2848 data-nosnippet>2848</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>made_triggering_decision = <span class="bool-val">false</span>;
-<a href=#2849 id=2849 data-nosnippet>2849</a>    <span class="kw">for </span>hook <span class="kw">in </span>scripted_hooks {
-<a href=#2850 id=2850 data-nosnippet>2850</a>        <span class="kw">let </span><span class="kw-2">mut </span>hook = hook.borrow_mut();
-<a href=#2851 id=2851 data-nosnippet>2851</a>        <span class="comment">// Whether a scripted decision triggers is known before running it.
-<a href=#2852 id=2852 data-nosnippet>2852</a>        </span>made_triggering_decision |= hook.can_trigger_tick();
-<a href=#2853 id=2853 data-nosnippet>2853</a>        hook.run_decision(
-<a href=#2854 id=2854 data-nosnippet>2854</a>            tick_decision_writer
-<a href=#2855 id=2855 data-nosnippet>2855</a>                .as_deref_mut()
-<a href=#2856 id=2856 data-nosnippet>2856</a>                .map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write),
-<a href=#2857 id=2857 data-nosnippet>2857</a>        );
-<a href=#2858 id=2858 data-nosnippet>2858</a>    }
-<a href=#2859 id=2859 data-nosnippet>2859</a>
-<a href=#2860 id=2860 data-nosnippet>2860</a>    <span class="kw">if </span>!hooks.is_empty() {
-<a href=#2861 id=2861 data-nosnippet>2861</a>        <span class="kw">let </span><span class="kw-2">mut </span>decided = <span class="macro">vec!</span>[<span class="bool-val">false</span>; hooks.len()];
-<a href=#2862 id=2862 data-nosnippet>2862</a>        <span class="kw">let </span><span class="kw-2">mut </span>remaining_decision_count = hooks.len();
-<a href=#2863 id=2863 data-nosnippet>2863</a>        bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
-<a href=#2864 id=2864 data-nosnippet>2864</a>            <span class="comment">// First, resolve every hook that faces no choice (its decision consumes no
-<a href=#2865 id=2865 data-nosnippet>2865</a>            // entropy). Doing this before the second pass lets the final undecided hook
-<a href=#2866 id=2866 data-nosnippet>2866</a>            // be forced to trigger when no earlier hook made a triggering decision.
-<a href=#2867 id=2867 data-nosnippet>2867</a>            </span><span class="kw">for </span>(hook, decided) <span class="kw">in </span>hooks.iter_mut().zip(decided.iter_mut()) {
-<a href=#2868 id=2868 data-nosnippet>2868</a>                <span class="kw">if </span>hook.only_one_possible_decision() {
-<a href=#2869 id=2869 data-nosnippet>2869</a>                    <span class="comment">// The no-choice decision can still trigger the tick (the passthrough
-<a href=#2870 id=2870 data-nosnippet>2870</a>                    // singleton always releases the latest value), so its result counts.
-<a href=#2871 id=2871 data-nosnippet>2871</a>                    </span>made_triggering_decision |= hook.autonomous_decision(driver, <span class="bool-val">false</span>);
-<a href=#2872 id=2872 data-nosnippet>2872</a>                    <span class="kw-2">*</span>decided = <span class="bool-val">true</span>;
-<a href=#2873 id=2873 data-nosnippet>2873</a>                    remaining_decision_count -= <span class="number">1</span>;
-<a href=#2874 id=2874 data-nosnippet>2874</a>                }
-<a href=#2875 id=2875 data-nosnippet>2875</a>            }
-<a href=#2876 id=2876 data-nosnippet>2876</a>
-<a href=#2877 id=2877 data-nosnippet>2877</a>            <span class="kw">for </span>(hook, decided) <span class="kw">in </span>hooks.iter_mut().zip(decided.iter()) {
-<a href=#2878 id=2878 data-nosnippet>2878</a>                <span class="kw">if </span>!decided {
-<a href=#2879 id=2879 data-nosnippet>2879</a>                    made_triggering_decision |= hook.autonomous_decision(
-<a href=#2880 id=2880 data-nosnippet>2880</a>                        driver,
-<a href=#2881 id=2881 data-nosnippet>2881</a>                        !made_triggering_decision &amp;&amp; remaining_decision_count == <span class="number">1</span>,
-<a href=#2882 id=2882 data-nosnippet>2882</a>                    );
-<a href=#2883 id=2883 data-nosnippet>2883</a>                    remaining_decision_count -= <span class="number">1</span>;
-<a href=#2884 id=2884 data-nosnippet>2884</a>                }
+<a href=#2787 id=2787 data-nosnippet>2787</a>                    <span class="kw">let </span>group = <span class="self">self</span>.script_coordinator.borrow_mut().current.take();
+<a href=#2788 id=2788 data-nosnippet>2788</a>                    <span class="macro">abort_assert!</span>(
+<a href=#2789 id=2789 data-nosnippet>2789</a>                        group.is_some(),
+<a href=#2790 id=2790 data-nosnippet>2790</a>                        <span class="string">"scripted tick executed without an outstanding group"
+<a href=#2791 id=2791 data-nosnippet>2791</a>                    </span>);
+<a href=#2792 id=2792 data-nosnippet>2792</a>                }
+<a href=#2793 id=2793 data-nosnippet>2793</a>                <span class="self">self</span>.possibly_ready_ticks.push(tick);
+<a href=#2794 id=2794 data-nosnippet>2794</a>            } <span class="kw">else </span>{
+<a href=#2795 id=2795 data-nosnippet>2795</a>                <span class="kw">let </span>is_scripted_observation = next_tick_or_obs == scripted_observation_index;
+<a href=#2796 id=2796 data-nosnippet>2796</a>                <span class="kw">let </span>observation = <span class="kw">if </span>is_scripted_observation {
+<a href=#2797 id=2797 data-nosnippet>2797</a>                    <span class="self">self</span>.current_scripted_observation.as_mut().unwrap()
+<a href=#2798 id=2798 data-nosnippet>2798</a>                } <span class="kw">else </span>{
+<a href=#2799 id=2799 data-nosnippet>2799</a>                    <span class="kw-2">&amp;mut </span><span class="self">self</span>.possibly_ready_observations[next_tick_or_obs - observation_start]
+<a href=#2800 id=2800 data-nosnippet>2800</a>                };
+<a href=#2801 id=2801 data-nosnippet>2801</a>                <span class="kw">let </span>log_writer = (!<span class="macro">matches!</span>(<span class="self">self</span>.log, LogKind::Null)).then_some(<span class="kw-2">&amp;mut </span><span class="self">self</span>.log);
+<a href=#2802 id=2802 data-nosnippet>2802</a>                <span class="kw">match </span><span class="kw-2">&amp;mut </span>observation.hook {
+<a href=#2803 id=2803 data-nosnippet>2803</a>                    ObservationSlot::Unscripted { hook } =&gt; {
+<a href=#2804 id=2804 data-nosnippet>2804</a>                        run_observation_hook(log_writer, <span class="kw-2">&amp;mut **</span>hook);
+<a href=#2805 id=2805 data-nosnippet>2805</a>                    }
+<a href=#2806 id=2806 data-nosnippet>2806</a>                    ObservationSlot::Scripted { hook, .. } =&gt; {
+<a href=#2807 id=2807 data-nosnippet>2807</a>                        <span class="macro">abort_assert!</span>(
+<a href=#2808 id=2808 data-nosnippet>2808</a>                            hook.borrow().can_fire(),
+<a href=#2809 id=2809 data-nosnippet>2809</a>                            <span class="string">"scripted observation ran without a releasing decision"
+<a href=#2810 id=2810 data-nosnippet>2810</a>                        </span>);
+<a href=#2811 id=2811 data-nosnippet>2811</a>                        hook.borrow_mut()
+<a href=#2812 id=2812 data-nosnippet>2812</a>                            .run_decision(log_writer.map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write));
+<a href=#2813 id=2813 data-nosnippet>2813</a>                    }
+<a href=#2814 id=2814 data-nosnippet>2814</a>                }
+<a href=#2815 id=2815 data-nosnippet>2815</a>                <span class="kw">if </span>is_scripted_observation {
+<a href=#2816 id=2816 data-nosnippet>2816</a>                    <span class="kw">let </span>group = <span class="self">self</span>.script_coordinator.borrow_mut().current.take();
+<a href=#2817 id=2817 data-nosnippet>2817</a>                    <span class="macro">abort_assert!</span>(group.is_some(), <span class="string">"scripted observation ran without a group"</span>);
+<a href=#2818 id=2818 data-nosnippet>2818</a>                    <span class="kw">let </span>observation = <span class="self">self</span>.current_scripted_observation.take().unwrap();
+<a href=#2819 id=2819 data-nosnippet>2819</a>                    <span class="self">self</span>.possibly_ready_observations.push(observation);
+<a href=#2820 id=2820 data-nosnippet>2820</a>                }
+<a href=#2821 id=2821 data-nosnippet>2821</a>            }
+<a href=#2822 id=2822 data-nosnippet>2822</a>        }
+<a href=#2823 id=2823 data-nosnippet>2823</a>    }
+<a href=#2824 id=2824 data-nosnippet>2824</a>}
+<a href=#2825 id=2825 data-nosnippet>2825</a>
+<a href=#2826 id=2826 data-nosnippet>2826</a><span class="kw">fn </span>run_hooks&lt;W: std::fmt::Write&gt;(
+<a href=#2827 id=2827 data-nosnippet>2827</a>    <span class="kw-2">mut </span>tick_decision_writer: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>W&gt;,
+<a href=#2828 id=2828 data-nosnippet>2828</a>    hooks: <span class="kw-2">&amp;mut </span>[Box&lt;<span class="kw">dyn </span>TickInputHook&gt;],
+<a href=#2829 id=2829 data-nosnippet>2829</a>    scripted_hooks: <span class="kw-2">&amp;</span>[Rc&lt;RefCell&lt;<span class="kw">dyn </span>ScriptedTickInputHook&gt;&gt;],
+<a href=#2830 id=2830 data-nosnippet>2830</a>) {
+<a href=#2831 id=2831 data-nosnippet>2831</a>    <span class="comment">// Scripted hooks own and release their decisions without entropy. Run them completely
+<a href=#2832 id=2832 data-nosnippet>2832</a>    // before considering regular hooks; only regular hooks need a Bolero driver.
+<a href=#2833 id=2833 data-nosnippet>2833</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>made_triggering_decision = <span class="bool-val">false</span>;
+<a href=#2834 id=2834 data-nosnippet>2834</a>    <span class="kw">for </span>hook <span class="kw">in </span>scripted_hooks {
+<a href=#2835 id=2835 data-nosnippet>2835</a>        <span class="kw">let </span><span class="kw-2">mut </span>hook = hook.borrow_mut();
+<a href=#2836 id=2836 data-nosnippet>2836</a>        <span class="comment">// Whether a scripted decision triggers is known before running it.
+<a href=#2837 id=2837 data-nosnippet>2837</a>        </span>made_triggering_decision |= hook.can_trigger_tick();
+<a href=#2838 id=2838 data-nosnippet>2838</a>        hook.run_decision(
+<a href=#2839 id=2839 data-nosnippet>2839</a>            tick_decision_writer
+<a href=#2840 id=2840 data-nosnippet>2840</a>                .as_deref_mut()
+<a href=#2841 id=2841 data-nosnippet>2841</a>                .map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write),
+<a href=#2842 id=2842 data-nosnippet>2842</a>        );
+<a href=#2843 id=2843 data-nosnippet>2843</a>    }
+<a href=#2844 id=2844 data-nosnippet>2844</a>
+<a href=#2845 id=2845 data-nosnippet>2845</a>    <span class="kw">if </span>!hooks.is_empty() {
+<a href=#2846 id=2846 data-nosnippet>2846</a>        <span class="kw">let </span><span class="kw-2">mut </span>decided = <span class="macro">vec!</span>[<span class="bool-val">false</span>; hooks.len()];
+<a href=#2847 id=2847 data-nosnippet>2847</a>        <span class="kw">let </span><span class="kw-2">mut </span>remaining_decision_count = hooks.len();
+<a href=#2848 id=2848 data-nosnippet>2848</a>        bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
+<a href=#2849 id=2849 data-nosnippet>2849</a>            <span class="comment">// First, resolve every hook that faces no choice (its decision consumes no
+<a href=#2850 id=2850 data-nosnippet>2850</a>            // entropy). Doing this before the second pass lets the final undecided hook
+<a href=#2851 id=2851 data-nosnippet>2851</a>            // be forced to trigger when no earlier hook made a triggering decision.
+<a href=#2852 id=2852 data-nosnippet>2852</a>            </span><span class="kw">for </span>(hook, decided) <span class="kw">in </span>hooks.iter_mut().zip(decided.iter_mut()) {
+<a href=#2853 id=2853 data-nosnippet>2853</a>                <span class="kw">if </span>hook.only_one_possible_decision() {
+<a href=#2854 id=2854 data-nosnippet>2854</a>                    <span class="comment">// The no-choice decision can still trigger the tick (the passthrough
+<a href=#2855 id=2855 data-nosnippet>2855</a>                    // singleton always releases the latest value), so its result counts.
+<a href=#2856 id=2856 data-nosnippet>2856</a>                    </span>made_triggering_decision |= hook.autonomous_decision(driver, <span class="bool-val">false</span>);
+<a href=#2857 id=2857 data-nosnippet>2857</a>                    <span class="kw-2">*</span>decided = <span class="bool-val">true</span>;
+<a href=#2858 id=2858 data-nosnippet>2858</a>                    remaining_decision_count -= <span class="number">1</span>;
+<a href=#2859 id=2859 data-nosnippet>2859</a>                }
+<a href=#2860 id=2860 data-nosnippet>2860</a>            }
+<a href=#2861 id=2861 data-nosnippet>2861</a>
+<a href=#2862 id=2862 data-nosnippet>2862</a>            <span class="kw">for </span>(hook, decided) <span class="kw">in </span>hooks.iter_mut().zip(decided.iter()) {
+<a href=#2863 id=2863 data-nosnippet>2863</a>                <span class="kw">if </span>!decided {
+<a href=#2864 id=2864 data-nosnippet>2864</a>                    made_triggering_decision |= hook.autonomous_decision(
+<a href=#2865 id=2865 data-nosnippet>2865</a>                        driver,
+<a href=#2866 id=2866 data-nosnippet>2866</a>                        !made_triggering_decision &amp;&amp; remaining_decision_count == <span class="number">1</span>,
+<a href=#2867 id=2867 data-nosnippet>2867</a>                    );
+<a href=#2868 id=2868 data-nosnippet>2868</a>                    remaining_decision_count -= <span class="number">1</span>;
+<a href=#2869 id=2869 data-nosnippet>2869</a>                }
+<a href=#2870 id=2870 data-nosnippet>2870</a>
+<a href=#2871 id=2871 data-nosnippet>2871</a>                hook.release_decision(
+<a href=#2872 id=2872 data-nosnippet>2872</a>                    tick_decision_writer
+<a href=#2873 id=2873 data-nosnippet>2873</a>                        .as_deref_mut()
+<a href=#2874 id=2874 data-nosnippet>2874</a>                        .map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write),
+<a href=#2875 id=2875 data-nosnippet>2875</a>                );
+<a href=#2876 id=2876 data-nosnippet>2876</a>            }
+<a href=#2877 id=2877 data-nosnippet>2877</a>        });
+<a href=#2878 id=2878 data-nosnippet>2878</a>    }
+<a href=#2879 id=2879 data-nosnippet>2879</a>
+<a href=#2880 id=2880 data-nosnippet>2880</a>    <span class="macro">abort_assert!</span>(
+<a href=#2881 id=2881 data-nosnippet>2881</a>        made_triggering_decision,
+<a href=#2882 id=2882 data-nosnippet>2882</a>        <span class="string">"runnable tick had no hook make a triggering decision"
+<a href=#2883 id=2883 data-nosnippet>2883</a>    </span>);
+<a href=#2884 id=2884 data-nosnippet>2884</a>}
 <a href=#2885 id=2885 data-nosnippet>2885</a>
-<a href=#2886 id=2886 data-nosnippet>2886</a>                hook.release_decision(
-<a href=#2887 id=2887 data-nosnippet>2887</a>                    tick_decision_writer
-<a href=#2888 id=2888 data-nosnippet>2888</a>                        .as_deref_mut()
-<a href=#2889 id=2889 data-nosnippet>2889</a>                        .map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write),
-<a href=#2890 id=2890 data-nosnippet>2890</a>                );
-<a href=#2891 id=2891 data-nosnippet>2891</a>            }
-<a href=#2892 id=2892 data-nosnippet>2892</a>        });
-<a href=#2893 id=2893 data-nosnippet>2893</a>    }
-<a href=#2894 id=2894 data-nosnippet>2894</a>
-<a href=#2895 id=2895 data-nosnippet>2895</a>    <span class="macro">abort_assert!</span>(
-<a href=#2896 id=2896 data-nosnippet>2896</a>        made_triggering_decision,
-<a href=#2897 id=2897 data-nosnippet>2897</a>        <span class="string">"runnable tick had no hook make a triggering decision"
-<a href=#2898 id=2898 data-nosnippet>2898</a>    </span>);
-<a href=#2899 id=2899 data-nosnippet>2899</a>}
-<a href=#2900 id=2900 data-nosnippet>2900</a>
-<a href=#2901 id=2901 data-nosnippet>2901</a><span class="doccomment">/// Resolves a single unscripted observation hook. The observation was only scheduled
-<a href=#2902 id=2902 data-nosnippet>2902</a>/// because it has pending input (running an observation *is* releasing), so its
-<a href=#2903 id=2903 data-nosnippet>2903</a>/// autonomous decision must stage a release — running an observation without releasing
-<a href=#2904 id=2904 data-nosnippet>2904</a>/// would be a wasted schedule step the exploration must not contain.
-<a href=#2905 id=2905 data-nosnippet>2905</a></span><span class="kw">fn </span>run_observation_hook&lt;W: std::fmt::Write&gt;(
-<a href=#2906 id=2906 data-nosnippet>2906</a>    writer: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>W&gt;,
-<a href=#2907 id=2907 data-nosnippet>2907</a>    hook: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>ObservationHook,
-<a href=#2908 id=2908 data-nosnippet>2908</a>) {
-<a href=#2909 id=2909 data-nosnippet>2909</a>    bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
-<a href=#2910 id=2910 data-nosnippet>2910</a>        hook.autonomous_decision(driver);
-<a href=#2911 id=2911 data-nosnippet>2911</a>    });
-<a href=#2912 id=2912 data-nosnippet>2912</a>    <span class="comment">// `release_decision` panics if the autonomous decision staged nothing, so a
-<a href=#2913 id=2913 data-nosnippet>2913</a>    // contract violation cannot pass silently.
-<a href=#2914 id=2914 data-nosnippet>2914</a>    </span>hook.release_decision(writer.map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write));
-<a href=#2915 id=2915 data-nosnippet>2915</a>}
+<a href=#2886 id=2886 data-nosnippet>2886</a><span class="doccomment">/// Resolves a single unscripted observation hook. The observation was only scheduled
+<a href=#2887 id=2887 data-nosnippet>2887</a>/// because it has pending input (running an observation *is* releasing), so its
+<a href=#2888 id=2888 data-nosnippet>2888</a>/// autonomous decision must stage a release — running an observation without releasing
+<a href=#2889 id=2889 data-nosnippet>2889</a>/// would be a wasted schedule step the exploration must not contain.
+<a href=#2890 id=2890 data-nosnippet>2890</a></span><span class="kw">fn </span>run_observation_hook&lt;W: std::fmt::Write&gt;(
+<a href=#2891 id=2891 data-nosnippet>2891</a>    writer: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>W&gt;,
+<a href=#2892 id=2892 data-nosnippet>2892</a>    hook: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>ObservationHook,
+<a href=#2893 id=2893 data-nosnippet>2893</a>) {
+<a href=#2894 id=2894 data-nosnippet>2894</a>    bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
+<a href=#2895 id=2895 data-nosnippet>2895</a>        hook.autonomous_decision(driver);
+<a href=#2896 id=2896 data-nosnippet>2896</a>    });
+<a href=#2897 id=2897 data-nosnippet>2897</a>    <span class="comment">// `release_decision` panics if the autonomous decision staged nothing, so a
+<a href=#2898 id=2898 data-nosnippet>2898</a>    // contract violation cannot pass silently.
+<a href=#2899 id=2899 data-nosnippet>2899</a>    </span>hook.release_decision(writer.map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write));
+<a href=#2900 id=2900 data-nosnippet>2900</a>}
 </code></pre></div></section></main></body></html>
