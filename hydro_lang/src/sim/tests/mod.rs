@@ -1435,3 +1435,30 @@ fn sim_continue_if_failure_in_fuzz_repro_is_reported() {
 }
 
 mod scripted;
+
+mod custom_codec {
+    use stageleft::q;
+
+    use crate::location::Location;
+    use crate::prelude::FlowBuilder;
+    use crate::sim::test_codec::{RawMessage, RawMessageCodec};
+
+    #[test]
+    fn sim_custom_codec_round_trip() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (send, input) = node.sim_input_with(RawMessageCodec);
+        let out = input
+            .map(q!(|message| RawMessage {
+                id: message.id,
+                value: message.value * 2,
+            }))
+            .sim_output_with(RawMessageCodec);
+
+        flow.sim().exhaustive(async || {
+            send.send(RawMessage { id: 7, value: 42 });
+            assert_eq!(out.next().await, RawMessage { id: 7, value: 84 });
+        });
+    }
+}
