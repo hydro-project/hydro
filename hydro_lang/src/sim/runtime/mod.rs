@@ -137,13 +137,6 @@ pub trait RuntimeHook {
     /// entirely.
     fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>);
 
-    /// Whether this hook is ready to participate in an execution. Returns false if the
-    /// hook has never received any input and cannot produce a value (e.g. a
-    /// singleton whose producing tick hasn't run yet).
-    fn is_ready(&self) -> bool {
-        true
-    }
-
     /// The source location of the operator this hook simulates, used to attribute errors
     /// (e.g. an unhooked non-deterministic operator in deterministic mode).
     fn location_meta(&self) -> HookLocationMeta;

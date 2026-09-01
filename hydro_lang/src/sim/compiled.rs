@@ -2275,16 +2275,13 @@ struct SimTick {
 impl SimTick {
     /// Whether the scheduler can execute this tick right now.
     fn can_run(&self) -> bool {
-        // All hooks must be ready (have received input or have a last value)...
-        self.hooks.iter().all(|hook| hook.is_ready())
-            && self.scripted_hooks.iter().all(|hook| hook.borrow().is_ready())
-            // ...no scripted hook may have a queued decision that is not yet honorable
-            // (such a decision names this tick's *next* execution, so the tick must wait
-            // until it can be honored in full)...
-            && !self
-                .scripted_hooks
-                .iter()
-                .any(|hook| hook.borrow().blocks_tick())
+        // No scripted hook may have a queued decision that is not yet honorable
+        // (such a decision names this tick's *next* execution, so the tick must wait
+        // until it can be honored in full)...
+        !self
+            .scripted_hooks
+            .iter()
+            .any(|hook| hook.borrow().blocks_tick())
             // ...and at least one hook must be able to trigger the tick.
             && (self.hooks.iter().any(|hook| hook.can_trigger_tick())
                 || self
@@ -2595,18 +2592,6 @@ impl<W: std::io::Write> LaunchedSim<W> {
             && !scripted_observation_runnable
             && self.possibly_ready_observations.is_empty()
         {
-            // If any tick is blocked because a hook is not ready, that's a
-            // simulator bug — it means a singleton never received a value. (Scripted hooks
-            // are exempt: a scripted snapshot may legitimately still be waiting on a
-            // decision that can never be honored, which is reported as a *dirty*
-            // quiescence error at the suspended test-side await instead.)
-            for tick in &self.not_ready_ticks {
-                abort_assert!(
-                    tick.hooks.iter().all(|hook| hook.is_ready()),
-                    "tick has a hook that never became ready"
-                );
-            }
-
             // Classify why the outstanding scripted group (if any) is stuck, so the
             // suspended test-side await renders the right error: `true` when every
             // queued decision is satisfiable but none can trigger the tick — given

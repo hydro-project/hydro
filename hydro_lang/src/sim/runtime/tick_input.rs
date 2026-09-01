@@ -717,10 +717,6 @@ impl<T: Clone> RuntimeHook for SingletonHook<T> {
         }
     }
 
-    fn is_ready(&self) -> bool {
-        !self.input.borrow().is_empty() || self.last_released.is_some()
-    }
-
     fn location_meta(&self) -> HookLocationMeta {
         self.batch_location
     }
@@ -769,15 +765,10 @@ impl<T: Clone> TickInputHook for SingletonHook<T> {
 ///
 /// This is the [`SingletonHook`] analog for optionals whose *presence* is monotone (the
 /// `InitNone` bound): the optional starts null and, once it becomes non-null, stays non-null.
-/// It differs from [`SingletonHook`] in two ways:
-///
-/// - It is **always ready** ([`RuntimeHook::is_ready`] returns `true`). A consuming tick is never
-///   blocked waiting for the producer; before the first value arrives the snapshot simply
-///   remains null (the hook releases nothing into the tick).
-/// - Its released value is optional. Before the first non-null value it releases *null*
-///   (sending nothing into the tick's `source_stream`, so the downstream optional is empty).
-///   Once it has released a value, presence is monotone, so it only ever re-releases or
-///   advances to a newer value — never back to null.
+/// It differs from [`SingletonHook`] in that its released value is optional. Before the first
+/// non-null value it releases *null* (sending nothing into the tick's `source_stream`, so the
+/// downstream optional is empty). Once it has released a value, presence is monotone, so it only
+/// ever re-releases or advances to a newer value — never back to null.
 pub struct OptionalInitNoneHook<T> {
     input: Rc<RefCell<VecDeque<T>>>,
     to_release: Option<(Option<T>, bool)>, // (value or null, is new)
@@ -872,12 +863,6 @@ impl<T: Clone> RuntimeHook for OptionalInitNoneHook<T> {
         if let Some(value) = to_release {
             self.output.try_send(value).unwrap();
         }
-    }
-
-    fn is_ready(&self) -> bool {
-        // Unlike a singleton, an optional can always participate in a tick: before its first
-        // value it is simply null, so it never blocks the consuming tick.
-        true
     }
 
     fn location_meta(&self) -> HookLocationMeta {
