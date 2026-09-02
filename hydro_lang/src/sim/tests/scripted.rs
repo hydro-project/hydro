@@ -7,7 +7,7 @@
 use stageleft::q;
 
 use crate::live_collections::sliced::sliced;
-use crate::live_collections::stream::{ExactlyOnce, NoOrder, TotalOrder};
+use crate::live_collections::stream::{AtLeastOnce, ExactlyOnce, NoOrder, TotalOrder};
 use crate::live_collections::{Singleton, Stream};
 use crate::location::{Location, Process};
 use crate::nondet::{NonDet, nondet};
@@ -15,7 +15,7 @@ use crate::prelude::{Bounded, FlowBuilder, Unbounded};
 use crate::sim::{SimReceiver, SimSender};
 use crate::sim_hooks::{
     BatchHook, KeyedBatchHook, KeyedMergeOrderedHook, KeyedOrderingHook, KeyedSnapshotHook,
-    MergeOrderedHook, OrderingHook, PartialOrderingHook, SimHook, SnapshotHook,
+    MergeOrderedHook, OrderingHook, PartialOrderingHook, RetriesHook, SimHook, SnapshotHook,
 };
 
 /// A commutativity proof does not exempt a fold from simulation: the ordering hook on the
@@ -2448,4 +2448,607 @@ fn scripted_inline_keyed_merge_ordered_wrong_per_key_order_panics() {
             .order([(false, 1, 20), (true, 1, 30), (false, 1, 10)]) // first input's 20 before its 10
             .await;
     });
+}
+
+/// A top-level `assume_retries` on a `NoOrder` stream is scripted with `retry(value,
+/// copies)`: any buffered element may be named (placement of the copies is unobservable
+/// on a `NoOrder` output, so the cardinality is the entire decision), and the element is
+/// consumed.
+#[test]
+fn scripted_top_level_retries_retry() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let retries: RetriesHook<u32, NoOrder> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let output = input
+        .weaken_retries::<AtLeastOnce>()
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// scripted
+            hook = retries
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1, 2]);
+        // 2 is not at the front of the buffer: NoOrder decisions may name any element.
+        retries.retry(2, 2).await;
+        retries.retry(1, 1).await;
+        output.assert_yields_only_unordered([2, 2, 1]).await;
+    });
+}
+
+/// A top-level `assume_retries` on a `TotalOrder` stream expands the front slot in
+/// place: each `retry` names the front of the queue and a cardinality, and the copies
+/// are adjacent in the output.
+#[test]
+fn scripted_top_level_ordered_retries_expands_slots() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let retries: RetriesHook<u32, TotalOrder> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = input
+        .weaken_retries::<AtLeastOnce>()
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// scripted
+            hook = retries
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1, 2]);
+        retries.retry(1, 2).await;
+        retries.retry(2, 3).await;
+        output.assert_yields_only([1, 1, 2, 2, 2]).await;
+    });
+}
+
+/// On a `TotalOrder` stream, `retry` must name the front of the buffered queue: input
+/// order is preserved, so a mismatching front can never be released ahead of the named
+/// value and the decision is permanently stuck.
+#[test]
+#[should_panic(expected = "retry: the named value did not match the front")]
+fn scripted_top_level_ordered_retries_front_mismatch_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let retries: RetriesHook<u32, TotalOrder> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let _output = input
+        .weaken_retries::<AtLeastOnce>()
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// scripted
+            hook = retries
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1, 2]);
+        retries.retry(2, 1).await;
+    });
+}
+
+/// `retry_next(copies)` is the positional form of `retry` on a `TotalOrder` stream:
+/// it expands the front slot without asserting its value.
+#[test]
+fn scripted_top_level_ordered_retries_retry_next() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let retries: RetriesHook<u32, TotalOrder> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = input
+        .weaken_retries::<AtLeastOnce>()
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// scripted
+            hook = retries
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1, 2]);
+        retries.retry_next(2).await;
+        retries.retry_next(1).await;
+        output.assert_yields_only([1, 1, 2]).await;
+    });
+}
+
+/// `retry` with zero copies is rejected at the scripting call site: releasing an
+/// element zero times would be a loss, which `AtLeastOnce` does not permit.
+#[test]
+#[should_panic(expected = "the number of copies must be at least 1")]
+fn scripted_retries_retry_zero_copies_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let retries: RetriesHook<u32, NoOrder> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let _output = input
+        .weaken_retries::<AtLeastOnce>()
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// scripted
+            hook = retries
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1]);
+        retries.retry(1, 0).await;
+    });
+}
+
+/// A top-level `assume_ordering` on an at-least-once stream decides which *slots* each
+/// element's retries occupy: `emit(value)` releases a slot and keeps the element for
+/// re-emission after other elements, so a queue of `{1, 2}` can be ordered as
+/// `1 2 1 2` — each element's extra slot is a delayed redelivery, still `AtLeastOnce`.
+/// `emit_final` retires an element so the queue drains. The still-`AtLeastOnce` output
+/// is observed through a downstream `assume_retries` (`SimReceiver` deliberately offers
+/// exact assertions only for `ExactlyOnce` streams), here with every slot at
+/// cardinality 1.
+#[test]
+fn scripted_top_level_alo_ordering_emits_delayed_redeliveries() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let ordering: OrderingHook<u32, Unbounded, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<u32, TotalOrder> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let output = input
+        .weaken_retries::<AtLeastOnce>()
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = ordering
+        ))
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// scripted
+            hook = retries
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        ordering.auto_pause();
+        retries.auto_pause();
+        in_send.send_many_unordered([1, 2]);
+        ordering.emit(1).await;
+        retries.retry(1, 1).await;
+        ordering.emit(2).await;
+        retries.retry(2, 1).await;
+        ordering.emit_final(1).await;
+        retries.retry(1, 1).await;
+        ordering.emit_final(2).await;
+        retries.retry(2, 1).await;
+        output.assert_yields_only([1, 2, 1, 2]).await;
+    });
+}
+
+/// An element released with `emit` (not `emit_final`) stays buffered: a script that
+/// never retires it leaves the hook with pending input and no decision, which the
+/// forgotten-hook check reports like any other withheld buffering.
+#[test]
+#[should_panic(expected = "scripted hook has buffered input but no decision")]
+fn scripted_top_level_alo_ordering_unretired_element_is_forgotten() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let ordering: OrderingHook<u32, Unbounded, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<u32, TotalOrder> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let output = input
+        .weaken_retries::<AtLeastOnce>()
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = ordering
+        ))
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// scripted
+            hook = retries
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1]);
+        // 1 is never retired with `emit_final`: the ordering hook still holds it, with
+        // no decision and no declared pause, at the next scheduling boundary.
+        ordering.emit(1).await;
+        retries.retry(1, 1).await;
+        output.assert_yields_only([1]).await;
+    });
+}
+
+/// The decision immediately after an `emit` may not name the same value again when only
+/// one buffered element matches it: an adjacent duplicate slot denotes the same
+/// at-least-once collection (the cardinality dimension belongs to `assume_retries`), so
+/// the mis-stated script fails loudly.
+#[test]
+#[should_panic(expected = "adjacent duplicate slots of the same element are redundant")]
+fn scripted_top_level_alo_ordering_adjacent_reemit_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let ordering: OrderingHook<u32, Unbounded, AtLeastOnce> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let _output = input
+        .weaken_retries::<AtLeastOnce>()
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = ordering
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1, 2]);
+        ordering.emit(1).await;
+        // Only one buffered element equals 1, and it just took a slot.
+        ordering.emit_final(1).await;
+    });
+}
+
+/// Decisions name values, not individual elements, so with two equal elements buffered
+/// the adjacent slots of `emit(1); emit_final(1)` belong to different elements — legal —
+/// and the `emit_final` retires the whole value class (both elements, two slots total).
+#[test]
+fn scripted_top_level_alo_ordering_shared_value_adjacent_slots() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let ordering: OrderingHook<u32, Unbounded, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<u32, TotalOrder> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let output = input
+        .weaken_retries::<AtLeastOnce>()
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = ordering
+        ))
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// scripted
+            hook = retries
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        ordering.auto_pause();
+        retries.auto_pause();
+        in_send.send_many_unordered([1, 1]);
+        ordering.emit(1).await; // slot 1 (adjacency ok: two buffered elements share 1)
+        retries.retry(1, 1).await;
+        ordering.emit_final(1).await; // slot 2, consuming both buffered 1s
+        retries.retry(1, 1).await;
+        output.assert_yields_only([1, 1]).await;
+    });
+}
+
+/// `emit_final` retires a value's entire class, so every buffered element equal to it
+/// must have a slot: retiring two buffered 1s with a single slot is a loss, which
+/// at-least-once does not permit.
+#[test]
+#[should_panic(expected = "every buffered element must occupy at least one slot")]
+fn scripted_top_level_alo_ordering_final_must_cover_all_equal_elements() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let ordering: OrderingHook<u32, Unbounded, AtLeastOnce> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let _output = input
+        .weaken_retries::<AtLeastOnce>()
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = ordering
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1, 1]);
+        ordering.emit_final(1).await;
+    });
+}
+
+/// Observing order then retries explores the same state space as observing retries then
+/// order, with an appropriate selection of scripted decisions: both chains realize the
+/// physical sequence `10 20 20 10 20` from the input `{10, 20}`.
+///
+/// - Order → retries: the ordering hook emits the slot sequence `10 20 10 20` (each
+///   element occupies two non-adjacent slots), and the retries hook expands the second
+///   slot to two adjacent copies.
+/// - Retries → order: the retries hook gives 10 cardinality 2 and 20 cardinality 3,
+///   producing a `NoOrder + ExactlyOnce` multiset whose five now-distinct elements the
+///   downstream ordering hook arranges arbitrarily — including adjacently.
+#[test]
+fn scripted_order_then_retries_matches_retries_then_order() {
+    let target = [10u32, 20, 20, 10, 20];
+
+    // Chain 1: assume_ordering (AtLeastOnce) then assume_retries (TotalOrder).
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let ordering: OrderingHook<u32, Unbounded, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<u32, TotalOrder> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let output = input
+        .weaken_retries::<AtLeastOnce>()
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = ordering
+        ))
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// scripted
+            hook = retries
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        // Both hooks hold buffered input across the other hook's actions.
+        ordering.auto_pause();
+        retries.auto_pause();
+        in_send.send_many_unordered([10, 20]);
+
+        ordering.emit(10).await; // slot 1: 10 (kept for re-emission)
+        retries.retry(10, 1).await;
+        ordering.emit(20).await; // slot 2: 20 (kept for re-emission)
+        retries.retry(20, 2).await; // ... expanded to two adjacent copies
+        ordering.emit_final(10).await; // slot 3: the delayed redelivery of 10
+        retries.retry(10, 1).await;
+        ordering.emit_final(20).await; // slot 4: the delayed redelivery of 20
+        retries.retry(20, 1).await;
+
+        output.assert_yields_only(target).await;
+    });
+
+    // Chain 2: assume_retries (NoOrder) then assume_ordering (ExactlyOnce).
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let retries: RetriesHook<u32, NoOrder> = flow.sim_hook();
+    let ordering: OrderingHook<u32> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let output = input
+        .weaken_retries::<AtLeastOnce>()
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// scripted
+            hook = retries
+        ))
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = ordering
+        ))
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        retries.auto_pause();
+        ordering.auto_pause();
+        in_send.send_many_unordered([10, 20]);
+
+        retries.retry(10, 2).await;
+        retries.retry(20, 3).await;
+        for value in target {
+            ordering.next(value).await;
+        }
+
+        output.assert_yields_only(target).await;
+    });
+}
+
+/// An in-tick `assume_retries` on a `NoOrder` stream is scripted with a single `release`
+/// decision covering the tick's complete input: every received value at least once, only
+/// received values, order irrelevant.
+#[test]
+fn scripted_inline_retries_release() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32, NoOrder> = flow.sim_hook();
+    let retries: RetriesHook<u32, NoOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b.weaken_retries::<AtLeastOnce>()
+            .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1, 2]);
+        batch_hook.release_values([1, 2]).await;
+        retries.release([2, 1, 1]).await;
+        output.assert_yields_only_unordered([2, 1, 1]).await;
+    });
+}
+
+/// An in-tick retries decision that drops a pending value is rejected: at-least-once
+/// permits duplicates, not losses.
+#[test]
+#[should_panic(expected = "must release every pending input value at least once")]
+fn scripted_inline_retries_missing_value_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32, NoOrder> = flow.sim_hook();
+    let retries: RetriesHook<u32, NoOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b.weaken_retries::<AtLeastOnce>()
+            .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1, 2]);
+        batch_hook.release_values([1, 2]).await;
+        retries.release([1, 1]).await;
+    });
+}
+
+/// An in-tick `assume_retries` on a `TotalOrder` stream must release the input with each
+/// value expanded adjacently in place.
+#[test]
+fn scripted_inline_ordered_retries_adjacent_expansion() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32> = flow.sim_hook();
+    let retries: RetriesHook<u32, TotalOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b.weaken_retries::<AtLeastOnce>()
+            .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1, 2]);
+        batch_hook.release(2).await;
+        retries.release([1, 1, 2]).await;
+        output.assert_yields_only([1, 1, 2]).await;
+    });
+}
+
+/// On a `TotalOrder` stream a copy cannot be delayed past a later value: `[1, 2, 1]`
+/// from input `[1, 2]` is a *different collection* (an extra slot for 1), mintable only
+/// where the order dimension is observed, not at `assume_retries`.
+#[test]
+#[should_panic(expected = "expanded adjacently in place")]
+fn scripted_inline_ordered_retries_delayed_copy_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32> = flow.sim_hook();
+    let retries: RetriesHook<u32, TotalOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b.weaken_retries::<AtLeastOnce>()
+            .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1, 2]);
+        batch_hook.release(2).await;
+        retries.release([1, 2, 1]).await;
+    });
+}
+
+/// An in-tick `assume_ordering` on an at-least-once stream takes the complete slot
+/// sequence in one decision: each value may occupy several **non-adjacent** slots, and
+/// the scripted sequence is the output order. The still-`AtLeastOnce` output is
+/// observed through a downstream in-tick `assume_retries` with every slot at
+/// cardinality 1.
+#[test]
+fn scripted_inline_alo_ordering_emits_slots() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32, NoOrder> = flow.sim_hook();
+    let ordering: OrderingHook<u32, Bounded, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<u32, TotalOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b.weaken_retries::<AtLeastOnce>()
+            .assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = ordering))
+            .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1, 2]);
+        batch_hook.release_values([1, 2]).await;
+        ordering.order([2, 1, 2]).await;
+        retries.release([2, 1, 2]).await;
+        output.assert_yields_only([2, 1, 2]).await;
+    });
+}
+
+/// An in-tick at-least-once ordering may only emit values that were received: a foreign
+/// value is rejected.
+#[test]
+#[should_panic(expected = "not pending")]
+fn scripted_inline_alo_ordering_foreign_value_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32, NoOrder> = flow.sim_hook();
+    let ordering: OrderingHook<u32, Bounded, AtLeastOnce> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b.weaken_retries::<AtLeastOnce>()
+            .assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = ordering))
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1, 2]);
+        batch_hook.release_values([1, 2]).await;
+        ordering.order([1, 2, 3]).await;
+    });
+}
+
+/// An in-tick at-least-once ordering may not give a value's sole buffered element
+/// adjacent slots: the adjacent duplicate is redundant (per-slot cardinality belongs to
+/// `assume_retries`), so the mis-stated script fails loudly.
+#[test]
+#[should_panic(expected = "in adjacent slots, which is redundant")]
+fn scripted_inline_alo_ordering_sole_element_adjacent_slots_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32, NoOrder> = flow.sim_hook();
+    let ordering: OrderingHook<u32, Bounded, AtLeastOnce> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b.weaken_retries::<AtLeastOnce>()
+            .assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = ordering))
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1, 2]);
+        batch_hook.release_values([1, 2]).await;
+        ordering.order([1, 1, 2]).await;
+    });
+}
+
+/// Adjacent equal slots are fine when the tick received two equal elements: the
+/// adjacent slots then belong to different elements, even though the script (which
+/// names values) cannot tell them apart.
+#[test]
+fn scripted_inline_alo_ordering_shared_value_adjacent_slots() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32, NoOrder> = flow.sim_hook();
+    let ordering: OrderingHook<u32, Bounded, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<u32, TotalOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b.weaken_retries::<AtLeastOnce>()
+            .assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = ordering))
+            .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1, 1]);
+        batch_hook.release_values([1, 1]).await;
+        ordering.order([1, 1]).await;
+        retries.release([1, 1]).await;
+        output.assert_yields_only([1, 1]).await;
+    });
+}
+
+/// Retry non-determinism has an infinite decision space (every element admits
+/// arbitrarily many retries), so an `assume_retries` that is not bound to a sim hook is
+/// a build-time error under simulation rather than an autonomously explored dimension.
+#[test]
+#[should_panic(expected = "observing retries (`assume_retries`) has an infinite decision space")]
+fn unhooked_assume_retries_panics_at_build() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let (_in_send, input) = node.sim_input::<u32, NoOrder, AtLeastOnce>();
+    let _output = input
+        .assume_retries::<ExactlyOnce>(nondet!(/** deliberately unhooked */))
+        .sim_output();
+
+    flow.sim().deterministic(async || {});
+}
+
+/// Ordering an at-least-once stream also decides retry slots, so an unhooked
+/// `assume_ordering` on an `AtLeastOnce` stream is likewise a build-time error.
+#[test]
+#[should_panic(expected = "observing the order of an at-least-once stream")]
+fn unhooked_alo_assume_ordering_panics_at_build() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let (_in_send, input) = node.sim_input::<u32, NoOrder, AtLeastOnce>();
+    let _output = input
+        .assume_ordering::<TotalOrder>(nondet!(/** deliberately unhooked */))
+        .sim_output();
+
+    flow.sim().deterministic(async || {});
 }

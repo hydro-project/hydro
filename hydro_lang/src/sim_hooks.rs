@@ -23,7 +23,7 @@
 use std::marker::PhantomData;
 
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
-use crate::live_collections::stream::{ExactlyOnce, Ordering, Retries, TotalOrder};
+use crate::live_collections::stream::{ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder};
 
 /// A simulator hook handle (or a set of them) that can be created in one call to
 /// [`FlowBuilder::sim_hook`](crate::compile::builder::FlowBuilder::sim_hook).
@@ -129,24 +129,29 @@ impl<T> SimHook for SnapshotHook<T> {
     }
 }
 
-/// A hook handle controlling an `assume_ordering` operator over `T` elements.
+/// A hook handle controlling an `assume_ordering` operator over `T` elements, with retry
+/// guarantee `R` (mirroring the type of the stream whose ordering is assumed).
 ///
-/// A top-level decision selects the next buffered element to release. An `assume_ordering`
-/// inside a tick instead takes one exhaustive ordering of that tick's complete input. See
-/// `hydro_lang::sim::hooks` for the decisions offered.
-pub struct OrderingHook<T, B: Boundedness = Unbounded> {
+/// For an `ExactlyOnce` stream, a top-level decision selects the next buffered element to
+/// release, and an `assume_ordering` inside a tick instead takes one exhaustive ordering
+/// of that tick's complete input. For an `AtLeastOnce` stream, ordering additionally
+/// decides which *slots* each element's retries occupy, so top-level decisions split into
+/// `emit` (release a slot, keep the element for re-emission) and `emit_final` (release
+/// the element's last slot), and the in-tick ordering may emit each element into several
+/// slots. See `hydro_lang::sim::hooks` for the decisions offered.
+pub struct OrderingHook<T, B: Boundedness = Unbounded, R: Retries = ExactlyOnce> {
     pub(crate) id: usize,
-    pub(crate) _phantom: PhantomData<fn(T, B)>,
+    pub(crate) _phantom: PhantomData<fn(T, B, R)>,
 }
 
-impl<T, B: Boundedness> Clone for OrderingHook<T, B> {
+impl<T, B: Boundedness, R: Retries> Clone for OrderingHook<T, B, R> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<T, B: Boundedness> Copy for OrderingHook<T, B> {}
+impl<T, B: Boundedness, R: Retries> Copy for OrderingHook<T, B, R> {}
 
-impl<T, B: Boundedness> std::fmt::Debug for OrderingHook<T, B> {
+impl<T, B: Boundedness, R: Retries> std::fmt::Debug for OrderingHook<T, B, R> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("OrderingHook")
             .field("id", &self.id)
@@ -154,9 +159,45 @@ impl<T, B: Boundedness> std::fmt::Debug for OrderingHook<T, B> {
     }
 }
 
-impl<T, B: Boundedness> SimHook for OrderingHook<T, B> {
+impl<T, B: Boundedness, R: Retries> SimHook for OrderingHook<T, B, R> {
     fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
         OrderingHook {
+            id: next_id(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+/// A hook handle controlling an `assume_retries` operator over a stream of `T` elements
+/// with ordering `O` (mirroring the type of the stream whose retries are assumed).
+///
+/// A decision for a retries hook says how many times a buffered element is released —
+/// the point where the simulator injects the duplicates the `AtLeastOnce` type says
+/// downstream must tolerate. Because every element admits arbitrarily many retries, the
+/// decision space is infinite and this non-determinism can never be explored
+/// autonomously: an `assume_retries` under simulation **must** be bound to a hook. See
+/// `hydro_lang::sim::hooks` for the decisions offered.
+pub struct RetriesHook<T, O: Ordering = NoOrder, B: Boundedness = Unbounded> {
+    pub(crate) id: usize,
+    pub(crate) _phantom: PhantomData<fn(T, O, B)>,
+}
+
+impl<T, O: Ordering, B: Boundedness> Clone for RetriesHook<T, O, B> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<T, O: Ordering, B: Boundedness> Copy for RetriesHook<T, O, B> {}
+
+impl<T, O: Ordering, B: Boundedness> std::fmt::Debug for RetriesHook<T, O, B> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RetriesHook").field("id", &self.id).finish()
+    }
+}
+
+impl<T, O: Ordering, B: Boundedness> SimHook for RetriesHook<T, O, B> {
+    fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
+        RetriesHook {
             id: next_id(),
             _phantom: PhantomData,
         }

@@ -48,13 +48,16 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::live_collections::boundedness::{Bounded, Unbounded};
-use crate::live_collections::stream::{NoOrder, Ordering, Retries, TotalOrder};
+use crate::live_collections::stream::{
+    AtLeastOnce, ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder,
+};
 use crate::sim::compiled::{
     ScheduleDecision, script_ctx, script_stuck_error, script_unconsumed_description,
 };
 use crate::sim::runtime::{
-    BatchDecision, InlineOrderingDecision, KeyedBatchDecision, KeyedSnapshotDecision,
-    MergeDecision, ScriptDecision, SnapshotDecision, TopLevelOrderingDecision,
+    AtLeastOnceOrderingDecision, BatchDecision, InlineOrderingDecision, InlineRetriesDecision,
+    KeyedBatchDecision, KeyedSnapshotDecision, MergeDecision, OrderedRetriesDecision,
+    RetriesDecision, ScriptDecision, SnapshotDecision, TopLevelOrderingDecision,
     UnorderedBatchDecision, UnorderedKeyedBatchDecision,
 };
 pub use crate::sim::runtime::{
@@ -62,7 +65,7 @@ pub use crate::sim::runtime::{
 };
 pub use crate::sim_hooks::{
     BatchHook, KeyedBatchHook, KeyedMergeOrderedHook, KeyedOrderingHook, KeyedSnapshotHook,
-    MergeOrderedHook, OrderingHook, PartialOrderingHook, SimHook, SnapshotHook,
+    MergeOrderedHook, OrderingHook, PartialOrderingHook, RetriesHook, SimHook, SnapshotHook,
 };
 
 /// A scripted decision that has been issued but not yet installed into the schedule.
@@ -105,6 +108,17 @@ fn assert_distinct_keys<'a, K: std::hash::Hash + Eq + 'a>(
             position
         );
     }
+}
+
+/// Panics (at the scripting call site) when a retries decision requests zero copies:
+/// releasing an element zero times would be a *loss*, which `AtLeastOnce` does not
+/// permit.
+#[track_caller]
+fn assert_copies_at_least_one(copies: usize) {
+    assert!(
+        copies >= 1,
+        "the number of copies must be at least 1 (at-least-once permits duplicates, not losses)"
+    );
 }
 
 impl Future for DecisionFuture {
@@ -364,7 +378,7 @@ where
     }
 }
 
-impl<T> OrderingHook<T, Unbounded>
+impl<T> OrderingHook<T, Unbounded, ExactlyOnce>
 where
     T: Serialize + DeserializeOwned,
 {
@@ -389,7 +403,7 @@ where
     }
 }
 
-impl<T> OrderingHook<T, Bounded>
+impl<T> OrderingHook<T, Bounded, ExactlyOnce>
 where
     T: Serialize + DeserializeOwned,
 {
@@ -400,6 +414,167 @@ where
         DecisionFuture::new(
             self.id,
             &InlineOrderingDecision::Order(values.into_iter().collect()),
+        )
+    }
+}
+
+impl<T> OrderingHook<T, Unbounded, AtLeastOnce>
+where
+    T: Serialize + DeserializeOwned,
+{
+    /// Scripts a top-level `assume_ordering` action on an at-least-once stream to release
+    /// one **slot** for the value `value`, *keeping* it buffered: later decisions may
+    /// emit it again (a delayed redelivery, still `AtLeastOnce`), after other elements
+    /// have taken slots in between.
+    ///
+    /// The value remains pending input, so the script must eventually retire it with
+    /// [`Self::emit_final`] (or declare the buffering with the pause family). The
+    /// immediately-following decision may name the same value again only when two or
+    /// more buffered elements share it (the adjacent slots then belong to different
+    /// elements): a sole element in adjacent slots would be a redundant duplicate —
+    /// adjacent duplicate slots denote the same at-least-once collection, and per-slot
+    /// *cardinality* belongs to the downstream `assume_retries` observation.
+    pub fn emit(&self, value: T) -> DecisionFuture {
+        DecisionFuture::new(self.id, &AtLeastOnceOrderingDecision::Emit(value))
+    }
+
+    /// Scripts a top-level `assume_ordering` action on an at-least-once stream to release
+    /// the *last* slot for the value `value`, consuming **every** buffered element equal
+    /// to it (the script names values, not individual elements, so retirement is
+    /// value-level). Because each buffered element must occupy at least one slot,
+    /// retiring a value that several buffered elements share requires enough prior
+    /// [`Self::emit`]s: `k` equal buffered elements need at least `k` slots in total. A
+    /// value that was never emitted before simply occupies a single slot.
+    pub fn emit_final(&self, value: T) -> DecisionFuture {
+        DecisionFuture::new(self.id, &AtLeastOnceOrderingDecision::EmitFinal(value))
+    }
+
+    pause_family!(OrderingStatus);
+
+    /// Pauses a top-level ordering hook until at least `n` elements are buffered; see
+    /// [`Self::pause_until`].
+    pub fn pause_until_count(
+        &self,
+        n: usize,
+    ) -> PauseUntilFuture<OrderingStatus, impl Fn(&OrderingStatus) -> bool + Unpin> {
+        self.pause_until_labeled(format!("pause_until_count({})", n), move |status| {
+            status.buffered >= n
+        })
+    }
+}
+
+impl<T> OrderingHook<T, Bounded, AtLeastOnce>
+where
+    T: Serialize + DeserializeOwned,
+{
+    /// Scripts an in-tick `assume_ordering` observation on an at-least-once stream to
+    /// consume its complete input in exactly this slot sequence. Every value received by
+    /// the operator during that tick must be emitted into at least one slot, and a value
+    /// may occupy several **non-adjacent** slots — each extra slot is a delayed
+    /// redelivery, still `AtLeastOnce`. Only received values may appear, and adjacent
+    /// equal slots are accepted only when the tick received at least two equal instances
+    /// of that value (a sole instance in adjacent slots would be a redundant duplicate —
+    /// per-slot cardinality belongs to the downstream `assume_retries`).
+    pub fn order(&self, values: impl IntoIterator<Item = T>) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            &InlineOrderingDecision::Order(values.into_iter().collect()),
+        )
+    }
+}
+
+impl<T, O: Ordering> RetriesHook<T, O, Unbounded> {
+    pause_family!(OrderingStatus);
+
+    /// Pauses a top-level retries hook until at least `n` elements are buffered; see
+    /// [`Self::pause_until`].
+    pub fn pause_until_count(
+        &self,
+        n: usize,
+    ) -> PauseUntilFuture<OrderingStatus, impl Fn(&OrderingStatus) -> bool + Unpin> {
+        self.pause_until_labeled(format!("pause_until_count({})", n), move |status| {
+            status.buffered >= n
+        })
+    }
+}
+
+impl<T> RetriesHook<T, NoOrder, Unbounded>
+where
+    T: Serialize + DeserializeOwned,
+{
+    /// Scripts a top-level `assume_retries` action to release `copies` copies of the
+    /// buffered element equal to `value`, consuming it. This is where the simulator
+    /// injects the duplicates the `AtLeastOnce` input type says downstream must
+    /// tolerate; `copies` is the *total* number of deliveries, so `retry(v, 1)`
+    /// observes `v` exactly once, with no duplicate.
+    ///
+    /// Any buffered element may be named — the copies' placement is unobservable on a
+    /// `NoOrder` output, so the cardinality is the entire decision.
+    ///
+    /// # Panics
+    /// Panics immediately if `copies` is zero: releasing an element zero times would be
+    /// a *loss*, which `AtLeastOnce` does not permit.
+    #[track_caller]
+    pub fn retry(&self, value: T, copies: usize) -> DecisionFuture {
+        assert_copies_at_least_one(copies);
+        DecisionFuture::new(self.id, &RetriesDecision::Retry(value, copies))
+    }
+}
+
+impl<T> RetriesHook<T, TotalOrder, Unbounded>
+where
+    T: Serialize + DeserializeOwned,
+{
+    /// Scripts a top-level `assume_retries` action to expand the **front** of the
+    /// buffered queue, which must equal `value`, into `copies` adjacent copies,
+    /// consuming the slot. This is where the simulator injects the duplicates the
+    /// `AtLeastOnce` input type says downstream must tolerate; `copies` is the *total*
+    /// number of deliveries (`retry(v, 1)` observes `v` exactly once, with no
+    /// duplicate), and input order is preserved, so retries only expand a slot in
+    /// place (a mismatching front panics).
+    ///
+    /// # Panics
+    /// Panics immediately if `copies` is zero: releasing an element zero times would be
+    /// a *loss*, which `AtLeastOnce` does not permit.
+    #[track_caller]
+    pub fn retry(&self, value: T, copies: usize) -> DecisionFuture {
+        assert_copies_at_least_one(copies);
+        DecisionFuture::new(self.id, &OrderedRetriesDecision::Retry(value, copies))
+    }
+
+    /// Scripts a top-level `assume_retries` action to expand the **front** of the
+    /// buffered queue, whatever it is, into `copies` adjacent copies, consuming the
+    /// slot (waiting for one to arrive if the queue is empty). Unlike [`Self::retry`],
+    /// this does not assert the released value; prefer `retry(value, copies)`, which
+    /// names the slot it means and fails loudly when the script falls out of sync with
+    /// the program.
+    ///
+    /// # Panics
+    /// Panics immediately if `copies` is zero: releasing an element zero times would be
+    /// a *loss*, which `AtLeastOnce` does not permit.
+    #[track_caller]
+    pub fn retry_next(&self, copies: usize) -> DecisionFuture {
+        assert_copies_at_least_one(copies);
+        DecisionFuture::new(self.id, &OrderedRetriesDecision::<T>::RetryNext(copies))
+    }
+}
+
+impl<T, O: Ordering> RetriesHook<T, O, Bounded>
+where
+    T: Serialize + DeserializeOwned,
+{
+    /// Scripts an in-tick `assume_retries` observation to consume its complete input and
+    /// release exactly these values. Every value received by the operator during that
+    /// tick must be released at least once, and only received values may appear.
+    ///
+    /// On a `TotalOrder` stream the scripted sequence must be the input with each value
+    /// expanded adjacently in place (one or more copies each — a copy cannot be delayed
+    /// past a later value). On a `NoOrder` stream only the multiset of scripted values
+    /// matters.
+    pub fn release(&self, values: impl IntoIterator<Item = T>) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            &InlineRetriesDecision::Release(values.into_iter().collect()),
         )
     }
 }

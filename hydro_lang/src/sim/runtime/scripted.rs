@@ -25,7 +25,7 @@ use std::rc::Rc;
 
 use colored::Colorize;
 
-use super::{HookLocationMeta, InlineHook, RuntimeHook, SimLocation, abort};
+use super::{HookLocationMeta, RuntimeHook, SimLocation, abort};
 
 /// The decisions a test-side handle can script for one kind of hook. Serialized when
 /// crossing the type-erased registry surface (see [`ScriptedHookControl::install_decision`]).
@@ -204,7 +204,12 @@ pub trait ScriptedInlineHook: ScriptedHookControl {
 /// inline hook types ([`StreamOrderHook`](super::StreamOrderHook), and the keyed/partial-order/merge kinds as
 /// they become scriptable). The generic [`ScriptedInline<H>`] shell turns any implementor
 /// into a scripted inline hook.
-pub trait ScriptableInlineHook: InlineHook {
+///
+/// Like [`ScriptableHook`], this only requires the shared [`RuntimeHook`] surface, not
+/// [`InlineHook`](super::InlineHook): a hook kind whose decision space cannot be explored
+/// autonomously (e.g. the retry kinds, whose space is infinite) is scriptable without any
+/// autonomous decision capability.
+pub trait ScriptableInlineHook: RuntimeHook {
     /// The decisions a handle can script for this kind of hook.
     type Decision: ScriptDecision;
     /// This kind's view of its pending, undecided input, read on demand by the test-side
