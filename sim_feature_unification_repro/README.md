@@ -26,14 +26,15 @@ cd sim_feature_unification_repro
 cargo test -p sim_repro_staged
 
 # 2. Unified invocation: cargo feature unification gives the HOST test binary
-#    a tokio compiled with "full" (parking_lot, process, signal, ...), while
+#    a tokio compiled with "full" (rt-multi-thread, parking_lot, ...), while
 #    the sim dylib generated under target/hydro_trybuild/ is still built
-#    against minimal-feature tokio -> UB
+#    against minimal-feature tokio.
+#    -> `host_and_dylib_agree_on_tokio_layout` FAILS deterministically on any
+#       platform (the two sides disagree on size_of::<tokio::runtime::Handle>:
+#       host 16 vs dylib 8);
+#    -> additionally UB for every sim test (observed as SIGSEGV on
+#       macOS/aarch64)
 cargo test --workspace
-
-# 3. Deterministic, platform-independent demonstration of the divergence
-#    (no reliance on the UB manifesting):
-./check_feature_divergence.sh
 ```
 
 ## Mechanism
@@ -68,8 +69,13 @@ transitive features that no manifest pin currently covers.
 | Invocation | Linux x86_64 | macOS aarch64 |
 |---|---|---|
 | `cargo test -p sim_repro_staged` | pass | pass |
-| `cargo test --workspace` | pass (UB silent) | **SIGSEGV** (observed in the originating project) |
-| `./check_feature_divergence.sh` | **fails (divergence)** | **fails (divergence)** |
+| `cargo test --workspace` | **`host_and_dylib_agree_on_tokio_layout` fails** (other sim tests pass with silent UB) | **`host_and_dylib_agree_on_tokio_layout` fails**; sim tests **SIGSEGV** (observed in the originating project) |
+
+`host_and_dylib_agree_on_tokio_layout` streams
+`size_of::<tokio::runtime::Handle>()`, evaluated *inside the dylib* by a
+`q!()` closure, out through a sim port and compares it against the host's
+value — a direct, platform-independent witness that the two sides disagree
+about the layout of types they share.
 
 The macOS crash (from the originating report, hydro-project/infinity#112, an
 equivalent workspace shape): host polls a dylib-created
@@ -77,16 +83,21 @@ equivalent workspace shape): host polls a dylib-created
 `tokio::sync::mpsc::block::Block::<Bytes>::is_at_index` with `self == NULL`
 (fault address `0x400`), via `SimReceiver::next` →
 `UnboundedReceiverStream::poll_next` → `Rx::pop` → `try_advancing_head`.
-A green run on Linux is *not* evidence of soundness — the divergence is
-identical there (see the check script); the misbehavior is just currently
-silent on that target.
+A green run of the *sim* tests on Linux is *not* evidence of soundness — the
+divergence is identical there (the layout test proves it); the transport
+misbehavior is just currently silent on that target.
 
 The unified-invocation tokio feature delta observed with this repro
 (tokio v1.53.1): host gains `full, parking_lot, process, rt-multi-thread,
-signal, signal-hook-registry` over the dylib. `parking_lot` (which swaps
-tokio's internal lock implementations) is the prime layout-difference
-suspect, but bisecting which single feature triggers the crash requires a
-macOS/aarch64 machine; *any* host-only feature constitutes the divergence.
+signal, signal-hook-registry` over the dylib. Size-probing tokio's public
+types under each single extra feature shows `rt-multi-thread` **alone**
+changes public type layouts (`runtime::Handle` 8 → 16, `runtime::Runtime`
+64 → 80, `time::Sleep` 96 → 112, `net::TcpListener` 32 → 40, because the
+runtime scheduler enum gains a multi-thread variant), while `parking_lot`,
+`process`, and `signal` individually change none of the probed public types.
+Private internals (like the mpsc structures implicated in the macOS crash)
+may of course shift under any of them; *any* host-only feature constitutes
+the divergence.
 
 ## Possible fix directions
 

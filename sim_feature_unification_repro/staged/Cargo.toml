@@ -8,6 +8,17 @@ edition = "2024"
 hydro_lang = { path = "../../hydro_lang" }
 stageleft = "0.15.1"
 
+# Used by `host_and_dylib_agree_on_tokio_layout` to compare
+# `size_of::<tokio::runtime::Handle>()` between the host test binary and the
+# generated sim dylib. Must be a regular dependency (not a dev-dependency) so
+# that stageleft re-exports it through `__staged::__deps` for the `q!()` body
+# that runs inside the dylib. Deliberately requests **no features**: this
+# manifest is what the generated trybuild workspace resolves from, so pinning
+# tokio features here would re-align the dylib with the unified host and mask
+# the bug — exactly what `hydro_test`'s `tokio = { features = ["full"] }`
+# dev-dependency does accidentally.
+tokio = { version = "1", default-features = false }
+
 [build-dependencies]
 stageleft_tool = "0.15.1"
 
