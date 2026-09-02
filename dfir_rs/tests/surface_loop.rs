@@ -239,6 +239,66 @@ pub fn test_batch_lazy() {
     assert_eq!(out, Vec::<i32>::new());
 }
 
+/// Test snapshot: like `batch_lazy()`, data enters the loop without triggering it to fire —
+/// but unlike `batch_lazy()` (see `test_batch_lazy`, the negative control, where data pending
+/// in a non-firing tick is *dropped*), `snapshot()` RETAINS pending data across ticks and
+/// delivers it at the loop's next firing. Nothing is ever lost.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_snapshot() {
+    let (trigger_send, trigger_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (snap_send, snap_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+
+    let mut df = dfir_syntax! {
+        trigger_inp = source_stream(trigger_recv);
+        snap_inp = source_stream(snap_recv);
+        loop {
+            merged = union();
+            trigger_inp -> batch() -> merged;
+            snap_inp -> snapshot() -> merged;
+            merged -> for_each(|x| out_send.send(x).unwrap());
+        };
+    };
+
+    // Tick 1: only snapshot data — loop should NOT fire (snapshot never triggers it)...
+    snap_send.send(100).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, Vec::<i32>::new());
+
+    // Tick 2: trigger data arrives — loop fires and sees BOTH the retained data from
+    // tick 1 (which `batch_lazy()` would have dropped) and this tick's data.
+    trigger_send.send(1).unwrap();
+    snap_send.send(200).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![1, 100, 200]);
+
+    // Tick 3: only trigger, no pending snapshot data — retained buffer was fully drained.
+    trigger_send.send(2).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, vec![2]);
+
+    // Ticks 4 and 5: snapshot data trickles in over two non-firing ticks — retained.
+    snap_send.send(300).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, Vec::<i32>::new());
+    snap_send.send(400).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, Vec::<i32>::new());
+
+    // Tick 6: loop fires — observes everything accumulated across ticks 4-5.
+    trigger_send.send(3).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![3, 300, 400]);
+}
+
 /// Test batch_eager: the loop fires every tick, even when the eager input is empty.
 /// A `fold` inside the loop should emit output on every tick regardless of input.
 #[multiplatform_test(test, wasm, env_tracing)]

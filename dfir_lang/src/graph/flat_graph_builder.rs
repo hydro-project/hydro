@@ -1132,6 +1132,33 @@ impl FlatGraphBuilder {
                         ));
                     }
                 }
+                Some(FloType::WindowingRetain) => {
+                    if !is_input {
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            format!(
+                                "Windowing operator `{}(...)` must be the first input operator into a `loop {{ ... }} context.",
+                                op_inst.op_constraints.name
+                            )
+                        ));
+                    } else if loop_id
+                        .and_then(|lid| self.flat_graph.loop_parent(lid))
+                        .is_some()
+                    {
+                        // A retaining windowing operator holds pending data across *ticks*.
+                        // Nested loops iterate to fixpoint within a single tick, so cross-tick
+                        // retention does not apply; only root-level loop entries are supported.
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            format!(
+                                "Retaining windowing operator `{}(...)` is only allowed at the entry of a root-level `loop {{ ... }}` context, not a nested loop.",
+                                op_inst.op_constraints.name
+                            )
+                        ));
+                    }
+                }
                 Some(FloType::WindowingEager) => {
                     if !is_input {
                         self.diagnostics.push(Diagnostic::spanned(
