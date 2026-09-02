@@ -27,7 +27,7 @@ members = [
     "variadics",
     "website_playground",
 ]
-exclude = ["template"]
+exclude = ["template", "sim_feature_unification_repro"]
 
 resolver = "2"
 

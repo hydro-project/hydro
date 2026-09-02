@@ -1,0 +1,13 @@
+[workspace]
+members = ["staged", "sibling"]
+resolver = "2"
+
+# Excluded from the root hydro workspace (see root `Cargo.toml` `exclude`):
+# this repro *requires* its own workspace so that the two invocations below
+# resolve features differently:
+#
+#   cargo test -p sim_repro_staged   # host features == sim dylib features -> OK
+#   cargo test --workspace           # sibling unifies tokio/full into the host,
+#                                    # but not into the generated sim dylib -> UB
+#
+# See README.md for details.
