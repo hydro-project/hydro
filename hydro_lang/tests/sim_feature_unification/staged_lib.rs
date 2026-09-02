@@ -1,40 +1,18 @@
+//! Fixture: source of the `sim_repro_staged` crate scaffolded by the
+//! `sim_feature_unification` meta-test (see `../sim_feature_unification.rs`).
+//!
+//! This file is not compiled as part of `hydro_lang`; it is written into a
+//! generated cargo workspace at test time via `include_str!`.
+//!
 //! Minimal staged crate reproducing host/dylib dependency-feature divergence
-//! in Hydro's simulator.
-//!
-//! The simulator (`flow.sim()`) compiles staged dataflow into a `cdylib` via a
-//! synthetic cargo workspace under `target/hydro_trybuild/<crate>/`, `dlopen`s
-//! it, and shares Rust data structures across the boundary (e.g. the
-//! `tokio::sync::mpsc` unbounded channels backing `sim_input`/`sim_output`
-//! ports are created inside the dylib and polled by the host's
-//! `SimReceiver`). That is only sound if the host test binary and the dylib
-//! are compiled with *identical* dependency configurations.
-//!
-//! `create_trybuild()` (in `hydro_lang/src/compile/trybuild/generate.rs`)
-//! synthesizes the dylib workspace's manifest from **this crate's
-//! `Cargo.toml` alone** and re-runs feature resolution over that small graph.
-//! Dependency *versions* are pinned (the workspace `Cargo.lock` is copied and
-//! `cargo update -w` is run), but dependency *features* are not: features
-//! that a **sibling workspace crate** unifies into the host build (here,
-//! `../sibling`'s `tokio = { features = ["full"] }`) never reach the dylib's
-//! manifest. `features::find()` only forwards this crate's own package
-//! features, not transitive dependency features.
-//!
-//! Reproduction (see README.md):
-//!
-//! ```text
-//! cargo test -p sim_repro_staged   # host tokio == dylib tokio -> passes
-//! cargo test --workspace           # host tokio gains "full" -> UB
-//! ```
-//!
-//! The resulting UB has been observed as a deterministic SIGSEGV on
-//! macOS/aarch64 (`tokio::sync::mpsc::block::Block::<Bytes>::is_at_index`
-//! called with `self == NULL` while the host polls a dylib-created
-//! `UnboundedReceiver<Bytes>`); on Linux/x86_64 the same divergence has been
-//! observed to pass silently. Both are the same soundness bug — the crash is
-//! just where the dice land. The `host_and_dylib_agree_on_tokio_layout` test
-//! below demonstrates the divergence deterministically on any platform by
-//! comparing `size_of::<tokio::runtime::Handle>()` on both sides of the
-//! `dlopen` boundary.
+//! in Hydro's simulator. The simulator (`flow.sim()`) compiles staged
+//! dataflow into a `cdylib` via a synthetic cargo workspace under
+//! `target/hydro_trybuild/<crate>/`, `dlopen`s it, and shares Rust data
+//! structures across the boundary (e.g. the `tokio::sync::mpsc` unbounded
+//! channels backing `sim_input`/`sim_output` ports are created inside the
+//! dylib and polled by the host's `SimReceiver`). That is only sound if the
+//! host test binary and the dylib are compiled with *identical* dependency
+//! configurations. See the meta-test's module docs for the full mechanism.
 
 #[cfg(stageleft_runtime)]
 hydro_lang::setup!();
@@ -52,7 +30,7 @@ mod tests {
 
     /// Passes when run as `cargo test -p sim_repro_staged`.
     ///
-    /// Exhibits UB (SIGSEGV on macOS/aarch64) when run as
+    /// Exhibits UB (observed as a SIGSEGV on macOS/aarch64) when run as
     /// `cargo test --workspace`, because the sibling crate's
     /// `tokio = ["full"]` unifies into the host test binary while the sim
     /// dylib is still built with the minimal tokio feature set.
@@ -120,7 +98,8 @@ mod tests {
                  dylib = {dylib_size}); they share tokio channel internals \
                  across the dlopen boundary, so this divergence is undefined \
                  behavior. See create_trybuild() in \
-                 hydro_lang/src/compile/trybuild/generate.rs and README.md."
+                 hydro_lang/src/compile/trybuild/generate.rs and the \
+                 sim_feature_unification meta-test in hydro_lang/tests."
             );
         });
     }
