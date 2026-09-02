@@ -333,6 +333,7 @@ declare_ops![
     reduce_no_replay::REDUCE_NO_REPLAY,
     scan::SCAN,
     scan_async_blocking::SCAN_ASYNC_BLOCKING,
+    snapshot::SNAPSHOT,
     spin::SPIN,
     sort::SORT,
     sort_by_key::SORT_BY_KEY,
@@ -616,6 +617,12 @@ pub enum FloType {
     /// A lazy windowing operator — moves data into a loop context but does not trigger the loop.
     /// Data is dropped if the loop does not fire that tick.
     WindowingLazy,
+    /// A retaining windowing operator — moves data into a loop context but does not trigger the
+    /// loop. Unlike [`FloType::WindowingLazy`], pending data is retained across ticks and
+    /// delivered at the loop's next firing (nothing is dropped). Only valid at the entry of a
+    /// root-level loop (nested loops iterate within a single tick, so cross-tick retention does
+    /// not apply).
+    WindowingRetain,
     /// An eager windowing operator — moves data into a loop context and always triggers the loop,
     /// even when the windowed input is empty. Only valid at the entry of a root-level loop (it is
     /// disallowed in nested loops, where it would prevent the fixpoint iteration from terminating).
