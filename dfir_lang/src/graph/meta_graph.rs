@@ -16,7 +16,7 @@ use syn::spanned::Spanned;
 use super::graph_write::{Dot, GraphWrite, Mermaid};
 use super::ops::{
     DelayType, FloType, OPERATORS, OperatorWriteOutput, WriteContextArgs, find_op_op_constraints,
-    null_write_iterator_fn,
+    null_write_iterator_fn, snapshot_keyed::SNAPSHOT_KEYED, snapshot_prefix::SNAPSHOT_PREFIX,
 };
 use super::{
     CONTEXT, Color, DiMulGraph, GRAPH, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId,
@@ -26,6 +26,22 @@ use super::{
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::pretty_span::{PrettyRowCol, PrettySpan};
 use crate::process_singletons;
+
+/// The shape of the persistent state backing a retaining windowing (`FloType::WindowingRetain`)
+/// loop-entry handoff. Such state is declared outside the tick closure, persists across ticks,
+/// and is never consumed by the loop (which reads clones out of it each time it fires).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum RetainKind {
+    /// `snapshot()`: a single last-write-wins `Option<T>` cell; each new item replaces the
+    /// previous one.
+    Cell,
+    /// `snapshot_keyed()`: a per-key `FxHashMap<K, V>` fed by `(K, Option<V>)` updates; `Some(v)`
+    /// upserts, `None` removes.
+    Keyed,
+    /// `snapshot_prefix()`: an append-only `Vec<T>` of every item received so far, in arrival
+    /// order.
+    Prefix,
+}
 
 /// A resolved handoff reference: the target node ID plus mutability and access group info.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1026,14 +1042,17 @@ impl DfirGraph {
         let mut gate_checks: Vec<TokenStream> = entry_handoffs
             .iter()
             .filter(|&&hoff_id| {
-                // Check if the successor (windowing operator) is lazy.
+                // Check if the successor (windowing operator) is lazy or retaining.
                 // If so, exclude from the gate — it doesn't trigger the loop.
                 let is_lazy = self
                     .node_successors(hoff_id)
                     .next()
                     .and_then(|(_, succ)| self.node_op_inst(succ))
                     .is_some_and(|op_inst| {
-                        op_inst.op_constraints.flo_type == Some(FloType::WindowingLazy)
+                        matches!(
+                            op_inst.op_constraints.flo_type,
+                            Some(FloType::WindowingLazy | FloType::WindowingRetain)
+                        )
                     });
                 !is_lazy
             })
@@ -1264,6 +1283,62 @@ impl DfirGraph {
                 ))
             })
             .collect::<SparseSecondaryMap<_, _>>();
+
+        // Determine which handoff nodes feed a retaining windowing operator
+        // (`FloType::WindowingRetain`: `snapshot()`, `snapshot_keyed()`, `snapshot_prefix()`).
+        // Like defer_tick back-edges, these buffers are declared outside the tick closure so that
+        // retained state persists across ticks. Unlike other handoffs they are never cleared or
+        // consumed: the loop reads clones out of them each time it fires. The shape of the
+        // retained state depends on the operator — see `RetainKind`.
+        let retain_hoffs = handoff_nodes
+            .iter()
+            .map(|&(node_id, _, _)| node_id)
+            .filter_map(|node_id| {
+                let op_inst = self
+                    .node_successors(node_id)
+                    .next()
+                    .and_then(|(_, succ)| self.node_op_inst(succ))?;
+                if op_inst.op_constraints.flo_type != Some(FloType::WindowingRetain) {
+                    return None;
+                }
+                let retain_kind = if op_inst.op_constraints.name == SNAPSHOT_KEYED.name {
+                    RetainKind::Keyed
+                } else if op_inst.op_constraints.name == SNAPSHOT_PREFIX.name {
+                    RetainKind::Prefix
+                } else {
+                    RetainKind::Cell
+                };
+                Some((node_id, retain_kind))
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        // Declarations for retaining windowing handoff state, emitted outside the tick closure.
+        let retain_buf_decls = handoff_nodes
+            .iter()
+            .filter_map(|&(hoff_id, kind, (src_span, dst_span))| {
+                let retain_kind = *retain_hoffs.get(&hoff_id)?;
+                // The graph-level kind is `Vec` (like all loop-entry handoffs), but codegen
+                // special-cases retain handoffs with the storage below.
+                assert_eq!(
+                    HandoffKind::Vec,
+                    kind,
+                    "retaining windowing (`snapshot*()`) handoffs must be `Vec`-kind"
+                );
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                let buf_ident = self.hoff_buf_ident(hoff_id, span);
+                Some(match retain_kind {
+                    RetainKind::Cell => quote! {
+                        let mut #buf_ident = ::std::option::Option::None;
+                    },
+                    RetainKind::Keyed => quote! {
+                        let mut #buf_ident = #root::rustc_hash::FxHashMap::default();
+                    },
+                    RetainKind::Prefix => quote! {
+                        let mut #buf_ident = ::std::vec::Vec::new();
+                    },
+                })
+            })
+            .collect::<Vec<_>>();
 
         // Back buffer idents, buf idents, and if they are lazy.
         let back_buffer_idents_laziness = handoff_nodes
@@ -1512,25 +1587,70 @@ impl DfirGraph {
                         let metrics = Ident::new("__dfir_metrics", Span::call_site());
 
                         // Compute len and drain expressions based on handoff kind.
-                        let (len_expr, drain_expr) = match kind {
-                            HandoffKind::Singleton | HandoffKind::Optional => (
-                                quote! { if #buf_ident.is_some() { 1usize } else { 0usize } },
-                                quote! { #root::dfir_pipes::pull::iter(#buf_ident.take().into_iter()) },
-                            ),
-                            HandoffKind::Vec => {
-                                // Special asymmetric handling for defer tick handoffs, which are double-buffered.
-                                // The producer writes to the regular buffer; at end-of-tick the buffers are swapped,
-                                // so the consumer drains from the back buffer (here).
-                                let drain_ident = if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
-                                    &self.hoff_back_ident(hoff_id, buf_ident.span())
-                                } else {
-                                    buf_ident
-                                };
+                        let (len_expr, drain_expr) = match retain_hoffs.get(&hoff_id) {
+                            Some(RetainKind::Keyed) => {
+                                // Retaining keyed windowing (`snapshot_keyed()`) handoffs are a
+                                // persistent keyed map, declared outside the tick closure. Like
+                                // `snapshot()`, it is NOT consumed when the loop fires: every firing
+                                // observes a clone of every current entry. Requires `K: Clone, V: Clone`.
                                 (
-                                    quote! { #drain_ident.len() },
-                                    quote! { #root::dfir_pipes::pull::iter(#drain_ident.drain(..)) },
+                                    quote! { #buf_ident.len() },
+                                    quote! {
+                                        {
+                                            #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                                            let __snapshot_keyed_entries = #buf_ident.iter();
+                                            #root::dfir_pipes::pull::iter(
+                                                __snapshot_keyed_entries.map(
+                                                    #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
+                                                    |(k, v)| (::std::clone::Clone::clone(k), ::std::clone::Clone::clone(v))
+                                                )
+                                            )
+                                        }
+                                    },
                                 )
                             }
+                            Some(RetainKind::Prefix) => {
+                                // Retaining prefix windowing (`snapshot_prefix()`) handoffs are a
+                                // persistent `Vec<T>` of every element received so far, declared
+                                // outside the tick closure. NOT consumed when the loop fires: every
+                                // firing replays a clone of the whole prefix, in arrival order.
+                                // Requires `T: Clone`.
+                                (
+                                    quote! { #buf_ident.len() },
+                                    quote! { #root::dfir_pipes::pull::iter(#buf_ident.iter().cloned()) },
+                                )
+                            }
+                            Some(RetainKind::Cell) => {
+                                // Retaining windowing (`snapshot()`) handoffs are a single
+                                // last-write-wins `Option<T>` cell, declared outside the tick closure.
+                                // The cell is NOT consumed when the loop fires: it is a persistent
+                                // view of the latest value, so the loop observes it again on every
+                                // firing until a newer value replaces it. Requires `T: Clone`.
+                                (
+                                    quote! { if #buf_ident.is_some() { 1usize } else { 0usize } },
+                                    quote! { #root::dfir_pipes::pull::iter(::std::clone::Clone::clone(&#buf_ident).into_iter()) },
+                                )
+                            }
+                            None => match kind {
+                                HandoffKind::Singleton | HandoffKind::Optional => (
+                                    quote! { if #buf_ident.is_some() { 1usize } else { 0usize } },
+                                    quote! { #root::dfir_pipes::pull::iter(#buf_ident.take().into_iter()) },
+                                ),
+                                HandoffKind::Vec => {
+                                    // Special asymmetric handling for defer tick handoffs, which are double-buffered.
+                                    // The producer writes to the regular buffer; at end-of-tick the buffers are swapped,
+                                    // so the consumer drains from the back buffer (here).
+                                    let drain_ident = if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
+                                        &self.hoff_back_ident(hoff_id, buf_ident.span())
+                                    } else {
+                                        buf_ident
+                                    };
+                                    (
+                                        quote! { #drain_ident.len() },
+                                        quote! { #root::dfir_pipes::pull::iter(#drain_ident.drain(..)) },
+                                    )
+                                }
+                            },
                         };
 
                         let track_hoff_metrics = options.include_metrics_tracking.then(|| {
@@ -1561,7 +1681,48 @@ impl DfirGraph {
                     .iter()
                     .zip(send_buf_idents.iter())
                     .zip(send_kinds.iter())
-                    .map(|((port_ident, buf_ident), &kind)| {
+                    .zip(send_hoffs.iter())
+                    .map(|(((port_ident, buf_ident), &kind), &hoff_id)| {
+                        match retain_hoffs.get(&hoff_id) {
+                            Some(RetainKind::Keyed) => {
+                                // Retaining keyed windowing (`snapshot_keyed()`) map: apply each
+                                // `(K, Option<V>)` update — `Some(v)` replaces the key's value (latest
+                                // write wins per key), `None` removes the key.
+                                return quote_spanned! {port_ident.span()=>
+                                    let #port_ident = #root::dfir_pipes::push::for_each(|(__key, __update)| {
+                                        match __update {
+                                            ::std::option::Option::Some(__value) => {
+                                                #buf_ident.insert(__key, __value);
+                                            }
+                                            ::std::option::Option::None => {
+                                                #buf_ident.remove(&__key);
+                                            }
+                                        }
+                                    });
+                                };
+                            }
+                            Some(RetainKind::Prefix) => {
+                                // Retaining prefix windowing (`snapshot_prefix()`) buffer: append
+                                // every item. Nothing is ever dropped or replaced.
+                                return quote_spanned! {port_ident.span()=>
+                                    let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
+                                        #buf_ident.push(__item);
+                                    });
+                                };
+                            }
+                            Some(RetainKind::Cell) => {
+                                // Retaining windowing (`snapshot()`) cell: last-write-wins. Each new
+                                // item replaces (and drops) any previously pending item, so at most
+                                // one value is retained no matter how many ticks pass before the
+                                // consuming loop fires.
+                                return quote_spanned! {port_ident.span()=>
+                                    let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
+                                        #buf_ident = ::std::option::Option::Some(__item);
+                                    });
+                                };
+                            }
+                            None => {}
+                        }
                         match kind {
                             HandoffKind::Singleton => {
                                 // Singleton slot: store exactly one item, panic on duplicate.
@@ -1966,13 +2127,24 @@ impl DfirGraph {
                         .zip(send_kinds.iter())
                         .map(|((&hoff_id, buf_ident), &kind)| {
                             let hoff_ffi = hoff_id.data().as_ffi();
-                            let len_expr = match kind {
-                                HandoffKind::Singleton | HandoffKind::Optional => {
-                                    quote! { if #buf_ident.is_some() { 1 } else { 0 } }
-                                }
-                                HandoffKind::Vec => {
+                            let len_expr = match retain_hoffs.get(&hoff_id) {
+                                Some(RetainKind::Keyed | RetainKind::Prefix) => {
+                                    // Retaining keyed map (`snapshot_keyed()`) or prefix buffer
+                                    // (`snapshot_prefix()`).
                                     quote! { #buf_ident.len() }
                                 }
+                                Some(RetainKind::Cell) => {
+                                    // Retaining windowing (`snapshot()`) single `Option<T>` cell.
+                                    quote! { if #buf_ident.is_some() { 1 } else { 0 } }
+                                }
+                                None => match kind {
+                                    HandoffKind::Singleton | HandoffKind::Optional => {
+                                        quote! { if #buf_ident.is_some() { 1 } else { 0 } }
+                                    }
+                                    HandoffKind::Vec => {
+                                        quote! { #buf_ident.len() }
+                                    }
+                                },
                             };
                             quote! {
                                 __dfir_metrics.handoffs[
@@ -1993,7 +2165,12 @@ impl DfirGraph {
                     .zip(send_hoffs.iter())
                     .filter_map(|((buf_ident, &kind), &hoff_id)| {
                         let span = buf_ident.span();
-                        if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
+                        if retain_hoffs.contains_key(&hoff_id) {
+                            // Retaining windowing (`snapshot*()`) state is declared outside the
+                            // tick closure and must NOT be re-declared or cleared: it persists
+                            // across ticks (and across loop firings).
+                            None
+                        } else if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
                             // Defer_tick send buffers are declared outside the tick closure
                             // as std::vec::Vec for O(1) swap. Just clear here.
                             Some(quote_spanned! {span=>
@@ -2033,7 +2210,10 @@ impl DfirGraph {
                 let recv_hoff_drop_code = recv_buf_idents
                     .iter()
                     .zip(recv_hoffs.iter())
-                    .filter(|&(_, &hoff_id)| !back_edge_hoffs_and_lazyness.contains_key(hoff_id))
+                    .filter(|&(_, &hoff_id)| {
+                        !back_edge_hoffs_and_lazyness.contains_key(hoff_id)
+                            && !retain_hoffs.contains_key(&hoff_id)
+                    })
                     .map(|(buf_ident, _)| {
                         let span = buf_ident.span();
                         quote_spanned! {span=>
@@ -2226,6 +2406,13 @@ impl DfirGraph {
                 // This enables O(1) mem::swap at end of tick for double-buffering.
                 #( let mut #back_buffer_idents = ::std::vec::Vec::new(); )*
                 #( let mut #defer_tick_buf_idents = ::std::vec::Vec::new(); )*
+
+                // Retaining windowing (`snapshot*()`) handoff state: declared outside the tick
+                // closure so it persists across ticks, and never consumed by the loop (which reads
+                // clones each time it fires). `snapshot()` is a single last-write-wins `Option<T>`,
+                // `snapshot_keyed()` a per-key `FxHashMap<K, V>`, `snapshot_prefix()` an
+                // append-only `Vec<T>`. See `RetainKind`.
+                #( #retain_buf_decls )*
 
                 // Bump allocator for handoffs (except for back-edge handoffs, above).
                 let mut #bump_ident = #root::bumpalo::Bump::new();
