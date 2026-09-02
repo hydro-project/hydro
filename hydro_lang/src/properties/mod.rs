@@ -25,7 +25,7 @@ pub trait CommutativeProof<T, B: Boundedness, S = OnProcess> {
     fn register_proof(&self, expr: &syn::Expr);
 
     /// Takes the simulator ordering hook attached to this proof, if any.
-    fn take_hook(&mut self) -> Option<OrderingHook<T, B, S>>;
+    fn take_hook(&mut self) -> Option<OrderingHook<T, B, ExactlyOnce, S>>;
 }
 
 /// A trait for proof mechanisms that can validate idempotence.
@@ -81,20 +81,20 @@ impl<H> ManualProof<H> {
     }
 }
 
-impl<T, B: Boundedness, S> ManualProof<Option<OrderingHook<T, B, S>>> {
+impl<T, B: Boundedness, S> ManualProof<Option<OrderingHook<T, B, ExactlyOnce, S>>> {
     #[doc(hidden)]
-    pub fn hooked(hook: impl Into<Option<OrderingHook<T, B, S>>>) -> Self {
+    pub fn hooked(hook: impl Into<Option<OrderingHook<T, B, ExactlyOnce, S>>>) -> Self {
         ManualProof { hook: hook.into() }
     }
 }
 
 #[sealed::sealed]
 impl<T, B: Boundedness, S> CommutativeProof<T, B, S>
-    for ManualProof<Option<OrderingHook<T, B, S>>>
+    for ManualProof<Option<OrderingHook<T, B, ExactlyOnce, S>>>
 {
     fn register_proof(&self, _expr: &syn::Expr) {}
 
-    fn take_hook(&mut self) -> Option<OrderingHook<T, B, S>> {
+    fn take_hook(&mut self) -> Option<OrderingHook<T, B, ExactlyOnce, S>> {
         self.hook.take()
     }
 }
@@ -103,7 +103,7 @@ impl<T, B: Boundedness, S> CommutativeProof<T, B, S>
 impl<T, B: Boundedness, S> CommutativeProof<T, B, S> for ManualProof {
     fn register_proof(&self, _expr: &syn::Expr) {}
 
-    fn take_hook(&mut self) -> Option<OrderingHook<T, B, S>> {
+    fn take_hook(&mut self) -> Option<OrderingHook<T, B, ExactlyOnce, S>> {
         None
     }
 }
@@ -161,7 +161,7 @@ impl Default for VerusCommutativeProof {
 impl<T, B: Boundedness, S> CommutativeProof<T, B, S> for VerusCommutativeProof {
     fn register_proof(&self, _expr: &syn::Expr) {}
 
-    fn take_hook(&mut self) -> Option<OrderingHook<T, B, S>> {
+    fn take_hook(&mut self) -> Option<OrderingHook<T, B, ExactlyOnce, S>> {
         // Verus proofs are still not trusted by the simulator, which explores the
         // input ordering on its own; no scripting hook is attached.
         None
@@ -789,7 +789,10 @@ impl<T, B: Boundedness, C, I, M, S> AggFuncAlgebra<T, B, C, I, M, S> {
 
     /// Registers the expression with the underlying proof mechanisms, and takes the
     /// simulator ordering hook attached to the commutativity proof, if any.
-    pub(crate) fn register_proof(self, expr: &syn::Expr) -> Option<OrderingHook<T, B, S>> {
+    pub(crate) fn register_proof(
+        self,
+        expr: &syn::Expr,
+    ) -> Option<OrderingHook<T, B, ExactlyOnce, S>> {
         let mut hook = None;
         if let Some(mut comm_proof) = self.0 {
             comm_proof.register_proof(expr);
@@ -860,7 +863,10 @@ impl<T, B: Boundedness, O, C, I, S> SingletonMapFuncAlgebra<T, B, O, C, I, S> {
 
     /// Registers the expression with the underlying proof mechanisms, and takes the
     /// simulator ordering hook attached to the commutativity proof, if any.
-    pub(crate) fn register_proof(self, expr: &syn::Expr) -> Option<OrderingHook<T, B, S>> {
+    pub(crate) fn register_proof(
+        self,
+        expr: &syn::Expr,
+    ) -> Option<OrderingHook<T, B, ExactlyOnce, S>> {
         if let Some(proof) = self.0 {
             proof.register_proof(expr);
         }
@@ -911,7 +917,10 @@ impl<T, B: Boundedness, C, I, S> StreamMapFuncAlgebra<T, B, C, I, S> {
 
     /// Registers the expression with the underlying proof mechanisms, and takes the
     /// simulator ordering hook attached to the commutativity proof, if any.
-    pub(crate) fn register_proof(self, expr: &syn::Expr) -> Option<OrderingHook<T, B, S>> {
+    pub(crate) fn register_proof(
+        self,
+        expr: &syn::Expr,
+    ) -> Option<OrderingHook<T, B, ExactlyOnce, S>> {
         let hook = self.0.and_then(|mut proof| {
             proof.register_proof(expr);
             proof.take_hook()
