@@ -1,7 +1,13 @@
 /**
  * The Hydro landing page: a scrollytelling walkthrough with a pinned,
  * morphing dataflow graph. See docs/src/components/landing/ for the
- * graph/code-panel building blocks.
+ * graph/code-panel building blocks and the scene definitions.
+ *
+ * The running example is a two-phase-commit protocol on one fixed topology
+ * (a Cluster<Participant> and a Process<Leader>): the prepare round shows
+ * location-oriented programming, a vote tally over a retrying channel shows
+ * the compile-time checks, and a majority-quorum bug shows the simulator
+ * catching a protocol race.
  */
 
 import React, { useEffect, useRef, useState } from "react";
@@ -12,7 +18,6 @@ import Head from "@docusaurus/Head";
 import PinnedFlowGraph from "../components/landing/PinnedFlowGraph";
 import GraphExtras from "../components/landing/GraphExtras";
 import CodePanel from "../components/landing/CodePanel";
-import type { PaintRule } from "../components/landing/CodePanel";
 import {
   SCENES,
   COLOR_VARS,
@@ -48,66 +53,72 @@ let reply = client.echo(Msg { text: "hello".into() }).await?;
 `;
 
 const GLOBAL_CODE = `
-pub fn echo<'a>(
-    client: &Process<'a, Client>,
-    server: &Process<'a, Server>,
-    requests: Stream<String, Process<'a, Client>>,
-) -> Stream<String, Process<'a, Client>> {
-    requests
-        .send(server, TCP.fail_stop().bincode())
-        // ⇒ Stream<String, Process<Server>>
-        .map(q!(|s| s.to_uppercase()))
-        // ⇒ Stream<String, Process<Server>>
-        .send(client, TCP.fail_stop().bincode())
-        // ⇒ Stream<String, Process<Client>>
+pub fn prepare_round<'a>(
+    txns: Stream<Txn, Process<'a, Leader>>,
+    leader: &Process<'a, Leader>,
+    parts: &Cluster<'a, Participant>,
+) -> KeyedStream<MemberId<Participant>, Vote, Process<'a, Leader>> {
+    txns
+        .broadcast(parts, TCP.fail_stop().bincode())
+        // ⇒ Stream<Txn, Cluster<Participant>>, on every participant
+        .map(q!(|txn| wal.prepare(txn)))
+        .send(leader, TCP.fail_stop().bincode())
+        // ⇒ every participant's vote, back on the leader
 }
 `;
 
 const CORRECTNESS_CODE = `
-pub fn concat_words<'a>(
-    server: &Process<'a, Server>,
-    words: Stream<String, Cluster<'a, Client>>,
-) -> Singleton<String, Process<'a, Server>> {
-    words
-        .send(server, TCP.fail_stop().bincode())
-        // ⇒ Stream<String, Process<Server>, Unbounded, NoOrder>
-        .fold(q!(String::new), q!(|acc, x| *acc += &x))
+pub fn count_yes<'a>(
+    votes: Stream<Vote, Cluster<'a, Participant>>,
+    leader: &Process<'a, Leader>,
+) -> Singleton<usize, Process<'a, Leader>> {
+    votes
+        // re-sent on reconnect, so no vote is ever lost…
+        .send(leader, TCP.retry_on_fail().bincode())
+        // ⇒ Stream<Vote, …, NoOrder, AtLeastOnce>
+        .fold(q!(|| 0), q!(|n, v| if v == Vote::Yes { *n += 1 }))
 }
 `;
 
 const SIM_CODE = `
-let (event_port, events) = clients.sim_input();
+let (vote_port, votes) = participants.sim_input();
 
-let log = events
-    .send(&server, TCP.fail_stop().bincode())
-    .entries_partially_ordered(nondet!(/** arrival order */))
+let quorum = votes
+    .send(&leader, TCP.fail_stop().bincode())
+    .entries_partially_ordered(
+        nondet!(/** votes from members interleave: NYY? YNY? YYN? */))
+    .map(q!(|(_participant, vote)| vote))
+    .limit(q!(2)) // BUG: 2 of 3 is a majority, not unanimity
     .sim_output();
 
-flow.sim().with_cluster_size(&clients, 3).exhaustive(async || {
-    event_port.send(0, "a1");
-    event_port.send(0, "a2");
-    event_port.send(1, "b1");
+flow.sim().with_cluster_size(&participants, 3).exhaustive(async || {
+    vote_port.send(0, Vote::No); // this participant must veto
+    vote_port.send(1, Vote::Yes);
+    vote_port.send(2, Vote::Yes);
 
-    let entries: Vec<_> = log.collect().await;
-    assert!(pos("a1") < pos("a2")); // per-member order holds
+    let seen: Vec<_> = quorum.collect().await;
+    assert!(seen.contains(&Vote::No)); // the veto must be heard
 });
 `;
 
+/* Kept for the temporarily-disabled "cloud" section below.
 const CLOUD_CODE = `
 let mut deployment = EcsDeploy::new();
 
 let _nodes = flow
-    .with_process(&client, deployment.add_ecs_process())
-    .with_process(&server, deployment.add_ecs_process())
+    .with_process(&leader, deployment.add_ecs_process())
+    .with_cluster(&participants, deployment.add_ecs_cluster())
     .deploy(&mut deployment);
 
 deployment.deploy().await.unwrap();
 `;
+*/
 
 // Shared token paints, matching the diagram's color coding.
-const LOCATION_PAINTS: PaintRule[] = [
-  { match: "Client", color: COLOR_VARS.client },
-  { match: "Server", color: COLOR_VARS.server },
+const LOCATION_PAINTS = [
+  { match: "Leader", color: COLOR_VARS.server },
+  { match: "Participant", color: COLOR_VARS.client },
+  { match: "Cluster", color: COLOR_VARS.client, bold: true },
 ];
 
 // ---------------------------------------------------------------------------
@@ -205,13 +216,14 @@ const SECTIONS: Section[] = [
     ),
     render: () => (
       <CodePanel
-        title="src/echo.rs"
+        title="src/two_pc.rs"
         code={GLOBAL_CODE}
         paints={[
           ...LOCATION_PAINTS,
           { match: "TCP", color: COLOR_VARS.network },
+          { match: "broadcast", color: COLOR_VARS.network },
           { match: "send", color: COLOR_VARS.network },
-          { match: "map", color: COLOR_VARS.server },
+          { match: "map", color: COLOR_VARS.client },
         ]}
       />
     ),
@@ -222,20 +234,17 @@ const SECTIONS: Section[] = [
     blurb: (
       <>
         <p>
-          Just like Rust ensures memory safety through the borrow checker,
-          Hydro ensures <i>distributed safety</i> through <b>stream types</b>{" "}
-          that track network behaviors end-to-end. Locations shape these
-          types: when a <code>Cluster</code> of machines sends to a single{" "}
-          <code>Process</code>, messages from different members arrive
-          interleaved, so the resulting stream is unordered.
+          Hydro encodes distributed behavior in the type system, end-to-end:
+          every stream carries types that track <b>ordering guarantees</b>{" "}
+          and <b>retries</b>, derived from your distributed logic.
         </p>
         <p>
-          If your logic relies on a message ordering that the network does
-          not guarantee, Hydro rejects the program at compile time. Errors
-          are surfaced through the Rust type system, visible to your editor,
-          language server, and agents. To resolve them, you can prove
-          properties like commutativity and idempotence, or explicitly
-          handle the non-determinism.
+          Hydro uses these types to enforce <b>eventual determinism</b>: code
+          whose result could be affected by timing or duplication does not
+          compile. You discharge the obligation with an algebraic proof —
+          idempotence, commutativity — that the compiler holds you to, or you
+          scope the non-determinism explicitly with <code>nondet!</code>.
+          Whole classes of distributed systems bugs become unrepresentable.
         </p>
       </>
     ),
@@ -243,17 +252,19 @@ const SECTIONS: Section[] = [
       <CodePanel
         code={CORRECTNESS_CODE}
         paints={[
-          { match: "Cluster", color: COLOR_VARS.client, bold: true },
-          { match: "NoOrder", color: COLOR_VARS.error },
+          ...LOCATION_PAINTS,
+          { match: "TCP", color: COLOR_VARS.network },
+          { match: "retry_on_fail", color: COLOR_VARS.network },
+          { match: "send", color: COLOR_VARS.network },
+          { match: "AtLeastOnce", color: COLOR_VARS.error },
         ]}
         error={{
-          line: 8,
+          line: 9,
           match: "fold",
           title:
-            "`fold` requires an ordered stream, but this stream is `NoOrder`",
+            "`fold` requires `ExactlyOnce` delivery, but this stream is `AtLeastOnce`",
           notes: [
-            "note: messages from different cluster members may be interleaved in any order",
-            "help: prove the closure is commutative with `commutative = manual_proof!(...)`",
+            "help: prove the closure is idempotent with `idempotent = manual_proof!(...)`, or acknowledge the non-determinism with `assume_retries(nondet!(…))`",
           ],
         }}
       />
@@ -265,17 +276,18 @@ const SECTIONS: Section[] = [
     blurb: (
       <>
         <p>
-          Hydro offers built-in <b>deterministic simulation testing</b>,
-          which lets you simulate distributed programs on your laptop. Tests
-          run against varied distributed schedules, including message
-          interleavings, batch boundaries, and state snapshots, to catch
-          concurrency bugs and race conditions.
+          The compiler and the simulator split the work: the type system
+          guides you to eliminate sources of non-determinism, and the
+          simulator exhaustively explores the <code>nondet!</code> points you
+          kept — the only places non-determinism can live.
         </p>
         <p>
-          Because Hydro's type system enforces determinism, the simulator
-          only needs to explore <code>nondet!</code> decision points, so even
-          large protocols can be checked <b>exhaustively</b>: your assertions
-          become guarantees about <em>every possible</em> execution.
+          Because the simulator only focuses on <code>nondet!</code> points,
+          it is incredibly efficient: entire distributed protocols can be
+          exhaustively checked on your laptop. That turns assertions into
+          guarantees about <em>every possible execution</em>. And when a
+          test fails, you get the exact schedule that broke it, replayable
+          deterministically instead of flaking.
         </p>
       </>
     ),
@@ -284,12 +296,14 @@ const SECTIONS: Section[] = [
         code={SIM_CODE}
         activeLines={isActive ? frame.activeLines : []}
         flashLines={isActive ? frame.flashLines || [] : []}
+        failLines={isActive ? frame.failLines || [] : []}
         flashKey={frame.flashKey || 0}
         paints={[
-          { match: '"a1"', color: COLOR_VARS.client },
-          { match: '"a2"', color: COLOR_VARS.client },
-          { match: '"b1"', color: COLOR_VARS.chanB },
           { match: "nondet!", color: COLOR_VARS.error, bold: true },
+          { match: "// BUG: 2 of 3 is a majority, not unanimity", color: COLOR_VARS.error },
+          { match: "No", color: COLOR_VARS.client },
+          { match: "Yes", color: COLOR_VARS.chanB, line: 13 },
+          { match: "Yes", color: COLOR_VARS.pink, line: 14 },
         ]}
       />
     ),
@@ -322,6 +336,7 @@ const SECTIONS: Section[] = [
           ...LOCATION_PAINTS,
           { match: "EcsDeploy", color: COLOR_VARS.aws },
           { match: "add_ecs_process", color: COLOR_VARS.aws },
+          { match: "add_ecs_cluster", color: COLOR_VARS.aws },
         ]}
       />
     ),
