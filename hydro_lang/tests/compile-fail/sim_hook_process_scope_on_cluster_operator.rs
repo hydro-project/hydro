@@ -12,7 +12,7 @@ fn main() {
     let cluster = flow.cluster::<Workers>();
 
     // This handle defaults to the `OnProcess` scope, but the operator below runs on a
-    // cluster: it must be created as `OrderingHook<u32, Unbounded, OnCluster<Workers>>`
+    // cluster: it must be created as `OrderingHook<u32, Unbounded, ExactlyOnce, OnCluster<Workers>>`
     // to bind there (and then scripted per member with `.on(member_id)`).
     let ordering: OrderingHook<u32> = flow.sim_hook();
     let guard: NonDet<Option<OrderingHook<u32>>> = nondet!(
