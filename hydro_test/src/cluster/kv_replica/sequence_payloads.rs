@@ -1,4 +1,4 @@
-use hydro_lang::forward_handle::TickCycleHandle;
+use hydro_lang::channel::TickCycleHandle;
 use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::location::Location;
 use hydro_lang::prelude::*;

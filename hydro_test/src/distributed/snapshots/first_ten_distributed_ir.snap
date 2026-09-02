@@ -3,6 +3,26 @@ source: hydro_test/src/distributed/first_ten.rs
 expression: builder.finalize().ir()
 ---
 [
+    CycleSink {
+        cycle_id: CycleId(
+            0,
+        ),
+        input: Source {
+            source: Iter(
+                :: std :: iter :: empty :: < () > (),
+            ),
+            metadata: HydroIrMetadata {
+                location_id: Process(loc2v1),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: (),
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
     SendExternal {
         to_external_key: LocationKey(
             1v1,
@@ -20,37 +40,6 @@ expression: builder.finalize().ir()
             cycle_id: CycleId(
                 0,
             ),
-            metadata: HydroIrMetadata {
-                location_id: Process(loc2v1),
-                collection_kind: Stream {
-                    bound: Unbounded,
-                    order: TotalOrder,
-                    retry: ExactlyOnce,
-                    element_type: (),
-                },
-            },
-        },
-        op_metadata: HydroIrOpMetadata,
-    },
-    CycleSink {
-        cycle_id: CycleId(
-            0,
-        ),
-        input: Cast {
-            inner: Source {
-                source: Iter(
-                    stageleft :: runtime_support :: type_hint :: < [() ; 0] > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_LINE_COL ! ([] [[]]) }),
-                ),
-                metadata: HydroIrMetadata {
-                    location_id: Process(loc2v1),
-                    collection_kind: Stream {
-                        bound: Bounded,
-                        order: TotalOrder,
-                        retry: ExactlyOnce,
-                        element_type: (),
-                    },
-                },
-            },
             metadata: HydroIrMetadata {
                 location_id: Process(loc2v1),
                 collection_kind: Stream {

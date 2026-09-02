@@ -72,7 +72,7 @@ pub fn distributed_echo<'a>(
         .into_keyed()
         .all_ticks();
 
-    response_sink.complete(all_responses);
+    response_sink.send(all_responses);
 
     bidi_port
 }

@@ -16,7 +16,7 @@ The two type parameters describe the boundary:
 
 `sidecar_bidi` returns two things:
 - `inbound`, a `Stream<InT>` carrying the items your sidecar produced. You transform it like any other Hydro stream.
-- `response_handle`, a [`ForwardHandle`](pathname:///rustdoc/hydro_lang/) that expects the outbound `Stream<OutT>`. Once you have computed the stream of responses, you hand it back with `response_handle.complete(...)`.
+- `response_handle`, a [`ChannelSender`](rust:hydro_lang::channel::ChannelSender) that expects the outbound `Stream<OutT>`. Once you have computed the stream of responses, you hand it back with `response_handle.send(...)`.
 
 :::info
 
@@ -50,7 +50,7 @@ let (inbound, response_handle) = process.sidecar_bidi::<String, String, _>(q!(||
 
 // Send a greeting out to the sidecar via the response handle...
 let greetings = process.source_stream(q!(futures::stream::iter(["hello".to_string()])));
-response_handle.complete(greetings);
+response_handle.send(greetings);
 
 // ...the sidecar echoes it back on `inbound`, which we transform
 // like any other Hydro stream.

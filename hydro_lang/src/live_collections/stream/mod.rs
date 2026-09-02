@@ -17,13 +17,16 @@ use super::keyed_singleton::KeyedSingleton;
 use super::keyed_stream::{Generate, KeyedStream};
 use super::optional::Optional;
 use super::singleton::Singleton;
-use crate::compile::builder::{CycleId, FlowState};
+#[cfg(stageleft_runtime)]
+use crate::channel::{
+    ChannelSender, ChannelTarget, CreateChannelSender, CycleCollection, CycleCollectionWithInitial,
+    ReceiverComplete,
+};
+use crate::channel::{ForwardRef, TickCycle};
+use crate::compile::builder::{CycleId, FlowState, RootId};
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode, StreamOrder, StreamRetry,
 };
-#[cfg(stageleft_runtime)]
-use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
-use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::batch_atomic::BatchAtomic;
 use crate::live_collections::singleton::SingletonBound;
 #[cfg(stageleft_runtime)]
@@ -284,6 +287,10 @@ where
 {
     type Location = Tick<L>;
 
+    fn collection_kind() -> CollectionKind {
+        Self::collection_kind()
+    }
+
     fn create_source(cycle_id: CycleId, location: Tick<L>) -> Self {
         Stream::new(
             location.clone(),
@@ -351,6 +358,10 @@ where
 {
     type Location = L;
 
+    fn collection_kind() -> CollectionKind {
+        Self::collection_kind()
+    }
+
     fn create_source(cycle_id: CycleId, location: L) -> Self {
         Stream::new(
             location.clone(),
@@ -367,20 +378,103 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> ReceiverComplete<'a, For
 where
     L: Location<'a>,
 {
-    fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
+    fn complete(self, sink_id: RootId, expected_location: LocationId) {
         assert_eq!(
             Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
-        self.location
+        *self
+            .location
             .flow_state()
             .borrow_mut()
-            .push_root(HydroRoot::CycleSink {
-                cycle_id,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                op_metadata: HydroIrOpMetadata::new(),
-            });
+            .cycle_sink_input_mut(sink_id) = self.ir_node.replace(HydroNode::Placeholder);
+    }
+}
+
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> ChannelTarget<'a> for Stream<T, L, B, O, R>
+where
+    L: Location<'a>,
+{
+    type Sender = ChannelSender<'a, Self>;
+}
+
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> CreateChannelSender<'a>
+    for Stream<T, L, B, O, R>
+where
+    L: Location<'a>,
+{
+    fn create_sender(sink_id: RootId, expected_location: LocationId) -> Self::Sender {
+        ChannelSender::new(sink_id, expected_location)
+    }
+}
+
+impl<'a, T, L, B: Boundedness, R: Retries> ChannelSender<'a, Stream<T, L, B, TotalOrder, R>>
+where
+    L: Location<'a>,
+{
+    /// Sends the given stream into the channel, resolving the receiving end created by
+    /// [`Location::channel`].
+    ///
+    /// Because the target stream is [`TotalOrder`], sending consumes the sender; only a
+    /// single stream can supply the elements without introducing ordering ambiguity.
+    ///
+    /// The provided stream **must not** depend _synchronously_ (in the same tick) on the
+    /// receiving end of the channel, as doing so would create a dependency cycle.
+    /// Asynchronous cycles (outside a tick) are allowed, since the program can continue
+    /// running while the cycle is processed.
+    pub fn send(self, value: impl Into<Stream<T, L, B, TotalOrder, R>>) {
+        self.send_exclusive(value.into());
+    }
+}
+
+impl<'a, T, L, B: Boundedness, R: Retries> ChannelSender<'a, Stream<T, L, B, NoOrder, R>>
+where
+    L: Location<'a>,
+{
+    /// Sends the given stream into the channel, resolving the receiving end created by
+    /// [`Location::channel`].
+    ///
+    /// Because the target stream is [`NoOrder`], the sender is taken by reference and
+    /// `send` may be called several times; the sent streams are merged as unordered
+    /// streams, just like [`Stream::merge_unordered`].
+    ///
+    /// The provided stream **must not** depend _synchronously_ (in the same tick) on the
+    /// receiving end of the channel, as doing so would create a dependency cycle.
+    /// Asynchronous cycles (outside a tick) are allowed, since the program can continue
+    /// running while the cycle is processed.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use hydro_lang::live_collections::stream::NoOrder;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let (sender, forward_stream) = process.channel::<Stream<i32, _, _, NoOrder>>();
+    /// // The channel is unordered, so multiple streams can be sent into it
+    /// sender.send(process.source_iter(q!([1, 2])));
+    /// sender.send(process.source_iter(q!([3, 4])));
+    /// forward_stream
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3, 4 in non-deterministic order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![1, 2, 3, 4]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn send(&self, value: impl Into<Stream<T, L, B, NoOrder, R>>) {
+        let value = value.into();
+        let value_node = value.ir_node.replace(HydroNode::Placeholder);
+        self.send_merge(
+            &value.location,
+            value_node,
+            Stream::<T, L, B, NoOrder, R>::collection_kind(),
+        );
     }
 }
 
@@ -4034,12 +4128,11 @@ mod tests {
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
-        let (complete_cycle_back, cycle_back) =
-            node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
+        let (cycle_back_sender, cycle_back) = node.channel::<super::Stream<_, _, _, NoOrder>>();
         let ordered = input
             .merge_unordered(cycle_back)
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
-        complete_cycle_back.complete(
+        cycle_back_sender.send(
             ordered
                 .clone()
                 .map(q!(|v| v + 1))
@@ -4073,12 +4166,11 @@ mod tests {
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
-        let (complete_cycle_back, cycle_back) =
-            node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
+        let (cycle_back_sender, cycle_back) = node.channel::<super::Stream<_, _, _, NoOrder>>();
         let ordered = input
             .merge_unordered(cycle_back)
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
-        complete_cycle_back.complete(
+        cycle_back_sender.send(
             ordered
                 .clone()
                 .batch(&node.tick(), nondet!(/** test */))
@@ -4115,8 +4207,7 @@ mod tests {
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
         let (_, input2) = node.sim_input::<_, NoOrder, _>();
 
-        let (complete_cycle_back, cycle_back) =
-            node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
+        let (cycle_back_sender, cycle_back) = node.channel::<super::Stream<_, _, _, NoOrder>>();
         let input1_ordered = input
             .clone()
             .merge_unordered(cycle_back)
@@ -4128,7 +4219,7 @@ mod tests {
             .merge_unordered(input2)
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
 
-        complete_cycle_back.complete(
+        cycle_back_sender.send(
             foo.filter(q!(|v| *v == 3))
                 .send(&node2, TCP.fail_stop().bincode())
                 .send(&node, TCP.fail_stop().bincode()),
@@ -4159,14 +4250,13 @@ mod tests {
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
-        let (complete_cycle_back, cycle_back) =
-            node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
+        let (cycle_back_sender, cycle_back) = node.channel::<super::Stream<_, _, _, NoOrder>>();
         let ordered = input
             .merge_unordered(cycle_back)
             .atomic()
             .assume_ordering::<TotalOrder>(nondet!(/** test */))
             .end_atomic();
-        complete_cycle_back.complete(
+        cycle_back_sender.send(
             ordered
                 .clone()
                 .map(q!(|v| v + 1))
@@ -4445,14 +4535,13 @@ mod tests {
         let (in_send, input) = node.sim_input();
 
         // Create a forward ref for the cycle back
-        let (complete_cycle_back, cycle_back) =
-            node.forward_ref::<super::Stream<_, _, _, TotalOrder>>();
+        let (cycle_back_sender, cycle_back) = node.channel::<super::Stream<_, _, _, TotalOrder>>();
 
         // merge_ordered: input (external) with cycle_back
         let merged = input.merge_ordered(cycle_back, nondet!(/** test */));
 
         // Cycle back: elements equal to 1 get mapped to 10 and fed back
-        complete_cycle_back.complete(merged.clone().filter(q!(|v| *v == 1)).map(q!(|v| v * 10)));
+        cycle_back_sender.send(merged.clone().filter(q!(|v| *v == 1)).map(q!(|v| v * 10)));
 
         let out_recv = merged.sim_output();
 

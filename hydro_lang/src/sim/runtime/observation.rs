@@ -22,7 +22,8 @@ use super::{
 /// Top-level (outside-tick) `assume_ordering` hooks release elements **one at a
 /// time** rather than shuffling the entire batch. This is the key mechanism for
 /// simulating causality in feedback cycles: when data flows through a network hop
-/// and cycles back (e.g. via `forward_ref`), the cycled-back result can arrive
+/// and cycles back (e.g. via a channel from [`crate::location::Location::channel`]),
+/// the cycled-back result can arrive
 /// and interleave with elements that are still pending in the input queue.
 ///
 /// For example, given input `[1, 2, 3]` where each element is mapped and sent

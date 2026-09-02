@@ -43,7 +43,7 @@ crate::newtype_counter! {
     /// ID for an external output.
     pub struct ExternalPortId(usize);
 
-    /// ID for a [`crate::location::Location::forward_ref`] cycle.
+    /// ID for a [`crate::location::Location::channel`] cycle.
     pub struct CycleId(usize);
 
     /// ID for clocks (ticks).
@@ -65,6 +65,15 @@ impl CycleId {
         syn::Ident::new(&format!("cycle_{}", self), proc_macro2::Span::call_site())
     }
 }
+
+/// A stable handle to a root registered in [`FlowStateInner`].
+///
+/// Roots are append-only (they are never removed until the flow is finalized), so the
+/// index of a root remains valid for the lifetime of the flow. This is used by
+/// [`crate::channel::ChannelSender`] to fill in the input of the [`HydroRoot::CycleSink`]
+/// registered when the channel is created.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) struct RootId(usize);
 
 impl SidecarId {
     /// Derives the two idents for a bidi sidecar: `(stream, sink)`.
@@ -136,16 +145,36 @@ impl FlowStateInner {
         id
     }
 
-    pub fn push_root(&mut self, root: HydroRoot) {
-        self.roots
+    pub fn push_root(&mut self, root: HydroRoot) -> RootId {
+        let roots = self.roots
             .as_mut()
-            .expect("Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled.")
-            .push(root);
+            .expect("Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled.");
+        roots.push(root);
+        RootId(roots.len() - 1)
     }
 
     pub fn try_push_root(&mut self, root: HydroRoot) {
         if let Some(roots) = self.roots.as_mut() {
             roots.push(root);
+        }
+    }
+
+    /// Returns a mutable reference to the input of the [`HydroRoot::CycleSink`] registered
+    /// under the given [`RootId`]. Used by [`crate::channel::ChannelSender`] to fill in
+    /// (or extend) the data sent into a channel.
+    ///
+    /// # Panics
+    /// Panics if the flow has already been finalized, or if the root is not a
+    /// [`HydroRoot::CycleSink`].
+    pub fn cycle_sink_input_mut(&mut self, root_id: RootId) -> &mut HydroNode {
+        let root = self.roots
+            .as_mut()
+            .expect("Attempted to send into a channel on a flow that has already been finalized. No data can be sent after the flow has been compiled.")
+            .get_mut(root_id.0)
+            .expect("RootId out of bounds");
+        match root {
+            HydroRoot::CycleSink { input, .. } => input,
+            _ => panic!("RootId did not refer to a CycleSink root"),
         }
     }
 }

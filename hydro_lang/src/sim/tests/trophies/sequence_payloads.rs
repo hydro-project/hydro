@@ -15,7 +15,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::forward_handle::TickCycleHandle;
+use crate::channel::TickCycleHandle;
 use crate::live_collections::stream::NoOrder;
 use crate::location::Location;
 use crate::prelude::*;

@@ -235,7 +235,7 @@ When using `use::atomic(some_singleton, nondet!())` to snapshot a Singleton that
 - For **write-then-read consistency**, ensure the read path's `use::atomic` snapshots a Singleton that is causally downstream of the write. If writes and reads are in separate `sliced!` blocks, the simulator will test the case where the read sees stale state.
 - To **guarantee** a read sees a prior write, they must be in the **same `sliced!` block** where the state is computed from the write within that block's body (using `use::state` or direct computation).
 
-## Feedback Loops: `forward_ref` vs `use::state_null`
+## Feedback Loops: `channel` vs `use::state_null`
 
 These serve different purposes:
 
@@ -250,22 +250,22 @@ let result = sliced! {
 };
 ```
 
-### `forward_ref` — Circular dataflow references
+### `channel` — Circular dataflow references
 Use for **cross-location feedback loops** where a stream's output feeds back as its own input (e.g., gossip protocols, convergence loops). Creates a cycle in the dataflow graph.
 
 ```rust
-let (forward_handle, received_stream) = cluster.forward_ref::<Stream<_, _, Unbounded, NoOrder, AtLeastOnce>>();
+let (sender, received_stream) = cluster.channel::<Stream<_, _, Unbounded, NoOrder, AtLeastOnce>>();
 
 // Use received_stream as input to computation...
 let output = compute(received_stream);
 
-// Complete the cycle — output feeds back as input
-forward_handle.complete(
+// Close the cycle — output feeds back as input
+sender.send(
     output.broadcast(&cluster, TCP.lossy(nondet!()).bincode(), nondet!()).values()
 );
 ```
 
-**Decision rule:** If state stays on one node → `use::state_null`. If data flows between nodes in a cycle → `forward_ref`.
+**Decision rule:** If state stays on one node → `use::state_null`. If data flows between nodes in a cycle → `channel`.
 
 ## Simulation Testing
 
@@ -376,7 +376,7 @@ Without `.with_cluster_size()`, the simulator uses a default size. Always set it
 
 ### Broadcast + Converge (Gossip)
 ```rust
-let (forward_ref, received) = cluster.forward_ref::<Stream<_, _, Unbounded, NoOrder, AtLeastOnce>>();
+let (sender, received) = cluster.channel::<Stream<_, _, Unbounded, NoOrder, AtLeastOnce>>();
 
 let state = sliced! {
     let local_writes = use(writes, nondet!());
@@ -387,7 +387,7 @@ let state = sliced! {
     accumulated.clone().fold(q!(|| HashSet::new()), q!(|s, v| { s.insert(v); }))
 };
 
-forward_ref.complete(
+sender.send(
     state.sample_every(q!(Duration::from_millis(50)), nondet!())
          .broadcast(&cluster, TCP.lossy(nondet!()).bincode(), nondet!())
          .values()

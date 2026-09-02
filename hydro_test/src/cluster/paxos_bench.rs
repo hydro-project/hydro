@@ -32,8 +32,8 @@ pub fn paxos_bench<'a>(
         inc_i32_workload_generator,
         |input| {
             let acceptors = paxos.log_stores().clone();
-            let (acceptor_checkpoint_complete, acceptor_checkpoint) =
-                acceptors.forward_ref::<Optional<_, _, _>>();
+            let (acceptor_checkpoint_sender, acceptor_checkpoint) =
+                acceptors.channel::<Optional<_, _, _>>();
 
             let sequenced_payloads = paxos.with_client(
                 clients,
@@ -98,7 +98,7 @@ pub fn paxos_bench<'a>(
                 }
             };
 
-            acceptor_checkpoint_complete.complete(a_checkpoint);
+            acceptor_checkpoint_sender.send(a_checkpoint);
 
             let c_received_payloads = processed_payloads
                 .map(q!(|payload| (

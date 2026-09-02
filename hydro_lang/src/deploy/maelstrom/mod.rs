@@ -3,7 +3,7 @@
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use crate::forward_handle::ForwardHandle;
+use crate::channel::ChannelSender;
 use crate::live_collections::KeyedStream;
 use crate::live_collections::stream::TotalOrder;
 use crate::location::Cluster;
@@ -28,7 +28,7 @@ pub mod deploy_runtime_maelstrom;
 /// # Example
 /// ```ignore
 /// let (input, output_handle) = maelstrom_bidi_clients(&cluster);
-/// output_handle.complete(input.map(q!(|(client_id, body)| {
+/// output_handle.send(input.map(q!(|(client_id, body)| {
 ///     // Process and return response
 ///     (client_id, response_body)
 /// })));
@@ -37,7 +37,7 @@ pub fn maelstrom_bidi_clients<'a, C, In: DeserializeOwned, Out: Serialize>(
     cluster: &Cluster<'a, C>,
 ) -> (
     KeyedStream<String, In, Cluster<'a, C>>,
-    ForwardHandle<'a, KeyedStream<String, Out, Cluster<'a, C>>>,
+    ChannelSender<'a, KeyedStream<String, Out, Cluster<'a, C>>>,
 ) {
     use stageleft::q;
 
@@ -52,9 +52,8 @@ pub fn maelstrom_bidi_clients<'a, C, In: DeserializeOwned, Out: Serialize>(
         .into_keyed()
         .map(q!(|b| serde_json::from_value(b).unwrap()));
 
-    // Create a forward reference for the output stream
-    let (fwd_handle, output_stream) =
-        cluster.forward_ref::<KeyedStream<String, Out, Cluster<'a, C>>>();
+    // Create a channel for the output stream
+    let (fwd_handle, output_stream) = cluster.channel::<KeyedStream<String, Out, Cluster<'a, C>>>();
 
     // Set up the output sink to send responses back to clients
     output_stream

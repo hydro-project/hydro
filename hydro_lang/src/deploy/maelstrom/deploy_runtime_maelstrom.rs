@@ -15,7 +15,7 @@ use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use stageleft::{QuotedWithContext, RuntimeData, q};
 
-use crate::forward_handle::ForwardHandle;
+use crate::channel::ChannelSender;
 use crate::live_collections::boundedness::Unbounded;
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, TotalOrder};

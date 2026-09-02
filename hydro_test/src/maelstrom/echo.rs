@@ -42,7 +42,7 @@ mod tests {
         let cluster = flow.cluster::<()>();
 
         let (input, output_handle) = maelstrom_bidi_clients(&cluster);
-        output_handle.complete(echo_server(input));
+        output_handle.send(echo_server(input));
 
         let mut deployment = MaelstromDeployment::new("echo")
             .maelstrom_path(PathBuf::from_str(&std::env::var("MAELSTROM_PATH").unwrap()).unwrap())

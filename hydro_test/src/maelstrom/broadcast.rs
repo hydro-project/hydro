@@ -40,8 +40,8 @@ fn broadcast_core<'a, C: 'a>(
     cluster: &Cluster<'a, C>,
     writes: Stream<u32, Cluster<'a, C>, Unbounded, NoOrder>,
 ) -> Singleton<HashSet<u32>, Cluster<'a, C>, Unbounded> {
-    let (broadcasted_forward, broadcasted) =
-        cluster.forward_ref::<Stream<_, _, Unbounded, NoOrder, AtLeastOnce>>();
+    let (broadcasted_sender, broadcasted) =
+        cluster.channel::<Stream<_, _, Unbounded, NoOrder, AtLeastOnce>>();
 
     let cur_state = sliced! {
         let new_writes = use::batch(writes, nondet!(/** TODO */));
@@ -59,7 +59,7 @@ fn broadcast_core<'a, C: 'a>(
     // as the empty set so the rest of the pipeline sees an always-present `Singleton`.
     let cur_state = cur_state.unwrap_or(cluster.singleton(q!(HashSet::new())).into());
 
-    broadcasted_forward.complete(
+    broadcasted_sender.send(
         cur_state
             .clone()
             .sample_every(q!(Duration::from_millis(50)), nondet!(/** TODO */))
@@ -159,8 +159,7 @@ mod tests {
         let cluster = flow.cluster::<()>();
 
         let (input, output_handle) = maelstrom_bidi_clients(&cluster);
-        output_handle
-            .complete(broadcast_server(&cluster, input).assume_ordering(nondet!(/** test */)));
+        output_handle.send(broadcast_server(&cluster, input).assume_ordering(nondet!(/** test */)));
 
         let mut deployment = MaelstromDeployment::new("broadcast")
             .maelstrom_path(
@@ -187,8 +186,7 @@ mod tests {
         let cluster = flow.cluster::<()>();
 
         let (input, output_handle) = maelstrom_bidi_clients(&cluster);
-        output_handle
-            .complete(broadcast_server(&cluster, input).assume_ordering(nondet!(/** test */)));
+        output_handle.send(broadcast_server(&cluster, input).assume_ordering(nondet!(/** test */)));
 
         let mut deployment = MaelstromDeployment::new("broadcast")
             .maelstrom_path(
@@ -215,8 +213,7 @@ mod tests {
         let cluster = flow.cluster::<()>();
 
         let (input, output_handle) = maelstrom_bidi_clients(&cluster);
-        output_handle
-            .complete(broadcast_server(&cluster, input).assume_ordering(nondet!(/** test */)));
+        output_handle.send(broadcast_server(&cluster, input).assume_ordering(nondet!(/** test */)));
 
         let mut deployment = MaelstromDeployment::new("broadcast")
             .maelstrom_path(

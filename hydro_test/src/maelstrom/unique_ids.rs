@@ -55,7 +55,7 @@ mod tests {
         let cluster = flow.cluster::<()>();
 
         let (input, output_handle) = maelstrom_bidi_clients(&cluster);
-        output_handle.complete(unique_id_server(
+        output_handle.send(unique_id_server(
             input,
             nondet!(/** ids can be nondeterministic */),
         ));

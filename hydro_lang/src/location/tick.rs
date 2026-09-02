@@ -19,11 +19,11 @@ use stageleft::{QuotedWithContext, q};
 #[cfg(stageleft_runtime)]
 use super::dynamic::DynLocation;
 use super::{Location, LocationId};
+#[cfg(stageleft_runtime)]
+use crate::channel::{CycleCollection, CycleCollectionWithInitial};
+use crate::channel::{TickCycle, TickCycleHandle};
 use crate::compile::builder::{ClockId, FlowState};
 use crate::compile::ir::{HydroNode, HydroSource};
-#[cfg(stageleft_runtime)]
-use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
-use crate::forward_handle::{TickCycle, TickCycleHandle};
 #[cfg(feature = "tokio")]
 use crate::live_collections::Singleton;
 use crate::live_collections::boundedness::Bounded;

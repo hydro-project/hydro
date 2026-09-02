@@ -1764,25 +1764,7 @@ impl HydroRoot {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let elem_type: syn::Type = match &input.metadata().collection_kind {
-                            CollectionKind::KeyedSingleton {
-                                key_type,
-                                value_type,
-                                ..
-                            }
-                            | CollectionKind::KeyedStream {
-                                key_type,
-                                value_type,
-                                ..
-                            } => {
-                                parse_quote!((#key_type, #value_type))
-                            }
-                            CollectionKind::Stream { element_type, .. }
-                            | CollectionKind::Singleton { element_type, .. }
-                            | CollectionKind::Optional { element_type, .. } => {
-                                parse_quote!(#element_type)
-                            }
-                        };
+                        let elem_type = input.metadata().collection_kind.dfir_element_type();
 
                         let cycle_id_ident = cycle_id.as_ident();
                         graph_builders.add_dfir_at(
@@ -2441,6 +2423,30 @@ impl CollectionKind {
             CollectionKind::Singleton { .. }
             | CollectionKind::Optional { .. }
             | CollectionKind::KeyedSingleton { .. } => true,
+        }
+    }
+
+    /// The type of the elements that flow through DFIR edges for this collection kind;
+    /// key-value pairs for keyed collections, and the element type otherwise.
+    pub fn dfir_element_type(&self) -> syn::Type {
+        match self {
+            CollectionKind::KeyedSingleton {
+                key_type,
+                value_type,
+                ..
+            }
+            | CollectionKind::KeyedStream {
+                key_type,
+                value_type,
+                ..
+            } => {
+                syn::parse_quote!((#key_type, #value_type))
+            }
+            CollectionKind::Stream { element_type, .. }
+            | CollectionKind::Singleton { element_type, .. }
+            | CollectionKind::Optional { element_type, .. } => {
+                syn::parse_quote!(#element_type)
+            }
         }
     }
 
@@ -4052,7 +4058,7 @@ impl HydroNode {
 
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(graph_builders) => {
-                                    // NOTE: With `forward_ref`, the fold codegen may not have
+                                    // NOTE: With forward references (`Location::channel`), the fold codegen may not have
                                     // run yet when we reach this tee, so `fold_hooked_idents`
                                     // might not contain the inner ident. In that case we won't
                                     // propagate the "hooked" status to the tee and the
@@ -4061,7 +4067,7 @@ impl HydroNode {
                                     // This is not a soundness issue: the fallback hook still
                                     // produces correct behavior, just with a redundant decision
                                     // point. TODO(https://github.com/hydro-project/hydro/issues/2856):
-                                    // fix ordering so forward_ref folds are always processed
+                                    // fix ordering so forward reference folds are always processed
                                     // before their downstream tees.
                                     if fold_hooked_idents.contains(&inner_ident.to_string()) {
                                         fold_hooked_idents.insert(tee_ident.to_string());

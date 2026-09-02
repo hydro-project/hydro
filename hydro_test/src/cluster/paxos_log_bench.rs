@@ -28,8 +28,8 @@ pub fn paxos_log_bench<'a>(
         inc_i32_workload_generator,
         |input| {
             let acceptors = paxos.log_stores().clone();
-            let (acceptor_checkpoint_complete, acceptor_checkpoint) =
-                acceptors.forward_ref::<Optional<_, _, _>>();
+            let (acceptor_checkpoint_sender, acceptor_checkpoint) =
+                acceptors.channel::<Optional<_, _, _>>();
 
             let sequenced_payloads = paxos.with_client(
                 clients,
@@ -92,7 +92,7 @@ pub fn paxos_log_bench<'a>(
                 .broadcast(&acceptors, TCP.fail_stop().bincode(), nondet!(/** Acceptor membership is static */))
                 .values()
                 .max();
-            acceptor_checkpoint_complete.complete(a_checkpoint);
+            acceptor_checkpoint_sender.send(a_checkpoint);
 
             sequenced_to_clients
         },

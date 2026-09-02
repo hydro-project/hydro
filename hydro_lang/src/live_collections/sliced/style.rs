@@ -8,8 +8,8 @@ use std::marker::PhantomData;
 
 use super::Slicable;
 #[cfg(stageleft_runtime)]
-use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
-use crate::forward_handle::{TickCycle, TickCycleHandle};
+use crate::channel::{CycleCollection, CycleCollectionWithInitial};
+use crate::channel::{TickCycle, TickCycleHandle};
 use crate::live_collections::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::live_collections::keyed_singleton::{BoundedValue, KeyedSingletonBound};
 use crate::live_collections::optional::OptionalBound;

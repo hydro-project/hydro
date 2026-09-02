@@ -18,7 +18,7 @@ async fn main() {
 
     let (port, input, output) =
         process.bind_single_client::<_, _, LinesCodec>(&external, NetworkHint::Auto);
-    output.complete(hydro_template::echo_capitalize(input));
+    output.send(hydro_template::echo_capitalize(input));
 
     let nodes = flow
         .with_process(
