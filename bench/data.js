@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1788337313463,
+  "lastUpdate": 1788424254806,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -308402,6 +308402,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 199460,
             "range": "± 10444.06",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "dc13fa20a8dc749f1571a64586b6b1bee53ae00c",
+          "message": "docs: redesign landing-page examples around a two-phase-commit story (#3182)\n\nReplace the landing page's toy examples (uppercase echo, word-concat,\nevent\nlog) with a single running example a distributed-systems engineer can\nrelate\nto: a **two-phase-commit protocol** on one fixed topology — a\n`Cluster<Participant>` (top) and a `Process<Leader>` (bottom) — kept\nidentical across all sections so the pinned diagram morphs coherently.\nThe\ndesign was chosen from several prototyped candidates (KV store, counter,\nregister, and 2PC variants) explored via a temporary switcher during\nreview;\nonly the winner ships.\n\n## The three Hydro sections\n\n- **\"Hydro is global\"**: the 2PC prepare round in one function —\n  `broadcast` the txn to every participant, `map(wal.prepare)` on the\n  cluster, votes `send` back to the leader as a keyed stream.\n- **\"Compile-time correctness\"**: tallying votes over a retrying channel\n(`TCP.retry_on_fail()`, delivering `AtLeastOnce`) with a manual\n`fold(+1)`\nis rejected — the closure isn't idempotent, so a re-sent Yes would be a\n  phantom quorum. The error help mirrors the real resolution idiom:\n`idempotent = manual_proof!(...)` or `assume_retries(nondet!(…))`. A new\n  **ghost animation** shows the retry pulsing between barely-there and\ndelivered while the tally preview crossfades `n = 1 ↔ n = 2`. The blurb\nexplains the type system (ordering + retries tracked end-to-end,\neventual\n  determinism, proof-or-`nondet!`), not the code.\n- **\"Distributed tests\"**: the shown dataflow acknowledges arrival order\nwith `nondet!` and then takes `limit(q!(2))` as a \"quorum\" (a majority,\n  not unanimity). The simulator explores the three arrival orders;\n  `collect()` returns after two releases in every instance, and in the\n  failing one the assertion panics on the spot — realistic trace, veto\nstill stranded in the queue under a \"bug found!\" chip. The blurb\nexplains\n  the compiler/simulator division of labor and exhaustive `nondet!`\n  exploration. Stranded packets dissolve before instance transitions so\n  resets aren't jumpy.\n\nThe type-system and simulator sections are deliberately on *different\naxes*\n(duplication vs. ordering) so readers see what each tool is for.\n\n## Structure & machinery\n\n- `scenes.ts`: scene definitions + sim choreography for the 2PC story;\nthe\nvotes pipeline (source op, TCP edge + label, destination op) shares ids\nacross scenes so it slides as one unit between sections, while unrelated\n  operators fade instead of morphing (no arrow direction flips, no\n  map→fold morphs).\n- New `sim-script.ts`: a declarative sim-choreography runner\n(send/gather/\n  release/assert/hold phases, per-batch flash/highlight overrides,\n  data-driven trace log with ok/fail outcomes, per-column queues,\n  end-of-instance dissolve).\n- `PinnedFlowGraph`: new `GhostPacket` renderer (+ inverse-keyframe CSS\nso\n  the pill and the value crossfade stay phase-locked); edge-endpoint\nanimation now uses the same cubic-bezier as the CSS morphs so arrows and\n  their endpoint nodes move in lockstep; removed the old swap-packets\n  machinery and `swap-clock.ts` (superseded by the ghost animation).\n- `GraphExtras`: data-driven sim log (colored decision parts, red\nfailure\n  lines, \"bug found!\" chip). `CodePanel`: `failLines` highlight for the\n  panicking assertion.\n- Removed `hydro_test/src/distributed/event_log.rs` (and its mod entry):\n  the example existed to back the old landing page and is no longer\n  referenced. `cargo check -p hydro_test` passes.\n\nVerified with tsc, a choreography smoke test (packet ids, stranded-veto\nfinal frame, line-highlight alignment against the snippet, location\nconsistency across scenes), and the docusaurus dev build (no new\nerrors).\n\nNote: `TCP.retry_on_fail()` in the compile-time snippet is a\ndeliberately\nsimplified/aspirational API (approved during review); a real\n`hydro_test`\nexample mirroring the sim snippet would be a good follow-up.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-09-02T23:20:20Z",
+          "url": "https://github.com/hydro-project/hydro/commit/dc13fa20a8dc749f1571a64586b6b1bee53ae00c"
+        },
+        "date": 1788424254730,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311268,
+            "range": "± 4633",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6531744,
+            "range": "± 9499",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6893888,
+            "range": "± 31641",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 50920,
+            "range": "± 1535",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 14111239,
+            "range": "± 80581",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1554373,
+            "range": "± 24412",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1618950,
+            "range": "± 21756",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 43735007,
+            "range": "± 226489",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6828336,
+            "range": "± 17084",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 13258740,
+            "range": "± 1536362",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6535623,
+            "range": "± 14056",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6993596,
+            "range": "± 10766",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 42718182,
+            "range": "± 600441",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 6436,
+            "range": "± 121",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22959,
+            "range": "± 239",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4155,
+            "range": "± 62",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6545,
+            "range": "± 69",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 530840,
+            "range": "± 7942",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55832,
+            "range": "± 1466",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 44767,
+            "range": "± 2511",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 17176,
+            "range": "± 576",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6997,
+            "range": "± 230",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7352,
+            "range": "± 298",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72456,
+            "range": "± 1193",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 78724,
+            "range": "± 355",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7462,
+            "range": "± 214",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15416,
+            "range": "± 97",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 61792,
+            "range": "± 2855",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7465,
+            "range": "± 125",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 192520,
+            "range": "± 10660.09",
             "unit": "ops/s"
           }
         ]
