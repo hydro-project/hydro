@@ -32,6 +32,9 @@ pub mod deploy_provider;
 #[expect(missing_docs, reason = "TODO")]
 pub mod builder;
 
+/// Forward consistency analysis for Hydro IR sinks.
+pub mod consistency_label;
+
 #[cfg(stageleft_runtime)]
 #[cfg(feature = "trybuild")]
 #[cfg_attr(docsrs, doc(cfg(feature = "trybuild")))]
