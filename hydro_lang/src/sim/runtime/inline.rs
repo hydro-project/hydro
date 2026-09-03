@@ -3,6 +3,12 @@
 //! exists only during one tick execution, so unlike the other kinds they have no
 //! cross-boundary buffering (and no pause semantics when scripted). The
 //! [`ScriptableInlineHook`] impls live alongside them.
+//!
+//! The retry kinds ([`StreamRetriesHook`], [`OrderedStreamRetriesHook`],
+//! [`AtLeastOnceStreamOrderHook`]) implement only the scriptable surface, never
+//! [`InlineHook`]: their decision spaces are infinite (every element admits arbitrarily
+//! many retries), so no autonomous exploration is possible and the builder requires them
+//! to be bound to a sim hook.
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -1046,5 +1052,431 @@ where
             )),
             _ => None,
         }
+    }
+}
+
+/// Checks that `scripted` covers `pending` as an at-least-once multiset: every pending
+/// value class must be scripted at least as many times as it is pending (each pending
+/// instance needs one or more slots/copies), and every scripted value must equal some
+/// pending value. Order is not constrained. Returns the mismatch (under-covered pending
+/// classes, and scripted values with no pending counterpart) otherwise.
+fn multiset_cover_mismatch<'a, T: PartialEq>(
+    pending: &'a [T],
+    scripted: &'a [T],
+) -> Result<(), (Vec<&'a T>, Vec<&'a T>)> {
+    let mut under: Vec<&T> = vec![];
+    let mut seen: Vec<&T> = vec![];
+    for item in pending {
+        if seen.contains(&item) {
+            continue;
+        }
+        seen.push(item);
+        let pending_count = pending.iter().filter(|other| *other == item).count();
+        let scripted_count = scripted.iter().filter(|other| *other == item).count();
+        if scripted_count < pending_count {
+            under.push(item);
+        }
+    }
+    let mut foreign: Vec<&T> = vec![];
+    for item in scripted {
+        if !pending.iter().any(|other| other == item) && !foreign.contains(&item) {
+            foreign.push(item);
+        }
+    }
+    if under.is_empty() && foreign.is_empty() {
+        Ok(())
+    } else {
+        Err((under, foreign))
+    }
+}
+
+/// Checks that `scripted` is `pending` with each slot expanded adjacently in place:
+/// `pending[0]^n0 pending[1]^n1 …` with every `n_i >= 1`. Delayed (non-adjacent)
+/// redeliveries are *not* valid here — those are extra slots, mintable only where the
+/// order dimension is observed (see [`AtLeastOnceStreamOrderHook`]).
+fn is_adjacent_expansion<T: PartialEq>(pending: &[T], scripted: &[T]) -> bool {
+    let mut next = 0;
+    for item in scripted {
+        if next < pending.len() && item == &pending[next] {
+            // Starts the next slot. When adjacent pending slots hold equal values this
+            // greedy attribution is safe: a copy of the previous slot is
+            // indistinguishable from the next slot's first delivery.
+            next += 1;
+        } else if next > 0 && item == &pending[next - 1] {
+            // An additional adjacent copy of the current slot.
+        } else {
+            return false;
+        }
+    }
+    next == pending.len()
+}
+
+/// A scripted decision for an `assume_retries` reached inside a tick: the complete
+/// released output for that tick's input.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum InlineRetriesDecision<T> {
+    Release(Vec<T>),
+}
+
+impl<T> ScriptDecision for InlineRetriesDecision<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        let InlineRetriesDecision::Release(values) = self;
+        format!("release({} value(s))", values.len())
+    }
+}
+
+/// In-tick hook for `assume_retries` (`AtLeastOnce` → `ExactlyOnce`) on a **`NoOrder`**
+/// stream. The tick's complete input is available at once, so a single decision supplies
+/// the complete released multiset: every input instance must appear at least once (by
+/// value class, since instance identity is not observable through equality), and no
+/// value may appear that was not received. The scripted order is irrelevant — the output
+/// is `NoOrder`.
+///
+/// There is no autonomous ([`InlineHook`]) implementation: cardinalities make the
+/// decision space infinite, so this hook exists only bound to a sim hook handle.
+pub struct StreamRetriesHook<T> {
+    input: Rc<RefCell<Option<Vec<T>>>>,
+    to_release: Option<Vec<T>>,
+    output: Sender<Vec<T>>,
+    batch_location: HookLocationMeta,
+    format_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> StreamRetriesHook<T> {
+    pub fn new(
+        input: Rc<RefCell<Option<Vec<T>>>>,
+        output: Sender<Vec<T>>,
+        batch_location: HookLocationMeta,
+        format_debug: fn(&T) -> Option<String>,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            output,
+            batch_location,
+            format_debug,
+        }
+    }
+}
+
+/// In-tick hook for `assume_retries` (`AtLeastOnce` → `ExactlyOnce`) on a
+/// **`TotalOrder`** stream. A single decision supplies the complete released sequence,
+/// which must be the tick's input with each slot expanded **adjacently in place**
+/// (`n >= 1` copies per slot) — see [`TopLevelOrderedStreamRetriesHook`](super::TopLevelOrderedStreamRetriesHook)
+/// for why delayed redeliveries are not this observation's dimension.
+///
+/// There is no autonomous ([`InlineHook`]) implementation: cardinalities make the
+/// decision space infinite, so this hook exists only bound to a sim hook handle.
+pub struct OrderedStreamRetriesHook<T> {
+    input: Rc<RefCell<Option<Vec<T>>>>,
+    to_release: Option<Vec<T>>,
+    output: Sender<Vec<T>>,
+    batch_location: HookLocationMeta,
+    format_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> OrderedStreamRetriesHook<T> {
+    pub fn new(
+        input: Rc<RefCell<Option<Vec<T>>>>,
+        output: Sender<Vec<T>>,
+        batch_location: HookLocationMeta,
+        format_debug: fn(&T) -> Option<String>,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            output,
+            batch_location,
+            format_debug,
+        }
+    }
+}
+
+/// In-tick hook for `assume_ordering` on an **`AtLeastOnce`** stream. A single decision
+/// supplies the complete released slot sequence: every received element must be given
+/// at least one slot (by value class — the script names values, and equal elements are
+/// indistinguishable to it), a value may occupy several *non-adjacent* extra slots
+/// (each is a delayed redelivery, still `AtLeastOnce`), and no value may appear that
+/// was not received. The scripted sequence *is* the output order.
+///
+/// Adjacent equal slots are accepted only when the input holds two or more equal
+/// elements of that value (the adjacent slots then belong to different elements);
+/// otherwise the run would give a sole element adjacent duplicate slots, which is
+/// redundant — the adjacent duplicate denotes the same at-least-once collection, and
+/// per-slot cardinality belongs to the downstream `assume_retries` observation.
+///
+/// There is no autonomous ([`InlineHook`]) implementation: re-emission makes the
+/// decision space infinite, so this hook exists only bound to a sim hook handle.
+pub struct AtLeastOnceStreamOrderHook<T> {
+    input: Rc<RefCell<Option<Vec<T>>>>,
+    to_release: Option<Vec<T>>,
+    output: Sender<Vec<T>>,
+    batch_location: HookLocationMeta,
+    format_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> AtLeastOnceStreamOrderHook<T> {
+    pub fn new(
+        input: Rc<RefCell<Option<Vec<T>>>>,
+        output: Sender<Vec<T>>,
+        batch_location: HookLocationMeta,
+        format_debug: fn(&T) -> Option<String>,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            output,
+            batch_location,
+            format_debug,
+        }
+    }
+}
+
+/// The shared [`RuntimeHook`] surface of the in-tick retry kinds (they differ only in
+/// how a decision is validated against the pending input).
+macro_rules! inline_retries_runtime_hook {
+    ($hook:ident, $note:literal) => {
+        impl<T> RuntimeHook for $hook<T> {
+            fn has_pending_input(&self) -> bool {
+                self.input.borrow().is_some()
+            }
+
+            fn only_one_possible_decision(&self) -> bool {
+                // Even a sole element admits infinitely many decisions (its cardinality /
+                // slot count), so only an empty input is unique.
+                self.input
+                    .borrow()
+                    .as_ref()
+                    .is_none_or(|inputs| inputs.is_empty())
+            }
+
+            fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
+                if let Some(to_release) = self.to_release.take() {
+                    if !to_release.is_empty()
+                        && let Some(log_writer) = log_writer
+                    {
+                        let HookLocationMeta {
+                            location: batch_location,
+                            line,
+                            caret_indent,
+                        } = self.batch_location;
+                        let note_str = format!(
+                            concat!("^ ", $note, ": {:?}"),
+                            TruncatedVecDebug(
+                                RefCell::new(Some(to_release.iter())),
+                                8,
+                                self.format_debug
+                            )
+                        );
+
+                        log_release(
+                            log_writer,
+                            batch_location,
+                            line,
+                            caret_indent,
+                            &note_str,
+                            colored::Color::Cyan,
+                        );
+                    }
+
+                    self.output.try_send(to_release).unwrap();
+                } else {
+                    panic!("No decision to release");
+                }
+            }
+
+            fn location_meta(&self) -> HookLocationMeta {
+                self.batch_location
+            }
+        }
+    };
+}
+
+inline_retries_runtime_hook!(StreamRetriesHook, "observed non-deterministic retries");
+inline_retries_runtime_hook!(
+    OrderedStreamRetriesHook,
+    "observed non-deterministic retries"
+);
+inline_retries_runtime_hook!(
+    AtLeastOnceStreamOrderHook,
+    "observed non-deterministic order"
+);
+
+/// Renders a list of values for the retry validators' error messages.
+fn fmt_values<T>(items: &[&T], format_debug: fn(&T) -> Option<String>) -> String {
+    let rendered: Vec<String> = items
+        .iter()
+        .map(|v| format_debug(v).unwrap_or_else(|| "<value>".to_owned()))
+        .collect();
+    rendered.join(", ")
+}
+
+impl<T> ScriptableInlineHook for StreamRetriesHook<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = InlineRetriesDecision<T>;
+    type Status = OrderingStatus;
+
+    fn apply_scripted(
+        &mut self,
+        decision: Option<InlineRetriesDecision<T>>,
+        log_writer: Option<&mut dyn std::fmt::Write>,
+    ) -> Result<(), String> {
+        let input = self.input.borrow_mut().take().unwrap();
+        let output = match decision {
+            Some(InlineRetriesDecision::Release(values)) => {
+                if let Err((under, foreign)) = multiset_cover_mismatch(&input, &values) {
+                    return Err(format!(
+                        "scripted in-tick retries decision must release every pending input value at least once, and only pending values ({} pending, {} scripted; released too few times: [{}]; not pending: [{}])",
+                        input.len(),
+                        values.len(),
+                        fmt_values(&under, self.format_debug),
+                        fmt_values(&foreign, self.format_debug),
+                    ));
+                }
+                values
+            }
+            // No choice: an empty input releases nothing.
+            None => input,
+        };
+        self.to_release = Some(output);
+        self.release_decision(log_writer);
+        Ok(())
+    }
+
+    fn status(&self) -> OrderingStatus {
+        OrderingStatus {
+            buffered: self.input.borrow().as_ref().map_or(0, Vec::len),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        input.as_ref().map(|values| {
+            format!(
+                "{} in-tick item(s) awaiting a retries decision: {:?}",
+                values.len(),
+                TruncatedVecDebug(RefCell::new(Some(values.iter())), 8, self.format_debug)
+            )
+        })
+    }
+}
+
+impl<T> ScriptableInlineHook for OrderedStreamRetriesHook<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = InlineRetriesDecision<T>;
+    type Status = OrderingStatus;
+
+    fn apply_scripted(
+        &mut self,
+        decision: Option<InlineRetriesDecision<T>>,
+        log_writer: Option<&mut dyn std::fmt::Write>,
+    ) -> Result<(), String> {
+        let input = self.input.borrow_mut().take().unwrap();
+        let output = match decision {
+            Some(InlineRetriesDecision::Release(values)) => {
+                if !is_adjacent_expansion(&input, &values) {
+                    return Err(format!(
+                        "scripted in-tick retries decision must be the pending input with each value expanded adjacently in place, one or more copies each ({} pending, {} scripted; the input is ordered, so a copy cannot be delayed past a later value)",
+                        input.len(),
+                        values.len(),
+                    ));
+                }
+                values
+            }
+            // No choice: an empty input releases nothing.
+            None => input,
+        };
+        self.to_release = Some(output);
+        self.release_decision(log_writer);
+        Ok(())
+    }
+
+    fn status(&self) -> OrderingStatus {
+        OrderingStatus {
+            buffered: self.input.borrow().as_ref().map_or(0, Vec::len),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        input.as_ref().map(|values| {
+            format!(
+                "{} in-tick item(s) awaiting a retries decision: {:?}",
+                values.len(),
+                TruncatedVecDebug(RefCell::new(Some(values.iter())), 8, self.format_debug)
+            )
+        })
+    }
+}
+
+impl<T> ScriptableInlineHook for AtLeastOnceStreamOrderHook<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = InlineOrderingDecision<T>;
+    type Status = OrderingStatus;
+
+    fn apply_scripted(
+        &mut self,
+        decision: Option<InlineOrderingDecision<T>>,
+        log_writer: Option<&mut dyn std::fmt::Write>,
+    ) -> Result<(), String> {
+        let input = self.input.borrow_mut().take().unwrap();
+        let output = match decision {
+            Some(InlineOrderingDecision::Order(values)) => {
+                if let Err((under, foreign)) = multiset_cover_mismatch(&input, &values) {
+                    return Err(format!(
+                        "scripted in-tick ordering decision on an at-least-once stream must emit every pending input value into at least one slot, and only pending values ({} pending, {} scripted; emitted too few times: [{}]; not pending: [{}])",
+                        input.len(),
+                        values.len(),
+                        fmt_values(&under, self.format_debug),
+                        fmt_values(&foreign, self.format_debug),
+                    ));
+                }
+                // Adjacent equal slots need two or more equal buffered elements (the
+                // adjacent slots then belong to different elements); with a single one
+                // the run necessarily gives the same element adjacent duplicate slots,
+                // which is redundant (the cardinality dimension belongs to
+                // `assume_retries`).
+                if let Some(pair) = values.windows(2).find(|pair| {
+                    pair[0] == pair[1] && input.iter().filter(|item| **item == pair[0]).count() < 2
+                }) {
+                    return Err(format!(
+                        "scripted in-tick ordering decision on an at-least-once stream places the sole buffered element equal to a value ({}) in adjacent slots, which is redundant (adjacent duplicate slots denote the same at-least-once collection); interleave another element's slot, or script the copy count at the downstream `assume_retries` instead",
+                        fmt_values(&[&pair[0]], self.format_debug),
+                    ));
+                }
+                values
+            }
+            // No choice: an empty input releases nothing.
+            None => input,
+        };
+        self.to_release = Some(output);
+        self.release_decision(log_writer);
+        Ok(())
+    }
+
+    fn status(&self) -> OrderingStatus {
+        OrderingStatus {
+            buffered: self.input.borrow().as_ref().map_or(0, Vec::len),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        input.as_ref().map(|values| {
+            format!(
+                "{} in-tick ordering item(s) (each may be emitted into several slots): {:?}",
+                values.len(),
+                TruncatedVecDebug(RefCell::new(Some(values.iter())), 8, self.format_debug)
+            )
+        })
     }
 }

@@ -17,6 +17,7 @@ Handles are small `Copy` values containing no simulator machinery: the same hand
 - **`BatchHook<T>`** controls which buffered elements a `batch` releases into each tick
 - **`SnapshotHook<T>`** controls which version of a `Singleton` each `snapshot` reveals
 - **`OrderingHook<T>`** controls the order chosen by an `assume_ordering`
+- **`RetriesHook<T>`** controls how many times each element is observed through an `assume_retries`
 - **`KeyedBatchHook<K, V>`** controls which buffered entries a keyed `batch` releases into each tick
 - **`KeyedSnapshotHook<K, V>`** controls which version of each key's state a `KeyedSingleton` `snapshot` (or `batch`) reveals
 - **`KeyedOrderingHook<K, V>`** controls the per-key order chosen by a keyed `assume_ordering`
@@ -372,3 +373,53 @@ The remaining hook kinds follow the same top-level / in-tick split as `OrderingH
 - **Inside a tick** (`Bounded` handles), a single `order(values)` decision supplies the complete result for that tick's input: a per-key ordering for `KeyedOrderingHook`, an interleaving preserving each key's order for `PartialOrderingHook`, and — for `MergeOrderedHook` / `KeyedMergeOrderedHook` — the merged sequence with each value labeled by the input it is drawn from (`false` = first, `true` = second), where each input's labeled values must be exactly that input's batch in order. As with in-tick orderings, an operator that faces a genuine choice with no scripted decision fails the tick.
 
 `KeyedBatchHook` mirrors `BatchHook`, with `release_values` naming `(key, value)` entries: for streams ordered within each key the entries must match each key's buffered prefix in order (and a positional `release([(key, count), ...])` releases each named key's prefix by count), and for unordered streams they are matched per key as multisets. `KeyedSnapshotHook::reveal(entries)` names the version each key observes next, scanning forward through that key's buffered versions; keys that are not named observe their previously revealed version again.
+
+## Retries Hooks
+
+`RetriesHook` scripts an `assume_retries::<ExactlyOnce>` — the point where the simulator injects the duplicates that the `AtLeastOnce` input type says downstream must tolerate. Unlike every other hook kind, retry decisions have an **infinite** state space (each element admits arbitrarily many retries), so there is no autonomous exploration to fall back on: an `assume_retries` in a simulated flow **must** be bound to a hook, and leaving it unhooked is a build-time error. The same applies to `assume_ordering` on an `AtLeastOnce` stream, for reasons explained below.
+
+At the top level, each `retry(value, copies)` decision releases `copies >= 1` copies of one buffered element and consumes it. `copies` is the *total* number of deliveries — `retry(v, 1)` observes `v` exactly once with no duplicate, and zero copies is rejected (that would be a *loss*, which at-least-once does not permit):
+
+- On a **`NoOrder`** stream (`RetriesHook<T, NoOrder>`), any buffered element may be named. The output is still `NoOrder`, so where the copies land is unobservable — the cardinality is the entire decision, and downstream ordering points shuffle the copies like any other elements.
+- On a **`TotalOrder`** stream (`RetriesHook<T, TotalOrder>`), the named value must be the **front** of the buffered queue, and the copies are released adjacently in place. This is deliberate: an at-least-once collection `[A, B]` denotes the physical realizations `A⁺B⁺` — each element stutters *in place*. A delayed redelivery like `ABAB` is a *different collection* (`[A, B, A, B]`), which can only be minted where the *order* dimension is observed. A positional `retry_next(copies)` expands the front without asserting its value (analogous to the merge hooks' `advance_first`); prefer the value-naming `retry`, which fails loudly when the script falls out of sync with the program.
+
+That last point is where `OrderingHook` meets retries. Scripting `assume_ordering::<TotalOrder>` on an `AtLeastOnce` stream (`OrderingHook<T, Unbounded, AtLeastOnce>`) chooses which **slots** each element's retries occupy, and an element may occupy several non-adjacent slots. So the decisions split in two: `emit(value)` releases one slot and *keeps* the value buffered for re-emission later (after other elements have taken slots in between), while `emit_final(value)` releases the value's last slot and consumes **every** buffered element equal to it — decisions name values, not individual elements, so retirement is value-level, and every emitted value must eventually be retired with `emit_final` (or the buffering declared with the pause family), keeping the forgotten-hook check meaningful. Two rules keep scripts honest: the decision immediately after an `emit` may name the same value again only when two or more buffered elements share it (the adjacent slots then belong to different elements; a sole element in adjacent slots would be a redundant duplicate — per-slot cardinality belongs to the downstream retries observation), and an `emit_final` requires enough prior `emit`s that every buffered element equal to the value has a slot (`k` equal buffered elements need at least `k` slots — at-least-once permits duplicates, not losses).
+
+This factoring makes the two orders of observation explore the same state space — any sequence in which every input element appears at least once — with the decisions distributed differently:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::stream::{AtLeastOnce, ExactlyOnce, NoOrder, TotalOrder};
+# use hydro_lang::sim_hooks::{OrderingHook, RetriesHook};
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+let ordering: OrderingHook<u32, Unbounded, AtLeastOnce> = flow.sim_hook();
+let retries: RetriesHook<u32, TotalOrder> = flow.sim_hook();
+let (input_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+let output = input
+    .weaken_retries::<AtLeastOnce>()
+    .assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = ordering))
+    .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+    .sim_output();
+
+flow.sim().deterministic(async || {
+    ordering.auto_pause();
+    retries.auto_pause();
+    input_send.send_many_unordered([10, 20]);
+
+    ordering.emit(10).await; // slot 1: 10, kept for re-emission
+    retries.retry(10, 1).await;
+    ordering.emit(20).await; // slot 2: 20, kept for re-emission
+    retries.retry(20, 2).await; // ...expanded to two adjacent copies
+    ordering.emit_final(10).await; // slot 3: the delayed redelivery of 10
+    retries.retry(10, 1).await;
+    ordering.emit_final(20).await; // slot 4: the delayed redelivery of 20
+    retries.retry(20, 1).await;
+
+    output.assert_yields_only([10, 20, 20, 10, 20]).await;
+});
+```
+
+The same physical sequence is reachable by observing retries first (`RetriesHook<u32, NoOrder>` giving 10 cardinality 2 and 20 cardinality 3) and then ordering the resulting `NoOrder + ExactlyOnce` multiset with plain `next(value)` decisions — the five copies are distinct elements by then, so the ordering hook may also place them adjacently.
+
+Inside a tick, the retry kinds take one decision for the tick's complete input, like in-tick orderings. `RetriesHook<T, O, Bounded>::release(values)` must release every received value at least once and only received values: on a `TotalOrder` stream the scripted sequence must be the input with each value expanded adjacently in place, while on a `NoOrder` stream only the multiset matters. `OrderingHook<T, Bounded, AtLeastOnce>::order(values)` supplies the complete slot sequence, in which a value may occupy several **non-adjacent** slots (adjacent equal slots are accepted only when the tick received two or more equal elements, whose slots may sit next to each other).

@@ -2128,15 +2128,21 @@ where
     {
         let tick = self.location.tick();
 
-        let latest_received = self.assume_retries::<ExactlyOnce>(nondet).fold(
-            q!(|| None),
-            q!(
-                |latest, _| {
-                    *latest = Some(Instant::now());
-                },
-                commutative = manual_proof!(/** TODO */)
-            ),
-        );
+        let latest_received = self
+            .assume_retries::<ExactlyOnce>(nondet!(
+                /// duplicates only affect the timestamp of the latest element, which is
+                /// captured by the caller's guard
+                nondet
+            ))
+            .fold(
+                q!(|| None),
+                q!(
+                    |latest, _| {
+                        *latest = Some(Instant::now());
+                    },
+                    commutative = manual_proof!(/** TODO */)
+                ),
+            );
 
         latest_received
             .snapshot(
@@ -2269,7 +2275,7 @@ where
     /// for the rest of the program.
     pub fn assume_ordering<O2: Ordering>(
         self,
-        mut nondet: NonDet<Option<crate::sim_hooks::OrderingHook<T, B>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::OrderingHook<T, B, R>>>,
     ) -> Stream<T, L::DropConsistency, B, O2, R> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
             self.use_ordering_type().weaken_consistency()
@@ -2382,9 +2388,16 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
+    ///
+    /// In simulation tests, the retry decisions (how many times each element is
+    /// observed) can be scripted by attaching a
+    /// [`RetriesHook`](crate::sim_hooks::RetriesHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`. Because every element admits arbitrarily
+    /// many retries, this non-determinism cannot be explored autonomously: simulating a
+    /// program containing a strengthening `assume_retries` **requires** a bound hook.
     pub fn assume_retries<R2: Retries>(
         self,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::RetriesHook<T, O, B>>>,
     ) -> Stream<T, L::DropConsistency, B, O, R2> {
         if R::RETRIES_KIND == R2::RETRIES_KIND {
             Stream::new(
@@ -2404,13 +2417,15 @@ where
             )
         } else {
             let target_location = self.location.drop_consistency();
+            let mut metadata =
+                target_location.new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind());
+            metadata.op.sim_hook_id = nondet.take_hook().map(|hook| hook.id);
             Stream::new(
                 target_location.clone(),
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                     trusted: false,
-                    metadata: target_location
-                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
+                    metadata,
                 },
             )
         }

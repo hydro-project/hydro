@@ -1327,6 +1327,196 @@ impl DfirBuilder for SimBuilder {
                         None,
                     );
                 }
+                (
+                    CollectionKind::Stream {
+                        order: in_order @ (StreamOrder::NoOrder | StreamOrder::TotalOrder),
+                        retry: StreamRetry::AtLeastOnce,
+                        element_type,
+                        ..
+                    },
+                    CollectionKind::Stream {
+                        order: out_order,
+                        retry: StreamRetry::ExactlyOnce,
+                        ..
+                    },
+                ) if in_order == out_order => {
+                    // `assume_retries`: the point where the simulator injects the
+                    // duplicates the `AtLeastOnce` type says downstream must tolerate.
+                    let Some(hook_id) = op_meta.sim_hook_id else {
+                        panic!(
+                            "observing retries (`assume_retries`) has an infinite decision space \
+                             (every element admits arbitrarily many retries), so the simulator \
+                             cannot explore it autonomously\n--> {assume_location}\nhelp: bind a \
+                             sim hook to this operator (`nondet!(... hook = handle)`) and script \
+                             its decisions"
+                        );
+                    };
+
+                    let hoff_id = self.next_hoff_id.get_and_increment();
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+                    });
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident));
+                    });
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(None));
+                    });
+
+                    let hook_ty: syn::Path = if *in_order == StreamOrder::TotalOrder {
+                        syn::parse_quote!(#root::sim::runtime::OrderedStreamRetriesHook)
+                    } else {
+                        syn::parse_quote!(#root::sim::runtime::StreamRetriesHook)
+                    };
+                    let inner_hook: syn::Expr = syn::parse_quote!(
+                        #hook_ty::<_>::new(
+                            #buffered_ident.clone(),
+                            #hoff_send_ident,
+                            #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
+                            #root::__maybe_debug__!(#element_type),
+                        )
+                    );
+                    let hook_rc_ident = syn::Ident::new(
+                        &format!("__scripted_inline_hook_{hoff_id}"),
+                        Span::call_site(),
+                    );
+                    self.add_scripted_inline_hook(
+                        hook_id,
+                        location,
+                        &hook_rc_ident,
+                        &assume_location,
+                        inner_hook,
+                    );
+
+                    let builder = self.get_dfir_mut(location);
+                    builder.add_dfir(
+                        parse_quote! {
+                            #out_ident = #in_ident -> fold::<'tick>(
+                                || ::std::vec::Vec::new(),
+                                |acc, v| {
+                                    acc.push(v);
+                                }
+                            ) -> map(|v| {
+                                let #buffered_ident = #buffered_ident.clone();
+                                let #hoff_recv_ident = #hoff_recv_ident.clone();
+                                async move {
+                                    fn force_matching_type<T>(a: &mut Option<::std::vec::Vec<T>>, b: ::std::vec::Vec<T>) -> ::std::vec::Vec<T> {
+                                        b
+                                    }
+
+                                    let mut out_holder = Some(v);
+                                    *#buffered_ident.borrow_mut() = out_holder.take();
+                                    force_matching_type(&mut out_holder, #hoff_recv_ident.borrow_mut().recv().await.unwrap())
+                                }
+                            }) -> resolve_futures_blocking() -> flatten();
+                        },
+                        None,
+                        None,
+                    );
+                }
+                (
+                    CollectionKind::Stream {
+                        order: StreamOrder::NoOrder,
+                        retry: StreamRetry::AtLeastOnce,
+                        element_type,
+                        ..
+                    },
+                    CollectionKind::Stream {
+                        order: StreamOrder::TotalOrder,
+                        retry: StreamRetry::AtLeastOnce,
+                        ..
+                    },
+                ) => {
+                    // `assume_ordering` on an at-least-once stream: ordering also decides
+                    // which slots each element's retries occupy (an element may be emitted
+                    // into several slots), so the decision space is infinite.
+                    let Some(hook_id) = op_meta.sim_hook_id else {
+                        panic!(
+                            "observing the order of an at-least-once stream also decides which \
+                             slots each element's retries occupy, an infinite decision space \
+                             the simulator cannot explore autonomously\n--> {assume_location}\n\
+                             help: bind a sim hook to this operator (`nondet!(... hook = \
+                             handle)`) and script its decisions"
+                        );
+                    };
+
+                    let hoff_id = self.next_hoff_id.get_and_increment();
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+                    });
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident));
+                    });
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(None));
+                    });
+
+                    let inner_hook: syn::Expr = syn::parse_quote!(
+                        #root::sim::runtime::AtLeastOnceStreamOrderHook::<_>::new(
+                            #buffered_ident.clone(),
+                            #hoff_send_ident,
+                            #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
+                            #root::__maybe_debug__!(#element_type),
+                        )
+                    );
+                    let hook_rc_ident = syn::Ident::new(
+                        &format!("__scripted_inline_hook_{hoff_id}"),
+                        Span::call_site(),
+                    );
+                    self.add_scripted_inline_hook(
+                        hook_id,
+                        location,
+                        &hook_rc_ident,
+                        &assume_location,
+                        inner_hook,
+                    );
+
+                    let builder = self.get_dfir_mut(location);
+                    builder.add_dfir(
+                        parse_quote! {
+                            #out_ident = #in_ident -> fold::<'tick>(
+                                || ::std::vec::Vec::new(),
+                                |acc, v| {
+                                    acc.push(v);
+                                }
+                            ) -> map(|v| {
+                                let #buffered_ident = #buffered_ident.clone();
+                                let #hoff_recv_ident = #hoff_recv_ident.clone();
+                                async move {
+                                    fn force_matching_type<T>(a: &mut Option<::std::vec::Vec<T>>, b: ::std::vec::Vec<T>) -> ::std::vec::Vec<T> {
+                                        b
+                                    }
+
+                                    let mut out_holder = Some(v);
+                                    *#buffered_ident.borrow_mut() = out_holder.take();
+                                    force_matching_type(&mut out_holder, #hoff_recv_ident.borrow_mut().recv().await.unwrap())
+                                }
+                            }) -> resolve_futures_blocking() -> flatten();
+                        },
+                        None,
+                        None,
+                    );
+                }
                 _ => {
                     todo!(
                         "non-trusted observe_nondet not yet supported for kinds {:?} -> {:?}",
@@ -1539,6 +1729,171 @@ impl DfirBuilder for SimBuilder {
                     self.get_dfir_mut(location).add_dfir(
                         parse_quote! {
                             #in_ident -> for_each(|(k, v)| #buffered_ident.borrow_mut().entry(k).or_insert_with(::std::collections::VecDeque::new).push_back(v));
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
+                }
+                (
+                    CollectionKind::Stream {
+                        order: in_order @ (StreamOrder::NoOrder | StreamOrder::TotalOrder),
+                        retry: StreamRetry::AtLeastOnce,
+                        element_type,
+                        ..
+                    },
+                    CollectionKind::Stream {
+                        order: out_order,
+                        retry: StreamRetry::ExactlyOnce,
+                        ..
+                    },
+                ) if in_order == out_order => {
+                    // `assume_retries`: the point where the simulator injects the
+                    // duplicates the `AtLeastOnce` type says downstream must tolerate.
+                    let Some(hook_id) = op_meta.sim_hook_id else {
+                        panic!(
+                            "observing retries (`assume_retries`) has an infinite decision space \
+                             (every element admits arbitrarily many retries), so the simulator \
+                             cannot explore it autonomously\n--> {assume_location}\nhelp: bind a \
+                             sim hook to this operator (`nondet!(... hook = handle)`) and script \
+                             its decisions"
+                        );
+                    };
+
+                    let hoff_id = self.next_hoff_id.get_and_increment();
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+                    });
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                    });
+                    let hook_ty: syn::Path = if *in_order == StreamOrder::TotalOrder {
+                        syn::parse_quote!(#root::sim::runtime::TopLevelOrderedStreamRetriesHook)
+                    } else {
+                        syn::parse_quote!(#root::sim::runtime::TopLevelStreamRetriesHook)
+                    };
+                    let inner_hook: syn::Expr = syn::parse_quote!(
+                        #hook_ty::<_> {
+                            input: #buffered_ident.clone(),
+                            to_release: None,
+                            output: #hoff_send_ident,
+                            location: #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
+                            format_item_debug: #root::__maybe_debug__!(#element_type),
+                        }
+                    );
+                    let hook_rc_ident = syn::Ident::new(
+                        &format!("__scripted_observation_hook_{hoff_id}"),
+                        Span::call_site(),
+                    );
+                    self.add_scripted_hook(
+                        hook_id,
+                        location,
+                        location,
+                        &hook_rc_ident,
+                        &assume_location,
+                        inner_hook,
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
+                }
+                (
+                    CollectionKind::Stream {
+                        order: StreamOrder::NoOrder,
+                        retry: StreamRetry::AtLeastOnce,
+                        element_type,
+                        ..
+                    },
+                    CollectionKind::Stream {
+                        order: StreamOrder::TotalOrder,
+                        retry: StreamRetry::AtLeastOnce,
+                        ..
+                    },
+                ) => {
+                    // `assume_ordering` on an at-least-once stream: ordering also decides
+                    // which slots each element's retries occupy (an element may be emitted
+                    // into several slots), so the decision space is infinite.
+                    let Some(hook_id) = op_meta.sim_hook_id else {
+                        panic!(
+                            "observing the order of an at-least-once stream also decides which \
+                             slots each element's retries occupy, an infinite decision space \
+                             the simulator cannot explore autonomously\n--> {assume_location}\n\
+                             help: bind a sim hook to this operator (`nondet!(... hook = \
+                             handle)`) and script its decisions"
+                        );
+                    };
+
+                    let hoff_id = self.next_hoff_id.get_and_increment();
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+                    });
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                    });
+                    let inner_hook: syn::Expr = syn::parse_quote!(
+                        #root::sim::runtime::TopLevelAtLeastOnceOrderHook::<_> {
+                            input: #buffered_ident.clone(),
+                            to_release: None,
+                            release_provisional: false,
+                            last_emitted: None,
+                            emitted_counts: ::std::vec::Vec::new(),
+                            output: #hoff_send_ident,
+                            location: #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
+                            format_item_debug: #root::__maybe_debug__!(#element_type),
+                        }
+                    );
+                    let hook_rc_ident = syn::Ident::new(
+                        &format!("__scripted_observation_hook_{hoff_id}"),
+                        Span::call_site(),
+                    );
+                    self.add_scripted_hook(
+                        hook_id,
+                        location,
+                        location,
+                        &hook_rc_ident,
+                        &assume_location,
+                        inner_hook,
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
                         },
                         None,
                         None,
