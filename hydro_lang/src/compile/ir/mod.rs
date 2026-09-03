@@ -861,31 +861,44 @@ impl DfirBuilder for ProdDfirBuilder {
             }
             (None, Some(_)) => {
                 // Entering the tick's loop from the top level: emit a windowing operator.
-                // `batch_eager()` preserves the pre-loop tick semantics: the loop fires on every
-                // tick even when the windowed input is empty.
-                let in_ident = if is_singleton_like && in_kind.is_bounded() {
-                    // The bounded value is produced exactly once. Persist it at the root (a
-                    // `loop { ... }` context cannot contain `persist`) so it remains available,
-                    // then window it into the loop on each firing.
-                    let persisted_ident = self.intermediate_ident();
+                if is_singleton_like {
+                    if in_kind.is_bounded() {
+                        // The bounded value is produced exactly once. Persist it at the root (a
+                        // `loop { ... }` context cannot contain `persist`) so it remains available,
+                        // then window it into the loop on each firing.
+                        let persisted_ident = self.intermediate_ident();
+                        self.add_dfir_in(
+                            in_location,
+                            parse_quote! {
+                                #persisted_ident = #in_ident -> persist::<'static>();
+                            },
+                            None,
+                        );
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #persisted_ident -> batch_lazy();
+                            },
+                            None,
+                        );
+                    } else {
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #in_ident -> batch_lazy();
+                            },
+                            None,
+                        );
+                    }
+                } else {
                     self.add_dfir_in(
-                        in_location,
+                        out_location,
                         parse_quote! {
-                            #persisted_ident = #in_ident -> persist::<'static>();
+                            #out_ident = #in_ident -> batch_eager();
                         },
                         None,
                     );
-                    persisted_ident
-                } else {
-                    in_ident
-                };
-                self.add_dfir_in(
-                    out_location,
-                    parse_quote! {
-                        #out_ident = #in_ident -> batch_eager();
-                    },
-                    None,
-                );
+                }
             }
             (Some(_), None) | (None, None) => {
                 unreachable!("batch must target a tick location");
