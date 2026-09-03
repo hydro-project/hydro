@@ -816,7 +816,17 @@ where
             )
             .latest();
 
-            Optional::new(self_location, out.ir_node.replace(HydroNode::Placeholder))
+            // `latest()` produces an `Unbounded` optional; cast it back to this method's
+            // (bounded) output kind. The cast is not just metadata: at the root, unbounded
+            // optionals are tombstoned update feeds while bounded ones are plain values.
+            Optional::new(
+                self_location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(out.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self_location
+                        .new_node_metadata(Optional::<(T, O), L, B>::collection_kind()),
+                },
+            )
         } else {
             zip_inside_tick(self, other)
         }
