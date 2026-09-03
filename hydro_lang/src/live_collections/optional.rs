@@ -1482,6 +1482,12 @@ where
     /// Eagerly samples the optional as fast as possible, returning a stream of snapshots
     /// with order corresponding to increasing prefixes of data contributing to the optional.
     ///
+    /// This requires the optional to be null-only-initially ([`IsInitNone`]): a general
+    /// [`Unbounded`] optional can *become null again*, which a `Stream<T>` of samples cannot
+    /// represent (dropping the null transitions would leave stale values observable). To
+    /// sample an [`Unbounded`] optional, use [`Optional::into_singleton`] first to observe
+    /// `Option<T>` snapshots (including `None`).
+    ///
     /// # Non-Determinism
     /// At runtime, the optional will be arbitrarily sampled as fast as possible, but due
     /// to non-deterministic batching and arrival of inputs, the output stream is
@@ -1489,7 +1495,10 @@ where
     pub fn sample_eager(
         self,
         nondet: NonDet,
-    ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce> {
+    ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce>
+    where
+        B: IsInitNone,
+    {
         let tick = self.location.tick();
         self.snapshot(&tick, nondet).all_ticks().weaken_retries()
     }
