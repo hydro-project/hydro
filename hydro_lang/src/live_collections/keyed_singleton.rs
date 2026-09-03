@@ -1577,10 +1577,12 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// #     .into_keyed()
     /// #     .first();
     /// keyed_singleton.get_max_key()
+    /// # .into_singleton()
     /// # .sample_eager(nondet!(/** test */))
     /// # }, |mut stream| async move {
     /// // (2, 456)
-    /// # assert_eq!(stream.next().await.unwrap(), (2, 456));
+    /// # let mut recv = std::pin::pin!(stream.filter(|v| futures::future::ready(v.is_some())));
+    /// # assert_eq!(recv.next().await.unwrap(), Some((2, 456)));
     /// # }));
     /// # }
     /// ```
