@@ -17,6 +17,7 @@ use bytes::BytesMut;
 use futures::{FutureExt, Sink, SinkExt, Stream, StreamExt};
 use proc_macro2::Span;
 use sinktools::demux_map_lazy::LazyDemuxSink;
+use sinktools::fail_stop::FailStopSink;
 use sinktools::lazy::{LazySink, LazySource};
 use sinktools::lazy_sink_source::LazySinkSource;
 use stageleft::runtime_support::{
@@ -267,10 +268,27 @@ pub async fn connect_channel(target: &str) -> Result<TcpStream, std::io::Error> 
     Ok(stream)
 }
 
+/// Creates an `on_fail` callback for [`FailStopSink`] that logs a single warning
+/// identifying the failed channel and its destination.
+pub fn warn_on_fail(
+    channel_name: String,
+    target: String,
+) -> impl FnOnce(&'static str, &std::io::Error) + Unpin {
+    move |during, err| {
+        warn!(
+            %channel_name,
+            %target,
+            %during,
+            error = ?err,
+            "channel failed; dropping all further messages to this destination",
+        );
+    }
+}
+
 pub fn deploy_containerized_o2o(target: &str, channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
-        q!(LazySink::<_, _, _, bytes::Bytes>::new(move || Box::pin(
-            async move {
+        q!(FailStopSink::new(
+            LazySink::<_, _, _, bytes::Bytes>::new(move || Box::pin(async move {
                 let channel_name = channel_name;
                 let target = format!("{}:{}", target, self::CHANNEL_MUX_PORT);
                 debug!(name: "connecting", %target, %channel_name);
@@ -281,8 +299,9 @@ pub fn deploy_containerized_o2o(target: &str, channel_name: &str) -> (syn::Expr,
                 self::send_handshake(&mut sink, channel_name, None).await?;
 
                 Result::<_, std::io::Error>::Ok(sink)
-            }
-        )))
+            })),
+            self::warn_on_fail(channel_name.to_owned(), target.to_owned()),
+        ))
         .splice_untyped_ctx(&()),
         q!(LazySource::new(move || Box::pin(async move {
             let channel_name = channel_name;
@@ -305,23 +324,30 @@ pub fn deploy_containerized_o2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
         q!(sinktools::demux_map_lazy::<_, _, _, _>(
             move |key: &TaglessMemberId| {
+                let on_fail = self::warn_on_fail(
+                    channel_name.to_owned(),
+                    key.get_container_name().to_owned(),
+                );
                 let key = key.clone();
                 let channel_name = channel_name.to_owned();
 
-                LazySink::<_, _, _, bytes::Bytes>::new(move || {
-                    Box::pin(async move {
-                        let target =
-                            format!("{}:{}", key.get_container_name(), self::CHANNEL_MUX_PORT);
-                        debug!(name: "connecting", %target, channel_name = %channel_name);
+                FailStopSink::new(
+                    LazySink::<_, _, _, bytes::Bytes>::new(move || {
+                        Box::pin(async move {
+                            let target =
+                                format!("{}:{}", key.get_container_name(), self::CHANNEL_MUX_PORT);
+                            debug!(name: "connecting", %target, channel_name = %channel_name);
 
-                        let stream = self::connect_channel(&target).await?;
-                        let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
+                            let stream = self::connect_channel(&target).await?;
+                            let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
-                        self::send_handshake(&mut sink, &channel_name, None).await?;
+                            self::send_handshake(&mut sink, &channel_name, None).await?;
 
-                        Result::<_, std::io::Error>::Ok(sink)
-                    })
-                })
+                            Result::<_, std::io::Error>::Ok(sink)
+                        })
+                    }),
+                    on_fail,
+                )
             }
         ))
         .splice_untyped_ctx(&()),
@@ -344,21 +370,24 @@ pub fn deploy_containerized_o2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
 
 pub fn deploy_containerized_m2o(target_host: &str, channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
-        q!(LazySink::<_, _, _, bytes::Bytes>::new(move || {
-            Box::pin(async move {
-                let channel_name = channel_name;
-                let target = format!("{}:{}", target_host, self::CHANNEL_MUX_PORT);
-                debug!(name: "connecting", %target, %channel_name);
+        q!(FailStopSink::new(
+            LazySink::<_, _, _, bytes::Bytes>::new(move || {
+                Box::pin(async move {
+                    let channel_name = channel_name;
+                    let target = format!("{}:{}", target_host, self::CHANNEL_MUX_PORT);
+                    debug!(name: "connecting", %target, %channel_name);
 
-                let stream = self::connect_channel(&target).await?;
-                let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
+                    let stream = self::connect_channel(&target).await?;
+                    let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
-                let container_name = std::env::var("CONTAINER_NAME").unwrap();
-                self::send_handshake(&mut sink, channel_name, Some(&container_name)).await?;
+                    let container_name = std::env::var("CONTAINER_NAME").unwrap();
+                    self::send_handshake(&mut sink, channel_name, Some(&container_name)).await?;
 
-                Result::<_, std::io::Error>::Ok(sink)
-            })
-        }))
+                    Result::<_, std::io::Error>::Ok(sink)
+                })
+            }),
+            self::warn_on_fail(channel_name.to_owned(), target_host.to_owned()),
+        ))
         .splice_untyped_ctx(&()),
         q!(LazySource::new(move || Box::pin(async move {
             let channel_name = channel_name;
@@ -392,25 +421,32 @@ pub fn deploy_containerized_m2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
         q!(sinktools::demux_map_lazy::<_, _, _, _>(
             move |key: &TaglessMemberId| {
+                let on_fail = self::warn_on_fail(
+                    channel_name.to_owned(),
+                    key.get_container_name().to_owned(),
+                );
                 let key = key.clone();
                 let channel_name = channel_name.to_owned();
 
-                LazySink::<_, _, _, bytes::Bytes>::new(move || {
-                    Box::pin(async move {
-                        let target =
-                            format!("{}:{}", key.get_container_name(), self::CHANNEL_MUX_PORT);
-                        debug!(name: "connecting", %target, channel_name = %channel_name);
+                FailStopSink::new(
+                    LazySink::<_, _, _, bytes::Bytes>::new(move || {
+                        Box::pin(async move {
+                            let target =
+                                format!("{}:{}", key.get_container_name(), self::CHANNEL_MUX_PORT);
+                            debug!(name: "connecting", %target, channel_name = %channel_name);
 
-                        let stream = self::connect_channel(&target).await?;
-                        let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
+                            let stream = self::connect_channel(&target).await?;
+                            let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
-                        let container_name = std::env::var("CONTAINER_NAME").unwrap();
-                        self::send_handshake(&mut sink, &channel_name, Some(&container_name))
-                            .await?;
+                            let container_name = std::env::var("CONTAINER_NAME").unwrap();
+                            self::send_handshake(&mut sink, &channel_name, Some(&container_name))
+                                .await?;
 
-                        Result::<_, std::io::Error>::Ok(sink)
-                    })
-                })
+                            Result::<_, std::io::Error>::Ok(sink)
+                        })
+                    }),
+                    on_fail,
+                )
             }
         ))
         .splice_untyped_ctx(&()),
