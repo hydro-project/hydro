@@ -1584,7 +1584,9 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # }));
     /// # }
     /// ```
-    pub fn get_max_key(self) -> Optional<(K, V), L, B::UnderlyingBound>
+    pub fn get_max_key(
+        self,
+    ) -> Optional<(K, V), L, <B::UnderlyingBound as Boundedness>::AggregatedOptional>
     where
         K: Ord,
     {
@@ -1606,7 +1608,6 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
                 },
                 idempotent = manual_proof!(/** repeated elements are ignored */)
             ))
-            .ignore_init_none()
     }
 
     /// Converts this keyed singleton into a [`KeyedStream`] with each group having a single
