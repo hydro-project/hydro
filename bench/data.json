@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1788424254806,
+  "lastUpdate": 1788510443177,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -308603,6 +308603,208 @@
             "name": "paxos_bench",
             "value": 192520,
             "range": "± 10660.09",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mingwei Samuel",
+            "username": "MingweiSamuel",
+            "email": "mingwei.samuel@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "48658ad419582521a402c805cdcacfadfb1da90c",
+          "message": "fix(hydro_lang)!: prevent `sample_eager` from being called on unbounded Optionals (#3186)\n\nBREAKING CHANGE: You can no longer call `.sample_eager` on unbounded\n`Optional<T>`s, which would have given you a stream of only the\nnon-`None` values. Instead you should call\n`.into_singleton().sample_eager()` which will give you a\n`Stream<Option<T>>`",
+          "timestamp": "2026-09-03T23:49:48Z",
+          "url": "https://github.com/hydro-project/hydro/commit/48658ad419582521a402c805cdcacfadfb1da90c"
+        },
+        "date": 1788510443121,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311288,
+            "range": "± 17298",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6533863,
+            "range": "± 14294",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6879849,
+            "range": "± 17991",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 50467,
+            "range": "± 1748",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 14115280,
+            "range": "± 93255",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1552629,
+            "range": "± 9073",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1618731,
+            "range": "± 26572",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 43752493,
+            "range": "± 296687",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6823905,
+            "range": "± 13887",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 13004238,
+            "range": "± 1325988",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6533212,
+            "range": "± 47868",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6997230,
+            "range": "± 11340",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 42542249,
+            "range": "± 1025516",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 6438,
+            "range": "± 147",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 24110,
+            "range": "± 266",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4128,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6651,
+            "range": "± 74",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 529892,
+            "range": "± 12538",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55714,
+            "range": "± 657",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 44576,
+            "range": "± 898",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 17133,
+            "range": "± 154",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6994,
+            "range": "± 108",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7368,
+            "range": "± 104",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72531,
+            "range": "± 407",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 79049,
+            "range": "± 512",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7350,
+            "range": "± 208",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15384,
+            "range": "± 140",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 61728,
+            "range": "± 2772",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7530,
+            "range": "± 142",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 187400,
+            "range": "± 14067.69",
             "unit": "ops/s"
           }
         ]
