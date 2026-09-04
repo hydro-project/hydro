@@ -2573,13 +2573,28 @@ mod tests {
             .map(q!(move |_| format!(
                 "hello from member {}",
                 CLUSTER_SELF_ID.clone().into_tagless()
-            )));
+            )))
+            .assume_retries::<ExactlyOnce>(nondet!(
+                /// The interval timer's `()`s are `AtLeastOnce`; this wiring treats each
+                /// fire as one distinct request, a choice the workload is allowed to make.
+            ));
 
-        let election_timer_interrupts = replicas.source_interval(q!(
-            std::time::Duration::from_millis(500 + u64::from(CLUSTER_SELF_ID.get_raw_id()) * 130)
-        ));
-        let heartbeat_timer_interrupts =
-            replicas.source_interval(q!(std::time::Duration::from_millis(100)));
+        let election_timer_interrupts = replicas
+            .source_interval(q!(std::time::Duration::from_millis(
+                500 + u64::from(CLUSTER_SELF_ID.get_raw_id()) * 130
+            )))
+            .assume_retries::<ExactlyOnce>(nondet!(
+                /// `source_interval`'s fires are `AtLeastOnce`; `raft` consumes its timers
+                /// `ExactlyOnce` and only tests whether a tick saw a fire, so a repeated
+                /// fire is just another fire.
+            ));
+        let heartbeat_timer_interrupts = replicas
+            .source_interval(q!(std::time::Duration::from_millis(100)))
+            .assume_retries::<ExactlyOnce>(nondet!(
+                /// `source_interval`'s fires are `AtLeastOnce`; `raft` consumes its timers
+                /// `ExactlyOnce` and only tests whether a tick saw a fire, so a repeated
+                /// fire is just another fire.
+            ));
 
         let (committed, redirected) = raft(
             requests,
