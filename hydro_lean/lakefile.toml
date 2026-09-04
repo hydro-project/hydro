@@ -1,0 +1,15 @@
+name = "hydro_lean"
+version = "0.1.0"
+defaultTargets = ["HydroLean"]
+
+[[lean_lib]]
+name = "HydroLean"
+globs = ["HydroLean.**"]
+
+[[lean_exe]]
+name = "falsify"
+root = "Falsify"
+
+[[lean_exe]]
+name = "explore"
+root = "Explore"
