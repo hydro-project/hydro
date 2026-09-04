@@ -541,6 +541,7 @@ pub trait DfirBuilder {
         in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         out_location: &LocationId,
+        out_kind: &CollectionKind,
     );
 
     /// Un-windows an ident when it is produced inside a tick's `loop { ... }` context
@@ -572,6 +573,7 @@ pub trait DfirBuilder {
         in_location: &LocationId,
         in_kind: &CollectionKind,
         out_ident: &syn::Ident,
+        out_kind: &CollectionKind,
     );
 
     #[expect(clippy::too_many_arguments, reason = "TODO // internal")]
@@ -832,13 +834,6 @@ impl DfirBuilder for ProdDfirBuilder {
         _op_meta: &HydroIrOpMetadata,
         _fold_hooked_idents: &HashSet<String>,
     ) {
-        let is_singleton_like = matches!(
-            in_kind,
-            CollectionKind::Singleton { .. }
-                | CollectionKind::Optional { .. }
-                | CollectionKind::KeyedSingleton { .. }
-        );
-
         match (Self::tick_of(in_location), Self::tick_of(out_location)) {
             (Some(in_tick), Some(out_tick)) => {
                 // Within the same (unified) tick, e.g. entering the tick from its associated
@@ -863,29 +858,153 @@ impl DfirBuilder for ProdDfirBuilder {
                 // Entering the tick's loop from the top level: emit a windowing operator.
                 // `batch_eager()` preserves the pre-loop tick semantics: the loop fires on every
                 // tick even when the windowed input is empty.
-                let in_ident = if is_singleton_like && in_kind.is_bounded() {
-                    // The bounded value is produced exactly once. Persist it at the root (a
-                    // `loop { ... }` context cannot contain `persist`) so it remains available,
-                    // then window it into the loop on each firing.
-                    let persisted_ident = self.intermediate_ident();
-                    self.add_dfir_in(
-                        in_location,
-                        parse_quote! {
-                            #persisted_ident = #in_ident -> persist::<'static>();
-                        },
-                        None,
-                    );
-                    persisted_ident
-                } else {
-                    in_ident
-                };
-                self.add_dfir_in(
-                    out_location,
-                    parse_quote! {
-                        #out_ident = #in_ident -> batch_eager();
-                    },
-                    None,
-                );
+                //
+                // NOTE: this is the single point deciding how singleton-like values are windowed
+                // into a tick; when ticks become lazy (#2902 phase 2), the windowing operator
+                // for the held-state paths below should become `batch_lazy()` (snapshots must
+                // not cause the tick to fire on their own).
+                match in_kind {
+                    // A *bounded* singleton-like value is produced exactly once. Persist it at
+                    // the root (a `loop { ... }` context cannot contain `persist`) so it remains
+                    // available, then window it into the loop on each firing.
+                    CollectionKind::Singleton { .. }
+                    | CollectionKind::Optional { .. }
+                    | CollectionKind::KeyedSingleton { .. }
+                        if in_kind.is_bounded() =>
+                    {
+                        let persisted_ident = self.intermediate_ident();
+                        self.add_dfir_in(
+                            in_location,
+                            parse_quote! {
+                                #persisted_ident = #in_ident -> persist::<'static>();
+                            },
+                            None,
+                        );
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #persisted_ident -> batch_eager();
+                            },
+                            None,
+                        );
+                    }
+
+                    // An unbounded singleton (or `InitNone` optional, which shares the plain
+                    // `T`-update representation) arrives as a feed of updated values. Hold the
+                    // latest update across firings so each firing observes the current value
+                    // even if no update arrived since the previous firing. Until the first
+                    // update arrives the state is `None`: for a singleton the first update
+                    // arrives before any consumer could observe it (the upstream aggregation
+                    // emits its initial value immediately), and for an `InitNone` optional
+                    // "no update yet" genuinely means null.
+                    CollectionKind::Singleton { .. }
+                    | CollectionKind::Optional {
+                        bound: OptionalBoundKind::InitNone,
+                        ..
+                    } => {
+                        let batched_ident = self.intermediate_ident();
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #batched_ident = #in_ident -> batch_eager();
+                            },
+                            None,
+                        );
+                        let lifetime: TokenStream = self.cross_tick_state_lifetime(out_location);
+                        let lifetime: syn::Lifetime = syn::parse2(lifetime).unwrap();
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #batched_ident
+                                    -> fold::<#lifetime>(|| None, |current, update| { *current = Some(update); })
+                                    -> filter_map(|current| current);
+                            },
+                            None,
+                        );
+                    }
+
+                    // A root unbounded optional is a tombstoned update feed of `Option<T>`
+                    // (see [`CollectionKind::root_repr_is_tombstoned_update_feed`]). Hold the
+                    // latest update across firings, then flatten: "no update yet" (outer
+                    // `None`) and "latest update is a tombstone" (inner `None`) both mean the
+                    // optional is currently null.
+                    CollectionKind::Optional {
+                        bound: OptionalBoundKind::Unbounded,
+                        ..
+                    } => {
+                        let batched_ident = self.intermediate_ident();
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #batched_ident = #in_ident -> batch_eager();
+                            },
+                            None,
+                        );
+                        let lifetime: TokenStream = self.cross_tick_state_lifetime(out_location);
+                        let lifetime: syn::Lifetime = syn::parse2(lifetime).unwrap();
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #batched_ident
+                                    -> fold::<#lifetime>(|| None, |current, update| { *current = Some(update); })
+                                    -> filter_map(|current| current.flatten());
+                            },
+                            None,
+                        );
+                    }
+
+                    // A root unbounded keyed singleton is a tombstoned update feed of
+                    // `(K, Option<V>)` (see
+                    // [`CollectionKind::root_repr_is_tombstoned_update_feed`]). Hold the
+                    // current entry map across firings by applying upserts and tombstones,
+                    // then emit the entries each firing.
+                    CollectionKind::KeyedSingleton {
+                        bound: KeyedSingletonBoundKind::Unbounded,
+                        ..
+                    } => {
+                        let batched_ident = self.intermediate_ident();
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #batched_ident = #in_ident -> batch_eager();
+                            },
+                            None,
+                        );
+                        let lifetime: TokenStream = self.cross_tick_state_lifetime(out_location);
+                        let lifetime: syn::Lifetime = syn::parse2(lifetime).unwrap();
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #batched_ident
+                                    -> fold::<#lifetime>(|| ::std::collections::HashMap::new(), |current, (key, update)| {
+                                        match update {
+                                            ::std::option::Option::Some(value) => {
+                                                current.insert(key, value);
+                                            }
+                                            ::std::option::Option::None => {
+                                                current.remove(&key);
+                                            }
+                                        }
+                                    })
+                                    -> flat_map(|current| current);
+                            },
+                            None,
+                        );
+                    }
+
+                    // Monotonic keyed singletons (keys never removed) keep the plain update
+                    // feed; upstream keyed aggregations re-emit current entries eagerly.
+                    // Streams and keyed streams are plain event feeds.
+                    _ => {
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #in_ident -> batch_eager();
+                            },
+                            None,
+                        );
+                    }
+                }
             }
             (Some(_), None) | (None, None) => {
                 unreachable!("batch must target a tick location");
@@ -900,6 +1019,7 @@ impl DfirBuilder for ProdDfirBuilder {
         _in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         out_location: &LocationId,
+        out_kind: &CollectionKind,
     ) {
         // A `YieldConcat` may target either the top level (`latest`/`all_ticks`) or an atomic
         // region wrapping the *same* tick (`latest_atomic`/`all_ticks_atomic`). The atomic region
@@ -907,9 +1027,6 @@ impl DfirBuilder for ProdDfirBuilder {
         // the loop and is emitted as identity — emitting `all_iterations()` there would illegally
         // exit the loop even though the consumer lives inside it. This mirrors the simulation
         // builder, which also emits identity for a same-tick atomic yield.
-        //
-        // TODO(#2902 phase 2): singleton/optional yields to the top level need held-state
-        // semantics (observe the latest value *between* firings), not plain event semantics.
         match (Self::tick_of(in_location), Self::tick_of(out_location)) {
             (Some(in_tick), Some(out_tick)) => {
                 assert_eq!(
@@ -925,15 +1042,65 @@ impl DfirBuilder for ProdDfirBuilder {
                 );
             }
             _ => {
-                // Exit the tick's loop back to the top level. `in_ident` is produced inside the
-                // loop; `all_iterations()` is the un-windowing operator, emitted at the root level.
-                self.graph_mut(in_location).add_dfir(
-                    parse_quote! {
-                        #out_ident = #in_ident -> all_iterations();
-                    },
-                    None,
-                    None,
-                );
+                // Exit the tick's loop back to the top level.
+                match out_kind {
+                    CollectionKind::Optional {
+                        bound: OptionalBoundKind::Unbounded,
+                        ..
+                    } => {
+                        // `Optional::latest()`: the root unbounded optional is a tombstoned
+                        // update feed of `Option<T>`. Emit exactly one update per firing —
+                        // `Some(v)` when the tick optional has a value, `None` (a tombstone)
+                        // when it is null — so that downstream observers can distinguish
+                        // "became null" from "no update". The `fold` runs inside the loop (a
+                        // `'tick` accumulator, reset each firing, that captures the 0-or-1
+                        // element of the tick optional) and emits once per firing even when
+                        // its input is empty.
+                        let folded_ident = self.intermediate_ident();
+                        let lifetime: TokenStream = self.tick_state_lifetime(in_location);
+                        let lifetime: syn::Lifetime = syn::parse2(lifetime).unwrap();
+                        self.add_dfir_in(
+                            in_location,
+                            parse_quote! {
+                                #folded_ident = #in_ident
+                                    -> fold::<#lifetime>(|| None, |update, value| { *update = Some(value); });
+                            },
+                            None,
+                        );
+                        self.graph_mut(in_location).add_dfir(
+                            parse_quote! {
+                                #out_ident = #folded_ident -> all_iterations();
+                            },
+                            None,
+                            None,
+                        );
+                    }
+                    CollectionKind::KeyedSingleton {
+                        bound: KeyedSingletonBoundKind::Unbounded,
+                        ..
+                    } => {
+                        // The root representation is a tombstoned `(K, Option<V>)` update feed
+                        // (see [`CollectionKind::root_repr_is_tombstoned_update_feed`]), but
+                        // no API currently yields an unbounded keyed singleton out of a tick
+                        // (there is no `KeyedSingleton::latest()`). Emitting this yield would
+                        // require diffing the per-firing entry set against the previous
+                        // firing's to synthesize tombstones for disappeared keys.
+                        todo!(
+                            "yielding an unbounded KeyedSingleton out of a tick is not yet supported"
+                        );
+                    }
+                    _ => {
+                        // `in_ident` is produced inside the loop; `all_iterations()` is the
+                        // un-windowing operator, emitted at the root level.
+                        self.graph_mut(in_location).add_dfir(
+                            parse_quote! {
+                                #out_ident = #in_ident -> all_iterations();
+                            },
+                            None,
+                            None,
+                        );
+                    }
+                }
             }
         }
     }
@@ -969,21 +1136,27 @@ impl DfirBuilder for ProdDfirBuilder {
         &mut self,
         in_ident: syn::Ident,
         in_location: &LocationId,
-        _in_kind: &CollectionKind,
+        in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         out_location: &LocationId,
-        _op_meta: &HydroIrOpMetadata,
+        op_meta: &HydroIrOpMetadata,
     ) {
         // An atomic region is fused with (runs synchronously inside) its tick's loop. Entering it
         // from the top level windows data in; entering from within the same tick is identity.
         match (Self::tick_of(in_location), Self::tick_of(out_location)) {
             (None, Some(_)) => {
-                self.add_dfir_in(
+                // Entering the loop from the root is the same representational boundary as a
+                // snapshot: singleton-like values need held-state (and, for tombstoned update
+                // feeds, un-tombstoning) so that inside the loop they are plain per-firing
+                // values. Delegate to the `batch` logic, which handles every collection kind.
+                self.batch(
+                    in_ident,
+                    in_location,
+                    in_kind,
+                    out_ident,
                     out_location,
-                    parse_quote! {
-                        #out_ident = #in_ident -> batch_eager();
-                    },
-                    None,
+                    op_meta,
+                    &HashSet::new(),
                 );
             }
             _ => {
@@ -1002,16 +1175,21 @@ impl DfirBuilder for ProdDfirBuilder {
         &mut self,
         in_ident: syn::Ident,
         in_location: &LocationId,
-        _in_kind: &CollectionKind,
+        in_kind: &CollectionKind,
         out_ident: &syn::Ident,
+        out_kind: &CollectionKind,
     ) {
-        // Exit the atomic region (and thus the tick's loop) back to the top level.
-        self.graph_mut(in_location).add_dfir(
-            parse_quote! {
-                #out_ident = #in_ident -> all_iterations();
-            },
-            None,
-            None,
+        // Exit the atomic region (and thus the tick's loop) back to the top level. This is the
+        // same representational boundary as `yield_from_tick`: root unbounded optionals become
+        // tombstoned `Option<T>` update feeds.
+        let out_location = in_location.root().clone();
+        self.yield_from_tick(
+            in_ident,
+            in_location,
+            in_kind,
+            out_ident,
+            &out_location,
+            out_kind,
         );
     }
 
@@ -1996,7 +2174,19 @@ impl HydroRoot {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
+                        // NOTE: this must be the *pipe* element type: tombstoned update feeds
+                        // (see [`CollectionKind::root_repr_is_tombstoned_update_feed`]) carry
+                        // `Option<T>` update records, not plain values.
+                        let tombstoned =
+                            update_feed_repr(input.metadata()) == UpdateFeedRepr::Tombstoned;
                         let elem_type: syn::Type = match &input.metadata().collection_kind {
+                            CollectionKind::KeyedSingleton {
+                                key_type,
+                                value_type,
+                                ..
+                            } if tombstoned => {
+                                parse_quote!((#key_type, ::std::option::Option<#value_type>))
+                            }
                             CollectionKind::KeyedSingleton {
                                 key_type,
                                 value_type,
@@ -2008,6 +2198,9 @@ impl HydroRoot {
                                 ..
                             } => {
                                 parse_quote!((#key_type, #value_type))
+                            }
+                            CollectionKind::Optional { element_type, .. } if tombstoned => {
+                                parse_quote!(::std::option::Option<#element_type>)
                             }
                             CollectionKind::Stream { element_type, .. }
                             | CollectionKind::Singleton { element_type, .. }
@@ -2676,6 +2869,44 @@ impl CollectionKind {
         }
     }
 
+    /// Returns whether this collection kind, when materialized at a **root** (non-tick,
+    /// non-atomic) location, is represented as a "tombstoned update feed": a DFIR pipe whose
+    /// elements are explicit update records that can express *removal*, rather than plain
+    /// values.
+    ///
+    /// - [`CollectionKind::Optional`] with [`OptionalBoundKind::Unbounded`]: the pipe carries
+    ///   `Option<T>` updates, where `None` is a tombstone recording that the optional became
+    ///   null. (Bounded and `InitNone` optionals never become null after having a value, so
+    ///   they are represented as plain `T` updates.)
+    /// - [`CollectionKind::KeyedSingleton`] with [`KeyedSingletonBoundKind::Unbounded`]: the
+    ///   pipe carries `(K, Option<V>)` updates, where `(k, Some(v))` upserts an entry and
+    ///   `(k, None)` is a tombstone recording that key `k` was removed (e.g. garbage-collected
+    ///   by `KeyedStream::reduce_watermark` when the watermark advances). The other keyed
+    ///   bound kinds never remove keys (or are bounded), so they keep plain `(K, V)` entries.
+    ///
+    /// This representation exists because a plain update feed cannot distinguish "no update"
+    /// from "became absent" (#3181). It applies **only** at root locations: inside a tick (or
+    /// atomic region fused into a tick's loop), presence is re-derived every firing, so
+    /// absence in a firing is already meaningful and plain values are used.
+    ///
+    /// Producers of tombstoned feeds must emit an explicit tombstone for every removal (see
+    /// the delta-emitting `scan` in the [`HydroNode::ReduceKeyedWatermark`] codegen);
+    /// consumers hold the latest state across firings by applying updates (see
+    /// [`DfirBuilder::batch`]). Generated code for keyed feeds requires `K: Clone` (and
+    /// `V: Clone`), which the pre-existing whole-map re-emission already required.
+    pub fn root_repr_is_tombstoned_update_feed(&self) -> bool {
+        matches!(
+            self,
+            CollectionKind::Optional {
+                bound: OptionalBoundKind::Unbounded,
+                ..
+            } | CollectionKind::KeyedSingleton {
+                bound: KeyedSingletonBoundKind::Unbounded,
+                ..
+            }
+        )
+    }
+
     /// Creates a "strict" version of this kind with TotalOrder and ExactlyOnce.
     pub fn strict_kind(&self) -> CollectionKind {
         match self {
@@ -3220,6 +3451,35 @@ pub enum HydroNode {
 
 pub type SeenSharedNodes = HashMap<*const RefCell<HydroNode>, Rc<RefCell<HydroNode>>>;
 pub type SeenSharedNodeLocations = HashMap<*const RefCell<HydroNode>, LocationId>;
+
+/// The runtime representation of a collection's DFIR pipe at a given node.
+///
+/// See [`CollectionKind::root_repr_is_tombstoned_update_feed`]: root-located unbounded
+/// [`Optional`](CollectionKind::Optional)s and
+/// [`KeyedSingleton`](CollectionKind::KeyedSingleton)s are represented as feeds of explicit
+/// update records (`Option<T>` / `(K, Option<V>)`) so that *removal* is representable;
+/// everything else is a plain feed of values.
+#[cfg(feature = "build")]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+enum UpdateFeedRepr {
+    /// Plain values (`T` elements / `(K, V)` entries).
+    Plain,
+    /// Tombstoned updates (`Option<T>` / `(K, Option<V>)`).
+    Tombstoned,
+}
+
+#[cfg(feature = "build")]
+fn update_feed_repr(metadata: &HydroIrMetadata) -> UpdateFeedRepr {
+    if metadata.location_id.is_root()
+        && metadata
+            .collection_kind
+            .root_repr_is_tombstoned_update_feed()
+    {
+        UpdateFeedRepr::Tombstoned
+    } else {
+        UpdateFeedRepr::Plain
+    }
+}
 
 /// If `f` has a mut singleton ref and `in_kind` is non-strict, emits an
 /// `observe_for_mut` node and returns the new ident. Otherwise returns
@@ -3886,17 +4146,154 @@ impl HydroNode {
                         panic!()
                     }
 
-                    HydroNode::Cast { .. } => {
-                        // Cast passes through the input ident unchanged
-                        // The input ident is already on the stack from processing the child
-                        let _ = next_stmt_id.get_and_increment();
-                        match builders_or_callback {
-                            BuildersOrCallback::Builders(_) => {}
-                            BuildersOrCallback::Callback(_, node_callback) => {
-                                node_callback(node, next_stmt_id);
+                    HydroNode::Cast { inner, metadata } => {
+                        // Casts are metadata-only *except* when they cross the update-feed
+                        // representation boundary (see
+                        // [`CollectionKind::root_repr_is_tombstoned_update_feed`]):
+                        // - Plain -> tombstoned (e.g. `ignore_init_none`, `into_optional` at
+                        //   the root): every plain value becomes a `Some(v)` update (for keyed
+                        //   feeds, every `(k, v)` entry becomes a `(k, Some(v))` upsert). This
+                        //   is lossless: collections with a plain representation never become
+                        //   absent, so no tombstone is ever needed.
+                        // - Tombstoned -> plain (e.g. the cast of an always-present `or`
+                        //   result back to a `Singleton` in `unwrap_or`/`zip`): keep the
+                        //   values of `Some` updates. Tombstones are dropped, which is only
+                        //   sound because such casts are constructed exclusively for feeds
+                        //   whose consumers treat absence-of-value as absence anyway (the
+                        //   plain-repr kinds have no notion of removal to lose).
+                        // - Tombstoned -> tombstoned with *different* update-record encodings
+                        //   (`Optional::into_keyed_singleton` at the root: `Option<(K, V)>`
+                        //   updates -> `(K, Option<V>)` updates): a stateful scan remembers
+                        //   the previously-emitted key so that when the optional becomes null
+                        //   (or moves to a different key), the old key is explicitly
+                        //   tombstoned.
+                        let in_repr = update_feed_repr(inner.metadata());
+                        let out_repr = update_feed_repr(metadata);
+                        let cross_kind_tombstoned = in_repr == UpdateFeedRepr::Tombstoned
+                            && out_repr == UpdateFeedRepr::Tombstoned
+                            && std::mem::discriminant(&inner.metadata().collection_kind)
+                                != std::mem::discriminant(&metadata.collection_kind);
+
+                        if in_repr == out_repr && !cross_kind_tombstoned {
+                            // Identity: passes through the input ident unchanged. The input
+                            // ident is already on the stack from processing the child.
+                            let _ = next_stmt_id.get_and_increment();
+                            match builders_or_callback {
+                                BuildersOrCallback::Builders(_) => {}
+                                BuildersOrCallback::Callback(_, node_callback) => {
+                                    node_callback(node, next_stmt_id);
+                                }
                             }
+                            // input_ident stays on stack as output
+                        } else {
+                            let input_ident = ident_stack.pop().unwrap();
+
+                            let stmt_id = next_stmt_id.get_and_increment();
+                            let cast_ident =
+                                syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
+
+                            match builders_or_callback {
+                                BuildersOrCallback::Builders(graph_builders) => {
+                                    let cast_op: TokenStream = if cross_kind_tombstoned {
+                                        match (
+                                            &inner.metadata().collection_kind,
+                                            &metadata.collection_kind,
+                                        ) {
+                                            (
+                                                CollectionKind::Optional { .. },
+                                                CollectionKind::KeyedSingleton { .. },
+                                            ) => {
+                                                // `Optional::into_keyed_singleton` at the root.
+                                                // Generated code requires `K: Clone + PartialEq`
+                                                // (to compare against and tombstone the previous
+                                                // key).
+                                                let lifetime: TokenStream = graph_builders
+                                                    .cross_tick_state_lifetime(&out_location);
+                                                let lifetime: syn::Lifetime =
+                                                    syn::parse2(lifetime).unwrap();
+                                                quote! {
+                                                    scan::<#lifetime>(
+                                                        || ::std::option::Option::None,
+                                                        |previous_key, update: ::std::option::Option<(_, _)>| {
+                                                            let mut deltas = ::std::vec::Vec::new();
+                                                            match update {
+                                                                ::std::option::Option::Some((key, value)) => {
+                                                                    match previous_key.take() {
+                                                                        ::std::option::Option::Some(previous) if previous != key => {
+                                                                            deltas.push((previous, ::std::option::Option::None));
+                                                                        }
+                                                                        _ => {}
+                                                                    }
+                                                                    *previous_key = ::std::option::Option::Some(::std::clone::Clone::clone(&key));
+                                                                    deltas.push((key, ::std::option::Option::Some(value)));
+                                                                }
+                                                                ::std::option::Option::None => {
+                                                                    if let ::std::option::Option::Some(previous) = previous_key.take() {
+                                                                        deltas.push((previous, ::std::option::Option::None));
+                                                                    }
+                                                                }
+                                                            }
+                                                            ::std::option::Option::Some(deltas)
+                                                        },
+                                                    ) -> flatten()
+                                                }
+                                            }
+                                            (in_kind, out_kind) => todo!(
+                                                "casting between tombstoned update feeds \
+                                                 {:?} -> {:?} is not yet supported",
+                                                in_kind,
+                                                out_kind
+                                            ),
+                                        }
+                                    } else {
+                                        match (in_repr, out_repr) {
+                                            (UpdateFeedRepr::Plain, UpdateFeedRepr::Tombstoned) => {
+                                                match &metadata.collection_kind {
+                                                    CollectionKind::Optional { .. } => {
+                                                        quote! { map(::std::option::Option::Some) }
+                                                    }
+                                                    CollectionKind::KeyedSingleton { .. } => {
+                                                        quote! { map(|(__hydro_key, __hydro_value)| (__hydro_key, ::std::option::Option::Some(__hydro_value))) }
+                                                    }
+                                                    other => panic!(
+                                                        "unexpected tombstoned update feed kind for cast: {:?}",
+                                                        other
+                                                    ),
+                                                }
+                                            }
+                                            (UpdateFeedRepr::Tombstoned, UpdateFeedRepr::Plain) => {
+                                                match &inner.metadata().collection_kind {
+                                                    CollectionKind::Optional { .. } => {
+                                                        quote! { filter_map(|__hydro_update| __hydro_update) }
+                                                    }
+                                                    CollectionKind::KeyedSingleton { .. } => {
+                                                        quote! { filter_map(|(__hydro_key, __hydro_update)| __hydro_update.map(|__hydro_value| (__hydro_key, __hydro_value))) }
+                                                    }
+                                                    other => panic!(
+                                                        "unexpected tombstoned update feed kind for cast: {:?}",
+                                                        other
+                                                    ),
+                                                }
+                                            }
+                                            _ => unreachable!(),
+                                        }
+                                    };
+
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
+                                        parse_quote! {
+                                            #cast_ident = #input_ident -> #cast_op;
+                                        },
+                                        Some(&stmt_id.to_string()),
+                                    );
+                                }
+                                BuildersOrCallback::Callback(_, node_callback) => {
+                                    node_callback(node, next_stmt_id);
+                                }
+                            }
+
+                            ident_stack.push(cast_ident);
                         }
-                        // input_ident stays on stack as output
                     }
 
                     HydroNode::UnboundSingleton { .. } => {
@@ -4019,7 +4416,9 @@ impl HydroNode {
                         ident_stack.push(batch_ident);
                     }
 
-                    HydroNode::YieldConcat { inner, .. } => {
+                    HydroNode::YieldConcat {
+                        inner, metadata, ..
+                    } => {
                         let inner_ident = ident_stack.pop().unwrap();
 
                         let stmt_id = next_stmt_id.get_and_increment();
@@ -4034,6 +4433,7 @@ impl HydroNode {
                                     &inner.metadata().collection_kind,
                                     &yield_ident,
                                     &out_location,
+                                    &metadata.collection_kind,
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
@@ -4070,7 +4470,9 @@ impl HydroNode {
                         ident_stack.push(begin_ident);
                     }
 
-                    HydroNode::EndAtomic { inner, .. } => {
+                    HydroNode::EndAtomic {
+                        inner, metadata, ..
+                    } => {
                         let inner_ident = ident_stack.pop().unwrap();
 
                         let stmt_id = next_stmt_id.get_and_increment();
@@ -4084,6 +4486,7 @@ impl HydroNode {
                                     &inner.metadata().location_id,
                                     &inner.metadata().collection_kind,
                                     &end_ident,
+                                    &metadata.collection_kind,
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
@@ -4894,12 +5297,64 @@ impl HydroNode {
                         let map_ident =
                             syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
+                        // A map over a tombstoned update feed transforms the *values* of
+                        // updates, passing tombstones (`None`) through unchanged. For keyed
+                        // feeds the inner closure transforms plain `(K, V)` entries and
+                        // preserves the key (guaranteed by the `KeyedSingleton::map` /
+                        // `map_with_key` construction), so a tombstoned key passes through
+                        // with its key intact.
+                        let map_op: TokenStream = match (
+                            update_feed_repr(input.metadata()),
+                            update_feed_repr(metadata),
+                        ) {
+                            (UpdateFeedRepr::Plain, UpdateFeedRepr::Plain) => {
+                                quote! { map(#f_tokens) }
+                            }
+                            (UpdateFeedRepr::Tombstoned, UpdateFeedRepr::Tombstoned) => {
+                                match &metadata.collection_kind {
+                                    CollectionKind::Optional { .. } => {
+                                        quote! {
+                                            map({
+                                                let mut __hydro_map_f = #f_tokens;
+                                                move |__hydro_update| __hydro_update.map(&mut __hydro_map_f)
+                                            })
+                                        }
+                                    }
+                                    CollectionKind::KeyedSingleton { .. } => {
+                                        quote! {
+                                            map({
+                                                let mut __hydro_map_f = #f_tokens;
+                                                move |(__hydro_key, __hydro_update)| match __hydro_update {
+                                                    ::std::option::Option::Some(__hydro_value) => {
+                                                        let (__hydro_out_key, __hydro_out_value) =
+                                                            (__hydro_map_f)((__hydro_key, __hydro_value));
+                                                        (__hydro_out_key, ::std::option::Option::Some(__hydro_out_value))
+                                                    }
+                                                    ::std::option::Option::None => {
+                                                        (__hydro_key, ::std::option::Option::None)
+                                                    }
+                                                }
+                                            })
+                                        }
+                                    }
+                                    other => panic!(
+                                        "unexpected tombstoned update feed kind for `map`: {:?}",
+                                        other
+                                    ),
+                                }
+                            }
+                            (in_repr, out_repr) => panic!(
+                                "map may not change the update feed representation ({:?} -> {:?})",
+                                in_repr, out_repr
+                            ),
+                        };
+
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
                                 graph_builders.add_dfir_at(
                                     &out_location,
                                     parse_quote! {
-                                        #map_ident = #input_ident -> map(#f_tokens);
+                                        #map_ident = #input_ident -> #map_op;
                                     },
                                     Some(&stmt_id.to_string()),
                                 );
@@ -4996,12 +5451,100 @@ impl HydroNode {
                         let filter_ident =
                             syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
+                        // Filtering *state* (as opposed to events) makes absence explicit:
+                        // - On a tombstoned update feed, each update's value is filtered, and a
+                        //   filtered-out value becomes a tombstone — dropping the update
+                        //   entirely would incorrectly leave the previous value observable.
+                        // - A filter that takes a plain feed *into* a tombstoned feed (e.g.
+                        //   `Singleton::filter` / `Optional::<InitNone>::filter` at the root,
+                        //   which produce root unbounded optionals) emits an update for every
+                        //   input value: `Some(v)` if it passes, a `None` tombstone if not.
+                        let filter_op: TokenStream = match (
+                            update_feed_repr(input.metadata()),
+                            update_feed_repr(metadata),
+                        ) {
+                            (UpdateFeedRepr::Plain, UpdateFeedRepr::Plain) => {
+                                quote! { filter(#f_tokens) }
+                            }
+                            (UpdateFeedRepr::Plain, UpdateFeedRepr::Tombstoned) => {
+                                match &metadata.collection_kind {
+                                    CollectionKind::Optional { .. } => {
+                                        quote! {
+                                            map({
+                                                let mut __hydro_filter_f = #f_tokens;
+                                                move |__hydro_value| {
+                                                    if (__hydro_filter_f)(&__hydro_value) {
+                                                        Some(__hydro_value)
+                                                    } else {
+                                                        None
+                                                    }
+                                                }
+                                            })
+                                        }
+                                    }
+                                    // `KeyedSingleton::filter` preserves the bound (`B -> B`),
+                                    // so a plain keyed feed can never filter into a tombstoned
+                                    // one.
+                                    other => panic!(
+                                        "unexpected tombstoned update feed kind for `filter`: {:?}",
+                                        other
+                                    ),
+                                }
+                            }
+                            (UpdateFeedRepr::Tombstoned, UpdateFeedRepr::Tombstoned) => {
+                                match &metadata.collection_kind {
+                                    CollectionKind::Optional { .. } => {
+                                        quote! {
+                                            map({
+                                                let mut __hydro_filter_f = #f_tokens;
+                                                move |__hydro_update: Option<_>| {
+                                                    __hydro_update.filter(|__hydro_value| (__hydro_filter_f)(__hydro_value))
+                                                }
+                                            })
+                                        }
+                                    }
+                                    CollectionKind::KeyedSingleton { .. } => {
+                                        // The inner closure filters plain `(K, V)` entries by
+                                        // reference; a filtered-out entry tombstones its key.
+                                        quote! {
+                                            map({
+                                                let mut __hydro_filter_f = #f_tokens;
+                                                move |(__hydro_key, __hydro_update)| match __hydro_update {
+                                                    ::std::option::Option::Some(__hydro_value) => {
+                                                        let __hydro_entry = (__hydro_key, __hydro_value);
+                                                        if (__hydro_filter_f)(&__hydro_entry) {
+                                                            let (__hydro_key, __hydro_value) = __hydro_entry;
+                                                            (__hydro_key, ::std::option::Option::Some(__hydro_value))
+                                                        } else {
+                                                            let (__hydro_key, _) = __hydro_entry;
+                                                            (__hydro_key, ::std::option::Option::None)
+                                                        }
+                                                    }
+                                                    ::std::option::Option::None => {
+                                                        (__hydro_key, ::std::option::Option::None)
+                                                    }
+                                                }
+                                            })
+                                        }
+                                    }
+                                    other => panic!(
+                                        "unexpected tombstoned update feed kind for `filter`: {:?}",
+                                        other
+                                    ),
+                                }
+                            }
+                            (in_repr, out_repr) => panic!(
+                                "filter may not un-tombstone an update feed ({:?} -> {:?})",
+                                in_repr, out_repr
+                            ),
+                        };
+
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
                                 graph_builders.add_dfir_at(
                                     &out_location,
                                     parse_quote! {
-                                        #filter_ident = #input_ident -> filter(#f_tokens);
+                                        #filter_ident = #input_ident -> #filter_op;
                                     },
                                     Some(&stmt_id.to_string()),
                                 );
@@ -5030,12 +5573,91 @@ impl HydroNode {
                         let filter_map_ident =
                             syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
+                        // See the `Filter` arm: filtering state makes absence explicit.
+                        // - Plain -> tombstoned (e.g. `Singleton::filter_map` /
+                        //   `Optional::<InitNone>::filter_map` at the root): `f` already returns
+                        //   `Option<U>`, which is exactly the update record: `map(f)`.
+                        // - Tombstoned -> tombstoned: apply `f` to the value of each update;
+                        //   both "was a tombstone" and "filtered out" yield a tombstone. For
+                        //   keyed feeds the inner closure consumes the `(K, V)` entry, so the
+                        //   key is cloned up front to tombstone filtered-out entries
+                        //   (generated code requires `K: Clone`).
+                        let filter_map_op: TokenStream = match (
+                            update_feed_repr(input.metadata()),
+                            update_feed_repr(metadata),
+                        ) {
+                            (UpdateFeedRepr::Plain, UpdateFeedRepr::Plain) => {
+                                quote! { filter_map(#f_tokens) }
+                            }
+                            (UpdateFeedRepr::Plain, UpdateFeedRepr::Tombstoned) => {
+                                match &metadata.collection_kind {
+                                    CollectionKind::Optional { .. } => {
+                                        quote! { map(#f_tokens) }
+                                    }
+                                    // `KeyedSingleton::filter_map` erases monotonicity but
+                                    // never *introduces* `Unbounded` (`EraseMonotonic` of the
+                                    // plain keyed kinds is itself plain), so a plain keyed
+                                    // feed can never filter-map into a tombstoned one.
+                                    other => panic!(
+                                        "unexpected tombstoned update feed kind for `filter_map`: {:?}",
+                                        other
+                                    ),
+                                }
+                            }
+                            (UpdateFeedRepr::Tombstoned, UpdateFeedRepr::Tombstoned) => {
+                                match &metadata.collection_kind {
+                                    CollectionKind::Optional { .. } => {
+                                        quote! {
+                                            map({
+                                                let mut __hydro_filter_map_f = #f_tokens;
+                                                move |__hydro_update| {
+                                                    __hydro_update.and_then(&mut __hydro_filter_map_f)
+                                                }
+                                            })
+                                        }
+                                    }
+                                    CollectionKind::KeyedSingleton { .. } => {
+                                        quote! {
+                                            map({
+                                                let mut __hydro_filter_map_f = #f_tokens;
+                                                move |(__hydro_key, __hydro_update)| match __hydro_update {
+                                                    ::std::option::Option::Some(__hydro_value) => {
+                                                        let __hydro_key_backup =
+                                                            ::std::clone::Clone::clone(&__hydro_key);
+                                                        match (__hydro_filter_map_f)((__hydro_key, __hydro_value)) {
+                                                            ::std::option::Option::Some((__hydro_out_key, __hydro_out_value)) => {
+                                                                (__hydro_out_key, ::std::option::Option::Some(__hydro_out_value))
+                                                            }
+                                                            ::std::option::Option::None => {
+                                                                (__hydro_key_backup, ::std::option::Option::None)
+                                                            }
+                                                        }
+                                                    }
+                                                    ::std::option::Option::None => {
+                                                        (__hydro_key, ::std::option::Option::None)
+                                                    }
+                                                }
+                                            })
+                                        }
+                                    }
+                                    other => panic!(
+                                        "unexpected tombstoned update feed kind for `filter_map`: {:?}",
+                                        other
+                                    ),
+                                }
+                            }
+                            (in_repr, out_repr) => panic!(
+                                "filter_map may not un-tombstone an update feed ({:?} -> {:?})",
+                                in_repr, out_repr
+                            ),
+                        };
+
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
                                 graph_builders.add_dfir_at(
                                     &out_location,
                                     parse_quote! {
-                                        #filter_map_ident = #input_ident -> filter_map(#f_tokens);
+                                        #filter_map_ident = #input_ident -> #filter_map_op;
                                     },
                                     Some(&stmt_id.to_string()),
                                 );
@@ -5143,6 +5765,19 @@ impl HydroNode {
                         let stmt_id = next_stmt_id.get_and_increment();
                         let inspect_ident =
                             syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
+
+                        // No `Optional`/`Singleton` API constructs `Inspect` nodes, so a
+                        // tombstoned update feed (root unbounded optional/keyed singleton)
+                        // cannot reach this arm today; guard against silently inspecting raw
+                        // update records if one ever does.
+                        if update_feed_repr(input.metadata()) == UpdateFeedRepr::Tombstoned
+                            || update_feed_repr(metadata) == UpdateFeedRepr::Tombstoned
+                        {
+                            todo!(
+                                "`inspect` on a tombstoned update feed (root unbounded \
+                                 Optional/KeyedSingleton) is not yet supported"
+                            );
+                        }
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
@@ -5381,10 +6016,25 @@ impl HydroNode {
                                         Some(&stmt_id.to_string()),
                                     );
                                 } else {
+                                    // Defensive: no `fold`-family API currently produces a root
+                                    // unbounded (tombstoned) keyed singleton
+                                    // (`KeyedStream::fold` yields monotone keyed bounds), but
+                                    // wrap upserts if one ever does, mirroring the
+                                    // `ReduceKeyed` arm.
+                                    let wrap_op: TokenStream = if matches!(
+                                        node.metadata().collection_kind,
+                                        CollectionKind::KeyedSingleton { .. }
+                                    ) && update_feed_repr(node.metadata())
+                                        == UpdateFeedRepr::Tombstoned
+                                    {
+                                        quote! { -> map(|(__hydro_key, __hydro_value)| (__hydro_key, ::std::option::Option::Some(__hydro_value))) }
+                                    } else {
+                                        quote! {}
+                                    };
                                     graph_builders.add_dfir_at(
                                         &out_location,
                                         parse_quote! {
-                                            #fold_ident = #input_ident -> #operator::<#lifetime>(#init_tokens, #acc_tokens);
+                                            #fold_ident = #input_ident -> #operator::<#lifetime>(#init_tokens, #acc_tokens) #wrap_op;
                                         },
                                         Some(&stmt_id.to_string()),
                                     );
@@ -5466,10 +6116,24 @@ impl HydroNode {
                                         "Reduce keyed with optional intermediates is not yet supported in simulator"
                                     );
                                 } else {
+                                    // A root unbounded keyed singleton is a tombstoned
+                                    // `(K, Option<V>)` update feed: wrap each emitted entry as
+                                    // an upsert. (`reduce_keyed` never removes keys, so no
+                                    // tombstones are needed.)
+                                    let wrap_op: TokenStream = if matches!(
+                                        node.metadata().collection_kind,
+                                        CollectionKind::KeyedSingleton { .. }
+                                    ) && update_feed_repr(node.metadata())
+                                        == UpdateFeedRepr::Tombstoned
+                                    {
+                                        quote! { -> map(|(__hydro_key, __hydro_value)| (__hydro_key, ::std::option::Option::Some(__hydro_value))) }
+                                    } else {
+                                        quote! {}
+                                    };
                                     graph_builders.add_dfir_at(
                                         &out_location,
                                         parse_quote! {
-                                            #reduce_ident = #input_ident -> #operator::<#lifetime>(#f_tokens);
+                                            #reduce_ident = #input_ident -> #operator::<#lifetime>(#f_tokens) #wrap_op;
                                         },
                                         Some(&stmt_id.to_string()),
                                     );
@@ -5531,13 +6195,89 @@ impl HydroNode {
                                       graph_builders.tick_state_lifetime(&out_location)
                                   };
 
-                                  if metadata.location_id.is_root()
-                                      && graph_builders.singleton_intermediates()
-                                      && !metadata.collection_kind.is_bounded()
-                                  {
+                                if metadata.location_id.is_root()
+                                    && graph_builders.singleton_intermediates()
+                                    && !metadata.collection_kind.is_bounded()
+                                {
                                     todo!(
                                         "Reduce keyed watermarked on a top-level bounded collection is not yet supported"
                                     )
+                                } else if update_feed_repr(metadata) == UpdateFeedRepr::Tombstoned {
+                                    // A root unbounded keyed singleton is a tombstoned
+                                    // `(K, Option<V>)` update feed (see
+                                    // [`CollectionKind::root_repr_is_tombstoned_update_feed`]).
+                                    // Instead of re-emitting the whole entry map, emit *deltas*:
+                                    // each payload that lands in the map yields an upsert
+                                    // `(k, Some(v))` with the key's new reduced value, and each
+                                    // key garbage-collected by a watermark advance yields a
+                                    // tombstone `(k, None)`. Downstream consumers reconstruct
+                                    // the current map by applying updates (see
+                                    // [`DfirBuilder::batch`]). Generated code requires
+                                    // `K: Clone` and `V: Clone` (as the whole-map emission
+                                    // already did).
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
+                                        parse_quote! {
+                                            #chain_ident = chain();
+                                            #input_ident
+                                                -> map(|x| (Some(x), None))
+                                                -> [0]#chain_ident;
+                                            #watermark_ident
+                                                -> map(|watermark| (None, Some(watermark)))
+                                                -> [1]#chain_ident;
+
+                                            #fold_ident = #chain_ident
+                                                -> scan::<#lifetime>(|| (::std::collections::HashMap::new(), None), {
+                                                    let __reduce_keyed_fn = #f_tokens;
+                                                    move |(map, opt_curr_watermark), (opt_payload, opt_watermark)| {
+                                                        let mut deltas = ::std::vec::Vec::new();
+                                                        if let Some((k, v)) = opt_payload {
+                                                            if let Some(curr_watermark) = *opt_curr_watermark {
+                                                                if k < curr_watermark {
+                                                                    return Some(deltas);
+                                                                }
+                                                            }
+                                                            match map.entry(k) {
+                                                                ::std::collections::hash_map::Entry::Vacant(e) => {
+                                                                    let key = ::std::clone::Clone::clone(e.key());
+                                                                    let value = ::std::clone::Clone::clone(e.insert(v));
+                                                                    deltas.push((key, ::std::option::Option::Some(value)));
+                                                                }
+                                                                ::std::collections::hash_map::Entry::Occupied(mut e) => {
+                                                                    __reduce_keyed_fn(e.get_mut(), v);
+                                                                    deltas.push((
+                                                                        ::std::clone::Clone::clone(e.key()),
+                                                                        ::std::option::Option::Some(::std::clone::Clone::clone(e.get())),
+                                                                    ));
+                                                                }
+                                                            }
+                                                        } else {
+                                                            let watermark = opt_watermark.unwrap();
+                                                            if let Some(curr_watermark) = *opt_curr_watermark {
+                                                                if watermark <= curr_watermark {
+                                                                    return Some(deltas);
+                                                                }
+                                                            }
+                                                            map.retain(|k, _| {
+                                                                if *k >= watermark {
+                                                                    true
+                                                                } else {
+                                                                    deltas.push((
+                                                                        ::std::clone::Clone::clone(k),
+                                                                        ::std::option::Option::None,
+                                                                    ));
+                                                                    false
+                                                                }
+                                                            });
+                                                            *opt_curr_watermark = Some(watermark);
+                                                        }
+                                                        Some(deltas)
+                                                    }
+                                                })
+                                                -> flatten();
+                                        },
+                                        Some(&stmt_id.to_string()),
+                                    );
                                 } else {
                                     graph_builders.add_dfir_at(
                                         &out_location,
