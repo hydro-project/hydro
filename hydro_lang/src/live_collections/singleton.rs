@@ -1344,7 +1344,7 @@ where
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
         mut nondet: NonDet<(
             Option<crate::sim_hooks::SnapshotHook<T, L::SimHookScope>>,
-            Option<crate::sim_hooks::BatchHook<(), TotalOrder, ExactlyOnce, L::SimHookScope>>,
+            Option<crate::sim_hooks::BatchHook<(), TotalOrder, AtLeastOnce, L::SimHookScope>>,
         )>,
     ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce>
     where

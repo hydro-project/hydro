@@ -8,8 +8,6 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q, quote_type};
-#[cfg(feature = "tokio")]
-use tokio::time::Instant;
 
 use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
@@ -17,6 +15,8 @@ use super::keyed_singleton::KeyedSingleton;
 use super::keyed_stream::{Generate, KeyedStream};
 use super::optional::Optional;
 use super::singleton::Singleton;
+#[cfg(feature = "tokio")]
+use super::sliced::sliced;
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode, StreamOrder, StreamRetry,
@@ -2150,7 +2150,7 @@ where
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
         mut nondet: NonDet<(
             Option<crate::sim_hooks::BatchHook<T, O, R, L::SimHookScope>>,
-            Option<crate::sim_hooks::BatchHook<(), TotalOrder, ExactlyOnce, L::SimHookScope>>,
+            Option<crate::sim_hooks::BatchHook<(), TotalOrder, AtLeastOnce, L::SimHookScope>>,
         )>,
     ) -> Stream<T, L::DropConsistency, Unbounded, O, AtLeastOnce>
     where
@@ -2186,6 +2186,10 @@ where
     /// Given a timeout duration, returns an [`Optional`]  which will have a value if the
     /// stream has not emitted a value since that duration.
     ///
+    /// The clock is read once per tick (`use::time`); the time of the latest arrival is a
+    /// `use::state` register stamped with that reading. No wall-clock read hides inside a
+    /// closure: the verdict at a tick is a function of the tick's inputs and its time.
+    ///
     /// # Non-Determinism
     /// Timeout relies on non-deterministic sampling of the stream, so depending on when
     /// samples take place, timeouts may be non-deterministically generated or missed,
@@ -2206,44 +2210,39 @@ where
     where
         L: TopLevel<'a>,
     {
-        let tick = self.location.tick();
-
-        let latest_received = self
-            .assume_retries::<ExactlyOnce>(nondet!(
-                /// duplicates only affect the timestamp of the latest element, which is
-                /// captured by the caller's guard
+        sliced! {
+            let new_arrivals = use::batch(self, nondet!(
+                /// sampling timing is captured by the caller's guard
                 nondet
-            ))
-            .fold(
-                q!(|| None),
-                q!(
-                    |latest, _| {
-                        *latest = Some(Instant::now());
-                    },
-                    commutative = manual_proof!(/** TODO */)
-                ),
-            );
+            ));
+            let now = use::time(nondet!(
+                /// the verdict depends on when the tick runs; captured by the caller's guard
+                nondet
+            ));
+            let mut latest_received = use::state_null::<Optional<tokio::time::Instant, Tick<_>, Bounded>>();
 
-        latest_received
-            .snapshot(
-                &tick,
-                nondet!(
-                    /// sampling timing is captured by the caller's guard
-                    nondet
-                ),
-            )
-            .filter_map(q!(move |latest_received| {
-                if let Some(latest_received) = latest_received {
-                    if Instant::now().duration_since(latest_received) > duration {
-                        Some(())
+            // the latest arrival is stamped with this tick's clock reading
+            latest_received = now
+                .clone()
+                .filter_if(new_arrivals.is_empty().map(q!(|empty| !empty)))
+                .or(latest_received);
+
+            latest_received
+                .clone()
+                .into_singleton()
+                .zip(now)
+                .filter_map(q!(move |(latest_received, now)| {
+                    if let Some(latest_received) = latest_received {
+                        if now.duration_since(latest_received) > duration {
+                            Some(())
+                        } else {
+                            None
+                        }
                     } else {
-                        None
+                        Some(())
                     }
-                } else {
-                    Some(())
-                }
-            }))
-            .latest()
+                }))
+        }
     }
 
     /// Shifts this stream into an atomic context, which guarantees that any downstream logic

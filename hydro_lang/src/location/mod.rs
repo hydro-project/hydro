@@ -55,7 +55,7 @@ use crate::live_collections::singleton::Singleton;
 #[cfg(stageleft_runtime)]
 use crate::live_collections::stream::networking::serialize_bincode;
 use crate::live_collections::stream::{
-    ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
+    AtLeastOnce, ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
 };
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
@@ -1491,14 +1491,16 @@ pub trait Location<'a>: DynLocation {
     /// The first tick completes immediately. Missed ticks will be scheduled
     /// as soon as possible.
     ///
-    /// Because this only emits `()`, the non-determinism of *when* events fire
-    /// is captured by the `AtLeastOnce` retry semantics downstream, so no
-    /// [`NonDet`] guard is required.
+    /// The stream is `AtLeastOnce`: it only emits `()`, and every non-empty
+    /// sequence of `()` is one `AtLeastOnce` equivalence class, so the stream
+    /// is deterministic as a whole — the non-determinism of *when*, and how
+    /// many, events fire before a tick is captured entirely by the downstream
+    /// `batch`'s [`NonDet`] guard, so none is required here.
     #[cfg(feature = "tokio")]
     fn source_interval(
         &self,
         interval: impl QuotedWithContext<'a, Duration, Self> + Copy + 'a,
-    ) -> Stream<(), Self, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> Stream<(), Self, Unbounded, TotalOrder, AtLeastOnce>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -1506,23 +1508,26 @@ pub trait Location<'a>: DynLocation {
             tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(interval)),
             |_| ()
         )))
+        .weaken_retries::<AtLeastOnce>()
         .assert_has_consistency_of_trusted(
-            manual_proof!(/** interval does not reveal timestamps */),
+            manual_proof!(/** every non-empty sequence of `()` is one `AtLeastOnce` class */),
         )
     }
 
     /// Generates a stream that emits `()` at a fixed interval, after an
     /// initial delay.
     ///
-    /// Because this only emits `()`, the non-determinism of *when* events fire
-    /// is captured by the `AtLeastOnce` retry semantics downstream, so no
-    /// [`NonDet`] guard is required.
+    /// The stream is `AtLeastOnce`: it only emits `()`, and every non-empty
+    /// sequence of `()` is one `AtLeastOnce` equivalence class, so the stream
+    /// is deterministic as a whole — the non-determinism of *when*, and how
+    /// many, events fire before a tick is captured entirely by the downstream
+    /// `batch`'s [`NonDet`] guard, so none is required here.
     #[cfg(feature = "tokio")]
     fn source_interval_delayed(
         &self,
         delay: impl QuotedWithContext<'a, Duration, Self> + Copy + 'a,
         interval: impl QuotedWithContext<'a, Duration, Self> + Copy + 'a,
-    ) -> Stream<(), Self, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> Stream<(), Self, Unbounded, TotalOrder, AtLeastOnce>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -1533,8 +1538,9 @@ pub trait Location<'a>: DynLocation {
             )),
             |_| ()
         )))
+        .weaken_retries::<AtLeastOnce>()
         .assert_has_consistency_of_trusted(
-            manual_proof!(/** interval does not reveal timestamps */),
+            manual_proof!(/** every non-empty sequence of `()` is one `AtLeastOnce` class */),
         )
     }
 

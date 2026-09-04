@@ -225,21 +225,44 @@ expression: built.ir()
                                                                 input: Scan {
                                                                     init: stageleft :: runtime_support :: fn0_type_hint :: < core :: option :: Option < core :: option :: Option < () > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| | None]) }),
                                                                     acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < core :: option :: Option < core :: option :: Option < () > > , () , core :: option :: Option < core :: option :: Option < () > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([f__free = stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , hydro_test :: __staged :: __deps :: hydro_lang :: live_collections :: keyed_stream :: Generate < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| _ , item | Generate :: Return (item)]) }) , init__free = stageleft :: runtime_support :: fn0_type_hint :: < () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| | ()]) }) ,] [move | state : & mut Option < Option < _ > > , v | { if state . is_none () { * state = Some (Some (init__free ())) ; } match state { Some (Some (state_value)) => match f__free (state_value , v) { Generate :: Yield (out) => Some (Some (out)) , Generate :: Return (out) => { * state = Some (None) ; Some (Some (out)) } Generate :: Break => None , Generate :: Continue => Some (None) , } , _ => None , } }]) }),
-                                                                    input: Batch {
-                                                                        inner: Source {
-                                                                            source: Stream(
-                                                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_LINE_COL ! ([interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; crate :: __staged :: __stageleft_quote_src_cluster_compute_pi_rs_LINE_COL ! ([] [Duration :: from_secs (1)]) } ,] [tokio_stream :: StreamExt :: map (tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) , | _ | ())]) },
-                                                                            ),
+                                                                    input: ObserveNonDet {
+                                                                        inner: Batch {
+                                                                            inner: Cast {
+                                                                                inner: Source {
+                                                                                    source: Stream(
+                                                                                        { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_LINE_COL ! ([interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; crate :: __staged :: __stageleft_quote_src_cluster_compute_pi_rs_LINE_COL ! ([] [Duration :: from_secs (1)]) } ,] [tokio_stream :: StreamExt :: map (tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) , | _ | ())]) },
+                                                                                    ),
+                                                                                    metadata: HydroIrMetadata {
+                                                                                        location_id: Process(loc2v1),
+                                                                                        collection_kind: Stream {
+                                                                                            bound: Unbounded,
+                                                                                            order: TotalOrder,
+                                                                                            retry: ExactlyOnce,
+                                                                                            element_type: (),
+                                                                                        },
+                                                                                    },
+                                                                                },
+                                                                                metadata: HydroIrMetadata {
+                                                                                    location_id: Process(loc2v1),
+                                                                                    collection_kind: Stream {
+                                                                                        bound: Unbounded,
+                                                                                        order: TotalOrder,
+                                                                                        retry: AtLeastOnce,
+                                                                                        element_type: (),
+                                                                                    },
+                                                                                },
+                                                                            },
                                                                             metadata: HydroIrMetadata {
-                                                                                location_id: Process(loc2v1),
+                                                                                location_id: Tick(Some(ClockId(1)), Process(loc2v1)),
                                                                                 collection_kind: Stream {
-                                                                                    bound: Unbounded,
+                                                                                    bound: Bounded,
                                                                                     order: TotalOrder,
-                                                                                    retry: ExactlyOnce,
+                                                                                    retry: AtLeastOnce,
                                                                                     element_type: (),
                                                                                 },
                                                                             },
                                                                         },
+                                                                        trusted: true,
                                                                         metadata: HydroIrMetadata {
                                                                             location_id: Tick(Some(ClockId(1)), Process(loc2v1)),
                                                                             collection_kind: Stream {
