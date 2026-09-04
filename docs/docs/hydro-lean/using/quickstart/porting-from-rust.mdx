@@ -1,0 +1,335 @@
+---
+sidebar_position: 4
+title: Porting from Rust
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Link from "@docusaurus/Link";
+
+import rustSrc from '!!raw-loader!../../../../../hydro_std/src/quorum.rs';
+import leanSrc from '!!raw-loader!../../../../../hydro_lean/Hydro/Std/Quorum.lean';
+import { getLines } from '../../../../src/util';
+
+# Porting from Rust
+
+Most Hydro Lean programs are ports of an existing Rust `hydro_lang` function, as every module under `hydro_lean/Hydro/Std/` and `hydro_lean/Examples/Paxos/` is. On this page, you will port `collect_quorum` from `hydro_std/src/quorum.rs`, the quorum stage that Paxos and two-phase commit consume.
+
+`collect_quorum` batches a stream of `(key, Result<(), E>)` responses, keeps the responses of keys below quorum in slice state across ticks, and emits each key once when it reaches `min` successful responses. Its one `nondet!` carries a comment: "We always persist values that have not reached quorum, so even with arbitrary batching we always produce deterministic quorum results." The comment is a claim about every batching, which the Rust cannot state. The port states it as a theorem.
+
+A port is a transcription: one Lean line for each Rust line, with the Rust quoted in a comment directly above it, so a reviewer compares the two in place. The Lean departs from the Rust at a fixed list of places, each for a reason the type system or the proof demands. The finished port is `hydro_lean/Hydro/Std/Quorum.lean`.
+
+:::learn
+- How to map a Rust signature's type parameters, markers and bounds to a `hydro def` header
+- Where a `nondet!` becomes an argument and where a `manual_proof!` becomes a proof term
+- How the lines of a `sliced!` block become a `tick` block: `use::` binders, assignments and the exit
+- Which lines of the port have no Rust counterpart, and why
+:::
+
+## The Method
+
+1. **Header first.** Read the Rust signature. Each type parameter, marker and bound has a fixed Lean form ([The Signature](#the-signature)). Add `(H : HydroSem L mem)` and the location, and add one decision argument for each `nondet!` in the body.
+2. **Body, one line at a time.** Quote the Rust line in a `--` comment and write the Lean line under it. Operator names follow `hydro_lang` with a prefix for the carrier inside a tick ([Carriers, Grades and Operators](../programs/signature.md#operators)). A `q!` closure is a `fun`. A `.clone()` has no line.
+3. **Algebra as proof.** Where the Rust writes `commutative = manual_proof!(…)`, define the closure as a top-level `def` and prove the property as a theorem before the program; the fold takes the theorem as an argument.
+4. **Check the freedom.** Write the `#nondet_census` line with the counts read off the Rust, and `#guard` lines on the inputs of the Rust unit tests.
+5. **Then the contract.** The face, the tick invariant, the ghosts and the `prove` clause follow the workflow of [Proving the Quorum](./proving-quorum.mdx).
+
+## The Signature
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_std/src/quorum.rs">hydro_std/src/quorum.rs</Link>
+}>{getLines(rustSrc, 89, 96, `
+pub fn collect_quorum<'a, L: Location<'a>, Order: Ordering, K: Clone + Eq + Hash, E: Clone>(
+    responses: Stream<(K, Result<(), E>), L, Unbounded, Order>,
+    min: usize,
+    max: usize,
+) -> (
+    Stream<K, L, Unbounded, NoOrder>,
+    Stream<(K, E), L, Unbounded, Order>,
+) {
+`)}</CodeBlock>
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Hydro/Std/Quorum.lean">Hydro/Std/Quorum.lean</Link>
+}>{getLines(leanSrc, 749, 755, `
+hydro def collect_quorum [Hashable K] (H : HydroSem L mem) (ℓ : L)
+    (responses : H.Stream ℓ (K × Except E Unit) .noOrder .exactlyOnce)
+    (min max : Nat)
+    (dec : H.BatchDec (mem ℓ) (K × Except E Unit) .noOrder .exactlyOnce) :
+    (H.Stream ℓ K .noOrder .exactlyOnce
+      × H.Stream ℓ (K × E) .noOrder .exactlyOnce)
+  ensures out => CQEnsures ℓ min max responses dec out :=
+`)}</CodeBlock>
+
+Each part of the Rust header maps to one part of the Lean header:
+
+- `L: Location<'a>` becomes two binders: the interpretation `H : HydroSem L mem`, which the Quickstart's programs also take, and the location as a value, `ℓ : L`. Every carrier is indexed by `ℓ` and holds the collection at every member of `ℓ` at once.
+- `Order: Ordering` is fixed to `.noOrder`, and Rust's default `ExactlyOnce` is written out. Every consumer in the repository hands `collect_quorum` a cluster's responses through `values`, whose result is `.noOrder`, and a theorem at `.noOrder` makes no use of arrival order. The two markers are the stream's grade ([Grades](../programs/signature.md#grades)).
+- `K: Clone + Eq + Hash` and `E: Clone` become `[DecidableEq K]` and `[DecidableEq E]`, supplied by the `variable` blocks above the program, plus `[Hashable K]`: `bkfold` and `bantiJoin` in the body demand it because the step machine computes them through a hash map. `Clone` has no counterpart.
+- `Stream<(K, Result<(), E>), L, Unbounded, Order>` becomes `H.Stream ℓ (K × Except E Unit) .noOrder .exactlyOnce`, and `usize` becomes `Nat`. [Carriers and Rust Types](../programs/signature.md#carriers-and-rust-types) has the table.
+- The body's `nondet!` becomes the argument `dec : H.BatchDec …`. In `vote_quorum` the batch decision was a field of a record; a module with one decision takes it as a bare binder ([The `dec` and `sched` Records](../programs/nondeterminism.md#the-dec-and-sched-records)).
+- `ensures out => CQEnsures …` has no Rust counterpart. It is the contract, written as in [Proving the Quorum](./proving-quorum.mdx#writing-the-contract).
+
+## The Slice Header
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_std/src/quorum.rs">hydro_std/src/quorum.rs</Link>
+}>{getLines(rustSrc, 97, 104, `
+let just_reached_quorum = sliced! {
+    let new_inputs = use::batch(responses.clone(), nondet!(
+        /// We always persist values that have not reached quorum, so even
+        /// with arbitrary batching we always produce deterministic quorum results.
+    ));
+
+    let mut not_all = use::state_null::<Stream<_, _, Bounded, Order>>();
+    let mut min_but_not_max = use::state_null::<Stream<K, _, Bounded, NoOrder>>();
+`)}</CodeBlock>
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Hydro/Std/Quorum.lean">Hydro/Std/Quorum.lean</Link>
+}>{getLines(leanSrc, 756, 769, `
+-- let just_reached_quorum = sliced! {
+--   let new_inputs = use::batch(responses.clone(), nondet!(…));
+--   let mut not_all = use::state_null::<Stream<_, _, Bounded, Order>>();
+--   let mut min_but_not_max = use::state_null::<Stream<K, _, Bounded, NoOrder>>();
+tick (state not_all : H.BoundedStream (K × Except E Unit) .noOrder .exactlyOnce)
+    (state min_but_not_max : H.BoundedStream K .noOrder .exactlyOnce)
+    (input new_inputs := H.batch responses dec)
+    -- the loop invariant: the register discipline against the responses
+    -- consumed so far
+    (invariant ((just_reached_quorum : List (Multiset K))
+        (not_all : Multiset (K × Except E Unit)) (min_but_not_max : Multiset K)
+        (new_inputs : Trace (Multiset (K × Except E Unit)))) =>
+      CQRegInv min max not_all min_but_not_max
+        ((new_inputs.take just_reached_quorum.length).sum)) :=
+`)}</CodeBlock>
+
+The `use::` lines of a `sliced!` block become the binders of the `tick` header, in the same roles as in `vote_quorum`:
+
+- `use::state_null::<Stream<…>>()` is `(state s : H.BoundedStream …)`, a stream register seeded empty. A `use::state(seed)` singleton would be `(state r : σ := seed)`.
+- `use::batch(responses.clone(), nondet!(…))` is `(input new_inputs := H.batch responses dec)`. The `nondet!` is gone from the line; it became the argument `dec` in the header.
+- The Rust `Order` in `not_all`'s type is `.noOrder`, following the signature.
+
+The `invariant` clause has no Rust line. It is the block's loop invariant, the clause you added to `vote_quorum`'s header when a goal about the state needed it; `CQRegInv` is this block's, and [The `collect_quorum` Invariant](../proving/tick-invariants.md#the-collect_quorum-invariant) shows it with its two obligations.
+
+## The Body, Line for Line
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_std/src/quorum.rs">hydro_std/src/quorum.rs</Link>
+}>{getLines(rustSrc, 106, 126, `
+let current_responses = not_all.chain(new_inputs);
+
+let count_per_key = current_responses.clone().into_keyed().fold(
+    q!(move || (0, 0)),
+    q!(move |accum, value| {
+        if value.is_ok() {
+            accum.0 += 1;
+        } else {
+            accum.1 += 1;
+        }
+    }, commutative = manual_proof!(/** increment counters is commutative */)),
+);
+
+let reached_min_count = count_per_key
+    .clone()
+    .entries()
+    .filter_map(q!(move |(key, (success, _error))| if success >= min {
+        Some(key)
+    } else {
+        None
+    }));
+`)}</CodeBlock>
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Hydro/Std/Quorum.lean">Hydro/Std/Quorum.lean</Link>
+}>{getLines(leanSrc, 770, 781, `
+-- let current_responses = not_all.chain(new_inputs);
+let current_responses := H.bchain not_all new_inputs
+-- let count_per_key = current_responses.clone().into_keyed().fold(
+--   q!(move || (0, 0)),
+--   q!(move |accum, value| { if value.is_ok() { accum.0 += 1; } else { accum.1 += 1; } },
+--      commutative = manual_proof!(/** increment counters is commutative */)));
+let count_per_key := H.bkfold cqCount (0, 0) (fun _ _ => True)
+  (fun s x y _ => cqCount_comm s x y) (H.binto_keyed current_responses)
+-- let reached_min_count = count_per_key.clone().entries()
+--   .filter_map(q!(move |(key, (success, _error))| if success >= min { Some(key) } else { None }));
+let reached_min_count := H.bfilterMap (H.bksEntries count_per_key)
+  (fun (key, (success, _error)) => if min ≤ success then some key else none)
+`)}</CodeBlock>
+
+Each Rust method is a Lean operator applied to its receiver: `.chain` is `H.bchain`, `.into_keyed()` is `H.binto_keyed`, `.entries()` is `H.bksEntries`, `.filter_map` is `H.bfilterMap`. The prefix names the carrier the operator acts on inside the tick: `b` for a bounded stream, `bk` for a bounded keyed stream, `bks` for a bounded keyed singleton ([Operators](../programs/signature.md#operators) has the full table). A chain of methods reads inside out, so `count_per_key.entries().filter_map(f)` is `H.bfilterMap (H.bksEntries count_per_key) f`. The `q!` closure transcribes to a Lean `fun` that computes the same function; the Rust pattern `|(key, (success, _error))|` becomes the Lean pattern `fun (key, (success, _error)) =>`.
+
+The fold is the one line whose Lean has more than the Rust. The Rust asserts the closure's commutativity with `manual_proof!`; the Lean defines the closure as a top-level `def` and proves its commutativity, before the program:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Hydro/Std/Quorum.lean">Hydro/Std/Quorum.lean</Link>
+}>{getLines(leanSrc, 310, 320, `
+/-- quorum.rs's per-key counter fold: \`(successes, errors)\`. -/
+def cqCount (accum : Nat × Nat) (value : Except E V) : Nat × Nat :=
+  -- if value.is_ok() { accum.0 += 1 } else { accum.1 += 1 }
+  if value.isOk then (accum.1 + 1, accum.2) else (accum.1, accum.2 + 1)
+
+/-- The commutativity the Rust fold asserts with
+\`commutative = manual_proof!(/** increment counters is commutative */)\`. -/
+theorem cqCount_comm (s : Nat × Nat) (x y : Except E V) :
+    cqCount (cqCount s x) y = cqCount (cqCount s y) x := by
+  unfold cqCount
+  cases x <;> cases y <;> rfl
+`)}</CodeBlock>
+
+`H.bkfold g init Pre ok` takes the obligation `ok : FoldOk ord ret Pre g` as its fourth argument. At `.noOrder .exactlyOnce` that type is commutativity on pairs satisfying `Pre`; `Pre` is `fun _ _ => True` here, so `ok` is plain commutativity and ignores its fourth argument. A closure that does not commute has no proof to pass, and the program does not typecheck. This is the same shape as `yesStep_comm` in `vote_quorum`; [Fold Proofs](../programs/signature.md#fold-proofs) gives the obligation at each grade and the conditional `Pre` form.
+
+## Assignment and the Exit
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_std/src/quorum.rs">hydro_std/src/quorum.rs</Link>
+}>{getLines(rustSrc, 128, 147, `
+    let just_reached_quorum = if max == min {
+        not_all = current_responses.anti_join(reached_min_count.clone());
+
+        reached_min_count
+    } else {
+        let received_from_all = count_per_key
+            .filter(q!(move |(success, error)| (success + error) >= max))
+            .keys();
+
+        not_all = current_responses.anti_join(received_from_all.clone());
+
+        let out = reached_min_count.clone().filter_not_in(min_but_not_max);
+
+        min_but_not_max = reached_min_count.filter_not_in(received_from_all);
+
+        out
+    };
+
+    just_reached_quorum
+};
+`)}</CodeBlock>
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Hydro/Std/Quorum.lean">Hydro/Std/Quorum.lean</Link>
+}>{getLines(leanSrc, 782, 804, `
+  -- let just_reached_quorum = if max == min {
+  --   not_all = current_responses.anti_join(reached_min_count.clone());
+  --   reached_min_count
+  -- } else {
+  let branch := if max = min then
+      (H.bantiJoin current_responses reached_min_count,
+       (min_but_not_max, reached_min_count))
+    else
+      -- let received_from_all = count_per_key
+      --   .filter(q!(move |(success, error)| (success + error) >= max)).keys();
+      let received_from_all := H.bksKeys (H.bksFilter count_per_key
+        (fun (success, error) => decide (max ≤ success + error)))
+      -- not_all = current_responses.anti_join(received_from_all.clone());
+      -- let out = reached_min_count.clone().filter_not_in(min_but_not_max);
+      -- min_but_not_max = reached_min_count.filter_not_in(received_from_all);
+      -- out
+      (H.bantiJoin current_responses received_from_all,
+       (H.bfilterNotIn reached_min_count received_from_all,
+        H.bfilterNotIn reached_min_count min_but_not_max))
+  -- };
+  rebind (not_all := branch.1, min_but_not_max := branch.2.1)
+  -- just_reached_quorum
+  yield (just_reached_quorum := branch.2.2)
+`)}</CodeBlock>
+
+The Rust assigns `not_all` in both arms and `min_but_not_max` only in the `else` arm, and the block's last expression is the tick's emission. A Lean body is a `let` chain with no assignment, therefore each arm returns one triple, (next `not_all`, next `min_but_not_max`, this tick's emission); the `max == min` arm passes `min_but_not_max` through unchanged; and one `rebind` after the `if` gives both registers their next values, as in `vote_quorum`. `yield` names the emission.
+
+The Rust computes `out` before it reassigns `min_but_not_max`, so `out` reads the previous tick's value. In Lean a state name always refers to the previous tick's value and `rebind` is the only place a next value appears, so the order of the lines inside the body carries no meaning, and `H.bfilterNotIn reached_min_count min_but_not_max` reads the previous tick's register wherever it is written.
+
+The exit from the slice and the second output are the function's return value:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_std/src/quorum.rs">hydro_std/src/quorum.rs</Link>
+}>{getLines(rustSrc, 149, 155, `
+(
+    just_reached_quorum.assert_has_consistency_of(manual_proof!(/** TODO */)),
+    responses.filter_map(q!(move |(key, res)| match res {
+        Ok(_) => None,
+        Err(e) => Some((key, e)),
+    })),
+)
+`)}</CodeBlock>
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Hydro/Std/Quorum.lean">Hydro/Std/Quorum.lean</Link>
+}>{getLines(leanSrc, 947, 952, `
+-- (
+--   just_reached_quorum.assert_has_consistency_of(manual_proof!(/** TODO */)),
+--   responses.filter_map(q!(move |(key, res)| match res { Ok(_) => None, Err(e) => Some((key, e)) })),
+-- )
+(H.allTicks just_reached_quorum,
+  H.filterMap responses (fun _me => cqErrProj))
+`)}</CodeBlock>
+
+`H.allTicks` closes the `sliced!` block: it concatenates the per-tick emissions into an unbounded stream and keeps the grade, as `H.allTicks decisions` did in `vote_quorum`. `assert_has_consistency_of` has no Lean line, because the signature has no consistency marker on locations. The error output is a stream-level `filterMap`, whose closure takes the member index first (`fun _me => …`), the position of Rust's `CLUSTER_SELF_ID` capture; in-tick closures take no member index because the tick body already has one. `cqErrProj` transcribes the Rust `match` as a top-level `def`, so the contract can refer to it.
+
+In the file, the ghosts of the contract proof sit between the `tick` block and the return value. They are proof text, stripped from the program, and the workflow that produces them is the one of [Proving the Quorum](./proving-quorum.mdx#down-to-one-tick).
+
+## Where the Lean Departs from the Rust
+
+Every Rust line now has its Lean line. The places where the Lean port says more or less than the Rust, with the reason for each:
+
+- **The `nondet!` is an argument.** `dec` is in the header, not in the `use::batch` line. At `Values` a stream captures all its arrival histories, so where a batch ends cannot be computed from the stream; the program takes the answer as data, and a theorem over `dec` is a theorem over every batching ([Nondeterminism](../programs/nondeterminism.md)).
+- **`manual_proof!` is a proof.** `cqCount_comm` is passed to `bkfold`, and the build checks it. The Rust annotation only asserts it.
+- **A branch returns a tuple; `rebind` happens once.** Lean has no assignment, so each arm of an `if` yields every value the Rust arm assigns, and a `rebind` after the `if` binds the registers.
+- **No `.clone()`.** Lean values are immutable, so a `let` can appear any number of times without a copy.
+- **No `assert_has_consistency_of`.** The signature carries no consistency marker.
+- **Stream-level closures take the member index.** `fun _me => …` where the Rust closure captures nothing.
+- **The grade is fixed.** `Order` is `.noOrder` and `ExactlyOnce` is written out; the Lean has no type parameter for the ordering.
+- **Proof text with no Rust counterpart.** The `ensures` clause, the `invariant` clause of the `tick` header, the `ghost have` lines after the block and the `prove` clauses. All of it is stripped from the program the processes run.
+
+Every departure that is not proof text is written next to the line it replaces, so a reviewer who knows the Rust can check the port one statement at a time. [Fidelity to the Rust](https://github.com/hydro-project/hydro/blob/main/hydro_lean/internal/FIDELITY.md#departures-from-the-rust) lists the departures of the larger ports.
+
+## What the Port Gives You
+
+The Rust comment at the `nondet!` becomes the field `emit_count` of the face `CQEnsures`:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Hydro/Std/Quorum.lean">Hydro/Std/Quorum.lean</Link>
+}>{getLines(leanSrc, 478, 485, `
+/-- The crossing count, under the usage contract: a key is emitted once
+if it reached \`min\` \`Ok\` votes among the consumed pool and not at all
+otherwise. -/
+emit_count : ∀ (i : Fin (mem ℓ)) (k : K), 1 ≤ min → min ≤ max →
+  cqKeyCount (cqConsumed (resp i) (dec i)) k ≤ max →
+  (out.1 i).count k
+    = if min ≤ cqOkCount (cqConsumed (resp i) (dec i)) k
+      then 1 else 0
+`)}</CodeBlock>
+
+`cqConsumed (resp i) (dec i)` is the pool the batch decision `dec i` has delivered to member `i`. For every batching, a key's emission count is 1 if it reached `min` `Ok` votes among the consumed responses and 0 otherwise. The premise `cqKeyCount … ≤ max` states the Rust's deployment assumption, a quorum of `max` participants answering once; without it a key leaves the window and re-emits, and [Contracts](../programs/contracts.md#writing-a-face) explains why the face states the cap. `collect_quorum.ensures` is this face as a theorem, for every input and every `dec`, and `two_pc` and the Paxos port apply it at their call sites ([Consuming a Callee's Face](../programs/contracts.md#consuming-a-callees-face)).
+
+Two lines after the program check the port against the Rust. The census pins the freedom the signature carries to the one `use::batch`:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Hydro/Std/Quorum.lean">Hydro/Std/Quorum.lean</Link>
+}>{getLines(leanSrc, 985, 985, `
+#nondet_census collect_quorum (nondets := 1) (scheds := 0) (fuels := 0)
+`)}</CodeBlock>
+
+The `#guard` lines run the program at `Values` on the inputs of the Rust unit tests, with the batching written out as a list of per-tick cuts:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Hydro/Std/Quorum.lean">Hydro/Std/Quorum.lean</Link>
+}>{getLines(leanSrc, 1439, 1446, `
+-- \`collect_quorum_no_double_quorum_before_max\` (min 2, max 4): extra
+-- Oks after the crossing never re-emit the key
+#guard (collect_quorum (Values Unit oneLoc) () (.mk' fun _ =>
+    ({(1, .ok ()), (1, .ok ()), (1, .ok ()), (1, .ok ())}
+      : Multiset (Nat × Except Nat Unit)))
+    2 4 (fun _ => [{(1, .ok ()), (1, .ok ())},
+                   {(1, .ok ())}, {(1, .ok ())}])).1 0
+  = {1}
+`)}</CodeBlock>
+
+The same file states the contract on the step machine as `cq_safe_sched`, with the four moves of [Proving the Quorum](./proving-quorum.mdx#the-four-moves), so a port inherits the whole chain the Quickstart built for `vote_quorum`.
+
+## Next Steps
+
+You have written a program from scratch, proved and run it, and ported an existing Rust function with the same constructs. The rest of the documentation develops each step:
+
+- [Writing Programs](../programs/signature.md) covers carriers, grades, operators and decisions, with the Rust correspondence tables a port uses.
+- [Proving Programs](../proving/proofs-over-values.md) covers proofs at `Values`, tick and knot invariants, and the transfer to the machine and the wire. [Ticks and Cycles](../programs/ticks-and-cycles.mdx#cycles) covers the port of a `forward_ref`/`complete` cycle as a `fix … complete` block.
+- [Fidelity to the Rust](https://github.com/hydro-project/hydro/blob/main/hydro_lean/internal/FIDELITY.md) covers how the ports are kept checkable against the Rust, and what the formalization found in it.
+- [Adding a Module](https://github.com/hydro-project/hydro/blob/main/hydro_lean/internal/ADDING_A_MODULE.md) covers landing a new port in the repository.

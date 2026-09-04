@@ -1,0 +1,140 @@
+---
+sidebar_position: 3
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Link from "@docusaurus/Link";
+
+import quorumSrc from '!!raw-loader!../../../../../hydro_lean/Examples/Tutorials/Quorum.lean';
+import quorumDemoSrc from '!!raw-loader!../../../../../hydro_lean/Examples/Demo/QuorumDemo.lean';
+import { getLines } from '../../../../src/util';
+
+# Running the Quorum
+
+On this page, you will run `vote_quorum` twice: first at `Values`, where you pick the batching, then as four processes over local TCP, where the network picks the timing. Both runs execute the program you proved. At `Values` you apply it to a decision record. Over TCP each process calls `quorumBody`, the function `vote_quorum_safe_wired` is stated over.
+
+:::learn
+- How to test a program against several batch decisions at `Values`
+- How `lake exe quorum` runs a module as processes exchanging bytes
+- What the theorem says about the run, and what it does not
+:::
+
+## A Scenario
+
+Running the program needs concrete locations, cluster sizes and a voting rule. The scenario has one coordinator, three participants, and a quorum of 2:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/Quorum.lean">Examples/Tutorials/Quorum.lean</Link>
+}>{getLines(quorumSrc, 'locs', `
+/-- One coordinator, three participants. -/
+inductive QLoc | coord | part
+  deriving DecidableEq
+
+@[reducible] def qMem : QLoc → Nat
+  | .coord => 1
+  | .part => 3
+
+/-- Participant 0 votes no on \`20\`; participant 1 votes no on \`20\` and \`30\`. -/
+def qVote : Fin 3 → Nat → Bool := fun j p =>
+  !((j.val = 0 && p = 20) || (j.val = 1 && (p = 20 || p = 30)))
+`)}</CodeBlock>
+
+The coordinator proposes `10`, `20` and `30`. Request `10` gets three yes votes, `20` gets one, and `30` gets two, so the quorum decides `10` and `30`.
+
+## Running at `Values`
+
+At `Values`, the semantics the contract is proved in, the batch decision is an argument: a list of cuts, one per tick, for the coordinator. Writing three of them checks the contract's claim that the batching does not matter:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/Quorum.lean">Examples/Tutorials/Quorum.lean</Link>
+}>{getLines(quorumSrc, 'run-values', `
+-- three ticks of votes: \`10\` reaches two yes votes in the first, \`30\` in the third
+#guard vote_quorum (Values QLoc qMem) .coord .part 2 qVote
+    (.mk' fun _ => ({10, 20, 30} : Multiset Nat))
+    ⟨fun _ => [{(10, true), (10, true)}, {(10, true), (30, true)},
+               {(30, false), (30, true), (20, false), (20, false), (20, true)}]⟩
+    ⟨(), ()⟩ 0
+  = ({10, 30} : Multiset Nat)
+-- all the votes in one tick: the same decisions
+#guard vote_quorum (Values QLoc qMem) .coord .part 2 qVote
+    (.mk' fun _ => ({10, 20, 30} : Multiset Nat))
+    ⟨fun _ => [{(10, true), (10, true), (10, true), (20, false), (20, false), (20, true),
+                (30, true), (30, false), (30, true)}]⟩
+    ⟨(), ()⟩ 0
+  = ({10, 30} : Multiset Nat)
+-- a batching that stops early: only what was consumed is decided
+#guard vote_quorum (Values QLoc qMem) .coord .part 2 qVote
+    (.mk' fun _ => ({10, 20, 30} : Multiset Nat))
+    ⟨fun _ => [{(10, true), (10, true)}]⟩
+    ⟨(), ()⟩ 0
+  = ({10} : Multiset Nat)
+`)}</CodeBlock>
+
+- The first decision spreads the votes over three ticks. `10` reaches two yes votes in the first tick, and `30` reaches them in the third. The second `(10, true)`, which arrives in tick 1, does not decide `10` again, because `10` is in `decided`.
+- The second decision delivers every vote in one tick, and the decisions are the same. The contract says this must happen for every batching: what `vote_quorum` decides depends on which votes it has consumed, not on how they were grouped into ticks.
+- The third decision stops after one tick, so only `10` is decided. The contract's facts are about what has been consumed. None of them says that every request with a quorum gets decided.
+
+The `#guard`s run when the file elaborates, so `lake build Examples` fails if any of them is false. Each one evaluates the same term `vote_quorum.ensures` is about.
+
+## Running over TCP
+
+At `Values` you chose the batches. In a deployment the network chooses them, and `vote_quorum_safe_wired` covers that case. `hydro_lean/Examples/Demo/QuorumDemo.lean` runs the scenario as four processes, one per member, each on its own thread with its own state. Process 0 is the coordinator and processes 1 to 3 are the participants. They share nothing but sockets on `127.0.0.1:9600` to `9603`. An activation is one call of `quorumBody`:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Demo/QuorumDemo.lean">Examples/Demo/QuorumDemo.lean</Link>
+}>{getLines(quorumDemoSrc, 'activate', `
+/-- One activation of process \`p\`: \`quorumBody\` on the bytes that arrived, the input, its cells.
+Returns its cells, its decisions, its sends and the tails to keep. -/
+def activate (p : Fin NProc) (nowUs : Nat) (lastUs : Option Nat)
+    (chans : List ((src : Member QLoc qMem) × ByteArray)) (reqs : List Nat) (s : Loc p) :
+    Loc p × List Nat × List WireMsg × List ByteArray :=
+  let r := quorumBody (mem := qMem) QLoc.coord QLoc.part 2 qVote (memberOf p)
+    (TickReadings.ofClock (memberOf p) nowUs lastUs) chans (inputsFor p reqs) s
+  let decided := (hostedList (memberOf p) .coord).flatMap (fun i => (r.2.1.get Var.zero i).toList)
+  (r.1, decided, r.2.2.1, r.2.2.2)
+`)}</CodeBlock>
+
+The process hands the body the bytes that arrived on each connection since its last activation, together with the tail of any frame that was cut. The body cuts the bytes into frames, decodes the messages with the codecs the elaborator built, runs one tick, and returns the new state, the decisions, the messages to send, and the tails to keep. The harness itself does not inspect the bytes. It routes each message to the processes that host the receiving cluster, and it waits on the sockets when nothing has arrived.
+
+Run it with:
+
+```bash
+lake exe quorum
+```
+
+The progress lines go to stderr:
+
+```text
+quorum: vote_quorum as 4 processes (1 coordinator, 3 participants) over TCP 127.0.0.1:9600+p
+quorum: all sockets connected
+quorum: process 2: 0 chunks in, requests [] → decided [], 0 messages out
+quorum: process 3: 0 chunks in, requests [] → decided [], 0 messages out
+quorum: process 1: 0 chunks in, requests [] → decided [], 0 messages out
+quorum: process 0: 0 chunks in, requests [10, 20, 30] → decided [], 3 messages out
+quorum: process 2: 1 chunks in, requests [] → decided [], 3 messages out
+quorum: process 1: 1 chunks in, requests [] → decided [], 3 messages out
+quorum: process 3: 1 chunks in, requests [] → decided [], 3 messages out
+quorum: process 0: 1 chunks in, requests [] → decided [], 0 messages out
+quorum: process 0: 1 chunks in, requests [] → decided [10], 0 messages out
+quorum: process 0: 1 chunks in, requests [] → decided [30], 0 messages out
+quorum: coordinator decided [10, 30] in 2 ms
+quorum: every decision has ≥ 2 yes voters: true ([(10, 3), (30, 2)])
+quorum: nothing decided twice: true
+quorum: OK
+```
+
+Reading it from the top:
+
+1. Every process runs once at start-up, as a DFIR process does. The coordinator is handed the three requests and sends one message per request, which `broadcast_closed` routes to all three participants.
+2. Each participant activates when its chunk arrives, votes on the three requests, and sends three votes back.
+3. The coordinator activates once per arriving chunk. Each activation is one tick, and its batch is whatever has arrived. In this run the first participant's votes reach no quorum, the second's decide `10`, and the third's decide `30`.
+
+The arrival order differs from run to run. In another run the coordinator might receive two participants' votes in one activation and decide `10` and `30` together. Whatever batches the network produces, the coupling in the proof maps them to a `Values` batch decision (`vote_quorum_vdec`), and the contract holds for every decision.
+
+The last three lines check the property `vote_quorum_safe_wired` states for this run: every decision has at least two yes voters, and nothing is decided twice. The harness exits 0 on `quorum: OK` and 1 otherwise. It also exits 1 if the coordinator has not decided both requests within 10 seconds. The ports must be free.
+
+The run shows that the theorem's hypotheses can be met. `vote_quorum_safe_wired` covers this trace and every other trace of these processes, including traces in which a participant never runs and traces in which TCP splits a frame anywhere.
+
+## Next Steps
+
+You have now seen the whole workflow of Hydro Lean: write a program once, prove its contract at `Values`, carry it to the processes with the generated lemmas, and run the same code. `vote_quorum` was written from scratch. In [Porting from Rust](./porting-from-rust.mdx), you will port an existing Rust function, `collect_quorum` from `hydro_std`, with the same constructs, and see where the Lean port departs from the Rust and why.

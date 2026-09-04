@@ -6,8 +6,9 @@
 /// Lines are one-indexed (start with `1`). Both `lineStart` and `lineEnd` are inclusive.
 ///
 /// Sections are marked in the code with a start tag `//[mysection]//` and and end tag
-/// `//[/mysection]//`. The rest of these tag lines must be whitespace, and these tag lines are not
-/// included in the output. However they are included for line number _counting_.
+/// `//[/mysection]//` (in Lean sources, `--[mysection]--` and `--[/mysection]--`). The rest of
+/// these tag lines must be whitespace, and these tag lines are not included in the output. However
+/// they are included for line number _counting_.
 ///
 /// An optional `expected` parameter can be provided as the last argument. If provided, the function
 /// will assert that the extracted content (after trimming whitespace) matches the expected string
@@ -30,8 +31,10 @@ export function getLines(
   lineEndOrExpected?: number | string,
   expected?: string,
 ): string {
-  // `//[section]//` or `//[/section]//` (rest of line must be whitespace).
-  const SECTION_REGEX = /^\s*\/\/\[(\/?)(\S+)\]\/\/\s*$/;
+  // `//[section]//` or `//[/section]//`, or the Lean forms `--[section]--` or `--[/section]--`
+  // (rest of line must be whitespace).
+  const SECTION_REGEX =
+    /^\s*(?:\/\/\[(\/?)(\S+)\]\/\/|--\[(\/?)(\S+)\]--)\s*$/;
   let lines;
   let lineEnd: number | undefined;
   let expectedContent: string | undefined;
@@ -45,7 +48,8 @@ export function getLines(
       if (null == match) {
         return inSection;
       }
-      const [_, end, name] = match;
+      const end = match[1] ?? match[3];
+      const name = match[2] ?? match[4];
       if (name == lineStartOrSectionName) {
         inSection = 0 === end.length;
       }

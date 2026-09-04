@@ -1,0 +1,575 @@
+---
+sidebar_position: 2
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Link from "@docusaurus/Link";
+
+import baseSrc from '!!raw-loader!../../../../../hydro_lean/Examples/Tutorials/QuorumBase.lean';
+import specSrc from '!!raw-loader!../../../../../hydro_lean/Examples/TutorialSteps/QuorumSpec.lean';
+import fieldsSrc from '!!raw-loader!../../../../../hydro_lean/Examples/TutorialSteps/QuorumFields.lean';
+import invariantSrc from '!!raw-loader!../../../../../hydro_lean/Examples/TutorialSteps/QuorumInvariant.lean';
+import quorumSrc from '!!raw-loader!../../../../../hydro_lean/Examples/Tutorials/Quorum.lean';
+import tlaSrc from '!!raw-loader!../../../../../hydro_lean/Comparisons/VoteQuorum.tla';
+import { getLines } from '../../../../src/util';
+
+# Proving the Quorum
+
+`vote_quorum` compiles but promises nothing. On this page, you will write down what it guarantees and prove it the way you would prove anything: state the theorem first, leave every proof as `sorry`, and work backwards from each goal to the facts it needs, until no `sorry` is left. Then you will carry the result to the processes that run the program.
+
+You prove the contract at the denotational semantics `Values`, where an unordered stream is, per member, a multiset that stands for every arrival order and holds everything ever sent, so a network hop changes no content ([The Network at `Values`](../programs/distributed-programs.mdx#the-network-at-values)). Arrival timing enters only through the batch decision, and the contract holds for every decision.
+
+:::learn
+- How to attach a contract to a program and grow its proof from `sorry`s
+- How ghost facts read the program's wires, and why the network part of the proof is `rfl`
+- How a goal about the coordinator's state tells you which loop invariant to write
+- How the contract becomes a theorem about processes exchanging bytes, using generated lemmas
+:::
+
+## Writing the Contract
+
+The contract talks about counts of votes and requests, so first define them as plain functions over multisets:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/QuorumBase.lean">Examples/Tutorials/QuorumBase.lean</Link>
+}>{getLines(baseSrc, 'vocab', `
+/-- The yes votes for request \`p\` in a pool of \`(request, vote)\` pairs. -/
+def yesVotes (pool : Multiset (Nat × Bool)) (p : Nat) : Nat :=
+  (pool.filter (fun r => r.1 = p ∧ r.2 = true)).card
+
+/-- Everything the coordinator members were asked to decide, pooled. -/
+def proposed {n : Nat} (requests : Fin n → Multiset Nat) : Multiset Nat :=
+  ((List.finRange n).map requests).sum
+
+/-- The participants that vote yes on \`p\`. -/
+def yesVoters {n : Nat} (vote : Fin n → Nat → Bool) (p : Nat) : Nat :=
+  ((List.finRange n).filter (fun j => vote j p)).length
+`)}</CodeBlock>
+
+A vote is a pair `(request, yes?)`. `yesVotes pool p` counts the yes votes for `p` in a pool of votes, `proposed` pools the requests of every coordinator member, and `yesVoters vote p` counts the participants whose voting rule says yes to `p`. None of them mentions the program. The contract is a structure whose fields use them:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/QuorumBase.lean">Examples/Tutorials/QuorumBase.lean</Link>
+}>{getLines(baseSrc, 'ensures', `
+/-- What \`vote_quorum\` ensures, over the \`Values\` denotation: per coordinator member \`c\`, its
+decisions \`out c\`, for any batching of the votes. -/
+structure QuorumEnsures {nCoord nPart : Nat} (minYes : Nat) (vote : Fin nPart → Nat → Bool)
+    (requests : Fin nCoord → Multiset Nat) (out : Fin nCoord → Multiset Nat) : Prop where
+  /-- A decided request was proposed. -/
+  decided_proposed : ∀ c, ∀ p ∈ out c, 1 ≤ minYes → p ∈ proposed requests
+  /-- A request proposed at most once is decided only if \`minYes\` participants voted yes. -/
+  quorum : ∀ c, ∀ p ∈ out c, (proposed requests).count p ≤ 1 → minYes ≤ yesVoters vote p
+  /-- A request is decided at most once. -/
+  once : ∀ c p, (out c).count p ≤ 1
+`)}</CodeBlock>
+
+`out c` is coordinator member `c`'s decisions, pooled over all ticks.
+
+- `decided_proposed`: a decided request was proposed. It needs `1 ≤ minYes`. The proof shows that `p` was proposed through its yes votes: a decided `p` has at least `minYes` of them, and every yes vote is a participant's vote on a proposed request. With `minYes = 0`, a decided request may have no yes vote, and the argument has nothing to start from.
+- `quorum`: a request proposed at most once is decided only if at least `minYes` participants vote yes on it. It needs the premise because a request proposed twice collects two votes from every participant.
+- `once`: no request is decided twice.
+
+Attach the contract to the program with `ensures`, which goes after the result type, and add a `prove` clause after the body's last line with one entry per field. Every entry starts as `sorry`:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumSpec.lean">Examples/TutorialSteps/QuorumSpec.lean</Link>
+}>{getLines(specSrc, 'signature', `
+hydro def vote_quorum (H : HydroSem L mem) (coord part : L) (minYes : Nat)
+    (vote : Fin (mem part) → Nat → Bool)
+    (requests : H.Stream coord Nat .noOrder .exactlyOnce)
+    (dec : QuorumDec H (mem coord)) (sched : QuorumSched H (mem coord) (mem part)) :
+    H.Stream coord Nat .noOrder .exactlyOnce
+  ensures out => QuorumEnsures minYes vote requests out :=
+`)}</CodeBlock>
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumSpec.lean">Examples/TutorialSteps/QuorumSpec.lean</Link>
+}>{getLines(specSrc, 'prove', `
+H.allTicks decisions
+prove
+  decided_proposed := fun c p hp h1 => by sorry,
+  quorum := fun c p hp hone => by sorry,
+  once := fun c p => by sorry
+`)}</CodeBlock>
+
+The file elaborates, and Lean reports the open proof at the program's name:
+
+```text
+Examples/TutorialSteps/QuorumSpec.lean:23:10: warning: declaration uses `sorry`
+```
+
+This is stage 2, `hydro_lean/Examples/TutorialSteps/QuorumSpec.lean`. Every later change removes a `sorry` or moves one to a smaller fact.
+
+## The `quorum` Field
+
+`quorum` is the central property, so start there. Putting the cursor on its `sorry` shows the goal. Lean lists the program's arguments and wires as local definitions, already at `H := Values`, followed by facts the `tick` block generated, and then the field's own binders (shortened here to the last lines):
+
+```text
+…
+c_votes : HydroSem.Stream mem coord (ℕ × Bool) StrOrd.noOrder Retries.exactlyOnce :=
+  HydroSem.values (HydroSem.broadcast_closed sched.toCoordinator p_votes)
+incoming : HydroSem.AtomicStream mem coord (ℕ × Bool) StrOrd.noOrder Retries.exactlyOnce :=
+  HydroSem.batch c_votes dec.votes
+…
+hdecisions_reg :
+  ∃ reg, …
+c : Fin (mem coord)
+p : ℕ
+hp : p ∈ MemberMap.get (HydroSem.allTicks decisions) c
+hone : Multiset.count p (proposed (MemberMap.get requests)) ≤ 1
+⊢ minYes ≤ yesVoters vote p
+```
+
+`hp` says the coordinator decided `p`, and the goal is about the voting rule. Working backwards, two facts would close it:
+
+1. The coordinator receives one vote from every participant for every copy of `p` that was proposed, so the yes votes for `p` among `c_votes` number `yesVoters vote p * count p`. This is a fact about the network.
+2. A decided request has at least `minYes` yes votes among `c_votes`. This is a fact about the tick loop.
+
+With both, `quorum` is arithmetic: `minYes ≤ yesVoters * count ≤ yesVoters` because `count ≤ 1`. `decided_proposed` follows from the same two facts, since `1 ≤ minYes ≤ yesVoters * count` forces `count ≥ 1`.
+
+State both facts as **ghosts**: `ghost have` clauses in the body of the program, after the `tick` block, with every wire in scope. A ghost is proof-only. It does not change the program, the elaborator checks it at `Values`, and the `prove` clause can use it by name. With `hyes` (fact 1) and `hdecided` (fact 2), the two fields are proved:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumFields.lean">Examples/TutorialSteps/QuorumFields.lean</Link>
+}>{getLines(fieldsSrc, 'prove', `
+prove
+  decided_proposed := fun c p hp h1 => by
+    -- \`minYes ≤ yesVoters * count\`, with \`1 ≤ minYes\`, forces \`count ≥ 1\`
+    have h := le_trans h1 (hdecided c p hp)
+    rw [hyes] at h
+    rcases Nat.eq_zero_or_pos ((proposed requests).count p) with h0 | hpos
+    · rw [h0, Nat.mul_zero] at h; omega
+    · exact Multiset.count_pos.mp hpos,
+  quorum := fun c p hp hone => by
+    -- \`minYes ≤ yesVoters * count ≤ yesVoters\` when \`count ≤ 1\`
+    have h := hdecided c p hp
+    rw [hyes] at h
+    exact le_trans h (le_trans (Nat.mul_le_mul_left _ hone) (Nat.mul_one _).le),
+  once := fun c p => by sorry
+`)}</CodeBlock>
+
+`once` is still open, because its proof needs the loop invariant.
+
+## Reading the Network
+
+`hyes` is about what the coordinator receives, which results from composing the two network hops:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumFields.lean">Examples/TutorialSteps/QuorumFields.lean</Link>
+}>{getLines(fieldsSrc, 'ghost-votes', `
+-- the votes at the coordinator, read at \`Values\`: every participant's vote on every
+-- proposed request
+ghost have hvotes : ∀ c, c_votes c = ((List.finRange (mem part)).map (fun j =>
+    (proposed requests).map (fun q => (q, vote j q)))).sum := fun _ => rfl
+-- the yes votes for \`p\`: one per yes voter per copy of \`p\` proposed
+ghost have hyes : ∀ c p, yesVotes (c_votes c) p = yesVoters vote p * (proposed requests).count p :=
+  fun c p => by
+  rw [hvotes, yesVotes_listSum, List.map_map]
+  have : (List.finRange (mem part)).map
+      ((fun m => yesVotes m p) ∘ fun j => (proposed requests).map (fun q => (q, vote j q)))
+      = (List.finRange (mem part)).map
+          (fun j => if vote j p then (proposed requests).count p else 0) :=
+    List.map_congr_left (fun j _ => yesVotes_map_tag _ _ p)
+  rw [this, sum_map_ite_const]
+  rfl
+`)}</CodeBlock>
+
+`hvotes` is `rfl`: at `Values`, the vote pool at the coordinator is by definition the sum of every participant's tagged copy of `proposed requests`. The proof does not mention delivery, order or timing, and a network that reorders or delays messages needs no separate argument. `hyes` then counts the yes votes in that pool with two lemmas about `yesVotes` from `QuorumBase.lean`: each participant contributes `count p` yes votes if it votes yes on `p` and none otherwise.
+
+## Down to One Tick
+
+`hdecided` is the fact about the tick loop. A decision belongs to some tick `n`, so `hdecided` follows from a fact about a single tick:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumFields.lean">Examples/TutorialSteps/QuorumFields.lean</Link>
+}>{getLines(fieldsSrc, 'hdecided', `
+-- a decision has \`minYes\` yes votes among all the votes the coordinator receives
+ghost have hdecided : ∀ c, ∀ p ∈ (decisions c).sum, minYes ≤ yesVotes (c_votes c) p :=
+  fun c p hp => by
+  -- the tick \`n\` that decided \`p\`, and its batch \`b_t\`
+  obtain ⟨e, he, hpe⟩ := mem_list_sum.mp hp
+  obtain ⟨n, hn⟩ := List.mem_iff_getElem?.mp he
+  obtain ⟨b_t, hb, -, hall⟩ := htick c n e hn
+  -- the votes consumed through tick \`n\` sit below everything the coordinator receives
+  have hle : ((incoming c).take n).sum + b_t ≤ c_votes c := by
+    have : ((incoming c).take n).sum + b_t = ((incoming c).take (n + 1)).sum := by
+      rw [List.take_add_one, hb, List.sum_append]
+      simp only [Option.toList_some, List.sum_singleton]
+    rw [this]
+    exact le_trans (sublist_sum_le (List.take_sublist _ _)) (cqConsumed_le _ _)
+  exact le_trans (hall p hpe).1 (yesVotes_mono hle p)
+`)}</CodeBlock>
+
+`htick c n e hn` says the requests tick `n` decides have `minYes` yes votes among the votes consumed through tick `n`: the first `n` batches plus this tick's batch `b_t`. Those votes are part of `c_votes` (`cqConsumed_le`), and `yesVotes` grows with the pool (`yesVotes_mono`).
+
+That leaves `htick` itself. The `tick` block generated **readers**, ghost facts about its runs at `Values`, named after its `yield`: here `hdecisions_run`, `hdecisions_at` and `hdecisions_reg` ([The Readers](../proving/tick-invariants.md#the-readers)). `hdecisions_reg` gives the state before every tick as an opaque sequence `reg c n` together with its laws. The proof takes the read law `hreg_at`, which says tick `n`'s decisions are the body run on `reg c n` and the batch `b_t`. Then `simp only [decisions_step, den]` evaluates the body at `Values`:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumFields.lean">Examples/TutorialSteps/QuorumFields.lean</Link>
+}>{getLines(fieldsSrc, 'ghost-tick', `
+-- the register before every tick, opaque: tick \`n\` reads \`reg c n\` and the batch at \`n\`
+ghost obtain ⟨reg, -, hreg_at, -, -⟩ := hdecisions_reg
+-- one tick, decoded: tick \`n\`'s decisions are distinct, each has \`minYes\` yes votes among
+-- the votes consumed through tick \`n\`, and none was decided before
+ghost have htick : ∀ (c : Fin (mem coord)) (n : Nat) (e : Multiset Nat),
+    (decisions c)[n]? = some e →
+    ∃ b_t, (incoming c)[n]? = some b_t ∧ e.Nodup ∧
+      ∀ p ∈ e, minYes ≤ yesVotes (((incoming c).take n).sum + b_t) p
+        ∧ p ∉ ((decisions c).take n).sum := fun c n e he => by
+  -- tick \`n\`'s decisions are the step on \`reg c n\` and this tick's batch \`b_t\`
+  obtain ⟨b_t, hb, rfl⟩ := (hreg_at c n e).mp he
+  refine ⟨b_t, hb, ?_⟩
+  -- evaluate the step at \`Values\`
+  simp only [decisions_step, den]
+  sorry
+`)}</CodeBlock>
+
+This is stage 3, `Examples/TutorialSteps/QuorumFields.lean`. The goal at the `sorry` is:
+
+```text
+…
+c : Fin (mem coord)
+n : ℕ
+b_t : PoolCarrier (ℕ × Bool) StrOrd.noOrder Retries.exactlyOnce
+hb : (MemberMap.get incoming c)[n]? = some b_t
+he : (MemberMap.get decisions c)[n]? = some (decisions_step c (reg c n) b_t).2
+⊢ (Multiset.filter (fun x => (!decide (x ∈ (reg c n).2)) = true)
+        ((KeyedMap.ofFold yesStep 0 (fun x x_1 => True) ⋯ (KeyedPool.ofMultiset ((reg c n).1 + b_t))).filter fun n =>
+            decide (minYes ≤ n)).keysMS).Nodup ∧
+    ∀
+      p ∈
+        Multiset.filter (fun x => (!decide (x ∈ (reg c n).2)) = true)
+          ((KeyedMap.ofFold yesStep 0 (fun x x_1 => True) ⋯ (KeyedPool.ofMultiset ((reg c n).1 + b_t))).filter fun n =>
+              decide (minYes ≤ n)).keysMS,
+      minYes ≤ yesVotes ((List.take n (MemberMap.get incoming c)).sum + b_t) p ∧
+        p ∉ (List.take n (MemberMap.get decisions c)).sum
+```
+
+The body has been evaluated: the count runs over `(reg c n).1 + b_t`, and the filter removes what is in `(reg c n).2`. The conclusion, though, speaks of `(List.take n incoming).sum + b_t` and `(List.take n decisions).sum`. The goal would follow if
+
+- `(reg c n).1`, the `seen` state before tick `n`, were the sum of the first `n` batches, and
+- `(reg c n).2`, the `decided` state before tick `n`, were the sum of the first `n` ticks' decisions.
+
+Nothing in the context says so. It is a fact about every tick, so no single-tick reasoning can supply it: it is the loop invariant the `tick` block needs.
+
+## The Tick Invariant
+
+`quorum` and `decided_proposed` now rest on one statement about the coordinator's state. Add that statement to the `tick` header as an `invariant` clause, and start its two obligations as `sorry`:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumInvariant.lean">Examples/TutorialSteps/QuorumInvariant.lean</Link>
+}>{getLines(invariantSrc, 'tick-header', `
+tick (state seen : H.BoundedStream (Nat × Bool) .noOrder .exactlyOnce)
+    (state decided : H.BoundedStream Nat .noOrder .exactlyOnce)
+    (input incoming := H.batch c_votes dec.votes)
+    (invariant ((decisions : List (Multiset Nat)) (seen : Multiset (Nat × Bool))
+        (decided : Multiset Nat) (incoming : Trace (Multiset (Nat × Bool)))) =>
+      seen = (incoming.take decisions.length).sum ∧ decided = decisions.sum) :=
+`)}</CodeBlock>
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumInvariant.lean">Examples/TutorialSteps/QuorumInvariant.lean</Link>
+}>{getLines(invariantSrc, 'tick-prove', `
+prove init := sorry, tick := sorry;
+`)}</CodeBlock>
+
+The invariant's binders are positional. The first, `decisions`, is the list of emissions so far. The next two are the states, in declaration order. The last, `incoming`, is a wire in scope, passed to the invariant per member. Both conjuncts are stated against `decisions.length`, the number of ticks so far, so the invariant needs no counter. The `prove init := …, tick := …` clause goes right after `yield`.
+
+With the clause in place, `hdecisions_reg` gains a last conjunct: the invariant holds of `reg c n` before every tick. `htick` takes it as `hreg_inv` and rewrites the state into the terms the conclusion uses:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumInvariant.lean">Examples/TutorialSteps/QuorumInvariant.lean</Link>
+}>{getLines(invariantSrc, 'ghost-tick', `
+-- the register before every tick, opaque, with the invariant at each tick
+ghost obtain ⟨reg, -, hreg_at, -, -, hreg_inv⟩ := hdecisions_reg
+-- one tick, decoded: tick \`n\`'s decisions are distinct, each has \`minYes\` yes votes among
+-- the votes consumed through tick \`n\`, and none was decided before
+ghost have htick : ∀ (c : Fin (mem coord)) (n : Nat) (e : Multiset Nat),
+    (decisions c)[n]? = some e →
+    ∃ b_t, (incoming c)[n]? = some b_t ∧ e.Nodup ∧
+      ∀ p ∈ e, minYes ≤ yesVotes (((incoming c).take n).sum + b_t) p
+        ∧ p ∉ ((decisions c).take n).sum := fun c n e he => by
+  have hn := Trace.read_lt he
+  -- tick \`n\`'s decisions are the step on \`reg c n\` and this tick's batch \`b_t\`
+  obtain ⟨b_t, hb, rfl⟩ := (hreg_at c n e).mp he
+  -- the invariant before tick \`n\`: \`reg c n\` is the votes consumed and the requests decided
+  obtain ⟨hseen, hdecided⟩ := hreg_inv c n
+  rw [List.length_take_of_le (Nat.le_of_lt hn)] at hseen
+  refine ⟨b_t, hb, ?_⟩
+  -- evaluate the step at \`Values\`, then rewrite the state with what the invariant says it holds
+  simp only [decisions_step, den]
+  rw [← hseen, ← hdecided]
+  -- the reached requests are a counter's keys, so distinct; the filter keeps the undecided
+  refine ⟨(reached_nodup minYes _).filter _, fun p hp => ?_⟩
+  obtain ⟨hr, hnot⟩ := Multiset.mem_filter.mp hp
+  exact ⟨le_yesVotes_of_mem_reached hr, fun hm => by
+    revert hnot
+    simp only [Bool.not_eq_true']
+    exact fun h => (decide_eq_false_iff_not.mp h) hm⟩
+`)}</CodeBlock>
+
+After `rw [← hseen, ← hdecided]` the state is gone from the goal, and what remains is about the evaluated step: `reached_nodup` (a counter's keys are distinct), `le_yesVotes_of_mem_reached` (a key whose count is at least `minYes` has `minYes` yes votes in the pool, reading the keyed fold back into `yesVotes`), and the `bfilterNotIn` against `decided`. This is stage 4, `Examples/TutorialSteps/QuorumInvariant.lean`. `htick` and `hdecided` are proved, and the open proofs are the two obligations and `once`:
+
+```text
+warning: Examples/TutorialSteps/QuorumInvariant.lean:33:2: declaration uses `sorry`
+warning: Examples/TutorialSteps/QuorumInvariant.lean:33:2: declaration uses `sorry`
+warning: Examples/TutorialSteps/QuorumInvariant.lean:23:10: declaration uses `sorry`
+```
+
+The two at line 33, the `tick` keyword, are the invariant's obligations. The obligations are small, because each is about one evaluation of the body:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/Quorum.lean">Examples/Tutorials/Quorum.lean</Link>
+}>{getLines(quorumSrc, 'tick-prove', `
+-- before the first tick: both states are empty, and nothing was consumed or emitted
+prove init := fun _i => by
+    simp [ValuesTick.seed_pair, ValuesTick.seed_stream, den],
+  -- one tick: from the invariant before it (\`ih\`) to the invariant after it
+  tick := fun i n out st b_t hb hlen ih => by
+    -- "the first \`n + 1\` batches" is "the first \`n\` batches, then \`b_t\`"
+    simp only [List.append_eq, List.length_append, List.length_singleton, hlen,
+      List.take_add_one, hb, Option.toList_some, List.sum_append, List.sum_singleton] at ih ⊢
+    -- evaluate the tick at \`Values\`: \`bchain\` is \`+\`
+    simp only [decisions_step, den]
+    obtain ⟨hseen, hdecided⟩ := ih
+    exact ⟨by rw [hseen], by rw [hdecided]⟩;
+`)}</CodeBlock>
+
+- `init` states the invariant before the first tick: both states are empty, and no votes have been consumed or decisions emitted.
+- `tick` receives the member `i`, the tick index `n`, the emissions so far `out`, the state `st`, this tick's batch `b_t` with its read `hb`, `hlen : out.length = n`, and the invariant before the tick, `ih`. After the rewriting, `seen` grows by `b_t` and `decided` grows by this tick's decisions, as the invariant requires.
+
+The elaborator checks these obligations when the block elaborates, and builds the invariant's readers from them ([Tick Blocks and Their Invariants](../proving/tick-invariants.md)).
+
+## The `once` Field
+
+One field is left. `once` says no request is decided twice, and `htick` already contains both halves of the argument: tick `n` decides each request at most once (`e.Nodup`), and never one decided before (`p ∉ ((decisions c).take n).sum`). An induction on the number of ticks puts them together:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/Quorum.lean">Examples/Tutorials/Quorum.lean</Link>
+}>{getLines(quorumSrc, 'once', `
+once := fun c p => by
+  show ((decisions c).sum).count p ≤ 1
+  -- the decisions of the first \`n\` ticks hold \`p\` at most once
+  have key : ∀ n, (((decisions c).take n).sum).count p ≤ 1 := by
+    intro n
+    induction n with
+    | zero => simp
+    | succ n ih =>
+      rw [List.take_add_one]
+      cases he : (decisions c)[n]? with
+      -- no tick \`n\`: nothing is added
+      | none => simpa using ih
+      | some e =>
+        -- tick \`n\` decides \`e\`: distinct (\`hnd\`), none decided before (\`(hall p _).2\`)
+        obtain ⟨_b_t, _hb, hnd, hall⟩ := htick c n e he
+        rw [Option.toList_some, List.sum_append, List.sum_singleton, Multiset.count_add]
+        by_cases hpe : p ∈ e
+        -- \`p\` decided now: 0 times before, once in \`e\`
+        · rw [Multiset.count_eq_zero.mpr (hall p hpe).2, Multiset.count_eq_one_of_mem hnd hpe]
+        -- \`p\` not decided now: the count before is at most 1
+        · rw [Multiset.count_eq_zero.mpr hpe]
+          exact ih
+  simpa using key (decisions c).length
+`)}</CodeBlock>
+
+This is the finished program in `hydro_lean/Examples/Tutorials/Quorum.lean`. It has no `sorry`, and `vote_quorum.ensures` is a theorem: the contract at `Values` for every request pool, voting rule and batch decision.
+
+## Compared with a TLA+ Proof
+
+If you have verified protocols in TLA+, the natural question is what the same guarantee costs there. `hydro_lean/Comparisons/VoteQuorum.tla` writes the same protocol as a TLA+ specification, with the three fields of `QuorumEnsures` as properties, and checks it with TLC. It has one coordinator and proposes each request at most once, the case the `quorum` field speaks about.
+
+**The model.** In TLA+ the first step is to describe the system as a state machine, and its state includes the network:
+
+<CodeBlock language="tla" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorum.tla">Comparisons/VoteQuorum.tla</Link>
+}>{getLines(tlaSrc, 17, 24, `
+VARIABLES
+  vote,      \\* vote[j][r]: participant j's voting rule, fixed in Init
+  proposed,  \\* the requests the coordinator has broadcast
+  reqMsgs,   \\* requests in flight to participants: <<r, j>>
+  voteMsgs,  \\* votes in flight to the coordinator: <<j, r, yes?>>
+  seen,      \\* the coordinator's state: every vote it has consumed
+  decided,   \\* the coordinator's state: every request it has decided
+  out        \\* the output stream, as a bag: out[r] = times r was emitted
+`)}</CodeBlock>
+
+`reqMsgs` and `voteMsgs` have no counterpart in `vote_quorum`: they hold the messages in flight, and sending and receiving are actions that change them. The coordinator's tick is an action that consumes any subset of the votes that have arrived:
+
+<CodeBlock language="tla" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorum.tla">Comparisons/VoteQuorum.tla</Link>
+}>{getLines(tlaSrc, 57, 69, `
+\\* one coordinator tick: consume any batch of the votes that have arrived,
+\\* count yes votes per request, and emit the requests newly at quorum
+Tick ==
+  \\E batch \\in SUBSET voteMsgs :
+    LET all     == seen \\cup batch
+        reached == {r \\in Requests : /\\ \\E m \\in all : m[2] = r
+                                     /\\ Cardinality(YesIn(all, r)) >= MinYes}
+        fresh   == reached \\ decided
+    IN /\\ voteMsgs' = voteMsgs \\ batch
+       /\\ seen' = all
+       /\\ decided' = decided \\cup fresh
+       /\\ out' = [r \\in Requests |-> out[r] + (IF r \\in fresh THEN 1 ELSE 0)]
+       /\\ UNCHANGED <<vote, proposed, reqMsgs>>
+`)}</CodeBlock>
+
+`\E batch \in SUBSET voteMsgs` is where the model puts the choice that `vote_quorum` takes as the argument `dec.votes`, and the order in which `Propose`, `CastVote` and `Tick` steps interleave is where it puts delay and reordering.
+
+**The invariant.** A TLA+ safety proof shows that an inductive invariant holds initially and is preserved by every action. The three properties alone are not inductive: a `Tick` from a state with a forged vote in `voteMsgs` can decide a request nobody voted for. The invariant must therefore also describe the network:
+
+<CodeBlock language="tla" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorum.tla">Comparisons/VoteQuorum.tla</Link>
+}>{getLines(tlaSrc, 101, 112, `
+\\* the inductive invariant; drop any conjunct and TLC finds a state that
+\\* satisfies the rest and steps out of it, or violates safety
+Inv ==
+  /\\ TypeOK
+  \\* requests in flight were proposed
+  /\\ \\A m \\in reqMsgs : m[1] \\in proposed
+  \\* every vote in flight or consumed is its sender's vote on a proposed request
+  /\\ \\A m \\in voteMsgs \\cup seen : m[2] \\in proposed /\\ m[3] = vote[m[1]][m[2]]
+  \\* the output is exactly the decided set, each once
+  /\\ \\A r \\in Requests : out[r] = IF r \\in decided THEN 1 ELSE 0
+  \\* a decided request was proposed and has \`MinYes\` yes voters
+  /\\ \\A r \\in decided : r \\in proposed /\\ Cardinality(YesVoters(r)) >= MinYes
+`)}</CodeBlock>
+
+Two conjuncts are about messages: a request in flight was proposed, and every vote in flight or consumed is its sender's own vote on a proposed request. The other two say what the output and the `decided` state hold. None can be dropped: with any one removed, TLC finds a state that satisfies the rest and either leaves it in one step or violates a safety property. A TLAPS proof of the specification would discharge `Inv` for the initial state and for each of the three actions, and would derive `Quorum` from the last conjunct and the conjunct about votes, with a cardinality argument: the yes votes for `r` in `seen` have distinct senders, all of them yes voters.
+
+**The Hydro proof.** The Hydro proof has no messages to describe. The two network conjuncts became one fact about what the coordinator receives, and its proof is `rfl`, because a network hop leaves a stream's content unchanged:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/Quorum.lean">Examples/Tutorials/Quorum.lean</Link>
+}>{getLines(quorumSrc, 113, 116, `
+-- the votes at the coordinator, read at \`Values\`: every participant's vote on every
+-- proposed request
+ghost have hvotes : ∀ c, c_votes c = ((List.finRange (mem part)).map (fun j =>
+    (proposed requests).map (fun q => (q, vote j q)))).sum := fun _ => rfl
+`)}</CodeBlock>
+
+`hyes` ([Reading the Network](#reading-the-network)) counts the yes votes in that pool, and that count replaces the cardinality argument. The conjuncts about the output and `decided` became the tick invariant and the one-tick fact `htick` built on it. The invariant speaks only of the coordinator's two states and the batches it has consumed, and its induction runs over the coordinator's ticks, not over the actions of every process:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/Quorum.lean">Examples/Tutorials/Quorum.lean</Link>
+}>{getLines(quorumSrc, 56, 58, `
+(invariant ((decisions : List (Multiset Nat)) (seen : Multiset (Nat × Bool))
+    (decided : Multiset Nat) (incoming : Trace (Multiset (Nat × Bool)))) =>
+  seen = (incoming.take decisions.length).sum ∧ decided = decisions.sum) :=
+`)}</CodeBlock>
+
+**Checking it.** TLC explores every reachable state of three participants and two requests, under all 64 voting rules, and checks the properties and `Inv` in each. A second configuration starts from every state of a two-participant instance that satisfies `Inv` and takes one step, which checks that `Inv` is inductive there:
+
+```text
+VoteQuorum.cfg
+Model checking completed. No error has been found.
+370816 states generated, 50176 distinct states found, 0 states left on queue.
+Finished in 01s
+
+VoteQuorumInd.cfg
+Model checking completed. No error has been found.
+839104 states generated, 104976 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 1.
+Finished in 07s
+```
+
+The first check needs no invariant at all, and neither check needs a proof: `Inv` is there only to show what a proof would rest on. The Lean proof, by contrast, is about 80 lines of ghost facts and tactics in the program plus 75 lines of lemmas in `QuorumBase.lean`. The results differ in scope. TLC's holds for the sizes it explored, of a model of the protocol. `vote_quorum.ensures` holds for every number of participants and requests, every voting rule and every batching, and it is about the program that `lake exe quorum` runs.
+
+| | TLA+ model | `vote_quorum` at `Values` |
+|---|---|---|
+| the network | `reqMsgs` and `voteMsgs`, changed by actions | no state: `hvotes` is `rfl` |
+| the inductive invariant | the whole system: the messages in flight, both coordinator states, the output | the coordinator's two states, before each of its ticks |
+| the induction runs over | every action of every process, in every interleaving | the coordinator's ticks |
+| where a batch ends | `\E batch \in SUBSET voteMsgs` in `Tick` | the decision `dec.votes`, which the contract quantifies over |
+| checked by | TLC, exhaustively, for three participants and two requests | a Lean proof, for every size |
+| the theorem is about | a model, kept in sync with the code by hand | the program that runs |
+
+Hydro Lean handles the interleavings that a TLA+ proof works through action by action with the coupling, proved once for every program; [From the Contract to Production](#from-the-contract-to-production) cites this program's instance of it, which `hydro def` generates. [Hydro Lean, TLA+ and Veil](../comparison.mdx) continues the comparison: the same protocol in Veil, what each tool automates, liveness, and where each one is the better choice.
+
+## From the Contract to Production
+
+The contract and its proof are about the program at `Values`. In a deployment each member runs as a process with its own state, votes arrive late, and each tick sees whatever has arrived. Hydro Lean carries the contract there in two steps, with lemmas `hydro def` generates for this program, by the recipe it uses for every program ([Transferring to the Machine and the Network](../proving/transferring-to-the-machine.md)).
+
+### The Four Moves
+
+The first step reaches the **step machine** `SchedSem`: the same program run on a global clock of steps, where each member has one concrete history of each stream, a pacing says when each member ticks, and delivery cursors say how much each receiver has been handed. The theorem there is written with four generated lemmas, the same four moves for every program:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/Quorum.lean">Examples/Tutorials/Quorum.lean</Link>
+}>{getLines(quorumSrc, 'safe-pool', `
+/-- On the step machine, under a \`Values\` pool \`v\` above every view of the request history \`h\`:
+a request the coordinator has decided by step \`T\`, proposed at most once in \`v\`, was voted yes
+by \`minYes\` participants. Any pacing, any delivery cursors, any horizon. -/
+theorem vote_quorum_safe_sched'
+    (h : (SchedSem L mem pacing).Stream coord Nat .noOrder .exactlyOnce)
+    (v : (Values L mem).Stream coord Nat .noOrder .exactlyOnce)
+    (hc : ∀ t i, ListLe .noOrder .exactlyOnce ((h i).view t) (v i))
+    (sched : QuorumSched (SchedSem L mem pacing) (mem coord) (mem part))
+    (T : Nat) (c : Fin (mem coord)) (p : Nat)
+    (hp : p ∈ ((vote_quorum (SchedSem L mem pacing) coord part minYes vote h ⟨()⟩ sched) c).view T)
+    (hone : (proposed v).count p ≤ 1) :
+    minYes ≤ yesVoters vote p := by
+  -- the machine's schedule, repackaged for the coupling; the batch decision is derived there
+  let cdec : QuorumDec (CoupleSem L mem pacing T T (Nat.le_refl T)) (mem coord) :=
+    ⟨CoDec.batch _⟩
+  let csched : QuorumSched (CoupleSem L mem pacing T T (Nat.le_refl T)) (mem coord) (mem part) :=
+    ⟨CoDec.cursors sched.toParticipants, CoDec.cursors sched.toCoordinator⟩
+  -- 1. run the program at the coupling; open the output corner's \`cpl\`
+  have hcpl := (vote_quorum (CoupleSem L mem pacing T T (Nat.le_refl T)) coord part minYes vote
+      (CoStream.inputC h v hc) cdec csched).cpl
+    (vote_quorum_co_wf₁ coord part minYes vote (CoStream.inputC h v hc) cdec csched trivial)
+    T (by co_lag [vote_quorum_co_lag₁]) c
+  -- 2. and 3. the machine run \`sr\` equals the \`SchedSem\` run; the denotational run \`rr\` equals the \`Values\` run at
+  -- the derived decision \`vote_quorum_vdec\`
+  rw [vote_quorum_co_sr₁, vote_quorum_co_rr₁] at hcpl
+  -- 4. the contract at the derived decision
+  have hens := vote_quorum.ensures coord part minYes vote v
+    (vote_quorum_vdec (pacing := pacing) (Td := T) coord part minYes vote h
+      sched.toParticipants sched.toCoordinator) ⟨(), ()⟩
+  exact hens.quorum c p (Multiset.mem_of_le hcpl (Multiset.mem_coe.mpr hp)) hone
+`)}</CodeBlock>
+
+The program runs at the coupling instance `CoupleSem`, where each collection holds its machine run and its `Values` run together with a proof `cpl` that the first is below the second. Move 1 opens `cpl` for the output (`vote_quorum_co_wf₁` and `vote_quorum_co_lag₁` discharge its side conditions). Moves 2 and 3 rewrite the two runs to the `SchedSem` run (`co_sr₁`) and the `Values` run at a batch decision computed from the machine run (`co_rr₁`, `vote_quorum_vdec`). Move 4 applies `vote_quorum.ensures` at that decision. The `Values` decision is never assumed: the coupling builds it from the machine's own run.
+
+`hc` asks for a `Values` pool above every view of the request history. `vote_quorum_safe_sched` removes that premise: the output up to step `T` reads the input only up to `T`, so the proof freezes the input at `T` and uses its view as the pool ([Removing the Pool Premise](../proving/transferring-to-the-machine.md#removing-the-pool-premise)).
+
+### The Wired Theorem
+
+The second step reaches the processes. Each one runs `quorumBody`, the compiled graph staged into straight-line code by `hydro_run`, on its own state and on whatever bytes TCP has delivered. The build log reports the staging:
+
+```text
+info: Examples/Tutorials/Quorum.lean:316:0: hydro_run Hydro.Tutorials.quorumRun: 8 top-level nodes, 2 wire nodes, 40 lets; stage 347 ms (4719k heartbeats), compile 13 ms (16k), kernel 1 ms (23k)
+```
+
+The theorem is stated over every byte-level trace:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/Quorum.lean">Examples/Tutorials/Quorum.lean</Link>
+}>{getLines(quorumSrc, 'safe-wired-stmt', `
+/-- **The quorum, as processes exchanging bytes.** For any trace at the wire (which process
+runs at each step, what it is handed, how its sockets cut the bytes): a request that coordinator
+member \`c\` has output as decided by step \`T\`, and that the trace injected at most once, was
+voted yes by \`minYes\` participants. -/
+theorem vote_quorum_safe_wired (coord part : L) (minYes : Nat)
+    (vote : Fin (mem part) → Nat → Bool)
+    (τ : WireTrace (vote_quorum.dag (mem := mem) coord part minYes vote))
+    (T : Nat) (c : Fin (mem coord)) (p : Nat)
+    (hp : p ∈ τ.streamOutputsAt (quorumBody coord part minYes vote) T ⟨coord, c⟩ Var.zero ⟨c, rfl⟩)
+    (hone : (proposed fun c => injected τ c T).count p ≤ 1) :
+    minYes ≤ yesVoters vote p := by
+`)}</CodeBlock>
+
+`τ` says which process runs at each step, what input it is handed, and how its sockets cut the bytes. Nothing restricts it, so a process that crashes is a trace that stops activating it. `injected τ c T` is the requests the trace handed coordinator member `c` by step `T`. The proof replaces the staged body with the graph interpreter (`quorumRun.eq`, checked by the kernel), replaces the byte trace with the lock-step interleaving it induces (`WireTrace.streamOutputsAt_eq`, which needs `vote_quorum.dag_valid`), reads the interleaving's schedule back as the program's records (`recordOf`), turns the graph's output into the `SchedSem` run (`dag_denote`), and applies `vote_quorum_safe_sched` ([From the Machine to the Network](../proving/transferring-to-the-machine.md#from-the-machine-to-the-network)).
+
+`Examples/AxCheck.lean` reports the three theorems as resting on the standard axioms only:
+
+```text
+info: Examples/AxCheck.lean:89:0: 'Hydro.Tutorials.vote_quorum.ensures' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Examples/AxCheck.lean:91:0: 'Hydro.Tutorials.vote_quorum_safe_sched' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Examples/AxCheck.lean:93:0: 'Hydro.Tutorials.vote_quorum_safe_wired' depends on axioms: [propext, Classical.choice, Quot.sound]
+```
+
+The transfer works in one direction: whatever the processes output is something the program outputs at `Values`. Every field that constrains each output element transfers this way. A statement that the coordinator eventually decides `p` does not, because a trace can stop before the decision ([Liveness](../../internals/liveness.md)).
+
+## Next Steps
+
+You started from a program with no guarantees, wrote its contract with every proof a `sorry`, and worked backwards: from `quorum` to a fact about the network and a fact about one tick, from that tick to the loop invariant, and from the invariant to `once`. The result holds for every trace of the processes. In [Running the Quorum](./running-quorum.mdx), you will run the program: at `Values` under several batchings, and as four processes over TCP.
