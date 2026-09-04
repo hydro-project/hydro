@@ -615,6 +615,31 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
         .map(q!(|(_checkpoint, log)| log))
         .flatten_unordered() // Convert HashMap log back to stream
         .into_keyed()
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// The `(count, champion)` fold below is NOT commutative: the
+            /// count is reset to 1 when a strictly higher ballot brings a
+            /// different value, but entries of the champion's value that
+            /// arrived earlier are not re-counted. One slot, f = 1, entries
+            /// X = (ballot 1, v), Z = (ballot 2, w), Y = (ballot 3, v):
+            /// order X·Y·Z yields (2, Y) — count 2 > f, the slot is SKIPPED —
+            /// while order X·Z·Y yields (1, Y) and the slot is RECOMMITTED.
+            /// Same multiset, same champion, opposite decisions; the run is
+            /// reachable (A accepts (1, v); the ballot-2 leader with quorum
+            /// {B, C} proposes w and B accepts; the ballot-3 leader with
+            /// quorum {A, C} recommits v and C accepts; the next leader's
+            /// quorum {A, B, C} sees X, Z, Y in arrival order).
+            ///
+            /// Safety holds under EVERY order: the count never overshoots
+            /// the number of entries carrying the champion's value, so a
+            /// slot is skipped only when at least f + 1 acceptors hold the
+            /// champion's value (already chosen, by quorum intersection — no
+            /// other value can have been chosen), and a recommit proposes
+            /// the champion's value, which is the max-ballot value of the
+            /// slot. Only efficiency (a redundant recommit) depends on the
+            /// order. Formalized in `hydro_lean` (`Hydro/Paxos/Recommit.lean`,
+            /// FINDINGS D71): the order is a per-tick nondeterministic choice
+            /// and the safety proof holds for all of them.
+        ))
         .fold::<(usize, Option<LogValue<P>>), _, _, _, _, _, _>(q!(|| (0, None)), q!(|curr_entry, new_entry| {
             if let Some(curr_entry_payload) = &mut curr_entry.1 {
                 let same_values = new_entry.value == curr_entry_payload.value;
@@ -635,7 +660,7 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
             } else {
                 *curr_entry = (1, Some(new_entry));
             }
-        }, commutative = manual_proof!(/** TODO */)))
+        }))
         .map(q!(|(count, entry)| (count, entry.unwrap())));
     let p_log_to_try_commit = p_p1b_highest_entries_and_count
         .clone()

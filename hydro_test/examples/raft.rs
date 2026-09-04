@@ -7,6 +7,7 @@ use hydro_deploy::rust_crate::tracing_options::{
 };
 use hydro_deploy::{AwsNetwork, Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::live_collections::stream::ExactlyOnce;
 use hydro_lang::location::Location;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::nondet::nondet;
@@ -90,7 +91,11 @@ async fn main() {
         .map(q!(move |_| format!(
             "hello from member {}",
             CLUSTER_SELF_ID.clone().into_tagless()
-        )));
+        )))
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// The interval timer's `()`s are `AtLeastOnce`; this demo treats each fire
+            /// as one distinct request, a choice the workload is allowed to make.
+        ));
 
     // Election timeouts are deliberately skewed per member (RAFT's randomized-timeout
     // tie-breaking): distinct periods guarantee two members' timers cannot fire

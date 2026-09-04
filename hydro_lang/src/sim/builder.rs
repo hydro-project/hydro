@@ -509,9 +509,12 @@ impl DfirBuilder for SimBuilder {
             let root = get_this_crate();
 
             match in_kind {
+                // Any retries grade: the simulator explores which arrivals a tick batches
+                // and never injects re-deliveries, which is a legal (sound, not exhaustive)
+                // behavior of an `AtLeastOnce` input — e.g. `source_interval`'s `()`s.
                 CollectionKind::Stream {
                     order,
-                    retry: StreamRetry::ExactlyOnce,
+                    retry: _,
                     element_type,
                     ..
                 } => {

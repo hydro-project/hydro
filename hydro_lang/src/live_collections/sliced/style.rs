@@ -91,6 +91,35 @@ pub fn snapshot<T, H>(t: T, nondet: NonDet<H>) -> Snapshot<T, H> {
     Snapshot::new(t, nondet)
 }
 
+/// Time style wrapper that stores the non-determinism guard for reading the wall clock.
+///
+/// This is used by the `sliced!` macro when `use::time(...)` is specified. It carries no
+/// collection: the slice is the tick's current wall-clock reading
+/// ([`Tick::current_tick_instant`]).
+#[cfg(feature = "tokio")]
+pub struct Time {
+    pub(crate) nondet: NonDet,
+}
+
+#[cfg(feature = "tokio")]
+impl Time {
+    /// Creates a new time-styled wrapper.
+    pub fn new(nondet: NonDet) -> Self {
+        Self { nondet }
+    }
+}
+
+/// Reads the wall clock at each tick of the slice, as a bounded [`Singleton`] of
+/// [`tokio::time::Instant`] (the value depends on when the tick executes, hence the
+/// non-determinism guard). Since it carries no collection, it cannot be the first `use`
+/// of a `sliced!` block (the tick's location comes from a collection).
+///
+/// [`Singleton`]: crate::live_collections::Singleton
+#[cfg(feature = "tokio")]
+pub fn time(nondet: NonDet) -> Time {
+    Time::new(nondet)
+}
+
 /// Atomic style wrapper that stores a collection and its non-determinism guard.
 ///
 /// This is used by the `sliced!` macro when `use::atomic(...)` is specified.
@@ -194,6 +223,28 @@ impl<'t, 'a, S, L: Location<'a>> StateNullBuilder<'t, S, L> {
         S: CycleCollection<'a, TickCycle, Location = Tick<L::DropConsistency>> + DeferTick,
     {
         self.tick.cycle::<S, _>()
+    }
+}
+
+// ============================================================================
+// Time style Slicable implementation
+// ============================================================================
+
+#[cfg(feature = "tokio")]
+impl<'a, L: Location<'a>> Slicable<'a, L> for Time {
+    type Slice =
+        crate::live_collections::Singleton<tokio::time::Instant, Tick<L::DropConsistency>, Bounded>;
+    type Backtrace = crate::compile::ir::backtrace::Backtrace;
+
+    fn get_location(&self) -> L {
+        unreachable!(
+            "`use::time(...)` carries no collection; it cannot be the first `use` of a `sliced!` block"
+        )
+    }
+    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+        let out = tick.current_tick_instant(self.nondet);
+        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
+        out
     }
 }
 

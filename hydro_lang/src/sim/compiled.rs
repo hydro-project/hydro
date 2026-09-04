@@ -2210,8 +2210,9 @@ impl<T: Serialize + DeserializeOwned, O: Ordering> SimClusterSender<T, O, Exactl
     }
 }
 
-impl<T: Serialize + DeserializeOwned> SimClusterSender<T, TotalOrder, ExactlyOnce> {
-    /// Sends a value to a specific cluster member.
+impl<T: Serialize + DeserializeOwned, R: Retries> SimClusterSender<T, TotalOrder, R> {
+    /// Sends a value to a specific cluster member. (Sending each value once, in order, is
+    /// a legal behavior of an input at any retries grade.)
     pub fn send(&self, member_id: u32, t: T) {
         self.with_sink(|send| send(member_id, t));
     }

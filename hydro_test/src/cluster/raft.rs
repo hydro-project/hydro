@@ -29,7 +29,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use hydro_lang::forward_handle::ForwardHandle;
-use hydro_lang::live_collections::stream::{MinOrder, NoOrder, Ordering, TotalOrder};
+use hydro_lang::live_collections::stream::{AtLeastOnce, MinOrder, NoOrder, Ordering, TotalOrder};
 use hydro_lang::location::cluster::{
     CLUSTER_SELF_ID, ClusterIds, Consistency, EventualConsistency, NoConsistency,
 };
@@ -838,8 +838,20 @@ pub struct RaftOutputs<'a, T, ClusterTag> {
 pub fn raft_server<'a, T, ClusterTag, O, Net>(
     cluster: &Cluster<'a, ClusterTag>,
     requests: Stream<T, Cluster<'a, ClusterTag>, Unbounded, O>,
-    election_timer_interrupts: Stream<(), Cluster<'a, ClusterTag>>,
-    heartbeat_timer_interrupts: Stream<(), Cluster<'a, ClusterTag>>,
+    election_timer_interrupts: Stream<
+        (),
+        Cluster<'a, ClusterTag>,
+        Unbounded,
+        TotalOrder,
+        AtLeastOnce,
+    >,
+    heartbeat_timer_interrupts: Stream<
+        (),
+        Cluster<'a, ClusterTag>,
+        Unbounded,
+        TotalOrder,
+        AtLeastOnce,
+    >,
     config: RaftConfig,
     net: Net,
     nondet_raft: NonDet,
@@ -933,8 +945,8 @@ where
         let mut server_state = use::state(|l| l.singleton(q!(RaftServerState::new())));
 
         let tick = request_batch.location().clone();
-        let election_fired = election_batch.count().map(q!(|n| n > 0));
-        let heartbeat_fired = heartbeat_batch.count().map(q!(|n| n > 0));
+        let election_fired = election_batch.is_empty().map(q!(|empty| !empty));
+        let heartbeat_fired = heartbeat_batch.is_empty().map(q!(|empty| !empty));
 
         // Requests in the order fixed by assume_ordering (TotalOrder fold).
         let request_vec = request_batch.fold(
@@ -1098,8 +1110,20 @@ where
 )]
 pub fn raft<'a, T, ClusterTag, Con, O, Net>(
     requests: Stream<T, Cluster<'a, ClusterTag, Con>, Unbounded, O>,
-    election_timer_interrupts: Stream<(), Cluster<'a, ClusterTag>>,
-    heartbeat_timer_interrupts: Stream<(), Cluster<'a, ClusterTag>>,
+    election_timer_interrupts: Stream<
+        (),
+        Cluster<'a, ClusterTag>,
+        Unbounded,
+        TotalOrder,
+        AtLeastOnce,
+    >,
+    heartbeat_timer_interrupts: Stream<
+        (),
+        Cluster<'a, ClusterTag>,
+        Unbounded,
+        TotalOrder,
+        AtLeastOnce,
+    >,
     config: RaftConfig,
     net: impl Fn() -> Net,
     nondet_order: NonDet,
@@ -2579,6 +2603,7 @@ mod tests {
     /// requests, per-member skewed election timers, fast heartbeats, and TCP
     /// networking, with committed entries and redirected requests printed.
     fn create_raft(replicas: &Cluster<'_, Replica>) {
+        use hydro_lang::live_collections::stream::ExactlyOnce;
         use hydro_lang::location::Location;
         use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 
@@ -2587,7 +2612,11 @@ mod tests {
             .map(q!(move |_| format!(
                 "hello from member {}",
                 CLUSTER_SELF_ID.clone().into_tagless()
-            )));
+            )))
+            .assume_retries::<ExactlyOnce>(nondet!(
+                /// The interval timer's `()`s are `AtLeastOnce`; this demo treats each
+                /// fire as one distinct request, a choice the workload is allowed to make.
+            ));
 
         let election_timer_interrupts = replicas.source_interval(q!(
             std::time::Duration::from_millis(500 + u64::from(CLUSTER_SELF_ID.get_raw_id()) * 130)

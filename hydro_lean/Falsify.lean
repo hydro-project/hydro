@@ -1,0 +1,213 @@
+import Hydro.Paxos.Falsification
+
+/-!
+# `lake exe falsify` — run the B1/B2 falsification scripts
+
+Executes the FINDINGS.md B1 decision record against the faithful and
+guarded `paxos_core` models and reports the committed slots, plus the
+B2 program witness (the faithful `sequence_payload` commits two values at
+one slot) and the same scenario driven through `paxos_core` (D65).
+
+The program runs at the **`Values` interpretation itself** (D73): the
+denotation's member-indexed carriers are `MemberMap`s whose compiled
+constructor forces each member's cell once (`MemberMap.mkImpl_eq`), so
+`paxos_core` applied to the decision record IS the executable — the very
+term the headline theorems quantify over, no second interpretation, no
+restated wiring.
+-/
+
+open Hydro Hydro.Falsification
+
+abbrev HE := Values PaxLoc (paxMem 2 3)
+
+/-- The clients, materialized: proposer 0 sends `y`, proposer 1 `x`. -/
+def cpE : HE.Stream .prop Nat .totalOrder .exactlyOnce :=
+  .mk' fun i => if i.val = 0 then [yv] else [xv]
+
+/-- No checkpoints: the async optional's read is `none` at every cut
+(B2 — the snapshot happens inside `acceptor_p2`). -/
+def ckE : HE.Singleton .acc Nat (Option Nat) .totalOrder .exactlyOnce
+    (.monotonic ValueOrder.optNat) :=
+  .mk' fun _ => SingletonV.noneCell Nat .totalOrder
+
+/-- `paxos_core` at the B1 record — the executable IS the denotation the
+headline theorems quantify over (D73). -/
+def paxosE (variant : PaxosVariant) :
+    MemberMap 2 (Multiset (Nat × Option Nat)) :=
+  (paxos_core HE variant .prop .acc ⟨1, 5, 10, 15⟩ cpE ckE b1Dec PaxosCoreSched.triv).2
+
+/-- Slot-disagreement between two commit pools. -/
+def disagrees (a b : Multiset (Nat × Option Nat)) : Bool :=
+  !(decide (∀ v ∈ a, ∀ w ∈ b, v.1 = w.1 → v.2 = w.2))
+
+/-! ## B2 through `paxos_core` (D65 rider)
+
+The module-level B2 witness (`Falsification.lean`, `b2Run`) driven
+through the whole program: two proposers, three acceptors, `f = 1`.
+Proposer 0 (ballot `(0,0)`) is elected by acceptors {0, 1} and sends
+`99` at slot 0; only acceptor 0 accepts it (never acked by a quorum).
+Proposer 1 (ballot `(0,1)`) is then elected by acceptors {0, 2} — its
+P1b view carries acceptor 0's slot-0 entry (count `1 < f + 1`, so the
+reign recommits it and REBASES to `max_slot + 1 = 1`) — and leads for
+two ticks, sequencing one fresh payload each (`x = 10`, then `y = 20`),
+with the view re-read on both leader ticks. Faithful: the gate fires on
+both ticks, the base is re-pinned, `y` lands at `x`'s slot 1 and
+proposer 1 commits `(1, x)` AND `(1, y)`. Guarded: the gate fires once,
+`y` takes slot 2. (`ySlot` is the only variant-dependent datum of the
+record: the acceptors' P2a batches and the ack/join batches name `y`'s
+placement, and a cut naming a P2a the program never sent would be
+illegal — `batchCuts` truncates the chain there.) -/
+
+/-- Proposer 0's client sends `99`; proposer 1's sends `x` then `y`. -/
+def cpE3 : HE.Stream .prop Nat .totalOrder .exactlyOnce :=
+  .mk' fun i => if i.val = 0 then [99] else [xv, yv]
+
+/-- Acceptor 0's log after `99`: the one-entry view proposer 1 recovers. -/
+def b2cL0 : ALog Nat 2 := (none, HMap.ofList [(0, ⟨bA, some 99⟩)])
+/-- Proposer 0's `99` at slot 0. -/
+def b2cP99 : P2a Nat 2 := ⟨0, bA, 0, some 99⟩
+/-- Proposer 1's recommit of the recovered entry. -/
+def b2cR : P2a Nat 2 := ⟨1, bB, 0, some 99⟩
+/-- Proposer 1's `x` at slot 1 (both variants). -/
+def b2cX : P2a Nat 2 := ⟨1, bB, 1, some xv⟩
+/-- Proposer 1's `y` at `ySlot` (1 faithful, 2 guarded). -/
+def b2cY (ySlot : Nat) : P2a Nat 2 := ⟨1, bB, ySlot, some yv⟩
+
+/-- The B2 record at `paxos_core`. Timelines: proposer 0 = 2 ticks
+(trigger; elect + sequence `99`); proposer 1 = 3 ticks (trigger; elect +
+recommit + sequence `x`; [re-recommit +] sequence `y` + acks + commits);
+acceptor 0 = 5 ticks (P1a `(0,0)`; P2a `99`; P1a `(0,1)`; P2as
+recommit + `x`; P2a `y`), acceptor 1 = 4 (P1a `(0,0)`; P1a `(0,1)`;
+recommit + `x`; `y`), acceptor 2 = 3 (P1a `(0,1)`; recommit + `x`;
+`y`). Proposer 1 consumes two acks at each committed key. -/
+def b2cDec (ySlot : Nat) :
+    PaxosCoreDec (Values PaxLoc (paxMem 2 3)) 2 3 Nat Nat .totalOrder where
+  le :=
+    { receivedMax := fun i => if i.val = 0 then [{}, {}] else [{}, {}, {}]
+      hb := { sample := ⟨fun _ => []⟩
+              -- no heartbeat ever arrives: expired at every tick
+              timeout := { arrivals := fun i =>
+                             if i.val = 0 then [{}, {}] else [{}, {}, {}]
+                           clock := fun i =>
+                             if i.val = 0 then [0, 1] else [0, 1, 2] }
+              timeoutSnap := fun i => if i.val = 0 then [1, 1] else [1, 1, 1]
+              interval := fun i =>
+                if i.val = 0 then [[()], []] else [[()], [], []] }
+      p1aBatch := fun j =>
+        if j.val = 0 then [{bA}, {}, {bB}, {}, {}]
+        else if j.val = 1 then [{bA}, {bB}, {}, {}]
+        else [{bB}, {}, {}]
+      p1b := { cqwr := fun i =>
+                 if i.val = 0 then
+                   [{}, {(bA, .ok (none, HMap.ofList [])), (bA, .ok (none, HMap.ofList []))}]
+                 else [{}, {(bB, .ok b2cL0), (bB, .ok (none, HMap.ofList []))}, {}]
+               order := fun i =>
+                 if i.val = 0 then [(bA, (none, HMap.ofList [])), (bA, (none, HMap.ofList []))]
+                 else [(bB, b2cL0), (bB, (none, HMap.ofList []))]
+               -- proposer 1's two P1bs are read on BOTH leader ticks
+               snap := fun i =>
+                 if i.val = 0 then [{}, {(bA, (none, HMap.ofList [])), (bA, (none, HMap.ofList []))}]
+                 else [{}, {(bB, b2cL0), (bB, (none, HMap.ofList []))}, {}] }
+      fuelFail := (1 : UnfoldFuel)
+      fuelIAL := (1 : UnfoldFuel)
+      fuelLead := (3 : UnfoldFuel) }
+  sp :=
+    { payloadBatch := fun i => if i.val = 0 then [0, 1] else [0, 1, 1]
+      -- the recommit fold's order (D71): proposer 1's election recovers
+      -- acceptor 0's one-entry log; the faithful gate re-presents it on
+      -- tick 2 (the guarded gate is closed there)
+      rc := ⟨fun i => if i.val = 0 then [[], []]
+        else [[], [(0, ⟨bA, some 99⟩)], if ySlot = 1 then [(0, ⟨bA, some 99⟩)] else []]⟩
+      ap2 :=
+        { p2aBatch := fun j =>
+            if j.val = 0 then [{}, {b2cP99}, {}, {b2cR, b2cX}, {b2cY ySlot}]
+            else if j.val = 1 then [{}, {}, {b2cR, b2cX}, {b2cY ySlot}]
+            else [{}, {b2cR, b2cX}, {b2cY ySlot}]
+          ckSnap := fun j =>
+            if j.val = 0 then [0, 0, 0, 0, 0]
+            else if j.val = 1 then [0, 0, 0, 0] else [0, 0, 0] }
+      -- two acks at each key `(0, bB)`, …, `(ySlot, bB)`; join all keys
+      cqBatch := fun i =>
+        if i.val = 0 then [{}, {}]
+        else [{}, {}, Multiset.ofList ((List.range (ySlot + 1)).flatMap
+          fun s => [((s, bB), .ok ()), ((s, bB), .ok ())])]
+      jrBatch := fun i =>
+        if i.val = 0 then [{}, {}]
+        else [{}, {}, Multiset.ofList ((List.range (ySlot + 1)).map
+          fun s => ((s, bB), ()))] }
+  fuelSeqMax := (1 : UnfoldFuel)
+  fuelALog := (3 : UnfoldFuel)
+
+/-- `paxos_core` at the B2 record (`y` placed where `variant` puts it):
+proposer 1's commit pool. -/
+def paxosB2 (variant : PaxosVariant) : Multiset (Nat × Option Nat) :=
+  let ySlot := match variant with | .faithful => 1 | .guarded => 2
+  (paxos_core HE variant .prop .acc ⟨1, 5, 10, 15⟩ cpE3 ckE (b2cDec ySlot)
+    PaxosCoreSched.triv).2 1
+
+def main : IO UInt32 := do
+  IO.println "== B1: duplicate P1a broadcasts (paxos.rs:311–317) =="
+  let t0 ← IO.monoMsNow
+  let f ← IO.lazyPure (fun _ => paxosE .faithful)
+  let g ← IO.lazyPure (fun _ => paxosE .guarded)
+  let fy := decide (f 0 = ({(0, some yv)} : Multiset (Nat × Option Nat)))
+  let fx := decide (f 1 = ({(0, some xv)} : Multiset (Nat × Option Nat)))
+  let gy := decide (g 0 = ({(0, some yv)} : Multiset (Nat × Option Nat)))
+  let g1e := decide (g 1 = (0 : Multiset (Nat × Option Nat)))
+  let t1 ← IO.monoMsNow
+  IO.println s!"faithful: proposer 0 commits (0, some {yv}): {fy}"
+  IO.println s!"faithful: proposer 1 commits (0, some {xv}): {fx}"
+  IO.println s!"guarded:  proposer 0 commits (0, some {yv}): {gy}"
+  IO.println s!"guarded:  proposer 1 commits nothing: {g1e}"
+  let disagree := disagrees (f 0) (f 1)
+  let gAgree := !(disagrees (g 0) (g 1))
+  IO.println s!"faithful DISAGREES at a slot: {disagree} (expected: true — the B1 bug)"
+  IO.println s!"guarded agrees: {gAgree} (expected: true — the proven theorem) ({t1 - t0} ms)"
+  IO.println ""
+  IO.println "== B2: every-tick rebase (paxos.rs:596–672 + 706–734) =="
+  let b2f := b2Run .faithful
+  let b2g := b2Run .guarded
+  IO.println s!"faithful commits (1, x={xv}): {decide ((1, some 10) ∈ b2f)}, (1, y=20): {decide ((1, some 20) ∈ b2f)}"
+  IO.println s!"guarded  commits (1, x={xv}): {decide ((1, some 10) ∈ b2g)}, (1, y=20): {decide ((1, some 20) ∈ b2g)}"
+  let b2fDis := disagreesWithin b2f
+  let b2gOk := !(disagreesWithin b2g)
+  IO.println s!"faithful commits two values at one slot: {b2fDis} (expected: true — the B2 bug)"
+  IO.println s!"guarded  commits are slot-functional: {b2gOk} (expected: true)"
+  IO.println ""
+  IO.println "== B2 through paxos_core (two proposers, three acceptors, f = 1) =="
+  let t2 ← IO.monoMsNow
+  let c2f ← IO.lazyPure (fun _ => paxosB2 .faithful)
+  let c2g ← IO.lazyPure (fun _ => paxosB2 .guarded)
+  let c2fx := decide ((1, some xv) ∈ c2f)
+  let c2fy := decide ((1, some yv) ∈ c2f)
+  let c2gx := decide ((1, some xv) ∈ c2g)
+  let c2gy := decide ((2, some yv) ∈ c2g)
+  let t3 ← IO.monoMsNow
+  IO.println s!"faithful: proposer 1 commits (1, x={xv}): {c2fx}, (1, y={yv}): {c2fy}"
+  IO.println s!"guarded:  proposer 1 commits (1, x={xv}): {c2gx}, (2, y={yv}): {c2gy}"
+  let c2fDis := disagreesWithin c2f
+  let c2gOk := !(disagreesWithin c2g)
+  IO.println s!"faithful commits two values at one slot: {c2fDis} (expected: true — the B2 bug, whole program)"
+  IO.println s!"guarded  commits are slot-functional: {c2gOk} (expected: true — the proven theorem) ({t3 - t2} ms)"
+  IO.println ""
+  IO.println "== B4: fresh payload at a collected slot (paxos.rs:655 + 788, GC modeled — D71) =="
+  let b4f := b4Run .faithful
+  let b4g := b4Run .guarded
+  let b4fx := decide ((0, some 10) ∈ b4f)
+  let b4fy := decide ((0, some 20) ∈ b4f)
+  let b4gx := decide ((0, some 10) ∈ b4g)
+  let b4gy := decide ((2, some 20) ∈ b4g)
+  IO.println s!"faithful commits (0, x=10): {b4fx}, (0, y=20): {b4fy}"
+  IO.println s!"guarded  commits (0, x=10): {b4gx}, (2, y=20): {b4gy}"
+  let b4fDis := disagreesWithin b4f
+  let b4gOk := !(disagreesWithin b4g)
+  IO.println s!"faithful commits two values at the collected slot: {b4fDis} (expected: true — the B4 bug)"
+  IO.println s!"guarded  commits are slot-functional: {b4gOk} (expected: true)"
+  if disagree && gAgree && fy && fx && gy && g1e && b2fDis && b2gOk
+      && c2fx && c2fy && c2gx && c2gy && c2fDis && c2gOk
+      && b4fx && b4fy && b4gx && b4gy && b4fDis && b4gOk then
+    IO.println "\nAll falsification checks PASSED."
+    return 0
+  else
+    IO.println "\nFALSIFICATION CHECKS FAILED."
+    return 1
