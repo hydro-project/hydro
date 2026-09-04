@@ -1425,13 +1425,13 @@ impl<'a> CompiledSimInstance<'a> {
     }
 }
 
-impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> Clone for SimReceiver<T, O, R> {
+impl<T, O: Ordering, R: Retries> Clone for SimReceiver<T, O, R> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> Copy for SimReceiver<T, O, R> {}
+impl<T, O: Ordering, R: Retries> Copy for SimReceiver<T, O, R> {}
 
 /// How a [`QuiescenceCheckFuture`] resolves the "did the stream end?" check of
 /// `assert_no_more`. Decided once the simulation has settled (run out of deterministic
@@ -1561,7 +1561,7 @@ impl<F: Future<Output = ()>> Future for QuiescenceCheckFuture<F> {
     }
 }
 
-impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimReceiver<T, O, R> {
+impl<T, O: Ordering, R: Retries> SimReceiver<T, O, R> {
     fn connections(&self) -> (Rc<Mutex<UnsyncReceiver<Bytes>>>, Rc<QuiescenceState>) {
         CURRENT_SIM_CONNECTIONS.with(|connections| {
             let connections = connections.borrow();
@@ -1578,7 +1578,7 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimReceiver<T, O,
         let (receiver, quiescence) = self.connections();
         try_next_bytes(&receiver, &quiescence)
             .await
-            .map(|bytes| bincode::deserialize(&bytes).unwrap())
+            .map(|bytes| (self.2)(&bytes))
     }
 
     /// Asserts that the stream has ended and no more messages can possibly arrive.
@@ -1607,8 +1607,8 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimReceiver<T, O,
     }
 }
 
-impl<T: Serialize + DeserializeOwned> SimReceiver<T, TotalOrder, ExactlyOnce> {
-    /// Receives the next message from the external bincode stream, waiting (and letting the
+impl<T> SimReceiver<T, TotalOrder, ExactlyOnce> {
+    /// Receives the next message from the simulation output stream, waiting (and letting the
     /// scheduler run any pending simulation work) until one is available. If the simulation
     /// becomes quiescent without producing a message, the test fails.
     ///
@@ -1632,7 +1632,7 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, TotalOrder, ExactlyOnce> {
         }
     }
 
-    /// Receives the next message from the external bincode stream, or returns `None` if no
+    /// Receives the next message from the simulation output stream, or returns `None` if no
     /// more messages can possibly arrive.
     ///
     /// If answering requires forcing pending nondeterministic work to run, then afterwards,
@@ -1642,7 +1642,7 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, TotalOrder, ExactlyOnce> {
         self.try_next_impl().await
     }
 
-    /// Receives the next `n` messages from the external bincode stream, waiting (and letting
+    /// Receives the next `n` messages from the simulation output stream, waiting (and letting
     /// the scheduler run any pending simulation work) until they are available. If the
     /// simulation becomes quiescent before `n` messages arrive, the test fails.
     ///
@@ -1683,7 +1683,7 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, TotalOrder, ExactlyOnce> {
         out
     }
 
-    /// Collects all remaining messages from the external bincode stream into a collection,
+    /// Collects all remaining messages from the simulation output stream into a collection,
     /// waiting until no more messages can possibly arrive.
     ///
     /// If this has to force pending nondeterministic work to run, it should be the last
@@ -1809,7 +1809,7 @@ impl<F1: Future<Output = ()>, F2: Future<Output = ()>> Future for ChainedFuture<
     }
 }
 
-impl<T: Serialize + DeserializeOwned> SimReceiver<T, NoOrder, ExactlyOnce> {
+impl<T> SimReceiver<T, NoOrder, ExactlyOnce> {
     /// Receives the next `n` messages, sorted, and then asserts that the stream ends (like
     /// [`SimReceiver::assert_no_more`], forking the search in exhaustive mode). If the
     /// simulation becomes quiescent before `n` messages arrive, the test fails.
@@ -1868,7 +1868,7 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, NoOrder, ExactlyOnce> {
         out.remove(0)
     }
 
-    /// Collects all remaining messages from the external bincode stream into a collection,
+    /// Collects all remaining messages from the simulation output stream into a collection,
     /// sorting them. This will wait until no more messages can possibly arrive.
     ///
     /// If this has to force pending nondeterministic work to run, it should be the last
@@ -1940,7 +1940,7 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, NoOrder, ExactlyOnce> {
     }
 }
 
-impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimSender<T, O, R> {
+impl<T, O: Ordering, R: Retries> SimSender<T, O, R> {
     fn with_sink<Out>(&self, thunk: impl FnOnce(&dyn Fn(T)) -> Out) -> Out {
         let (sender, quiescence) = CURRENT_SIM_CONNECTIONS.with(|connections| {
             let connections = connections.borrow();
@@ -1954,17 +1954,16 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimSender<T, O, R
             )
         });
 
+        let encode = self.2;
         thunk(&move |t| {
-            sender
-                .try_send(bincode::serialize(&t).unwrap().into())
-                .unwrap();
+            sender.try_send(encode(&t).into()).unwrap();
             quiescence.resume();
         })
     }
 }
 
-impl<T: Serialize + DeserializeOwned, O: Ordering> SimSender<T, O, ExactlyOnce> {
-    /// Sends several messages to the external bincode sink. The messages will be asynchronously
+impl<T, O: Ordering> SimSender<T, O, ExactlyOnce> {
+    /// Sends several messages to the simulation input. The messages will be asynchronously
     /// processed as part of the simulation, in non-deterministic order.
     pub fn send_many_unordered<I: IntoIterator<Item = T>>(&self, iter: I) {
         self.with_sink(|send| {
@@ -1975,14 +1974,14 @@ impl<T: Serialize + DeserializeOwned, O: Ordering> SimSender<T, O, ExactlyOnce> 
     }
 }
 
-impl<T: Serialize + DeserializeOwned> SimSender<T, TotalOrder, ExactlyOnce> {
-    /// Sends a message to the external bincode sink. The message will be asynchronously processed
+impl<T> SimSender<T, TotalOrder, ExactlyOnce> {
+    /// Sends a message to the simulation input. The message will be asynchronously processed
     /// as part of the simulation.
     pub fn send(&self, t: T) {
         self.with_sink(|send| send(t));
     }
 
-    /// Sends several messages to the external bincode sink. The messages will be asynchronously
+    /// Sends several messages to the simulation input. The messages will be asynchronously
     /// processed as part of the simulation.
     pub fn send_many<I: IntoIterator<Item = T>>(&self, iter: I) {
         self.with_sink(|send| {
