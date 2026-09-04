@@ -1,0 +1,28 @@
+name = "hydro_lean"
+version = "0.1.0"
+defaultTargets = ["HydroLean", "HydroV2"]
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.33.1"
+
+[[lean_lib]]
+name = "HydroLean"
+globs = ["HydroLean.**"]
+
+[[lean_lib]]
+name = "HydroV2"
+globs = ["HydroV2.**"]
+
+[[lean_exe]]
+name = "falsify"
+root = "Falsify"
+
+[[lean_exe]]
+name = "explore"
+root = "Explore"
+
+[[lean_exe]]
+name = "v2paxos"
+root = "V2Paxos"

@@ -1,0 +1,311 @@
+/-- The fold, in `foldl`-over-pairs form. -/
+theorem foldEarlyStopBallots_eq_foldl (quorumSize : Nat)
+    (quorumOuts : List (Ballot nP × P1bPayload P nP)) :
+    foldEarlyStopBallots quorumSize quorumOuts
+      = quorumOuts.foldl
+          (fun acc e => p1bLogsInsert quorumSize acc e.1 e.2) [] := rfl
+
+/-- The fold appends: extending the source continues the fold. -/
+theorem foldEarlyStop_append (quorumSize : Nat)
+    (pfx ext : List (Ballot nP × P1bPayload P nP)) :
+    foldEarlyStopBallots quorumSize (pfx ++ ext)
+      = ext.foldl (fun acc e => p1bLogsInsert quorumSize acc e.1 e.2)
+          (foldEarlyStopBallots quorumSize pfx) := by
+  rw [foldEarlyStopBallots_eq_foldl, foldEarlyStopBallots_eq_foldl,
+    List.foldl_append]
+
+/-- Insertion preserves duplicate-free bucket keys. -/
+theorem p1bLogsInsert_keys_nodup {quorumSize : Nat}
+    {logs : List (Ballot nP × List (P1bPayload P nP))}
+    (hnd : (logs.map Prod.fst).Nodup) (b : Ballot nP) (v : P1bPayload P nP) :
+    ((p1bLogsInsert quorumSize logs b v).map Prod.fst).Nodup := by
+  induction logs with
+  | nil => exact List.pairwise_singleton _ _
+  | cons hd rest ih =>
+    obtain ⟨b', vs⟩ := hd
+    rw [List.map_cons, List.nodup_cons] at hnd
+    simp only [p1bLogsInsert]
+    by_cases hb : b' = b
+    · rw [if_pos hb]
+      by_cases hlen : vs.length < quorumSize
+      · rw [if_pos hlen, List.map_cons, List.nodup_cons]
+        exact ⟨hnd.1, hnd.2⟩
+      · rw [if_neg hlen, List.map_cons, List.nodup_cons]
+        exact ⟨hnd.1, hnd.2⟩
+    · rw [if_neg hb, List.map_cons, List.nodup_cons]
+      refine ⟨fun hc => ?_, ih hnd.2⟩
+      obtain ⟨⟨qb, vs'⟩, hmem, hkey⟩ := List.mem_map.mp hc
+      have hkey' : qb = b' := hkey
+      rcases p1bLogsInsert_mem_cases hmem with hold | ⟨hqb, -⟩
+      · exact hnd.1 (List.mem_map.mpr ⟨_, hold, hkey⟩)
+      · exact hb (hkey' ▸ hqb)
+
+/-- The fold's bucket keys are duplicate-free. -/
+theorem foldEarlyStop_keys_nodup (quorumSize : Nat)
+    (quorumOuts : List (Ballot nP × P1bPayload P nP)) :
+    ((foldEarlyStopBallots quorumSize quorumOuts).map Prod.fst).Nodup := by
+  rw [foldEarlyStopBallots_eq_foldl]
+  have hgen : ∀ (l : List (Ballot nP × P1bPayload P nP))
+      (acc : List (Ballot nP × List (P1bPayload P nP))),
+      (acc.map Prod.fst).Nodup →
+      ((l.foldl (fun acc e => p1bLogsInsert quorumSize acc e.1 e.2)
+        acc).map Prod.fst).Nodup := by
+    intro l
+    induction l with
+    | nil => exact fun acc h => h
+    | cons x rest ih =>
+      intro acc hacc
+      rw [List.foldl_cons]
+      exact ih _ (p1bLogsInsert_keys_nodup hacc x.1 x.2)
+  exact hgen _ [] List.Pairwise.nil
+
+/-- Insertion never removes or reorders buckets: membership after an insert
+is an old entry, the updated bucket (appended, if not full), or a fresh
+singleton bucket. -/
+theorem p1bLogsInsert_mem_cases {quorumSize : Nat}
+    {logs : List (Ballot nP × List (P1bPayload P nP))}
+    {b : Ballot nP} {v : P1bPayload P nP}
+    {qb : Ballot nP} {vs' : List (P1bPayload P nP)}
+    (h : (qb, vs') ∈ p1bLogsInsert quorumSize logs b v) :
+    (qb, vs') ∈ logs ∨
+      (qb = b ∧
+        ((∃ vs, (b, vs) ∈ logs ∧ vs.length < quorumSize ∧ vs' = vs ++ [v]) ∨
+          vs' = [v])) := by
+  induction logs with
+  | nil =>
+    have := List.mem_singleton.mp h
+    cases this
+    exact Or.inr ⟨rfl, Or.inr rfl⟩
+  | cons hd rest ih =>
+    obtain ⟨b', vs⟩ := hd
+    simp only [p1bLogsInsert] at h
+    by_cases hb : b' = b
+    · rw [if_pos hb] at h
+      by_cases hlen : vs.length < quorumSize
+      · rw [if_pos hlen] at h
+        rcases List.mem_cons.mp h with heq | hmem
+        · cases heq
+          exact Or.inr ⟨hb, Or.inl ⟨vs, hb ▸ List.mem_cons_self .., hlen, rfl⟩⟩
+        · exact Or.inl (List.mem_cons_of_mem _ hmem)
+      · rw [if_neg hlen] at h
+        exact Or.inl h
+    · rw [if_neg hb] at h
+      rcases List.mem_cons.mp h with heq | hmem
+      · exact Or.inl (heq ▸ List.mem_cons_self ..)
+      · rcases ih hmem with hold | ⟨hqb, hcase⟩
+        · exact Or.inl (List.mem_cons_of_mem _ hold)
+        · refine Or.inr ⟨hqb, ?_⟩
+          rcases hcase with ⟨vs₀, hvs₀, hlen₀, heq₀⟩ | hnew
+          · exact Or.inl ⟨vs₀, List.mem_cons_of_mem _ hvs₀, hlen₀, heq₀⟩
+          · exact Or.inr hnew
+
+/-- `fold_early_stop` never collects more than `quorum_size` logs per ballot
+(the early stop; paxos.rs:557), for `1 ≤ quorum_size`. With
+sender-deduplicated inputs (the guarded variant's contract) this makes a full
+vector a genuine quorum. -/
+theorem p1bLogsInsert_length_le (quorumSize : Nat) (hq1 : 1 ≤ quorumSize)
+    (logs : List (Ballot nP × List (P1bPayload P nP)))
+    (b : Ballot nP) (v : P1bPayload P nP)
+    (h : ∀ e ∈ logs, e.2.length ≤ quorumSize) :
+    ∀ e ∈ p1bLogsInsert quorumSize logs b v, e.2.length ≤ quorumSize := by
+  induction logs with
+  | nil =>
+    intro e he
+    rcases List.mem_singleton.mp he with rfl
+    simpa using hq1
+  | cons hd rest ih =>
+    intro e he
+    obtain ⟨b', vs⟩ := hd
+    simp only [p1bLogsInsert] at he
+    by_cases hb : b' = b
+    · rw [if_pos hb] at he
+      by_cases hlen : vs.length < quorumSize
+      · rw [if_pos hlen] at he
+        rcases List.mem_cons.mp he with rfl | hmem
+        · simpa using Nat.succ_le_of_lt hlen
+        · exact h e (List.mem_cons_of_mem _ hmem)
+      · rw [if_neg hlen] at he
+        exact h e he
+    · rw [if_neg hb] at he
+      rcases List.mem_cons.mp he with rfl | hmem
+      · exact h _ List.mem_cons_self
+      · exact ih (fun e' he' => h e' (List.mem_cons_of_mem _ he')) e hmem
+
+/-- A full bucket survives one insertion untouched. -/
+theorem p1bLogsInsert_full_stable {quorumSize : Nat}
+    {logs : List (Ballot nP × List (P1bPayload P nP))}
+    {qb : Ballot nP} {vs : List (P1bPayload P nP)}
+    (hmem : (qb, vs) ∈ logs) (hfull : vs.length = quorumSize)
+    (b : Ballot nP) (v : P1bPayload P nP) :
+    (qb, vs) ∈ p1bLogsInsert quorumSize logs b v := by
+  induction logs with
+  | nil => cases hmem
+  | cons hd rest ih =>
+    obtain ⟨b', vs'⟩ := hd
+    simp only [p1bLogsInsert]
+    by_cases hb : b' = b
+    · rw [if_pos hb]
+      by_cases hlen : vs'.length < quorumSize
+      · rw [if_pos hlen]
+        rcases List.mem_cons.mp hmem with heq | hmemr
+        · -- the head bucket would be full, contradicting `hlen`
+          cases heq
+          omega
+        · exact List.mem_cons_of_mem _ hmemr
+      · rw [if_neg hlen]
+        exact hmem
+    · rw [if_neg hb]
+      rcases List.mem_cons.mp hmem with heq | hmemr
+      · exact heq ▸ List.mem_cons_self ..
+      · exact List.mem_cons_of_mem _ (ih hmemr)
+
+/-- **Full buckets are stable**: once a ballot's bucket is full, it is the
+same at every later cut of the source stream — the elected quorum view is a
+single value per `(proposer, ballot)`. -/
+theorem foldEarlyStop_full_stable {quorumSize : Nat}
+    {pfx : List (Ballot nP × P1bPayload P nP)}
+    {qb : Ballot nP} {vs : List (P1bPayload P nP)}
+    (hmem : (qb, vs) ∈ foldEarlyStopBallots quorumSize pfx)
+    (hfull : vs.length = quorumSize)
+    (ext : List (Ballot nP × P1bPayload P nP)) :
+    (qb, vs) ∈ foldEarlyStopBallots quorumSize (pfx ++ ext) := by
+  rw [foldEarlyStop_append]
+  have hgen : ∀ (l : List (Ballot nP × P1bPayload P nP))
+      (acc : List (Ballot nP × List (P1bPayload P nP))),
+      (qb, vs) ∈ acc →
+      (qb, vs) ∈ l.foldl
+        (fun acc e => p1bLogsInsert quorumSize acc e.1 e.2) acc := by
+    intro l
+    induction l with
+    | nil => exact fun acc h => h
+    | cons x rest ih =>
+      intro acc hacc
+      rw [List.foldl_cons]
+      exact ih _ (p1bLogsInsert_full_stable hacc hfull x.1 x.2)
+  exact hgen ext _ hmem
+
+/-- All buckets hold at most `quorum_size` logs (`1 ≤ quorum_size`). -/
+theorem foldEarlyStop_length_le {quorumSize : Nat} (hq1 : 1 ≤ quorumSize)
+    (pfx : List (Ballot nP × P1bPayload P nP)) :
+    ∀ e ∈ foldEarlyStopBallots quorumSize pfx, e.2.length ≤ quorumSize := by
+  rw [foldEarlyStopBallots_eq_foldl]
+  have hgen : ∀ (l : List (Ballot nP × P1bPayload P nP))
+      (acc : List (Ballot nP × List (P1bPayload P nP))),
+      (∀ e ∈ acc, e.2.length ≤ quorumSize) →
+      ∀ e ∈ l.foldl (fun acc e => p1bLogsInsert quorumSize acc e.1 e.2) acc,
+        e.2.length ≤ quorumSize := by
+    intro l
+    induction l with
+    | nil => exact fun acc h => h
+    | cons x rest ih =>
+      intro acc hacc
+      rw [List.foldl_cons]
+      exact ih _ (p1bLogsInsert_length_le quorumSize hq1 acc x.1 x.2 hacc)
+  exact hgen _ [] (fun e he => nomatch he)
+
+/-- **Bucket counting**: a bucket's per-value multiplicities are covered by
+the source stream's `(ballot, value)` multiplicities — collected quorum
+entries are genuine emissions, *with multiplicity*. -/
+theorem foldEarlyStop_count [DecidableEq P] {quorumSize : Nat}
+    {pfx : List (Ballot nP × P1bPayload P nP)}
+    {qb : Ballot nP} {vs : List (P1bPayload P nP)}
+    (hmem : (qb, vs) ∈ foldEarlyStopBallots quorumSize pfx)
+    (v : P1bPayload P nP) :
+    vs.countP (fun w => decide (w = v))
+      ≤ pfx.countP (fun e => decide (e.1 = qb) && decide (e.2 = v)) := by
+  rw [foldEarlyStopBallots_eq_foldl] at hmem
+  -- fold invariant with a per-key bound function
+  have hgen : ∀ (l : List (Ballot nP × P1bPayload P nP))
+      (acc : List (Ballot nP × List (P1bPayload P nP)))
+      (C : Ballot nP → Nat),
+      (∀ e ∈ acc, e.2.countP (fun w => decide (w = v)) ≤ C e.1) →
+      ∀ e ∈ l.foldl (fun acc e => p1bLogsInsert quorumSize acc e.1 e.2) acc,
+        e.2.countP (fun w => decide (w = v))
+          ≤ C e.1 + l.countP (fun x => decide (x.1 = e.1) && decide (x.2 = v)) := by
+    intro l
+    induction l with
+    | nil =>
+      intro acc C hacc e he
+      have := hacc e he
+      rw [List.countP_nil]
+      omega
+    | cons x rest ih =>
+      intro acc C hacc e he
+      rw [List.foldl_cons] at he
+      -- absorb `x` into the per-key bound
+      have hstep := ih (p1bLogsInsert quorumSize acc x.1 x.2)
+        (fun k => C k + (if x.1 = k ∧ x.2 = v then 1 else 0))
+        (by
+          intro e' he'
+          rcases p1bLogsInsert_mem_cases he' with hold | ⟨hqb', hcase⟩
+          · have := hacc e' hold
+            have hnn : (0 : Nat) ≤ (if x.1 = e'.1 ∧ x.2 = v then 1 else 0) :=
+              Nat.zero_le _
+            omega
+          · rcases hcase with ⟨vs₀, hvs₀, -, heq₀⟩ | hnew
+            · have hbase : vs₀.countP (fun w => decide (w = v)) ≤ C x.1 :=
+                hacc (x.1, vs₀) (hqb' ▸ hvs₀)
+              have hkeq : e'.1 = x.1 := hqb'
+              rw [show e'.2 = vs₀ ++ [x.2] from heq₀, List.countP_append,
+                List.countP_cons, List.countP_nil, hkeq]
+              by_cases hv : x.2 = v
+              · rw [if_pos (by simpa using hv),
+                  if_pos (show x.1 = x.1 ∧ x.2 = v from ⟨rfl, hv⟩)]
+                omega
+              · rw [if_neg (by simpa using hv), if_neg (by
+                  rintro ⟨-, hc⟩
+                  exact hv hc)]
+                omega
+            · have hkeq : e'.1 = x.1 := hqb'
+              rw [show e'.2 = [x.2] from hnew, List.countP_cons,
+                List.countP_nil, hkeq]
+              by_cases hv : x.2 = v
+              · rw [if_pos (by simpa using hv),
+                  if_pos (show x.1 = x.1 ∧ x.2 = v from ⟨rfl, hv⟩)]
+                omega
+              · rw [if_neg (by simpa using hv), if_neg (by
+                  rintro ⟨-, hc⟩
+                  exact hv hc)]
+                omega)
+        e he
+      rw [List.countP_cons]
+      by_cases hx : (decide (x.1 = e.1) && decide (x.2 = v)) = true
+      · rw [if_pos hx]
+        rw [Bool.and_eq_true, decide_eq_true_iff, decide_eq_true_iff] at hx
+        have hone : (if x.1 = e.1 ∧ x.2 = v then 1 else 0) = 1 := if_pos hx
+        omega
+      · rw [if_neg hx]
+        have hzero : (if x.1 = e.1 ∧ x.2 = v then 1 else 0) = 0 := by
+          refine if_neg ?_
+          rintro ⟨h1, h2⟩
+          exact hx (by
+            rw [Bool.and_eq_true, decide_eq_true_iff, decide_eq_true_iff]
+            exact ⟨h1, h2⟩)
+        omega
+  have := hgen pfx [] (fun _ => 0) (fun e he => nomatch he) (qb, vs) hmem
+  simpa using this
+
+/-- Two buckets of one ballot are the same bucket (bucket keys are
+duplicate-free). -/
+theorem foldEarlyStop_bucket_unique {quorumSize : Nat}
+    {pfx : List (Ballot nP × P1bPayload P nP)} {qb : Ballot nP}
+    {vs vs' : List (P1bPayload P nP)}
+    (h : (qb, vs) ∈ foldEarlyStopBallots quorumSize pfx)
+    (h' : (qb, vs') ∈ foldEarlyStopBallots quorumSize pfx) : vs = vs' :=
+  congrArg Prod.snd (eq_of_nodup_keys (g := Prod.fst)
+    (foldEarlyStop_keys_nodup quorumSize pfx) h h' rfl)
+
+/-- **Frozen-bucket pinning**: a full bucket equals the same ballot's bucket
+at any later cut — the "elected quorum view" is one value per ballot across
+the whole run. -/
+theorem foldEarlyStop_full_pin {quorumSize : Nat} (hq1 : 1 ≤ quorumSize)
+    {pfx ext : List (Ballot nP × P1bPayload P nP)} {qb : Ballot nP}
+    {vs vs' : List (P1bPayload P nP)}
+    (hmem : (qb, vs) ∈ foldEarlyStopBallots quorumSize pfx)
+    (hfull : quorumSize ≤ vs.length)
+    (hmem' : (qb, vs') ∈ foldEarlyStopBallots quorumSize (pfx ++ ext)) :
+    vs = vs' := by
+  have hlen : vs.length = quorumSize :=
+    Nat.le_antisymm (foldEarlyStop_length_le hq1 pfx _ hmem) hfull
+  exact foldEarlyStop_bucket_unique (foldEarlyStop_full_stable hmem hlen ext)
+    hmem'
