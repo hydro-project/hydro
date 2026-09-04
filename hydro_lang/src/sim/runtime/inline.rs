@@ -11,12 +11,12 @@ use std::rc::Rc;
 
 use bolero::generator::bolero_generator::driver::object::Borrowed;
 use bolero::{ValueGenerator, produce};
-use dfir_rs::rustc_hash::FxHashMap;
+use dfir_rs::rustc_hash::{FxHashMap, FxHashSet};
 use dfir_rs::util::unsync::mpsc::Sender;
 
 use super::{
-    HookLocationMeta, InlineHook, ManualDebug, OrderingStatus, RuntimeHook, ScriptDecision,
-    ScriptableInlineHook, TruncatedLabeledVecDebug, TruncatedVecDebug, log_release,
+    HookLocationMeta, InlineHook, ManualDebug, MergeStatus, OrderingStatus, RuntimeHook,
+    ScriptDecision, ScriptableInlineHook, TruncatedLabeledVecDebug, TruncatedVecDebug, log_release,
 };
 
 pub struct StreamOrderHook<T> {
@@ -763,5 +763,288 @@ where
                 TruncatedVecDebug(RefCell::new(Some(values.iter())), 8, self.format_debug)
             )
         })
+    }
+}
+
+impl<K, V> ScriptableInlineHook for KeyedStreamOrderHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = InlineOrderingDecision<(K, V)>;
+    type Status = OrderingStatus;
+
+    fn apply_scripted(
+        &mut self,
+        decision: Option<InlineOrderingDecision<(K, V)>>,
+        log_writer: Option<&mut dyn std::fmt::Write>,
+    ) -> Result<(), String> {
+        let input = self.input.borrow_mut().take().unwrap();
+        let ordered: Vec<(K, V)> = match decision {
+            Some(InlineOrderingDecision::Order(values)) => {
+                if multiset_mismatch(&input, &values).is_err() {
+                    return Err(format!(
+                        "scripted in-tick keyed ordering decision must contain exactly all pending input entries ({} pending, {} scripted)",
+                        input.len(),
+                        values.len(),
+                    ));
+                }
+                values
+            }
+            // No choice: no key has more than one element, so per-key order is not a
+            // choice and the input order stands.
+            None => input,
+        };
+
+        let mut grouped: FxHashMap<K, Vec<V>> = FxHashMap::default();
+        for (k, v) in ordered {
+            grouped.entry(k).or_default().push(v);
+        }
+        self.to_release = Some(grouped);
+        self.release_decision(log_writer);
+        Ok(())
+    }
+
+    fn status(&self) -> OrderingStatus {
+        OrderingStatus {
+            buffered: self.input.borrow().as_ref().map_or(0, Vec::len),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        input
+            .as_ref()
+            .map(|values| format!("{} in-tick keyed ordering entr(ies)", values.len()))
+    }
+}
+
+impl<K, V> ScriptableInlineHook for PartiallyOrderedStreamHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = InlineOrderingDecision<(K, V)>;
+    type Status = OrderingStatus;
+
+    fn apply_scripted(
+        &mut self,
+        decision: Option<InlineOrderingDecision<(K, V)>>,
+        log_writer: Option<&mut dyn std::fmt::Write>,
+    ) -> Result<(), String> {
+        let input = self.input.borrow_mut().take().unwrap();
+        let output = match decision {
+            Some(InlineOrderingDecision::Order(values)) => {
+                // The scripted sequence must be a valid interleaving: same entries, and
+                // each key's subsequence must preserve that key's input order.
+                let valid = values.len() == input.len() && {
+                    let mut seen: FxHashSet<&K> = FxHashSet::default();
+                    input
+                        .iter()
+                        .map(|(k, _)| k)
+                        .filter(|key| seen.insert(key))
+                        .all(|key| {
+                            let input_seq = input.iter().filter(|(k, _)| k == key).map(|(_, v)| v);
+                            let scripted_seq =
+                                values.iter().filter(|(k, _)| k == key).map(|(_, v)| v);
+                            input_seq.eq(scripted_seq)
+                        })
+                };
+                if !valid {
+                    return Err(format!(
+                        "scripted in-tick partially-ordered decision must be an interleaving of all pending entries that preserves each key's order ({} pending, {} scripted)",
+                        input.len(),
+                        values.len(),
+                    ));
+                }
+                values
+            }
+            // No choice: at most one distinct key is present, so the interleaving is not
+            // a choice and the input order stands.
+            None => input,
+        };
+        self.to_release = Some(output);
+        self.release_decision(log_writer);
+        Ok(())
+    }
+
+    fn status(&self) -> OrderingStatus {
+        OrderingStatus {
+            buffered: self.input.borrow().as_ref().map_or(0, Vec::len),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        input
+            .as_ref()
+            .map(|values| format!("{} in-tick partially-ordered entr(ies)", values.len()))
+    }
+}
+
+/// Checks that the scripted merge (each entry labeled with the input it is drawn from:
+/// `false` = first, `true` = second) consumes exactly the two pending inputs, preserving
+/// each input's order: each side's labeled subsequence must equal that input's batch.
+fn labeled_merge_consumes_inputs<T: PartialEq>(
+    first: &[T],
+    second: &[T],
+    scripted: &[(bool, T)],
+) -> bool {
+    let scripted_side = |side: bool| {
+        scripted
+            .iter()
+            .filter(move |(from_second, _)| *from_second == side)
+            .map(|(_, value)| value)
+    };
+    scripted_side(false).eq(first.iter()) && scripted_side(true).eq(second.iter())
+}
+
+impl<T> ScriptableInlineHook for MergeOrderedHook<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = InlineOrderingDecision<(bool, T)>;
+    type Status = MergeStatus;
+
+    fn apply_scripted(
+        &mut self,
+        decision: Option<InlineOrderingDecision<(bool, T)>>,
+        log_writer: Option<&mut dyn std::fmt::Write>,
+    ) -> Result<(), String> {
+        let first = self.first.borrow_mut().take().unwrap();
+        let second = self.second.borrow_mut().take().unwrap();
+        match decision {
+            Some(InlineOrderingDecision::Order(labeled)) => {
+                if !labeled_merge_consumes_inputs(&first, &second, &labeled) {
+                    return Err(format!(
+                        "scripted in-tick merge decision must consume exactly the two inputs' values, each in its original order ({} + {} pending, {} scripted)",
+                        first.len(),
+                        second.len(),
+                        labeled.len(),
+                    ));
+                }
+                let (sources, values) = labeled.into_iter().unzip();
+                self.to_release = Some(values);
+                self.release_sources = Some(sources);
+            }
+            // No choice: at most one input has elements, so the interleaving is not a
+            // choice and concatenation is the unique result.
+            None => {
+                let mut sources = vec![false; first.len()];
+                sources.extend(std::iter::repeat_n(true, second.len()));
+                let mut result = first;
+                result.extend(second);
+                self.to_release = Some(result);
+                self.release_sources = Some(sources);
+            }
+        }
+        self.release_decision(log_writer);
+        Ok(())
+    }
+
+    fn status(&self) -> MergeStatus {
+        MergeStatus {
+            first_buffered: self.first.borrow().as_ref().map_or(0, Vec::len),
+            second_buffered: self.second.borrow().as_ref().map_or(0, Vec::len),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let first = self.first.borrow();
+        let second = self.second.borrow();
+        match (first.as_ref(), second.as_ref()) {
+            (Some(first), Some(second)) => Some(format!(
+                "{} + {} in-tick merge value(s) (first + second input)",
+                first.len(),
+                second.len()
+            )),
+            _ => None,
+        }
+    }
+}
+
+impl<K, V> ScriptableInlineHook for KeyedMergeOrderedHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = InlineOrderingDecision<(bool, (K, V))>;
+    type Status = MergeStatus;
+
+    fn apply_scripted(
+        &mut self,
+        decision: Option<InlineOrderingDecision<(bool, (K, V))>>,
+        log_writer: Option<&mut dyn std::fmt::Write>,
+    ) -> Result<(), String> {
+        let first = self.first.borrow_mut().take().unwrap();
+        let second = self.second.borrow_mut().take().unwrap();
+        match decision {
+            Some(InlineOrderingDecision::Order(labeled)) => {
+                // Each side's labeled subsequence must, for every key, equal that key's
+                // entries from that input in order (cross-key order within an input is
+                // unobservable for keyed streams, so keys are validated independently).
+                let mut seen: FxHashSet<&K> = FxHashSet::default();
+                let valid = first
+                    .iter()
+                    .chain(&second)
+                    .map(|(k, _)| k)
+                    .chain(labeled.iter().map(|(_, (k, _))| k))
+                    .filter(|key| seen.insert(key))
+                    .all(|key| {
+                        let side_matches = |side: bool, input: &[(K, V)]| {
+                            labeled
+                                .iter()
+                                .filter(|(from_second, (k, _))| *from_second == side && k == key)
+                                .map(|(_, (_, v))| v)
+                                .eq(input.iter().filter(|(k, _)| k == key).map(|(_, v)| v))
+                        };
+                        side_matches(false, &first) && side_matches(true, &second)
+                    });
+                if !valid {
+                    return Err(format!(
+                        "scripted in-tick keyed merge decision must consume exactly the two inputs' entries, each in its original per-key order ({} + {} pending, {} scripted)",
+                        first.len(),
+                        second.len(),
+                        labeled.len(),
+                    ));
+                }
+
+                let (sources, values) = labeled.into_iter().unzip();
+                self.to_release = Some(values);
+                self.release_sources = Some(sources);
+            }
+            // No choice: no key appears in both inputs, so no per-key interleaving is a
+            // choice and concatenation is the unique result.
+            None => {
+                let mut sources = vec![false; first.len()];
+                sources.extend(std::iter::repeat_n(true, second.len()));
+                let mut result = first;
+                result.extend(second);
+                self.to_release = Some(result);
+                self.release_sources = Some(sources);
+            }
+        }
+        self.release_decision(log_writer);
+        Ok(())
+    }
+
+    fn status(&self) -> MergeStatus {
+        MergeStatus {
+            first_buffered: self.first.borrow().as_ref().map_or(0, Vec::len),
+            second_buffered: self.second.borrow().as_ref().map_or(0, Vec::len),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let first = self.first.borrow();
+        let second = self.second.borrow();
+        match (first.as_ref(), second.as_ref()) {
+            (Some(first), Some(second)) => Some(format!(
+                "{} + {} in-tick keyed merge entr(ies) (first + second input)",
+                first.len(),
+                second.len()
+            )),
+            _ => None,
+        }
     }
 }

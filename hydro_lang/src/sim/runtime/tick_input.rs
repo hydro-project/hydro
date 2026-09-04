@@ -12,12 +12,13 @@ use std::rc::Rc;
 
 use bolero::generator::bolero_generator::driver::object::Borrowed;
 use bolero::{ValueGenerator, produce};
-use dfir_rs::rustc_hash::FxHashMap;
+use dfir_rs::rustc_hash::{FxHashMap, FxHashSet};
 use dfir_rs::util::unsync::mpsc::Sender;
 
 use super::{
     HookLocationMeta, ManualDebug, RuntimeHook, ScriptDecision, ScriptableHook,
-    ScriptableTickInputHook, TickInputHook, TruncatedVecDebug, abort, log_release,
+    ScriptableTickInputHook, TickInputHook, TruncatedVecDebug, abort, describe_keyed_pending,
+    keyed_buffer_len, log_release,
 };
 use crate::live_collections::stream::{NoOrder, Ordering, TotalOrder};
 
@@ -1315,5 +1316,428 @@ impl<K: Hash + Eq + Clone, V: Clone> TickInputHook for KeyedSingletonHook<K, V> 
         }
 
         any_triggered
+    }
+}
+
+/// A scripted decision for a keyed batch hook over totally ordered values. Named values
+/// are matched against each key's buffered prefix in order.
+///
+/// Per-key payloads are `Vec`s rather than maps: the scripted entry order is preserved
+/// (map iteration would make the release and log order nondeterministic), and the
+/// handle rejects duplicate keys in [`Self::Prefixes`] when the decision is created, so
+/// key distinctness is an invariant rather than a map-enforced property.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum KeyedBatchDecision<K, V> {
+    /// Release the next `n` buffered values of each named key. Keys are distinct
+    /// (enforced by the handle when the decision is created).
+    Prefixes(Vec<(K, usize)>),
+    /// Release exactly these `(key, value)` entries.
+    Values(Vec<(K, V)>),
+    /// Release everything that has arrived by the time the tick fires.
+    All,
+}
+
+impl<K, V> ScriptDecision for KeyedBatchDecision<K, V>
+where
+    K: serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            KeyedBatchDecision::Prefixes(counts) => {
+                format!("release({} per-key count(s))", counts.len())
+            }
+            KeyedBatchDecision::Values(values) => {
+                format!("release_values({} entr(ies))", values.len())
+            }
+            KeyedBatchDecision::All => "release_all()".to_owned(),
+        }
+    }
+}
+
+/// A scripted decision for a keyed batch hook over unordered values. Named values are
+/// matched per key as multisets.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum UnorderedKeyedBatchDecision<K, V> {
+    /// Release exactly these `(key, value)` entries.
+    Values(Vec<(K, V)>),
+    /// Release everything that has arrived by the time the tick fires.
+    All,
+}
+
+impl<K, V> ScriptDecision for UnorderedKeyedBatchDecision<K, V>
+where
+    K: serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            UnorderedKeyedBatchDecision::Values(values) => {
+                format!("release_values({} entr(ies))", values.len())
+            }
+            UnorderedKeyedBatchDecision::All => "release_all()".to_owned(),
+        }
+    }
+}
+
+impl<K, V> ScriptableHook for KeyedStreamHook<K, V, TotalOrder>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = KeyedBatchDecision<K, V>;
+    type Status = BatchStatus;
+
+    fn is_honorable(&self, decision: &KeyedBatchDecision<K, V>) -> Result<bool, String> {
+        let input = self.input.borrow();
+        match decision {
+            KeyedBatchDecision::Prefixes(counts) => {
+                // Wait until every named key (keys are distinct by the decision's
+                // invariant) has buffered at least the requested number of values.
+                for (key, count) in counts {
+                    if input.get(key).is_none_or(|queue| queue.len() < *count) {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            }
+            KeyedBatchDecision::Values(values) => {
+                // Each key's scripted values must match that key's buffered prefix in
+                // order (cross-key interleaving in the script is irrelevant).
+                let mut consumed: FxHashMap<&K, usize> = FxHashMap::default();
+                for (position, (key, expected)) in values.iter().enumerate() {
+                    let offset = consumed.entry(key).or_insert(0);
+                    match input.get(key).and_then(|queue| queue.get(*offset)) {
+                        Some(buffered) if buffered == expected => {}
+                        Some(_) => {
+                            return Err(format!(
+                                "release_values: buffered item at per-key prefix position {} did not match the expected value (scripted entry {})",
+                                *offset, position
+                            ));
+                        }
+                        None => return Ok(false),
+                    }
+                    *offset += 1;
+                }
+                Ok(true)
+            }
+            KeyedBatchDecision::All => Ok(true),
+        }
+    }
+
+    fn apply(&mut self, decision: KeyedBatchDecision<K, V>) {
+        let mut input = self.input.borrow_mut();
+        let out: Vec<(K, V)> = match decision {
+            KeyedBatchDecision::Prefixes(counts) => {
+                let mut out = vec![];
+                for (key, count) in counts {
+                    let queue = input.get_mut(&key).unwrap();
+                    out.extend(queue.drain(0..count).map(|v| (key.clone(), v)));
+                }
+                out
+            }
+            KeyedBatchDecision::Values(values) => values
+                .into_iter()
+                .map(|(key, _expected)| {
+                    // `is_honorable` verified each key's scripted values match that
+                    // key's buffered prefix, so popping fronts in script order releases
+                    // exactly the named items.
+                    let item = input.get_mut(&key).unwrap().pop_front().unwrap();
+                    (key, item)
+                })
+                .collect(),
+            KeyedBatchDecision::All => {
+                let mut out = vec![];
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                for (key, queue) in input.iter_mut() {
+                    out.extend(queue.drain(..).map(|v| (key.clone(), v)));
+                }
+                out
+            }
+        };
+
+        self.to_release = Some(out);
+    }
+
+    fn implicit(&mut self) {
+        self.to_release = Some(vec![]);
+    }
+
+    fn status(&self) -> BatchStatus {
+        BatchStatus {
+            buffered: keyed_buffer_len(&self.input.borrow()),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        describe_keyed_pending(&self.input.borrow())
+    }
+}
+
+impl<K, V> ScriptableTickInputHook for KeyedStreamHook<K, V, TotalOrder>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    fn decision_triggers_tick(&self, decision: &KeyedBatchDecision<K, V>) -> bool {
+        match decision {
+            KeyedBatchDecision::Prefixes(counts) => counts.iter().any(|(_, count)| *count > 0),
+            KeyedBatchDecision::Values(values) => !values.is_empty(),
+            KeyedBatchDecision::All => keyed_buffer_len(&self.input.borrow()) > 0,
+        }
+    }
+}
+
+impl<K, V> ScriptableHook for KeyedStreamHook<K, V, NoOrder>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = UnorderedKeyedBatchDecision<K, V>;
+    type Status = BatchStatus;
+
+    fn is_honorable(&self, decision: &UnorderedKeyedBatchDecision<K, V>) -> Result<bool, String> {
+        Ok(match decision {
+            UnorderedKeyedBatchDecision::Values(values) => {
+                // Values are matched per key as multisets: duplicates request the
+                // corresponding number of equal buffered items under that key.
+                let input = self.input.borrow();
+                let mut unmatched: Vec<(&K, &V)> = values.iter().map(|(k, v)| (k, v)).collect();
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                for (key, queue) in input.iter() {
+                    for buffered in queue {
+                        if let Some(idx) = unmatched
+                            .iter()
+                            .position(|(k, v)| *k == key && *v == buffered)
+                        {
+                            unmatched.swap_remove(idx);
+                        }
+                    }
+                }
+                unmatched.is_empty()
+            }
+            UnorderedKeyedBatchDecision::All => true,
+        })
+    }
+
+    fn apply(&mut self, decision: UnorderedKeyedBatchDecision<K, V>) {
+        let mut input = self.input.borrow_mut();
+        let out: Vec<(K, V)> = match decision {
+            UnorderedKeyedBatchDecision::Values(values) => values
+                .into_iter()
+                .map(|(key, expected)| {
+                    let queue = input.get_mut(&key).unwrap();
+                    let idx = queue.iter().position(|item| *item == expected).unwrap();
+                    let item = queue.remove(idx).unwrap();
+                    (key, item)
+                })
+                .collect(),
+            UnorderedKeyedBatchDecision::All => {
+                let mut out = vec![];
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                for (key, queue) in input.iter_mut() {
+                    out.extend(queue.drain(..).map(|v| (key.clone(), v)));
+                }
+                out
+            }
+        };
+
+        self.to_release = Some(out);
+    }
+
+    fn implicit(&mut self) {
+        self.to_release = Some(vec![]);
+    }
+
+    fn status(&self) -> BatchStatus {
+        BatchStatus {
+            buffered: keyed_buffer_len(&self.input.borrow()),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        describe_keyed_pending(&self.input.borrow())
+    }
+}
+
+impl<K, V> ScriptableTickInputHook for KeyedStreamHook<K, V, NoOrder>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    fn decision_triggers_tick(&self, decision: &UnorderedKeyedBatchDecision<K, V>) -> bool {
+        match decision {
+            UnorderedKeyedBatchDecision::Values(values) => !values.is_empty(),
+            UnorderedKeyedBatchDecision::All => keyed_buffer_len(&self.input.borrow()) > 0,
+        }
+    }
+}
+
+/// A scripted decision for a keyed snapshot hook: which buffered version each key's next
+/// tick execution observes.
+///
+/// The [`Self::Reveal`] payload is a `Vec` rather than a map: the scripted entry order is
+/// preserved for the release log, and the handle rejects duplicate keys when the decision
+/// is created, so key distinctness is an invariant rather than a map-enforced property.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum KeyedSnapshotDecision<K, V> {
+    /// For each named key, reveal the first buffered version equal to the named value,
+    /// skipping over earlier versions. Keys are distinct (enforced by the handle when
+    /// the decision is created; a key observes exactly one version per tick). Keys that
+    /// are not named observe their previously revealed version again (or stay absent if
+    /// they have never been revealed).
+    Reveal(Vec<(K, V)>),
+    /// For every key, reveal the newest version that has arrived by the time the tick
+    /// fires (keys with nothing newer observe their previously revealed version again).
+    RevealLatest,
+    /// Every key observes its previously revealed version again.
+    Keep,
+}
+
+impl<K, V> ScriptDecision for KeyedSnapshotDecision<K, V>
+where
+    K: serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            KeyedSnapshotDecision::Reveal(_) => "reveal(..)".to_owned(),
+            KeyedSnapshotDecision::RevealLatest => "reveal_latest()".to_owned(),
+            KeyedSnapshotDecision::Keep => "keep()".to_owned(),
+        }
+    }
+}
+
+/// The pending-input view a keyed snapshot hook reports to its test-side handle (see
+/// [`ScriptableHook::status`]), used by `pause_until_*` predicates.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct KeyedSnapshotStatus {
+    /// The total number of buffered versions (across all keys) newer than the last
+    /// revealed ones.
+    pub newer_versions: usize,
+    /// The number of keys with at least one newer buffered version.
+    pub keys_with_newer_versions: usize,
+}
+
+impl<K, V> ScriptableHook for KeyedSingletonHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: Clone + PartialEq + serde::Serialize + serde::de::DeserializeOwned,
+{
+    type Decision = KeyedSnapshotDecision<K, V>;
+    type Status = KeyedSnapshotStatus;
+
+    fn is_honorable(&self, decision: &KeyedSnapshotDecision<K, V>) -> Result<bool, String> {
+        let input = self.input.borrow();
+        Ok(match decision {
+            KeyedSnapshotDecision::Reveal(entries) => entries.iter().all(|(key, target)| {
+                input
+                    .get(key)
+                    .is_some_and(|queue| queue.iter().any(|version| version == target))
+            }),
+            KeyedSnapshotDecision::RevealLatest => {
+                keyed_buffer_len(&input) > 0 || !self.last_released.is_empty()
+            }
+            KeyedSnapshotDecision::Keep => true,
+        })
+    }
+
+    fn apply(&mut self, decision: KeyedSnapshotDecision<K, V>) {
+        let mut input = self.input.borrow_mut();
+        match decision {
+            KeyedSnapshotDecision::Reveal(entries) => {
+                let mut to_release = vec![];
+                let mut named: FxHashSet<K> = FxHashSet::default();
+                for (key, target) in entries {
+                    let queue = input.get_mut(&key).unwrap();
+                    let idx = queue.iter().position(|version| *version == target).unwrap();
+                    let skipped: Vec<V> = queue.drain(0..idx).collect();
+                    let item = queue.pop_front().unwrap();
+                    self.skipped_states.insert(key.clone(), skipped);
+                    self.last_released.insert(key.clone(), item.clone());
+                    to_release.push((key.clone(), item, true));
+                    named.insert(key);
+                }
+                // Unnamed keys observe their previously revealed version again.
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                for (key, last) in self.last_released.iter() {
+                    if !named.contains(key) {
+                        to_release.push((key.clone(), last.clone(), false));
+                    }
+                }
+                self.to_release = Some(to_release);
+            }
+            KeyedSnapshotDecision::RevealLatest => {
+                let mut to_release = vec![];
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                for (key, queue) in input.iter_mut() {
+                    if queue.is_empty() {
+                        if let Some(last) = self.last_released.get(key) {
+                            to_release.push((key.clone(), last.clone(), false));
+                        }
+                    } else {
+                        let skip_count = queue.len() - 1;
+                        let skipped: Vec<V> = queue.drain(0..skip_count).collect();
+                        let item = queue.pop_front().unwrap();
+                        self.skipped_states.insert(key.clone(), skipped);
+                        self.last_released.insert(key.clone(), item.clone());
+                        to_release.push((key.clone(), item, true));
+                    }
+                }
+                self.to_release = Some(to_release);
+            }
+            KeyedSnapshotDecision::Keep => {
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                let to_release = self
+                    .last_released
+                    .iter()
+                    .map(|(key, last)| (key.clone(), last.clone(), false))
+                    .collect();
+                self.to_release = Some(to_release);
+            }
+        }
+    }
+
+    fn implicit(&mut self) {
+        // "Nothing new": every previously revealed key observes its value again.
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let to_release = self
+            .last_released
+            .iter()
+            .map(|(key, last)| (key.clone(), last.clone(), false))
+            .collect();
+        self.to_release = Some(to_release);
+    }
+
+    fn status(&self) -> KeyedSnapshotStatus {
+        let input = self.input.borrow();
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let keys_with_newer_versions = input.values().filter(|q| !q.is_empty()).count();
+        KeyedSnapshotStatus {
+            newer_versions: keyed_buffer_len(&input),
+            keys_with_newer_versions,
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        let total = keyed_buffer_len(&input);
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let keys = input.values().filter(|q| !q.is_empty()).count();
+        (total > 0).then(|| format!("{} buffered version(s) across {} key(s)", total, keys))
+    }
+}
+
+impl<K, V> ScriptableTickInputHook for KeyedSingletonHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: Clone + PartialEq + serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn decision_triggers_tick(&self, decision: &KeyedSnapshotDecision<K, V>) -> bool {
+        match decision {
+            KeyedSnapshotDecision::Reveal(entries) => !entries.is_empty(),
+            KeyedSnapshotDecision::RevealLatest => keyed_buffer_len(&self.input.borrow()) > 0,
+            KeyedSnapshotDecision::Keep => false,
+        }
     }
 }

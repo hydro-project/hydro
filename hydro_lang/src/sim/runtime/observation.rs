@@ -16,7 +16,8 @@ use dfir_rs::util::unsync::mpsc::Sender;
 
 use super::{
     HookLocationMeta, ObservationHook, RuntimeHook, ScriptDecision, ScriptableHook,
-    ScriptableObservationHook, TruncatedLabeledVecDebug, TruncatedVecDebug, abort, log_release,
+    ScriptableObservationHook, TruncatedLabeledVecDebug, TruncatedVecDebug, abort,
+    describe_keyed_pending, keyed_buffer_len, log_release,
 };
 
 /// Top-level (outside-tick) `assume_ordering` hooks release elements **one at a
@@ -754,4 +755,313 @@ impl<K: Hash + Eq + Clone, V> ObservationHook for TopLevelKeyedMergeOrderedHook<
         self.to_release = Some(vec![(key.clone(), item)]);
         self.release_source = Some(if take_second { "r" } else { "l" });
     }
+}
+
+/// Keyed variant of [`TopLevelStreamOrderHook`]'s scripting: a top-level keyed
+/// `assume_ordering` decision names one `(key, value)` entry to release; values within a
+/// key may be matched at any buffered position (the input is unordered within each key).
+impl<K, V> ScriptableHook for TopLevelKeyedStreamOrderHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = TopLevelOrderingDecision<(K, V)>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        let TopLevelOrderingDecision::Next((key, expected)) = decision;
+        Ok(self
+            .input
+            .borrow()
+            .get(key)
+            .is_some_and(|queue| queue.iter().any(|item| item == expected)))
+    }
+
+    fn apply(&mut self, decision: Self::Decision) {
+        let TopLevelOrderingDecision::Next((key, expected)) = decision;
+        let mut input = self.input.borrow_mut();
+        let queue = input.get_mut(&key).unwrap();
+        let index = queue.iter().position(|item| item == &expected).unwrap();
+        let item = queue.remove(index).unwrap();
+        self.to_release = Some(vec![(key, item)]);
+    }
+
+    fn implicit(&mut self) {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        abort!("implicit decision invoked on a top-level keyed ordering hook");
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: keyed_buffer_len(&self.input.borrow()),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        describe_keyed_pending(&self.input.borrow())
+    }
+}
+
+impl<K, V> ScriptableObservationHook for TopLevelKeyedStreamOrderHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+}
+
+/// Scripting for a top-level `entries_partially_ordered`: each decision names one
+/// `(key, value)` entry to release, and the value must be the *front* of that key's
+/// buffered queue since within-key order is preserved.
+impl<K, V> ScriptableHook for TopLevelPartiallyOrderedStreamHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = TopLevelOrderingDecision<(K, V)>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        let TopLevelOrderingDecision::Next((key, expected)) = decision;
+        match self.input.borrow().get(key).and_then(VecDeque::front) {
+            Some(front) if front == expected => Ok(true),
+            // Within-key order is preserved, so a mismatching front can never be
+            // released ahead of the named value: the decision is permanently stuck.
+            Some(_) => Err(
+                "next: the named value did not match the front of its key's buffered queue \
+                 (within-key order is preserved by this operator)"
+                    .to_owned(),
+            ),
+            None => Ok(false),
+        }
+    }
+
+    fn apply(&mut self, decision: Self::Decision) {
+        let TopLevelOrderingDecision::Next((key, _expected)) = decision;
+        let mut input = self.input.borrow_mut();
+        let item = input.get_mut(&key).unwrap().pop_front().unwrap();
+        self.to_release = Some(vec![(key, item)]);
+    }
+
+    fn implicit(&mut self) {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        abort!("implicit decision invoked on a top-level partially-ordered hook");
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: keyed_buffer_len(&self.input.borrow()),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        describe_keyed_pending(&self.input.borrow())
+    }
+}
+
+impl<K, V> ScriptableObservationHook for TopLevelPartiallyOrderedStreamHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+}
+
+/// A scripted decision for a top-level `merge_ordered` observation: which input the next
+/// released element comes from. The element may be named ([`Self::First`] /
+/// [`Self::Second`], asserting it equals the front of that input's buffer) or released
+/// positionally ([`Self::FirstNext`] / [`Self::SecondNext`], releasing the front without
+/// asserting its value). `S` selects *which* front for keyed merges (the key), and is `()`
+/// for plain streams.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum MergeDecision<T, S = ()> {
+    /// Release the front of the first (left) input's buffer, which must equal this value.
+    First(T),
+    /// Release the front of the second (right) input's buffer, which must equal this value.
+    Second(T),
+    /// Release the front of the first (left) input's buffer, whatever it is.
+    FirstNext(S),
+    /// Release the front of the second (right) input's buffer, whatever it is.
+    SecondNext(S),
+}
+
+impl<T, S> ScriptDecision for MergeDecision<T, S>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+    S: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            MergeDecision::First(_) => "next_first(value)".to_owned(),
+            MergeDecision::Second(_) => "next_second(value)".to_owned(),
+            MergeDecision::FirstNext(_) => "advance_first(..)".to_owned(),
+            MergeDecision::SecondNext(_) => "advance_second(..)".to_owned(),
+        }
+    }
+}
+
+/// The pending-input view a top-level merge hook reports to its test-side handle (see
+/// [`ScriptableHook::status`]), used by `pause_until_*` predicates.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct MergeStatus {
+    /// The number of elements buffered from the first (left) input.
+    pub first_buffered: usize,
+    /// The number of elements buffered from the second (right) input.
+    pub second_buffered: usize,
+}
+
+impl<T> ScriptableHook for TopLevelMergeOrderedHook<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = MergeDecision<T>;
+    type Status = MergeStatus;
+
+    fn is_honorable(&self, decision: &MergeDecision<T>) -> Result<bool, String> {
+        let (buffer, expected) = match decision {
+            MergeDecision::First(expected) => (&self.first, Some(expected)),
+            MergeDecision::Second(expected) => (&self.second, Some(expected)),
+            MergeDecision::FirstNext(()) => (&self.first, None),
+            MergeDecision::SecondNext(()) => (&self.second, None),
+        };
+        match (buffer.borrow().front(), expected) {
+            (Some(_), None) => Ok(true),
+            (Some(front), Some(expected)) if front == expected => Ok(true),
+            // Per-input order is preserved, so a mismatching front can never be released
+            // ahead of the named value: the decision is permanently stuck.
+            (Some(_), Some(_)) => Err(
+                "next_first/next_second: the named value did not match the front of that \
+                 input's buffer (per-input order is preserved by merge_ordered)"
+                    .to_owned(),
+            ),
+            (None, _) => Ok(false),
+        }
+    }
+
+    fn apply(&mut self, decision: MergeDecision<T>) {
+        let (item, source) = match decision {
+            MergeDecision::First(_) | MergeDecision::FirstNext(()) => {
+                (self.first.borrow_mut().pop_front().unwrap(), "l")
+            }
+            MergeDecision::Second(_) | MergeDecision::SecondNext(()) => {
+                (self.second.borrow_mut().pop_front().unwrap(), "r")
+            }
+        };
+        self.to_release = Some(vec![item]);
+        self.release_source = Some(source);
+    }
+
+    fn implicit(&mut self) {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        abort!("implicit decision invoked on a top-level merge-ordered hook");
+    }
+
+    fn status(&self) -> MergeStatus {
+        MergeStatus {
+            first_buffered: self.first.borrow().len(),
+            second_buffered: self.second.borrow().len(),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let first = self.first.borrow();
+        let second = self.second.borrow();
+        (!first.is_empty() || !second.is_empty()).then(|| {
+            format!(
+                "{} + {} buffered item(s) (first + second input)",
+                first.len(),
+                second.len()
+            )
+        })
+    }
+}
+
+impl<T> ScriptableObservationHook for TopLevelMergeOrderedHook<T> where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq
+{
+}
+
+impl<K, V> ScriptableHook for TopLevelKeyedMergeOrderedHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = MergeDecision<(K, V), K>;
+    type Status = MergeStatus;
+
+    fn is_honorable(&self, decision: &MergeDecision<(K, V), K>) -> Result<bool, String> {
+        let (buffer, key, expected) = match decision {
+            MergeDecision::First((key, expected)) => (&self.first, key, Some(expected)),
+            MergeDecision::Second((key, expected)) => (&self.second, key, Some(expected)),
+            MergeDecision::FirstNext(key) => (&self.first, key, None),
+            MergeDecision::SecondNext(key) => (&self.second, key, None),
+        };
+        match (buffer.borrow().get(key).and_then(VecDeque::front), expected) {
+            (Some(_), None) => Ok(true),
+            (Some(front), Some(expected)) if front == expected => Ok(true),
+            // Per-input order within a key is preserved, so a mismatching front can
+            // never be released ahead of the named value: the decision is permanently
+            // stuck.
+            (Some(_), Some(_)) => Err(
+                "next_first/next_second: the named value did not match the front of its \
+                 key's buffer in that input (per-input within-key order is preserved by \
+                 merge_ordered)"
+                    .to_owned(),
+            ),
+            (None, _) => Ok(false),
+        }
+    }
+
+    fn apply(&mut self, decision: MergeDecision<(K, V), K>) {
+        let (buffer, key, source) = match decision {
+            MergeDecision::First((key, _)) => (&self.first, key, "l"),
+            MergeDecision::Second((key, _)) => (&self.second, key, "r"),
+            MergeDecision::FirstNext(key) => (&self.first, key, "l"),
+            MergeDecision::SecondNext(key) => (&self.second, key, "r"),
+        };
+        let item = buffer
+            .borrow_mut()
+            .get_mut(&key)
+            .unwrap()
+            .pop_front()
+            .unwrap();
+        self.to_release = Some(vec![(key, item)]);
+        self.release_source = Some(source);
+    }
+
+    fn implicit(&mut self) {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        abort!("implicit decision invoked on a top-level keyed merge-ordered hook");
+    }
+
+    fn status(&self) -> MergeStatus {
+        MergeStatus {
+            first_buffered: keyed_buffer_len(&self.first.borrow()),
+            second_buffered: keyed_buffer_len(&self.second.borrow()),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let first = keyed_buffer_len(&self.first.borrow());
+        let second = keyed_buffer_len(&self.second.borrow());
+        (first + second > 0).then(|| {
+            format!(
+                "{} + {} buffered item(s) (first + second input)",
+                first, second
+            )
+        })
+    }
+}
+
+impl<K, V> ScriptableObservationHook for TopLevelKeyedMergeOrderedHook<K, V>
+where
+    K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
 }
