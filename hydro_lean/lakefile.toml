@@ -1,0 +1,52 @@
+name = "hydro_lean"
+version = "0.1.0"
+defaultTargets = ["Hydro"]
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.33.1"
+
+[[lean_lib]]
+name = "Hydro"
+globs = ["Hydro.**"]
+# D95 memory discipline: every `lean` runs under a 4 GB cap (the heaviest file,
+# `Paxos/PaxosBench`, peaks at 3.3 GB; a kernel judgement that evaluates a module
+# application exceeds this at once — GATE.md §1, ENGINE_NOTES "The kernel and knots")
+moreLeanArgs = ["-M", "4500"]
+
+[[lean_exe]]
+name = "falsify"
+root = "Falsify"
+
+[[lean_exe]]
+name = "explore"
+root = "Explore"
+
+[[lean_exe]]
+name = "paxos"
+root = "PaxosDemo"
+
+[[lean_exe]]
+name = "twopc"
+root = "TwoPCDemo"
+
+[[lean_exe]]
+name = "wired"
+root = "WiredDemo"
+
+# The harnesses' sockets (`wired`, `bench`) and the benchmark are library modules; the entry
+# points import them.
+[[lean_lib]]
+name = "Sockets"
+
+[[lean_lib]]
+name = "BenchDemo"
+
+[[lean_exe]]
+name = "bench"
+root = "Bench"
+
+[[lean_exe]]
+name = "benchprof"
+root = "BenchProfile"
