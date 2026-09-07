@@ -10,16 +10,18 @@ use serde::de::DeserializeOwned;
 use crate::compile::builder::ExternalPortId;
 use crate::live_collections::stream::{Ordering, Retries};
 
-/// A receiver for an external bincode stream in a simulation.
-pub struct SimReceiver<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+/// A receiver for an external stream in a simulation.
+pub struct SimReceiver<T, O: Ordering, R: Retries>(
     pub(crate) ExternalPortId,
     pub(crate) PhantomData<(T, O, R)>,
+    pub(crate) fn(&[u8]) -> T,
 );
 
-/// A sender to an external bincode sink in a simulation.
-pub struct SimSender<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+/// A sender to an external sink in a simulation.
+pub struct SimSender<T, O: Ordering, R: Retries>(
     pub(crate) ExternalPortId,
     pub(crate) PhantomData<(T, O, R)>,
+    pub(crate) fn(&T) -> Vec<u8>,
 );
 
 /// A receiver for an external cluster stream in a simulation.
@@ -39,6 +41,11 @@ pub struct SimClusterSender<T: Serialize + DeserializeOwned, O: Ordering, R: Ret
     pub(crate) ExternalPortId,
     pub(crate) PhantomData<(T, O, R)>,
 );
+
+pub mod codec;
+
+#[doc(hidden)]
+pub mod test_codec;
 
 #[cfg(stageleft_runtime)]
 mod builder;

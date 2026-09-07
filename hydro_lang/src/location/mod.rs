@@ -39,6 +39,8 @@ use syn::parse_quote;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 #[cfg(feature = "tokio")]
+use crate::compile::builder::ExternalPortId;
+#[cfg(feature = "tokio")]
 use crate::compile::ir::DebugInstantiate;
 use crate::compile::ir::{
     ClusterMembersState, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource,
@@ -49,6 +51,9 @@ use crate::forward_handle::{CycleCollection, ForwardHandle};
 use crate::live_collections::boundedness::{Bounded, Unbounded};
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
+#[cfg(feature = "sim")]
+#[cfg(stageleft_runtime)]
+use crate::live_collections::stream::networking::serialize_bincode;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
 #[cfg(feature = "tokio")]
 use crate::live_collections::stream::{Ordering, Retries};
@@ -189,6 +194,29 @@ pub enum LocationType {
 
 /// A top-level location (i.e. a [`Process`] or [`Cluster`]) that is outside a tick / atomic region.
 pub trait TopLevel<'a>: Location<'a> {}
+
+#[cfg(feature = "sim")]
+#[cfg(stageleft_runtime)]
+fn register_serialized_external_input<'a, At, L, T>(
+    at: &At,
+    from: &External<'_, L>,
+    deserialize_fn: syn::Expr,
+) -> (
+    ExternalPortId,
+    Stream<T, At::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>,
+)
+where
+    At: TopLevel<'a> + Sized,
+{
+    let (port_id, stream, sink) = at.register_serialized_single_client::<_, T, ()>(
+        from,
+        serialize_bincode::<()>(false),
+        deserialize_fn,
+    );
+    sink.complete(stream.location().source_iter(q!([])));
+
+    (port_id, stream)
+}
 
 /// A location where data can be materialized and computation can be executed.
 ///
@@ -600,10 +628,11 @@ pub trait Location<'a>: DynLocation {
         )
     }
 
-    /// Sets up a simulated input port on this location for testing.
+    /// Sets up a bincode-encoded simulated input port on this location for testing.
     ///
     /// Returns a handle to send messages to the location as well as a stream
-    /// of received messages. This is only available when the `sim` feature is enabled.
+    /// of received messages. Use [`Location::sim_input_with`] to select another codec.
+    /// This is only available when the `sim` feature is enabled.
     #[cfg(feature = "sim")]
     fn sim_input<T, O: Ordering, R: Retries>(
         &self,
@@ -615,15 +644,42 @@ pub trait Location<'a>: DynLocation {
         Self: TopLevel<'a> + Sized,
         T: Serialize + DeserializeOwned,
     {
+        self.sim_input_with(crate::sim::codec::BincodeCodec)
+    }
+
+    /// Sets up a simulated input port using `codec`.
+    ///
+    /// Returns a handle to send messages to the location as well as a stream
+    /// of received messages. Custom codecs implement
+    /// [`SimCodec`](crate::sim::codec::SimCodec), which documents where they must be defined.
+    /// This is only available when the `sim` feature is enabled.
+    #[cfg(feature = "sim")]
+    fn sim_input_with<T, O: Ordering, R: Retries, C: crate::sim::codec::SimCodec<T>>(
+        &self,
+        _codec: C,
+    ) -> (
+        SimSender<T, O, R>,
+        Stream<T, Self::DropConsistency, Unbounded, O, R>,
+    )
+    where
+        Self: TopLevel<'a> + Sized,
+    {
         let external_location: External<'a, ()> = External {
             key: LocationKey::FIRST,
             flow_state: self.flow_state().clone(),
             _phantom: PhantomData,
         };
 
-        let (external, stream) = self.source_external_bincode(&external_location);
+        let (external_port_id, stream) = register_serialized_external_input(
+            self,
+            &external_location,
+            crate::sim::codec::staged_deserialize::<T, C>(),
+        );
 
-        (SimSender(external.port_id, PhantomData), stream)
+        (
+            SimSender(external_port_id, PhantomData, C::encode),
+            stream.weaken_ordering().weaken_retries(),
+        )
     }
 
     /// Creates an external input stream for embedded deployment mode.
@@ -801,6 +857,72 @@ pub trait Location<'a>: DynLocation {
         )
     }
 
+    // TODO: Replace this staged-expression helper with codec-parameterized sink and bidi handles.
+    #[doc(hidden)]
+    #[cfg(feature = "tokio")]
+    #[expect(clippy::type_complexity, reason = "stream markers")]
+    fn register_serialized_single_client<L, InT, OutT>(
+        &self,
+        from: &External<'_, L>,
+        serialize_fn: syn::Expr,
+        deserialize_fn: syn::Expr,
+    ) -> (
+        ExternalPortId,
+        Stream<InT, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>,
+        ForwardHandle<'a, Stream<OutT, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>>,
+    )
+    where
+        Self: TopLevel<'a> + Sized,
+    {
+        let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
+
+        let target_consistency = self.drop_consistency();
+        let (fwd_ref, to_sink) = target_consistency.forward_ref::<Stream<
+            OutT,
+            Self::DropConsistency,
+            Unbounded,
+            TotalOrder,
+            ExactlyOnce,
+        >>();
+        let mut flow_state_borrow = self.flow_state().borrow_mut();
+
+        flow_state_borrow.push_root(HydroRoot::SendExternal {
+            to_external_key: from.key,
+            to_port_id: next_external_port_id,
+            to_many: false,
+            unpaired: false,
+            serialize_fn: Some(serialize_fn.into()),
+            instantiate_fn: DebugInstantiate::Building,
+            input: Box::new(to_sink.ir_node.replace(HydroNode::Placeholder)),
+            op_metadata: HydroIrOpMetadata::new(),
+        });
+        drop(flow_state_borrow);
+
+        let raw_stream: Stream<InT, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce> =
+            Stream::new(
+                target_consistency.clone(),
+                HydroNode::ExternalInput {
+                    from_external_key: from.key,
+                    from_port_id: next_external_port_id,
+                    from_many: false,
+                    codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                    port_hint: NetworkHint::Auto,
+                    instantiate_fn: DebugInstantiate::Building,
+                    deserialize_fn: Some(deserialize_fn.into()),
+                    metadata: target_consistency.new_node_metadata(Stream::<
+                        InT,
+                        Self::DropConsistency,
+                        Unbounded,
+                        TotalOrder,
+                        ExactlyOnce,
+                    >::collection_kind(
+                    )),
+                },
+            );
+
+        (next_external_port_id, raw_stream, fwd_ref)
+    }
+
     /// Establishes a bidirectional connection from a single external client using bincode serialization.
     ///
     /// Returns a port handle for the external process to connect to, a stream of incoming messages,
@@ -823,18 +945,6 @@ pub trait Location<'a>: DynLocation {
     where
         Self: TopLevel<'a> + Sized,
     {
-        let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
-
-        let target_consistency = self.drop_consistency();
-        let (fwd_ref, to_sink) = target_consistency.forward_ref::<Stream<
-            OutT,
-            Self::DropConsistency,
-            Unbounded,
-            TotalOrder,
-            ExactlyOnce,
-        >>();
-        let mut flow_state_borrow = self.flow_state().borrow_mut();
-
         let root = get_this_crate();
 
         let out_t_type = quote_type::<OutT>();
@@ -844,20 +954,7 @@ pub trait Location<'a>: DynLocation {
             )
         };
 
-        flow_state_borrow.push_root(HydroRoot::SendExternal {
-            to_external_key: from.key,
-            to_port_id: next_external_port_id,
-            to_many: false,
-            unpaired: false,
-            serialize_fn: Some(ser_fn.into()),
-            instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(to_sink.ir_node.replace(HydroNode::Placeholder)),
-            op_metadata: HydroIrOpMetadata::new(),
-        });
-        drop(flow_state_borrow);
-
         let in_t_type = quote_type::<InT>();
-
         let deser_fn: syn::Expr = syn::parse_quote! {
             |res| {
                 let b = res.unwrap();
@@ -865,32 +962,13 @@ pub trait Location<'a>: DynLocation {
             }
         };
 
-        let raw_stream: Stream<InT, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce> =
-            Stream::new(
-                target_consistency.clone(),
-                HydroNode::ExternalInput {
-                    from_external_key: from.key,
-                    from_port_id: next_external_port_id,
-                    from_many: false,
-                    codec_type: quote_type::<LengthDelimitedCodec>().into(),
-                    port_hint: NetworkHint::Auto,
-                    instantiate_fn: DebugInstantiate::Building,
-                    deserialize_fn: Some(deser_fn.into()),
-                    metadata: target_consistency.new_node_metadata(Stream::<
-                        InT,
-                        Self::DropConsistency,
-                        Unbounded,
-                        TotalOrder,
-                        ExactlyOnce,
-                    >::collection_kind(
-                    )),
-                },
-            );
+        let (port_id, raw_stream, fwd_ref) =
+            self.register_serialized_single_client::<_, InT, OutT>(from, ser_fn, deser_fn);
 
         (
             ExternalBincodeBidi {
                 process_key: from.key,
-                port_id: next_external_port_id,
+                port_id,
                 _phantom: PhantomData,
             },
             raw_stream,
