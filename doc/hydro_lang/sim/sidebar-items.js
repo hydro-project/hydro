@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":[["continue_if",1]],"mod":["compiled","flow","hooks"],"struct":["SimClusterReceiver","SimClusterSender","SimReceiver","SimSender"]};
+window.SIDEBAR_ITEMS = {"macro":[["continue_if",1]],"mod":["codec","compiled","flow","hooks"],"struct":["SimClusterReceiver","SimClusterSender","SimReceiver","SimSender"]};
