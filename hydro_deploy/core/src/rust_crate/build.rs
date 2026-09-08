@@ -340,7 +340,19 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                         bin_data: data,
                                         bin_path: path_buf,
                                         shared_library_path: if params.is_dylib {
-                                            Some(per_job_target_dir.join("debug").join("deps"))
+                                            // Where cargo places the dependency dylib: under the
+                                            // legacy layout debug/deps/ has all variants
+                                            // (including hash-suffixed ones); under the new
+                                            // build-dir layout deps/ no longer exists and the
+                                            // dylib is uplifted into debug/.
+                                            Some(match hydro_concurrent_cargo::build_dir_layout() {
+                                                hydro_concurrent_cargo::BuildDirLayout::Legacy => {
+                                                    per_job_target_dir.join("debug").join("deps")
+                                                }
+                                                hydro_concurrent_cargo::BuildDirLayout::New => {
+                                                    per_job_target_dir.join("debug")
+                                                }
+                                            })
                                         } else {
                                             None
                                         },

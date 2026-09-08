@@ -11,6 +11,7 @@ use sha2::{Digest, Sha256};
 use stageleft::internal::quote;
 use trybuild_internals_api::cargo::{self, Metadata};
 use trybuild_internals_api::env::Update;
+use trybuild_internals_api::normalize::Normalization;
 use trybuild_internals_api::run::{PathDependency, Project};
 use trybuild_internals_api::{Runner, dependencies, features, path};
 
@@ -634,8 +635,12 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
         };
 
         // The built example links the trybuild dylib dynamically. Bake rpath entries for
-        // where cargo places it (debug/ and debug/deps/) and for the toolchain's shared
-        // libstd, so the artifact can be loaded/run without LD_LIBRARY_PATH.
+        // where cargo places it and for the toolchain's shared libstd, so the artifact can
+        // be loaded/run without LD_LIBRARY_PATH. Cargo uplifts the dylib into debug/ and,
+        // under the legacy build-dir layout, also places it in debug/deps/ (the only
+        // location of hash-suffixed variants); under the new layout (nightly's
+        // `-Zbuild-dir-new-layout`) debug/deps/ no longer exists. Bake both so the same
+        // binary works regardless of layout.
         let mut rpaths = vec![debug_path.clone(), path!(debug_path / "deps")];
         if let Some(libdir) = rustc_target_libdir() {
             rpaths.push(PathBuf::from(libdir));
@@ -957,6 +962,7 @@ pub fn create_trybuild()
                 Some(PathDependency {
                     name: name.clone(),
                     normalized_path: path.canonicalize().ok()?,
+                    normalization: Normalization::PathDependencies,
                 })
             }
         })
