@@ -1199,12 +1199,18 @@ impl DfirGraph {
         prefix: TokenStream,
         diagnostics: &mut Diagnostics,
     ) -> Result<TokenStream, Diagnostics> {
-        self.as_code_with_options(root, include_type_guards, true, prefix, diagnostics)
+        self.as_code_with_options(
+            root,
+            &AsCodeOptions {
+                exclude_type_guards: !include_type_guards,
+                ..Default::default()
+            },
+            prefix,
+            diagnostics,
+        )
     }
 
-    /// Like [`Self::as_code`], but with `include_meta` controlling whether
-    /// the runtime meta graph + diagnostics JSON blobs are baked into the
-    /// generated `Dfir::new(...)` call.
+    /// Like [`Self::as_code`] but with the full set of [`AsCodeOptions`].
     ///
     /// The simulator calls Dfir::new() on each iteration, and as a part of that
     /// it does parsing of the metagraph and diganostics blob. One of them causes spans to get allocated,
@@ -1213,8 +1219,7 @@ impl DfirGraph {
     pub fn as_code_with_options(
         &self,
         root: &TokenStream,
-        include_type_guards: bool,
-        include_meta: bool,
+        options: &AsCodeOptions,
         prefix: TokenStream,
         diagnostics: &mut Diagnostics,
     ) -> Result<TokenStream, Diagnostics> {
@@ -1521,17 +1526,23 @@ impl DfirGraph {
                             }
                         };
 
+                        let track_hoff_metrics = (!options.exclude_metrics_tracking).then(|| {
+                            quote_spanned! {port_ident.span()=>
+                                let hoff_metrics = &#metrics.handoffs[
+                                    #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
+                                ];
+                                hoff_metrics.total_items_count.update(|x| x + hoff_len);
+                                hoff_metrics.curr_items_count.set(hoff_len);
+                            }
+                        });
+
                         quote_spanned! {port_ident.span()=>
                             {
                                 let hoff_len = #len_expr;
                                 if hoff_len > 0 {
                                     #work_done = true;
                                 }
-                                let hoff_metrics = &#metrics.handoffs[
-                                    #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
-                                ];
-                                hoff_metrics.total_items_count.update(|x| x + hoff_len);
-                                hoff_metrics.curr_items_count.set(hoff_len);
+                                #track_hoff_metrics
                             }
                             let #port_ident = #drain_expr;
                         }
@@ -1760,7 +1771,7 @@ impl DfirGraph {
                             op_tick_end_code.push(write_tick_end);
                             subgraph_op_iter_code.push(write_iterator);
 
-                            if include_type_guards {
+                            if !options.exclude_type_guards {
                                 let type_guard = if is_pull {
                                     quote_spanned! {op_span=>
                                         let #ident = {
@@ -1941,27 +1952,31 @@ impl DfirGraph {
                 let sg_fut_ident = subgraph_id.as_ident(Span::call_site());
 
                 // Generate send-side curr_items_count updates (after subgraph runs).
-                let send_metrics_code = send_hoffs
-                    .iter()
-                    .zip(send_buf_idents.iter())
-                    .zip(send_kinds.iter())
-                    .map(|((&hoff_id, buf_ident), &kind)| {
-                        let hoff_ffi = hoff_id.data().as_ffi();
-                        let len_expr = match kind {
-                            HandoffKind::Singleton | HandoffKind::Optional => {
-                                quote! { if #buf_ident.is_some() { 1 } else { 0 } }
+                let send_metrics_code = if !options.exclude_metrics_tracking {
+                    send_hoffs
+                        .iter()
+                        .zip(send_buf_idents.iter())
+                        .zip(send_kinds.iter())
+                        .map(|((&hoff_id, buf_ident), &kind)| {
+                            let hoff_ffi = hoff_id.data().as_ffi();
+                            let len_expr = match kind {
+                                HandoffKind::Singleton | HandoffKind::Optional => {
+                                    quote! { if #buf_ident.is_some() { 1 } else { 0 } }
+                                }
+                                HandoffKind::Vec => {
+                                    quote! { #buf_ident.len() }
+                                }
+                            };
+                            quote! {
+                                __dfir_metrics.handoffs[
+                                    #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
+                                ].curr_items_count.set(#len_expr);
                             }
-                            HandoffKind::Vec => {
-                                quote! { #buf_ident.len() }
-                            }
-                        };
-                        quote! {
-                            __dfir_metrics.handoffs[
-                                #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
-                            ].curr_items_count.set(#len_expr);
-                        }
-                    })
-                    .collect::<Vec<_>>();
+                        })
+                        .collect::<Vec<_>>()
+                } else {
+                    Vec::new()
+                };
 
                 // Create the handoffs we are about to push to (send).
                 // Exit handoffs (sender inside a loop, receiver in parent) are already declared
@@ -2019,6 +2034,26 @@ impl DfirGraph {
                         }
                     });
 
+                let run_sg = if !options.exclude_metrics_tracking {
+                    quote! {
+                        // Instrument w/ the subgraph metrics.
+                        let sg_metrics = &__dfir_metrics.subgraphs[
+                            #root::slotmap::KeyData::from_ffi(#sg_metrics_ffi).into()
+                        ];
+                        #root::scheduled::metrics::InstrumentSubgraph::new(
+                            #sg_fut_ident, sg_metrics
+                        ).await;
+                        sg_metrics.total_run_count.update(|x| x + 1);
+
+                        // Update send (output) handoff metrics.
+                        #( #send_metrics_code )*
+                    }
+                } else {
+                    quote! {
+                        #sg_fut_ident.await;
+                    }
+                };
+
                 // Emit subgraph block to the current loop level (top of stack or root).
                 let sg_block = quote! {
                     // Create the handoffs we are about to push to (send).
@@ -2032,17 +2067,7 @@ impl DfirGraph {
                         #( #subgraph_op_iter_after_code )*
                     };
                     {
-                        // Instrument w/ the subgraph metrics.
-                        let sg_metrics = &__dfir_metrics.subgraphs[
-                            #root::slotmap::KeyData::from_ffi(#sg_metrics_ffi).into()
-                        ];
-                        #root::scheduled::metrics::InstrumentSubgraph::new(
-                            #sg_fut_ident, sg_metrics
-                        ).await;
-                        sg_metrics.total_run_count.update(|x| x + 1);
-
-                        // Update send (output) handoff metrics.
-                        #( #send_metrics_code )*
+                        #run_sg
 
                         // Drop the handoffs we just drained (recv).
                         #( #recv_hoff_drop_code )*
@@ -2081,7 +2106,7 @@ impl DfirGraph {
         }
         let _ = diagnostics; // Ensure no more diagnostics may be added after checking for errors.
 
-        let (meta_graph_arg, diagnostics_arg) = if include_meta {
+        let (meta_graph_arg, diagnostics_arg) = if !options.exclude_meta {
             let meta_graph_json = serde_json::to_string(&self).unwrap();
             let meta_graph_json = Literal::string(&meta_graph_json);
 
@@ -2098,7 +2123,7 @@ impl DfirGraph {
         };
 
         // Generate metrics initialization: one entry per handoff and per subgraph.
-        let metrics_init_code = {
+        let metrics_init_code = if !options.exclude_metrics_tracking {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _, _)| {
                 let ffi = node_id.data().as_ffi();
                 quote! {
@@ -2118,6 +2143,8 @@ impl DfirGraph {
                 }
             });
             handoff_inits.chain(subgraph_inits).collect::<Vec<_>>()
+        } else {
+            Vec::new()
         };
 
         // For creating back-buffer handoff vecs.
@@ -2689,6 +2716,21 @@ impl DfirGraph {
     pub fn root_loops(&self) -> &[GraphLoopId] {
         &self.root_loops
     }
+}
+
+/// Options for [`DfirGraph::as_code_with_options`].
+#[derive(Default)]
+#[non_exhaustive]
+pub struct AsCodeOptions {
+    /// Controls whether type guards are emitted in codegen. Excluding type guards may result in worse
+    /// error messages, and may have little benefit on `--release` builds.
+    pub exclude_type_guards: bool,
+    /// Controls whether the runtime meta graph + diagnostics JSON blobs are baked into the generated
+    /// `Dfir::new(...)` call.
+    pub exclude_meta: bool,
+    /// Controls whether metrics are tracked. Even if metrics are tracked, they still need to be reported
+    /// via the `Context::metrics` field.
+    pub exclude_metrics_tracking: bool,
 }
 
 /// Configuration for writing graphs.
