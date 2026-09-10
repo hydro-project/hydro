@@ -29,7 +29,7 @@ pub use di_mul_graph::DiMulGraph;
 pub use eliminate_extra_unions_tees::eliminate_extra_unions_tees;
 pub use flat_graph_builder::{FlatGraphBuilder, FlatGraphBuilderOutput};
 pub use flat_to_partitioned::{PartitionError, partition_graph};
-pub use meta_graph::{DfirGraph, WriteConfig, WriteGraphType};
+pub use meta_graph::{AsCodeOptions, DfirGraph, WriteConfig, WriteGraphType};
 
 pub use crate::graph_ids::{GraphEdgeId, GraphLoopId, GraphNodeId, GraphSubgraphId};
 

@@ -4,7 +4,7 @@ use std::fs;
 use std::rc::Rc;
 
 use dfir_lang::diagnostic::Diagnostics;
-use dfir_lang::graph::DfirGraph;
+use dfir_lang::graph::{DfirGraph, AsCodeOptions};
 use proc_macro2::Span;
 use quote::quote;
 use sha2::{Digest, Sha256};
@@ -555,11 +555,15 @@ fn compile_sim_graph_trybuild(
     let mut diagnostics = Diagnostics::new();
 
     let mut dfir_into_code = |g: &DfirGraph| {
+        let mut options = AsCodeOptions::default();
+        options.exclude_type_guards = false;
+        options.exclude_meta = true;
+        options.exclude_metrics_tracking = true;
+
         let dfir_expr: syn::Expr = syn::parse2(
             g.as_code_with_options(
                 &quote! { __root_dfir_rs },
-                true,
-                false,
+                &options,
                 quote!(),
                 &mut diagnostics,
             )
