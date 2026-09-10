@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use dfir_lang::diagnostic::Diagnostics;
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
-use dfir_lang::graph::DfirGraph;
+use dfir_lang::graph::{AsCodeOptions, DfirGraph};
 use sha2::{Digest, Sha256};
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use stageleft::internal::quote;
@@ -117,6 +117,7 @@ pub fn create_graph_trybuild(
     graph: DfirGraph,
     extra_stmts: &[syn::Stmt],
     sidecars: &[syn::Expr],
+    as_code_options: &AsCodeOptions,
     bin_name_prefix: Option<&str>,
     deploy_mode: DeployMode,
     linking_mode: LinkingMode,
@@ -129,7 +130,14 @@ pub fn create_graph_trybuild(
 
     let generated_code = {
         let _span = tracing::debug_span!(target: "hydro_build", "graph_codegen").entered();
-        compile_graph_trybuild(graph, extra_stmts, sidecars, &crate_name, deploy_mode)
+        compile_graph_trybuild(
+            graph,
+            extra_stmts,
+            sidecars,
+            as_code_options,
+            &crate_name,
+            deploy_mode,
+        )
     };
 
     let source = {
@@ -200,6 +208,7 @@ pub fn compile_graph_trybuild(
     partitioned_graph: DfirGraph,
     extra_stmts: &[syn::Stmt],
     sidecars: &[syn::Expr],
+    as_code_options: &AsCodeOptions,
     crate_name: &str,
     deploy_mode: DeployMode,
 ) -> syn::File {
@@ -208,7 +217,12 @@ pub fn compile_graph_trybuild(
     let mut diagnostics = Diagnostics::new();
     let dfir_expr: syn::Expr = syn::parse2(
         partitioned_graph
-            .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
+            .as_code_with_options(
+                &quote! { __root_dfir_rs },
+                as_code_options,
+                quote!(),
+                &mut diagnostics,
+            )
             .expect("DFIR code generation failed with diagnostics."),
     )
     .unwrap();

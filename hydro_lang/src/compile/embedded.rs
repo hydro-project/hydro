@@ -37,7 +37,7 @@ use std::pin::Pin;
 
 use bytes::{Bytes, BytesMut};
 use dfir_lang::diagnostic::Diagnostics;
-use dfir_lang::graph::DfirGraph;
+use dfir_lang::graph::{AsCodeOptions, DfirGraph};
 use futures::{Sink, Stream};
 use proc_macro2::Span;
 use quote::quote;
@@ -82,6 +82,7 @@ impl Node for EmbeddedNode {
         _graph: DfirGraph,
         _extra_stmts: &[syn::Stmt],
         _sidecars: &[syn::Expr],
+        _as_code_options: &AsCodeOptions,
     ) {
         // No-op: embedded mode doesn't instantiate nodes at deploy time.
     }
@@ -610,8 +611,18 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             loc_outputs.sort_by(|a, b| a.0.cmp(&b.0));
 
             let mut diagnostics = Diagnostics::new();
+            let default_as_code_options = AsCodeOptions::default();
+            let as_code_options = compiled
+                .as_code_options
+                .get(location_key)
+                .unwrap_or(&default_as_code_options);
             let dfir_tokens = graph
-                .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
+                .as_code_with_options(
+                    &quote! { __root_dfir_rs },
+                    as_code_options,
+                    quote!(),
+                    &mut diagnostics,
+                )
                 .expect("DFIR inline code generation failed with diagnostics.");
 
             // --- Build module items (cluster info, output struct, network structs) ---
