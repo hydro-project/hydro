@@ -1188,6 +1188,10 @@ impl DfirGraph {
     /// before it is moved into `Dfir::new`. `Dfir` provides the `Context`
     /// to the closure on each tick run.
     ///
+    /// Uses the default [`AsCodeOptions`] (aside from `include_type_guards`), so runtime metrics
+    /// tracking is *not* included; use [`Self::as_code_with_options`] to opt in via
+    /// [`AsCodeOptions::include_metrics_tracking`].
+    ///
     /// # Errors
     ///
     /// Returns all diagnostics as `Err(diagnostics)` if any are errors
@@ -1526,7 +1530,7 @@ impl DfirGraph {
                             }
                         };
 
-                        let track_hoff_metrics = (!options.exclude_metrics_tracking).then(|| {
+                        let track_hoff_metrics = options.include_metrics_tracking.then(|| {
                             quote_spanned! {port_ident.span()=>
                                 let hoff_metrics = &#metrics.handoffs[
                                     #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
@@ -1952,7 +1956,7 @@ impl DfirGraph {
                 let sg_fut_ident = subgraph_id.as_ident(Span::call_site());
 
                 // Generate send-side curr_items_count updates (after subgraph runs).
-                let send_metrics_code = if !options.exclude_metrics_tracking {
+                let send_metrics_code = if options.include_metrics_tracking {
                     send_hoffs
                         .iter()
                         .zip(send_buf_idents.iter())
@@ -2034,7 +2038,7 @@ impl DfirGraph {
                         }
                     });
 
-                let run_sg = if !options.exclude_metrics_tracking {
+                let run_sg = if options.include_metrics_tracking {
                     quote! {
                         // Instrument w/ the subgraph metrics.
                         let sg_metrics = &__dfir_metrics.subgraphs[
@@ -2123,7 +2127,7 @@ impl DfirGraph {
         };
 
         // Generate metrics initialization: one entry per handoff and per subgraph.
-        let metrics_init_code = if !options.exclude_metrics_tracking {
+        let metrics_init_code = if options.include_metrics_tracking {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _, _)| {
                 let ffi = node_id.data().as_ffi();
                 quote! {
@@ -2728,9 +2732,10 @@ pub struct AsCodeOptions {
     /// Controls whether the runtime meta graph + diagnostics JSON blobs are baked into the generated
     /// `Dfir::new(...)` call.
     pub exclude_meta: bool,
-    /// Controls whether metrics are tracked. Even if metrics are tracked, they still need to be reported
+    /// Controls whether metrics are tracked. Metrics tracking is opt-in: no tracking code is
+    /// generated unless this is set. Even if metrics are tracked, they still need to be reported
     /// via the `Context::metrics` field.
-    pub exclude_metrics_tracking: bool,
+    pub include_metrics_tracking: bool,
 }
 
 /// Configuration for writing graphs.

@@ -508,8 +508,17 @@ pub fn build_dfir_code(
         }
     };
 
-    let code =
-        partitioned_graph.as_code(root, true, quote::quote! { #( #uses )* }, &mut diagnostics)?;
+    let code = partitioned_graph.as_code_with_options(
+        root,
+        &AsCodeOptions {
+            // Macro users (`dfir_syntax!`) have no way to configure codegen options, so keep
+            // runtime metrics tracking enabled for them (`Dfir::metrics()` should always work).
+            include_metrics_tracking: true,
+            ..Default::default()
+        },
+        quote::quote! { #( #uses )* },
+        &mut diagnostics,
+    )?;
 
     Ok(BuildDfirCodeOutput {
         partitioned_graph,
