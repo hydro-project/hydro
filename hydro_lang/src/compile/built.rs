@@ -200,6 +200,7 @@ impl<'a> BuiltFlow<'a> {
             clusters,
             externals,
             sidecars: self.sidecars,
+            as_code_options: Default::default(),
             flow_name: self.flow_name,
             _phantom: PhantomData,
         }

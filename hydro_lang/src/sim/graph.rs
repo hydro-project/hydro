@@ -4,7 +4,7 @@ use std::fs;
 use std::rc::Rc;
 
 use dfir_lang::diagnostic::Diagnostics;
-use dfir_lang::graph::DfirGraph;
+use dfir_lang::graph::{AsCodeOptions, DfirGraph};
 use proc_macro2::Span;
 use quote::quote;
 use sha2::{Digest, Sha256};
@@ -58,6 +58,7 @@ impl Node for SimNode {
         _graph: DfirGraph,
         _extra_stmts: &[syn::Stmt],
         _sidecars: &[syn::Expr],
+        _as_code_options: &AsCodeOptions,
     ) {
     }
 }
@@ -99,6 +100,7 @@ impl Node for SimExternal {
         _graph: DfirGraph,
         _extra_stmts: &[syn::Stmt],
         _sidecars: &[syn::Expr],
+        _as_code_options: &AsCodeOptions,
     ) {
     }
 }
@@ -555,11 +557,15 @@ fn compile_sim_graph_trybuild(
     let mut diagnostics = Diagnostics::new();
 
     let mut dfir_into_code = |g: &DfirGraph| {
+        let mut options = AsCodeOptions::default();
+        options.exclude_type_guards = false;
+        options.exclude_meta = true;
+        options.include_metrics_tracking = false;
+
         let dfir_expr: syn::Expr = syn::parse2(
             g.as_code_with_options(
                 &quote! { __root_dfir_rs },
-                true,
-                false,
+                &options,
                 quote!(),
                 &mut diagnostics,
             )

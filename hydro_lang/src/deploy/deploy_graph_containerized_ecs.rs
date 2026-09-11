@@ -7,7 +7,7 @@ use std::pin::Pin;
 use std::rc::Rc;
 
 use bytes::Bytes;
-use dfir_lang::graph::DfirGraph;
+use dfir_lang::graph::{AsCodeOptions, DfirGraph};
 use futures::{Sink, Stream};
 use proc_macro2::Span;
 use serde::{Deserialize, Serialize};
@@ -126,11 +126,13 @@ impl Node for EcsDeployProcess {
         graph: DfirGraph,
         extra_stmts: &[syn::Stmt],
         sidecars: &[syn::Expr],
+        as_code_options: &AsCodeOptions,
     ) {
         let (bin_name, config) = create_graph_trybuild(
             graph,
             extra_stmts,
             sidecars,
+            as_code_options,
             Some(&self.name),
             crate::compile::trybuild::generate::DeployMode::Containerized,
             crate::compile::trybuild::generate::LinkingMode::Static,
@@ -199,11 +201,13 @@ impl Node for EcsDeployCluster {
         graph: DfirGraph,
         extra_stmts: &[syn::Stmt],
         sidecars: &[syn::Expr],
+        as_code_options: &AsCodeOptions,
     ) {
         let (bin_name, config) = create_graph_trybuild(
             graph,
             extra_stmts,
             sidecars,
+            as_code_options,
             Some(&self.name),
             crate::compile::trybuild::generate::DeployMode::Containerized,
             crate::compile::trybuild::generate::LinkingMode::Static,
@@ -249,6 +253,7 @@ impl Node for EcsDeployExternal {
         graph: DfirGraph,
         extra_stmts: &[syn::Stmt],
         sidecars: &[syn::Expr],
+        _as_code_options: &AsCodeOptions,
     ) {
         trace!(name: "surface", surface = graph.surface_syntax_string());
     }

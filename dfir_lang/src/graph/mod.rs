@@ -29,7 +29,7 @@ pub use di_mul_graph::DiMulGraph;
 pub use eliminate_extra_unions_tees::eliminate_extra_unions_tees;
 pub use flat_graph_builder::{FlatGraphBuilder, FlatGraphBuilderOutput};
 pub use flat_to_partitioned::{PartitionError, partition_graph};
-pub use meta_graph::{DfirGraph, WriteConfig, WriteGraphType};
+pub use meta_graph::{AsCodeOptions, DfirGraph, WriteConfig, WriteGraphType};
 
 pub use crate::graph_ids::{GraphEdgeId, GraphLoopId, GraphNodeId, GraphSubgraphId};
 
@@ -508,8 +508,17 @@ pub fn build_dfir_code(
         }
     };
 
-    let code =
-        partitioned_graph.as_code(root, true, quote::quote! { #( #uses )* }, &mut diagnostics)?;
+    let code = partitioned_graph.as_code_with_options(
+        root,
+        &AsCodeOptions {
+            // Macro users (`dfir_syntax!`) have no way to configure codegen options, so keep
+            // runtime metrics tracking enabled for them (`Dfir::metrics()` should always work).
+            include_metrics_tracking: true,
+            ..Default::default()
+        },
+        quote::quote! { #( #uses )* },
+        &mut diagnostics,
+    )?;
 
     Ok(BuildDfirCodeOutput {
         partitioned_graph,

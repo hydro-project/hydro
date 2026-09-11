@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 
 use bytes::{Bytes, BytesMut};
+use dfir_lang::graph::AsCodeOptions;
 use futures::{Sink, Stream};
 use proc_macro2::Span;
 use serde::Serialize;
@@ -42,6 +43,10 @@ where
 
     /// Compile-time sidecar directives (both simple futures and external TCP sidecars).
     pub(super) sidecars: Vec<super::builder::Sidecar>,
+
+    /// Per-location codegen options, edited by sidecars via [`Sidecar::edit_as_code_options`].
+    /// Locations without an entry use [`AsCodeOptions::default`].
+    pub(super) as_code_options: SparseSecondaryMap<LocationKey, AsCodeOptions>,
 
     /// Application name used in telemetry.
     pub(super) flow_name: String,
@@ -197,6 +202,13 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
             let location_name = &self.location_names[location_key];
 
+            sidecar.edit_as_code_options(
+                self.as_code_options
+                    .entry(location_key)
+                    .expect("location was removed")
+                    .or_default(),
+            );
+
             let future_expr = sidecar.to_expr(
                 self.flow_name(),
                 location_key,
@@ -221,6 +233,12 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     ) -> Self {
         let location_type = self.locations[location_key];
         let location_name = &self.location_names[location_key];
+        sidecar.edit_as_code_options(
+            self.as_code_options
+                .entry(location_key)
+                .expect("location was removed")
+                .or_default(),
+        );
         let future_expr = sidecar.to_expr(
             self.flow_name(),
             location_key,
@@ -256,6 +274,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             dfir: build_inner(&mut self.ir),
             extra_stmts: SparseSecondaryMap::new(),
             sidecars: SparseSecondaryMap::new(),
+            as_code_options: SparseSecondaryMap::new(),
             _phantom: PhantomData,
         }
     }
@@ -272,7 +291,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
     /// Same as [`Self::compile`] but does not invalidate `self`, for internal use.
     ///
-    /// Empties `self.sidecars` and modifies `self.ir`, leaving `self` in a partial state.
+    /// Empties `self.sidecars` and `self.as_code_options` and modifies `self.ir`, leaving `self` in a partial state.
     pub(super) fn compile_internal(&mut self, env: &mut D::InstantiateEnv) -> CompiledFlow<'a> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
         let mut seen_cluster_members = HashSet::new();
@@ -331,6 +350,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             dfir: build_inner(&mut self.ir),
             extra_stmts,
             sidecars,
+            as_code_options: std::mem::take(&mut self.as_code_options),
             _phantom: PhantomData,
         }
     }
@@ -392,6 +412,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             dfir,
             mut extra_stmts,
             mut sidecars,
+            mut as_code_options,
             _phantom,
         } = self.compile_internal(env);
 
@@ -416,6 +437,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                             ir,
                             extra_stmts.remove(node_key).as_deref().unwrap_or_default(),
                             sidecars.remove(node_key).as_deref().unwrap_or_default(),
+                            &as_code_options.remove(node_key).unwrap_or_default(),
                         );
                         true
                     } else {
@@ -442,6 +464,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                                 .as_deref()
                                 .unwrap_or_default(),
                             sidecars.remove(cluster_key).as_deref().unwrap_or_default(),
+                            &as_code_options.remove(cluster_key).unwrap_or_default(),
                         );
                         true
                     } else {
@@ -454,7 +477,15 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                 .inspect(|&(external_key, ref external)| {
                     assert!(!extra_stmts.contains_key(external_key));
                     assert!(!sidecars.contains_key(external_key));
-                    external.instantiate(env, &mut meta, Default::default(), &[], &[]);
+                    assert!(!as_code_options.contains_key(external_key));
+                    external.instantiate(
+                        env,
+                        &mut meta,
+                        Default::default(),
+                        &[],
+                        &[],
+                        &Default::default(),
+                    );
                 })
                 .collect::<SparseSecondaryMap<_, _>>(),
         );

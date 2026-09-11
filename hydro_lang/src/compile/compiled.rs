@@ -1,4 +1,4 @@
-use dfir_lang::graph::{DfirGraph, PartitionError};
+use dfir_lang::graph::{AsCodeOptions, DfirGraph, PartitionError};
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::Stmt;
 
@@ -19,6 +19,11 @@ pub struct CompiledFlow<'a> {
 
     /// `Future` expressions to be run alongside the DFIR graph execution, per-location. See [`crate::telemetry::Sidecar`].
     pub(super) sidecars: SparseSecondaryMap<LocationKey, Vec<syn::Expr>>,
+
+    /// Per-location codegen options, edited by sidecars via
+    /// [`crate::telemetry::Sidecar::edit_as_code_options`]. Locations without an entry use
+    /// [`AsCodeOptions::default`].
+    pub(super) as_code_options: SparseSecondaryMap<LocationKey, AsCodeOptions>,
 
     pub(super) _phantom: Invariant<'a>,
 }

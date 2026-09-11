@@ -2,7 +2,7 @@ use std::io::Error;
 use std::pin::Pin;
 
 use bytes::{Bytes, BytesMut};
-use dfir_lang::graph::DfirGraph;
+use dfir_lang::graph::{AsCodeOptions, DfirGraph};
 use futures::{Sink, Stream};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -354,6 +354,7 @@ pub trait Node {
         graph: DfirGraph,
         extra_stmts: &[syn::Stmt],
         sidecars: &[syn::Expr],
+        as_code_options: &AsCodeOptions,
     );
 }
 
