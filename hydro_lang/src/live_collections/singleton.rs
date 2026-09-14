@@ -1694,7 +1694,17 @@ where
     }
 
     fn make(location: L, ir_node: HydroNode) -> Self::Out {
-        Optional::new(location, ir_node)
+        // The zip lowering may hand us an `Unbounded` optional node (from `latest()`); cast
+        // to this impl's output kind. At the root the representations differ (tombstoned
+        // update feed vs. plain values), so the cast must be present for codegen to insert
+        // the conversion.
+        Optional::new(
+            location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(ir_node),
+                metadata: location.new_node_metadata(Self::Out::collection_kind()),
+            },
+        )
     }
 }
 
