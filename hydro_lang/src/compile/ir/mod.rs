@@ -844,17 +844,30 @@ impl DfirBuilder for ProdDfirBuilder {
             }
             (None, Some(_)) => {
                 // Entering the tick's loop from the top level: emit a windowing operator.
-                // `batch_eager()` preserves the pre-loop tick semantics: the loop fires on every
-                // tick even when the windowed input is empty.
-                //
                 // NOTE: this is the single point deciding how singleton-like values are windowed
-                // into a tick; when ticks become lazy (#2902 phase 2), the windowing operator
-                // for the held-state paths below should become `batch_lazy()` (snapshots must
-                // not cause the tick to fire on their own).
+                // into a tick. Snapshot ingress never causes the tick to fire on its own — the
+                // tick runs only when gated by a stream batch, a `defer_tick` back-edge, or a
+                // source. The *held-state* arms below window in with `snapshot()`, which retains
+                // pending updates across ticks where the loop does not fire (unlike
+                // `batch_lazy()`, which drops them): their cross-firing folds then collapse the
+                // retained backlog to the current value, so no update is ever missed even for
+                // emit-on-change producers (e.g. `Optional::latest()` yields, watermark deltas).
+                // The *replay-based* arms (bounded `persist` and plain monotonic keyed feeds)
+                // instead window in with `batch_lazy()`: their producers re-emit the full
+                // current value/entries every tick, so dropping a non-firing tick's data is
+                // harmless — and retention would wrongly accumulate duplicate re-emissions.
+                //
+                // Memory note: retained `snapshot()` buffers grow while a loop does not fire if
+                // the producer re-emits each tick (root `'static` aggregations do); bounded in
+                // practice because stream ingress remains `batch_eager()` (stream-fed loops fire
+                // every tick), and properly fixed by update dedup
+                // (https://github.com/hydro-project/hydro/issues/3188).
                 match in_kind {
                     // A *bounded* singleton-like value is produced exactly once. Persist it at
                     // the root (a `loop { ... }` context cannot contain `persist`) so it remains
-                    // available, then window it into the loop on each firing.
+                    // available, then window it into the loop on each firing. `batch_lazy()`
+                    // (not `snapshot()`): `persist` replays the full value every tick, so
+                    // retention is unnecessary and would accumulate duplicate replays.
                     CollectionKind::Singleton { .. }
                     | CollectionKind::Optional { .. }
                     | CollectionKind::KeyedSingleton { .. }
@@ -871,7 +884,7 @@ impl DfirBuilder for ProdDfirBuilder {
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
-                                #out_ident = #persisted_ident -> batch_eager();
+                                #out_ident = #persisted_ident -> batch_lazy();
                             },
                             None,
                         );
@@ -894,7 +907,7 @@ impl DfirBuilder for ProdDfirBuilder {
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
-                                #batched_ident = #in_ident -> batch_eager();
+                                #batched_ident = #in_ident -> snapshot();
                             },
                             None,
                         );
@@ -924,7 +937,7 @@ impl DfirBuilder for ProdDfirBuilder {
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
-                                #batched_ident = #in_ident -> batch_eager();
+                                #batched_ident = #in_ident -> snapshot();
                             },
                             None,
                         );
@@ -954,7 +967,7 @@ impl DfirBuilder for ProdDfirBuilder {
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
-                                #batched_ident = #in_ident -> batch_eager();
+                                #batched_ident = #in_ident -> snapshot();
                             },
                             None,
                         );
@@ -981,8 +994,24 @@ impl DfirBuilder for ProdDfirBuilder {
                     }
 
                     // Monotonic keyed singletons (keys never removed) keep the plain update
-                    // feed; upstream keyed aggregations re-emit current entries eagerly.
-                    // Streams and keyed streams are plain event feeds.
+                    // feed: upstream keyed aggregations re-emit ALL current entries each tick,
+                    // and there is no held-map fold inside the loop. `batch_lazy()` (not
+                    // `snapshot()`): each firing must observe exactly one tick's re-emission —
+                    // retaining multiple ticks' worth would deliver duplicate keys in a single
+                    // batch. Like all snapshot ingress, it must not cause the tick to fire.
+                    CollectionKind::KeyedSingleton { .. } => {
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #in_ident -> batch_lazy();
+                            },
+                            None,
+                        );
+                    }
+
+                    // Streams and keyed streams are plain event feeds; their ingress stays
+                    // eager for now (see the NOTE above: lazy snapshot ingress relies on
+                    // stream-fed loops firing every tick).
                     _ => {
                         self.add_dfir_in(
                             out_location,
