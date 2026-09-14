@@ -1217,7 +1217,7 @@ impl DfirGraph {
     /// Like [`Self::as_code`] but with the full set of [`AsCodeOptions`].
     ///
     /// The simulator calls Dfir::new() on each iteration, and as a part of that
-    /// it does parsing of the metagraph and diganostics blob. One of them causes spans to get allocated,
+    /// it does parsing of the metagraph and diagnostics blob. One of them causes spans to get allocated,
     /// each time a span is allocated, some threadlocal u32 is being incremented, and, on a long simulator run,
     /// the u32 overflows and panics.
     pub fn as_code_with_options(
