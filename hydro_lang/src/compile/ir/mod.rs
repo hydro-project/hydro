@@ -490,6 +490,11 @@ pub trait DfirBuilder {
     /// * `replay_each_tick` selects whether the value is re-emitted on every tick/firing
     ///   (persisted) or delivered only on the first tick/firing.
     ///
+    /// TODO(#2902): eventually this should not be an option here; instead the IR should model
+    /// the source as living outside the tick, windowed in through a `batch_persist()` loop
+    /// ingress operator when it should replay on every firing (the production impl already
+    /// lowers to exactly that shape: a root-level source + `persist()` + windowing).
+    ///
     /// The default (simulation) emission places the source directly in the tick's own graph.
     /// Production overrides this since DFIR sources must be at the root level, outside of the
     /// tick's `loop { ... }` context: it emits the source at the root and windows it into the
@@ -547,9 +552,14 @@ pub trait DfirBuilder {
     /// (`in_location`) but is about to be consumed by an operator emitted at a location
     /// (`out_location`) outside that loop. Returns the ident to use downstream.
     ///
-    /// This is needed for operators (e.g. [`HydroNode::ReduceKeyedWatermark`])
-    /// where the generated code must sit inside a logical tick, while the output is not in a
-    /// tick, and so we need this method.
+    /// This differs from [`DfirBuilder::yield_from_tick`], which lowers an explicit IR-level
+    /// tick exit ([`HydroNode::YieldConcat`], i.e. `all_ticks()`/`latest()`) and therefore
+    /// always emits a boundary crossing. This method is internal codegen plumbing with no
+    /// corresponding IR node: it is used for operators (e.g.
+    /// [`HydroNode::ReduceKeyedWatermark`]) whose generated code must sit inside a logical tick
+    /// while the output is not in a tick, and it only inserts an un-windowing operator when the
+    /// producer's and consumer's loop contexts actually differ (so it is the identity in
+    /// simulation, which emits no loops).
     fn unwindow_for_consume(
         &mut self,
         in_ident: syn::Ident,
@@ -716,32 +726,10 @@ impl ProdDfirBuilder {
             .or_default()
     }
 
-    /// Returns the (unified) tick location that `location` belongs to: the location itself for
-    /// tick locations, the wrapped tick for atomic locations, and `None` for root (top-level)
-    /// locations.
-    ///
-    /// Note this is distinct from the module-level `tick_of` (which extracts a raw [`ClockId`]);
-    /// here we need the full [`LocationId`] so it can be used as the loop-map key.
-    fn tick_of(location: &LocationId) -> Option<&LocationId> {
-        match location {
-            LocationId::Tick {
-                tick: Some(_),
-                parent_location: _,
-            } => Some(location),
-            // Tick around atomic: the clock lives in the parent location.
-            LocationId::Tick {
-                tick: None,
-                parent_location,
-            } => Self::tick_of(parent_location),
-            LocationId::Atomic(tick) => Self::tick_of(tick),
-            LocationId::Process(_) | LocationId::Cluster(_) => None,
-        }
-    }
-
     /// Returns the `loop { ... }` context for the given location, creating it (as a root-level
     /// loop in the location's root graph) if necessary. Returns `None` for top-level locations.
     fn loop_context(&mut self, location: &LocationId) -> Option<dfir_lang::graph::GraphLoopId> {
-        let tick_location = Self::tick_of(location)?.clone();
+        let tick_location = tick_location_of(location)?.clone();
         if let Some(&loop_id) = self.tick_loops.get(&tick_location) {
             return Some(loop_id);
         }
@@ -839,7 +827,7 @@ impl DfirBuilder for ProdDfirBuilder {
                 | CollectionKind::KeyedSingleton { .. }
         );
 
-        match (Self::tick_of(in_location), Self::tick_of(out_location)) {
+        match (tick_location_of(in_location), tick_location_of(out_location)) {
             (Some(in_tick), Some(out_tick)) => {
                 // Within the same (unified) tick, e.g. entering the tick from its associated
                 // atomic region: both sides live in the same loop.
@@ -863,6 +851,17 @@ impl DfirBuilder for ProdDfirBuilder {
                 // Entering the tick's loop from the top level: emit a windowing operator.
                 // `batch_eager()` preserves the pre-loop tick semantics: the loop fires on every
                 // tick even when the windowed input is empty.
+                //
+                // TODO(#2902 phase 2): a singleton-like *unbounded* input must be windowed with
+                // "snapshot" semantics: buffer the most recent value seen and (re-)emit it on
+                // every firing. Plain `batch_eager()` is correct for now only because ticks are
+                // not yet lazy — every loop fires on every global tick, so an upstream tick
+                // re-emits its latest value in time for this window. Once ticks are lazy, an
+                // upstream tick may not fire in the same global tick, and an empty batch here
+                // would surface as a spuriously-null singleton/optional. Relatedly, converting
+                // `Optional<InitNone>` to `Optional<Unbounded>` loses the value-replayed-every-
+                // tick invariant that lets an empty batch mean "truly null", so the snapshot
+                // buffer is needed to distinguish "null" from "not updated this tick".
                 let in_ident = if is_singleton_like && in_kind.is_bounded() {
                     // The bounded value is produced exactly once. Persist it at the root (a
                     // `loop { ... }` context cannot contain `persist`) so it remains available,
@@ -908,9 +907,13 @@ impl DfirBuilder for ProdDfirBuilder {
         // exit the loop even though the consumer lives inside it. This mirrors the simulation
         // builder, which also emits identity for a same-tick atomic yield.
         //
-        // TODO(#2902 phase 2): singleton/optional yields to the top level need held-state
-        // semantics (observe the latest value *between* firings), not plain event semantics.
-        match (Self::tick_of(in_location), Self::tick_of(out_location)) {
+        // Singleton/optional yields are no different from streams here: the tick re-emits its
+        // latest value on every firing (even if unchanged), and `all_iterations()` passes those
+        // values through. Holding the most recent value between firings is *not* the yield's
+        // responsibility — a downstream tick that snapshots this value must buffer the most
+        // recent one itself, so it can observe it even when this tick did not fire in the same
+        // global tick (see the snapshot note in `batch`).
+        match (tick_location_of(in_location), tick_location_of(out_location)) {
             (Some(in_tick), Some(out_tick)) => {
                 assert_eq!(
                     in_tick, out_tick,
@@ -976,7 +979,7 @@ impl DfirBuilder for ProdDfirBuilder {
     ) {
         // An atomic region is fused with (runs synchronously inside) its tick's loop. Entering it
         // from the top level windows data in; entering from within the same tick is identity.
-        match (Self::tick_of(in_location), Self::tick_of(out_location)) {
+        match (tick_location_of(in_location), tick_location_of(out_location)) {
             (None, Some(_)) => {
                 self.add_dfir_in(
                     out_location,
@@ -2152,25 +2155,42 @@ impl HydroRoot {
     }
 }
 
+/// Returns the (unified) tick location that `loc` belongs to: the location itself for tick
+/// locations, the wrapped tick for atomic locations, and `None` for root (top-level) locations.
+///
+/// The returned [`LocationId`] carries the tick's [`ClockId`] (use [`tick_of`] to extract just
+/// the clock).
 #[cfg(feature = "build")]
-fn tick_of(loc: &LocationId) -> Option<ClockId> {
+fn tick_location_of(loc: &LocationId) -> Option<&LocationId> {
     match loc {
         // Regular tick.
-        &LocationId::Tick {
-            tick: Some(tick),
+        LocationId::Tick {
+            tick: Some(_),
             parent_location: _,
-        } => Some(tick),
-        // Tick around atomic.
+        } => Some(loc),
+        // Tick around atomic: the clock lives in the parent location.
         LocationId::Tick {
             tick: None,
             parent_location,
         } => Some(
-            tick_of(parent_location)
+            tick_location_of(parent_location)
                 .expect("Tick should have either own clock ID or clock ID within parent_location."),
         ),
-        LocationId::Atomic(inner) => tick_of(inner),
-        _ => None,
+        LocationId::Atomic(inner) => tick_location_of(inner),
+        LocationId::Process(_) | LocationId::Cluster(_) => None,
     }
+}
+
+/// Returns the [`ClockId`] of the (unified) tick that `loc` belongs to (via
+/// [`tick_location_of`]), or `None` for root (top-level) locations.
+#[cfg(feature = "build")]
+fn tick_of(loc: &LocationId) -> Option<ClockId> {
+    tick_location_of(loc).map(|tick_location| match tick_location {
+        LocationId::Tick {
+            tick: Some(tick), ..
+        } => *tick,
+        _ => unreachable!("`tick_location_of` only returns ticks with a clock ID"),
+    })
 }
 
 #[cfg(feature = "build")]
