@@ -611,6 +611,8 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             loc_outputs.sort_by(|a, b| a.0.cmp(&b.0));
 
             let mut diagnostics = Diagnostics::new();
+            // `as_code_options` is sparse: it only has entries for locations where a sidecar
+            // edited the options. Locations without sidecars fall back to the defaults.
             let default_as_code_options = AsCodeOptions::default();
             let as_code_options = compiled
                 .as_code_options
