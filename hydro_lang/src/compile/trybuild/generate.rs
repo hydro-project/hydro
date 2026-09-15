@@ -423,6 +423,10 @@ impl std::ops::Deref for BuiltArtifact {
 impl BuiltArtifact {
     /// Persist the artifact at its current path, returning that path (the
     /// temporary copy is kept rather than deleted on drop).
+    ///
+    /// Only the Maelstrom deploy path consumes this; gate it accordingly so
+    /// sim-only builds don't carry (and warn about) dead code.
+    #[cfg(feature = "maelstrom")]
     pub fn keep(self) -> Result<PathBuf, std::io::Error> {
         match self {
             BuiltArtifact::Temp(path) => path.keep().map_err(|e| e.error),
