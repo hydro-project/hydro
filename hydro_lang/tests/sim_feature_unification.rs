@@ -7,8 +7,9 @@
 //! The simulator compiles staged dataflow into a `cdylib` via a synthetic
 //! cargo workspace under `target/hydro_trybuild/<crate>/`, `dlopen`s it, and
 //! shares Rust data structures across the boundary: the generated dylib code
-//! creates the `tokio::sync::mpsc` unbounded channels backing every
-//! `sim_input`/`sim_output` port and hands the `UnboundedReceiver<Bytes>`
+//! creates the channels backing every `sim_input`/`sim_output` port
+//! (`dfir_rs::util::unsync::mpsc<Bytes>` since #3113; `tokio::sync::mpsc` in
+//! 0.17.0-alpha.4, where this bug was first hit) and hands the receiver
 //! across the `dlopen` boundary for the host's `SimReceiver` to poll. Rust
 //! has no stable ABI, so this is only sound if the host test binary and the
 //! dylib are compiled with *identical* dependency configurations.
@@ -77,8 +78,17 @@
 //!   resolved feature set (e.g. via `cargo metadata`/unit-graph of the
 //!   running build) rather than from the staged crate's manifest alone.
 //! - Or detect the divergence at sim-compile time (compare resolved features
-//!   of shared boundary crates — tokio, bytes, dfir_rs — between host and
-//!   trybuild) and fail with an actionable error instead of UB.
+//!   of shared boundary crates — tokio, bytes, smallvec, dfir_rs — between
+//!   host and trybuild) and fail with an actionable error instead of UB.
+//!
+//! Note that moving the boundary ports off tokio (#3113 replaced them with
+//! `dfir_rs::util::unsync::mpsc`) narrows but does not close the hazard: the
+//! unsync channel's `Shared<T>` holds `send_wakers: SmallVec<[Waker; 1]>`,
+//! and smallvec's `union` feature changes `SmallVec`'s layout (32 → 24 bytes
+//! for `SmallVec<[Waker; 1]>`, measured with smallvec 1.15.1) — so a sibling
+//! crate enabling `smallvec/union` recreates the same class of mismatch. The
+//! general fix must make the *feature sets* agree (or the boundary
+//! feature-insensitive), not just swap which crate provides the channel.
 
 #![cfg(feature = "sim")]
 
