@@ -272,7 +272,11 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         self.collection.location().drop_consistency()
     }
     fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
-        let out = self.collection.batch(tick, self.nondet);
+        let _ = self.nondet;
+        let out = self.collection.batch(
+            tick,
+            nondet!(/** justified by the guard stored in this style wrapper */),
+        );
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
@@ -289,7 +293,11 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>>
         self.collection.location().drop_consistency()
     }
     fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
-        let out = self.collection.snapshot(tick, self.nondet);
+        let _ = self.nondet;
+        let out = self.collection.snapshot(
+            tick,
+            nondet!(/** justified by the guard stored in this style wrapper */),
+        );
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
@@ -305,7 +313,11 @@ impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
         self.collection.location().drop_consistency()
     }
     fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
-        let out = self.collection.batch(tick, self.nondet);
+        let _ = self.nondet;
+        let out = self.collection.batch(
+            tick,
+            nondet!(/** justified by the guard stored in this style wrapper */),
+        );
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
@@ -340,7 +352,10 @@ impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
 
 impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     Slicable<'a, L::DropConsistency>
-    for Batch<crate::live_collections::KeyedStream<K, V, L, B, O, R>>
+    for Batch<
+        crate::live_collections::KeyedStream<K, V, L, B, O, R>,
+        Option<crate::sim_hooks::KeyedBatchHook<K, V, O, R>>,
+    >
 {
     type Slice =
         crate::live_collections::KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R>;
@@ -357,7 +372,10 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
 }
 
 impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
-    for Batch<crate::live_collections::KeyedSingleton<K, V, L, BoundedValue>>
+    for Batch<
+        crate::live_collections::KeyedSingleton<K, V, L, BoundedValue>,
+        Option<crate::sim_hooks::KeyedSnapshotHook<K, V>>,
+    >
 {
     type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
@@ -416,7 +434,10 @@ impl<'a, T, L: Location<'a>, B: OptionalBound> Slicable<'a, L::DropConsistency>
 
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>>
     Slicable<'a, L::DropConsistency>
-    for Snapshot<crate::live_collections::KeyedSingleton<K, V, L, B>>
+    for Snapshot<
+        crate::live_collections::KeyedSingleton<K, V, L, B>,
+        Option<crate::sim_hooks::KeyedSnapshotHook<K, V>>,
+    >
 {
     type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;

@@ -1,0 +1,26 @@
+error[E0277]: the trait bound `NotHashable: Hash` is not satisfied
+  --> tests/compile-fail/nightly/sim_hook_requires_key_hash.rs:14:63
+   |
+14 |     let _hook: KeyedMergeOrderedHook<NotHashable, u32> = flow.sim_hook();
+   |                                                               ^^^^^^^^ the trait `Hash` is not implemented for `NotHashable`
+   |
+help: the trait `SimHook` is conditionally implemented for `KeyedMergeOrderedHook<K, V, B>`
+  --> src/sim_hooks.rs
+   |
+   | / impl<K, V, B: Boundedness> SimHook for KeyedMergeOrderedHook<K, V, B>
+   | | where
+   | |     K: Hash + Eq + Clone + Serialize + DeserializeOwned,
+   | |        ---- unsatisfied requirement introduced here: `_: Hash`
+   | |     V: Serialize + DeserializeOwned + PartialEq,
+   | |________________________________________________^
+   = note: required for `KeyedMergeOrderedHook<NotHashable, u32>` to implement `SimHook`
+note: required by a bound in `FlowBuilder::<'a>::sim_hook`
+  --> src/compile/builder.rs
+   |
+   |     pub fn sim_hook<B: crate::sim_hooks::SimHook>(&mut self) -> B {
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `FlowBuilder::<'a>::sim_hook`
+help: consider annotating `NotHashable` with `#[derive(Hash)]`
+   |
+ 6 + #[derive(Hash)]
+ 7 | struct NotHashable(u32);
+   |
