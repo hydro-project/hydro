@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BatchStatus","DecisionFuture","OrderingStatus","PauseUntilFuture","SnapshotStatus"]};
+window.SIDEBAR_ITEMS = {"struct":["BatchStatus","DecisionFuture","KeyedSnapshotStatus","MergeStatus","OrderingStatus","PauseUntilFuture","SnapshotStatus"]};
