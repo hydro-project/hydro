@@ -9,7 +9,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use bytes::{Bytes, BytesMut};
-use dfir_lang::graph::DfirGraph;
+use dfir_lang::graph::{AsCodeOptions, DfirGraph};
 use futures::{Sink, SinkExt, Stream, StreamExt};
 use hydro_deploy::custom_service::CustomClientPort;
 use hydro_deploy::rust_crate::RustCrateService;
@@ -807,6 +807,7 @@ impl Node for DeployExternal {
         _graph: DfirGraph,
         extra_stmts: &[syn::Stmt],
         sidecars: &[syn::Expr],
+        _as_code_options: &AsCodeOptions,
     ) {
         assert!(extra_stmts.is_empty());
         assert!(sidecars.is_empty());
@@ -888,6 +889,7 @@ impl Node for DeployNode {
         graph: DfirGraph,
         extra_stmts: &[syn::Stmt],
         sidecars: &[syn::Expr],
+        as_code_options: &AsCodeOptions,
     ) {
         let (service, host) = match self.service_spec.borrow_mut().take().unwrap() {
             CrateOrTrybuild::Crate(c, host) => (c, host),
@@ -907,6 +909,7 @@ impl Node for DeployNode {
                     graph,
                     extra_stmts,
                     sidecars,
+                    as_code_options,
                     trybuild.name_hint.as_deref(),
                     crate::compile::trybuild::generate::DeployMode::HydroDeploy,
                     linking_mode,
@@ -978,6 +981,7 @@ impl Node for DeployCluster {
         graph: DfirGraph,
         extra_stmts: &[syn::Stmt],
         sidecars: &[syn::Expr],
+        as_code_options: &AsCodeOptions,
     ) {
         let has_trybuild = self
             .cluster_spec
@@ -1013,6 +1017,7 @@ impl Node for DeployCluster {
                 graph,
                 extra_stmts,
                 sidecars,
+                as_code_options,
                 self.name_hint.as_deref(),
                 crate::compile::trybuild::generate::DeployMode::HydroDeploy,
                 linking_mode,

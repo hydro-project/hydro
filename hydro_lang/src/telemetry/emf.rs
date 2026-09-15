@@ -77,6 +77,12 @@ impl Sidecar for RecordMetricsSidecar {
             #root::telemetry::emf::record_metrics_sidecar(#dfir_ident.metrics_intervals(), #namespace, #location_name, #file_path, #interval)
         }
     }
+
+    /// Opts in to DFIR runtime metrics tracking, so that there are metrics to record.
+    #[cfg(feature = "build")]
+    fn edit_as_code_options(&self, options: &mut dfir_lang::graph::AsCodeOptions) {
+        options.include_metrics_tracking = true;
+    }
 }
 
 /// Record both Dfir and Tokio metrics, at the given interval, forever.
