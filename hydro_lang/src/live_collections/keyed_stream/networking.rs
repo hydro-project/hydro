@@ -12,7 +12,8 @@ use crate::location::cluster::{Consistency, NoConsistency};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::{Cluster, MemberId, Process};
-use crate::networking::{NetworkFor, TCP};
+use crate::networking::{NetworkForLink, TCP};
+use crate::sim_hooks::{OnCluster, OnProcess};
 
 impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R>
@@ -103,7 +104,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn demux<N: NetworkFor<T>>(
+    pub fn demux<N: NetworkForLink<T, OnProcess<L>, OnCluster<L2>>>(
         self,
         to: &Cluster<'a, L2>,
         via: N,
@@ -155,13 +156,18 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                 deserialize,
                 instantiate_fn: DebugInstantiate::Building,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: to.new_node_metadata(Stream::<
-                    T,
-                    Cluster<'a, L2>,
-                    Unbounded,
-                    <O as MinOrder<N::OrderingGuarantee>>::Min,
-                    R,
-                >::collection_kind()),
+                metadata: {
+                    let mut metadata = to.new_node_metadata(Stream::<
+                        T,
+                        Cluster<'a, L2>,
+                        Unbounded,
+                        <O as MinOrder<N::OrderingGuarantee>>::Min,
+                        R,
+                    >::collection_kind(
+                    ));
+                    metadata.op.sim_hook_id = via.sim_hook_id();
+                    metadata
+                },
             },
         )
     }
@@ -248,7 +254,7 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn demux<N: NetworkFor<(K, T)>>(
+    pub fn demux<N: NetworkForLink<(K, T), OnProcess<L>, OnCluster<L2>>>(
         self,
         to: &Cluster<'a, L2>,
         via: N,
@@ -305,14 +311,19 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                         .ir_node
                         .replace(HydroNode::Placeholder),
                 ),
-                metadata: to.new_node_metadata(KeyedStream::<
-                    K,
-                    T,
-                    Cluster<'a, L2>,
-                    Unbounded,
-                    <O as MinOrder<N::OrderingGuarantee>>::Min,
-                    R,
-                >::collection_kind()),
+                metadata: {
+                    let mut metadata = to.new_node_metadata(KeyedStream::<
+                        K,
+                        T,
+                        Cluster<'a, L2>,
+                        Unbounded,
+                        <O as MinOrder<N::OrderingGuarantee>>::Min,
+                        R,
+                    >::collection_kind(
+                    ));
+                    metadata.op.sim_hook_id = via.sim_hook_id();
+                    metadata
+                },
             },
         )
     }
@@ -426,7 +437,7 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn demux<N: NetworkFor<T>>(
+    pub fn demux<N: NetworkForLink<T, OnCluster<L>, OnCluster<L2>>>(
         self,
         to: &Cluster<'a, L2>,
         via: N,
@@ -478,14 +489,19 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
                 deserialize,
                 instantiate_fn: DebugInstantiate::Building,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: to.new_node_metadata(KeyedStream::<
-                    MemberId<L>,
-                    T,
-                    Cluster<'a, L2>,
-                    Unbounded,
-                    <O as MinOrder<N::OrderingGuarantee>>::Min,
-                    R,
-                >::collection_kind()),
+                metadata: {
+                    let mut metadata = to.new_node_metadata(KeyedStream::<
+                        MemberId<L>,
+                        T,
+                        Cluster<'a, L2>,
+                        Unbounded,
+                        <O as MinOrder<N::OrderingGuarantee>>::Min,
+                        R,
+                    >::collection_kind(
+                    ));
+                    metadata.op.sim_hook_id = via.sim_hook_id();
+                    metadata
+                },
             },
         )
     }
@@ -614,7 +630,7 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn send<L2, N: NetworkFor<(K, V)>>(
+    pub fn send<L2, N: NetworkForLink<(K, V), OnCluster<L>, OnProcess<L2>>>(
         self,
         to: &Process<'a, L2>,
         via: N,
@@ -672,13 +688,18 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
                 deserialize,
                 instantiate_fn: DebugInstantiate::Building,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: to.new_node_metadata(Stream::<
-                    (MemberId<L>, (K, V)),
-                    Cluster<'a, L2>,
-                    Unbounded,
-                    <O as MinOrder<N::OrderingGuarantee>>::Min,
-                    R,
-                >::collection_kind()),
+                metadata: {
+                    let mut metadata = to.new_node_metadata(Stream::<
+                        (MemberId<L>, (K, V)),
+                        Cluster<'a, L2>,
+                        Unbounded,
+                        <O as MinOrder<N::OrderingGuarantee>>::Min,
+                        R,
+                    >::collection_kind(
+                    ));
+                    metadata.op.sim_hook_id = via.sim_hook_id();
+                    metadata
+                },
             },
         );
 

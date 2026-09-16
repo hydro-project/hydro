@@ -390,6 +390,71 @@ where
     }
 }
 
+/// A hook handle controlling a **lossy network channel** carrying messages of type `T`,
+/// with ordering guarantee `O` mirroring the transport (`TotalOrder` for `TCP.lossy`,
+/// `NoOrder` for `UDP.lossy`).
+///
+/// Unlike operator hooks, a loss hook is scoped by **both endpoints** of the channel it
+/// controls (pinned at the `send` / `demux` / `broadcast` call through
+/// [`NetworkForLink`](crate::networking::NetworkForLink)):
+///
+/// - `Sender` names the sending location's kind. On a channel *from a cluster*
+///   (`OnCluster<C>`), every in-flight message belongs to a sender, so decisions name
+///   `(sender_id, value)` and the positional forms take the sender whose front to
+///   resolve.
+/// - `S` (the trailing [scope](self#hook-scopes)) names the **receiving** location's
+///   kind. On a channel *to a cluster*, every member receives through its own
+///   independent channel instance, selected with [`.on(member_id)`](Self::on).
+///
+/// A decision for a loss hook says whether one in-flight message is delivered to the
+/// destination or dropped — the point where the simulator injects the losses the
+/// channel's fault model says the program must tolerate. Because dropping is a legal
+/// outcome for *every* message, autonomous exploration can never be fair to programs
+/// that need messages delivered (a schedule that drops everything is always available):
+/// a lossy channel under simulation **must** be bound to a hook. See
+/// `hydro_lang::sim::hooks` for the decisions offered.
+pub struct LossHook<T, O: Ordering = TotalOrder, Sender = OnProcess, S = OnProcess> {
+    pub(crate) id: usize,
+    /// The member selected by `.on(member_id)`; `None` for process-scoped handles.
+    #[cfg_attr(
+        not(feature = "sim"),
+        expect(dead_code, reason = "only read by the `sim`-gated scripting API")
+    )]
+    pub(crate) member: Option<u32>,
+    pub(crate) _phantom: PhantomData<fn(T, O, Sender, S)>,
+}
+
+impl<T, O: Ordering, Sender, C> LossHook<T, O, Sender, OnCluster<C>> {
+    on_member_method!(LossHook<T, O, Sender>);
+}
+
+impl<T, O: Ordering, Sender, S> Clone for LossHook<T, O, Sender, S> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<T, O: Ordering, Sender, S> Copy for LossHook<T, O, Sender, S> {}
+
+impl<T, O: Ordering, Sender, S> std::fmt::Debug for LossHook<T, O, Sender, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LossHook").field("id", &self.id).finish()
+    }
+}
+
+impl<T, O: Ordering, Sender: BindableHookScope, S: BindableHookScope> SimHook
+    for LossHook<T, O, Sender, S>
+where
+    T: Serialize + DeserializeOwned + PartialEq,
+{
+    fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
+        LossHook {
+            id: next_id(),
+            member: None,
+            _phantom: PhantomData,
+        }
+    }
+}
+
 /// A hook handle controlling a `batch` operator over a keyed stream with keys `K`, values
 /// `V`, per-key value ordering `O`, and retry guarantee `R` (mirroring the type of the
 /// keyed stream being batched). `S` is the handle's [scope](self#hook-scopes).

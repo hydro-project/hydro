@@ -124,10 +124,15 @@ This is appropriate for gossip protocols, retransmission-based protocols, or any
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
-let config = TCP.lossy(nondet!(/** messages may be dropped, explanation... */)).bincode();
+# use hydro_lang::sim_hooks::LossHook;
+let nondet_loss: NonDet<Option<LossHook<u64>>> =
+    nondet!(/** messages may be dropped, explanation... */);
+let config = TCP.lossy(nondet_loss).bincode();
 ```
 
 With `lossy`, messages may be **arbitrarily dropped**. Unlike `fail_stop`, there is no guarantee that a prefix of messages is delivered—any individual message may be lost. But the network connection can still be used to send future messages, even after a message loss.
+
+The `lossy` configuration is generic over the element type sent across the channel and the channel's endpoints (usually inferred from the `send` call), because its non-determinism guard can carry a [`LossHook`](rust:hydro_lang::sim_hooks::LossHook) handle for scripting message drops in the simulator.
 
 :::tip
 
@@ -137,7 +142,7 @@ In most cases, prefer [`lossy_delayed_forever`](#lossy-delayed-forever) over `lo
 
 :::caution
 
-The `lossy` fault model is currently available for [embedded deployments](../deploy/embedded.mdx) (the only production deployment option) and Maelstrom testing. It is **not supported in the Hydro simulator**—use `lossy_delayed_forever` if you want to simulate message loss. Support in Hydro Deploy will be available in the near future.
+The `lossy` fault model is currently available for [embedded deployments](../deploy/embedded.mdx) (the only production deployment option) and Maelstrom testing. In the Hydro simulator, a `lossy` channel must be bound to a [`LossHook`](rust:hydro_lang::sim_hooks::LossHook) that [scripts each message's fate](../simulation/scripting.mdx#loss-hooks); to explore drops autonomously instead, use `lossy_delayed_forever`. Support in Hydro Deploy will be available in the near future.
 
 :::
 
@@ -166,10 +171,14 @@ This is the **preferred** UDP mode, for the same reasons as [TCP's `lossy_delaye
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
-let config = UDP.lossy(nondet!(/** messages may be dropped, explanation... */)).bincode();
+# use hydro_lang::live_collections::stream::NoOrder;
+# use hydro_lang::sim_hooks::LossHook;
+let nondet_loss: NonDet<Option<LossHook<u64, NoOrder>>> =
+    nondet!(/** messages may be dropped, explanation... */);
+let config = UDP.lossy(nondet_loss).bincode();
 ```
 
-With `lossy`, messages may be **arbitrarily dropped and reordered**. Because message loss is non-deterministic, this requires a `nondet!` marker to make it explicit in your code.
+With `lossy`, messages may be **arbitrarily dropped and reordered**. Because message loss is non-deterministic, this requires a `nondet!` marker to make it explicit in your code. Like TCP's `lossy` mode, the configuration is generic over the element type sent across the channel and the channel's endpoints (usually inferred from the `send` call), and the guard can carry a [`LossHook`](rust:hydro_lang::sim_hooks::LossHook) handle for scripting message drops in the simulator.
 
 Unlike TCP's `lossy` mode, UDP's `lossy` mode does **not** preserve the ordering of the input stream—the output is always `NoOrder`.
 
@@ -177,6 +186,6 @@ Unlike TCP's `lossy` mode, UDP's `lossy` mode does **not** preserve the ordering
 
 UDP is **not yet available** in "deploy" deployment mode (via Hydro Deploy, including Docker and ECS deployments)—attempting to deploy a UDP channel there will panic at compile time.
 
-Both UDP modes are available for [embedded deployments](../deploy/embedded.mdx) (the only production deployment option) and Maelstrom testing. In the Hydro simulator, only `lossy_delayed_forever` is supported, and it requires `.test_safety_only()`: the simulator will not actually drop packets—it delays "dropped" messages until the end of the execution, which catches safety bugs but cannot test liveness.
+Both UDP modes are available for [embedded deployments](../deploy/embedded.mdx) (the only production deployment option) and Maelstrom testing. In the Hydro simulator, `lossy` requires binding a [`LossHook`](rust:hydro_lang::sim_hooks::LossHook) that [scripts each message's fate](../simulation/scripting.mdx#loss-hooks), and `lossy_delayed_forever` requires `.test_safety_only()`: the simulator will not actually drop packets—it delays "dropped" messages until the end of the execution, which catches safety bugs but cannot test liveness.
 
 :::

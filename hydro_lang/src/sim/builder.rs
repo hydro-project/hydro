@@ -462,6 +462,251 @@ impl SimBuilder {
             );
         }
     }
+
+    /// The bound `LossHook` handle ID for a lossy channel, or a build-time error: a
+    /// lossy channel may legally drop *every* message, so the simulator cannot explore
+    /// its non-determinism autonomously (no exploration strategy is fair to programs
+    /// that need messages delivered) and requires the drops to be scripted.
+    fn require_loss_hook(op_meta: &HydroIrOpMetadata, hook_syntax: &str) -> usize {
+        op_meta.sim_hook_id.unwrap_or_else(|| {
+            let (channel_location, _, _) = location_for_op(op_meta);
+            panic!(
+                "a lossy network channel may drop any of its messages, a non-determinism \
+                 the simulator cannot explore autonomously (dropping everything is always \
+                 a legal schedule, so no exploration is fair to programs that need \
+                 messages delivered)\n--> {channel_location}\nhelp: bind a sim hook to \
+                 the channel (`{hook_syntax}`) and script each message's fate with \
+                 `deliver` / `lose` decisions, or model drops as indefinite delays with \
+                 `lossy_delayed_forever`"
+            );
+        })
+    }
+
+    /// The type of the deserialized elements a hooked lossy channel buffers at its loss
+    /// observation point, from the network's output collection kind: a stream's element
+    /// type, or a keyed stream's `(key, value)` entry type.
+    fn loss_hook_element_type(out_kind: &CollectionKind, channel_location: &str) -> syn::Type {
+        match out_kind {
+            CollectionKind::Stream { element_type, .. } => (**element_type).clone(),
+            CollectionKind::KeyedStream {
+                key_type,
+                value_type,
+                ..
+            } => {
+                let key_type = &**key_type;
+                let value_type = &**value_type;
+                syn::parse_quote!((#key_type, #value_type))
+            }
+            _ => panic!(
+                "a hooked lossy network channel must output a stream (at {})",
+                channel_location
+            ),
+        }
+    }
+
+    /// Emits the receiver half of a hooked lossy channel **from a process**: received
+    /// messages buffer (post-deserialization, so decisions name typed values) at a
+    /// scripted loss observation point, and the bound `LossHook` decides which are
+    /// delivered downstream and which are dropped. When the receiver is a cluster, this
+    /// is emitted inside the per-member instantiation loop, so every member's channel
+    /// instance gets its own hook (scripted via `.on(member_id)`).
+    #[expect(clippy::too_many_arguments, reason = "code generation")]
+    fn emit_loss_hook(
+        &mut self,
+        to: &LocationId,
+        out_ident: &syn::Ident,
+        source: &syn::Expr,
+        deserialize: Option<&DebugExpr>,
+        ok_wrap: &proc_macro2::TokenStream,
+        out_kind: &CollectionKind,
+        op_meta: &HydroIrOpMetadata,
+        hook_id: usize,
+        ordered: bool,
+        tag_id: StmtId,
+    ) {
+        let root = get_this_crate();
+        let (channel_location, line, caret) = location_for_op(op_meta);
+
+        let element_type = Self::loss_hook_element_type(out_kind, &channel_location);
+
+        let hoff_id = self.next_hoff_id.get_and_increment();
+        let buffered_ident = syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+        let hoff_send_ident = syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+        let hoff_recv_ident = syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+        self.add_extra_stmt_internal(to, syn::parse_quote! {
+            let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+        });
+        self.add_extra_stmt_internal(to, syn::parse_quote! {
+            let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+        });
+
+        let hook_ty: syn::Path = if ordered {
+            syn::parse_quote!(#root::sim::runtime::TopLevelOrderedStreamLossHook)
+        } else {
+            syn::parse_quote!(#root::sim::runtime::TopLevelStreamLossHook)
+        };
+        let inner_hook: syn::Expr = syn::parse_quote!(
+            #hook_ty::<_> {
+                input: #buffered_ident.clone(),
+                staged: None,
+                output: #hoff_send_ident,
+                location: #root::sim::runtime::HookLocationMeta { location: #channel_location, line: #line, caret_indent: #caret },
+                format_item_debug: #root::__maybe_debug__!(#element_type),
+            }
+        );
+        let hook_rc_ident = syn::Ident::new(
+            &format!("__scripted_observation_hook_{hoff_id}"),
+            Span::call_site(),
+        );
+        self.add_scripted_hook(
+            hook_id,
+            to,
+            to,
+            &hook_rc_ident,
+            &channel_location,
+            inner_hook,
+        );
+
+        if let Some(deserialize_pipeline) = deserialize {
+            self.get_dfir_mut(to).add_dfir(
+                parse_quote! {
+                    source_stream(#source) #ok_wrap -> map(#deserialize_pipeline) -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                },
+                None,
+                Some(&format!("recv{}", tag_id)),
+            );
+        } else {
+            self.get_dfir_mut(to).add_dfir(
+                parse_quote! {
+                    source_stream(#source) -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                },
+                None,
+                Some(&format!("recv{}", tag_id)),
+            );
+        }
+
+        self.get_dfir_mut(to).add_dfir(
+            parse_quote! {
+                #out_ident = source_stream(#hoff_recv_ident);
+            },
+            None,
+            None,
+        );
+    }
+
+    /// Emits the receiver half of a hooked lossy channel **from a cluster**: the
+    /// deserialized `(sender_member_id, payload)` messages buffer per sender (keyed by
+    /// the sender's raw ID, which is how decisions name senders), and the bound
+    /// `LossHook` resolves each in-flight message with `(sender, value)` decisions.
+    /// When the receiver is also a cluster, this is emitted inside the per-member
+    /// instantiation loop, so every recipient member's channel instance gets its own
+    /// hook (scripted via `.on(member_id)`).
+    #[expect(clippy::too_many_arguments, reason = "code generation")]
+    fn emit_sender_loss_hook(
+        &mut self,
+        to: &LocationId,
+        out_ident: &syn::Ident,
+        source: &syn::Expr,
+        deserialize: Option<&DebugExpr>,
+        ok_wrap: &proc_macro2::TokenStream,
+        out_kind: &CollectionKind,
+        op_meta: &HydroIrOpMetadata,
+        hook_id: usize,
+        ordered: bool,
+        tag_id: StmtId,
+    ) {
+        let root = get_this_crate();
+        let (channel_location, line, caret) = location_for_op(op_meta);
+
+        // The deserialized elements are `(sender_member_id, payload)` pairs; decisions
+        // name the payload, so the debug formatter is derived from the payload half.
+        let pair_type = Self::loss_hook_element_type(out_kind, &channel_location);
+        let payload_type: syn::Type = match &pair_type {
+            syn::Type::Tuple(tuple) if tuple.elems.len() == 2 => tuple.elems[1].clone(),
+            _ => panic!(
+                "a hooked lossy channel from a cluster must carry (sender, payload) pairs (at {})",
+                channel_location
+            ),
+        };
+
+        let hoff_id = self.next_hoff_id.get_and_increment();
+        let buffered_ident = syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+        let hoff_send_ident = syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+        let hoff_recv_ident = syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+        self.add_extra_stmt_internal(to, syn::parse_quote! {
+            let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+        });
+        self.add_extra_stmt_internal(to, syn::parse_quote! {
+            let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(__root_dfir_rs::rustc_hash::FxHashMap::default()));
+        });
+
+        let hook_ty: syn::Path = if ordered {
+            syn::parse_quote!(#root::sim::runtime::TopLevelSenderOrderedStreamLossHook)
+        } else {
+            syn::parse_quote!(#root::sim::runtime::TopLevelSenderStreamLossHook)
+        };
+        let inner_hook: syn::Expr = syn::parse_quote!(
+            #hook_ty::<_, _> {
+                input: #buffered_ident.clone(),
+                staged: None,
+                output: #hoff_send_ident,
+                location: #root::sim::runtime::HookLocationMeta { location: #channel_location, line: #line, caret_indent: #caret },
+                format_item_debug: #root::__maybe_debug__!(#payload_type),
+            }
+        );
+        let hook_rc_ident = syn::Ident::new(
+            &format!("__scripted_observation_hook_{hoff_id}"),
+            Span::call_site(),
+        );
+        self.add_scripted_hook(
+            hook_id,
+            to,
+            to,
+            &hook_rc_ident,
+            &channel_location,
+            inner_hook,
+        );
+
+        if let Some(deserialize_pipeline) = deserialize {
+            self.get_dfir_mut(to).add_dfir(
+                parse_quote! {
+                    source_stream(#source) #ok_wrap -> map(#deserialize_pipeline) -> for_each(|(__sender, __payload)| {
+                        #buffered_ident
+                            .borrow_mut()
+                            .entry(#root::location::MemberId::get_raw_id(&__sender))
+                            .or_insert_with(::std::collections::VecDeque::new)
+                            .push_back((__sender, __payload));
+                    });
+                },
+                None,
+                Some(&format!("recv{}", tag_id)),
+            );
+        } else {
+            self.get_dfir_mut(to).add_dfir(
+                parse_quote! {
+                    source_stream(#source) -> for_each(|(__sender, __payload)| {
+                        #buffered_ident
+                            .borrow_mut()
+                            .entry(#root::location::MemberId::get_raw_id(&__sender))
+                            .or_insert_with(::std::collections::VecDeque::new)
+                            .push_back((__sender, __payload));
+                    });
+                },
+                None,
+                Some(&format!("recv{}", tag_id)),
+            );
+        }
+
+        self.get_dfir_mut(to).add_dfir(
+            parse_quote! {
+                #out_ident = source_stream(#hoff_recv_ident);
+            },
+            None,
+            None,
+        );
+    }
 }
 
 impl DfirBuilder for SimBuilder {
@@ -2286,11 +2531,20 @@ impl DfirBuilder for SimBuilder {
         external_element_type: Option<&syn::Type>,
         tag_id: StmtId,
         networking_info: &crate::networking::NetworkingInfo,
+        out_kind: &CollectionKind,
+        op_meta: &HydroIrOpMetadata,
     ) {
         use crate::networking::{NetworkingInfo, TcpFault, UdpFault};
-        match networking_info {
+
+        // A lossy channel drops messages, and dropping is a legal outcome for *every*
+        // message, so no autonomous exploration can be fair to programs that need
+        // messages delivered: the channel must be bound to a `LossHook` whose script
+        // decides each in-flight message's fate. `loss_hook` carries the bound handle's
+        // ID plus whether the transport preserves the order of delivered messages
+        // (TCP, front-only decisions) or not (UDP, any in-flight message may be named).
+        let loss_hook: Option<(usize, bool)> = match networking_info {
             NetworkingInfo::Tcp { fault } => match fault {
-                TcpFault::FailStop => {}
+                TcpFault::FailStop => None,
                 TcpFault::LossyDelayedForever => {
                     assert!(
                         self.test_safety_only,
@@ -2299,10 +2553,12 @@ impl DfirBuilder for SimBuilder {
                          delayed, which only tests safety (not liveness). Call \
                          `.sim().test_safety_only()` to opt in."
                     );
+                    None
                 }
-                _ => todo!(
-                    "SimBuilder only supports fail-stop and lossy-delayed-forever TCP networking"
-                ),
+                TcpFault::Lossy => Some((
+                    Self::require_loss_hook(op_meta, "TCP.lossy(nondet!(... hook = handle))"),
+                    true,
+                )),
             },
             NetworkingInfo::Udp { fault } => match fault {
                 UdpFault::LossyDelayedForever => {
@@ -2313,10 +2569,14 @@ impl DfirBuilder for SimBuilder {
                          delayed, which only tests safety (not liveness). Call \
                          `.sim().test_safety_only()` to opt in."
                     );
+                    None
                 }
-                _ => todo!("SimBuilder only supports lossy-delayed-forever UDP networking"),
+                UdpFault::Lossy => Some((
+                    Self::require_loss_hook(op_meta, "UDP.lossy(nondet!(... hook = handle))"),
+                    false,
+                )),
             },
-        }
+        };
 
         let root = get_this_crate();
 
@@ -2360,7 +2620,23 @@ impl DfirBuilder for SimBuilder {
                     );
                 }
 
-                if let Some(deserialize_pipeline) = deserialize {
+                if let Some((hook_id, ordered)) = loss_hook {
+                    // A hooked lossy channel: messages buffer at the receiver's loss
+                    // observation point (post-deserialization, so decisions name typed
+                    // values), and the bound `LossHook` scripts each one's fate.
+                    self.emit_loss_hook(
+                        to,
+                        out_ident,
+                        &source,
+                        deserialize,
+                        &ok_wrap,
+                        out_kind,
+                        op_meta,
+                        hook_id,
+                        ordered,
+                        tag_id,
+                    );
+                } else if let Some(deserialize_pipeline) = deserialize {
                     self.get_dfir_mut(to).add_dfir(
                         parse_quote! {
                             #out_ident = source_stream(#source) #ok_wrap -> map(#deserialize_pipeline);
@@ -2408,7 +2684,24 @@ impl DfirBuilder for SimBuilder {
                     );
                 }
 
-                if let Some(deserialize_pipeline) = deserialize {
+                if let Some((hook_id, ordered)) = loss_hook {
+                    // A hooked lossy channel from a cluster: the deserialized
+                    // `(sender, payload)` messages buffer per sender at the receiver's
+                    // loss observation point, and the bound `LossHook` resolves each one
+                    // with `(sender, value)` decisions.
+                    self.emit_sender_loss_hook(
+                        to,
+                        out_ident,
+                        &source,
+                        deserialize,
+                        &ok_wrap,
+                        out_kind,
+                        op_meta,
+                        hook_id,
+                        ordered,
+                        tag_id,
+                    );
+                } else if let Some(deserialize_pipeline) = deserialize {
                     self.get_dfir_mut(to).add_dfir(
                         parse_quote! {
                             #out_ident = source_stream(#source) #ok_wrap -> map(#deserialize_pipeline);
@@ -2468,7 +2761,23 @@ impl DfirBuilder for SimBuilder {
                     );
                 }
 
-                if let Some(deserialize_pipeline) = deserialize {
+                if let Some((hook_id, ordered)) = loss_hook {
+                    // A hooked lossy channel to a cluster: every member receives through
+                    // its own channel instance, so each member gets its own loss
+                    // observation point (scripted via `.on(member_id)`).
+                    self.emit_loss_hook(
+                        to,
+                        out_ident,
+                        &source,
+                        deserialize,
+                        &ok_wrap,
+                        out_kind,
+                        op_meta,
+                        hook_id,
+                        ordered,
+                        tag_id,
+                    );
+                } else if let Some(deserialize_pipeline) = deserialize {
                     self.get_dfir_mut(to).add_dfir(
                         parse_quote! {
                             #out_ident = source_stream(#source) #ok_wrap -> map(#deserialize_pipeline);
@@ -2535,7 +2844,24 @@ impl DfirBuilder for SimBuilder {
                     );
                 }
 
-                if let Some(deserialize_pipeline) = deserialize {
+                if let Some((hook_id, ordered)) = loss_hook {
+                    // A hooked lossy cluster-to-cluster channel: every recipient member
+                    // gets its own per-sender loss observation point, selected with
+                    // `.on(recipient_member)` and resolved with `(sender, value)`
+                    // decisions.
+                    self.emit_sender_loss_hook(
+                        to,
+                        out_ident,
+                        &source,
+                        deserialize,
+                        &ok_wrap,
+                        out_kind,
+                        op_meta,
+                        hook_id,
+                        ordered,
+                        tag_id,
+                    );
+                } else if let Some(deserialize_pipeline) = deserialize {
                     self.get_dfir_mut(to).add_dfir(
                         parse_quote! {
                             #out_ident = source_stream(#source) #ok_wrap -> map(#deserialize_pipeline);
