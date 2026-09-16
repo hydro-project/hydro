@@ -2632,6 +2632,7 @@ name = "hydro_concurrent_cargo"
 version = "0.1.0-alpha.0"
 dependencies = [
  "parking_lot",
+ "toml_edit 0.23.9",
 ]
 
 [[package]]
@@ -2728,6 +2729,7 @@ dependencies = [
  "procfs",
  "quote",
  "regex",
+ "rustflags",
  "sealed",
  "serde",
  "serde_json",
@@ -4913,6 +4915,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustflags"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a39e0e9135d7a7208ee80aa4e3e4b88f0f5ad7be92153ed70686c38a03db2e63"
+
+[[package]]
 name = "rustix"
 version = "0.38.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6037,6 +6045,7 @@ dependencies = [
  "indexmap 2.12.1",
  "toml_datetime 0.7.3",
  "toml_parser",
+ "toml_writer",
  "winnow 0.7.14",
 ]
 

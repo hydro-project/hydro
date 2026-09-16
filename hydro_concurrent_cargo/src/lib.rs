@@ -6,6 +6,7 @@
 
 use std::collections::HashMap;
 use std::fs;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
@@ -38,21 +39,14 @@ pub fn log_build_event(project_dir: &Path, msg: &str) {
 /// Global prebuild serialization lock (in-process).
 static GLOBAL_PREBUILD_LOCK: parking_lot::RwLock<()> = parking_lot::RwLock::new(());
 
-/// Per-feature-hash locks for when `__CARGO_DEFAULT_LIB_METADATA` is set.
-static DEP_BUILD_LOCK: parking_lot::RwLock<()> = parking_lot::RwLock::new(());
-static DEP_BUILD_LOCKS_PER_HASH: LazyLock<
-    Mutex<HashMap<String, &'static parking_lot::RwLock<()>>>,
-> = LazyLock::new(|| Mutex::new(HashMap::new()));
+/// Per-key in-process prebuild locks, mirroring the per-key lock files (see [`run_prebuild`]).
+static DEP_BUILD_LOCKS_PER_KEY: LazyLock<Mutex<HashMap<String, &'static parking_lot::RwLock<()>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
-fn get_dep_lock(features_hash: Option<&str>) -> &'static parking_lot::RwLock<()> {
-    match features_hash {
-        None => &DEP_BUILD_LOCK,
-        Some(hash) => {
-            let mut map = DEP_BUILD_LOCKS_PER_HASH.lock().unwrap();
-            map.entry(hash.to_owned())
-                .or_insert_with(|| Box::leak(Box::new(parking_lot::RwLock::new(()))))
-        }
-    }
+fn get_dep_lock(key: &str) -> &'static parking_lot::RwLock<()> {
+    let mut map = DEP_BUILD_LOCKS_PER_KEY.lock().unwrap();
+    map.entry(key.to_owned())
+        .or_insert_with(|| Box::leak(Box::new(parking_lot::RwLock::new(()))))
 }
 
 /// Per-job-dir mutexes for serializing job dir setup/population within a process.
@@ -112,10 +106,10 @@ enum RwGuard {
 }
 
 impl PrebuildGuard {
-    /// Acquire an upgradable lock (in-process upgradable read + file shared).
-    /// When `features_hash` is Some, uses a per-hash lock (for `__CARGO_DEFAULT_LIB_METADATA` mode).
-    pub fn lock_upgradable(lock_path: &Path, features_hash: Option<&str>) -> Self {
-        let rw_guard = get_dep_lock(features_hash).upgradable_read();
+    /// Acquire an upgradable lock (in-process upgradable read + file shared). `key` selects
+    /// the in-process lock and should identify `lock_path`.
+    pub fn lock_upgradable(lock_path: &Path, key: &str) -> Self {
+        let rw_guard = get_dep_lock(key).upgradable_read();
         let lock_dir = lock_path.parent().unwrap().to_owned();
         let file = fs::OpenOptions::new()
             .read(true)
@@ -141,8 +135,8 @@ impl PrebuildGuard {
             RwGuard::Upgradable(u) => parking_lot::RwLockUpgradableReadGuard::upgrade(u),
             _ => panic!("can only upgrade from upgradable"),
         };
-        // Release per-feature shared lock before acquiring global exclusive
-        // to avoid deadlock (other processes hold per-feature shared and wait for global).
+        // Release per-key shared lock before acquiring global exclusive
+        // to avoid deadlock (other processes hold per-key shared and wait for global).
         file.unlock().unwrap();
         let global_guard = GLOBAL_PREBUILD_LOCK.write();
         let global_file = fs::OpenOptions::new()
@@ -308,20 +302,154 @@ pub fn populate_job_build_dir(job_debug: &Path, shared_debug: &Path) -> JobBuild
 // Prebuild orchestration
 // ---------------------------------------------------------------------------
 
+/// The verbose version (`rustc -vV`) of the compiler child `cargo` invocations will use,
+/// honoring the `RUSTC` override like cargo does.
+static RUSTC_VERBOSE_VERSION: LazyLock<String> = LazyLock::new(|| {
+    let rustc = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
+    let output = std::process::Command::new(rustc)
+        .arg("-vV")
+        .output()
+        .expect("failed to run `rustc -vV`");
+    assert!(output.status.success(), "`rustc -vV` failed");
+    String::from_utf8(output.stdout).unwrap()
+});
+
+fn hash_hex(hash: impl FnOnce(&mut DefaultHasher)) -> String {
+    let mut hasher = DefaultHasher::new();
+    hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
+}
+
+/// Fingerprint of the compilation *environment* a child build runs under: the rustflags (in
+/// any stable encoding) and the compiler's verbose version.
+///
+/// Cargo keys the filenames of rlibs on both of these, so different fingerprints never
+/// collide in the shared `deps/` and can be cached side by side. It strips that key from
+/// dylib filenames unless `__CARGO_DEFAULT_LIB_METADATA` is set, so without that variable the
+/// trybuild dylib bakes this fingerprint into its target name instead (see [`dylib_lib_name`]).
+pub fn toolchain_fingerprint(rustflags: &str) -> String {
+    hash_hex(|h| {
+        rustflags.hash(h);
+        RUSTC_VERBOSE_VERSION.hash(h);
+    })
+}
+
+/// Whether cargo hashes the filenames of path-package dylibs. Cargo normally keeps those
+/// stable (`libfoo.so`) so executables can embed them; the undocumented
+/// `__CARGO_DEFAULT_LIB_METADATA` variable — which rust-lang/rust's bootstrap uses to build
+/// libstd — forces the metadata hash onto them too, making every configuration's dylib a
+/// distinct file.
+fn lib_metadata_enabled() -> bool {
+    std::env::var_os("__CARGO_DEFAULT_LIB_METADATA").is_some()
+}
+
+/// The `[lib] name` of the trybuild dylib package `package_name` when built under `rustflags`.
+///
+/// With `__CARGO_DEFAULT_LIB_METADATA` set this is cargo's default (the package name with
+/// `-` replaced by `_`): cargo already hashes the filename per configuration, so the manifest
+/// never needs to change. Without it the [`toolchain_fingerprint`] is appended so that
+/// configurations get distinct `lib{name}.so` files and cache side by side instead of
+/// clobbering one another. Features are not part of the name: they vary per build against one
+/// shared manifest, and the prebuild lock already serializes feature switches.
+pub fn dylib_lib_name(package_name: &str, rustflags: &str) -> String {
+    let default = package_name.replace('-', "_");
+    if lib_metadata_enabled() {
+        default
+    } else {
+        format!("{default}_{}", toolchain_fingerprint(rustflags))
+    }
+}
+
+/// Exclusive file lock on a trybuild project's `.hydro-trybuild-lock`, serializing all writes
+/// to the project's generated files (manifests, sources) across processes. Released on drop.
+pub fn lock_project(project_dir: &Path) -> fs::File {
+    let file = fs::File::create(project_dir.join(".hydro-trybuild-lock")).unwrap();
+    file.lock().unwrap();
+    file
+}
+
+fn dylib_manifest_path(project_dir: &Path) -> PathBuf {
+    project_dir.join("dylib").join("Cargo.toml")
+}
+
+fn read_manifest(path: &Path) -> Option<toml_edit::DocumentMut> {
+    fs::read_to_string(path).ok()?.parse().ok()
+}
+
+fn manifest_lib_name(doc: &toml_edit::DocumentMut) -> Option<&str> {
+    doc.get("lib")?.get("name")?.as_str()
+}
+
+/// The `[lib] name` currently in the dylib manifest of the trybuild project at `project_dir`,
+/// if it has one. Call with [`lock_project`] held and write the manifest under the same lock.
+///
+/// Manifest generation must reuse this rather than compute a fresh name: the name only ever
+/// changes under the exclusive prebuild lock (see [`run_prebuild`]), which is what guarantees
+/// no in-flight final build links against a dylib named for another configuration.
+pub fn current_dylib_lib_name(project_dir: &Path) -> Option<String> {
+    let doc = read_manifest(&dylib_manifest_path(project_dir))?;
+    manifest_lib_name(&doc).map(str::to_owned)
+}
+
+/// Point the project's dylib manifest at the [`dylib_lib_name`] for `rustflags`.
+///
+/// Dylib builds call this first thing in their [`run_prebuild`] `build_fn`, i.e. under the
+/// exclusive prebuild lock, once no in-flight final build links the old name. It takes
+/// [`lock_project`] so a concurrent manifest regeneration cannot read the old name and write it
+/// back over the new one.
+pub fn set_dylib_lib_name(project_dir: &Path, rustflags: &str) {
+    let _project_lock = lock_project(project_dir);
+    let manifest = dylib_manifest_path(project_dir);
+    let mut doc = read_manifest(&manifest).expect("dylib manifest must exist before prebuild");
+    let package_name = doc["package"]["name"].as_str().unwrap();
+    let lib_name = dylib_lib_name(package_name, rustflags);
+    if manifest_lib_name(&doc) != Some(&lib_name) {
+        doc["lib"]["name"] = toml_edit::value(lib_name);
+        fs::write(&manifest, doc.to_string()).unwrap();
+    }
+}
+
 /// Run the prebuild phase with proper locking and freshness checking.
 ///
 /// - `target_dir`: the shared target directory (e.g. `target/`)
 /// - `crate_name`: unique identifier for the crate being built (included in hash)
 /// - `features`: list of features for hashing
+/// - `rustflags`: the rustflags the prebuild (and the final builds sharing its artifacts) are
+///   compiled with; see [`toolchain_fingerprint`]
 /// - `staged_paths`: paths to check mtime against for freshness
-/// - `build_fn`: closure called with `prebuild_target` path; should run cargo build(s)
+/// - `build_fn`: closure called with `prebuild_target` path under the exclusive lock; should
+///   run cargo build(s), and for dylib projects first call [`set_dylib_lib_name`]
 ///
 /// Returns `(PrebuildGuard, CargoBuildLock)` both held in shared mode.
 /// Caller should keep both alive during the final build.
+///
+/// # Locking and freshness
+///
+/// Cargo itself supports one build per target dir; the per-job target dirs sidestep that, so
+/// concurrent builds are safe only while everything they both write has a distinct filename.
+/// Cargo hashes rustflags, compiler version and features into every filename except a path
+/// package's dylib (unless `__CARGO_DEFAULT_LIB_METADATA` is set), so the dylib and the
+/// manifest naming it are the one shared resource:
+///
+/// - Without `__CARGO_DEFAULT_LIB_METADATA` there is a single `.prebuild.lock`. Every build
+///   holds it shared through its final build; switching configuration takes it exclusive,
+///   which waits for all in-flight builds to finish before `build_fn` renames the manifest and
+///   rebuilds the prebuild. A fresh stamp therefore implies the manifest names this
+///   configuration's dylib.
+/// - With it, cargo names every configuration's files distinctly and the manifest is constant,
+///   so builds only need to serialize with others of the same `(crate, features, fingerprint)`
+///   — one `.prebuild-<key>.lock` each — and configurations never wait on one another.
+///
+/// Running builds with and without the variable against one target dir is unsupported: they
+/// would rename the shared manifest under different locks.
+///
+/// The freshness stamp stored in the lock file covers crate, features and fingerprint, so a
+/// prebuild for a different configuration is never mistaken for fresh.
 pub fn run_prebuild(
     target_dir: &Path,
     crate_name: &str,
     features: &[String],
+    rustflags: &str,
     staged_paths: &[PathBuf],
     build_fn: impl FnOnce(&Path),
 ) -> (PrebuildGuard, CargoBuildLock) {
@@ -330,22 +458,26 @@ pub fn run_prebuild(
     fs::create_dir_all(&shared_debug).ok();
     let cargo_lock = CargoBuildLock::lock_shared(&shared_debug.join(".cargo-build-lock"));
 
-    let features_hash = {
-        use std::hash::{Hash, Hasher};
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        crate_name.hash(&mut hasher);
+    let toolchain = toolchain_fingerprint(rustflags);
+    let fingerprint = hash_hex(|h| {
+        crate_name.hash(h);
         let mut sorted = features.to_vec();
         sorted.sort();
-        sorted.hash(&mut hasher);
-        format!("{:016x}", hasher.finish())
-    };
+        sorted.hash(h);
+        toolchain.hash(h);
+    });
 
-    let has_lib_metadata = std::env::var("__CARGO_DEFAULT_LIB_METADATA").is_ok();
-    let lock_path = if has_lib_metadata {
-        target_dir.join(format!(".prebuild-{features_hash}.lock"))
+    // Without `__CARGO_DEFAULT_LIB_METADATA` every configuration shares one fixed key, so this
+    // lock doubles as the global one: a configuration switch (exclusive) drains every in-flight
+    // build, not just those of the same configuration. `.global-prebuild.lock` (taken in
+    // `upgrade`) only adds anything in the per-key case, where it keeps two configurations from
+    // running their `cargo build`s into the shared `deps/` at the same time.
+    let lock_key = if lib_metadata_enabled() {
+        format!("prebuild-{fingerprint}")
     } else {
-        target_dir.join(".prebuild.lock")
+        "prebuild".to_owned()
     };
+    let lock_path = target_dir.join(format!(".{lock_key}.lock"));
 
     let staged_mtime = staged_paths
         .iter()
@@ -367,18 +499,12 @@ pub fn run_prebuild(
             .is_some_and(|(hash, ts)| hash == expected_hash && ts >= staged_mtime)
     };
 
-    let lock_hash = if has_lib_metadata {
-        Some(features_hash.as_str())
-    } else {
-        None
-    };
-
     log_build_event(
         target_dir,
-        &format!("prebuild: lock_upgradable, hash={features_hash}"),
+        &format!("prebuild: lock_upgradable, lock_key={lock_key}, fingerprint={fingerprint}"),
     );
-    let guard = PrebuildGuard::lock_upgradable(&lock_path, lock_hash);
-    if prebuild_is_fresh(&lock_path, &features_hash) {
+    let guard = PrebuildGuard::lock_upgradable(&lock_path, &lock_key);
+    if prebuild_is_fresh(&lock_path, &fingerprint) {
         log_build_event(target_dir, "prebuild: fresh, downgrading to shared");
         return (guard.downgrade(), cargo_lock);
     }
@@ -388,7 +514,7 @@ pub fn run_prebuild(
     log_build_event(target_dir, "prebuild: exclusive acquired");
 
     // Re-check after acquiring exclusive.
-    if !prebuild_is_fresh(&lock_path, &features_hash) {
+    if !prebuild_is_fresh(&lock_path, &fingerprint) {
         let shared_debug = target_dir.join("debug");
         let jobs_dir = target_dir.join("jobs");
         let prebuild_target = setup_job_dir(&jobs_dir, "prebuild", &shared_debug);
@@ -396,7 +522,7 @@ pub fn run_prebuild(
 
         build_fn(&prebuild_target);
 
-        // Write features_hash:timestamp.
+        // Write fingerprint:timestamp.
         use std::io::Seek;
         let now_nanos = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -405,7 +531,7 @@ pub fn run_prebuild(
         let file = guard.file_mut();
         file.set_len(0).unwrap();
         file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        write!(file, "{}:{}", features_hash, now_nanos).unwrap();
+        write!(file, "{}:{}", fingerprint, now_nanos).unwrap();
     }
 
     (guard.downgrade(), cargo_lock)
