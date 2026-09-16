@@ -1,0 +1,5 @@
+---
+source: hydro_verus_tests/tests/verus_rejects.rs
+expression: verification_results(&stdout)
+---
+verification results:: 9 verified, 0 errors

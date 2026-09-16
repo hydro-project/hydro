@@ -565,6 +565,14 @@ where
     /// If you do not want to modify the stream and instead only want to view
     /// each item use [`Stream::inspect`] instead.
     ///
+    /// If the input stream is unordered **and** `f` mutably captures state (such as a
+    /// [`Singleton::by_mut`](crate::live_collections::singleton::Singleton::by_mut)
+    /// reference), `f` must be proven **commutative**: processing any two elements in
+    /// either order must leave the mutably-captured state in the same final value *and*
+    /// produce the same multiset of outputs. In particular, outputs must not expose the
+    /// processing order (e.g. emitting a running total is not commutative even though
+    /// addition is).
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -822,6 +830,13 @@ where
     /// The closure `f` receives a reference `&T` rather than an owned value `T` because filtering does
     /// not modify or take ownership of the values. If you need to modify the values while filtering
     /// use [`Stream::filter_map`] instead.
+    ///
+    /// If the input stream is unordered **and** `f` mutably captures state, `f` must be
+    /// proven **commutative**: processing any two elements in either order must leave
+    /// the mutably-captured state in the same final value *and* retain the same multiset
+    /// of elements. In particular, the decision for each element must not depend on the
+    /// processing order: a stateful predicate like a rate limiter is not commutative —
+    /// its budget converges either way, but *which* element passes depends on the order.
     ///
     /// # Example
     /// ```rust
@@ -1266,6 +1281,11 @@ where
     /// modifying it. The closure `f` is called on a reference to each item. This is
     /// mainly useful for debugging, and should not be used to generate side-effects.
     ///
+    /// If the input stream is unordered **and** `f` mutably captures state, `f` must be
+    /// proven **commutative**: executing it on any two elements in either order must
+    /// leave the mutably-captured state in the same final value. (The elements
+    /// themselves pass through unchanged.)
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -1326,6 +1346,10 @@ where
     ///     idempotent = manual_proof!(/** boolean OR is idempotent */)
     /// ));
     /// ```
+    ///
+    /// **Commutative** here means that executing the closure on any two elements in
+    /// either order must leave its side effects (e.g. mutably-captured state) in the
+    /// same final value.
     ///
     /// On a `TotalOrder + ExactlyOnce` stream, no annotations are needed.
     ///
