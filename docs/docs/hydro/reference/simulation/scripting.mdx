@@ -18,6 +18,7 @@ Handles are small `Copy` values containing no simulator machinery: the same hand
 - **`SnapshotHook<T>`** controls which version of a `Singleton` each `snapshot` reveals
 - **`OrderingHook<T>`** controls the order chosen by an `assume_ordering`
 - **`RetriesHook<T>`** controls how many times each element is observed through an `assume_retries`
+- **`LossHook<T>`** controls which messages a lossy network channel delivers or drops
 - **`KeyedBatchHook<K, V>`** controls which buffered entries a keyed `batch` releases into each tick
 - **`KeyedSnapshotHook<K, V>`** controls which version of each key's state a `KeyedSingleton` `snapshot` (or `batch`) reveals
 - **`KeyedOrderingHook<K, V>`** controls the per-key order chosen by a keyed `assume_ordering`
@@ -493,3 +494,47 @@ As with other in-tick hooks, a single decision covers everything the operator re
 
 - `RetriesHook<T, O, Bounded>::release(values)` lists every received value at least once and nothing else. On a `TotalOrder` stream, the values must stay in input order, repeating only back-to-back.
 - `OrderingHook<T, Bounded, AtLeastOnce>::order(values)` lists the output in order, and may include a value more than once.
+
+## Loss Hooks
+
+`LossHook` scripts a **lossy network channel** (`TCP.lossy` / `UDP.lossy`): the point where the simulator drops the messages that the channel's fault model says the program must tolerate. Loss cannot be explored autonomously either, but for a different reason than retries: dropping is a legal outcome for *every* message, so an autonomous exploration would include schedules that drop everything, which no test that needs messages delivered can accept. A lossy channel in a simulated flow **must** be bound to a hook, attached to the `NonDet` guard the channel already takes (`TCP.lossy(nondet!(/** ... */ hook = handle))`); leaving it unhooked is a build-time error. To explore drops autonomously instead, model them as indefinite delays with `lossy_delayed_forever`.
+
+Each decision names one in-flight message and settles its fate:
+
+- **`deliver(value)`** releases the message to the destination.
+- **`lose(value)`** consumes it without delivering anything.
+
+The handle's ordering parameter mirrors the transport. On a **TCP** channel (`LossHook<T>`, i.e. `LossHook<T, TotalOrder>`) delivered messages keep their send order — the transport only injects losses — so each decision settles the **front** of the in-flight queue, and naming any other value is an error. Positional **`deliver_next()`** / **`lose_next()`** settle the front without naming it. On a **UDP** channel (`LossHook<T, NoOrder>`) any in-flight message may be named, so delivery order is part of the decision.
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::stream::{ExactlyOnce, TotalOrder};
+# use hydro_lang::sim_hooks::LossHook;
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+# let node2 = flow.process::<()>();
+let loss: LossHook<u32> = flow.sim_hook();
+let (input_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+let output = input
+    .send(&node2, TCP.lossy(nondet!(/** scripted */ hook = loss)).bincode())
+    .sim_output();
+
+flow.sim().deterministic(async || {
+    input_send.send_many([1, 2, 3]);
+    loss.deliver(1).await;
+    loss.lose(2).await; // dropped by the network, never delivered
+    loss.deliver(3).await;
+    output.assert_yields_only([1, 3]).await;
+});
+```
+
+An in-flight message with no scripted fate is a forgotten hook, like any other undecided input. When holding messages in flight *is* the scenario (a partition that heals later), declare it with the pause family and settle the held messages when the partition ends. Because every drop is an explicit `lose`, scripted lossy channels do not need `test_safety_only()`: the test knows exactly which messages survive, so its liveness assertions still mean something.
+
+### Channels to or from a cluster
+
+A loss hook is scoped by **both endpoints** of its channel, `LossHook<T, O, SenderScope, ReceiverScope>`, pinned at the `send` / `demux` / `broadcast` call so that a mis-shaped handle is a compile error:
+
+- **To a cluster**: every member receives through its own channel instance, so the receiver scope is `OnCluster` and — as for any cluster-scoped hook — a decision first selects the recipient's instance with `.on(member_id)`. Losses are injected per recipient, which is how a broadcast under partition loses messages for *some* members.
+- **From a cluster** (sender scope `OnCluster<C>`): every in-flight message belongs to a sender, so decisions name `(sender_id, value)`, and the positional forms take the sender whose front to settle (`deliver_next(sender)` / `lose_next(sender)`). On TCP each sender's messages travel over that sender's own connection: a sender's queue is settled front-first, while the interleaving *across* senders is part of the decision. On UDP any of the named sender's messages may be settled.
+
+A cluster-to-cluster channel composes both: `loss.on(recipient).lose(sender, value)` drops one message on one specific link, for example to script an asymmetric partition between two members while the rest of the mesh stays healthy. Forgotten in-flight messages are reported naming the recipient member.
