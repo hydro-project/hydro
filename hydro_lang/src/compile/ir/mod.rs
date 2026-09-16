@@ -818,7 +818,7 @@ impl DfirBuilder for ProdDfirBuilder {
             parse_quote! {
                 #out_ident = #source_ident -> batch_eager();
             },
-            None,
+            operator_tag,
         );
     }
 
