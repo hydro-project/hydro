@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1789463205904,
+  "lastUpdate": 1789549480716,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -311027,6 +311027,208 @@
             "name": "paxos_bench",
             "value": 366160,
             "range": "± 9455.71",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Aanand Kainth",
+            "username": "akainth015",
+            "email": "aakainth@amazon.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "2f108d25bfb280cfa529b4a4c3ecc896c390b098",
+          "message": "fix(hydro_lang): gate BuiltArtifact::keep behind the maelstrom feature (#3194)\n\n## Summary\n\n- Gate `BuiltArtifact::keep` with `#[cfg(feature = \"maelstrom\")]`,\nmatching its only caller in the Maelstrom deployment path.\n- Avoid the unused-method warning in sim-only builds, including when\n`hydro_lang` is consumed as a path dependency.\n- Leave simulator artifact lifetimes and coverage persistence unchanged.\nThe method lives in a crate-private module, so this does not remove a\npublic API.\n\n## Validation\n\nRan against the PR commit in an isolated Jujutsu workspace:\n\n- `cargo check --locked -p hydro_lang --lib --features sim`\n- `cargo check --locked -p hydro_lang --lib --features maelstrom`\n- `cargo check --locked -p hydro_lang --lib --features sim,maelstrom`\n- `cargo fmt --all --check` (passed; stable rustfmt warned that the\nrepository's nightly-only formatting options were ignored)\n\nThis PR contains only the Maelstrom feature-gating change; it does not\ninclude the simulator feature-unification or Raft work.",
+          "timestamp": "2026-09-15T22:12:36Z",
+          "url": "https://github.com/hydro-project/hydro/commit/2f108d25bfb280cfa529b4a4c3ecc896c390b098"
+        },
+        "date": 1789549480655,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 248311,
+            "range": "± 14582",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 14744427,
+            "range": "± 51963",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 14036691,
+            "range": "± 44977",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 45724,
+            "range": "± 1490",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 13049639,
+            "range": "± 52163",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1417033,
+            "range": "± 10083",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1467973,
+            "range": "± 5738",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 44896591,
+            "range": "± 619023",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 3759247,
+            "range": "± 20907",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 18712533,
+            "range": "± 1675933",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 13067699,
+            "range": "± 105710",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 13613503,
+            "range": "± 33032",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 41762425,
+            "range": "± 264799",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 5897,
+            "range": "± 80",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 24328,
+            "range": "± 101",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4258,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6360,
+            "range": "± 59",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 493850,
+            "range": "± 2307",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 61576,
+            "range": "± 696",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 47494,
+            "range": "± 487",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 49159,
+            "range": "± 145",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 7363,
+            "range": "± 44",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 25167,
+            "range": "± 166",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 78024,
+            "range": "± 284",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 87442,
+            "range": "± 323",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7152,
+            "range": "± 232",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 17624,
+            "range": "± 133",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 54174,
+            "range": "± 1734",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 5481,
+            "range": "± 81",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 249360,
+            "range": "± 960.42",
             "unit": "ops/s"
           }
         ]
