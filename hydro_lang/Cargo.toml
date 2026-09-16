@@ -33,6 +33,7 @@ deploy = [
 
 sim = [
     "trybuild",
+    "dep:cargo-config2",
     "dep:hydro_concurrent_cargo",
     "dep:hydro_deploy_integration",
     "dep:bolero",
@@ -72,6 +73,7 @@ ecs_deploy = [
 
 maelstrom = [
     "trybuild",
+    "dep:cargo-config2",
     "maelstrom_runtime",
     "dep:tempfile",
     "dep:hydro_concurrent_cargo",
@@ -195,6 +197,7 @@ tempfile = { version = "3", optional = true }
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
 # https://github.com/GitoxideLabs/cargo-smart-release/issues/36
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0", optional = true }
+cargo-config2 = { version = "0.1.45", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 procfs = { version = "0.17.0", optional = true }

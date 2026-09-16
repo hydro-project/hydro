@@ -457,38 +457,16 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
     } = config;
 
     let is_fuzz = allow_fuzz && std::env::var("BOLERO_FUZZER").is_ok();
-    // When RUSTFLAGS is set, our prebuild fingerprint doesn't account for it, so skip the
-    // parallel build machinery entirely and build directly into the shared target dir.
-    //
-    // Coverage instrumentation needs the same treatment, but the host's
-    // `-C instrument-coverage` often never reaches this child build: pipelines that inject
-    // it via cargo CLI config (`--config build.rustflags=[...]`) or a
-    // `RUSTC_WORKSPACE_WRAPPER` leave the test process's environment untouched, so code
-    // exercised only through the compiled dylib would silently report zero coverage. The
-    // coverage *runtime* does leave a reliable footprint, though: `LLVM_PROFILE_FILE` is
-    // set for the test process and inherited here. When present, synthesize
-    // `-C instrument-coverage` into the child build's RUSTFLAGS (unless the inherited
-    // RUSTFLAGS already carries an instrument-coverage flag, as with `cargo llvm-cov`).
-    // Skipping the prebuild machinery keeps this simple, but coverage builds must also
-    // be isolated from the shared target dir (see below), and the covmap-bearing
-    // artifact is copied to a stable location where coverage reporters can find it.
+    // Environment rustflags aren't included in our prebuild fingerprint. Coverage
+    // builds also bypass prebuilding and use their own target directory so they
+    // cannot replace artifacts symlinked by concurrent non-coverage builds.
+    // LLVM_PROFILE_FILE propagates coverage requested by the outer Cargo invocation
+    // even when its CLI config or workspace wrapper is not inherited.
     // See https://github.com/hydro-project/hydro/issues/3160.
-    let mut custom_rustflags = std::env::var("RUSTFLAGS").ok();
-    if std::env::var_os("LLVM_PROFILE_FILE").is_some()
-        && !custom_rustflags
-            .as_deref()
-            .is_some_and(|flags| flags.contains("instrument-coverage"))
-    {
-        let flags = custom_rustflags.get_or_insert_default();
-        if !flags.is_empty() {
-            flags.push(' ');
-        }
-        flags.push_str("-Cinstrument-coverage");
-    }
-    let has_custom_rustflags = custom_rustflags.is_some();
-    let coverage_enabled = custom_rustflags
-        .as_deref()
-        .is_some_and(|flags| flags.contains("instrument-coverage"));
+    let coverage_enabled = super::coverage::requested();
+    let has_custom_rustflags = coverage_enabled
+        || std::env::var_os("RUSTFLAGS").is_some()
+        || std::env::var_os("CARGO_ENCODED_RUSTFLAGS").is_some();
 
     // Run from dylib-examples crate which has the dylib as a dev-dependency (only if not fuzzing)
     let crate_to_compile = if is_fuzz {
@@ -625,14 +603,12 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
             .join(","),
     ]);
     command.args(["--config", "build.incremental = false"]);
-    if let Some(flags) = &custom_rustflags {
-        // Covers both inherited RUSTFLAGS (a no-op re-set) and the synthesized
-        // instrument-coverage case, where the flag must apply to the whole child build
-        // graph — in particular the crate under test, which the generated project pulls
-        // in as a path dependency at its real source location (so coverage regions map
-        // back to the original files).
-        command.env("RUSTFLAGS", flags);
-    }
+    // Add instrumentation after Cargo has selected flags for each rustc invocation.
+    // Overriding RUSTFLAGS here would hide config flags, while encoded flags could
+    // override our addition. A wrapper also instruments the crate under test and
+    // dependencies, not just the final example built by `cargo rustc`.
+    let _coverage_wrapper =
+        coverage_enabled.then(|| super::coverage::configure(&mut command, &crate_to_compile));
     if let Some(crate_type) = crate_type {
         command.args(["--crate-type", crate_type]);
     }
@@ -776,7 +752,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
     drop(final_build_span);
 
     // Check for unexpected recompilations — only dylib-examples should be compiled.
-    // (Only relevant when prebuild is active, i.e. no custom RUSTFLAGS.)
+    // (Only relevant when prebuild is active, i.e. no custom flags or coverage.)
     if !has_custom_rustflags {
         for line in stderr_output.lines() {
             if line.contains("Compiling") && !line.contains("dylib-examples") {
@@ -1358,3 +1334,7 @@ pub(crate) fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::
 
     Ok(())
 }
+
+#[cfg(all(test, any(feature = "sim", feature = "maelstrom")))]
+#[path = "coverage_tests.rs"]
+mod coverage_tests;
