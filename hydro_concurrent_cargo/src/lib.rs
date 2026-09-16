@@ -308,35 +308,72 @@ pub fn populate_job_build_dir(job_debug: &Path, shared_debug: &Path) -> JobBuild
 // Prebuild orchestration
 // ---------------------------------------------------------------------------
 
+/// The verbose version (`rustc -vV`) of the compiler child `cargo` invocations will use,
+/// honoring the `RUSTC` override like cargo does.
+static RUSTC_VERBOSE_VERSION: LazyLock<String> = LazyLock::new(|| {
+    let rustc = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
+    let output = std::process::Command::new(rustc)
+        .arg("-vV")
+        .output()
+        .expect("failed to run `rustc -vV`");
+    assert!(output.status.success(), "`rustc -vV` failed");
+    String::from_utf8(output.stdout).unwrap()
+});
+
 /// Run the prebuild phase with proper locking and freshness checking.
 ///
 /// - `target_dir`: the shared target directory (e.g. `target/`)
 /// - `crate_name`: unique identifier for the crate being built (included in hash)
 /// - `features`: list of features for hashing
+/// - `rustflags`: the rustflags the prebuild (and the final builds sharing its artifacts) are
+///   compiled with, in any stable encoding; the freshness fingerprint includes them
 /// - `staged_paths`: paths to check mtime against for freshness
 /// - `build_fn`: closure called with `prebuild_target` path; should run cargo build(s)
 ///
 /// Returns `(PrebuildGuard, CargoBuildLock)` both held in shared mode.
 /// Caller should keep both alive during the final build.
+///
+/// # Fingerprinting
+///
+/// Cargo derives artifact *filenames* from features, profile, and compiler version, but not
+/// from rustflags: a build with different rustflags rewrites the same files in the shared
+/// `deps/` directory. Two hashes therefore play different roles here:
+///
+/// - The *lock* is keyed by crate + features only. Builds whose artifacts would collide on
+///   disk must serialize through the same lock regardless of their rustflags.
+/// - The *freshness fingerprint* stored in the lock file additionally covers the rustflags and
+///   the compiler's verbose version, so a prebuild done with other flags or another toolchain
+///   is never mistaken for fresh, and the shared artifacts are rebuilt (under the exclusive
+///   lock) before any final build links against them.
 pub fn run_prebuild(
     target_dir: &Path,
     crate_name: &str,
     features: &[String],
+    rustflags: &str,
     staged_paths: &[PathBuf],
     build_fn: impl FnOnce(&Path),
 ) -> (PrebuildGuard, CargoBuildLock) {
+    use std::hash::{Hash, Hasher};
+
     // Acquire cargo build lock shared for the entire prebuild + final build duration.
     let shared_debug = target_dir.join("debug");
     fs::create_dir_all(&shared_debug).ok();
     let cargo_lock = CargoBuildLock::lock_shared(&shared_debug.join(".cargo-build-lock"));
 
     let features_hash = {
-        use std::hash::{Hash, Hasher};
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         crate_name.hash(&mut hasher);
         let mut sorted = features.to_vec();
         sorted.sort();
         sorted.hash(&mut hasher);
+        format!("{:016x}", hasher.finish())
+    };
+
+    let fingerprint = {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        features_hash.hash(&mut hasher);
+        rustflags.hash(&mut hasher);
+        RUSTC_VERBOSE_VERSION.hash(&mut hasher);
         format!("{:016x}", hasher.finish())
     };
 
@@ -375,10 +412,12 @@ pub fn run_prebuild(
 
     log_build_event(
         target_dir,
-        &format!("prebuild: lock_upgradable, hash={features_hash}"),
+        &format!(
+            "prebuild: lock_upgradable, features_hash={features_hash}, fingerprint={fingerprint}"
+        ),
     );
     let guard = PrebuildGuard::lock_upgradable(&lock_path, lock_hash);
-    if prebuild_is_fresh(&lock_path, &features_hash) {
+    if prebuild_is_fresh(&lock_path, &fingerprint) {
         log_build_event(target_dir, "prebuild: fresh, downgrading to shared");
         return (guard.downgrade(), cargo_lock);
     }
@@ -388,7 +427,7 @@ pub fn run_prebuild(
     log_build_event(target_dir, "prebuild: exclusive acquired");
 
     // Re-check after acquiring exclusive.
-    if !prebuild_is_fresh(&lock_path, &features_hash) {
+    if !prebuild_is_fresh(&lock_path, &fingerprint) {
         let shared_debug = target_dir.join("debug");
         let jobs_dir = target_dir.join("jobs");
         let prebuild_target = setup_job_dir(&jobs_dir, "prebuild", &shared_debug);
@@ -396,7 +435,7 @@ pub fn run_prebuild(
 
         build_fn(&prebuild_target);
 
-        // Write features_hash:timestamp.
+        // Write fingerprint:timestamp.
         use std::io::Seek;
         let now_nanos = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -405,7 +444,7 @@ pub fn run_prebuild(
         let file = guard.file_mut();
         file.set_len(0).unwrap();
         file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        write!(file, "{}:{}", features_hash, now_nanos).unwrap();
+        write!(file, "{}:{}", fingerprint, now_nanos).unwrap();
     }
 
     (guard.downgrade(), cargo_lock)

@@ -161,6 +161,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                             &base_target_dir,
                             params.src.parent().unwrap().file_name().unwrap().to_str().unwrap(),
                             &features,
+                            params.rustflags.as_deref().unwrap_or_default(),
                             &staged_paths,
                             |prebuild_target| {
                                 set_msg("building dependencies".to_owned());

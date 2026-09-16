@@ -435,6 +435,42 @@ impl BuiltArtifact {
     }
 }
 
+/// The `CARGO_ENCODED_RUSTFLAGS` this crate was compiled with, captured by `build.rs`.
+///
+/// Generated Hydro programs are compiled by a child `cargo`, which is handed exactly these
+/// flags (see [`forward_rustflags`]) so the generated code matches the crate that produced it:
+/// same cfgs, same instrumentation, same codegen options. Unlike reading `RUSTFLAGS` from the
+/// process environment, this also sees flags injected through cargo config (`build.rustflags`,
+/// `target.*.rustflags`, `--config`), which never reach the test process's environment.
+#[cfg(any(feature = "sim", feature = "maelstrom"))]
+const ENCODED_RUSTFLAGS: &str = env!("HYDRO_ENCODED_RUSTFLAGS");
+
+/// Gives a child `cargo` the same rustflags as [`ENCODED_RUSTFLAGS`].
+///
+/// The flags are passed as CLI config (`--config build.rustflags=[...]`), not by setting
+/// `CARGO_ENCODED_RUSTFLAGS`/`RUSTFLAGS` in the child's environment, and the inherited
+/// environment is left untouched. Build scripts commonly emit
+/// `cargo:rerun-if-env-changed=CARGO_ENCODED_RUSTFLAGS` (e.g. `aws-lc-sys`), which cargo
+/// evaluates against *its own* process environment: a child whose environment differs from
+/// the outer build's — even by setting the variable to an empty string — gets different
+/// fingerprints and rebuilds those crates in the shared `deps/`, thrashing against the outer
+/// build and against sibling children that don't set it.
+///
+/// Precedence is consistent by construction: if `RUSTFLAGS` or `CARGO_ENCODED_RUSTFLAGS` is
+/// in the inherited environment it wins over this config in the child, but then it is also
+/// what the outer build's encoded flags were derived from, so the flags agree either way.
+#[cfg(any(feature = "sim", feature = "maelstrom"))]
+fn forward_rustflags(command: &mut std::process::Command) {
+    let flags = toml::Value::try_from(
+        ENCODED_RUSTFLAGS
+            .split('\x1f')
+            .filter(|flag| !flag.is_empty())
+            .collect::<Vec<_>>(),
+    )
+    .unwrap();
+    command.arg(format!("--config=build.rustflags={flags}"));
+}
+
 /// Compiles a generated trybuild example against the prebuilt dylib crate,
 /// using the shared parallel-compilation machinery (per-job target dirs with
 /// symlinked shared artifacts, plus a prebuild of the dylib dependencies).
@@ -457,38 +493,26 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
     } = config;
 
     let is_fuzz = allow_fuzz && std::env::var("BOLERO_FUZZER").is_ok();
-    // When RUSTFLAGS is set, our prebuild fingerprint doesn't account for it, so skip the
-    // parallel build machinery entirely and build directly into the shared target dir.
-    //
-    // Coverage instrumentation needs the same treatment, but the host's
-    // `-C instrument-coverage` often never reaches this child build: pipelines that inject
-    // it via cargo CLI config (`--config build.rustflags=[...]`) or a
-    // `RUSTC_WORKSPACE_WRAPPER` leave the test process's environment untouched, so code
-    // exercised only through the compiled dylib would silently report zero coverage. The
-    // coverage *runtime* does leave a reliable footprint, though: `LLVM_PROFILE_FILE` is
-    // set for the test process and inherited here. When present, synthesize
-    // `-C instrument-coverage` into the child build's RUSTFLAGS (unless the inherited
-    // RUSTFLAGS already carries an instrument-coverage flag, as with `cargo llvm-cov`).
-    // Skipping the prebuild machinery keeps this simple, but coverage builds must also
-    // be isolated from the shared target dir (see below), and the covmap-bearing
-    // artifact is copied to a stable location where coverage reporters can find it.
+
+    // The parallel build machinery (per-job target dirs symlinking the shared `debug/`
+    // artifacts, fronted by a fingerprinted prebuild) assumes the host `debug/` layout and
+    // dynamically linked examples. Fuzz builds statically link examples from the base crate,
+    // and `CARGO_BUILD_TARGET` moves artifacts under `<triple>/debug/`; both build directly
+    // into the shared target dir instead, where cargo's own fingerprinting applies.
+    let use_prebuild = !is_fuzz && std::env::var_os("CARGO_BUILD_TARGET").is_none();
+
+    // Coverage builds (`-C instrument-coverage`) need their covmap-bearing artifact copied to
+    // a stable location where coverage reporters can find it (see below).
     // See https://github.com/hydro-project/hydro/issues/3160.
-    let mut custom_rustflags = std::env::var("RUSTFLAGS").ok();
-    if std::env::var_os("LLVM_PROFILE_FILE").is_some()
-        && !custom_rustflags
-            .as_deref()
-            .is_some_and(|flags| flags.contains("instrument-coverage"))
-    {
-        let flags = custom_rustflags.get_or_insert_default();
-        if !flags.is_empty() {
-            flags.push(' ');
-        }
-        flags.push_str("-Cinstrument-coverage");
-    }
-    let has_custom_rustflags = custom_rustflags.is_some();
-    let coverage_enabled = custom_rustflags
-        .as_deref()
-        .is_some_and(|flags| flags.contains("instrument-coverage"));
+    let coverage_enabled =
+        rustflags::from_encoded(std::ffi::OsStr::new(ENCODED_RUSTFLAGS)).any(|flag| {
+            matches!(
+                flag,
+                rustflags::Flag::Codegen { opt, value }
+                    if opt == "instrument-coverage"
+                        && !matches!(value.as_deref(), Some("off" | "no" | "n" | "false" | "0"))
+            )
+        });
 
     // Run from dylib-examples crate which has the dylib as a dev-dependency (only if not fuzzing)
     let crate_to_compile = if is_fuzz {
@@ -497,7 +521,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
         path!(trybuild.project_dir / "dylib-examples")
     };
 
-    let (final_target_dir, _prebuild_guard, _cargo_lock) = if !has_custom_rustflags {
+    let (final_target_dir, _prebuild_guard, _cargo_lock) = if use_prebuild {
         let prebuild_span =
             tracing::debug_span!(target: "hydro_build", "prebuild", bin_name = %bin_name).entered();
         let shared_debug = trybuild.target_dir.join("debug");
@@ -517,10 +541,14 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
         let features_for_closure = features.clone();
         let is_fuzz_for_closure = is_fuzz;
 
+        // The prebuild is fingerprinted on these features, our rustflags, and the compiler
+        // version: shared artifacts built under other flags or another toolchain are rebuilt
+        // (under the exclusive lock) before any final build links against them.
         let (guard, cargo_lock) = hydro_concurrent_cargo::run_prebuild(
             &trybuild.target_dir,
             trybuild.project_dir.file_name().unwrap().to_str().unwrap(),
             &features,
+            ENCODED_RUSTFLAGS,
             &staged_paths,
             |prebuild_target| {
                 let features_str = features_for_closure.join(",");
@@ -549,6 +577,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
                 lib_cmd.args(["--features", &features_str]);
                 lib_cmd.args(["--config", "build.incremental = false"]);
                 lib_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
+                forward_rustflags(&mut lib_cmd);
                 let status = lib_cmd.stdin(Stdio::null()).status().unwrap();
                 if !status.success() {
                     panic!("dep prebuild failed");
@@ -562,20 +591,11 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
         drop(prebuild_span);
         (per_job, Some(guard), Some(cargo_lock))
     } else {
-        // Coverage builds get an isolated target dir: flags differ from prebuild-mode
-        // builds, so building into the shared target dir would clobber the shared
-        // artifacts that prebuild-mode builds symlink against, breaking interleaved
-        // non-coverage runs (and forcing full rebuilds in both directions).
-        let target_dir = if coverage_enabled {
-            path!(trybuild.target_dir / "coverage")
-        } else {
-            trybuild.target_dir.clone()
-        };
-        (target_dir, None, None)
+        (trybuild.target_dir.clone(), None, None)
     };
 
     // Populate per-job build/ dir right before final build. Hold guard for entire build.
-    let _job_build_guard = if !has_custom_rustflags {
+    let _job_build_guard = if use_prebuild {
         let populate_span =
             tracing::debug_span!(target: "hydro_build", "populate_job_dir", bin_name = %bin_name)
                 .entered();
@@ -596,14 +616,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
         tracing::debug_span!(target: "hydro_build", "final_build", bin_name = %bin_name).entered();
     let mut command = Command::new("cargo");
     command.current_dir(&crate_to_compile);
-    command.args([
-        "rustc",
-        if has_custom_rustflags {
-            "--locked"
-        } else {
-            "--frozen"
-        },
-    ]);
+    command.args(["rustc", if use_prebuild { "--frozen" } else { "--locked" }]);
     command.args(["--example", &example_name]);
     command.args(["--target-dir", final_target_dir.to_str().unwrap()]);
     // Never enable default features: the generated example gets exactly the
@@ -625,14 +638,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
             .join(","),
     ]);
     command.args(["--config", "build.incremental = false"]);
-    if let Some(flags) = &custom_rustflags {
-        // Covers both inherited RUSTFLAGS (a no-op re-set) and the synthesized
-        // instrument-coverage case, where the flag must apply to the whole child build
-        // graph — in particular the crate under test, which the generated project pulls
-        // in as a path dependency at its real source location (so coverage regions map
-        // back to the original files).
-        command.env("RUSTFLAGS", flags);
-    }
+    forward_rustflags(&mut command);
     if let Some(crate_type) = crate_type {
         command.args(["--crate-type", crate_type]);
     }
@@ -677,16 +683,6 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
                 // https://github.com/rust-lang/rust/issues/91979
                 "-Clink-args=-Wl,-z,nodelete",
             );
-        }
-
-        if coverage_enabled && cfg!(target_os = "linux") {
-            // The dynamic loader resolves the example's trybuild-dylib dependency by
-            // soname, and cargo puts the *host* target dir's deps/ on LD_LIBRARY_PATH
-            // when running tests — which outranks DT_RUNPATH and would shadow the
-            // isolated coverage build's dylib with the same-soname uninstrumented one.
-            // Emit legacy DT_RPATH, which outranks LD_LIBRARY_PATH, so the rpath baked
-            // above (pointing into the coverage target dir) wins.
-            command.arg("-Clink-arg=-Wl,--disable-new-dtags");
         }
     }
 
@@ -776,8 +772,8 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
     drop(final_build_span);
 
     // Check for unexpected recompilations — only dylib-examples should be compiled.
-    // (Only relevant when prebuild is active, i.e. no custom RUSTFLAGS.)
-    if !has_custom_rustflags {
+    // (Only relevant when prebuild is active.)
+    if use_prebuild {
         for line in stderr_output.lines() {
             if line.contains("Compiling") && !line.contains("dylib-examples") {
                 panic!(
