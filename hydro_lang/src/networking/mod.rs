@@ -9,6 +9,7 @@ use crate::live_collections::stream::networking::{deserialize_bincode, serialize
 use crate::live_collections::stream::{NoOrder, TotalOrder};
 use crate::location::cluster::{Consistency, EventualConsistency, NoConsistency};
 use crate::nondet::NonDet;
+use crate::sim_hooks::LossHook;
 
 #[sealed::sealed]
 trait SerKind<T: ?Sized> {
@@ -266,9 +267,43 @@ pub trait NetworkFor<T: ?Sized> {
     /// Returns the optional name of the network channel.
     fn name(&self) -> Option<&str>;
 
+    /// Returns the ID of the simulator hook handle bound to this channel's fault
+    /// non-determinism, if any (see [`crate::sim_hooks::LossHook`] and
+    /// [`NetworkingConfig::lossy`]). Ignored by non-simulator backends.
+    fn sim_hook_id(&self) -> Option<usize> {
+        None
+    }
+
     /// Returns the [`NetworkingInfo`] describing this network channel's transport and fault model.
     fn networking_info() -> NetworkingInfo;
 }
+
+/// A [`NetworkFor`] whose fault-non-determinism hook (if any) matches the channel's
+/// **endpoints**: `FromScope` / `ToScope` name the kind (and tag) of the sending and
+/// receiving locations, mirroring
+/// [`Location::SimHookScope`](crate::location::Location::SimHookScope)
+/// ([`OnProcess<P>`](crate::sim_hooks::OnProcess) /
+/// [`OnCluster<C>`](crate::sim_hooks::OnCluster)).
+///
+/// Network operators (`send`, `demux`, `broadcast`, ...) bound their configuration by
+/// this trait so that a [`LossHook`] bound via [`NetworkingConfig::lossy`] is typed by
+/// the link it controls — the decision surface depends on both ends:
+///
+/// - The **receiving** end is the handle's scope: on a channel *to a cluster*, every
+///   member receives through its own independent channel instance, selected with
+///   [`.on(member_id)`](crate::sim_hooks::LossHook::on).
+/// - The **sending** end shapes the decisions: on a channel *from a cluster*, each
+///   in-flight message belongs to a sender, so decisions name `(sender_id, value)` (and
+///   the positional forms take the sender whose front to resolve).
+///
+/// Configurations without a hook (`()` payload) implement this trait for every endpoint
+/// shape.
+#[diagnostic::on_unimplemented(
+    message = "this network configuration cannot be used for a channel from `{FromScope}` to `{ToScope}`",
+    note = "a `LossHook` bound with `lossy(nondet!(... hook = handle))` is typed by the channel's endpoints: the handle's sender scope must be the sending location's kind (`OnProcess<P>` / `OnCluster<C>`) and its trailing scope the receiving location's kind"
+)]
+#[sealed::sealed]
+pub trait NetworkForLink<T: ?Sized, FromScope, ToScope>: NetworkFor<T> {}
 
 /// The fault model for a TCP connection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
@@ -310,29 +345,41 @@ pub enum NetworkingInfo {
 
 /// A network channel configuration with `T` as transport backend and `S` as the serialization
 /// backend.
-pub struct NetworkingConfig<Tr: ?Sized, S: ?Sized, Name = ()> {
+///
+/// The `Hook` parameter carries the simulator hook payload type bound to the channel's
+/// fault non-determinism, when the fault policy has any (see [`Self::lossy`] and
+/// [`crate::sim_hooks::LossHook`]); it is `()` for fault policies with no hookable
+/// decision.
+pub struct NetworkingConfig<Tr: ?Sized, S: ?Sized, Name = (), Hook = ()> {
     name: Option<Name>,
-    _phantom: (PhantomData<Tr>, PhantomData<S>),
+    /// The ID of the bound simulator hook handle, if any. The handle's full type lives
+    /// in the `Hook` parameter (so `NetworkFor<T>` can check it against the channel's
+    /// element type); only the ID is needed at runtime.
+    sim_hook_id: Option<usize>,
+    _phantom: (PhantomData<Tr>, PhantomData<S>, PhantomData<Hook>),
 }
 
-impl<Tr: ?Sized, S: ?Sized> NetworkingConfig<Tr, S> {
+impl<Tr: ?Sized, S: ?Sized, Hook> NetworkingConfig<Tr, S, (), Hook> {
     /// Names the network channel and enables stable communication across multiple service versions.
-    pub fn name(self, name: impl Into<String>) -> NetworkingConfig<Tr, S, String> {
+    pub fn name(self, name: impl Into<String>) -> NetworkingConfig<Tr, S, String, Hook> {
         NetworkingConfig {
             name: Some(name.into()),
-            _phantom: (PhantomData, PhantomData),
+            sim_hook_id: self.sim_hook_id,
+            _phantom: (PhantomData, PhantomData, PhantomData),
         }
     }
 }
 
-impl<Tr: ?Sized, N> NetworkingConfig<Tr, NoSer, N> {
+impl<Tr: ?Sized, N, Hook> NetworkingConfig<Tr, NoSer, N, Hook> {
     /// Configures the network channel to use [`bincode`] to serialize items.
-    pub const fn bincode(mut self) -> NetworkingConfig<Tr, Bincode, N> {
+    pub const fn bincode(mut self) -> NetworkingConfig<Tr, Bincode, N, Hook> {
         let taken_name = self.name.take();
+        let sim_hook_id = self.sim_hook_id;
         std::mem::forget(self); // nothing else is stored
         NetworkingConfig {
             name: taken_name,
-            _phantom: (PhantomData, PhantomData),
+            sim_hook_id,
+            _phantom: (PhantomData, PhantomData, PhantomData),
         }
     }
 
@@ -342,12 +389,14 @@ impl<Tr: ?Sized, N> NetworkingConfig<Tr, NoSer, N> {
     /// backends). The generated network channel exposes the raw element type to the developer
     /// (rather than serialized bytes), so they can perform custom serialization logic outside of
     /// the Hydro program for that channel.
-    pub const fn embedded(mut self) -> NetworkingConfig<Tr, Embedded, N> {
+    pub const fn embedded(mut self) -> NetworkingConfig<Tr, Embedded, N, Hook> {
         let taken_name = self.name.take();
+        let sim_hook_id = self.sim_hook_id;
         std::mem::forget(self); // nothing else is stored
         NetworkingConfig {
             name: taken_name,
-            _phantom: (PhantomData, PhantomData),
+            sim_hook_id,
+            _phantom: (PhantomData, PhantomData, PhantomData),
         }
     }
 }
@@ -364,7 +413,8 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     pub const fn fail_stop(self) -> NetworkingConfig<Tcp<FailStop>, S> {
         NetworkingConfig {
             name: self.name,
-            _phantom: (PhantomData, PhantomData),
+            sim_hook_id: None,
+            _phantom: (PhantomData, PhantomData, PhantomData),
         }
     }
 
@@ -376,12 +426,30 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     ///
     /// # Non-Determinism
     /// A lossy TCP channel will non-deterministically drop messages during execution.
+    /// Because a legal execution may drop *every* message, the simulator cannot explore
+    /// this non-determinism autonomously (no exploration strategy is fair to programs
+    /// that need messages delivered). Under simulation, the guard **must** carry a
+    /// [`LossHook`] handle (`TCP.lossy(nondet!(... hook = handle))`), and the test
+    /// scripts each in-flight message's fate with `deliver` / `lose` decisions;
+    /// simulating an unhooked lossy channel is a build-time error. Alternatively, use
+    /// [`Self::lossy_delayed_forever`] to model drops as indefinite delays, which the
+    /// simulator can explore autonomously.
+    ///
+    /// The handle is typed by the channel's **endpoints** (see
+    /// [`NetworkForLink`]), usually inferred from the `send` / `demux` / `broadcast`
+    /// call: on a channel to a cluster each recipient member's instance is selected
+    /// with `.on(member_id)`, and on a channel from a cluster decisions name
+    /// `(sender_id, value)`.
     #[must_use]
-    pub const fn lossy(self, nondet: NonDet) -> NetworkingConfig<Tcp<Lossy>, S> {
-        let _ = nondet;
+    pub fn lossy<T, FromScope, ToScope>(
+        self,
+        mut nondet: NonDet<Option<LossHook<T, TotalOrder, FromScope, ToScope>>>,
+    ) -> NetworkingConfig<Tcp<Lossy>, S, (), Option<LossHook<T, TotalOrder, FromScope, ToScope>>>
+    {
         NetworkingConfig {
             name: self.name,
-            _phantom: (PhantomData, PhantomData),
+            sim_hook_id: nondet.take_hook().map(|hook| hook.id),
+            _phantom: (PhantomData, PhantomData, PhantomData),
         }
     }
 
@@ -404,7 +472,8 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     pub const fn lossy_delayed_forever(self) -> NetworkingConfig<Tcp<LossyDelayedForever>, S> {
         NetworkingConfig {
             name: self.name,
-            _phantom: (PhantomData, PhantomData),
+            sim_hook_id: None,
+            _phantom: (PhantomData, PhantomData, PhantomData),
         }
     }
 }
@@ -418,12 +487,29 @@ impl<S: ?Sized> NetworkingConfig<Udp<()>, S> {
     ///
     /// # Non-Determinism
     /// A lossy UDP channel will non-deterministically drop messages during execution.
+    /// Because a legal execution may drop *every* message, the simulator cannot explore
+    /// this non-determinism autonomously (no exploration strategy is fair to programs
+    /// that need messages delivered). Under simulation, the guard **must** carry a
+    /// [`LossHook`] handle (`UDP.lossy(nondet!(... hook = handle))`), and the test
+    /// scripts each in-flight message's fate with `deliver` / `lose` decisions;
+    /// simulating an unhooked lossy channel is a build-time error. Alternatively, use
+    /// [`Self::lossy_delayed_forever`] to model drops as indefinite delays, which the
+    /// simulator can explore autonomously.
+    ///
+    /// The handle is typed by the channel's **endpoints** (see
+    /// [`NetworkForLink`]), usually inferred from the `send` / `demux` / `broadcast`
+    /// call: on a channel to a cluster each recipient member's instance is selected
+    /// with `.on(member_id)`, and on a channel from a cluster decisions name
+    /// `(sender_id, value)`.
     #[must_use]
-    pub const fn lossy(self, nondet: NonDet) -> NetworkingConfig<Udp<Lossy>, S> {
-        let _ = nondet;
+    pub fn lossy<T, FromScope, ToScope>(
+        self,
+        mut nondet: NonDet<Option<LossHook<T, NoOrder, FromScope, ToScope>>>,
+    ) -> NetworkingConfig<Udp<Lossy>, S, (), Option<LossHook<T, NoOrder, FromScope, ToScope>>> {
         NetworkingConfig {
             name: self.name,
-            _phantom: (PhantomData, PhantomData),
+            sim_hook_id: nondet.take_hook().map(|hook| hook.id),
+            _phantom: (PhantomData, PhantomData, PhantomData),
         }
     }
 
@@ -446,7 +532,8 @@ impl<S: ?Sized> NetworkingConfig<Udp<()>, S> {
     pub const fn lossy_delayed_forever(self) -> NetworkingConfig<Udp<LossyDelayedForever>, S> {
         NetworkingConfig {
             name: self.name,
-            _phantom: (PhantomData, PhantomData),
+            sim_hook_id: None,
+            _phantom: (PhantomData, PhantomData, PhantomData),
         }
     }
 }
@@ -513,10 +600,135 @@ where
     }
 }
 
+// The hookable variants: a config whose fault policy carries a `LossHook` payload (see
+// `lossy`) implements `NetworkFor<T>` only when the hook's element type is the channel's
+// element type (and its ordering the transport's guarantee), so a mistyped handle is an
+// ordinary compile error at the `send`/`broadcast` call.
+#[sealed::sealed]
+impl<Tr, S, T, FromScope, ToScope> NetworkFor<T>
+    for NetworkingConfig<Tr, S, (), Option<LossHook<T, Tr::OrderingGuarantee, FromScope, ToScope>>>
+where
+    Tr: ?Sized + TransportKind,
+    S: ?Sized + SerKind<T>,
+{
+    type OrderingGuarantee = Tr::OrderingGuarantee;
+
+    type ConsistencyGuarantee = Tr::ConsistencyGuarantee;
+
+    fn serialize_thunk(is_demux: bool) -> syn::Expr {
+        S::serialize_thunk(is_demux)
+    }
+
+    fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr {
+        S::deserialize_thunk(tagged)
+    }
+
+    fn is_embedded() -> bool {
+        S::is_embedded()
+    }
+
+    fn name(&self) -> Option<&str> {
+        None
+    }
+
+    fn sim_hook_id(&self) -> Option<usize> {
+        self.sim_hook_id
+    }
+
+    fn networking_info() -> NetworkingInfo {
+        Tr::networking_info()
+    }
+}
+
+#[sealed::sealed]
+impl<Tr, S, T, FromScope, ToScope> NetworkFor<T>
+    for NetworkingConfig<
+        Tr,
+        S,
+        String,
+        Option<LossHook<T, Tr::OrderingGuarantee, FromScope, ToScope>>,
+    >
+where
+    Tr: ?Sized + TransportKind,
+    S: ?Sized + SerKind<T>,
+{
+    type OrderingGuarantee = Tr::OrderingGuarantee;
+
+    type ConsistencyGuarantee = Tr::ConsistencyGuarantee;
+
+    fn serialize_thunk(is_demux: bool) -> syn::Expr {
+        S::serialize_thunk(is_demux)
+    }
+
+    fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr {
+        S::deserialize_thunk(tagged)
+    }
+
+    fn is_embedded() -> bool {
+        S::is_embedded()
+    }
+
+    fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    fn sim_hook_id(&self) -> Option<usize> {
+        self.sim_hook_id
+    }
+
+    fn networking_info() -> NetworkingInfo {
+        Tr::networking_info()
+    }
+}
+
+// `NetworkForLink` pins a hooked configuration's endpoint scopes to the link it is used
+// for (see the trait docs); configurations without a hook fit any link.
+#[sealed::sealed]
+impl<Tr, S, T: ?Sized, FromScope, ToScope> NetworkForLink<T, FromScope, ToScope>
+    for NetworkingConfig<Tr, S>
+where
+    Tr: ?Sized + TransportKind,
+    S: ?Sized + SerKind<T>,
+{
+}
+
+#[sealed::sealed]
+impl<Tr, S, T: ?Sized, FromScope, ToScope> NetworkForLink<T, FromScope, ToScope>
+    for NetworkingConfig<Tr, S, String>
+where
+    Tr: ?Sized + TransportKind,
+    S: ?Sized + SerKind<T>,
+{
+}
+
+#[sealed::sealed]
+impl<Tr, S, T, FromScope, ToScope> NetworkForLink<T, FromScope, ToScope>
+    for NetworkingConfig<Tr, S, (), Option<LossHook<T, Tr::OrderingGuarantee, FromScope, ToScope>>>
+where
+    Tr: ?Sized + TransportKind,
+    S: ?Sized + SerKind<T>,
+{
+}
+
+#[sealed::sealed]
+impl<Tr, S, T, FromScope, ToScope> NetworkForLink<T, FromScope, ToScope>
+    for NetworkingConfig<
+        Tr,
+        S,
+        String,
+        Option<LossHook<T, Tr::OrderingGuarantee, FromScope, ToScope>>,
+    >
+where
+    Tr: ?Sized + TransportKind,
+    S: ?Sized + SerKind<T>,
+{
+}
+
 /// A network channel that uses length-delimited TCP for transport.
 pub const TCP: NetworkingConfig<Tcp<()>, NoSer> = NetworkingConfig {
     name: None,
-    _phantom: (PhantomData, PhantomData),
+    sim_hook_id: None,
+    _phantom: (PhantomData, PhantomData, PhantomData),
 };
 
 /// A network channel that uses UDP for transport.
@@ -531,11 +743,13 @@ pub const TCP: NetworkingConfig<Tcp<()>, NoSer> = NetworkingConfig {
 /// including Docker and ECS deployments); attempting to deploy a UDP channel there
 /// will panic at compile time. Both UDP modes are available for embedded
 /// deployments (the only production deployment option) and Maelstrom testing. In
-/// the Hydro simulator, only `lossy_delayed_forever` is supported, and it requires
+/// the Hydro simulator, `lossy` requires binding a [`LossHook`] that scripts each
+/// message's delivery, and `lossy_delayed_forever` requires
 /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only): the
 /// simulator will not actually drop packets—it delays "dropped" messages until the
 /// end of the execution, which catches safety bugs but cannot test liveness.
 pub const UDP: NetworkingConfig<Udp<()>, NoSer> = NetworkingConfig {
     name: None,
-    _phantom: (PhantomData, PhantomData),
+    sim_hook_id: None,
+    _phantom: (PhantomData, PhantomData, PhantomData),
 };

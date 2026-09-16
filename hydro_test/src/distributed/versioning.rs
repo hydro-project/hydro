@@ -4,10 +4,11 @@ use hydro_lang::live_collections::sliced::sliced;
 use hydro_lang::live_collections::stream::{ExactlyOnce, NoOrder, TotalOrder};
 use hydro_lang::location::MemberId;
 use hydro_lang::location::tick::Tick;
-use hydro_lang::networking::NetworkFor;
+use hydro_lang::networking::NetworkForLink;
 use hydro_lang::nondet::NonDet;
 use hydro_lang::prelude::*;
 use hydro_lang::properties::{NotProved, StreamMapFuncAlgebra};
+use hydro_lang::sim_hooks::OnCluster;
 use hydro_std::membership::track_membership;
 use serde::{Deserialize, Serialize};
 use stageleft::IntoQuotedMut;
@@ -37,7 +38,7 @@ pub struct Logger {}
     clippy::type_complexity,
     reason = "returns tuple with membership stream"
 )]
-fn hash_demux<'a, F, N: NetworkFor<Request>>(
+fn hash_demux<'a, F, N: NetworkForLink<Request, OnCluster<GossipServer>, OnCluster<GossipServer>>>(
     requests: Stream<Request, Cluster<'a, GossipServer>, Unbounded, TotalOrder>,
     to: &Cluster<'a, GossipServer>,
     route: impl IntoQuotedMut<
@@ -49,7 +50,7 @@ fn hash_demux<'a, F, N: NetworkFor<Request>>(
             Bounded,
             NotProved,
             NotProved,
-            hydro_lang::sim_hooks::OnCluster<GossipServer>,
+            OnCluster<GossipServer>,
         >,
     >,
     via: N,
@@ -116,7 +117,7 @@ fn gossip_server<'a, F>(
             Bounded,
             NotProved,
             NotProved,
-            hydro_lang::sim_hooks::OnCluster<GossipServer>,
+            OnCluster<GossipServer>,
         >,
     >,
 ) -> (

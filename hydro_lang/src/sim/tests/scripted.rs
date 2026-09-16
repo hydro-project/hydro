@@ -15,7 +15,7 @@ use crate::prelude::{Bounded, FlowBuilder, Unbounded};
 use crate::sim::{SimReceiver, SimSender};
 use crate::sim_hooks::{
     BatchHook, KeyedBatchHook, KeyedMergeOrderedHook, KeyedOrderingHook, KeyedSnapshotHook,
-    MergeOrderedHook, OnCluster, OrderingHook, PartialOrderingHook, RetriesHook, SimHook,
+    LossHook, MergeOrderedHook, OnCluster, OrderingHook, PartialOrderingHook, RetriesHook, SimHook,
     SnapshotHook,
 };
 
@@ -3299,4 +3299,478 @@ fn unhooked_alo_assume_ordering_panics_at_build() {
         .sim_output();
 
     flow.sim().deterministic(async || {});
+}
+
+/// A scripted lossy TCP channel: the transport preserves the order of delivered
+/// messages, so each decision resolves the **front** of the in-flight queue —
+/// `deliver(value)` releases it to the destination and `lose(value)` consumes it
+/// without delivering. Decisions may be scripted before the messages exist; the
+/// channel resolves each one at the first moment it can be honored.
+#[test]
+fn scripted_lossy_tcp_channel_delivers_and_drops() {
+    use crate::networking::TCP;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let node2 = flow.process::<()>();
+    let loss: LossHook<u32> = flow.sim_hook();
+
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = input
+        .send(
+            &node2,
+            TCP.lossy(nondet!(
+                /// scripted
+                hook = loss
+            ))
+            .bincode(),
+        )
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1, 2, 3]);
+        loss.deliver(1).await;
+        loss.lose(2).await;
+        loss.deliver(3).await;
+        output.assert_yields_only([1, 3]).await;
+    });
+}
+
+/// On a TCP lossy channel, `deliver`/`lose` must name the front of the in-flight
+/// queue: delivered messages preserve send order, so a mismatching front can never be
+/// resolved ahead of the named value and the decision is permanently stuck.
+#[test]
+#[should_panic(expected = "deliver/lose: the named value did not match the front")]
+fn scripted_lossy_tcp_front_mismatch_panics() {
+    use crate::networking::TCP;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let node2 = flow.process::<()>();
+    let loss: LossHook<u32> = flow.sim_hook();
+
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let _output = input
+        .send(
+            &node2,
+            TCP.lossy(nondet!(
+                /// scripted
+                hook = loss
+            ))
+            .bincode(),
+        )
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1, 2]);
+        loss.deliver(2).await;
+    });
+}
+
+/// `deliver_next()` / `lose_next()` are the positional forms of `deliver` / `lose` on a
+/// TCP lossy channel: they resolve the front of the in-flight queue without asserting
+/// its value.
+#[test]
+fn scripted_lossy_tcp_positional_decisions() {
+    use crate::networking::TCP;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let node2 = flow.process::<()>();
+    let loss: LossHook<u32> = flow.sim_hook();
+
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = input
+        .send(
+            &node2,
+            TCP.lossy(nondet!(
+                /// scripted
+                hook = loss
+            ))
+            .bincode(),
+        )
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1, 2, 3]);
+        loss.lose_next().await;
+        loss.deliver_next().await;
+        loss.lose_next().await;
+        output.assert_yields_only([2]).await;
+    });
+}
+
+/// A scripted lossy UDP channel provides no ordering, so any in-flight message may be
+/// named: delivery order is part of the decision, and the losses are injected wherever
+/// the script says.
+#[test]
+fn scripted_lossy_udp_channel_reorders_and_drops() {
+    use crate::networking::UDP;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let node2 = flow.process::<()>();
+    let loss: LossHook<u32, NoOrder> = flow.sim_hook();
+
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = input
+        .send(
+            &node2,
+            UDP.lossy(nondet!(
+                /// scripted
+                hook = loss
+            ))
+            .bincode(),
+        )
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1, 2, 3]);
+        // 3 is not the oldest in-flight message: UDP decisions may name any of them.
+        loss.deliver(3).await;
+        loss.lose(1).await;
+        loss.deliver(2).await;
+        output.assert_yields_only_unordered([3, 2]).await;
+    });
+}
+
+/// An in-flight message with no scripted fate is a forgotten hook, reported like any
+/// other scripted hook holding undecided input: a lossy channel's script must resolve
+/// every message (or declare the buffering with the pause family).
+#[test]
+#[should_panic(expected = "scripted hook has buffered input but no decision")]
+fn scripted_lossy_channel_forgotten_message_errors() {
+    use crate::networking::TCP;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let node2 = flow.process::<()>();
+    let loss: LossHook<u32> = flow.sim_hook();
+
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = input
+        .send(
+            &node2,
+            TCP.lossy(nondet!(
+                /// scripted
+                hook = loss
+            ))
+            .bincode(),
+        )
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1, 2]);
+        loss.deliver(1).await;
+        // 2 is left in flight with no decision.
+        output.assert_yields_only([1]).await;
+    });
+}
+
+/// The pause family declares in-flight buffering on purpose: while paused, the channel
+/// holds its messages without tripping the forgotten-hook check, and later decisions
+/// resolve them one by one.
+#[test]
+fn scripted_lossy_channel_pause_holds_messages() {
+    use crate::networking::TCP;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let node2 = flow.process::<()>();
+    let loss: LossHook<u32> = flow.sim_hook();
+
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = input
+        .send(
+            &node2,
+            TCP.lossy(nondet!(
+                /// scripted
+                hook = loss
+            ))
+            .bincode(),
+        )
+        .sim_output();
+
+    flow.sim().deterministic(async || {
+        loss.auto_pause();
+        in_send.send_many([1, 2]);
+
+        loss.pause_until_count(2).await;
+        loss.deliver(1).await;
+        output.assert_yields([1]).await;
+
+        // 2 stays in flight under the standing `auto_pause` hold until scripted.
+        loss.deliver(2).await;
+        output.assert_yields_only([2]).await;
+    });
+}
+
+/// A lossy channel may legally drop every message, so the simulator cannot explore its
+/// non-determinism autonomously: a `TCP.lossy` channel that is not bound to a sim hook
+/// is a build-time error under simulation.
+#[test]
+#[should_panic(expected = "a lossy network channel may drop any of its messages")]
+fn unhooked_lossy_tcp_channel_panics_at_build() {
+    use crate::networking::TCP;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let node2 = flow.process::<()>();
+
+    let (_in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let _output = input
+        .send(
+            &node2,
+            TCP.lossy(nondet!(/** deliberately unhooked */)).bincode(),
+        )
+        .sim_output();
+
+    flow.sim().deterministic(async || {});
+}
+
+/// Like [`unhooked_lossy_tcp_channel_panics_at_build`], for `UDP.lossy`.
+#[test]
+#[should_panic(expected = "a lossy network channel may drop any of its messages")]
+fn unhooked_lossy_udp_channel_panics_at_build() {
+    use crate::networking::UDP;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let node2 = flow.process::<()>();
+
+    let (_in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let _output = input
+        .send(
+            &node2,
+            UDP.lossy(nondet!(/** deliberately unhooked */)).bincode(),
+        )
+        .sim_output();
+
+    flow.sim().deterministic(async || {});
+}
+
+/// A lossy channel **to a cluster** gives every recipient member its own channel
+/// instance: the handle's trailing scope is `OnCluster`, and `.on(recipient)` selects
+/// which member's in-flight queue a decision resolves — losses are injected per
+/// recipient, independently.
+#[test]
+fn scripted_lossy_o2m_channel_scripted_per_recipient() {
+    use crate::networking::TCP;
+    use crate::sim_hooks::OnProcess;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let cluster = flow.cluster::<()>();
+    let loss: LossHook<u32, TotalOrder, OnProcess, OnCluster> = flow.sim_hook();
+
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = input
+        .map(q!(|x| (crate::location::MemberId::from_raw_id(x % 2), x)))
+        .into_keyed()
+        .demux(
+            &cluster,
+            TCP.lossy(nondet!(
+                /// scripted
+                hook = loss
+            ))
+            .bincode(),
+        )
+        .sim_cluster_output();
+
+    flow.sim()
+        .with_cluster_size(&cluster, 2)
+        .deterministic(async || {
+            // Each member's channel instance holds in-flight messages across the
+            // *other* member's scripted groups; declare that standing buffering per
+            // member.
+            loss.on(0).auto_pause();
+            loss.on(1).auto_pause();
+
+            // Member 0's channel receives [0, 2]; member 1's receives [1, 3].
+            in_send.send_many([0, 1, 2, 3]);
+
+            loss.on(0).deliver(0).await;
+            loss.on(1).lose(1).await;
+            loss.on(0).lose(2).await;
+            loss.on(1).deliver(3).await;
+
+            assert_eq!(output.next(0).await, 0);
+            assert_eq!(output.next(1).await, 3);
+        });
+}
+
+/// A lossy TCP channel **from a cluster** carries each sender's messages over that
+/// sender's own connection: decisions name `(sender, value)`, each sender's queue is
+/// resolved front-first (only losses are injected within a sender), and the
+/// interleaving across senders is part of the decision.
+#[test]
+fn scripted_lossy_m2o_channel_names_sender() {
+    use crate::location::MemberId;
+    use crate::networking::TCP;
+
+    let mut flow = FlowBuilder::new();
+    let cluster = flow.cluster::<()>();
+    let node = flow.process::<()>();
+    let loss: LossHook<u32, TotalOrder, OnCluster> = flow.sim_hook();
+
+    let (in_send, input) = cluster.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = input
+        .send(
+            &node,
+            TCP.lossy(nondet!(
+                /// scripted
+                hook = loss
+            ))
+            .bincode(),
+        )
+        .entries()
+        .sim_output();
+
+    flow.sim()
+        .with_cluster_size(&cluster, 2)
+        .deterministic(async || {
+            in_send.send_many([(0, 1), (0, 2), (1, 3)]);
+
+            // Sender 1's message may be resolved between sender 0's: cross-sender
+            // interleaving is part of the decision.
+            loss.deliver(0, 1).await;
+            loss.deliver(1, 3).await;
+            loss.lose(0, 2).await;
+
+            output
+                .assert_yields_only_unordered([
+                    (MemberId::from_raw_id(0), 1),
+                    (MemberId::from_raw_id(1), 3),
+                ])
+                .await;
+        });
+}
+
+/// On a TCP lossy channel from a cluster, `deliver`/`lose` must name the front of the
+/// **named sender's** queue: each sender's delivered messages preserve its send order,
+/// so a mismatching front for that sender can never be resolved ahead of the named
+/// value and the decision is permanently stuck.
+#[test]
+#[should_panic(expected = "the named value did not match the front of that sender's")]
+fn scripted_lossy_m2o_sender_front_mismatch_panics() {
+    use crate::networking::TCP;
+
+    let mut flow = FlowBuilder::new();
+    let cluster = flow.cluster::<()>();
+    let node = flow.process::<()>();
+    let loss: LossHook<u32, TotalOrder, OnCluster> = flow.sim_hook();
+
+    let (in_send, input) = cluster.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let _output = input
+        .send(
+            &node,
+            TCP.lossy(nondet!(
+                /// scripted
+                hook = loss
+            ))
+            .bincode(),
+        )
+        .entries()
+        .sim_output();
+
+    flow.sim()
+        .with_cluster_size(&cluster, 2)
+        .deterministic(async || {
+            in_send.send_many([(0, 1), (0, 2)]);
+            loss.lose(0, 2).await;
+        });
+}
+
+/// A lossy UDP channel from a cluster provides no ordering even within a sender: any of
+/// the named sender's in-flight messages may be resolved, so a sender's later message
+/// can be delivered before its earlier one.
+#[test]
+fn scripted_lossy_udp_m2o_reorders_within_sender() {
+    use crate::location::MemberId;
+    use crate::networking::UDP;
+
+    let mut flow = FlowBuilder::new();
+    let cluster = flow.cluster::<()>();
+    let node = flow.process::<()>();
+    let loss: LossHook<u32, NoOrder, OnCluster> = flow.sim_hook();
+
+    let (in_send, input) = cluster.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = input
+        .send(
+            &node,
+            UDP.lossy(nondet!(
+                /// scripted
+                hook = loss
+            ))
+            .bincode(),
+        )
+        .entries()
+        .sim_output();
+
+    flow.sim()
+        .with_cluster_size(&cluster, 2)
+        .deterministic(async || {
+            in_send.send_many([(0, 1), (0, 2), (1, 3)]);
+
+            // 2 is not the front of sender 0's queue: UDP decisions may name any of
+            // the sender's in-flight messages.
+            loss.deliver(0, 2).await;
+            loss.lose(0, 1).await;
+            loss.deliver(1, 3).await;
+
+            output
+                .assert_yields_only_unordered([
+                    (MemberId::from_raw_id(0), 2),
+                    (MemberId::from_raw_id(1), 3),
+                ])
+                .await;
+        });
+}
+
+/// A lossy cluster-to-cluster channel composes both dimensions: `.on(recipient)`
+/// selects the recipient member's channel instance, and each decision names the
+/// `(sender, value)` to resolve on it.
+#[test]
+fn scripted_lossy_m2m_channel_scripts_both_endpoints() {
+    use crate::networking::TCP;
+
+    let mut flow = FlowBuilder::new();
+    let cluster = flow.cluster::<()>();
+    let cluster2 = flow.cluster::<()>();
+    let loss: LossHook<u32, TotalOrder, OnCluster, OnCluster> = flow.sim_hook();
+
+    let (in_send, input) = cluster.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = input
+        .map(q!(|x| (crate::location::MemberId::from_raw_id(x % 2), x)))
+        .into_keyed()
+        .demux(
+            &cluster2,
+            TCP.lossy(nondet!(
+                /// scripted
+                hook = loss
+            ))
+            .bincode(),
+        )
+        .values()
+        .sim_cluster_output();
+
+    flow.sim()
+        .with_cluster_size(&cluster, 2)
+        .with_cluster_size(&cluster2, 2)
+        .deterministic(async || {
+            // Each recipient member's channel instance holds in-flight messages across
+            // the *other* member's scripted groups.
+            loss.on(0).auto_pause();
+            loss.on(1).auto_pause();
+
+            // Sender 0 sends 0 and 2 to recipient 0; sender 1 sends 1 to recipient 1.
+            in_send.send_many([(0, 0), (0, 2), (1, 1)]);
+
+            loss.on(0).deliver(0, 0).await;
+            loss.on(1).deliver(1, 1).await;
+            loss.on(0).lose(0, 2).await;
+
+            assert_eq!(output.collect_n_sorted_only::<Vec<_>>(0, 1).await, vec![0]);
+            assert_eq!(output.collect_n_sorted_only::<Vec<_>>(1, 1).await, vec![1]);
+        });
 }
