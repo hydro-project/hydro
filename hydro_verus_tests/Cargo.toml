@@ -1,0 +1,40 @@
+[package]
+name = "hydro_verus_tests"
+publish = false
+version = "0.0.0"
+edition = "2024"
+
+# Opt in to verification by `cargo verus verify` (no effect on normal cargo builds).
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true
+
+[features]
+# Each `reject_*` feature enables exactly one flow containing a bogus
+# `verus_proof_commutative_*` annotation that Verus must refuse to verify. They are
+# selected one at a time by the `verus_rejects` test harness, since a failed proof
+# aborts verification of the whole crate.
+reject_overwrite_fold = []
+reject_halving_fold = []
+reject_overflowing_fold = []
+reject_overwrite_map_capture = []
+reject_running_total_map = []
+reject_rate_limit_filter = []
+
+[dependencies]
+hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.4", default-features = false }
+stageleft.workspace = true
+# Unlike production crates (where `vstd` is gated behind a `verus` feature), this
+# crate exists solely to test Verus proofs, so `vstd` is a regular dependency (it
+# compiles as plain Rust when not under the Verus driver).
+vstd = "=0.0.0-2026-09-06-0133"
+
+[build-dependencies]
+stageleft_tool.workspace = true
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0" }
+
+[dev-dependencies]
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0", features = ["insta"] }
+

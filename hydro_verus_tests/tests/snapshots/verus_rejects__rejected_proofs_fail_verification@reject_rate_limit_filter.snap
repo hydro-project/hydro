@@ -1,0 +1,17 @@
+---
+source: hydro_verus_tests/tests/verus_rejects.rs
+expression: "format!(\"{}\\n{}\", verification_results(&stdout), verus_diagnostics(&stderr))"
+---
+verification results:: 9 verified, 1 errors
+error: assertion failed
+   --> hydro_verus_tests/src/lib.rs:350:35
+    |
+350 |                       commutative = verus_proof_commutative_filter!(
+    |  ___________________________________^
+351 | |                         item = &u32,
+352 | |                         captures_mut = |budget_mut: u32|
+353 | |                     )
+    | |_____________________^ assertion failed
+    |
+    = note: this error originates in the macro `verus_proof_commutative_filter` (in Nightly builds, run with -Z macro-backtrace for more info)
+error: could not compile `hydro_verus_tests` (lib) due to 1 previous error

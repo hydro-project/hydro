@@ -71,6 +71,44 @@ jobs:
       - run: rustup component add --toolchain nightly rustfmt
       - run: cargo +nightly fmt --all -- --check
 
+  verus:
+    name: Verus proofs
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
+    timeout-minutes: 60
+    needs: pre_job
+    runs-on: ubuntu-latest
+    env:
+      # Keep in sync with the `vstd` version pinned in `hydro_test/Cargo.toml` and
+      # `hydro_verus_tests/Cargo.toml`.
+      VERUS_VERSION: 0.2026.09.13.671956e
+      VERUS_TOOLCHAIN: 1.98.1
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Verus
+        run: |
+          VERUS_DIR=$(mktemp -d)
+          curl -L -o "$VERUS_DIR/verus.zip" "https://github.com/verus-lang/verus/releases/download/release%2F$VERUS_VERSION/verus-$VERUS_VERSION-x86-linux.zip"
+          unzip -q "$VERUS_DIR/verus.zip" -d "$VERUS_DIR"
+          rustup install "$VERUS_TOOLCHAIN"
+          echo "$VERUS_DIR/verus-x86-linux" >> $GITHUB_PATH
+
+      - uses: ./.github/actions/use-sccache
+
+      - name: Verify Verus proofs
+        # Verifies every workspace crate that opts in via `[package.metadata.verus]`
+        # (other crates are compiled normally). `--features verus` is applied to the
+        # crates that define it, making `vstd` available to their proofs; `--tests`
+        # also verifies proofs in `#[cfg(test)]` code (e.g. singleton_mut). Note that
+        # cargo-verus requires Verus-relevant flags (--features) to precede other ones.
+        run: cargo-verus verify --workspace --features verus --tests
+
+      - name: Run Verus accept/reject fixture tests
+        run: cargo test -p hydro_verus_tests --test verus_rejects
+        env:
+          HYDRO_VERUS_TESTS: "1"
+
   test:
     name: All tests
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
