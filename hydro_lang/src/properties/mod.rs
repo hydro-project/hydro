@@ -159,9 +159,31 @@ pub use crate::__manual_proof__ as manual_proof;
 /// ```rust,ignore
 /// commutative = manual_proof!(/** set insert is commutative */ hook = my_ordering_hook)
 /// ```
+///
+/// Since Stageleft 0.16, `q!` appends the quoted expression and its captures to any proof
+/// macro used as a property value, as trailing `__target = { ... }, __captures = [...]`
+/// arguments (so that checked proof macros can reason about the quoted function). Manual
+/// proofs have no use for them, so they are accepted and ignored.
 macro_rules! __manual_proof__ {
-    ($(#[doc = $doc:expr])+hook = $hook:expr $(,)?) => {
+    (
+        $(#[doc = $doc:expr])+
+        hook = $hook:expr,
+        __target = { $($target:tt)* }
+        $(, __captures = [$($captures:ident),*])?
+        $(,)?
+    ) => {
         $crate::properties::ManualProof::hooked($hook)
+    };
+    ($(#[doc = $doc:expr])+ hook = $hook:expr $(,)?) => {
+        $crate::properties::ManualProof::hooked($hook)
+    };
+    (
+        $(#[doc = $doc:expr])+,
+        __target = { $($target:tt)* }
+        $(, __captures = [$($captures:ident),*])?
+        $(,)?
+    ) => {
+        $crate::properties::ManualProof::<()>::unhooked()
     };
     ($(#[doc = $doc:expr])+) => {
         $crate::properties::ManualProof::<()>::unhooked()
