@@ -10,10 +10,10 @@ default-filter = "not (package(hydro_test) & kind(bench))"
 # excludes it. To mark a test as heavy, add it to the heavy condition in both filters below and in
 # the `heavy` test group override.
 [profile.ci-heavy]
-default-filter = "not (package(hydro_test) & kind(bench)) & (binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | (package(hydro_test) & test(maelstrom::)))"
+default-filter = "not (package(hydro_test) & kind(bench)) & (binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | binary(sim_feature_unification) | (package(hydro_test) & test(maelstrom::)))"
 
 [profile.ci-main]
-default-filter = "not (package(hydro_test) & kind(bench)) & not (binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | (package(hydro_test) & test(maelstrom::)))"
+default-filter = "not (package(hydro_test) & kind(bench)) & not (binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | binary(sim_feature_unification) | (package(hydro_test) & test(maelstrom::)))"
 
 [test-groups]
 serial-integration = { max-threads = 1 }
@@ -22,7 +22,7 @@ heavy = { max-threads = 1 }
 # Heavy tests run serially: each invokes `cargo` internally, so running them concurrently would
 # just contend on the target directory lock. Keep this filter in sync with the profiles above.
 [[profile.default.overrides]]
-filter = 'binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | (package(hydro_test) & test(maelstrom::))'
+filter = 'binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | binary(sim_feature_unification) | (package(hydro_test) & test(maelstrom::))'
 test-group = 'heavy'
 
 # TODO(inline): deadlock_detector disabled (intra-tick cycles)
@@ -48,6 +48,11 @@ test-group = 'serial-integration'
 
 [[profile.default.overrides]]
 filter = 'test(fuzz_with_cargo_sim)'
+threads-required = 'num-test-threads'
+
+# The scaffolded repro workspace compiles hydro_lang from path internally.
+[[profile.default.overrides]]
+filter = 'binary(sim_feature_unification)'
 threads-required = 'num-test-threads'
 
 [[profile.default.overrides]]
