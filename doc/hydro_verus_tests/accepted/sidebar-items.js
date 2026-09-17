@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["bitor_fold","bitor_for_each_effect","capped_max_fold","counting_filter_capture","counting_map_capture","max_fold","noncopy_sum_fold"],"struct":["NonCopyAcc","NonCopyItem"]};

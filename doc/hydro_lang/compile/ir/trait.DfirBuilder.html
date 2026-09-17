@@ -10,67 +10,67 @@
 <span class="item-spacer"></span>    fn <a href="#tymethod.add_tick_source" class="fn">add_tick_source</a>(
         &amp;mut self,
         location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-        source_rhs: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a>,
-        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        source_rhs: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a>,
+        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         replay_each_tick: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
         operator_tag: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;,
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.batch" class="fn">batch</a>(
         &amp;mut self,
-        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         in_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
         in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
-        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         out_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
         op_meta: &amp;<a class="struct" href="struct.HydroIrOpMetadata.html" title="struct hydro_lang::compile::ir::HydroIrOpMetadata">HydroIrOpMetadata</a>,
         fold_hooked_idents: &amp;<a class="struct" href="https://doc.rust-lang.org/nightly/std/collections/hash/set/struct.HashSet.html" title="struct std::collections::hash::set::HashSet">HashSet</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;,
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.yield_from_tick" class="fn">yield_from_tick</a>(
         &amp;mut self,
-        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         in_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
         in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
-        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         out_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.unwindow_for_consume" class="fn">unwindow_for_consume</a>(
         &amp;mut self,
-        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         in_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
         out_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-    ) -&gt; <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>;
+    ) -&gt; <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>;
 <span class="item-spacer"></span>    fn <a href="#tymethod.begin_atomic" class="fn">begin_atomic</a>(
         &amp;mut self,
-        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         in_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
         in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
-        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         out_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
         op_meta: &amp;<a class="struct" href="struct.HydroIrOpMetadata.html" title="struct hydro_lang::compile::ir::HydroIrOpMetadata">HydroIrOpMetadata</a>,
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.end_atomic" class="fn">end_atomic</a>(
         &amp;mut self,
-        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         in_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
         in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
-        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.observe_nondet" class="fn">observe_nondet</a>(
         &amp;mut self,
         trusted: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
         location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
-        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         out_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
         op_meta: &amp;<a class="struct" href="struct.HydroIrOpMetadata.html" title="struct hydro_lang::compile::ir::HydroIrOpMetadata">HydroIrOpMetadata</a>,
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.merge_ordered" class="fn">merge_ordered</a>(
         &amp;mut self,
         location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-        first_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
-        second_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
-        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        first_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        second_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
         op_meta: &amp;<a class="struct" href="struct.HydroIrOpMetadata.html" title="struct hydro_lang::compile::ir::HydroIrOpMetadata">HydroIrOpMetadata</a>,
         operator_tag: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;,
@@ -79,8 +79,8 @@
         &amp;mut self,
         from: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
         to: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-        input_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
-        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        input_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         serialize: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="struct.DebugExpr.html" title="struct hydro_lang::compile::ir::DebugExpr">DebugExpr</a>&gt;,
         sink: <a class="enum" href="https://docs.rs/syn/2.0.111/syn/expr/enum.Expr.html" title="enum syn::expr::Expr">Expr</a>,
         source: <a class="enum" href="https://docs.rs/syn/2.0.111/syn/expr/enum.Expr.html" title="enum syn::expr::Expr">Expr</a>,
@@ -93,7 +93,7 @@
         &amp;mut self,
         on: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
         source_expr: <a class="enum" href="https://docs.rs/syn/2.0.111/syn/expr/enum.Expr.html" title="enum syn::expr::Expr">Expr</a>,
-        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         deserialize: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="struct.DebugExpr.html" title="struct hydro_lang::compile::ir::DebugExpr">DebugExpr</a>&gt;,
         tag_id: <a class="struct" href="../builder/struct.StmtId.html" title="struct hydro_lang::compile::builder::StmtId">StmtId</a>,
     );
@@ -101,37 +101,37 @@
         &amp;mut self,
         on: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
         sink_expr: <a class="enum" href="https://docs.rs/syn/2.0.111/syn/expr/enum.Expr.html" title="enum syn::expr::Expr">Expr</a>,
-        input_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        input_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         serialize: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="struct.DebugExpr.html" title="struct hydro_lang::compile::ir::DebugExpr">DebugExpr</a>&gt;,
         tag_id: <a class="struct" href="../builder/struct.StmtId.html" title="struct hydro_lang::compile::builder::StmtId">StmtId</a>,
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.emit_fold_hook" class="fn">emit_fold_hook</a>(
         &amp;mut self,
         location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-        in_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        in_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
         op_meta: &amp;<a class="struct" href="struct.HydroIrOpMetadata.html" title="struct hydro_lang::compile::ir::HydroIrOpMetadata">HydroIrOpMetadata</a>,
-    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>&gt;;
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.assert_is_consistent" class="fn">assert_is_consistent</a>(
         &amp;mut self,
         trusted: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
         location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
-        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.observe_for_mut" class="fn">observe_for_mut</a>(
         &amp;mut self,
         location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
-        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         op_meta: &amp;<a class="struct" href="struct.HydroIrOpMetadata.html" title="struct hydro_lang::compile::ir::HydroIrOpMetadata">HydroIrOpMetadata</a>,
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.create_versioned_network_fork" class="fn">create_versioned_network_fork</a>(
         &amp;mut self,
         channel_id: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>,
         dest: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-        senders: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>, <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>, <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.DebugExpr.html" title="struct hydro_lang::compile::ir::DebugExpr">DebugExpr</a>&gt;)&gt;,
+        senders: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>, <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>, <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.DebugExpr.html" title="struct hydro_lang::compile::ir::DebugExpr">DebugExpr</a>&gt;)&gt;,
         external_element_type: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="enum" href="https://docs.rs/syn/2.0.111/syn/ty/enum.Type.html" title="enum syn::ty::Type">Type</a>&gt;,
         tag_id: <a class="struct" href="../builder/struct.StmtId.html" title="struct hydro_lang::compile::builder::StmtId">StmtId</a>,
     );
@@ -140,18 +140,18 @@
         channel_id: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>,
         source: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
         dest: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         deserialize: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="struct.DebugExpr.html" title="struct hydro_lang::compile::ir::DebugExpr">DebugExpr</a>&gt;,
         external_element_type: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="enum" href="https://docs.rs/syn/2.0.111/syn/ty/enum.Type.html" title="enum syn::ty::Type">Type</a>&gt;,
         tag_id: <a class="struct" href="../builder/struct.StmtId.html" title="struct hydro_lang::compile::builder::StmtId">StmtId</a>,
     );
 
     // Provided methods
-    fn <a href="#method.tick_state_lifetime" class="fn">tick_state_lifetime</a>(&amp;self, _op_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>) -&gt; <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a> { ... }
+    fn <a href="#method.tick_state_lifetime" class="fn">tick_state_lifetime</a>(&amp;self, _op_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>) -&gt; <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a> { ... }
 <span class="item-spacer"></span>    fn <a href="#method.cross_tick_state_lifetime" class="fn">cross_tick_state_lifetime</a>(
         &amp;self,
         _op_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-    ) -&gt; <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a> { ... }
+    ) -&gt; <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a> { ... }
 </details>}</code></pre><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>build</code></strong> only.</div></span><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A trait that abstracts over elements of DFIR code-gen that differ between production deployment
 and simulations.</p>
 <p>In particular, this lets the simulator fuse together all locations into one DFIR graph, spit
@@ -170,8 +170,8 @@ location to place tick-located statements inside the tick’s <code>loop { ... }
 </div></details><details class="toggle method-toggle" open><summary><section id="tymethod.add_tick_source" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#497-504">Source</a><h4 class="code-header">fn <a href="#tymethod.add_tick_source" class="fn">add_tick_source</a>(
     &amp;mut self,
     location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-    source_rhs: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a>,
-    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    source_rhs: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a>,
+    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     replay_each_tick: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     operator_tag: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;,
 )</h4></section></summary><div class="docblock"><p>Emits a source operator (e.g. <code>source_iter(...)</code>) that logically lives inside a tick.</p>
@@ -187,26 +187,26 @@ tick’s <code>loop { ... }</code> context: it emits the source at the root and 
 loop.</p>
 </div></details><section id="tymethod.batch" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#526-535">Source</a><h4 class="code-header">fn <a href="#tymethod.batch" class="fn">batch</a>(
     &amp;mut self,
-    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     in_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
     in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
-    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     out_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
     op_meta: &amp;<a class="struct" href="struct.HydroIrOpMetadata.html" title="struct hydro_lang::compile::ir::HydroIrOpMetadata">HydroIrOpMetadata</a>,
     fold_hooked_idents: &amp;<a class="struct" href="https://doc.rust-lang.org/nightly/std/collections/hash/set/struct.HashSet.html" title="struct std::collections::hash::set::HashSet">HashSet</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;,
 )</h4></section><section id="tymethod.yield_from_tick" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#537-544">Source</a><h4 class="code-header">fn <a href="#tymethod.yield_from_tick" class="fn">yield_from_tick</a>(
     &amp;mut self,
-    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     in_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
     in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
-    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     out_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
 )</h4></section><details class="toggle method-toggle" open><summary><section id="tymethod.unwindow_for_consume" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#553-558">Source</a><h4 class="code-header">fn <a href="#tymethod.unwindow_for_consume" class="fn">unwindow_for_consume</a>(
     &amp;mut self,
-    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     in_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
     out_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-) -&gt; <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a></h4></section></summary><div class="docblock"><p>Un-windows an ident when it is produced inside a tick’s <code>loop { ... }</code> context
+) -&gt; <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a></h4></section></summary><div class="docblock"><p>Un-windows an ident when it is produced inside a tick’s <code>loop { ... }</code> context
 (<code>in_location</code>) but is about to be consumed by an operator emitted at a location
 (<code>out_location</code>) outside that loop. Returns the ident to use downstream.</p>
 <p>This is needed for operators (e.g. <a href="enum.HydroNode.html#variant.ReduceKeyedWatermark" title="variant hydro_lang::compile::ir::HydroNode::ReduceKeyedWatermark"><code>HydroNode::ReduceKeyedWatermark</code></a>)
@@ -214,33 +214,33 @@ where the generated code must sit inside a logical tick, while the output is not
 tick, and so we need this method.</p>
 </div></details><section id="tymethod.begin_atomic" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#560-568">Source</a><h4 class="code-header">fn <a href="#tymethod.begin_atomic" class="fn">begin_atomic</a>(
     &amp;mut self,
-    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     in_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
     in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
-    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     out_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
     op_meta: &amp;<a class="struct" href="struct.HydroIrOpMetadata.html" title="struct hydro_lang::compile::ir::HydroIrOpMetadata">HydroIrOpMetadata</a>,
 )</h4></section><section id="tymethod.end_atomic" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#569-575">Source</a><h4 class="code-header">fn <a href="#tymethod.end_atomic" class="fn">end_atomic</a>(
     &amp;mut self,
-    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     in_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
     in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
-    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
 )</h4></section><section id="tymethod.observe_nondet" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#578-587">Source</a><h4 class="code-header">fn <a href="#tymethod.observe_nondet" class="fn">observe_nondet</a>(
     &amp;mut self,
     trusted: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
-    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     out_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
     op_meta: &amp;<a class="struct" href="struct.HydroIrOpMetadata.html" title="struct hydro_lang::compile::ir::HydroIrOpMetadata">HydroIrOpMetadata</a>,
 )</h4></section><section id="tymethod.merge_ordered" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#590-599">Source</a><h4 class="code-header">fn <a href="#tymethod.merge_ordered" class="fn">merge_ordered</a>(
     &amp;mut self,
     location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-    first_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
-    second_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
-    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    first_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    second_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
     op_meta: &amp;<a class="struct" href="struct.HydroIrOpMetadata.html" title="struct hydro_lang::compile::ir::HydroIrOpMetadata">HydroIrOpMetadata</a>,
     operator_tag: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;,
@@ -248,8 +248,8 @@ tick, and so we need this method.</p>
     &amp;mut self,
     from: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
     to: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-    input_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
-    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    input_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     serialize: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="struct.DebugExpr.html" title="struct hydro_lang::compile::ir::DebugExpr">DebugExpr</a>&gt;,
     sink: <a class="enum" href="https://docs.rs/syn/2.0.111/syn/expr/enum.Expr.html" title="enum syn::expr::Expr">Expr</a>,
     source: <a class="enum" href="https://docs.rs/syn/2.0.111/syn/expr/enum.Expr.html" title="enum syn::expr::Expr">Expr</a>,
@@ -261,39 +261,39 @@ tick, and so we need this method.</p>
     &amp;mut self,
     on: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
     source_expr: <a class="enum" href="https://docs.rs/syn/2.0.111/syn/expr/enum.Expr.html" title="enum syn::expr::Expr">Expr</a>,
-    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     deserialize: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="struct.DebugExpr.html" title="struct hydro_lang::compile::ir::DebugExpr">DebugExpr</a>&gt;,
     tag_id: <a class="struct" href="../builder/struct.StmtId.html" title="struct hydro_lang::compile::builder::StmtId">StmtId</a>,
 )</h4></section><section id="tymethod.create_external_output" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#626-633">Source</a><h4 class="code-header">fn <a href="#tymethod.create_external_output" class="fn">create_external_output</a>(
     &amp;mut self,
     on: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
     sink_expr: <a class="enum" href="https://docs.rs/syn/2.0.111/syn/expr/enum.Expr.html" title="enum syn::expr::Expr">Expr</a>,
-    input_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    input_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     serialize: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="struct.DebugExpr.html" title="struct hydro_lang::compile::ir::DebugExpr">DebugExpr</a>&gt;,
     tag_id: <a class="struct" href="../builder/struct.StmtId.html" title="struct hydro_lang::compile::builder::StmtId">StmtId</a>,
 )</h4></section><details class="toggle method-toggle" open><summary><section id="tymethod.emit_fold_hook" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#637-643">Source</a><h4 class="code-header">fn <a href="#tymethod.emit_fold_hook" class="fn">emit_fold_hook</a>(
     &amp;mut self,
     location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-    in_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    in_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
     op_meta: &amp;<a class="struct" href="struct.HydroIrOpMetadata.html" title="struct hydro_lang::compile::ir::HydroIrOpMetadata">HydroIrOpMetadata</a>,
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>&gt;</h4></section></summary><div class="docblock"><p>Optionally emit a fold hook that buffers and permutes inputs before the fold.
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>&gt;</h4></section></summary><div class="docblock"><p>Optionally emit a fold hook that buffers and permutes inputs before the fold.
 Returns the new input ident to use for the fold if a hook was emitted.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="tymethod.assert_is_consistent" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#648-654">Source</a><h4 class="code-header">fn <a href="#tymethod.assert_is_consistent" class="fn">assert_is_consistent</a>(
     &amp;mut self,
     trusted: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
-    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
 )</h4></section></summary><div class="docblock"><p>Inserts necessary code to validate a manual assertion that at this point the
 input live collection is consistent. In production, this is a no-op, but in simulation
 this will (not yet implemented) inject assertions that validate consistency.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="tymethod.observe_for_mut" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#659-666">Source</a><h4 class="code-header">fn <a href="#tymethod.observe_for_mut" class="fn">observe_for_mut</a>(
     &amp;mut self,
     location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    in_ident: <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     in_kind: &amp;<a class="enum" href="enum.CollectionKind.html" title="enum hydro_lang::compile::ir::CollectionKind">CollectionKind</a>,
-    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     op_meta: &amp;<a class="struct" href="struct.HydroIrOpMetadata.html" title="struct hydro_lang::compile::ir::HydroIrOpMetadata">HydroIrOpMetadata</a>,
 )</h4></section></summary><div class="docblock"><p>Observes non-determinism introduced by a mut closure operating on a non-strict
 (unordered / at-least-once) input. In production this is identity; in simulation
@@ -302,7 +302,7 @@ it delegates to <code>observe_nondet</code> with the strict output kind.</p>
     &amp;mut self,
     channel_id: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>,
     dest: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-    senders: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>, <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>, <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.DebugExpr.html" title="struct hydro_lang::compile::ir::DebugExpr">DebugExpr</a>&gt;)&gt;,
+    senders: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>, <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>, <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.DebugExpr.html" title="struct hydro_lang::compile::ir::DebugExpr">DebugExpr</a>&gt;)&gt;,
     external_element_type: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="enum" href="https://docs.rs/syn/2.0.111/syn/ty/enum.Type.html" title="enum syn::ty::Type">Type</a>&gt;,
     tag_id: <a class="struct" href="../builder/struct.StmtId.html" title="struct hydro_lang::compile::builder::StmtId">StmtId</a>,
 )</h4></section><section id="tymethod.create_versioned_network" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#678-687">Source</a><h4 class="code-header">fn <a href="#tymethod.create_versioned_network" class="fn">create_versioned_network</a>(
@@ -310,15 +310,15 @@ it delegates to <code>observe_nondet</code> with the strict output kind.</p>
     channel_id: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>,
     source: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
     dest: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>,
-    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    out_ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     deserialize: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="struct.DebugExpr.html" title="struct hydro_lang::compile::ir::DebugExpr">DebugExpr</a>&gt;,
     external_element_type: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="enum" href="https://docs.rs/syn/2.0.111/syn/ty/enum.Type.html" title="enum syn::ty::Type">Type</a>&gt;,
     tag_id: <a class="struct" href="../builder/struct.StmtId.html" title="struct hydro_lang::compile::builder::StmtId">StmtId</a>,
-)</h4></section></div><h2 id="provided-methods" class="section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.tick_state_lifetime" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#511-513">Source</a><h4 class="code-header">fn <a href="#method.tick_state_lifetime" class="fn">tick_state_lifetime</a>(&amp;self, _op_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>) -&gt; <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a></h4></section></summary><div class="docblock"><p>The DFIR persistence lifetime for operator state scoped to a single tick, for an operator
+)</h4></section></div><h2 id="provided-methods" class="section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.tick_state_lifetime" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#511-513">Source</a><h4 class="code-header">fn <a href="#method.tick_state_lifetime" class="fn">tick_state_lifetime</a>(&amp;self, _op_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>) -&gt; <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a></h4></section></summary><div class="docblock"><p>The DFIR persistence lifetime for operator state scoped to a single tick, for an operator
 at <code>op_location</code>.</p>
 <p>Returns <code>'tick</code>. In the future (#2902), production codegen will emit tick regions as DFIR
 <code>loop { ... }</code> blocks, where this must instead be <code>'none</code> when <code>op_location</code> is a tick.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.cross_tick_state_lifetime" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#521-523">Source</a><h4 class="code-header">fn <a href="#method.cross_tick_state_lifetime" class="fn">cross_tick_state_lifetime</a>(&amp;self, _op_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>) -&gt; <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a></h4></section></summary><div class="docblock"><p>The DFIR persistence lifetime for operator state that accumulates across ticks, for an
+</div></details><details class="toggle method-toggle" open><summary><section id="method.cross_tick_state_lifetime" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/ir/mod.rs.html#521-523">Source</a><h4 class="code-header">fn <a href="#method.cross_tick_state_lifetime" class="fn">cross_tick_state_lifetime</a>(&amp;self, _op_location: &amp;<a class="enum" href="../../location/dynamic/enum.LocationId.html" title="enum hydro_lang::location::dynamic::LocationId">LocationId</a>) -&gt; <a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a></h4></section></summary><div class="docblock"><p>The DFIR persistence lifetime for operator state that accumulates across ticks, for an
 operator at <code>op_location</code>.</p>
 <p>Returns <code>'static</code>. In the future (#2902), production codegen will emit tick regions as
 DFIR <code>loop { ... }</code> blocks, where this must instead be <code>'loop</code> when <code>op_location</code> is a

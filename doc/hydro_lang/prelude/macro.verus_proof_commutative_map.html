@@ -1,0 +1,52 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Fulfills a `commutative = ...` proof parameter for a map-like closure (shape `|item| -&#62; out`, e.g. for `map`) that may mutate a captured singleton reference (from `Singleton::by_mut`), with a Verus-checked proof of commutativity."><title>verus_proof_commutative_map in hydro_lang::prelude - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.100.0-nightly (923c95cdf 2026-09-16)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc macro"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">verus_proof_commutative_map</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../hydro_lang/index.html">hydro_<wbr>lang</a><span class="version">0.17.0-alpha.4</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">verus_<wbr>proof_<wbr>commutative_<wbr>map</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#example" title="Example">Example</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In hydro_<wbr>lang::<wbr>prelude</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">hydro_lang</a>::<wbr><a href="index.html">prelude</a></div><h1>Macro <span class="macro">verus_<wbr>proof_<wbr>commutative_<wbr>map</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/hydro_lang/properties/mod.rs.html#397-471">Source</a> </span></div><pre class="rust item-decl"><code>macro_rules! verus_proof_commutative_map {
+    (
+        item = $itemty:ty
+        $(, captures = |$($cap:ident : $capty:ty),* $(,)?|)?
+        , captures_mut = |$mcap:ident : $mcapty:ty $(,)?|
+        $(, proof = |$pstate:ident, $px:ident, $py:ident| { $($proof_body:tt)* })?
+        , __target = { $(move)? |$titem:ident $(: $titemty:ty)?| $target_body:expr }
+        , __captures = [$($fv:ident),* $(,)?] $(,)?
+    ) =&gt; { ... };
+    (
+        $($rest:tt)*
+    ) =&gt; { ... };
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Fulfills a <code>commutative = ...</code> proof parameter for a <strong>map-like closure</strong>
+(shape <code>|item| -&gt; out</code>, e.g. for <code>map</code>) that may mutate a captured singleton
+reference (from <a href="../live_collections/struct.Singleton.html#method.by_mut" title="method hydro_lang::live_collections::Singleton::by_mut"><code>Singleton::by_mut</code></a>), with a <strong>Verus-checked proof of
+commutativity</strong>.</p>
+<p><strong>What commutativity means for a map closure:</strong> processing any two items in either
+order, starting from the same captured state, must (1) leave the captured state in
+the same final value, <em>and</em> (2) produce the same <strong>multiset of output values</strong> (the
+outputs may be swapped in order, but not changed). Both conditions are required for
+downstream determinism: outputs that depend on the processing order (e.g. emitting a
+running total) are <strong>not</strong> commutative even if the state update is.</p>
+<p>The commuting state is the mutable capture, declared (with the type behind the
+reference) in the required <code>captures_mut = |state: S|</code> clause; additional read-only
+captures can be declared in a <code>captures = |...|</code> clause. <code>q!</code> also passes the
+closure’s capture list (as a trailing <code>__captures = [...]</code> argument), and the macro
+checks at compile time that every capture is declared. The <code>item = ...</code> type must be
+written exactly as the closure receives it.</p>
+<p>Users never write the proof obligation: this macro receives the quoted closure itself
+from <code>q!</code> (as a trailing <code>__target = { ... }</code> argument) and generates a Verus function
+that symbolically executes the <em>actual closure body</em> in both orders — <code>x</code> then <code>y</code>,
+and <code>y</code> then <code>x</code> — from equal captured states, then asserts that the final states are
+equal and that the two runs’ outputs are equal as a multiset (pairwise or crossed).
+Verifying this also proves the body panic-free.</p>
+<p>An optional <code>proof = |state, x, y| { ... }</code> clause supplies a proof <em>script</em> to help
+the SMT solver, with ghost bindings for the initial captured state and the two items.
+The script is checked by Verus and cannot weaken the obligation.</p>
+<p>The proof is gated on <code>cfg(verus_keep_ghost)</code>, so it only exists when the crate is
+compiled by the Verus driver (<code>cargo verus verify</code>). Under normal compilation the
+macro just produces a <a href="../properties/struct.VerusCommutativeProof.html" title="struct hydro_lang::properties::VerusCommutativeProof"><code>VerusCommutativeProof</code></a> marker.</p>
+<h2 id="example"><a class="doc-anchor" href="#example">§</a>Example</h2>
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">let </span>count_mut = my_count.by_mut();
+stream.map(<span class="macro">q!</span>(
+    |x| {
+        <span class="kw-2">*</span>count_mut = count_mut.wrapping_add(x);
+        x <span class="comment">// outputting `*count_mut` here would NOT be commutative!
+    </span>},
+    commutative = <span class="macro">verus_proof_commutative_map!</span>(
+        item = i32,
+        captures_mut = |count_mut: i32|
+    )
+));</code></pre></div></div></details></section></div></main></body></html>

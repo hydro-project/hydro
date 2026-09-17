@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":[["manual_proof",1],["nondet",1],"q"]};
+window.SIDEBAR_ITEMS = {"macro":[["manual_proof",1],["nondet",1],"q",["verus_proof_commutative_effect",1],["verus_proof_commutative_filter",1],["verus_proof_commutative_fold",1],["verus_proof_commutative_map",1]]};

@@ -141,19 +141,19 @@
 <span class="item-spacer"></span>    fn <a href="#method.register_embedded_stream_input" class="fn">register_embedded_stream_input</a>(
         _env: &amp;mut Self::<a class="associatedtype" href="trait.Deploy.html#associatedtype.InstantiateEnv" title="type hydro_lang::compile::deploy_provider::Deploy::InstantiateEnv">InstantiateEnv</a>,
         _location_key: <a class="struct" href="../../location/struct.LocationKey.html" title="struct hydro_lang::location::LocationKey">LocationKey</a>,
-        _ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        _ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         _element_type: &amp;<a class="enum" href="https://docs.rs/syn/2.0.111/syn/ty/enum.Type.html" title="enum syn::ty::Type">Type</a>,
     ) { ... }
 <span class="item-spacer"></span>    fn <a href="#method.register_embedded_singleton_input" class="fn">register_embedded_singleton_input</a>(
         _env: &amp;mut Self::<a class="associatedtype" href="trait.Deploy.html#associatedtype.InstantiateEnv" title="type hydro_lang::compile::deploy_provider::Deploy::InstantiateEnv">InstantiateEnv</a>,
         _location_key: <a class="struct" href="../../location/struct.LocationKey.html" title="struct hydro_lang::location::LocationKey">LocationKey</a>,
-        _ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        _ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         _element_type: &amp;<a class="enum" href="https://docs.rs/syn/2.0.111/syn/ty/enum.Type.html" title="enum syn::ty::Type">Type</a>,
     ) { ... }
 <span class="item-spacer"></span>    fn <a href="#method.register_embedded_output" class="fn">register_embedded_output</a>(
         _env: &amp;mut Self::<a class="associatedtype" href="trait.Deploy.html#associatedtype.InstantiateEnv" title="type hydro_lang::compile::deploy_provider::Deploy::InstantiateEnv">InstantiateEnv</a>,
         _location_key: <a class="struct" href="../../location/struct.LocationKey.html" title="struct hydro_lang::location::LocationKey">LocationKey</a>,
-        _ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+        _ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
         _element_type: &amp;<a class="enum" href="https://docs.rs/syn/2.0.111/syn/ty/enum.Type.html" title="enum syn::ty::Type">Type</a>,
     ) { ... }
 </details>}</code></pre><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>build</code></strong> only.</div></span><h2 id="provided-associated-consts" class="section-header">Provided Associated Constants<a href="#provided-associated-consts" class="anchor">§</a></h2><div class="methods"><details class="toggle" open><summary><section id="associatedconstant.SUPPORTS_EXTERNAL_SERIALIZATION" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/deploy_provider.rs.html#28">Source</a><h4 class="code-header">const <a href="#associatedconstant.SUPPORTS_EXTERNAL_SERIALIZATION" class="constant">SUPPORTS_EXTERNAL_SERIALIZATION</a>: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> = false</h4></section></summary><div class="docblock"><p>Whether this deployment backend supports network channels that leave serialization to code
@@ -317,7 +317,7 @@ unserialized.</p>
 ) -&gt; <a class="enum" href="https://docs.rs/syn/2.0.111/syn/expr/enum.Expr.html" title="enum syn::expr::Expr">Expr</a></h4></section><details class="toggle method-toggle" open><summary><section id="method.register_embedded_stream_input" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/deploy_provider.rs.html#258-265">Source</a><h4 class="code-header">fn <a href="#method.register_embedded_stream_input" class="fn">register_embedded_stream_input</a>(
     _env: &amp;mut Self::<a class="associatedtype" href="trait.Deploy.html#associatedtype.InstantiateEnv" title="type hydro_lang::compile::deploy_provider::Deploy::InstantiateEnv">InstantiateEnv</a>,
     _location_key: <a class="struct" href="../../location/struct.LocationKey.html" title="struct hydro_lang::location::LocationKey">LocationKey</a>,
-    _ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    _ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     _element_type: &amp;<a class="enum" href="https://docs.rs/syn/2.0.111/syn/ty/enum.Type.html" title="enum syn::ty::Type">Type</a>,
 )</h4></section></summary><div class="docblock"><p>Registers an embedded stream input for the given ident and element type.</p>
 <p>Only meaningful for the embedded deployment backend. The default
@@ -325,7 +325,7 @@ implementation panics.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.register_embedded_singleton_input" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/deploy_provider.rs.html#271-278">Source</a><h4 class="code-header">fn <a href="#method.register_embedded_singleton_input" class="fn">register_embedded_singleton_input</a>(
     _env: &amp;mut Self::<a class="associatedtype" href="trait.Deploy.html#associatedtype.InstantiateEnv" title="type hydro_lang::compile::deploy_provider::Deploy::InstantiateEnv">InstantiateEnv</a>,
     _location_key: <a class="struct" href="../../location/struct.LocationKey.html" title="struct hydro_lang::location::LocationKey">LocationKey</a>,
-    _ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    _ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     _element_type: &amp;<a class="enum" href="https://docs.rs/syn/2.0.111/syn/ty/enum.Type.html" title="enum syn::ty::Type">Type</a>,
 )</h4></section></summary><div class="docblock"><p>Registers an embedded singleton input for the given ident and element type.</p>
 <p>Only meaningful for the embedded deployment backend. The default
@@ -333,7 +333,7 @@ implementation panics.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.register_embedded_output" class="method"><a class="src rightside" href="../../../src/hydro_lang/compile/deploy_provider.rs.html#284-291">Source</a><h4 class="code-header">fn <a href="#method.register_embedded_output" class="fn">register_embedded_output</a>(
     _env: &amp;mut Self::<a class="associatedtype" href="trait.Deploy.html#associatedtype.InstantiateEnv" title="type hydro_lang::compile::deploy_provider::Deploy::InstantiateEnv">InstantiateEnv</a>,
     _location_key: <a class="struct" href="../../location/struct.LocationKey.html" title="struct hydro_lang::location::LocationKey">LocationKey</a>,
-    _ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
+    _ident: &amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.107/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>,
     _element_type: &amp;<a class="enum" href="https://docs.rs/syn/2.0.111/syn/ty/enum.Type.html" title="enum syn::ty::Type">Type</a>,
 )</h4></section></summary><div class="docblock"><p>Registers an embedded output for the given ident and element type.</p>
 <p>Only meaningful for the embedded deployment backend. The default
