@@ -1448,17 +1448,41 @@ mod custom_codec {
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
-        let (send, input) = node.sim_input_with(RawMessageCodec);
+        let (send, input) = node.sim_input_with::<RawMessageCodec, _, _, _>();
         let out = input
             .map(q!(|message| RawMessage {
                 id: message.id,
                 value: message.value * 2,
             }))
-            .sim_output_with(RawMessageCodec);
+            .sim_output_with::<RawMessageCodec>();
 
         flow.sim().exhaustive(async || {
             send.send(RawMessage { id: 7, value: 42 });
             assert_eq!(out.next().await, RawMessage { id: 7, value: 84 });
         });
+    }
+
+    #[test]
+    fn sim_cluster_custom_codec_round_trip() {
+        let mut flow = FlowBuilder::new();
+        let cluster = flow.cluster::<()>();
+
+        let (send, input) = cluster.sim_input_with::<RawMessageCodec, _, _, _>();
+        let out = input
+            .map(q!(|message| RawMessage {
+                id: message.id,
+                value: message.value * 2,
+            }))
+            .sim_cluster_output_with::<RawMessageCodec>();
+
+        flow.sim()
+            .with_cluster_size(&cluster, 2)
+            .exhaustive(async || {
+                send.send(0, RawMessage { id: 0, value: 1 });
+                send.send(1, RawMessage { id: 1, value: 2 });
+
+                assert_eq!(out.next(0).await, RawMessage { id: 0, value: 2 });
+                assert_eq!(out.next(1).await, RawMessage { id: 1, value: 4 });
+            });
     }
 }

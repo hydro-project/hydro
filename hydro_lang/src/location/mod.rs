@@ -644,19 +644,19 @@ pub trait Location<'a>: DynLocation {
         Self: TopLevel<'a> + Sized,
         T: Serialize + DeserializeOwned,
     {
-        self.sim_input_with(crate::sim::codec::BincodeCodec)
+        self.sim_input_with::<crate::sim::codec::BincodeCodec, T, O, R>()
     }
 
-    /// Sets up a simulated input port using `codec`.
+    /// Sets up a simulated input port using the codec `C`.
     ///
     /// Returns a handle to send messages to the location as well as a stream
-    /// of received messages. Custom codecs implement
-    /// [`SimCodec`](crate::sim::codec::SimCodec), which documents where they must be defined.
-    /// This is only available when the `sim` feature is enabled.
+    /// of received messages. The codec is a type parameter; the message, ordering and
+    /// retries types are usually inferred: `location.sim_input_with::<MyCodec, _, _, _>()`.
+    /// Custom codecs implement [`SimCodec`](crate::sim::codec::SimCodec), which documents
+    /// where they must be defined. This is only available when the `sim` feature is enabled.
     #[cfg(feature = "sim")]
-    fn sim_input_with<T, O: Ordering, R: Retries, C: crate::sim::codec::SimCodec<T>>(
+    fn sim_input_with<C: crate::sim::codec::SimCodec<T>, T, O: Ordering, R: Retries>(
         &self,
-        _codec: C,
     ) -> (
         SimSender<T, O, R>,
         Stream<T, Self::DropConsistency, Unbounded, O, R>,

@@ -509,14 +509,15 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.sim_output_with(crate::sim::codec::BincodeCodec)
+        self.sim_output_with::<crate::sim::codec::BincodeCodec>()
     }
 
     #[cfg(feature = "sim")]
-    /// Sets up a simulation output port using `codec`, allowing test code to receive elements
-    /// sent to this stream during simulation. Custom codecs implement
-    /// [`SimCodec`](crate::sim::codec::SimCodec), which documents where they must be defined.
-    pub fn sim_output_with<C>(self, _codec: C) -> SimReceiver<T, O, R>
+    /// Sets up a simulation output port using the codec `C`, allowing test code to receive
+    /// elements sent to this stream during simulation: `stream.sim_output_with::<MyCodec>()`.
+    /// Custom codecs implement [`SimCodec`](crate::sim::codec::SimCodec), which documents
+    /// where they must be defined.
+    pub fn sim_output_with<C>(self) -> SimReceiver<T, O, R>
     where
         C: crate::sim::codec::SimCodec<T>,
     {
@@ -1363,13 +1364,11 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     }
 
     #[cfg(feature = "sim")]
-    /// Sends elements of this cluster stream to an external location using bincode serialization.
-    fn send_bincode_external<L2>(self, other: &External<'_, L2>) -> ExternalBincodeStream<T, O, R>
-    where
-        T: Serialize + DeserializeOwned,
-    {
-        let serialize_pipeline = Some(serialize_bincode::<T>(false));
-
+    fn register_serialized_external_port<L2>(
+        self,
+        other: &External<'_, L2>,
+        serialize_pipeline: syn::Expr,
+    ) -> ExternalPortId {
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
 
         let external_port_id = flow_state_borrow.next_external_port();
@@ -1379,25 +1378,34 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
             to_port_id: external_port_id,
             to_many: false,
             unpaired: true,
-            serialize_fn: serialize_pipeline.map(|e| e.into()),
+            serialize_fn: Some(serialize_pipeline.into()),
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
-        ExternalBincodeStream {
-            process_key: other.key,
-            port_id: external_port_id,
-            _phantom: PhantomData,
-        }
+        external_port_id
     }
 
     #[cfg(feature = "sim")]
-    /// Sets up a simulation output port for this cluster stream, allowing test code
-    /// to receive `(member_id, T)` pairs during simulation.
+    /// Sets up a bincode-encoded simulation output port for this cluster stream, allowing test
+    /// code to receive `(member_id, T)` pairs during simulation. Use
+    /// [`Stream::sim_cluster_output_with`] to select another codec.
     pub fn sim_cluster_output(self) -> crate::sim::SimClusterReceiver<T, O, R>
     where
         T: Serialize + DeserializeOwned,
+    {
+        self.sim_cluster_output_with::<crate::sim::codec::BincodeCodec>()
+    }
+
+    #[cfg(feature = "sim")]
+    /// Sets up a simulation output port for this cluster stream using the codec `Codec`,
+    /// allowing test code to receive `(member_id, T)` pairs during simulation:
+    /// `stream.sim_cluster_output_with::<MyCodec>()`. Custom codecs implement
+    /// [`SimCodec`](crate::sim::codec::SimCodec), which documents where they must be defined.
+    pub fn sim_cluster_output_with<Codec>(self) -> crate::sim::SimClusterReceiver<T, O, R>
+    where
+        Codec: crate::sim::codec::SimCodec<T>,
     {
         let external_location: External<'a, ()> = External {
             key: LocationKey::FIRST,
@@ -1405,9 +1413,12 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
             _phantom: PhantomData,
         };
 
-        let external = self.send_bincode_external(&external_location);
+        let external_port_id = self.register_serialized_external_port(
+            &external_location,
+            crate::sim::codec::staged_serialize::<T, Codec>(),
+        );
 
-        crate::sim::SimClusterReceiver(external.port_id, PhantomData)
+        crate::sim::SimClusterReceiver(external_port_id, PhantomData, Codec::decode)
     }
 }
 
