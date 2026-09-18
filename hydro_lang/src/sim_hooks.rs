@@ -14,6 +14,24 @@
 //! passed into the program during construction and used later inside the test body to
 //! script decisions.
 //!
+//! # Hook scopes
+//!
+//! Every handle type carries a **scope** parameter naming the kind of root location the
+//! hooked operator runs on, mirroring
+//! [`Location::SimHookScope`](crate::location::Location::SimHookScope):
+//!
+//! - [`OnProcess<P>`] (the default): the operator runs on a process; the handle scripts
+//!   its one instance directly.
+//! - [`OnCluster<C>`]: the operator runs on a cluster, so every member has its own
+//!   independent instance. The handle itself cannot script decisions (which member's
+//!   instance would act?); select one with [`.on(member_id)`](BatchHook::on) to get an
+//!   [`OnMember<C>`]-scoped handle carrying the full scripting API.
+//!
+//! Because the operator's `NonDet` payload names the scope through the operator's
+//! location type, scope mismatches are ordinary compile errors: a cluster-bound handle
+//! cannot be scripted without `.on(..)`, `.on(..)` does not exist on a process-scoped
+//! handle, and a member-scoped handle cannot be bound to an operator.
+//!
 //! This module contains only the handle types themselves (plain data), so components can
 //! expose hookable signatures (e.g. `nondet_batch: NonDet<Option<BatchHook<u32>>>`, passed
 //! directly to the `batch` operator it controls) without pulling
@@ -75,58 +93,167 @@ impl<H: SimHook> SimHook for Option<H> {
     }
 }
 
+/// Hook scope marker: the hooked operator runs on a
+/// [`Process`](crate::location::Process) with tag `P`, so the handle scripts the
+/// operator's one instance directly.
+///
+/// This is the default scope of every handle type, so process-side code never needs to
+/// name it. See [`OnCluster`] for operators running on a cluster, and the
+/// [module docs](self) for the scope system.
+pub struct OnProcess<P = ()> {
+    _phantom: PhantomData<fn(P)>,
+}
+
+/// Hook scope marker: the hooked operator runs on a
+/// [`Cluster`](crate::location::Cluster) with tag `C`, so every member has its own
+/// independent instance of the operator.
+///
+/// A cluster-scoped handle cannot script decisions directly — that would be ambiguous
+/// about which member's instance acts. Select a member's instance with
+/// [`.on(member_id)`](BatchHook::on), which yields an [`OnMember`]-scoped handle carrying
+/// the full scripting API. Every member's instance independently participates in the
+/// missing-decision protocol: a member whose operator holds buffered input needs its own
+/// decision (or its own `.on(member).pause()`), and a forgotten member is reported
+/// naming that member.
+pub struct OnCluster<C = ()> {
+    _phantom: PhantomData<fn(C)>,
+}
+
+/// Hook scope marker: one **selected member**'s instance of an operator running on a
+/// [`Cluster`](crate::location::Cluster) with tag `C`, produced by
+/// [`.on(member_id)`](BatchHook::on) on an [`OnCluster`]-scoped handle.
+///
+/// Member-scoped handles carry the full scripting API but cannot be created by
+/// [`FlowBuilder::sim_hook`](crate::compile::builder::FlowBuilder::sim_hook) or bound to
+/// an operator: binding always uses the unscoped [`OnCluster`] handle (every member runs
+/// the operator), and member selection is purely a test-side scripting concept.
+pub struct OnMember<C = ()> {
+    _phantom: PhantomData<fn(C)>,
+}
+
+/// Hook scopes a handle can be **created and bound** with: [`OnProcess`] and
+/// [`OnCluster`], matching the two kinds of root locations an operator can run on.
+/// Operator signatures name the scope through
+/// [`Location::SimHookScope`](crate::location::Location::SimHookScope), so a handle can
+/// only bind to an operator whose location kind (and tag) it was created for.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a scope that sim hook handles can be created with",
+    note = "handles are created with the `OnProcess<P>` or `OnCluster<C>` scope of the operator they will be bound to; `OnMember` handles only arise from `.on(member_id)` at scripting time"
+)]
+#[sealed::sealed]
+pub trait BindableHookScope {}
+#[sealed::sealed]
+impl<P> BindableHookScope for OnProcess<P> {}
+#[sealed::sealed]
+impl<C> BindableHookScope for OnCluster<C> {}
+
+/// Hook scopes that name a **single instance** of the hooked operator, and can therefore
+/// script decisions (and pauses): [`OnProcess`] (the operator's one instance) and
+/// [`OnMember`] (one selected cluster member's instance). An [`OnCluster`]-scoped handle
+/// must first select a member with [`.on(member_id)`](BatchHook::on).
+#[diagnostic::on_unimplemented(
+    message = "a `{Self}`-scoped sim hook handle cannot script decisions",
+    note = "a hook bound to an operator running on a cluster has one independent instance per member; select the member to script with `.on(member_id)`"
+)]
+#[sealed::sealed]
+pub trait ScriptableHookScope {}
+#[sealed::sealed]
+impl<P> ScriptableHookScope for OnProcess<P> {}
+#[sealed::sealed]
+impl<C> ScriptableHookScope for OnMember<C> {}
+
+/// Generates the `.on(member_id)` member-selection method on [`OnCluster`]-scoped
+/// handles, shared by every handle type.
+macro_rules! on_member_method {
+    ($handle:ident < $($param:ident),* >) => {
+        /// Selects one **cluster member**'s instance of the hooked operator, returning a
+        /// member-scoped ([`OnMember`]) handle that carries the full scripting API.
+        ///
+        /// Every member of the cluster runs its own instance of the operator, and each
+        /// instance is scripted independently: `handle.on(0).release(2)` scripts member
+        /// 0's next batch and says nothing about the other members. Each member's
+        /// instance also independently participates in the missing-decision protocol: a
+        /// member whose operator holds buffered input needs its own decision (or its own
+        /// `.on(member).pause()`), and forgetting one is reported naming that member.
+        ///
+        /// The member ID must exist under the cluster's sizing
+        /// ([`SimFlow::with_cluster_size`](crate::sim::flow::SimFlow::with_cluster_size));
+        /// a nonexistent member is reported when the scripting call is awaited.
+        pub fn on(&self, member_id: u32) -> $handle<$($param,)* OnMember<C>> {
+            $handle {
+                id: self.id,
+                member: Some(member_id),
+                _phantom: PhantomData,
+            }
+        }
+    };
+}
+
 /// A hook handle controlling a `batch` operator over a stream of `T` elements with ordering
-/// `O` and retry guarantee `R` (mirroring the type of the stream being batched).
+/// `O` and retry guarantee `R` (mirroring the type of the stream being batched). `S` is the
+/// handle's [scope](self#hook-scopes).
 ///
 /// A decision for a batch hook says which buffered elements form the next batch released
 /// into the tick. See `hydro_lang::sim::hooks` for the decisions offered.
-pub struct BatchHook<T, O: Ordering = TotalOrder, R: Retries = ExactlyOnce> {
+pub struct BatchHook<T, O: Ordering = TotalOrder, R: Retries = ExactlyOnce, S = OnProcess> {
     pub(crate) id: usize,
-    pub(crate) _phantom: PhantomData<fn(T, O, R)>,
+    pub(crate) member: Option<u32>,
+    pub(crate) _phantom: PhantomData<fn(T, O, R, S)>,
 }
 
-impl<T, O: Ordering, R: Retries> Clone for BatchHook<T, O, R> {
+impl<T, O: Ordering, R: Retries, C> BatchHook<T, O, R, OnCluster<C>> {
+    on_member_method!(BatchHook<T, O, R>);
+}
+
+impl<T, O: Ordering, R: Retries, S> Clone for BatchHook<T, O, R, S> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<T, O: Ordering, R: Retries> Copy for BatchHook<T, O, R> {}
+impl<T, O: Ordering, R: Retries, S> Copy for BatchHook<T, O, R, S> {}
 
-impl<T, O: Ordering, R: Retries> std::fmt::Debug for BatchHook<T, O, R> {
+impl<T, O: Ordering, R: Retries, S> std::fmt::Debug for BatchHook<T, O, R, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BatchHook").field("id", &self.id).finish()
     }
 }
 
-impl<T, O: Ordering, R: Retries> SimHook for BatchHook<T, O, R>
+impl<T, O: Ordering, R: Retries, S: BindableHookScope> SimHook for BatchHook<T, O, R, S>
 where
     T: Serialize + DeserializeOwned + PartialEq,
 {
     fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
         BatchHook {
             id: next_id(),
+            member: None,
             _phantom: PhantomData,
         }
     }
 }
 
-/// A hook handle controlling a `snapshot` operator over a singleton of `T`.
+/// A hook handle controlling a `snapshot` operator over a singleton of `T`. `S` is the
+/// handle's [scope](self#hook-scopes).
 ///
 /// A decision for a snapshot hook picks which buffered version of the state the next tick
 /// execution observes. See `hydro_lang::sim::hooks` for the decisions offered.
-pub struct SnapshotHook<T> {
+pub struct SnapshotHook<T, S = OnProcess> {
     pub(crate) id: usize,
-    pub(crate) _phantom: PhantomData<fn(T)>,
+    pub(crate) member: Option<u32>,
+    pub(crate) _phantom: PhantomData<fn(T, S)>,
 }
 
-impl<T> Clone for SnapshotHook<T> {
+impl<T, C> SnapshotHook<T, OnCluster<C>> {
+    on_member_method!(SnapshotHook<T>);
+}
+
+impl<T, S> Clone for SnapshotHook<T, S> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<T> Copy for SnapshotHook<T> {}
+impl<T, S> Copy for SnapshotHook<T, S> {}
 
-impl<T> std::fmt::Debug for SnapshotHook<T> {
+impl<T, S> std::fmt::Debug for SnapshotHook<T, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SnapshotHook")
             .field("id", &self.id)
@@ -134,36 +261,43 @@ impl<T> std::fmt::Debug for SnapshotHook<T> {
     }
 }
 
-impl<T> SimHook for SnapshotHook<T>
+impl<T, S: BindableHookScope> SimHook for SnapshotHook<T, S>
 where
     T: Clone + PartialEq + Serialize + DeserializeOwned,
 {
     fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
         SnapshotHook {
             id: next_id(),
+            member: None,
             _phantom: PhantomData,
         }
     }
 }
 
-/// A hook handle controlling an `assume_ordering` operator over `T` elements.
+/// A hook handle controlling an `assume_ordering` operator over `T` elements. `S` is the
+/// handle's [scope](self#hook-scopes).
 ///
 /// A top-level decision selects the next buffered element to release. An `assume_ordering`
 /// inside a tick instead takes one exhaustive ordering of that tick's complete input. See
 /// `hydro_lang::sim::hooks` for the decisions offered.
-pub struct OrderingHook<T, B: Boundedness = Unbounded> {
+pub struct OrderingHook<T, B: Boundedness = Unbounded, S = OnProcess> {
     pub(crate) id: usize,
-    pub(crate) _phantom: PhantomData<fn(T, B)>,
+    pub(crate) member: Option<u32>,
+    pub(crate) _phantom: PhantomData<fn(T, B, S)>,
 }
 
-impl<T, B: Boundedness> Clone for OrderingHook<T, B> {
+impl<T, B: Boundedness, C> OrderingHook<T, B, OnCluster<C>> {
+    on_member_method!(OrderingHook<T, B>);
+}
+
+impl<T, B: Boundedness, S> Clone for OrderingHook<T, B, S> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<T, B: Boundedness> Copy for OrderingHook<T, B> {}
+impl<T, B: Boundedness, S> Copy for OrderingHook<T, B, S> {}
 
-impl<T, B: Boundedness> std::fmt::Debug for OrderingHook<T, B> {
+impl<T, B: Boundedness, S> std::fmt::Debug for OrderingHook<T, B, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("OrderingHook")
             .field("id", &self.id)
@@ -171,13 +305,14 @@ impl<T, B: Boundedness> std::fmt::Debug for OrderingHook<T, B> {
     }
 }
 
-impl<T, B: Boundedness> SimHook for OrderingHook<T, B>
+impl<T, B: Boundedness, S: BindableHookScope> SimHook for OrderingHook<T, B, S>
 where
     T: Serialize + DeserializeOwned + PartialEq,
 {
     fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
         OrderingHook {
             id: next_id(),
+            member: None,
             _phantom: PhantomData,
         }
     }
@@ -185,24 +320,29 @@ where
 
 /// A hook handle controlling a `batch` operator over a keyed stream with keys `K`, values
 /// `V`, per-key value ordering `O`, and retry guarantee `R` (mirroring the type of the
-/// keyed stream being batched).
+/// keyed stream being batched). `S` is the handle's [scope](self#hook-scopes).
 ///
 /// A decision for a keyed batch hook says which buffered `(key, value)` entries form the
 /// next batch released into the tick. See `hydro_lang::sim::hooks` for the decisions
 /// offered.
-pub struct KeyedBatchHook<K, V, O: Ordering = TotalOrder, R: Retries = ExactlyOnce> {
+pub struct KeyedBatchHook<K, V, O: Ordering = TotalOrder, R: Retries = ExactlyOnce, S = OnProcess> {
     pub(crate) id: usize,
-    pub(crate) _phantom: PhantomData<fn(K, V, O, R)>,
+    pub(crate) member: Option<u32>,
+    pub(crate) _phantom: PhantomData<fn(K, V, O, R, S)>,
 }
 
-impl<K, V, O: Ordering, R: Retries> Clone for KeyedBatchHook<K, V, O, R> {
+impl<K, V, O: Ordering, R: Retries, C> KeyedBatchHook<K, V, O, R, OnCluster<C>> {
+    on_member_method!(KeyedBatchHook<K, V, O, R>);
+}
+
+impl<K, V, O: Ordering, R: Retries, S> Clone for KeyedBatchHook<K, V, O, R, S> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<K, V, O: Ordering, R: Retries> Copy for KeyedBatchHook<K, V, O, R> {}
+impl<K, V, O: Ordering, R: Retries, S> Copy for KeyedBatchHook<K, V, O, R, S> {}
 
-impl<K, V, O: Ordering, R: Retries> std::fmt::Debug for KeyedBatchHook<K, V, O, R> {
+impl<K, V, O: Ordering, R: Retries, S> std::fmt::Debug for KeyedBatchHook<K, V, O, R, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("KeyedBatchHook")
             .field("id", &self.id)
@@ -210,7 +350,7 @@ impl<K, V, O: Ordering, R: Retries> std::fmt::Debug for KeyedBatchHook<K, V, O, 
     }
 }
 
-impl<K, V, O: Ordering, R: Retries> SimHook for KeyedBatchHook<K, V, O, R>
+impl<K, V, O: Ordering, R: Retries, S: BindableHookScope> SimHook for KeyedBatchHook<K, V, O, R, S>
 where
     K: Hash + Eq + Clone + Serialize + DeserializeOwned,
     V: Serialize + DeserializeOwned + PartialEq,
@@ -218,30 +358,36 @@ where
     fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
         KeyedBatchHook {
             id: next_id(),
+            member: None,
             _phantom: PhantomData,
         }
     }
 }
 
 /// A hook handle controlling a `snapshot` (or `batch`) operator over a keyed singleton
-/// with keys `K` and values `V`.
+/// with keys `K` and values `V`. `S` is the handle's [scope](self#hook-scopes).
 ///
 /// A decision for a keyed snapshot hook picks which buffered version of each key's state
 /// the next tick execution observes. See `hydro_lang::sim::hooks` for the decisions
 /// offered.
-pub struct KeyedSnapshotHook<K, V> {
+pub struct KeyedSnapshotHook<K, V, S = OnProcess> {
     pub(crate) id: usize,
-    pub(crate) _phantom: PhantomData<fn(K, V)>,
+    pub(crate) member: Option<u32>,
+    pub(crate) _phantom: PhantomData<fn(K, V, S)>,
 }
 
-impl<K, V> Clone for KeyedSnapshotHook<K, V> {
+impl<K, V, C> KeyedSnapshotHook<K, V, OnCluster<C>> {
+    on_member_method!(KeyedSnapshotHook<K, V>);
+}
+
+impl<K, V, S> Clone for KeyedSnapshotHook<K, V, S> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<K, V> Copy for KeyedSnapshotHook<K, V> {}
+impl<K, V, S> Copy for KeyedSnapshotHook<K, V, S> {}
 
-impl<K, V> std::fmt::Debug for KeyedSnapshotHook<K, V> {
+impl<K, V, S> std::fmt::Debug for KeyedSnapshotHook<K, V, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("KeyedSnapshotHook")
             .field("id", &self.id)
@@ -249,7 +395,7 @@ impl<K, V> std::fmt::Debug for KeyedSnapshotHook<K, V> {
     }
 }
 
-impl<K, V> SimHook for KeyedSnapshotHook<K, V>
+impl<K, V, S: BindableHookScope> SimHook for KeyedSnapshotHook<K, V, S>
 where
     K: Hash + Eq + Clone + Serialize + DeserializeOwned,
     V: Clone + PartialEq + Serialize + DeserializeOwned,
@@ -257,30 +403,36 @@ where
     fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
         KeyedSnapshotHook {
             id: next_id(),
+            member: None,
             _phantom: PhantomData,
         }
     }
 }
 
 /// A hook handle controlling an `assume_ordering` operator over a keyed stream with keys
-/// `K` and values `V`.
+/// `K` and values `V`. `S` is the handle's [scope](self#hook-scopes).
 ///
 /// A top-level decision selects the next buffered `(key, value)` entry to release. An
 /// `assume_ordering` inside a tick instead takes one exhaustive per-key ordering of that
 /// tick's complete input. See `hydro_lang::sim::hooks` for the decisions offered.
-pub struct KeyedOrderingHook<K, V, B: Boundedness = Unbounded> {
+pub struct KeyedOrderingHook<K, V, B: Boundedness = Unbounded, S = OnProcess> {
     pub(crate) id: usize,
-    pub(crate) _phantom: PhantomData<fn(K, V, B)>,
+    pub(crate) member: Option<u32>,
+    pub(crate) _phantom: PhantomData<fn(K, V, B, S)>,
 }
 
-impl<K, V, B: Boundedness> Clone for KeyedOrderingHook<K, V, B> {
+impl<K, V, B: Boundedness, C> KeyedOrderingHook<K, V, B, OnCluster<C>> {
+    on_member_method!(KeyedOrderingHook<K, V, B>);
+}
+
+impl<K, V, B: Boundedness, S> Clone for KeyedOrderingHook<K, V, B, S> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<K, V, B: Boundedness> Copy for KeyedOrderingHook<K, V, B> {}
+impl<K, V, B: Boundedness, S> Copy for KeyedOrderingHook<K, V, B, S> {}
 
-impl<K, V, B: Boundedness> std::fmt::Debug for KeyedOrderingHook<K, V, B> {
+impl<K, V, B: Boundedness, S> std::fmt::Debug for KeyedOrderingHook<K, V, B, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("KeyedOrderingHook")
             .field("id", &self.id)
@@ -288,7 +440,7 @@ impl<K, V, B: Boundedness> std::fmt::Debug for KeyedOrderingHook<K, V, B> {
     }
 }
 
-impl<K, V, B: Boundedness> SimHook for KeyedOrderingHook<K, V, B>
+impl<K, V, B: Boundedness, S: BindableHookScope> SimHook for KeyedOrderingHook<K, V, B, S>
 where
     K: Hash + Eq + Clone + Serialize + DeserializeOwned,
     V: Serialize + DeserializeOwned + PartialEq,
@@ -296,31 +448,37 @@ where
     fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
         KeyedOrderingHook {
             id: next_id(),
+            member: None,
             _phantom: PhantomData,
         }
     }
 }
 
 /// A hook handle controlling an `entries_partially_ordered` operator over a keyed stream
-/// with keys `K` and values `V`.
+/// with keys `K` and values `V`. `S` is the handle's [scope](self#hook-scopes).
 ///
 /// The operator preserves the order of values within each key while interleaving across
 /// keys non-deterministically. A top-level decision releases the front entry of one key's
 /// buffer; inside a tick, a single decision supplies the complete interleaving. See
 /// `hydro_lang::sim::hooks` for the decisions offered.
-pub struct PartialOrderingHook<K, V, B: Boundedness = Unbounded> {
+pub struct PartialOrderingHook<K, V, B: Boundedness = Unbounded, S = OnProcess> {
     pub(crate) id: usize,
-    pub(crate) _phantom: PhantomData<fn(K, V, B)>,
+    pub(crate) member: Option<u32>,
+    pub(crate) _phantom: PhantomData<fn(K, V, B, S)>,
 }
 
-impl<K, V, B: Boundedness> Clone for PartialOrderingHook<K, V, B> {
+impl<K, V, B: Boundedness, C> PartialOrderingHook<K, V, B, OnCluster<C>> {
+    on_member_method!(PartialOrderingHook<K, V, B>);
+}
+
+impl<K, V, B: Boundedness, S> Clone for PartialOrderingHook<K, V, B, S> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<K, V, B: Boundedness> Copy for PartialOrderingHook<K, V, B> {}
+impl<K, V, B: Boundedness, S> Copy for PartialOrderingHook<K, V, B, S> {}
 
-impl<K, V, B: Boundedness> std::fmt::Debug for PartialOrderingHook<K, V, B> {
+impl<K, V, B: Boundedness, S> std::fmt::Debug for PartialOrderingHook<K, V, B, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PartialOrderingHook")
             .field("id", &self.id)
@@ -328,7 +486,7 @@ impl<K, V, B: Boundedness> std::fmt::Debug for PartialOrderingHook<K, V, B> {
     }
 }
 
-impl<K, V, B: Boundedness> SimHook for PartialOrderingHook<K, V, B>
+impl<K, V, B: Boundedness, S: BindableHookScope> SimHook for PartialOrderingHook<K, V, B, S>
 where
     K: Hash + Eq + Clone + Serialize + DeserializeOwned,
     V: Serialize + DeserializeOwned + PartialEq,
@@ -336,30 +494,37 @@ where
     fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
         PartialOrderingHook {
             id: next_id(),
+            member: None,
             _phantom: PhantomData,
         }
     }
 }
 
-/// A hook handle controlling a `merge_ordered` operator over streams of `T` elements.
+/// A hook handle controlling a `merge_ordered` operator over streams of `T` elements. `S`
+/// is the handle's [scope](self#hook-scopes).
 ///
 /// The operator preserves the order of each input while interleaving the two inputs
 /// non-deterministically. A top-level decision releases the front element of one input's
 /// buffer; inside a tick, a single decision supplies the complete interleaving. See
 /// `hydro_lang::sim::hooks` for the decisions offered.
-pub struct MergeOrderedHook<T, B: Boundedness = Unbounded> {
+pub struct MergeOrderedHook<T, B: Boundedness = Unbounded, S = OnProcess> {
     pub(crate) id: usize,
-    pub(crate) _phantom: PhantomData<fn(T, B)>,
+    pub(crate) member: Option<u32>,
+    pub(crate) _phantom: PhantomData<fn(T, B, S)>,
 }
 
-impl<T, B: Boundedness> Clone for MergeOrderedHook<T, B> {
+impl<T, B: Boundedness, C> MergeOrderedHook<T, B, OnCluster<C>> {
+    on_member_method!(MergeOrderedHook<T, B>);
+}
+
+impl<T, B: Boundedness, S> Clone for MergeOrderedHook<T, B, S> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<T, B: Boundedness> Copy for MergeOrderedHook<T, B> {}
+impl<T, B: Boundedness, S> Copy for MergeOrderedHook<T, B, S> {}
 
-impl<T, B: Boundedness> std::fmt::Debug for MergeOrderedHook<T, B> {
+impl<T, B: Boundedness, S> std::fmt::Debug for MergeOrderedHook<T, B, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MergeOrderedHook")
             .field("id", &self.id)
@@ -367,39 +532,45 @@ impl<T, B: Boundedness> std::fmt::Debug for MergeOrderedHook<T, B> {
     }
 }
 
-impl<T, B: Boundedness> SimHook for MergeOrderedHook<T, B>
+impl<T, B: Boundedness, S: BindableHookScope> SimHook for MergeOrderedHook<T, B, S>
 where
     T: Serialize + DeserializeOwned + PartialEq,
 {
     fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
         MergeOrderedHook {
             id: next_id(),
+            member: None,
             _phantom: PhantomData,
         }
     }
 }
 
 /// A hook handle controlling a `merge_ordered` operator over keyed streams with keys `K`
-/// and values `V`.
+/// and values `V`. `S` is the handle's [scope](self#hook-scopes).
 ///
 /// The operator preserves each input's order within every key while interleaving the two
 /// inputs non-deterministically (cross-key order is unconstrained). A top-level decision
 /// releases the front entry of one key's buffer in one input; inside a tick, a single
 /// decision supplies the complete interleaving. See `hydro_lang::sim::hooks` for the
 /// decisions offered.
-pub struct KeyedMergeOrderedHook<K, V, B: Boundedness = Unbounded> {
+pub struct KeyedMergeOrderedHook<K, V, B: Boundedness = Unbounded, S = OnProcess> {
     pub(crate) id: usize,
-    pub(crate) _phantom: PhantomData<fn(K, V, B)>,
+    pub(crate) member: Option<u32>,
+    pub(crate) _phantom: PhantomData<fn(K, V, B, S)>,
 }
 
-impl<K, V, B: Boundedness> Clone for KeyedMergeOrderedHook<K, V, B> {
+impl<K, V, B: Boundedness, C> KeyedMergeOrderedHook<K, V, B, OnCluster<C>> {
+    on_member_method!(KeyedMergeOrderedHook<K, V, B>);
+}
+
+impl<K, V, B: Boundedness, S> Clone for KeyedMergeOrderedHook<K, V, B, S> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<K, V, B: Boundedness> Copy for KeyedMergeOrderedHook<K, V, B> {}
+impl<K, V, B: Boundedness, S> Copy for KeyedMergeOrderedHook<K, V, B, S> {}
 
-impl<K, V, B: Boundedness> std::fmt::Debug for KeyedMergeOrderedHook<K, V, B> {
+impl<K, V, B: Boundedness, S> std::fmt::Debug for KeyedMergeOrderedHook<K, V, B, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("KeyedMergeOrderedHook")
             .field("id", &self.id)
@@ -407,7 +578,7 @@ impl<K, V, B: Boundedness> std::fmt::Debug for KeyedMergeOrderedHook<K, V, B> {
     }
 }
 
-impl<K, V, B: Boundedness> SimHook for KeyedMergeOrderedHook<K, V, B>
+impl<K, V, B: Boundedness, S: BindableHookScope> SimHook for KeyedMergeOrderedHook<K, V, B, S>
 where
     K: Hash + Eq + Clone + Serialize + DeserializeOwned,
     V: Serialize + DeserializeOwned + PartialEq,
@@ -415,6 +586,7 @@ where
     fn create(next_id: &mut dyn FnMut() -> usize) -> Self {
         KeyedMergeOrderedHook {
             id: next_id(),
+            member: None,
             _phantom: PhantomData,
         }
     }

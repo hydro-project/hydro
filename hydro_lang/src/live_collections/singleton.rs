@@ -575,7 +575,7 @@ where
             'a,
             F,
             OperatorContext<L, Bounded>,
-            StreamMapFuncAlgebra<T, Bounded, C, Idemp>,
+            StreamMapFuncAlgebra<T, Bounded, C, Idemp, L::SimHookScope>,
         >,
     ) -> Stream<U, L, Bounded, TotalOrder, ExactlyOnce>
     where
@@ -622,7 +622,7 @@ where
             'a,
             F,
             OperatorContext<L, Bounded>,
-            StreamMapFuncAlgebra<T, Bounded, C, Idemp>,
+            StreamMapFuncAlgebra<T, Bounded, C, Idemp, L::SimHookScope>,
         >,
     ) -> Stream<U, L, Bounded, NoOrder, ExactlyOnce>
     where
@@ -1235,7 +1235,7 @@ where
     pub fn snapshot_atomic<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T, L::SimHookScope>>>,
     ) -> Singleton<T, Tick<L::DropConsistency>, Bounded> {
         assert_eq!(
             Location::id(tick.parent_location()),
@@ -1275,7 +1275,7 @@ where
     pub fn snapshot<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T, L::SimHookScope>>>,
     ) -> Singleton<T, Tick<L::DropConsistency>, Bounded> {
         assert_eq!(
             Location::id(tick.parent_location()),
@@ -1307,7 +1307,7 @@ where
     /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn sample_eager(
         self,
-        mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T, L::SimHookScope>>>,
     ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce> {
         let snapshot_hook = nondet.take_hook();
         sliced! {
@@ -1334,12 +1334,16 @@ where
     /// samples can be scripted through the guard's composite hook payload, e.g.
     /// `nondet!(/** reason */ hook = (snapshot_hook.into(), None))`.
     #[cfg(feature = "tokio")]
+    #[expect(
+        clippy::type_complexity,
+        reason = "composite hook payload names each internal operator's handle type"
+    )]
     pub fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
         mut nondet: NonDet<(
-            Option<crate::sim_hooks::SnapshotHook<T>>,
-            Option<crate::sim_hooks::BatchHook<()>>,
+            Option<crate::sim_hooks::SnapshotHook<T, L::SimHookScope>>,
+            Option<crate::sim_hooks::BatchHook<(), TotalOrder, ExactlyOnce, L::SimHookScope>>,
         )>,
     ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce>
     where

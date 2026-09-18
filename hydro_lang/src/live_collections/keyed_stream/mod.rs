@@ -35,8 +35,8 @@ use crate::location::{Atomic, Location, Tick, TopLevel, check_matching_location}
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::properties::{
-    AggFuncAlgebra, ApplyMonotoneKeyedStream, ValidCommutativityFor, ValidIdempotenceFor,
-    manual_proof,
+    AggFuncAlgebra, ApplyMonotoneKeyedStream, NotProved, ValidCommutativityFor,
+    ValidIdempotenceFor, manual_proof,
 };
 
 pub mod networking;
@@ -459,7 +459,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn assume_ordering<O2: Ordering>(
         self,
-        mut nondet: NonDet<Option<crate::sim_hooks::KeyedOrderingHook<K, V, B>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedOrderingHook<K, V, B, L::SimHookScope>>>,
     ) -> KeyedStream<K, V, L::DropConsistency, B, O2, R> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
             self.use_ordering_type().weaken_consistency()
@@ -729,7 +729,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn entries_partially_ordered(
         self,
-        mut nondet: NonDet<Option<crate::sim_hooks::PartialOrderingHook<K, V, B>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::PartialOrderingHook<K, V, B, L::SimHookScope>>>,
     ) -> Stream<(K, V), L::DropConsistency, B, TotalOrder, R>
     where
         O: IsOrdered,
@@ -2048,7 +2048,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     pub fn fold<A, I: Fn() -> A + 'a, F: 'a + Fn(&mut A, V), C, Idemp, M, B2: KeyedSingletonBound>(
         self,
         init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>>,
-        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<V, B, C, Idemp, M>>,
+        comb: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            AggFuncAlgebra<V, B, C, Idemp, M, L::SimHookScope>,
+        >,
     ) -> KeyedSingleton<K, A, L, B2>
     where
         K: Eq + Hash,
@@ -2116,7 +2121,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn reduce<F: Fn(&mut V, V) + 'a, C, Idemp>(
         self,
-        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<V, B, C, Idemp>>,
+        comb: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            AggFuncAlgebra<V, B, C, Idemp, NotProved, L::SimHookScope>,
+        >,
     ) -> KeyedSingleton<K, V, L, B>
     where
         K: Eq + Hash,
@@ -2175,7 +2185,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     pub fn reduce_watermark<O2, F, C, Idemp>(
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
-        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<V, B, C, Idemp>>,
+        comb: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            AggFuncAlgebra<V, B, C, Idemp, NotProved, L::SimHookScope>,
+        >,
     ) -> KeyedSingleton<K, V, L, B>
     where
         K: Eq + Hash,
@@ -2708,7 +2723,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        mut nondet: NonDet<Option<crate::sim_hooks::KeyedBatchHook<K, V, O, R>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedBatchHook<K, V, O, R, L::SimHookScope>>>,
     ) -> KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R> {
         assert_eq!(
             Location::id(tick.parent_location()),
@@ -2878,7 +2893,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, R: Retries> KeyedStream<K, V, L,
     pub fn merge_ordered<R2: Retries>(
         self,
         other: KeyedStream<K, V, L, B, TotalOrder, R2>,
-        mut nondet: NonDet<Option<crate::sim_hooks::KeyedMergeOrderedHook<K, V, B>>>,
+        mut nondet: NonDet<
+            Option<crate::sim_hooks::KeyedMergeOrderedHook<K, V, B, L::SimHookScope>>,
+        >,
     ) -> KeyedStream<K, V, L::DropConsistency, B, TotalOrder, <R as MinRetries<R2>>::Min>
     where
         R: MinRetries<R2>,

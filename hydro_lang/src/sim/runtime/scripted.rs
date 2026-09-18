@@ -240,9 +240,11 @@ pub type ScriptedObservationHooks =
 
 pub type ScriptedInlineHooks = HashMap<SimLocation, Vec<Rc<RefCell<dyn ScriptedInlineHook>>>>;
 
-/// The per-instance registry of every scripted hook, keyed by handle ID.
+/// The per-instance registry of every scripted hook, keyed by handle ID plus the cluster
+/// member ID (`None` for hooks on processes). A handle bound to an operator running on a
+/// cluster has one entry — one independent hook instance — per member.
 pub type ScriptedHookRegistry =
-    std::collections::BTreeMap<usize, Rc<RefCell<dyn ScriptedHookControl>>>;
+    std::collections::BTreeMap<(usize, Option<u32>), Rc<RefCell<dyn ScriptedHookControl>>>;
 
 /// The scripted variation of a hook: wraps the ordinary hook type (which owns the buffers
 /// and implements the decision semantics via [`ScriptableHook`]) together with the script
@@ -402,6 +404,7 @@ impl<H: ScriptableHook> ScriptedRuntimeHook for Scripted<H> {
         if self.next_decision.is_none() && !self.hold && self.core.has_pending_input() {
             Err(render_forgotten_error(
                 self.core.location_meta(),
+                self.target.location().cluster_id,
                 self.core.describe_pending().as_deref(),
                 "script a decision (e.g. `.release(..)` / `.reveal(..)`) or call `.pause()` if buffering is intended",
             ))
@@ -482,6 +485,7 @@ impl<H: ScriptableInlineHook> ScriptedInlineHook for ScriptedInline<H> {
         if decision.is_none() && !self.core.only_one_possible_decision() {
             return Err(render_forgotten_error(
                 self.core.location_meta(),
+                self.target.location().cluster_id,
                 ScriptableInlineHook::describe_pending(&self.core).as_deref(),
                 "script an explicit decision (e.g. `.order(..)`); in-tick hooks cannot be paused",
             ));
@@ -495,17 +499,26 @@ impl<H: ScriptableInlineHook> ScriptedInlineHook for ScriptedInline<H> {
 }
 
 /// Renders the error for a scripted hook that holds buffered input with neither a
-/// decision nor a declared pause. `pending` describes the buffered input (`None` renders
-/// a generic placeholder), and `help` suggests the appropriate scripting calls for the
-/// hook's kind.
-fn render_forgotten_error(location: HookLocationMeta, pending: Option<&str>, help: &str) -> String {
+/// decision nor a declared pause. `member` names the cluster member whose instance is
+/// forgotten (`None` for hooks on processes), `pending` describes the buffered input
+/// (`None` renders a generic placeholder), and `help` suggests the appropriate scripting
+/// calls for the hook's kind.
+fn render_forgotten_error(
+    location: HookLocationMeta,
+    member: Option<u32>,
+    pending: Option<&str>,
+    help: &str,
+) -> String {
     let HookLocationMeta {
         location: loc,
         line,
         caret_indent: caret,
     } = location;
     let pending = pending.unwrap_or("pending input");
+    let member = member
+        .map(|m| format!(" (cluster member {m})"))
+        .unwrap_or_default();
     format!(
-        "scripted hook has buffered input but no decision:\n--> {loc}\n |{line}\n |{caret}^ {pending}\nhelp: {help}"
+        "scripted hook has buffered input but no decision:\n--> {loc}{member}\n |{line}\n |{caret}^ {pending}\nhelp: {help}"
     )
 }

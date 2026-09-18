@@ -543,7 +543,7 @@ where
             'a,
             F,
             OperatorContext<L, Bounded>,
-            StreamMapFuncAlgebra<T, Bounded, C, Idemp>,
+            StreamMapFuncAlgebra<T, Bounded, C, Idemp, L::SimHookScope>,
         >,
     ) -> Stream<U, L, Bounded, TotalOrder, ExactlyOnce>
     where
@@ -591,7 +591,7 @@ where
             'a,
             F,
             OperatorContext<L, Bounded>,
-            StreamMapFuncAlgebra<T, Bounded, C, Idemp>,
+            StreamMapFuncAlgebra<T, Bounded, C, Idemp, L::SimHookScope>,
         >,
     ) -> Stream<U, L, Bounded, NoOrder, ExactlyOnce>
     where
