@@ -39,7 +39,7 @@ linkStyle default stroke:#aaa
 29v1["<div style=text-align:center>(29v1)</div> <code><br>all_iterations()</code>"]:::otherClass
 30v1["<div style=text-align:center>(30v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
 31v1["<div style=text-align:center>(31v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
-32v1["<div style=text-align:center>(32v1)</div> <code><br>batch_eager()</code>"]:::otherClass
+32v1["<div style=text-align:center>(32v1)</div> <code><br>snapshot()</code>"]:::otherClass
 33v1["<div style=text-align:center>(33v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    || None,<br>    |current, update| {<br>        *current = Some(update);<br>    },<br>)</code>"]:::otherClass
 34v1["<div style=text-align:center>(34v1)</div> <code><br>filter_map(|current| current.flatten())</code>"]:::otherClass
 35v1["<div style=text-align:center>(35v1)</div> <code><br>tee()</code>"]:::otherClass
@@ -66,7 +66,7 @@ linkStyle default stroke:#aaa
 56v1["<div style=text-align:center>(56v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::kv_replica::Replica,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;usize&gt;(&amp;b).unwrap(),<br>    )<br>})</code>"]:::otherClass
 57v1["<div style=text-align:center>(57v1)</div> <code><br>reduce_keyed::&lt;<br>    'static,<br>&gt;({<br>    crate::__staged::__stageleft_quote_src_cluster_paxos_bench_rs_LINE_COL!(<br>        [] [| curr_seq, seq | { if seq &gt; * curr_seq { * curr_seq = seq; } }]<br>    )<br>})</code>"]:::otherClass
 58v1["<div style=text-align:center>(58v1)</div> <code><br>map(|(__hydro_key, __hydro_value)| (<br>    __hydro_key,<br>    ::std::option::Option::Some(__hydro_value),<br>))</code>"]:::otherClass
-59v1["<div style=text-align:center>(59v1)</div> <code><br>batch_eager()</code>"]:::otherClass
+59v1["<div style=text-align:center>(59v1)</div> <code><br>snapshot()</code>"]:::otherClass
 60v1["<div style=text-align:center>(60v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    || ::std::collections::HashMap::new(),<br>    |current, (key, update)| {<br>        match update {<br>            ::std::option::Option::Some(value) =&gt; {<br>                current.insert(key, value);<br>            }<br>            ::std::option::Option::None =&gt; {<br>                current.remove(&amp;key);<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
 61v1["<div style=text-align:center>(61v1)</div> <code><br>flat_map(|current| current)</code>"]:::otherClass
 62v1["<div style=text-align:center>(62v1)</div> <code><br>tee()</code>"]:::otherClass
