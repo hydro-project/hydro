@@ -15,7 +15,7 @@ use crate::prelude::{Bounded, FlowBuilder, Unbounded};
 use crate::sim::{SimReceiver, SimSender};
 use crate::sim_hooks::{
     BatchHook, KeyedBatchHook, KeyedMergeOrderedHook, KeyedOrderingHook, KeyedSnapshotHook,
-    MergeOrderedHook, OrderingHook, PartialOrderingHook, SimHook, SnapshotHook,
+    MergeOrderedHook, OnCluster, OrderingHook, PartialOrderingHook, SimHook, SnapshotHook,
 };
 
 /// A commutativity proof does not exempt a fold from simulation: the ordering hook on the
@@ -2448,4 +2448,197 @@ fn scripted_inline_keyed_merge_ordered_wrong_per_key_order_panics() {
             .order([(false, 1, 20), (true, 1, 30), (false, 1, 10)]) // first input's 20 before its 10
             .await;
     });
+}
+
+/// A hook bound to an operator running on a **cluster** has one independent instance per
+/// member, scripted through `.on(member_id)`. Each member's decisions form their own
+/// script groups (one member's tick execution per group), so per-member timing is fully
+/// under the test's control: member 0 releases, then member 1, then member 0 again.
+#[test]
+fn scripted_cluster_batch_members_scripted_independently() {
+    let mut flow = FlowBuilder::new();
+    let cluster = flow.cluster::<()>();
+    let batch_hook: BatchHook<i32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
+    let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
+    let out_recv = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b.map(q!(|x| x * 10))
+    }
+    .sim_cluster_output();
+
+    flow.sim()
+        .with_cluster_size(&cluster, 2)
+        .deterministic(async || {
+            // Each member's instance buffers across the *other* member's scripted
+            // groups; declare that standing buffering per member.
+            batch_hook.on(0).auto_pause();
+            batch_hook.on(1).auto_pause();
+
+            in_send.send_many_unordered([(0, 1), (0, 2), (1, 3)]);
+
+            batch_hook.on(0).release_values([1]).await;
+            batch_hook.on(1).release_values([3]).await;
+            batch_hook.on(0).release_values([2]).await;
+
+            assert_eq!(
+                out_recv.collect_n_sorted_only::<Vec<_>>(0, 2).await,
+                vec![10, 20]
+            );
+            assert_eq!(
+                out_recv.collect_n_sorted_only::<Vec<_>>(1, 1).await,
+                vec![30]
+            );
+        });
+}
+
+/// Every member's hook instance independently participates in the missing-decision
+/// protocol: scripting member 0 says nothing about member 1, so member 1's buffered
+/// input with no decision (and no pause) is reported at the next scheduling boundary,
+/// naming the member.
+#[test]
+#[should_panic(expected = "cluster member 1")]
+fn scripted_cluster_forgotten_member_panics() {
+    let mut flow = FlowBuilder::new();
+    let cluster = flow.cluster::<()>();
+    let batch_hook: BatchHook<i32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
+    let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
+    let out_recv = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b.map(q!(|x| x * 10))
+    }
+    .sim_cluster_output();
+
+    flow.sim()
+        .with_cluster_size(&cluster, 2)
+        .deterministic(async || {
+            in_send.send_many_unordered([(0, 1), (1, 3)]);
+            // Member 0 is scripted, but member 1's instance also holds input: the
+            // boundary scan must report member 1 rather than silently buffering it.
+            batch_hook.on(0).release_values([1]).await;
+            out_recv.collect_n_sorted_only::<Vec<_>>(0, 1).await;
+        });
+}
+
+/// A top-level observation hook (`assume_ordering` outside any tick) on a cluster is one
+/// independent observation per member: each member's releases are scripted separately,
+/// and each `.on(member)` decision is its own scheduler action in script order.
+#[test]
+fn scripted_cluster_top_level_ordering_per_member() {
+    let mut flow = FlowBuilder::new();
+    let cluster = flow.cluster::<()>();
+    let ordering: OrderingHook<u32, Unbounded, OnCluster> = flow.sim_hook();
+    let (in_send, input) = cluster.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let out = input
+        .assume_ordering::<TotalOrder>(nondet!(
+            /// scripted
+            hook = ordering
+        ))
+        .sim_cluster_output();
+
+    flow.sim()
+        .with_cluster_size(&cluster, 2)
+        .deterministic(async || {
+            ordering.on(0).auto_pause();
+            ordering.on(1).auto_pause();
+
+            in_send.send_many_unordered([(0, 1), (0, 2), (1, 5)]);
+
+            ordering.on(0).next(2).await;
+            ordering.on(1).next(5).await;
+            ordering.on(0).next(1).await;
+
+            assert_eq!(out.next(0).await, 2);
+            assert_eq!(out.next(0).await, 1);
+            assert_eq!(out.next(1).await, 5);
+        });
+}
+
+/// An in-tick (inline) hook on a cluster is also per-member: member 0's inline ordering
+/// decision joins member 0's tick group, while member 1's tick — whose inline input is a
+/// single element, the only-possibility case — runs on its own decision without touching
+/// member 0's script.
+#[test]
+fn scripted_cluster_inline_ordering_joins_member_tick_group() {
+    let mut flow = FlowBuilder::new();
+    let cluster = flow.cluster::<()>();
+    let batch_hook: BatchHook<u32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
+    let ordering: OrderingHook<u32, Bounded, OnCluster> = flow.sim_hook();
+    let (in_send, input) = cluster.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b.assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = ordering))
+    }
+    .sim_cluster_output();
+
+    flow.sim()
+        .with_cluster_size(&cluster, 2)
+        .deterministic(async || {
+            // Member 1's batch buffers its input while member 0's group executes.
+            batch_hook.on(1).auto_pause();
+
+            in_send.send_many_unordered([(0, 1), (0, 2), (1, 7)]);
+
+            // Both decisions target member 0's tick, so they form one group.
+            batch_hook.on(0).release_values([1, 2]).await;
+            ordering.on(0).order([2, 1]).await;
+
+            // Member 1's single-element inline ordering is the only-possibility case:
+            // only the batch decision is needed.
+            batch_hook.on(1).release_values([7]).await;
+
+            assert_eq!(output.next(0).await, 2);
+            assert_eq!(output.next(0).await, 1);
+            assert_eq!(output.next(1).await, 7);
+        });
+}
+
+/// `.on(member_id)` naming a member outside the cluster's sizing is reported with the
+/// members that do exist.
+#[test]
+#[should_panic(expected = "does not name a member of the cluster")]
+fn scripted_cluster_nonexistent_member_panics() {
+    let mut flow = FlowBuilder::new();
+    let cluster = flow.cluster::<()>();
+    let batch_hook: BatchHook<i32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
+    let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
+    let _out = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b
+    }
+    .sim_cluster_output();
+
+    flow.sim()
+        .with_cluster_size(&cluster, 2)
+        .deterministic(async || {
+            in_send.send_many_unordered([(0, 1)]);
+            batch_hook.on(5).release_values([1]).await; // members are 0 and 1
+        });
+}
+
+/// A decision scripted for one member can wait for data that never arrives while another
+/// member's instance holds undecided input: the *other* member's forgotten input is the
+/// error (the waiting decision does not shield it), reported with the member named.
+#[test]
+#[should_panic(expected = "cluster member 1")]
+fn scripted_cluster_waiting_decision_does_not_shield_other_member() {
+    let mut flow = FlowBuilder::new();
+    let cluster = flow.cluster::<()>();
+    let batch_hook: BatchHook<i32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
+    let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
+    let _out = sliced! {
+        let b = use::batch(input, nondet!(/** scripted */ hook = batch_hook));
+        b
+    }
+    .sim_cluster_output();
+
+    flow.sim()
+        .with_cluster_size(&cluster, 2)
+        .deterministic(async || {
+            in_send.send_many_unordered([(0, 1), (1, 3)]);
+            // Member 0's decision names a value that has not arrived (and never will),
+            // so it stays queued; meanwhile member 1's pending input has no decision
+            // and no pause — the boundary scan reports member 1.
+            batch_hook.on(0).release_values([1, 2]).await;
+            batch_hook.on(1).release_values([3]).await;
+        });
 }

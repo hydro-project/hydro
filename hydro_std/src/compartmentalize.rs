@@ -4,7 +4,7 @@ use hydro_lang::live_collections::stream::{NoOrder, Ordering};
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::location::{Location, MemberId};
 use hydro_lang::prelude::*;
-use hydro_lang::properties::StreamMapFuncAlgebra;
+use hydro_lang::properties::{NotProved, StreamMapFuncAlgebra};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use stageleft::IntoQuotedMut;
@@ -17,7 +17,13 @@ pub trait PartitionStream<'a, T, C1, C2, Order: Ordering> {
             'a,
             F,
             OperatorContext<Cluster<'a, C1>, Unbounded>,
-            StreamMapFuncAlgebra<(MemberId<C2>, T), Unbounded>,
+            StreamMapFuncAlgebra<
+                (MemberId<C2>, T),
+                Unbounded,
+                NotProved,
+                NotProved,
+                hydro_lang::sim_hooks::OnCluster<C1>,
+            >,
         >,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, NoOrder>
     where
@@ -35,7 +41,13 @@ impl<'a, T, C1, C2, Order: Ordering> PartitionStream<'a, T, C1, C2, Order>
             'a,
             F,
             OperatorContext<Cluster<'a, C1>, Unbounded>,
-            StreamMapFuncAlgebra<(MemberId<C2>, T), Unbounded>,
+            StreamMapFuncAlgebra<
+                (MemberId<C2>, T),
+                Unbounded,
+                NotProved,
+                NotProved,
+                hydro_lang::sim_hooks::OnCluster<C1>,
+            >,
         >,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, NoOrder>
     where

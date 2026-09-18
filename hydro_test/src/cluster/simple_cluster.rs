@@ -3,7 +3,7 @@ use hydro_lang::live_collections::stream::TotalOrder;
 use hydro_lang::location::MemberId;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::prelude::*;
-use hydro_lang::properties::StreamMapFuncAlgebra;
+use hydro_lang::properties::{NotProved, StreamMapFuncAlgebra};
 use hydro_std::compartmentalize::{DecoupleClusterStream, DecoupleProcessStream, PartitionStream};
 use stageleft::IntoQuotedMut;
 
@@ -14,7 +14,13 @@ pub fn partition<'a, F>(
         'a,
         F,
         OperatorContext<Cluster<'a, ()>, Unbounded>,
-        StreamMapFuncAlgebra<(MemberId<()>, String), Unbounded>,
+        StreamMapFuncAlgebra<
+            (MemberId<()>, String),
+            Unbounded,
+            NotProved,
+            NotProved,
+            hydro_lang::sim_hooks::OnCluster<()>,
+        >,
     >,
 ) -> (Cluster<'a, ()>, Cluster<'a, ()>)
 where

@@ -38,6 +38,21 @@
 //! family ([`BatchHook::pause`], [`BatchHook::pause_while`],
 //! [`BatchHook::pause_until_count`], [`BatchHook::auto_pause`], and the snapshot
 //! equivalents).
+//!
+//! # Hooks on clusters
+//!
+//! A handle bound to an operator running on a **cluster** controls one independent hook
+//! instance per member. The handle's [`OnCluster`] scope (see
+//! [`crate::sim_hooks`](crate::sim_hooks#hook-scopes)) makes this explicit in the type:
+//! scripting calls only exist once a member is selected with `.on(member_id)` (e.g.
+//! `hook.on(0).release(2).await`), so forgetting the selection — or using `.on(..)` on a
+//! process-bound handle — is a compile error. The decision targets exactly that member's
+//! tick or observation, and decisions for different members always form separate groups —
+//! each member's execution takes its own place in the schedule. Every member's instance
+//! also independently participates in the missing-decision error above: a member whose
+//! operator holds buffered input needs its own decision (or its own
+//! `.on(member).pause()` / `.on(member).auto_pause()`), and a forgotten member is
+//! reported naming that member.
 
 use std::future::Future;
 use std::marker::PhantomData;
@@ -61,8 +76,9 @@ pub use crate::sim::runtime::{
     BatchStatus, KeyedSnapshotStatus, MergeStatus, OrderingStatus, SnapshotStatus,
 };
 pub use crate::sim_hooks::{
-    BatchHook, KeyedBatchHook, KeyedMergeOrderedHook, KeyedOrderingHook, KeyedSnapshotHook,
-    MergeOrderedHook, OrderingHook, PartialOrderingHook, SimHook, SnapshotHook,
+    BatchHook, BindableHookScope, KeyedBatchHook, KeyedMergeOrderedHook, KeyedOrderingHook,
+    KeyedSnapshotHook, MergeOrderedHook, OnCluster, OnMember, OnProcess, OrderingHook,
+    PartialOrderingHook, ScriptableHookScope, SimHook, SnapshotHook,
 };
 
 /// A scripted decision that has been issued but not yet installed into the schedule.
@@ -74,15 +90,19 @@ pub use crate::sim_hooks::{
 #[must_use = "a scripted decision does nothing until awaited"]
 pub struct DecisionFuture {
     hook_id: usize,
+    /// The cluster member whose hook instance the decision targets (from `.on(..)` on
+    /// the handle); `None` for hooks on processes.
+    member: Option<u32>,
     /// The decision, bincode-serialized (the handle and the hook it is bound to
     /// statically know the same decision type). `None` once installed.
     blob: Option<Vec<u8>>,
 }
 
 impl DecisionFuture {
-    fn new(hook_id: usize, decision: &impl ScriptDecision) -> Self {
+    fn new(hook_id: usize, member: Option<u32>, decision: &impl ScriptDecision) -> Self {
         DecisionFuture {
             hook_id,
+            member,
             blob: Some(bincode::serialize(decision).unwrap()),
         }
     }
@@ -118,7 +138,7 @@ impl Future for DecisionFuture {
         };
 
         let ctx = script_ctx();
-        match ctx.try_schedule_decision(this.hook_id, blob) {
+        match ctx.try_schedule_decision(this.hook_id, this.member, blob) {
             Ok(ScheduleDecision::Installed) => Poll::Ready(()),
             Ok(ScheduleDecision::Wait(blob)) => {
                 this.blob = Some(blob);
@@ -142,6 +162,8 @@ impl Future for DecisionFuture {
 #[must_use = "the pause is only released once this future is awaited"]
 pub struct PauseUntilFuture<S, F> {
     hook_id: usize,
+    /// The cluster member whose hook instance is paused; `None` for hooks on processes.
+    member: Option<u32>,
     /// What the wait is called in error messages (e.g. `pause_until_count(3)`).
     label: String,
     predicate: F,
@@ -169,7 +191,7 @@ impl<S: DeserializeOwned, F: Fn(&S) -> bool + Unpin> Future for PauseUntilFuture
             return Poll::Pending;
         }
 
-        let hook = ctx.control(this.hook_id);
+        let hook = ctx.control(this.hook_id, this.member);
 
         let status: S = bincode::deserialize(&hook.borrow().status_blob())
             .expect("internal error: hook status blob did not match the handle's status type");
@@ -182,10 +204,15 @@ impl<S: DeserializeOwned, F: Fn(&S) -> bool + Unpin> Future for PauseUntilFuture
         } else if ctx.is_quiescent() {
             let hook = hook.borrow();
             let loc = hook.location_meta().location;
+            let member = this
+                .member
+                .map(|m| format!(" (cluster member {m})"))
+                .unwrap_or_default();
             panic!(
-                "{} can never be satisfied: the hook at {} has {} and the simulation has no more work it can do",
+                "{} can never be satisfied: the hook at {}{} has {} and the simulation has no more work it can do",
                 this.label,
                 loc,
+                member,
                 hook.describe_pending()
                     .unwrap_or_else(|| "no pending input".to_owned()),
             );
@@ -200,12 +227,13 @@ impl<S: DeserializeOwned, F: Fn(&S) -> bool + Unpin> Future for PauseUntilFuture
 /// hold when dropped (even on panic), leaving a standing `auto_pause` hold in place.
 struct PauseGuard {
     hook_id: usize,
+    member: Option<u32>,
 }
 
 impl Drop for PauseGuard {
     fn drop(&mut self) {
         let ctx = script_ctx();
-        let hook = ctx.control(self.hook_id);
+        let hook = ctx.control(self.hook_id, self.member);
         hook.borrow_mut().release_hold();
     }
 }
@@ -222,13 +250,15 @@ macro_rules! pause_family {
         /// consumed.
         pub fn pause(&self) {
             let ctx = script_ctx();
-            ctx.control(self.id).borrow_mut().set_hold(true);
+            ctx.control(self.id, self.member)
+                .borrow_mut()
+                .set_hold(true);
         }
 
         /// Ends a [`Self::pause`] (and clears [`Self::auto_pause`] mode).
         pub fn resume(&self) {
             let ctx = script_ctx();
-            let hook = ctx.control(self.id);
+            let hook = ctx.control(self.id, self.member);
             let mut hook = hook.borrow_mut();
             hook.set_auto_pause(false);
             hook.set_hold(false);
@@ -244,7 +274,7 @@ macro_rules! pause_family {
         /// that this hook's timing is entirely script-driven, missed steps and all.
         pub fn auto_pause(&self) {
             let ctx = script_ctx();
-            let hook = ctx.control(self.id);
+            let hook = ctx.control(self.id, self.member);
             let mut hook = hook.borrow_mut();
             hook.set_auto_pause(true);
             hook.set_hold(true);
@@ -254,7 +284,10 @@ macro_rules! pause_family {
         /// a bracketed buffering phase cannot leak a paused hook.
         pub async fn pause_while<Fut: Future>(&self, body: Fut) -> Fut::Output {
             self.pause();
-            let _guard = PauseGuard { hook_id: self.id };
+            let _guard = PauseGuard {
+                hook_id: self.id,
+                member: self.member,
+            };
             body.await
         }
 
@@ -276,9 +309,12 @@ macro_rules! pause_family {
             predicate: F,
         ) -> PauseUntilFuture<$status, F> {
             let ctx = script_ctx();
-            ctx.control(self.id).borrow_mut().set_hold(true);
+            ctx.control(self.id, self.member)
+                .borrow_mut()
+                .set_hold(true);
             PauseUntilFuture {
                 hook_id: self.id,
+                member: self.member,
                 label,
                 predicate,
                 _status: PhantomData,
@@ -287,7 +323,7 @@ macro_rules! pause_family {
     };
 }
 
-impl<T, O: Ordering, R: Retries> BatchHook<T, O, R> {
+impl<T, O: Ordering, R: Retries, Scope: ScriptableHookScope> BatchHook<T, O, R, Scope> {
     pause_family!(BatchStatus);
 
     /// Pauses the hook and returns a future that resolves once at least `n` elements are
@@ -302,14 +338,14 @@ impl<T, O: Ordering, R: Retries> BatchHook<T, O, R> {
     }
 }
 
-impl<T, R: Retries> BatchHook<T, TotalOrder, R>
+impl<T, R: Retries, Scope: ScriptableHookScope> BatchHook<T, TotalOrder, R, Scope>
 where
     T: Serialize + DeserializeOwned + PartialEq,
 {
     /// Scripts the next batch to be exactly the next `n` buffered elements. The tick
     /// fires at the first moment the decision can be honored in full.
     pub fn release(&self, n: usize) -> DecisionFuture {
-        DecisionFuture::new(self.id, &BatchDecision::<T>::Prefix(n))
+        DecisionFuture::new(self.id, self.member, &BatchDecision::<T>::Prefix(n))
     }
 
     /// Scripts the next batch to be exactly this sequence of values. Values must match the
@@ -318,6 +354,7 @@ where
     pub fn release_values(&self, values: impl IntoIterator<Item = T>) -> DecisionFuture {
         DecisionFuture::new(
             self.id,
+            self.member,
             &BatchDecision::Values(values.into_iter().collect()),
         )
     }
@@ -326,7 +363,7 @@ where
     /// fires. Under fuzzing, the released contents co-vary with the schedule being
     /// explored; use [`Self::release`] to name them exactly.
     pub fn release_all(&self) -> DecisionFuture {
-        DecisionFuture::new(self.id, &BatchDecision::<T>::All)
+        DecisionFuture::new(self.id, self.member, &BatchDecision::<T>::All)
     }
 
     /// Scripts the next batch to be empty, holding everything buffered. Shorthand for
@@ -336,7 +373,7 @@ where
     }
 }
 
-impl<T, R: Retries> BatchHook<T, NoOrder, R>
+impl<T, R: Retries, Scope: ScriptableHookScope> BatchHook<T, NoOrder, R, Scope>
 where
     T: Serialize + DeserializeOwned + PartialEq,
 {
@@ -346,6 +383,7 @@ where
     pub fn release_values(&self, values: impl IntoIterator<Item = T>) -> DecisionFuture {
         DecisionFuture::new(
             self.id,
+            self.member,
             &UnorderedBatchDecision::Values(values.into_iter().collect()),
         )
     }
@@ -354,7 +392,7 @@ where
     /// fires. Under fuzzing, the released contents co-vary with the schedule being
     /// explored; use [`Self::release_values`] to name them exactly.
     pub fn release_all(&self) -> DecisionFuture {
-        DecisionFuture::new(self.id, &UnorderedBatchDecision::<T>::All)
+        DecisionFuture::new(self.id, self.member, &UnorderedBatchDecision::<T>::All)
     }
 
     /// Scripts the next batch to be empty, holding everything buffered. Shorthand for
@@ -364,7 +402,7 @@ where
     }
 }
 
-impl<T> OrderingHook<T, Unbounded>
+impl<T, Scope: ScriptableHookScope> OrderingHook<T, Unbounded, Scope>
 where
     T: Serialize + DeserializeOwned,
 {
@@ -372,7 +410,7 @@ where
     /// to `value`. Exactly one element is released, preserving opportunities for ticks and
     /// feedback to interleave with the remaining buffered input.
     pub fn next(&self, value: T) -> DecisionFuture {
-        DecisionFuture::new(self.id, &TopLevelOrderingDecision::Next(value))
+        DecisionFuture::new(self.id, self.member, &TopLevelOrderingDecision::Next(value))
     }
 
     pause_family!(OrderingStatus);
@@ -389,7 +427,7 @@ where
     }
 }
 
-impl<T> OrderingHook<T, Bounded>
+impl<T, Scope: ScriptableHookScope> OrderingHook<T, Bounded, Scope>
 where
     T: Serialize + DeserializeOwned,
 {
@@ -399,12 +437,13 @@ where
     pub fn order(&self, values: impl IntoIterator<Item = T>) -> DecisionFuture {
         DecisionFuture::new(
             self.id,
+            self.member,
             &InlineOrderingDecision::Order(values.into_iter().collect()),
         )
     }
 }
 
-impl<T> SnapshotHook<T> {
+impl<T, Scope: ScriptableHookScope> SnapshotHook<T, Scope> {
     /// Scripts the next tick execution to observe the buffered version equal to `value`:
     /// scans forward from the currently-revealed version through the buffered ones and
     /// releases the first equal version, skipping over earlier versions.
@@ -417,7 +456,7 @@ impl<T> SnapshotHook<T> {
     where
         T: Serialize + DeserializeOwned,
     {
-        DecisionFuture::new(self.id, &SnapshotDecision::Reveal(value))
+        DecisionFuture::new(self.id, self.member, &SnapshotDecision::Reveal(value))
     }
 
     /// Scripts the next tick execution to observe the next buffered version.
@@ -425,7 +464,7 @@ impl<T> SnapshotHook<T> {
     where
         T: Serialize + DeserializeOwned,
     {
-        DecisionFuture::new(self.id, &SnapshotDecision::<T>::RevealNext)
+        DecisionFuture::new(self.id, self.member, &SnapshotDecision::<T>::RevealNext)
     }
 
     /// Scripts the next tick execution to observe the newest version that has arrived by
@@ -435,7 +474,7 @@ impl<T> SnapshotHook<T> {
     where
         T: Serialize + DeserializeOwned,
     {
-        DecisionFuture::new(self.id, &SnapshotDecision::<T>::RevealLatest)
+        DecisionFuture::new(self.id, self.member, &SnapshotDecision::<T>::RevealLatest)
     }
 
     /// Scripts the next tick execution to observe the previously revealed version again.
@@ -443,7 +482,7 @@ impl<T> SnapshotHook<T> {
     where
         T: Serialize + DeserializeOwned,
     {
-        DecisionFuture::new(self.id, &SnapshotDecision::<T>::Keep)
+        DecisionFuture::new(self.id, self.member, &SnapshotDecision::<T>::Keep)
     }
 
     pause_family!(SnapshotStatus);
@@ -460,7 +499,7 @@ impl<T> SnapshotHook<T> {
     }
 }
 
-impl<K, V, O: Ordering, R: Retries> KeyedBatchHook<K, V, O, R> {
+impl<K, V, O: Ordering, R: Retries, Scope: ScriptableHookScope> KeyedBatchHook<K, V, O, R, Scope> {
     pause_family!(BatchStatus);
 
     /// Pauses the hook and returns a future that resolves once at least `n` entries are
@@ -475,7 +514,7 @@ impl<K, V, O: Ordering, R: Retries> KeyedBatchHook<K, V, O, R> {
     }
 }
 
-impl<K, V, R: Retries> KeyedBatchHook<K, V, TotalOrder, R>
+impl<K, V, R: Retries, Scope: ScriptableHookScope> KeyedBatchHook<K, V, TotalOrder, R, Scope>
 where
     K: Serialize + DeserializeOwned + PartialEq,
     V: Serialize + DeserializeOwned + PartialEq,
@@ -493,7 +532,11 @@ where
     {
         let counts: Vec<(K, usize)> = counts.into_iter().collect();
         assert_distinct_keys(counts.iter().map(|(key, _)| key), "release");
-        DecisionFuture::new(self.id, &KeyedBatchDecision::<K, V>::Prefixes(counts))
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &KeyedBatchDecision::<K, V>::Prefixes(counts),
+        )
     }
 
     /// Scripts the next batch to be exactly these `(key, value)` entries. Each key's
@@ -504,6 +547,7 @@ where
     pub fn release_values(&self, entries: impl IntoIterator<Item = (K, V)>) -> DecisionFuture {
         DecisionFuture::new(
             self.id,
+            self.member,
             &KeyedBatchDecision::Values(entries.into_iter().collect()),
         )
     }
@@ -512,7 +556,7 @@ where
     /// fires. Under fuzzing, the released contents co-vary with the schedule being
     /// explored; use [`Self::release_values`] to name them exactly.
     pub fn release_all(&self) -> DecisionFuture {
-        DecisionFuture::new(self.id, &KeyedBatchDecision::<K, V>::All)
+        DecisionFuture::new(self.id, self.member, &KeyedBatchDecision::<K, V>::All)
     }
 
     /// Scripts the next batch to be empty, holding everything buffered. Shorthand for
@@ -522,7 +566,7 @@ where
     }
 }
 
-impl<K, V, R: Retries> KeyedBatchHook<K, V, NoOrder, R>
+impl<K, V, R: Retries, Scope: ScriptableHookScope> KeyedBatchHook<K, V, NoOrder, R, Scope>
 where
     K: Serialize + DeserializeOwned + PartialEq,
     V: Serialize + DeserializeOwned + PartialEq,
@@ -534,6 +578,7 @@ where
     pub fn release_values(&self, entries: impl IntoIterator<Item = (K, V)>) -> DecisionFuture {
         DecisionFuture::new(
             self.id,
+            self.member,
             &UnorderedKeyedBatchDecision::Values(entries.into_iter().collect()),
         )
     }
@@ -542,7 +587,11 @@ where
     /// fires. Under fuzzing, the released contents co-vary with the schedule being
     /// explored; use [`Self::release_values`] to name them exactly.
     pub fn release_all(&self) -> DecisionFuture {
-        DecisionFuture::new(self.id, &UnorderedKeyedBatchDecision::<K, V>::All)
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &UnorderedKeyedBatchDecision::<K, V>::All,
+        )
     }
 
     /// Scripts the next batch to be empty, holding everything buffered. Shorthand for
@@ -552,7 +601,7 @@ where
     }
 }
 
-impl<K, V> KeyedSnapshotHook<K, V> {
+impl<K, V, Scope: ScriptableHookScope> KeyedSnapshotHook<K, V, Scope> {
     /// Scripts the next tick execution to observe, for each named key, the buffered
     /// version equal to the named value: scans forward from that key's currently-revealed
     /// version through the buffered ones and releases the first equal version, skipping
@@ -574,7 +623,11 @@ impl<K, V> KeyedSnapshotHook<K, V> {
     {
         let entries: Vec<(K, V)> = entries.into_iter().collect();
         assert_distinct_keys(entries.iter().map(|(key, _)| key), "reveal");
-        DecisionFuture::new(self.id, &KeyedSnapshotDecision::Reveal(entries))
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &KeyedSnapshotDecision::Reveal(entries),
+        )
     }
 
     /// Scripts the next tick execution to observe, for every key, the newest version that
@@ -587,7 +640,11 @@ impl<K, V> KeyedSnapshotHook<K, V> {
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
     {
-        DecisionFuture::new(self.id, &KeyedSnapshotDecision::<K, V>::RevealLatest)
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &KeyedSnapshotDecision::<K, V>::RevealLatest,
+        )
     }
 
     /// Scripts the next tick execution to observe every key's previously revealed version
@@ -597,7 +654,7 @@ impl<K, V> KeyedSnapshotHook<K, V> {
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
     {
-        DecisionFuture::new(self.id, &KeyedSnapshotDecision::<K, V>::Keep)
+        DecisionFuture::new(self.id, self.member, &KeyedSnapshotDecision::<K, V>::Keep)
     }
 
     pause_family!(KeyedSnapshotStatus);
@@ -614,7 +671,7 @@ impl<K, V> KeyedSnapshotHook<K, V> {
     }
 }
 
-impl<K, V> KeyedOrderingHook<K, V, Unbounded>
+impl<K, V, Scope: ScriptableHookScope> KeyedOrderingHook<K, V, Unbounded, Scope>
 where
     K: Serialize + DeserializeOwned,
     V: Serialize + DeserializeOwned,
@@ -624,7 +681,11 @@ where
     /// opportunities for ticks and feedback to interleave with the remaining buffered
     /// input.
     pub fn next(&self, key: K, value: V) -> DecisionFuture {
-        DecisionFuture::new(self.id, &TopLevelOrderingDecision::Next((key, value)))
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &TopLevelOrderingDecision::Next((key, value)),
+        )
     }
 
     pause_family!(OrderingStatus);
@@ -641,7 +702,7 @@ where
     }
 }
 
-impl<K, V> KeyedOrderingHook<K, V, Bounded>
+impl<K, V, Scope: ScriptableHookScope> KeyedOrderingHook<K, V, Bounded, Scope>
 where
     K: Serialize + DeserializeOwned,
     V: Serialize + DeserializeOwned,
@@ -654,12 +715,13 @@ where
     pub fn order(&self, entries: impl IntoIterator<Item = (K, V)>) -> DecisionFuture {
         DecisionFuture::new(
             self.id,
+            self.member,
             &InlineOrderingDecision::Order(entries.into_iter().collect()),
         )
     }
 }
 
-impl<K, V> PartialOrderingHook<K, V, Unbounded>
+impl<K, V, Scope: ScriptableHookScope> PartialOrderingHook<K, V, Unbounded, Scope>
 where
     K: Serialize + DeserializeOwned,
     V: Serialize + DeserializeOwned,
@@ -669,7 +731,11 @@ where
     /// mismatch panics). Exactly one entry is released, preserving opportunities for
     /// ticks and feedback to interleave with the remaining buffered input.
     pub fn next(&self, key: K, value: V) -> DecisionFuture {
-        DecisionFuture::new(self.id, &TopLevelOrderingDecision::Next((key, value)))
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &TopLevelOrderingDecision::Next((key, value)),
+        )
     }
 
     pause_family!(OrderingStatus);
@@ -686,7 +752,7 @@ where
     }
 }
 
-impl<K, V> PartialOrderingHook<K, V, Bounded>
+impl<K, V, Scope: ScriptableHookScope> PartialOrderingHook<K, V, Bounded, Scope>
 where
     K: Serialize + DeserializeOwned,
     V: Serialize + DeserializeOwned,
@@ -698,12 +764,13 @@ where
     pub fn order(&self, entries: impl IntoIterator<Item = (K, V)>) -> DecisionFuture {
         DecisionFuture::new(
             self.id,
+            self.member,
             &InlineOrderingDecision::Order(entries.into_iter().collect()),
         )
     }
 }
 
-impl<T> MergeOrderedHook<T, Unbounded>
+impl<T, Scope: ScriptableHookScope> MergeOrderedHook<T, Unbounded, Scope>
 where
     T: Serialize + DeserializeOwned,
 {
@@ -712,13 +779,13 @@ where
     /// a mismatch panics). Exactly one element is released, preserving opportunities for
     /// ticks and feedback to interleave with the remaining buffered input.
     pub fn next_first(&self, value: T) -> DecisionFuture {
-        DecisionFuture::new(self.id, &MergeDecision::<T>::First(value))
+        DecisionFuture::new(self.id, self.member, &MergeDecision::<T>::First(value))
     }
 
     /// Scripts a top-level `merge_ordered` action to release the front element of the
     /// *second* input's buffer, which must equal `value`; see [`Self::next_first`].
     pub fn next_second(&self, value: T) -> DecisionFuture {
-        DecisionFuture::new(self.id, &MergeDecision::<T>::Second(value))
+        DecisionFuture::new(self.id, self.member, &MergeDecision::<T>::Second(value))
     }
 
     /// Scripts a top-level `merge_ordered` action to release the front element of the
@@ -726,13 +793,13 @@ where
     /// empty). Unlike [`Self::next_first`], this does not assert the released value; use
     /// `next_first(value)` to name it exactly and fail loudly on mis-synchronization.
     pub fn advance_first(&self) -> DecisionFuture {
-        DecisionFuture::new(self.id, &MergeDecision::<T>::FirstNext(()))
+        DecisionFuture::new(self.id, self.member, &MergeDecision::<T>::FirstNext(()))
     }
 
     /// Scripts a top-level `merge_ordered` action to release the front element of the
     /// *second* input's buffer, whatever it is; see [`Self::advance_first`].
     pub fn advance_second(&self) -> DecisionFuture {
-        DecisionFuture::new(self.id, &MergeDecision::<T>::SecondNext(()))
+        DecisionFuture::new(self.id, self.member, &MergeDecision::<T>::SecondNext(()))
     }
 
     pause_family!(MergeStatus);
@@ -749,7 +816,7 @@ where
     }
 }
 
-impl<T> MergeOrderedHook<T, Bounded>
+impl<T, Scope: ScriptableHookScope> MergeOrderedHook<T, Bounded, Scope>
 where
     T: Serialize + DeserializeOwned,
 {
@@ -760,12 +827,13 @@ where
     pub fn order(&self, values: impl IntoIterator<Item = (bool, T)>) -> DecisionFuture {
         DecisionFuture::new(
             self.id,
+            self.member,
             &InlineOrderingDecision::Order(values.into_iter().collect()),
         )
     }
 }
 
-impl<K, V> KeyedMergeOrderedHook<K, V, Unbounded>
+impl<K, V, Scope: ScriptableHookScope> KeyedMergeOrderedHook<K, V, Unbounded, Scope>
 where
     K: Serialize + DeserializeOwned,
     V: Serialize + DeserializeOwned,
@@ -776,14 +844,22 @@ where
     /// released, preserving opportunities for ticks and feedback to interleave with the
     /// remaining buffered input.
     pub fn next_first(&self, key: K, value: V) -> DecisionFuture {
-        DecisionFuture::new(self.id, &MergeDecision::<(K, V), K>::First((key, value)))
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &MergeDecision::<(K, V), K>::First((key, value)),
+        )
     }
 
     /// Scripts a top-level keyed `merge_ordered` action to release the front entry of
     /// `key`'s buffer in the *second* input, which must equal `value`; see
     /// [`Self::next_first`].
     pub fn next_second(&self, key: K, value: V) -> DecisionFuture {
-        DecisionFuture::new(self.id, &MergeDecision::<(K, V), K>::Second((key, value)))
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &MergeDecision::<(K, V), K>::Second((key, value)),
+        )
     }
 
     /// Scripts a top-level keyed `merge_ordered` action to release the front entry of
@@ -792,14 +868,22 @@ where
     /// the released value; use `next_first(key, value)` to name it exactly and fail
     /// loudly on mis-synchronization.
     pub fn advance_first(&self, key: K) -> DecisionFuture {
-        DecisionFuture::new(self.id, &MergeDecision::<(K, V), K>::FirstNext(key))
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &MergeDecision::<(K, V), K>::FirstNext(key),
+        )
     }
 
     /// Scripts a top-level keyed `merge_ordered` action to release the front entry of
     /// `key`'s buffer in the *second* input, whatever its value; see
     /// [`Self::advance_first`].
     pub fn advance_second(&self, key: K) -> DecisionFuture {
-        DecisionFuture::new(self.id, &MergeDecision::<(K, V), K>::SecondNext(key))
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &MergeDecision::<(K, V), K>::SecondNext(key),
+        )
     }
 
     pause_family!(MergeStatus);
@@ -816,7 +900,7 @@ where
     }
 }
 
-impl<K, V> KeyedMergeOrderedHook<K, V, Bounded>
+impl<K, V, Scope: ScriptableHookScope> KeyedMergeOrderedHook<K, V, Bounded, Scope>
 where
     K: Serialize + DeserializeOwned,
     V: Serialize + DeserializeOwned,
@@ -830,6 +914,7 @@ where
     pub fn order(&self, entries: impl IntoIterator<Item = (bool, K, V)>) -> DecisionFuture {
         DecisionFuture::new(
             self.id,
+            self.member,
             &InlineOrderingDecision::Order(
                 entries
                     .into_iter()

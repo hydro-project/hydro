@@ -4,10 +4,10 @@ error[E0277]: the trait bound `NotHashable: Hash` is not satisfied
 14 |     let _hook: KeyedMergeOrderedHook<NotHashable, u32> = flow.sim_hook();
    |                                                               ^^^^^^^^ the trait `Hash` is not implemented for `NotHashable`
    |
-help: the trait `SimHook` is conditionally implemented for `KeyedMergeOrderedHook<K, V, B>`
+help: the trait `SimHook` is conditionally implemented for `KeyedMergeOrderedHook<K, V, B, S>`
   --> src/sim_hooks.rs
    |
-   | / impl<K, V, B: Boundedness> SimHook for KeyedMergeOrderedHook<K, V, B>
+   | / impl<K, V, B: Boundedness, S: BindableHookScope> SimHook for KeyedMergeOrderedHook<K, V, B, S>
    | | where
    | |     K: Hash + Eq + Clone + Serialize + DeserializeOwned,
    | |        ---- unsatisfied requirement introduced here: `_: Hash`
