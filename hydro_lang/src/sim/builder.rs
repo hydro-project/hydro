@@ -120,6 +120,11 @@ impl SimBuilder {
     /// (`__hydro_scripted_registry`) for the test-side handle, and pushes it into the
     /// location-keyed scripted-hook map matching its kind (`__hydro_scripted_hooks` for
     /// tick inputs, `__hydro_scripted_observation_hooks` for top-level observations).
+    ///
+    /// On a cluster, these statements are emitted inside the per-member instantiation
+    /// loop (where `__current_cluster_id` is bound), so every member gets its own
+    /// independent hook instance, registered under `(handle_id, Some(member))` and
+    /// targeting that member's tick/observation.
     fn add_scripted_hook(
         &mut self,
         hook_id: usize,
@@ -129,13 +134,6 @@ impl SimBuilder {
         op_location: &str,
         core_expr: syn::Expr,
     ) {
-        if !matches!(in_location, LocationId::Process(_)) {
-            panic!(
-                "sim hooks are not yet supported on operators running on a cluster (at {})",
-                op_location
-            );
-        }
-
         if let Some(prev) = self.bound_sim_hooks.insert(hook_id, op_location.to_owned()) {
             panic!(
                 "the same sim hook handle was bound to two different operators:\n  first:  {}\n  second: {}",
@@ -145,6 +143,13 @@ impl SimBuilder {
 
         let root = get_this_crate();
         let out_location_ser = serde_json::to_string(out_location).unwrap();
+        // The member the hook instance belongs to: `None` on a process, the loop
+        // variable of the per-member instantiation loop on a cluster.
+        let cluster_id_expr: syn::Expr = match in_location {
+            LocationId::Process(_) => syn::parse_quote!(None),
+            LocationId::Cluster(_) => syn::parse_quote!(Some(__current_cluster_id)),
+            _ => unreachable!("scripted hooks are emitted at a top-level location"),
+        };
         // Like `add_hook`, tick-input and observation hooks go to separately typed maps
         // (`ScriptedTickHooks` vs `ScriptedObservationHooks`), matching the target kind.
         let (target, map): (syn::Expr, syn::Ident) = match out_location {
@@ -153,25 +158,25 @@ impl SimBuilder {
                     #root::sim::runtime::ScriptTarget::Tick {
                         location: #root::sim::runtime::SimLocation {
                             location: #root::sim::runtime::parse_location(#out_location_ser),
-                            cluster_id: None,
+                            cluster_id: #cluster_id_expr,
                         },
                     }
                 },
                 syn::parse_quote!(__hydro_scripted_hooks),
             ),
-            LocationId::Process(_) => (
+            LocationId::Process(_) | LocationId::Cluster(_) => (
                 syn::parse_quote! {
                     #root::sim::runtime::ScriptTarget::Observation {
                         location: #root::sim::runtime::SimLocation {
                             location: #root::sim::runtime::parse_location(#out_location_ser),
-                            cluster_id: None,
+                            cluster_id: #cluster_id_expr,
                         },
                         hook_id: #hook_id,
                     }
                 },
                 syn::parse_quote!(__hydro_scripted_observation_hooks),
             ),
-            _ => unreachable!("scripted hooks currently run only in process locations"),
+            _ => unreachable!("scripted hooks are keyed by a tick or top-level location"),
         };
 
         self.add_extra_stmt_internal(
@@ -187,20 +192,24 @@ impl SimBuilder {
             in_location,
             syn::parse_quote! {
                 assert!(
-                    __hydro_scripted_registry.insert(#hook_id, #hook_rc_ident.clone()).is_none(),
+                    __hydro_scripted_registry.insert((#hook_id, #cluster_id_expr), #hook_rc_ident.clone()).is_none(),
                     "a sim hook handle was bound to multiple operators"
                 );
             },
         );
 
         self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-            #map.entry(#root::sim::runtime::SimLocation { location: #root::sim::runtime::parse_location(#out_location_ser), cluster_id: None }).or_default().push(#hook_rc_ident);
+            #map.entry(#root::sim::runtime::SimLocation { location: #root::sim::runtime::parse_location(#out_location_ser), cluster_id: #cluster_id_expr }).or_default().push(#hook_rc_ident);
         });
     }
 
     /// Registers a scripted inline hook. The concrete wrapper is shared between the
     /// handle-facing registry and the tick-keyed inline-hook map, but exposed through the
     /// separate trait surfaces each side needs.
+    ///
+    /// Like [`Self::add_scripted_hook`], on a cluster these statements run once per
+    /// member (inside the loop binding `__current_cluster_id`), yielding one independent
+    /// hook instance per member.
     fn add_scripted_inline_hook(
         &mut self,
         hook_id: usize,
@@ -209,13 +218,6 @@ impl SimBuilder {
         op_location: &str,
         core_expr: syn::Expr,
     ) {
-        if !matches!(tick_location.root(), LocationId::Process(_)) {
-            panic!(
-                "sim hooks are not yet supported on operators running on a cluster (at {})",
-                op_location
-            );
-        }
-
         if let Some(prev) = self.bound_sim_hooks.insert(hook_id, op_location.to_owned()) {
             panic!(
                 "the same sim hook handle was bound to two different operators:\n  first:  {}\n  second: {}",
@@ -225,6 +227,11 @@ impl SimBuilder {
 
         let root = get_this_crate();
         let tick_location_ser = serde_json::to_string(tick_location).unwrap();
+        let cluster_id_expr: syn::Expr = match tick_location.root() {
+            LocationId::Process(_) => syn::parse_quote!(None),
+            LocationId::Cluster(_) => syn::parse_quote!(Some(__current_cluster_id)),
+            _ => unreachable!("ticks are rooted at a top-level location"),
+        };
 
         self.add_extra_stmt_internal(
             tick_location.root(),
@@ -235,7 +242,7 @@ impl SimBuilder {
                         #root::sim::runtime::ScriptTarget::Tick {
                             location: #root::sim::runtime::SimLocation {
                                 location: #root::sim::runtime::parse_location(#tick_location_ser),
-                                cluster_id: None,
+                                cluster_id: #cluster_id_expr,
                             },
                         },
                     )
@@ -246,13 +253,13 @@ impl SimBuilder {
             tick_location.root(),
             syn::parse_quote! {
                 assert!(
-                    __hydro_scripted_registry.insert(#hook_id, #hook_rc_ident.clone()).is_none(),
+                    __hydro_scripted_registry.insert((#hook_id, #cluster_id_expr), #hook_rc_ident.clone()).is_none(),
                     "a sim hook handle was bound to multiple operators"
                 );
             },
         );
         self.add_extra_stmt_internal(tick_location.root(), syn::parse_quote! {
-            __hydro_scripted_inline_hooks.entry(#root::sim::runtime::SimLocation { location: #root::sim::runtime::parse_location(#tick_location_ser), cluster_id: None }).or_default().push(#hook_rc_ident);
+            __hydro_scripted_inline_hooks.entry(#root::sim::runtime::SimLocation { location: #root::sim::runtime::parse_location(#tick_location_ser), cluster_id: #cluster_id_expr }).or_default().push(#hook_rc_ident);
         });
     }
 

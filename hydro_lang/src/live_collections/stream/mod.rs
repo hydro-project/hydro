@@ -34,7 +34,7 @@ use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::manual_proof;
 use crate::properties::{
-    AggFuncAlgebra, ApplyMonotoneStream, StreamMapFuncAlgebra, ValidCommutativityFor,
+    AggFuncAlgebra, ApplyMonotoneStream, NotProved, StreamMapFuncAlgebra, ValidCommutativityFor,
     ValidIdempotenceFor, ValidMutBorrowCommutativityFor, ValidMutBorrowIdempotenceFor,
     ValidMutCommutativityFor, ValidMutIdempotenceFor,
 };
@@ -590,7 +590,12 @@ where
     /// ```
     pub fn map<U, F, C, I, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, I>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            StreamMapFuncAlgebra<T, B, C, I, L::SimHookScope>,
+        >,
     ) -> Stream<U, L, B, O, R>
     where
         F: FnMut(T) -> U + 'a,
@@ -641,7 +646,12 @@ where
     /// ```
     pub fn flat_map_ordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            StreamMapFuncAlgebra<T, B, C, Idemp, L::SimHookScope>,
+        >,
     ) -> Stream<U, L, B, O, R>
     where
         I: IntoIterator<Item = U>,
@@ -695,7 +705,12 @@ where
     /// ```
     pub fn flat_map_unordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            StreamMapFuncAlgebra<T, B, C, Idemp, L::SimHookScope>,
+        >,
     ) -> Stream<U, L, B, NoOrder, R>
     where
         I: IntoIterator<Item = U>,
@@ -788,7 +803,12 @@ where
     /// `Pending`, this operator yields as well.
     pub fn flat_map_stream_blocking<U, S, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            StreamMapFuncAlgebra<T, B, C, Idemp, L::SimHookScope>,
+        >,
     ) -> Stream<U, L, B, O, R>
     where
         S: futures::Stream<Item = U>,
@@ -857,7 +877,12 @@ where
     /// ```
     pub fn filter<F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            StreamMapFuncAlgebra<T, B, C, Idemp, L::SimHookScope>,
+        >,
     ) -> Self
     where
         F: FnMut(&T) -> bool + 'a,
@@ -916,7 +941,12 @@ where
     /// ```
     pub fn partition<F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            StreamMapFuncAlgebra<T, B, C, Idemp, L::SimHookScope>,
+        >,
     ) -> (Stream<T, L, B, O, R>, Stream<T, L, B, O, R>)
     where
         F: FnMut(&T) -> bool + 'a,
@@ -977,7 +1007,12 @@ where
     /// ```
     pub fn filter_map<U, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, StreamMapFuncAlgebra<T, B, C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            StreamMapFuncAlgebra<T, B, C, Idemp, L::SimHookScope>,
+        >,
     ) -> Stream<U, L, B, O, R>
     where
         F: FnMut(T) -> Option<U> + 'a,
@@ -1308,7 +1343,7 @@ where
             'a,
             F,
             OperatorContext<L::DropConsistency, B>,
-            StreamMapFuncAlgebra<T, B, C, Idemp>,
+            StreamMapFuncAlgebra<T, B, C, Idemp, L::SimHookScope>,
         >,
     ) -> Self
     where
@@ -1358,7 +1393,12 @@ where
     /// stream.
     pub fn for_each<F: FnMut(T) + 'a, C, I>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<T, B, C, I>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            AggFuncAlgebra<T, B, C, I, NotProved, L::SimHookScope>,
+        >,
     ) where
         C: ValidCommutativityFor<O>,
         I: ValidIdempotenceFor<R>,
@@ -1465,7 +1505,12 @@ where
     pub fn fold<A, I, F, C, Idemp, M, B2: SingletonBound>(
         self,
         init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>>,
-        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<T, B, C, Idemp, M>>,
+        comb: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            AggFuncAlgebra<T, B, C, Idemp, M, L::SimHookScope>,
+        >,
     ) -> Singleton<A, L, B2>
     where
         I: Fn() -> A + 'a,
@@ -1531,7 +1576,12 @@ where
     /// ```
     pub fn reduce<F, C, Idemp>(
         self,
-        comb: impl IntoQuotedMut<'a, F, OperatorContext<L, B>, AggFuncAlgebra<T, B, C, Idemp>>,
+        comb: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            AggFuncAlgebra<T, B, C, Idemp, NotProved, L::SimHookScope>,
+        >,
     ) -> Optional<T, L, B::AggregatedOptional>
     where
         F: Fn(&mut T, T) + 'a,
@@ -2089,12 +2139,16 @@ where
     /// scripted through the guard's composite hook payload, e.g.
     /// `nondet!(/** reason */ hook = (elements_hook.into(), None))`.
     #[cfg(feature = "tokio")]
+    #[expect(
+        clippy::type_complexity,
+        reason = "composite hook payload names each internal operator's handle type"
+    )]
     pub fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
         mut nondet: NonDet<(
-            Option<crate::sim_hooks::BatchHook<T, O, R>>,
-            Option<crate::sim_hooks::BatchHook<()>>,
+            Option<crate::sim_hooks::BatchHook<T, O, R, L::SimHookScope>>,
+            Option<crate::sim_hooks::BatchHook<(), TotalOrder, ExactlyOnce, L::SimHookScope>>,
         )>,
     ) -> Stream<T, L::DropConsistency, Unbounded, O, AtLeastOnce>
     where
@@ -2220,7 +2274,7 @@ where
     pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        mut nondet: NonDet<Option<crate::sim_hooks::BatchHook<T, O, R>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::BatchHook<T, O, R, L::SimHookScope>>>,
     ) -> Stream<T, Tick<L::DropConsistency>, Bounded, O, R> {
         assert_eq!(
             Location::id(tick.parent_location()),
@@ -2293,7 +2347,7 @@ where
     /// for the rest of the program.
     pub fn assume_ordering<O2: Ordering>(
         self,
-        mut nondet: NonDet<Option<crate::sim_hooks::OrderingHook<T, B>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::OrderingHook<T, B, L::SimHookScope>>>,
     ) -> Stream<T, L::DropConsistency, B, O2, R> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
             self.use_ordering_type().weaken_consistency()
@@ -2688,7 +2742,7 @@ impl<'a, T, L: Location<'a>, B: Boundedness, R: Retries> Stream<T, L, B, TotalOr
     pub fn merge_ordered<R2: Retries>(
         self,
         other: Stream<T, L, B, TotalOrder, R2>,
-        mut nondet: NonDet<Option<crate::sim_hooks::MergeOrderedHook<T, B>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::MergeOrderedHook<T, B, L::SimHookScope>>>,
     ) -> Stream<T, L::DropConsistency, B, TotalOrder, <R as MinRetries<R2>>::Min>
     where
         R: MinRetries<R2>,
@@ -3191,7 +3245,7 @@ where
     pub fn batch_atomic<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        mut nondet: NonDet<Option<crate::sim_hooks::BatchHook<T, O, R>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::BatchHook<T, O, R, L::SimHookScope>>>,
     ) -> Stream<T, Tick<L::DropConsistency>, Bounded, O, R> {
         assert_eq!(
             Location::id(tick.parent_location()),

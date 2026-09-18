@@ -95,6 +95,8 @@ impl<'a, P> super::dynamic::DynLocation for Process<'a, P> {
 impl<'a, P> Location<'a> for Process<'a, P> {
     type Root = Self;
 
+    type SimHookScope = crate::sim_hooks::OnProcess<P>;
+
     type DropConsistency = Self;
 
     fn consistency() -> Option<super::dynamic::ClusterConsistency> {

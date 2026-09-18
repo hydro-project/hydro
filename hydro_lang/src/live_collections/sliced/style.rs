@@ -334,7 +334,7 @@ impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     Slicable<'a, L::DropConsistency>
     for Batch<
         crate::live_collections::Stream<T, L, B, O, R>,
-        Option<crate::sim_hooks::BatchHook<T, O, R>>,
+        Option<crate::sim_hooks::BatchHook<T, O, R, L::SimHookScope>>,
     >
 {
     type Slice = crate::live_collections::Stream<T, Tick<L::DropConsistency>, Bounded, O, R>;
@@ -354,7 +354,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     Slicable<'a, L::DropConsistency>
     for Batch<
         crate::live_collections::KeyedStream<K, V, L, B, O, R>,
-        Option<crate::sim_hooks::KeyedBatchHook<K, V, O, R>>,
+        Option<crate::sim_hooks::KeyedBatchHook<K, V, O, R, L::SimHookScope>>,
     >
 {
     type Slice =
@@ -374,7 +374,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
 impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
     for Batch<
         crate::live_collections::KeyedSingleton<K, V, L, BoundedValue>,
-        Option<crate::sim_hooks::KeyedSnapshotHook<K, V>>,
+        Option<crate::sim_hooks::KeyedSnapshotHook<K, V, L::SimHookScope>>,
     >
 {
     type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;
@@ -400,7 +400,7 @@ impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
 impl<'a, T, L: Location<'a>, B: SingletonBound> Slicable<'a, L::DropConsistency>
     for Snapshot<
         crate::live_collections::Singleton<T, L, B>,
-        Option<crate::sim_hooks::SnapshotHook<T>>,
+        Option<crate::sim_hooks::SnapshotHook<T, L::SimHookScope>>,
     >
 {
     type Slice = crate::live_collections::Singleton<T, Tick<L::DropConsistency>, Bounded>;
@@ -436,7 +436,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>>
     Slicable<'a, L::DropConsistency>
     for Snapshot<
         crate::live_collections::KeyedSingleton<K, V, L, B>,
-        Option<crate::sim_hooks::KeyedSnapshotHook<K, V>>,
+        Option<crate::sim_hooks::KeyedSnapshotHook<K, V, L::SimHookScope>>,
     >
 {
     type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;

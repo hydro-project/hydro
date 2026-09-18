@@ -199,8 +199,9 @@ impl QuiescenceState {
 pub(crate) struct CurrentGroup {
     /// The scheduler action the group's decisions apply to.
     target: ScriptTarget,
-    /// The hook IDs with an installed decision in this group.
-    members: Vec<usize>,
+    /// The registry keys (handle ID plus cluster member) with an installed decision in
+    /// this group.
+    members: Vec<(usize, Option<u32>)>,
     /// Set when the scheduler starts a step. Until then, consecutive decisions for different
     /// hooks of this tick may join the group in the same poll of the test body.
     sealed: bool,
@@ -228,18 +229,23 @@ impl ScriptCoordinator {
     fn describe_unconsumed(&self, hooks: &ScriptedHookRegistry) -> Option<String> {
         let group = self.current.as_ref()?;
         let mut out = String::new();
-        for id in &group.members {
-            let hook = hooks.get(id).unwrap().borrow();
+        for key in &group.members {
+            let hook = hooks.get(key).unwrap().borrow();
             if let Some(decision) = hook.describe_decision() {
                 use std::fmt::Write;
                 if !out.is_empty() {
                     out.push('\n');
                 }
+                let member = key
+                    .1
+                    .map(|m| format!(" (cluster member {m})"))
+                    .unwrap_or_default();
                 write!(
                     out,
-                    "  {} is waiting on the hook at {}, which has {}",
+                    "  {} is waiting on the hook at {}{}, which has {}",
                     decision,
                     hook.location_meta().location,
+                    member,
                     hook.describe_pending()
                         .as_deref()
                         .unwrap_or("no pending input"),
@@ -279,14 +285,42 @@ const UNBOUND_HOOK_ERROR: &str = "this sim hook handle is not bound to any opera
      attach it with `nondet!(... hook = handle)` at the operator it should control";
 
 impl ScriptCtx {
-    /// Resolves a hook handle's scripted hook. Panics if the handle was never bound to an
-    /// operator.
+    /// Resolves a hook handle's scripted hook instance; `member` selects a cluster
+    /// member's instance (`None` for hooks on processes). Panics if the handle is not
+    /// bound to an operator or the member does not exist.
     #[track_caller]
-    pub(crate) fn control(&self, hook_id: usize) -> Rc<RefCell<dyn ScriptedHookControl>> {
-        self.hooks
-            .get(&hook_id)
-            .cloned()
-            .unwrap_or_else(|| panic!("{}", UNBOUND_HOOK_ERROR))
+    pub(crate) fn control(
+        &self,
+        hook_id: usize,
+        member: Option<u32>,
+    ) -> Rc<RefCell<dyn ScriptedHookControl>> {
+        if let Some(hook) = self.hooks.get(&(hook_id, member)) {
+            return hook.clone();
+        }
+
+        // The exact instance is missing; distinguish the misuse cases from a handle
+        // that was never bound at all.
+        let bound_members: Vec<u32> = self
+            .hooks
+            .range((hook_id, None)..=(hook_id, Some(u32::MAX)))
+            .filter_map(|((_, m), _)| *m)
+            .collect();
+        match member {
+            None if !bound_members.is_empty() => panic!(
+                "this sim hook handle is bound to an operator running on a cluster, where every member has its own independent instance to script; \
+                 select one with `.on(member_id)` (members: {:?})",
+                bound_members
+            ),
+            Some(m) if self.hooks.contains_key(&(hook_id, None)) => panic!(
+                "`.on({m})` was used on a sim hook handle bound to an operator running on a process, which has no cluster members; \
+                 script the handle without `.on(..)`"
+            ),
+            Some(m) if !bound_members.is_empty() => panic!(
+                "`.on({m})` does not name a member of the cluster this sim hook handle is bound to (members: {:?})",
+                bound_members
+            ),
+            _ => panic!("{}", UNBOUND_HOOK_ERROR),
+        }
     }
 
     /// Whether the simulation is currently quiescent (no more progress possible).
@@ -300,16 +334,21 @@ impl ScriptCtx {
     }
 
     /// Attempts to install a decision (bincode-serialized; the handle and hook statically
-    /// know the matching type) for `hook_id` under the group protocol: join the current
-    /// group if this decision belongs to it, open a new group if the previous one has
-    /// been consumed, or hand the decision back to be retried once the previous group's
-    /// tick execution has happened.
+    /// know the matching type) for the hook instance `(hook_id, member)` under the group
+    /// protocol: join the current group if this decision belongs to it, open a new group
+    /// if the previous one has been consumed, or hand the decision back to be retried
+    /// once the previous group's tick execution has happened. Each cluster member's tick
+    /// is its own scheduler action, so decisions for different members never share a
+    /// group.
+    #[track_caller]
     pub(crate) fn try_schedule_decision(
         &self,
         hook_id: usize,
+        member: Option<u32>,
         decision_blob: Vec<u8>,
     ) -> Result<ScheduleDecision, String> {
-        let hook = self.control(hook_id);
+        let key = (hook_id, member);
+        let hook = self.control(hook_id, member);
         let target = hook.borrow().target();
 
         let mut coordinator = self.coordinator.borrow_mut();
@@ -326,7 +365,7 @@ impl ScriptCtx {
                 if !group.sealed
                     && matches!(target, ScriptTarget::Tick { .. })
                     && group.target == target
-                    && !group.members.contains(&hook_id) =>
+                    && !group.members.contains(&key) =>
             {
                 Action::Join
             }
@@ -335,12 +374,12 @@ impl ScriptCtx {
 
         match action {
             Action::Join => {
-                coordinator.current.as_mut().unwrap().members.push(hook_id);
+                coordinator.current.as_mut().unwrap().members.push(key);
             }
             Action::NewGroup => {
                 coordinator.current = Some(CurrentGroup {
                     target,
-                    members: vec![hook_id],
+                    members: vec![key],
                     sealed: false,
                 });
             }
@@ -2550,12 +2589,17 @@ impl<W: std::io::Write> LaunchedSim<W> {
 
             if has_pending_decision && !any_pending_decision_can_eventually_trigger {
                 let mut details = String::new();
+                let member = tick
+                    .cluster_id
+                    .map(|m| format!(" (cluster member {m})"))
+                    .unwrap_or_default();
                 for hook in &tick.scripted_hooks {
                     let hook = hook.borrow();
                     if let Some(decision) = hook.describe_decision() {
                         let loc = ScriptedHookControl::location_meta(&*hook).location;
                         use std::fmt::Write;
-                        write!(details, "\n  {} on the hook at {}", decision, loc).unwrap();
+                        write!(details, "\n  {} on the hook at {}{}", decision, loc, member)
+                            .unwrap();
                     }
                 }
                 panic!(
