@@ -3,6 +3,12 @@
 //! on a non-tick stream, or a hooked top-level `fold`). Each is its own
 //! `SimObservation` in the scheduler. Their scripted decision/status types and
 //! [`ScriptableHook`] impls live alongside them.
+//!
+//! The retry kinds ([`TopLevelStreamRetriesHook`], [`TopLevelOrderedStreamRetriesHook`],
+//! [`TopLevelAtLeastOnceOrderHook`]) implement only the scriptable surface, never
+//! [`ObservationHook`]: their decision spaces are infinite (every element admits
+//! arbitrarily many retries), so no autonomous exploration is possible and the builder
+//! requires them to be bound to a sim hook.
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -1063,5 +1069,742 @@ impl<K, V> ScriptableObservationHook for TopLevelKeyedMergeOrderedHook<K, V>
 where
     K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
     V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+}
+
+/// Top-level hook for `assume_retries` (`AtLeastOnce` → `ExactlyOnce`) on a **`NoOrder`**
+/// stream: the point where the simulator injects the retries the type says downstream
+/// must tolerate. Each decision picks one buffered element and a cardinality `n >= 1`,
+/// releasing `n` copies and consuming the element.
+///
+/// Cardinality is the *entire* decision: the output stays `NoOrder`, so the placement of
+/// the copies is unobservable — downstream ordering points shuffle them like any other
+/// elements. This is what makes `assume_retries().assume_ordering()` explore the same
+/// state space as `assume_ordering().assume_retries()` (see
+/// [`TopLevelAtLeastOnceOrderHook`] for the other factoring): here each instance's
+/// copies become distinct elements of a `NoOrder + ExactlyOnce` multiset, and the
+/// downstream ordering observation arranges that multiset arbitrarily.
+///
+/// There is no autonomous ([`ObservationHook`]) implementation: cardinalities make the
+/// decision space infinite, so this hook exists only bound to a sim hook handle.
+pub struct TopLevelStreamRetriesHook<T> {
+    pub input: Rc<RefCell<VecDeque<T>>>,
+    pub to_release: Option<Vec<T>>,
+    pub output: Sender<T>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+/// Top-level hook for `assume_retries` (`AtLeastOnce` → `ExactlyOnce`) on a
+/// **`TotalOrder`** stream. A decision supplies the released sequence for a **prefix**
+/// of the buffered queue: the prefix's values in order, where each value may be
+/// repeated back-to-back to simulate retries.
+///
+/// Unlike the unordered kinds, there is no one-element-at-a-time protocol here: on an
+/// ordered stream a feedback-cycled element always queues *behind* everything pending
+/// (it cannot race ahead of buffered input), and downstream tick-input hooks choose
+/// their own batch boundaries regardless of arrival granularity, so releasing several
+/// elements in one observation forgoes no reachable behavior. A decision fires only
+/// once it is honorable *in full* against the buffered queue.
+///
+/// Finality is explicit, exactly as for [`TopLevelAtLeastOnceOrderHook`]'s
+/// `emit`/`emit_final`: elements *inside* the sequence are finalized by the sequence
+/// itself (a later value can only start once the earlier one's copies ended — order is
+/// preserved), but the **trailing** element's fate is the script's declaration.
+/// `release(values)` keeps it queued (`front_started`) so later decisions may release
+/// more copies of it, while `release_final(values)` consumes it — and, as always, any
+/// queued element leaves the hook subject to the forgotten-hook check until a decision
+/// or pause accounts for it. When equal elements sit next to each other in the queue,
+/// scripted repeats are attributed to as many distinct queue elements as possible
+/// (equal elements are indistinguishable to the script, so this is unobservable).
+///
+/// Back-to-back-only expansion is deliberate. An `AtLeastOnce` collection `[A, B]`
+/// denotes the physical realizations `A⁺B⁺` (each element instance stutters *in
+/// place*); a delayed redelivery like `ABAB` is a *different* collection
+/// (`[A, B, A, B]`), mintable only where the *order* dimension is observed —
+/// `assume_ordering` on an `AtLeastOnce` stream ([`TopLevelAtLeastOnceOrderHook`]) can
+/// emit an instance into several non-adjacent slots, which then arrive here as separate
+/// slots to expand. This factoring makes `assume_ordering().assume_retries()` and
+/// `assume_retries().assume_ordering()` explore the same state space: any sequence in
+/// which every input instance appears at least once.
+///
+/// There is no autonomous ([`ObservationHook`]) implementation: cardinalities make the
+/// decision space infinite, so this hook exists only bound to a sim hook handle.
+pub struct TopLevelOrderedStreamRetriesHook<T> {
+    pub input: Rc<RefCell<VecDeque<T>>>,
+    pub to_release: Option<Vec<T>>,
+    /// Whether the staged release is non-final (the trailing matched element stays
+    /// queued), noted in the release log.
+    pub release_provisional: bool,
+    /// Whether the front element's copies were started by an earlier non-final
+    /// `release`: the next decision may repeat it without re-starting it, and a
+    /// `release_final` with no values may consume it as-is.
+    pub front_started: bool,
+    pub output: Sender<T>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> RuntimeHook for TopLevelStreamRetriesHook<T> {
+    fn has_pending_input(&self) -> bool {
+        !self.input.borrow().is_empty()
+    }
+
+    fn only_one_possible_decision(&self) -> bool {
+        // Even a sole buffered element admits infinitely many decisions (its
+        // cardinality), so only an empty buffer is unique.
+        self.input.borrow().is_empty()
+    }
+
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
+        if let Some(to_release) = self.to_release.take() {
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
+                let HookLocationMeta {
+                    location: batch_location,
+                    line,
+                    caret_indent,
+                } = self.location;
+                let note_str = format!(
+                    "^ observed non-deterministic retries: {:?}",
+                    TruncatedVecDebug(
+                        RefCell::new(Some(to_release.iter())),
+                        8,
+                        self.format_item_debug
+                    )
+                );
+
+                let _ = writeln!(log_writer);
+                log_release(
+                    log_writer,
+                    batch_location,
+                    line,
+                    caret_indent,
+                    &note_str,
+                    colored::Color::Green,
+                );
+            }
+
+            for item in to_release {
+                self.output.try_send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+
+    fn location_meta(&self) -> HookLocationMeta {
+        self.location
+    }
+}
+
+impl<T> RuntimeHook for TopLevelOrderedStreamRetriesHook<T> {
+    fn has_pending_input(&self) -> bool {
+        !self.input.borrow().is_empty()
+    }
+
+    fn only_one_possible_decision(&self) -> bool {
+        // Even a sole buffered element admits infinitely many decisions (its
+        // cardinality), so only an empty buffer is unique.
+        self.input.borrow().is_empty()
+    }
+
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
+        if let Some(to_release) = self.to_release.take() {
+            let provisional = self.release_provisional;
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
+                let HookLocationMeta {
+                    location: batch_location,
+                    line,
+                    caret_indent,
+                } = self.location;
+                let note_str = format!(
+                    "^ observed non-deterministic retries: {:?}{}",
+                    TruncatedVecDebug(
+                        RefCell::new(Some(to_release.iter())),
+                        8,
+                        self.format_item_debug
+                    ),
+                    if provisional {
+                        " (last value may repeat)"
+                    } else {
+                        ""
+                    }
+                );
+
+                let _ = writeln!(log_writer);
+                log_release(
+                    log_writer,
+                    batch_location,
+                    line,
+                    caret_indent,
+                    &note_str,
+                    colored::Color::Green,
+                );
+            }
+
+            for item in to_release {
+                self.output.try_send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+
+    fn location_meta(&self) -> HookLocationMeta {
+        self.location
+    }
+}
+
+/// A scripted decision for a top-level `assume_retries` observation on a **`NoOrder`**
+/// stream: release `copies >= 1` copies of the named buffered element, consuming it.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum RetriesDecision<T> {
+    Release(T, usize),
+}
+
+impl<T> ScriptDecision for RetriesDecision<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        let RetriesDecision::Release(_, copies) = self;
+        format!("release(value, {})", copies)
+    }
+}
+
+/// A scripted decision for a top-level `assume_retries` observation on a
+/// **`TotalOrder`** stream: the released sequence for a prefix of the buffered queue,
+/// with finality of the trailing element declared explicitly (see
+/// [`TopLevelOrderedStreamRetriesHook`]).
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum OrderedRetriesDecision<T> {
+    /// Release this sequence, keeping the trailing matched element queued: later
+    /// decisions may release more copies of it before it is finalized.
+    Release(Vec<T>),
+    /// Release this sequence and consume the trailing matched element (or, with no
+    /// values, consume a front element whose copies were all released by earlier
+    /// decisions).
+    ReleaseFinal(Vec<T>),
+    /// Release the given number of copies of the front element, whatever it is, and
+    /// consume it.
+    ReleaseNext(usize),
+}
+
+impl<T> ScriptDecision for OrderedRetriesDecision<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            OrderedRetriesDecision::Release(values) => {
+                format!("release({} value(s))", values.len())
+            }
+            OrderedRetriesDecision::ReleaseFinal(values) => {
+                format!("release_final({} value(s))", values.len())
+            }
+            OrderedRetriesDecision::ReleaseNext(copies) => format!("release_next({})", copies),
+        }
+    }
+}
+
+/// Builds the staged release for an honored `release`: `copies - 1` clones plus the
+/// consumed element itself.
+fn expand_retries<T: Clone>(item: T, copies: usize) -> Vec<T> {
+    let mut to_release = Vec::with_capacity(copies);
+    for _ in 1..copies {
+        to_release.push(item.clone());
+    }
+    to_release.push(item);
+    to_release
+}
+
+/// Defensive check mirrored from the handle's call-site assertion: an element observed
+/// zero times would be a *loss*, which `AtLeastOnce` does not permit.
+fn check_copies_at_least_one(copies: usize) -> Result<(), String> {
+    if copies == 0 {
+        Err("the number of copies must be at least 1 (at-least-once permits duplicates, not losses)".to_owned())
+    } else {
+        Ok(())
+    }
+}
+
+impl<T> ScriptableHook for TopLevelStreamRetriesHook<T>
+where
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = RetriesDecision<T>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        let RetriesDecision::Release(expected, copies) = decision;
+        check_copies_at_least_one(*copies)?;
+        Ok(self.input.borrow().iter().any(|item| item == expected))
+    }
+
+    fn apply(&mut self, decision: Self::Decision) {
+        let RetriesDecision::Release(expected, copies) = decision;
+        let mut input = self.input.borrow_mut();
+        let index = input.iter().position(|item| item == &expected).unwrap();
+        let item = input.remove(index).unwrap();
+        self.to_release = Some(expand_retries(item, copies));
+    }
+
+    fn implicit(&mut self) {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        abort!("implicit decision invoked on a top-level retries hook");
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: self.input.borrow().len(),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        (!input.is_empty()).then(|| {
+            format!(
+                "{} buffered item(s) awaiting a retries decision: {:?}",
+                input.len(),
+                TruncatedVecDebug(RefCell::new(Some(input.iter())), 8, self.format_item_debug)
+            )
+        })
+    }
+}
+
+impl<T> ScriptableObservationHook for TopLevelStreamRetriesHook<T> where
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq
+{
+}
+
+/// The result of matching a scripted release sequence against an ordered retries
+/// hook's buffered queue (see [`walk_ordered_retries`]).
+enum PrefixWalk {
+    /// The whole sequence matched, fully finalizing the first `consumed` queue elements
+    /// (the trailing matched element, if any, is *not* counted: its fate is the
+    /// decision's finality flag).
+    Complete { consumed: usize },
+    /// The sequence ran past the buffered queue; it may become honorable once more
+    /// input arrives.
+    NeedMoreInput,
+    /// A scripted value contradicts the buffered queue; the decision can never fire
+    /// (input order is preserved).
+    Mismatch,
+}
+
+/// Matches `values` against the queue: each value either continues the current element
+/// (a back-to-back repeat) or starts the next queued element. `front_started` carries
+/// over from an earlier non-final decision that left the front element's copies open.
+/// When a value could do either (equal elements adjacent in the queue), it starts the
+/// next element — repeats are attributed to as many distinct queue elements as
+/// possible, which is unobservable (the elements are equal) but keeps the accounting
+/// canonical.
+fn walk_ordered_retries<T: PartialEq>(
+    input: &VecDeque<T>,
+    front_started: bool,
+    values: &[T],
+) -> PrefixWalk {
+    let mut consumed = 0;
+    let mut started = front_started;
+    for value in values {
+        if !started {
+            match input.get(consumed) {
+                Some(front) if front == value => started = true,
+                Some(_) => return PrefixWalk::Mismatch,
+                None => return PrefixWalk::NeedMoreInput,
+            }
+        } else if input.get(consumed + 1).is_some_and(|next| next == value) {
+            // Starts the next queued element, finalizing the current one.
+            consumed += 1;
+        } else if input.get(consumed).is_some_and(|current| current == value) {
+            // Another back-to-back copy of the current element.
+        } else if consumed + 1 >= input.len() {
+            return PrefixWalk::NeedMoreInput;
+        } else {
+            return PrefixWalk::Mismatch;
+        }
+    }
+    PrefixWalk::Complete { consumed }
+}
+
+impl<T> ScriptableHook for TopLevelOrderedStreamRetriesHook<T>
+where
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = OrderedRetriesDecision<T>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        let values = match decision {
+            OrderedRetriesDecision::Release(values) => {
+                if values.is_empty() {
+                    // The handle asserts this at the scripting call site; kept as a
+                    // defensive permanent error.
+                    return Err(
+                        "a non-final release must contain at least one value (declare \
+                         intentional buffering with the pause family instead)"
+                            .to_owned(),
+                    );
+                }
+                values
+            }
+            OrderedRetriesDecision::ReleaseFinal(values) => {
+                if values.is_empty() {
+                    return if self.front_started {
+                        Ok(true)
+                    } else {
+                        Err(
+                            "release_final with no values requires an earlier release to \
+                             have left the front element's copies open"
+                                .to_owned(),
+                        )
+                    };
+                }
+                values
+            }
+            OrderedRetriesDecision::ReleaseNext(copies) => {
+                check_copies_at_least_one(*copies)?;
+                return Ok(!self.input.borrow().is_empty());
+            }
+        };
+        match walk_ordered_retries(&self.input.borrow(), self.front_started, values) {
+            PrefixWalk::Complete { .. } => Ok(true),
+            PrefixWalk::NeedMoreInput => Ok(false),
+            // Input order is preserved, so a contradicting value can never be released:
+            // the decision is permanently stuck.
+            PrefixWalk::Mismatch => Err(
+                "the scripted values did not match the buffered queue (input order is \
+                 preserved, so values are released in arrival order and repeat only \
+                 back-to-back)"
+                    .to_owned(),
+            ),
+        }
+    }
+
+    fn apply(&mut self, decision: Self::Decision) {
+        match decision {
+            OrderedRetriesDecision::Release(values) => {
+                let PrefixWalk::Complete { consumed } =
+                    walk_ordered_retries(&self.input.borrow(), self.front_started, &values)
+                else {
+                    abort!("ordered retries decision applied while not honorable");
+                };
+                self.input.borrow_mut().drain(..consumed);
+                self.to_release = Some(values);
+                self.release_provisional = true;
+                self.front_started = true;
+            }
+            OrderedRetriesDecision::ReleaseFinal(values) => {
+                if values.is_empty() {
+                    // Finalizes a front element whose copies were all released by
+                    // earlier decisions; nothing more is delivered.
+                    self.input.borrow_mut().pop_front().unwrap();
+                    self.to_release = Some(vec![]);
+                } else {
+                    let PrefixWalk::Complete { consumed } =
+                        walk_ordered_retries(&self.input.borrow(), self.front_started, &values)
+                    else {
+                        abort!("ordered retries decision applied while not honorable");
+                    };
+                    // The trailing matched element is finalized too.
+                    self.input.borrow_mut().drain(..=consumed);
+                    self.to_release = Some(values);
+                }
+                self.release_provisional = false;
+                self.front_started = false;
+            }
+            OrderedRetriesDecision::ReleaseNext(copies) => {
+                let item = self.input.borrow_mut().pop_front().unwrap();
+                self.to_release = Some(expand_retries(item, copies));
+                self.release_provisional = false;
+                self.front_started = false;
+            }
+        }
+    }
+
+    fn implicit(&mut self) {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        abort!("implicit decision invoked on a top-level retries hook");
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: self.input.borrow().len(),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        (!input.is_empty()).then(|| {
+            format!(
+                "{} buffered item(s) awaiting a retries decision{}: {:?}",
+                input.len(),
+                if self.front_started {
+                    " (the front element's copies are still open)"
+                } else {
+                    ""
+                },
+                TruncatedVecDebug(RefCell::new(Some(input.iter())), 8, self.format_item_debug)
+            )
+        })
+    }
+}
+
+impl<T> ScriptableObservationHook for TopLevelOrderedStreamRetriesHook<T> where
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq
+{
+}
+
+/// Top-level hook for `assume_ordering` on an `AtLeastOnce` stream. Ordering a stream
+/// that may carry retries means choosing the sequence of **slots** each element instance
+/// occupies, and an instance may occupy several non-adjacent slots: from a queue of
+/// `{A, B}`, `ABAB…` is a legitimate slot sequence (each extra slot is a delayed
+/// redelivery, still `AtLeastOnce`). So each decision releases one slot:
+///
+/// - `emit(value)` releases a copy and *keeps* the value buffered for future slots;
+/// - `emit_final(value)` releases the value's last slot and consumes every buffered
+///   element equal to it, so the queue eventually drains and the forgotten-hook check
+///   stays meaningful.
+///
+/// Adjacent duplicate slots are rejected as redundant when only one buffered element
+/// matches the value: as collections under `TotalOrder + AtLeastOnce` they are
+/// equivalent to the single slot (`AA` and `A` both denote `A⁺`), and the *cardinality*
+/// dimension belongs to the downstream `assume_retries` observation
+/// ([`TopLevelOrderedStreamRetriesHook`]). Decisions name **values**, not element
+/// instances (equal instances are indistinguishable to the script), so the hook works
+/// at the value-class level: `emit(v)` releases one slot for the class, and
+/// `emit_final(v)` releases its last slot while consuming *every* buffered element
+/// equal to `v` — checking, via the per-class emission counts, that the class received
+/// at least as many slots as it has buffered elements (each element must be observed at
+/// least once; at-least-once permits duplicates, not losses). Two adjacent slots of the
+/// same value are legitimate exactly when two or more buffered elements share it.
+///
+/// There is no autonomous ([`ObservationHook`]) implementation: re-emission makes the
+/// decision space infinite, so this hook exists only bound to a sim hook handle.
+pub struct TopLevelAtLeastOnceOrderHook<T> {
+    pub input: Rc<RefCell<VecDeque<T>>>,
+    pub to_release: Option<Vec<T>>,
+    /// Whether the staged release is a non-final slot (its value stays buffered),
+    /// noted in the release log.
+    pub release_provisional: bool,
+    /// The value released by the immediately-preceding decision, if that decision was a
+    /// provisional `emit` (elements equal to it are still buffered). The next decision
+    /// may name the same value only if two or more buffered elements share it —
+    /// otherwise it would place the same sole element in adjacent slots, a redundant
+    /// duplicate. `None` after an `emit_final` (everything equal to the released value
+    /// was consumed, so a later equal arrival is a genuinely new element).
+    pub last_emitted: Option<T>,
+    /// Per value-class count of provisional slots released so far, consulted by
+    /// `emit_final` to check that every buffered element of the class got a slot.
+    /// An entry lives from a class's first `emit` until its `emit_final` consumes it.
+    pub emitted_counts: Vec<(T, usize)>,
+    pub output: Sender<T>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> RuntimeHook for TopLevelAtLeastOnceOrderHook<T> {
+    fn has_pending_input(&self) -> bool {
+        !self.input.borrow().is_empty()
+    }
+
+    fn only_one_possible_decision(&self) -> bool {
+        // Even a sole buffered element admits more than one decision (emit it
+        // provisionally or finally), so only an empty buffer is unique.
+        self.input.borrow().is_empty()
+    }
+
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
+        if let Some(to_release) = self.to_release.take() {
+            let provisional = std::mem::take(&mut self.release_provisional);
+            if !to_release.is_empty()
+                && let Some(log_writer) = log_writer
+            {
+                let HookLocationMeta {
+                    location: batch_location,
+                    line,
+                    caret_indent,
+                } = self.location;
+                let note_str = format!(
+                    "^ observed non-deterministic order: {:?}{}",
+                    TruncatedVecDebug(
+                        RefCell::new(Some(to_release.iter())),
+                        8,
+                        self.format_item_debug
+                    ),
+                    if provisional { " (may re-emit)" } else { "" }
+                );
+
+                let _ = writeln!(log_writer);
+                log_release(
+                    log_writer,
+                    batch_location,
+                    line,
+                    caret_indent,
+                    &note_str,
+                    colored::Color::Green,
+                );
+            }
+
+            for item in to_release {
+                self.output.try_send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+
+    fn location_meta(&self) -> HookLocationMeta {
+        self.location
+    }
+}
+
+/// A scripted decision for a top-level `assume_ordering` on an `AtLeastOnce` stream:
+/// release one slot for a buffered element instance, either keeping the instance for
+/// future re-emission ([`Self::Emit`]) or consuming it ([`Self::EmitFinal`]).
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum AtLeastOnceOrderingDecision<T> {
+    Emit(T),
+    EmitFinal(T),
+}
+
+impl<T> ScriptDecision for AtLeastOnceOrderingDecision<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            AtLeastOnceOrderingDecision::Emit(_) => "emit(value)".to_owned(),
+            AtLeastOnceOrderingDecision::EmitFinal(_) => "emit_final(value)".to_owned(),
+        }
+    }
+}
+
+impl<T> TopLevelAtLeastOnceOrderHook<T>
+where
+    T: PartialEq,
+{
+    /// The number of buffered elements equal to `value`.
+    fn buffered_count(&self, value: &T) -> usize {
+        self.input
+            .borrow()
+            .iter()
+            .filter(|item| *item == value)
+            .count()
+    }
+
+    /// The number of provisional slots already released for `value`'s class.
+    fn emitted_count(&self, value: &T) -> usize {
+        self.emitted_counts
+            .iter()
+            .find(|(v, _)| v == value)
+            .map_or(0, |(_, count)| *count)
+    }
+
+    /// Validates a decision naming `value` against the value-class rules. Returns
+    /// `Ok(true)` when honorable now, `Ok(false)` when it should wait for a matching
+    /// element to arrive, and `Err` for a mis-stated script.
+    fn check_decision(&self, value: &T, is_final: bool) -> Result<bool, String> {
+        let buffered = self.buffered_count(value);
+        if buffered == 0 {
+            return Ok(false);
+        }
+        if self.last_emitted.as_ref() == Some(value) && buffered < 2 {
+            return Err(
+                "the same value cannot be released twice in a row when only one buffered \
+                 element matches it (back-to-back duplicates are the downstream \
+                 `assume_retries`'s decision)"
+                    .to_owned(),
+            );
+        }
+        if is_final && self.emitted_count(value) + 1 < buffered {
+            return Err(format!(
+                "emit_final consumes all {} buffered element(s) equal to the value, but \
+                 only {} would have been emitted (every element must be emitted at least \
+                 once)",
+                buffered,
+                self.emitted_count(value) + 1,
+            ));
+        }
+        Ok(true)
+    }
+}
+
+impl<T> ScriptableHook for TopLevelAtLeastOnceOrderHook<T>
+where
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = AtLeastOnceOrderingDecision<T>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        match decision {
+            AtLeastOnceOrderingDecision::Emit(expected) => self.check_decision(expected, false),
+            AtLeastOnceOrderingDecision::EmitFinal(expected) => self.check_decision(expected, true),
+        }
+    }
+
+    fn apply(&mut self, decision: Self::Decision) {
+        match decision {
+            AtLeastOnceOrderingDecision::Emit(expected) => {
+                if let Some((_, count)) =
+                    self.emitted_counts.iter_mut().find(|(v, _)| *v == expected)
+                {
+                    *count += 1;
+                } else {
+                    self.emitted_counts.push((expected.clone(), 1));
+                }
+                self.to_release = Some(vec![expected.clone()]);
+                self.release_provisional = true;
+                self.last_emitted = Some(expected);
+            }
+            AtLeastOnceOrderingDecision::EmitFinal(expected) => {
+                // The last slot of the value's class: release one copy and consume
+                // every buffered element equal to it (the script has no way to name
+                // individual instances, so retirement is class-level).
+                self.input.borrow_mut().retain(|item| item != &expected);
+                self.emitted_counts.retain(|(v, _)| v != &expected);
+                self.to_release = Some(vec![expected]);
+                self.release_provisional = false;
+                self.last_emitted = None;
+            }
+        }
+    }
+
+    fn implicit(&mut self) {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        abort!("implicit decision invoked on a top-level at-least-once ordering hook");
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: self.input.borrow().len(),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        (!input.is_empty()).then(|| {
+            format!(
+                "{} buffered ordering item(s) (each may be emitted into several slots): {:?}",
+                input.len(),
+                TruncatedVecDebug(RefCell::new(Some(input.iter())), 8, self.format_item_debug)
+            )
+        })
+    }
+}
+
+impl<T> ScriptableObservationHook for TopLevelAtLeastOnceOrderHook<T> where
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq
 {
 }
