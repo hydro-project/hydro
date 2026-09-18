@@ -11,6 +11,37 @@ use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 use std::time::SystemTime;
 
+/// The filesystem layout cargo uses for intermediate build artifacts.
+///
+/// Detected at compile time by this crate's build script, which inspects the
+/// shape of its own `OUT_DIR` (see `build.rs`). Use [`build_dir_layout`] to
+/// query it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildDirLayout {
+    /// The stable layout: `debug/{.fingerprint,deps,build,...}`, with final
+    /// artifacts uplifted into `debug/` and dependency dylibs in `debug/deps/`.
+    Legacy,
+    /// The layout behind `-Zbuild-dir-new-layout` (default on current nightly):
+    /// all intermediates (fingerprints, rlibs, build script outputs) live under
+    /// `debug/build/<pkg>/<hash>/{fingerprint,out,run}/`, and final artifacts
+    /// — including dependency dylibs — are uplifted into `debug/`.
+    New,
+}
+
+/// The [`BuildDirLayout`] used by the toolchain that compiled this crate.
+///
+/// The runtime cargo invocations coordinated by this crate use the same
+/// toolchain (rustup pins the toolchain for the whole process tree), so the
+/// compile-time verdict matches the layout of the builds we coordinate;
+/// switching toolchains recompiles this crate and re-runs the detection.
+pub fn build_dir_layout() -> BuildDirLayout {
+    if cfg!(new_build_dir_layout) {
+        BuildDirLayout::New
+    } else {
+        BuildDirLayout::Legacy
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Logging
 // ---------------------------------------------------------------------------
@@ -196,6 +227,12 @@ impl PrebuildGuard {
 /// Set up a job directory with symlinked .fingerprint and deps subdirs.
 /// Does NOT set up build/ — use `populate_job_build_dir` for final builds
 /// or manually symlink for prebuild.
+///
+/// The `.fingerprint` and `deps` symlinks are what shares prebuilt state under
+/// the [`BuildDirLayout::Legacy`] layout. Under [`BuildDirLayout::New`] cargo
+/// ignores both directories (everything lives under `build/`), so the symlinks
+/// are harmless; they are created unconditionally because the layout is not
+/// yet known when job dirs are set up (detection happens during the prebuild).
 pub fn setup_job_dir(jobs_dir: &Path, name: &str, shared_debug: &Path) -> PathBuf {
     let job = jobs_dir.join(name);
     let _lock = get_job_dir_lock(&job);
@@ -249,7 +286,9 @@ pub struct JobBuildGuard {
 
 /// Populate the per-job build/ directory from the shared build/ directory.
 /// Returns a guard that holds the job lock — keep alive for the entire final build.
-/// This prevents races from cargo's `link_or_copy` on build script binaries.
+/// This prevents races between processes building the same job concurrently
+/// (and, under the legacy layout, races from cargo's `link_or_copy` on build
+/// script binaries).
 pub fn populate_job_build_dir(job_debug: &Path, shared_debug: &Path) -> JobBuildGuard {
     let shared_build = shared_debug.join("build");
     let job_build = job_debug.join("build");
@@ -269,29 +308,65 @@ pub fn populate_job_build_dir(job_debug: &Path, shared_debug: &Path) -> JobBuild
         .unwrap();
     job_lock_file.lock().unwrap();
 
-    let _ = fs::remove_dir_all(&job_build);
-    fs::create_dir_all(&job_build).unwrap();
-    if shared_build.exists() {
-        for entry in fs::read_dir(&shared_build).unwrap() {
-            let entry = entry.unwrap();
-            if !entry.file_type().unwrap().is_dir() {
-                continue;
-            }
-            let dest = job_build.join(entry.file_name());
-            // Create dir and symlink each child individually so cargo can
-            // safely remove+relink build-script-build without racing other jobs.
-            fs::create_dir_all(&dest).unwrap();
-            for file in fs::read_dir(entry.path()).unwrap() {
-                let file = file.unwrap();
-                let file_dest = dest.join(file.file_name());
+    match build_dir_layout() {
+        BuildDirLayout::New => {
+            // Under the new layout, build/ holds *all* intermediate state
+            // (fingerprints, dependency artifacts, build script outputs), and
+            // cargo no longer re-links build script binaries on fresh builds,
+            // so the whole directory can be shared with a single symlink —
+            // exactly like `symlink_prebuild_build_dir`. Each job only writes
+            // its own unique `build/<pkg>/<hash>/` units for the generated
+            // example, and its uplifted artifacts land in the job-local
+            // `debug/`.
+            fs::create_dir_all(&shared_build).unwrap();
+            let is_correct_symlink =
+                fs::read_link(&job_build).is_ok_and(|target| target == shared_build);
+            if !is_correct_symlink {
+                // The job dir may hold a stale real directory (e.g. populated
+                // by an earlier legacy-layout run) or a stale symlink.
+                if job_build.symlink_metadata().is_ok_and(|m| m.is_symlink()) {
+                    let _ = fs::remove_file(&job_build);
+                } else {
+                    let _ = fs::remove_dir_all(&job_build);
+                }
                 #[cfg(unix)]
-                std::os::unix::fs::symlink(file.path(), &file_dest).unwrap();
+                std::os::unix::fs::symlink(&shared_build, &job_build).unwrap();
                 #[cfg(windows)]
-                {
-                    if file.file_type().unwrap().is_dir() {
-                        std::os::windows::fs::symlink_dir(file.path(), &file_dest).unwrap();
-                    } else {
-                        std::os::windows::fs::symlink_file(file.path(), &file_dest).unwrap();
+                std::os::windows::fs::symlink_dir(&shared_build, &job_build).unwrap();
+            }
+        }
+        BuildDirLayout::Legacy => {
+            // A stale symlink may be left over from an earlier new-layout run.
+            if job_build.symlink_metadata().is_ok_and(|m| m.is_symlink()) {
+                let _ = fs::remove_file(&job_build);
+            } else {
+                let _ = fs::remove_dir_all(&job_build);
+            }
+            fs::create_dir_all(&job_build).unwrap();
+            if shared_build.exists() {
+                for entry in fs::read_dir(&shared_build).unwrap() {
+                    let entry = entry.unwrap();
+                    if !entry.file_type().unwrap().is_dir() {
+                        continue;
+                    }
+                    let dest = job_build.join(entry.file_name());
+                    // Create dir and symlink each child individually so cargo can
+                    // safely remove+relink build-script-build without racing other jobs.
+                    fs::create_dir_all(&dest).unwrap();
+                    for file in fs::read_dir(entry.path()).unwrap() {
+                        let file = file.unwrap();
+                        let file_dest = dest.join(file.file_name());
+                        #[cfg(unix)]
+                        std::os::unix::fs::symlink(file.path(), &file_dest).unwrap();
+                        #[cfg(windows)]
+                        {
+                            if file.file_type().unwrap().is_dir() {
+                                std::os::windows::fs::symlink_dir(file.path(), &file_dest).unwrap();
+                            } else {
+                                std::os::windows::fs::symlink_file(file.path(), &file_dest)
+                                    .unwrap();
+                            }
+                        }
                     }
                 }
             }
@@ -353,6 +428,9 @@ pub fn run_prebuild(
         .max()
         .unwrap_or(SystemTime::UNIX_EPOCH);
 
+    // The stamp's freshness also covers the build-dir layout: layout changes
+    // require a toolchain change, which also changes the mtime of
+    // `current_exe`, which callers include in `staged_paths`.
     let prebuild_is_fresh = |path: &Path, expected_hash: &str| -> bool {
         fs::read_to_string(path)
             .ok()
