@@ -1434,6 +1434,46 @@ fn sim_continue_if_failure_in_fuzz_repro_is_reported() {
         });
 }
 
+/// Whether this code was compiled with `--cfg hydro_rustflags_probe`. Called from inside a `q!`
+/// via a `self::` path (a bare `cfg!` or unqualified call would be mistaken for a captured
+/// variable), so its `__staged` copy reports the *generated* program's rustflags.
+#[expect(
+    unexpected_cfgs,
+    reason = "the probe cfg is only ever set by the rustflags_propagation harness test"
+)]
+fn compiled_with_rustflags_probe() -> bool {
+    cfg!(hydro_rustflags_probe)
+}
+
+/// Checks that the *generated* sim program is compiled with the same rustflags as this crate.
+/// The `q!` body runs inside the child compile, so [`compiled_with_rustflags_probe`] there
+/// reports the child's flags, while the assertion outside reports ours. Driven by the
+/// `rustflags_propagation` harness test (in `tests/rustflags_propagation.rs`), which sets the
+/// probe cfg via `--config build.rustflags` — a source that only reaches the child through
+/// `CARGO_ENCODED_RUSTFLAGS` forwarding, never through the process environment.
+#[test]
+#[ignore = "run by tests/rustflags_propagation.rs, which compiles with `--cfg hydro_rustflags_probe`"]
+fn sim_generated_code_sees_root_rustflags() {
+    assert!(
+        compiled_with_rustflags_probe(),
+        "this test must be compiled with `--cfg hydro_rustflags_probe`"
+    );
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let out_recv = node
+        .source_iter(q!([self::compiled_with_rustflags_probe()]))
+        .sim_output();
+
+    flow.sim().exhaustive(async || {
+        assert!(
+            out_recv.next().await,
+            "generated program was compiled without the root rustflags"
+        );
+    });
+}
+
 mod scripted;
 
 mod custom_codec {
