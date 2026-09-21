@@ -23,16 +23,16 @@ pin-project-lite = "0.2.16"
 rustc-hash = { version = "2.0.0", optional = true }
 sealed = "0.6.0"
 smallvec = { version = "1.0", optional = true }
-variadics = { optional = true, path = "../variadics", default-features = false, version = "^0.2.0-alpha.2" }
-lattices = { optional = true, path = "../lattices", default-features = false, version = "^0.8.0-alpha.3" } # TODO(mingwei): feature-gate std/alloc
+variadics = { optional = true, path = "../variadics", default-features = false, version = "^0.2.0-alpha.3" }
+lattices = { optional = true, path = "../lattices", default-features = false, version = "^0.8.0-alpha.4" } # TODO(mingwei): feature-gate std/alloc
 
 # coax cargo-smart-release into publishing this crate.
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
 # https://github.com/GitoxideLabs/cargo-smart-release/issues/36
-hydro_build_utils = { version = "^0.1.1-alpha.0", path = "../hydro_build_utils", optional = true }
+hydro_build_utils = { version = "^0.1.1-alpha.1", path = "../hydro_build_utils", optional = true }
 
 [build-dependencies]
-hydro_build_utils = { version = "^0.1.1-alpha.0", path = "../hydro_build_utils" }
+hydro_build_utils = { version = "^0.1.1-alpha.1", path = "../hydro_build_utils" }
 
 [dev-dependencies]
 futures-util = { version = "0.3.0", default-features = false, features = ["alloc"] }

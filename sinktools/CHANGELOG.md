@@ -1,5 +1,79 @@
 
 
+## v0.2.0-alpha.4 (2026-09-21)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.3, variadics v0.2.0-alpha.2, lattices v0.8.0-alpha.3, dfir_pipes v0.1.0-alpha.3, multiplatform_test v0.7.1-alpha.0, dfir_rs v0.17.0-alpha.4, hydro_concurrent_cargo v0.1.0-alpha.0, hydro_deploy v0.17.0-alpha.3, hydro_lang v0.17.0-alpha.4, hydro_std v0.17.0-alpha.4, safety bump 3 crates ([`6287d84`](https://github.com/hydro-project/hydro/commit/6287d84c83b0a37798d6afdeb6bfacaf9a8ce3d1))
+</details>
+
+## v0.2.0-alpha.3 (2026-06-22)
+
+### Bug Fixes
+
+ - <csr-id-b34785f55bd5d141dfdef46927d275be8933f73f/> eliminate unused Tokio dependency
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 3 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#2959](https://github.com/hydro-project/hydro/issues/2959)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2959](https://github.com/hydro-project/hydro/issues/2959)**
+    - Eliminate unused Tokio dependency ([`b34785f`](https://github.com/hydro-project/hydro/commit/b34785f55bd5d141dfdef46927d275be8933f73f))
+ * **Uncategorized**
+    - Release dfir_macro v0.17.0-alpha.3, lattices v0.8.0-alpha.2, sinktools v0.2.0-alpha.3, hydro_deploy_integration v0.17.0-alpha.2, dfir_rs v0.17.0-alpha.3, hydro_deploy v0.17.0-alpha.2, hydro_lang v0.17.0-alpha.3, hydro_std v0.17.0-alpha.3 ([`295c0ec`](https://github.com/hydro-project/hydro/commit/295c0ec5d2d3f182598972d9a0c5511f5812c6ae))
+</details>
+
+## v0.2.0-alpha.2 (2026-06-19)
+
+### Chore
+
+ - <csr-id-1c980fe272b0f8641d04b14b10837366e42531d2/> raise clippy type-complexity-threshold
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 7 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#2947](https://github.com/hydro-project/hydro/issues/2947)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2947](https://github.com/hydro-project/hydro/issues/2947)**
+    - Raise clippy type-complexity-threshold ([`1c980fe`](https://github.com/hydro-project/hydro/commit/1c980fe272b0f8641d04b14b10837366e42531d2))
+ * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.2, dfir_pipes v0.1.0-alpha.2, sinktools v0.2.0-alpha.2, hydro_deploy_integration v0.17.0-alpha.1, dfir_rs v0.17.0-alpha.2, hydro_deploy v0.17.0-alpha.1, hydro_lang v0.17.0-alpha.2, hydro_std v0.17.0-alpha.2 ([`faa7a90`](https://github.com/hydro-project/hydro/commit/faa7a90d1d9524d1870360d4701a8746c804c10c))
+</details>
+
 ## v0.2.0-alpha.1 (2026-06-11)
 
 ### Chore
@@ -10,7 +84,7 @@
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -21,6 +95,7 @@
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.1, dfir_macro v0.17.0-alpha.1, variadics v0.2.0-alpha.1, variadics_macro v0.8.0-alpha.1, lattices v0.8.0-alpha.1, dfir_pipes v0.1.0-alpha.1, sinktools v0.2.0-alpha.1, dfir_rs v0.17.0-alpha.1, hydro_lang v0.17.0-alpha.1, hydro_std v0.17.0-alpha.1 ([`2035d2e`](https://github.com/hydro-project/hydro/commit/2035d2e29fabae26c069bb01aefbed58b631742c))
     - Revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version ([`e70eab6`](https://github.com/hydro-project/hydro/commit/e70eab6a0c793ef095e2cd747220d5419f7bf1a4))
 </details>
 

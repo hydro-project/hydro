@@ -24,7 +24,7 @@ reject_running_total_map = []
 reject_rate_limit_filter = []
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.4", default-features = false }
+hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.5", default-features = false }
 stageleft.workspace = true
 # Unlike production crates (where `vstd` is gated behind a `verus` feature), this
 # crate exists solely to test Verus proofs, so `vstd` is a regular dependency (it
@@ -33,8 +33,8 @@ vstd = "=0.0.0-2026-09-06-0133"
 
 [build-dependencies]
 stageleft_tool.workspace = true
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.1" }
 
 [dev-dependencies]
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0", features = ["insta"] }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.1", features = ["insta"] }
 

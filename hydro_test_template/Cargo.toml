@@ -11,16 +11,16 @@ path = "../template/hydro/src/lib.rs"
 workspace = true
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.4" }
-hydro_std = { path = "../hydro_std", version = "^0.17.0-alpha.4" }
+hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.5" }
+hydro_std = { path = "../hydro_std", version = "^0.17.0-alpha.5" }
 stageleft.workspace = true
 
 [build-dependencies]
 stageleft_tool.workspace = true
 
 [dev-dependencies]
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.17.0-alpha.3" }
-hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.4", features = [
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.17.0-alpha.4" }
+hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.5", features = [
     "deploy",
     "sim",
     "viz",
@@ -29,4 +29,4 @@ tokio = { version = "1.29.0", features = ["full"] }
 tokio-util = { version = "0.7.5", features = [ "codec" ] }
 tokio-test = "0.4.4"
 futures = "0.3.0"
-example_test = { path = "../example_test", version = "^0.0.1" }
+example_test = { path = "../example_test", version = "^0.0.2-alpha.0" }

@@ -1490,7 +1490,7 @@ dependencies = [
 
 [[package]]
 name = "copy_span"
-version = "0.1.1"
+version = "0.1.2-alpha.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1759,7 +1759,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_lang"
-version = "0.17.0-alpha.3"
+version = "0.17.0-alpha.4"
 dependencies = [
  "auto_impl",
  "clap",
@@ -1780,7 +1780,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_macro"
-version = "0.17.0-alpha.3"
+version = "0.17.0-alpha.4"
 dependencies = [
  "dfir_lang",
  "hydro_build_utils",
@@ -1810,7 +1810,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_rs"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.5"
 dependencies = [
  "bincode",
  "bumpalo",
@@ -2113,7 +2113,7 @@ dependencies = [
 
 [[package]]
 name = "example_test"
-version = "0.0.1"
+version = "0.0.2-alpha.0"
 dependencies = [
  "ctor",
  "log",
@@ -2620,7 +2620,7 @@ checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
 name = "hydro_build_utils"
-version = "0.1.1-alpha.0"
+version = "0.1.1-alpha.1"
 dependencies = [
  "insta",
  "rustc_version",
@@ -2629,14 +2629,14 @@ dependencies = [
 
 [[package]]
 name = "hydro_concurrent_cargo"
-version = "0.1.0-alpha.0"
+version = "0.1.1-alpha.0"
 dependencies = [
  "parking_lot",
 ]
 
 [[package]]
 name = "hydro_deploy"
-version = "0.17.0-alpha.3"
+version = "0.17.0-alpha.4"
 dependencies = [
  "anyhow",
  "append-only-vec",
@@ -2672,7 +2672,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_deploy_integration"
-version = "0.17.0-alpha.2"
+version = "0.17.0-alpha.3"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -2689,7 +2689,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_lang"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.5"
 dependencies = [
  "anyhow",
  "auto_impl",
@@ -2752,7 +2752,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_std"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.5"
 dependencies = [
  "hdrhistogram",
  "hydro_deploy",
@@ -3314,7 +3314,7 @@ dependencies = [
 
 [[package]]
 name = "lattices"
-version = "0.8.0-alpha.3"
+version = "0.8.0-alpha.4"
 dependencies = [
  "cc-traits",
  "fst",
@@ -5374,7 +5374,7 @@ checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
 name = "sinktools"
-version = "0.2.0-alpha.3"
+version = "0.2.0-alpha.4"
 dependencies = [
  "bytes",
  "futures-task",
@@ -6332,7 +6332,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "variadics"
-version = "0.2.0-alpha.2"
+version = "0.2.0-alpha.3"
 dependencies = [
  "hashbrown 0.14.5",
  "hydro_build_utils",
@@ -6341,7 +6341,7 @@ dependencies = [
 
 [[package]]
 name = "variadics_macro"
-version = "0.8.0-alpha.1"
+version = "0.8.0-alpha.2"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.4.0",
