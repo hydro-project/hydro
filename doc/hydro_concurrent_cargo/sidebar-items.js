@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["log_build_event","populate_job_build_dir","run_prebuild","setup_job_dir","symlink_prebuild_build_dir"],"struct":["CargoBuildLock","JobBuildGuard","PrebuildGuard"]};
+window.SIDEBAR_ITEMS = {"fn":["current_dylib_lib_name","dylib_lib_name","lock_project","log_build_event","populate_job_build_dir","run_prebuild","set_dylib_lib_name","setup_job_dir","symlink_prebuild_build_dir","toolchain_fingerprint"],"struct":["CargoBuildLock","JobBuildGuard","PrebuildGuard"]};
