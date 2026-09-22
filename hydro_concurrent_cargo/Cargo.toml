@@ -12,3 +12,4 @@ all-features = true
 
 [dependencies]
 parking_lot = "0.12"
+toml_edit = "0.23"

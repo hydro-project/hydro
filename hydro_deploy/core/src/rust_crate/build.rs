@@ -157,13 +157,20 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         let rustflags = params.rustflags.clone();
                         let build_env = params.build_env.clone();
 
+                        // In dylib mode `src` is the generated project's `dylib-examples` crate.
+                        let project_dir = params.src.parent().unwrap();
                         let (prebuild_guard, cargo_lock) = hydro_concurrent_cargo::run_prebuild(
                             &base_target_dir,
-                            params.src.parent().unwrap().file_name().unwrap().to_str().unwrap(),
+                            project_dir.file_name().unwrap().to_str().unwrap(),
                             &features,
+                            params.rustflags.as_deref().unwrap_or_default(),
                             &staged_paths,
                             |prebuild_target| {
                                 set_msg("building dependencies".to_owned());
+                                hydro_concurrent_cargo::set_dylib_lib_name(
+                                    project_dir,
+                                    params.rustflags.as_deref().unwrap_or_default(),
+                                );
 
                                 // Prebuild the dylib-examples lib (`src` in dylib mode), which
                                 // transitively builds the trybuild dylib *as a dependency*.
