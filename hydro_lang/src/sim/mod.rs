@@ -4,9 +4,6 @@
 
 use std::marker::PhantomData;
 
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-
 use crate::compile::builder::ExternalPortId;
 use crate::live_collections::stream::{Ordering, Retries};
 
@@ -28,18 +25,20 @@ pub struct SimSender<T, O: Ordering, R: Retries>(
 ///
 /// Each received value is a `(u32, T)` tuple where the `u32` is the raw
 /// cluster member ID that produced the value.
-pub struct SimClusterReceiver<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+pub struct SimClusterReceiver<T, O: Ordering, R: Retries>(
     pub(crate) ExternalPortId,
     pub(crate) PhantomData<(T, O, R)>,
+    pub(crate) fn(&[u8]) -> T,
 );
 
 /// A sender to an external cluster sink in a simulation.
 ///
 /// Each sent value is a `(u32, T)` tuple where the `u32` is the raw
 /// cluster member ID that should receive the value.
-pub struct SimClusterSender<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+pub struct SimClusterSender<T, O: Ordering, R: Retries>(
     pub(crate) ExternalPortId,
     pub(crate) PhantomData<(T, O, R)>,
+    pub(crate) fn(&T) -> Vec<u8>,
 );
 
 pub mod codec;

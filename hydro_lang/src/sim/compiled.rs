@@ -91,8 +91,6 @@ use dfir_rs::scheduled::context::DfirErased;
 use dfir_rs::util::unsync::mpsc::{Receiver as UnsyncReceiver, Sender as UnsyncSender};
 use futures::StreamExt;
 use libloading::Library;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 use tokio::sync::{Mutex, Notify};
 
 use super::runtime::{
@@ -1992,20 +1990,15 @@ impl<T> SimSender<T, TotalOrder, ExactlyOnce> {
     }
 }
 
-impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> Clone
-    for SimClusterReceiver<T, O, R>
-{
+impl<T, O: Ordering, R: Retries> Clone for SimClusterReceiver<T, O, R> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> Copy
-    for SimClusterReceiver<T, O, R>
-{
-}
+impl<T, O: Ordering, R: Retries> Copy for SimClusterReceiver<T, O, R> {}
 
-impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterReceiver<T, O, R> {
+impl<T, O: Ordering, R: Retries> SimClusterReceiver<T, O, R> {
     fn member_connections(
         &self,
         member_id: u32,
@@ -2026,7 +2019,7 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterReceive
         let (receiver, quiescence) = self.member_connections(member_id);
         try_next_bytes(&receiver, &quiescence)
             .await
-            .map(|bytes| bincode::deserialize(&bytes).unwrap())
+            .map(|bytes| (self.2)(&bytes))
     }
 
     /// Asserts that the stream from a specific cluster member has ended and no more messages
@@ -2056,7 +2049,7 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterReceive
     }
 }
 
-impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, TotalOrder, ExactlyOnce> {
+impl<T> SimClusterReceiver<T, TotalOrder, ExactlyOnce> {
     /// Receives the next value from a specific cluster member, waiting (and letting the
     /// scheduler run any pending simulation work) until one is available. If the simulation
     /// becomes quiescent without producing a value, the test fails.
@@ -2100,7 +2093,7 @@ impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, TotalOrder, ExactlyO
     }
 }
 
-impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, NoOrder, ExactlyOnce> {
+impl<T> SimClusterReceiver<T, NoOrder, ExactlyOnce> {
     /// Receives the next `n` values from a specific cluster member, sorted, and then
     /// asserts that the stream ends (like [`Self::assert_no_more`], forking the search in
     /// exhaustive mode). If the simulation becomes quiescent before `n` values arrive, the
@@ -2175,7 +2168,7 @@ impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, NoOrder, ExactlyOnce
     }
 }
 
-impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterSender<T, O, R> {
+impl<T, O: Ordering, R: Retries> SimClusterSender<T, O, R> {
     fn with_sink<Out>(&self, thunk: impl FnOnce(&dyn Fn(u32, T)) -> Out) -> Out {
         let (senders, quiescence) = CURRENT_SIM_CONNECTIONS.with(|connections| {
             let connections = connections.borrow();
@@ -2189,15 +2182,15 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterSender<
             )
         });
 
+        let encode = self.2;
         thunk(&move |member_id: u32, t: T| {
-            let payload = bincode::serialize(&t).unwrap();
-            senders[&member_id].try_send(Bytes::from(payload)).unwrap();
+            senders[&member_id].try_send(encode(&t).into()).unwrap();
             quiescence.resume();
         })
     }
 }
 
-impl<T: Serialize + DeserializeOwned, O: Ordering> SimClusterSender<T, O, ExactlyOnce> {
+impl<T, O: Ordering> SimClusterSender<T, O, ExactlyOnce> {
     /// Sends multiple values to specific cluster members. The messages will be asynchronously
     /// processed as part of the simulation, in non-deterministic order.
     pub fn send_many_unordered<I: IntoIterator<Item = (u32, T)>>(&self, iter: I) {
@@ -2209,7 +2202,7 @@ impl<T: Serialize + DeserializeOwned, O: Ordering> SimClusterSender<T, O, Exactl
     }
 }
 
-impl<T: Serialize + DeserializeOwned> SimClusterSender<T, TotalOrder, ExactlyOnce> {
+impl<T> SimClusterSender<T, TotalOrder, ExactlyOnce> {
     /// Sends a value to a specific cluster member.
     pub fn send(&self, member_id: u32, t: T) {
         self.with_sink(|send| send(member_id, t));

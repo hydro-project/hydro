@@ -15,9 +15,10 @@ use crate::staging_util::get_this_crate;
 /// The test and simulation dylib exchange only encoded bytes, so custom codecs do not need to
 /// use [`serde`]. See [`BincodeCodec`] for the default.
 ///
-/// The codec is selected purely at the type level: [`Stream::sim_output_with`] and
-/// [`Location::sim_input_with`] use the codec value only to infer its type. Codecs should
-/// therefore be unit structs; any state in the value is ignored.
+/// The codec is selected purely at the type level, as a type parameter of
+/// [`Stream::sim_output_with`], [`Location::sim_input_with`] and their cluster
+/// counterparts (e.g. `stream.sim_output_with::<MyCodec>()`). No codec value is ever
+/// constructed, so a codec is typically a unit struct, but any type will do.
 ///
 /// [`Stream::sim_output_with`]: crate::prelude::Stream::sim_output_with
 /// [`Location::sim_input_with`]: crate::location::Location::sim_input_with
