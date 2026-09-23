@@ -17,7 +17,6 @@ use tokio_util::sync::PollSender;
 /// 1. Accept a single TCP connection on the given port
 /// 2. Read length-delimited frames and forward them as the returned Stream
 /// 3. Write items sent to the returned Sink as length-delimited frames
-#[must_use]
 pub fn create(port: u16) -> (ReceiverStream<String>, PollSender<String>) {
     // Channel from TCP reader → dataflow (the returned Stream)
     let (to_df_tx, to_df_rx) = mpsc::channel::<String>(1024);

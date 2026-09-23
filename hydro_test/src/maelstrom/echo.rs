@@ -11,7 +11,6 @@ pub struct EchoMessage {
     pub echo: String,
 }
 
-#[must_use]
 pub fn echo_server<'a, C>(
     input: KeyedStream<String, EchoMessage, Cluster<'a, C>>,
 ) -> KeyedStream<String, serde_json::Value, Cluster<'a, C>> {

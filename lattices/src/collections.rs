@@ -177,7 +177,6 @@ impl<K, V> VecMap<K, V> {
     /// Create a new `VecMap` from the separate `keys` and `vals` vecs.
     ///
     /// Panics if `keys` and `vals` are not the same length.
-    #[must_use]
     pub fn new(keys: Vec<K>, vals: Vec<V>) -> Self {
         assert_eq!(keys.len(), vals.len());
         Self { keys, vals }

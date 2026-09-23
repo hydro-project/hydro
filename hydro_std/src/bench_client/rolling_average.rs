@@ -16,7 +16,6 @@ impl Default for RollingAverage {
 }
 
 impl RollingAverage {
-    #[must_use]
     pub fn new() -> Self {
         Self {
             samples: Vec::new(),
@@ -33,12 +32,10 @@ impl RollingAverage {
         self.count += 1;
     }
 
-    #[must_use]
     pub fn sample_count(&self) -> usize {
         self.count
     }
 
-    #[must_use]
     pub fn sample_mean(&self) -> f64 {
         if self.count == 0 {
             0.0
@@ -47,7 +44,6 @@ impl RollingAverage {
         }
     }
 
-    #[must_use]
     pub fn sample_variance(&self) -> f64 {
         if self.count <= 1 {
             0.0
@@ -57,13 +53,11 @@ impl RollingAverage {
         }
     }
 
-    #[must_use]
     pub fn sample_std_dev(&self) -> f64 {
         self.sample_variance().sqrt()
     }
 
     /// Compute 99% confidence interval for the mean using t-distribution approximation
-    #[must_use]
     pub fn confidence_interval_99(&self) -> Option<(f64, f64)> {
         if self.count < 2 {
             return None;

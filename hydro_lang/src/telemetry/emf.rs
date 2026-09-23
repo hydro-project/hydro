@@ -43,7 +43,6 @@ pub struct RecordMetricsSidecar {
 impl RecordMetricsSidecar {
     /// Build an instance. Any `None` will be replaced with the default value.
     #[builder]
-    #[must_use]
     pub fn new(file_path: Option<String>, interval: Option<Duration>) -> Self {
         Self {
             file_path: file_path.unwrap_or_else(|| DEFAULT_FILE_PATH.to_owned()),

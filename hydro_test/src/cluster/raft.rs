@@ -329,7 +329,6 @@ pub struct RaftServerState<T, ClusterTag> {
 impl<T, ClusterTag> RaftServerState<T, ClusterTag> {
     /// The initial state of a freshly booted member: term 0 follower with an empty
     /// log.
-    #[must_use]
     pub fn new() -> Self {
         RaftServerState {
             term: 0,
@@ -348,7 +347,6 @@ impl<T, ClusterTag> RaftServerState<T, ClusterTag> {
 
     /// The (term, index) position of the last log entry, `(0, 0)` for an empty log —
     /// the two values compared by the §5.4.1 election restriction.
-    #[must_use]
     pub fn last_log_position(&self) -> (usize, usize) {
         self.log
             .last()

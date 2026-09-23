@@ -15,7 +15,6 @@ pub struct ParsedRequest {
     pub raw_request: String,
 }
 
-#[must_use]
 pub fn http_counter_server<'a, P>(
     in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder>,
 ) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, NoOrder> {

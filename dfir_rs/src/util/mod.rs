@@ -40,7 +40,6 @@ pub use socket::*;
 
 /// Returns a channel as a (1) unbounded sender and (2) unbounded receiver `Stream` for use in DFIR.
 #[cfg(feature = "tokio")]
-#[must_use]
 pub fn unbounded_channel<T>() -> (
     tokio::sync::mpsc::UnboundedSender<T>,
     tokio_stream::wrappers::UnboundedReceiverStream<T>,
@@ -52,7 +51,6 @@ pub fn unbounded_channel<T>() -> (
 
 /// Returns an unsync channel as a (1) sender and (2) receiver `Stream` for use in DFIR.
 #[cfg(feature = "tokio")]
-#[must_use]
 pub fn unsync_channel<T>(
     capacity: Option<NonZeroUsize>,
 ) -> (unsync::mpsc::Sender<T>, unsync::mpsc::Receiver<T>) {
@@ -207,7 +205,6 @@ pub async fn bind_tcp_lines(
 /// These connections will be cached and reused, so that there will only be one connection per destination endpoint. When the endpoint sends data back it will be available via the returned `Receiver`
 #[cfg(feature = "tokio")]
 #[cfg(not(target_arch = "wasm32"))]
-#[must_use]
 pub fn connect_tcp_bytes() -> (
     TcpFramedSink<bytes::Bytes>,
     TcpFramedStream<tokio_util::codec::LengthDelimitedCodec>,
@@ -218,7 +215,6 @@ pub fn connect_tcp_bytes() -> (
 /// This is the same thing as `connect_tcp_bytes` except instead of using a length-delimited encoding scheme it uses new lines to separate frames.
 #[cfg(feature = "tokio")]
 #[cfg(not(target_arch = "wasm32"))]
-#[must_use]
 pub fn connect_tcp_lines() -> (
     TcpFramedSink<String>,
     TcpFramedStream<tokio_util::codec::LinesCodec>,

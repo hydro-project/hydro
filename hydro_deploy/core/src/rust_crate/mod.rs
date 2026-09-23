@@ -216,7 +216,6 @@ impl RustCrate {
         self
     }
 
-    #[must_use]
     pub fn get_build_params(&self, target: HostTargetType) -> BuildParams {
         let (bin, example) = match &self.target {
             CrateTarget::Default => (None, None),

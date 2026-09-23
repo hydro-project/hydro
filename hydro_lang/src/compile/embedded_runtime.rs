@@ -10,7 +10,6 @@ use crate::location::MembershipEvent;
 use crate::location::member_id::TaglessMemberId;
 
 /// Returns a [`QuotedWithContext`] that references the `__cluster_self_id` runtime variable.
-#[must_use]
 pub fn embedded_cluster_self_id<'a>() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a
 {
     let self_id: RuntimeData<&TaglessMemberId> = RuntimeData::new("__cluster_self_id");
@@ -18,7 +17,6 @@ pub fn embedded_cluster_self_id<'a>() -> impl QuotedWithContext<'a, TaglessMembe
 }
 
 /// Returns a [`QuotedWithContext`] that references a `__membership_{idx}` runtime variable.
-#[must_use]
 pub fn embedded_cluster_membership_stream<'a>(
     idx: usize,
 ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>

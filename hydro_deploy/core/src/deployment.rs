@@ -54,7 +54,6 @@ impl Deployment {
     }
 
     #[expect(non_snake_case, reason = "constructor-esque")]
-    #[must_use]
     pub fn Localhost(&self) -> Arc<LocalhostHost> {
         self.localhost_host.clone().unwrap()
     }

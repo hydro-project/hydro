@@ -28,13 +28,11 @@ impl<Pul> StreamCompat<Pul> {
     }
 
     /// Returns a pinned mutable reference to the wrapped [`Pull`].
-    #[must_use]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut Pul> {
         self.project().pull
     }
 
     /// Returns a pinned reference to the wrapped [`Pull`].
-    #[must_use]
     pub fn as_pin_ref(self: Pin<&Self>) -> Pin<&Pul> {
         self.project_ref().pull
     }

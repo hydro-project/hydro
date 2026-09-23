@@ -4,7 +4,6 @@ hydro_lang::setup!();
 use hydro_lang::prelude::*;
 
 pub struct EchoServer;
-#[must_use]
 pub fn echo_capitalize<'a>(
     input: Stream<String, Process<'a, EchoServer>>,
 ) -> Stream<String, Process<'a, EchoServer>> {

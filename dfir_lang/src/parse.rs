@@ -435,7 +435,6 @@ pub struct Operator {
 }
 
 impl Operator {
-    #[must_use]
     pub fn name(&self) -> Path {
         Path {
             leading_colon: self.path.leading_colon,
@@ -451,12 +450,10 @@ impl Operator {
         }
     }
 
-    #[must_use]
     pub fn name_string(&self) -> String {
         self.name().to_token_stream().to_string()
     }
 
-    #[must_use]
     pub fn type_arguments(&self) -> Option<&Punctuated<GenericArgument, Token![,]>> {
         let end = self.path.segments.last()?;
         if let PathArguments::AngleBracketed(type_args) = &end.arguments {
@@ -466,7 +463,6 @@ impl Operator {
         }
     }
 
-    #[must_use]
     pub fn args(&self) -> &Punctuated<Expr, Token![,]> {
         &self.args
     }

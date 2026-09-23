@@ -9,7 +9,6 @@ pub struct BinaryTrust(bool);
 
 impl BinaryTrust {
     /// Create a new 'Binary Trust' semiring instance.
-    #[must_use]
     pub fn new() -> Self {
         Self(true)
     }
@@ -58,7 +57,6 @@ pub struct Multiplicity(u32);
 
 impl Multiplicity {
     /// Create a new instance of Multiplicity.
-    #[must_use]
     pub fn new(value: u32) -> Self {
         Multiplicity(value)
     }
@@ -110,7 +108,6 @@ pub struct Cost(U32WithInfinity);
 
 impl Cost {
     /// Create a new instance of Cost.
-    #[must_use]
     pub fn new(value: U32WithInfinity) -> Self {
         Cost(value)
     }
@@ -165,7 +162,6 @@ pub struct ConfidenceScore(f64);
 
 impl ConfidenceScore {
     /// Create a new instance of `ConfidenceScore` with the given value.
-    #[must_use]
     pub fn new(value: f64) -> Self {
         // Ensure the value is within the range [0, 1]
         assert!((0.0..=1.0).contains(&value));
@@ -210,7 +206,6 @@ pub struct FuzzyLogic(f64);
 
 impl FuzzyLogic {
     /// Create a new instance of `FuzzyLogic` with the given value.
-    #[must_use]
     pub fn new(value: f64) -> Self {
         // Ensure the value is within the range [0, 1]
         assert!((0.0..=1.0).contains(&value));

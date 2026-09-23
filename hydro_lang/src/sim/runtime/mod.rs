@@ -53,7 +53,6 @@ pub struct SimLocation {
 /// Parses a [`LocationId`](crate::location::dynamic::LocationId) from its JSON
 /// serialization. Called by generated code with inline string literals.
 #[doc(hidden)]
-#[must_use]
 pub fn parse_location(serialized: &str) -> LocationId {
     serde_json::from_str(serialized).unwrap()
 }

@@ -5,7 +5,6 @@ use hydro_lang::prelude::*;
 pub struct Src {}
 pub struct Dst {}
 
-#[must_use]
 pub fn m2m_broadcast<'a>(
     dst: &Cluster<'a, Dst>,
     input: Stream<String, Cluster<'a, Src>>,

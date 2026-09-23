@@ -259,7 +259,6 @@ pub trait NetworkFor<T: ?Sized> {
     /// Whether this network channel leaves serialization to code outside of Hydro (see
     /// [`Embedded`]). When `true`, [`Self::serialize_thunk`] and [`Self::deserialize_thunk`] are
     /// never called; the raw element type flows across the channel unserialized.
-    #[must_use]
     fn is_embedded() -> bool {
         false
     }

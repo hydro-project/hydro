@@ -106,7 +106,6 @@ manual_ok_or = "warn"
 manual_string_new = "warn"
 match_bool = "warn"
 mismatching_type_param_order = "warn"
-must_use_candidate = "warn"
 mut_mut = "warn"
 # needless_pass_by_value = "warn" # TODO(mingwei): causes many breaking changes
 needless_raw_string_hashes = "warn"

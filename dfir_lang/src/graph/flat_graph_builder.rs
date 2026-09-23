@@ -88,13 +88,11 @@ pub struct FlatGraphBuilderOutput {
 
 impl FlatGraphBuilder {
     /// Create a new empty graph builder.
-    #[must_use]
     pub fn new() -> Self {
         Default::default()
     }
 
     /// Convert the DFIR code AST into a graph builder.
-    #[must_use]
     pub fn from_dfir(input: DfirCode) -> Self {
         let mut builder = Self::default();
         builder.add_dfir(input, None, None);

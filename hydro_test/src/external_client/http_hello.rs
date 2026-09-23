@@ -2,7 +2,6 @@ use hydro_lang::live_collections::keyed_singleton::{BoundedValue, KeyedSingleton
 use hydro_lang::live_collections::stream::TotalOrder;
 use hydro_lang::prelude::*;
 
-#[must_use]
 pub fn http_hello_server<'a, P>(
     in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder>,
 ) -> KeyedSingleton<u64, String, Process<'a, P>, BoundedValue> {

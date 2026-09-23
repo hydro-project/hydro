@@ -198,7 +198,6 @@ pub const IDENTITY_WRITE_FN: WriteFn = |write_context_args, _| {
 
 /// Helper to write the `write_iterator` portion of [`OperatorConstraints::write_fn`] output for
 /// the null operator - an operator that ignores all inputs and produces no output.
-#[must_use]
 pub fn null_write_iterator_fn(
     &WriteContextArgs {
         root,
@@ -360,7 +359,6 @@ pub fn operator_lookup() -> &'static HashMap<&'static str, &'static OperatorCons
     OPERATOR_LOOKUP.get_or_init(|| OPERATORS.iter().map(|op| (op.name, op)).collect())
 }
 /// Find an operator by [`GraphNode`].
-#[must_use]
 pub fn find_node_op_constraints(node: &GraphNode) -> Option<&'static OperatorConstraints> {
     if let GraphNode::Operator(operator) = node {
         find_op_op_constraints(operator)
@@ -369,7 +367,6 @@ pub fn find_node_op_constraints(node: &GraphNode) -> Option<&'static OperatorCon
     }
 }
 /// Find an operator by an AST [`Operator`].
-#[must_use]
 pub fn find_op_op_constraints(operator: &Operator) -> Option<&'static OperatorConstraints> {
     let name = &*operator.name_string();
     operator_lookup().get(name).copied()
@@ -548,7 +545,6 @@ pub enum Persistence {
 }
 impl Persistence {
     /// Returns a lowercase string for the persistence type.
-    #[must_use]
     pub fn to_str_lowercase(self) -> &'static str {
         match self {
             Persistence::Tick => "tick",
@@ -601,12 +597,10 @@ pub enum OperatorCategory {
 }
 impl OperatorCategory {
     /// Human-readible heading name, for docs.
-    #[must_use]
     pub fn name(self) -> &'static str {
         self.get_variant_docs().split_once(':').unwrap().0
     }
     /// Human description, for docs.
-    #[must_use]
     pub fn description(self) -> &'static str {
         self.get_variant_docs().split_once(':').unwrap().1
     }

@@ -96,7 +96,6 @@ pub struct DfirGraph {
 /// Basic methods.
 impl DfirGraph {
     /// Create a new empty graph.
-    #[must_use]
     pub fn new() -> Self {
         Default::default()
     }
@@ -105,7 +104,6 @@ impl DfirGraph {
 /// Node methods.
 impl DfirGraph {
     /// Get a node with its operator instance (if applicable).
-    #[must_use]
     pub fn node(&self, node_id: GraphNodeId) -> &GraphNode {
         self.nodes.get(node_id).expect("Node not found.")
     }
@@ -114,37 +112,31 @@ impl DfirGraph {
     /// `OperatorInstance` present, otherwise will return `None`.
     ///
     /// Note that no operator instances will be persent after deserialization.
-    #[must_use]
     pub fn node_op_inst(&self, node_id: GraphNodeId) -> Option<&OperatorInstance> {
         self.operator_instances.get(node_id)
     }
 
     /// Get the debug variable name attached to a graph node.
-    #[must_use]
     pub fn node_varname(&self, node_id: GraphNodeId) -> Option<&Varname> {
         self.node_varnames.get(node_id)
     }
 
     /// Get subgraph for node.
-    #[must_use]
     pub fn node_subgraph(&self, node_id: GraphNodeId) -> Option<GraphSubgraphId> {
         self.node_subgraph.get(node_id).copied()
     }
 
     /// Degree into a node, i.e. the number of predecessors.
-    #[must_use]
     pub fn node_degree_in(&self, node_id: GraphNodeId) -> usize {
         self.graph.degree_in(node_id)
     }
 
     /// Degree out of a node, i.e. the number of successors.
-    #[must_use]
     pub fn node_degree_out(&self, node_id: GraphNodeId) -> usize {
         self.graph.degree_out(node_id)
     }
 
     /// Successors, iterator of `(GraphEdgeId, GraphNodeId)` of outgoing edges.
-    #[must_use]
     pub fn node_successors(
         &self,
         src: GraphNodeId,
@@ -158,7 +150,6 @@ impl DfirGraph {
     }
 
     /// Predecessors, iterator of `(GraphEdgeId, GraphNodeId)` of incoming edges.
-    #[must_use]
     pub fn node_predecessors(
         &self,
         dst: GraphNodeId,
@@ -172,7 +163,6 @@ impl DfirGraph {
     }
 
     /// Successor edges, iterator of `GraphEdgeId` of outgoing edges.
-    #[must_use]
     pub fn node_successor_edges(
         &self,
         src: GraphNodeId,
@@ -186,7 +176,6 @@ impl DfirGraph {
     }
 
     /// Predecessor edges, iterator of `GraphEdgeId` of incoming edges.
-    #[must_use]
     pub fn node_predecessor_edges(
         &self,
         dst: GraphNodeId,
@@ -200,7 +189,6 @@ impl DfirGraph {
     }
 
     /// Successor nodes, iterator of `GraphNodeId`.
-    #[must_use]
     pub fn node_successor_nodes(
         &self,
         src: GraphNodeId,
@@ -214,7 +202,6 @@ impl DfirGraph {
     }
 
     /// Predecessor nodes, iterator of `GraphNodeId`.
-    #[must_use]
     pub fn node_predecessor_nodes(
         &self,
         dst: GraphNodeId,
@@ -228,13 +215,11 @@ impl DfirGraph {
     }
 
     /// Iterator of node IDs `GraphNodeId`.
-    #[must_use]
     pub fn node_ids(&self) -> slotmap::basic::Keys<'_, GraphNodeId, GraphNode> {
         self.nodes.keys()
     }
 
     /// Iterator over `(GraphNodeId, &Node)` pairs.
-    #[must_use]
     pub fn nodes(&self) -> slotmap::basic::Iter<'_, GraphNodeId, GraphNode> {
         self.nodes.iter()
     }
@@ -576,7 +561,6 @@ impl DfirGraph {
     }
 
     /// Collect all refs, grouped by the handoff they're pointing at, then by the access group idx `Option<u32>`.
-    #[must_use]
     pub fn node_handoff_reference_groups(&self) -> NodeHandoffReferenceGroups<'_> {
         let mut handoff_references = NodeHandoffReferenceGroups::new();
         for node_id in self.node_ids() {
@@ -706,27 +690,23 @@ impl DfirGraph {
 /// Edge methods.
 impl DfirGraph {
     /// Get the `src` and `dst` for an edge: `(src GraphNodeId, dst GraphNodeId)`.
-    #[must_use]
     pub fn edge(&self, edge_id: GraphEdgeId) -> (GraphNodeId, GraphNodeId) {
         let (src, dst) = self.graph.edge(edge_id).expect("Edge not found.");
         (src, dst)
     }
 
     /// Get the source and destination ports for an edge: `(src &PortIndexValue, dst &PortIndexValue)`.
-    #[must_use]
     pub fn edge_ports(&self, edge_id: GraphEdgeId) -> (&PortIndexValue, &PortIndexValue) {
         let (src_port, dst_port) = self.ports.get(edge_id).expect("Edge not found.");
         (src_port, dst_port)
     }
 
     /// Iterator of all edge IDs `GraphEdgeId`.
-    #[must_use]
     pub fn edge_ids(&self) -> slotmap::basic::Keys<'_, GraphEdgeId, (GraphNodeId, GraphNodeId)> {
         self.graph.edge_ids()
     }
 
     /// Iterator over all edges: `(GraphEdgeId, (src GraphNodeId, dst GraphNodeId))`.
-    #[must_use]
     pub fn edges(
         &self,
     ) -> impl '_
@@ -760,7 +740,6 @@ impl DfirGraph {
 /// Subgraph methods.
 impl DfirGraph {
     /// Nodes belonging to the given subgraph.
-    #[must_use]
     pub fn subgraph(&self, subgraph_id: GraphSubgraphId) -> &Vec<GraphNodeId> {
         self.subgraph_nodes
             .get(subgraph_id)
@@ -768,13 +747,11 @@ impl DfirGraph {
     }
 
     /// Iterator over all subgraph IDs.
-    #[must_use]
     pub fn subgraph_ids(&self) -> slotmap::basic::Keys<'_, GraphSubgraphId, Vec<GraphNodeId>> {
         self.subgraph_nodes.keys()
     }
 
     /// Subgraph IDs in topological sort order.
-    #[must_use]
     pub fn subgraph_toposort(&self) -> &[GraphSubgraphId] {
         &self.subgraph_toposort
     }
@@ -785,7 +762,6 @@ impl DfirGraph {
     }
 
     /// Iterator over all subgraphs, ID and members: `(GraphSubgraphId, Vec<GraphNodeId>)`.
-    #[must_use]
     pub fn subgraphs(&self) -> slotmap::basic::Iter<'_, GraphSubgraphId, Vec<GraphNodeId>> {
         self.subgraph_nodes.iter()
     }
@@ -822,7 +798,6 @@ impl DfirGraph {
     }
 
     /// Gets the delay type for a handoff node, if set.
-    #[must_use]
     pub fn handoff_delay_type(&self, node_id: GraphNodeId) -> Option<DelayType> {
         self.handoff_delay_type.get(node_id).copied()
     }
@@ -2301,7 +2276,6 @@ impl DfirGraph {
 
     /// Color mode (pull vs. push, handoff vs. comp) for nodes. Some nodes can be push *OR* pull;
     /// those nodes will not be set in the returned map.
-    #[must_use]
     pub fn node_color_map(&self) -> SparseSecondaryMap<GraphNodeId, Color> {
         let mut node_color_map: SparseSecondaryMap<GraphNodeId, Color> = self
             .node_ids()
@@ -2325,7 +2299,6 @@ impl DfirGraph {
     }
 
     /// Writes this graph as mermaid into a string.
-    #[must_use]
     pub fn to_mermaid(&self, write_config: &WriteConfig) -> String {
         let mut output = String::new();
         self.write_mermaid(&mut output, write_config).unwrap();
@@ -2343,7 +2316,6 @@ impl DfirGraph {
     }
 
     /// Writes this graph as DOT (graphviz) into a string.
-    #[must_use]
     pub fn to_dot(&self, write_config: &WriteConfig) -> String {
         let mut output = String::new();
         let mut graph_write = Dot::new(&mut output);
@@ -2565,7 +2537,6 @@ impl DfirGraph {
     }
 
     /// Convert back into surface syntax.
-    #[must_use]
     pub fn surface_syntax_string(&self) -> String {
         let mut string = String::new();
         self.write_surface_syntax(&mut string).unwrap();
@@ -2626,7 +2597,6 @@ impl DfirGraph {
     }
 
     /// Convert into a [mermaid](https://mermaid-js.github.io/) graph. Ignores subgraphs.
-    #[must_use]
     pub fn mermaid_string_flat(&self) -> String {
         let mut string = String::new();
         self.write_mermaid_flat(&mut string).unwrap();
@@ -2691,19 +2661,16 @@ impl DfirGraph {
 /// Loops
 impl DfirGraph {
     /// Iterator over all loop IDs.
-    #[must_use]
     pub fn loop_ids(&self) -> slotmap::basic::Keys<'_, GraphLoopId, Vec<GraphNodeId>> {
         self.loop_nodes.keys()
     }
 
     /// Iterator over all loops, ID and members: `(GraphLoopId, Vec<GraphNodeId>)`.
-    #[must_use]
     pub fn loops(&self) -> slotmap::basic::Iter<'_, GraphLoopId, Vec<GraphNodeId>> {
         self.loop_nodes.iter()
     }
 
     /// Get a loop's member nodes.
-    #[must_use]
     pub fn loop_nodes(&self, loop_id: GraphLoopId) -> &[GraphNodeId] {
         self.loop_nodes.get(loop_id).unwrap()
     }
@@ -2725,13 +2692,11 @@ impl DfirGraph {
     }
 
     /// Get a node's loop context (or `None` for root).
-    #[must_use]
     pub fn node_loop(&self, node_id: GraphNodeId) -> Option<GraphLoopId> {
         self.node_loops.get(node_id).copied()
     }
 
     /// Get a subgraph's loop context (or `None` for root).
-    #[must_use]
     pub fn subgraph_loop(&self, subgraph_id: GraphSubgraphId) -> Option<GraphLoopId> {
         let &node_id = self.subgraph(subgraph_id).first().unwrap();
         let out = self.node_loop(node_id);
@@ -2745,19 +2710,16 @@ impl DfirGraph {
     }
 
     /// Get a loop context's parent loop context (or `None` for root).
-    #[must_use]
     pub fn loop_parent(&self, loop_id: GraphLoopId) -> Option<GraphLoopId> {
         self.loop_parent.get(loop_id).copied()
     }
 
     /// Get a loop context's child loops.
-    #[must_use]
     pub fn loop_children(&self, loop_id: GraphLoopId) -> &Vec<GraphLoopId> {
         self.loop_children.get(loop_id).unwrap()
     }
 
     /// Get root-level loops (those with no parent loop).
-    #[must_use]
     pub fn root_loops(&self) -> &[GraphLoopId] {
         &self.root_loops
     }

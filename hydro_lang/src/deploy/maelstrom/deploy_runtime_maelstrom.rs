@@ -61,7 +61,6 @@ pub struct MaelstromMeta {
 impl MaelstromMeta {
     /// Subscribe to stdin lines. Each subscriber receives all lines read from stdin.
     /// Multiple subscribers can be created and each will receive a copy of every line.
-    #[must_use]
     pub fn subscribe_stdin(&self) -> tokio_stream::wrappers::BroadcastStream<String> {
         tokio_stream::wrappers::BroadcastStream::new(self.stdin_tx.subscribe())
     }
@@ -89,7 +88,6 @@ impl MaelstromMeta {
 /// Initialize a Maelstrom node by reading the init message from stdin.
 /// Returns the node metadata and sends `init_ok` response.
 /// Also spawns a background thread to read stdin and broadcast lines to subscribers.
-#[must_use]
 pub fn maelstrom_init() -> MaelstromMeta {
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout();

@@ -30,13 +30,11 @@ pub enum NodeLabel {
 
 impl NodeLabel {
     /// Create a static label
-    #[must_use]
     pub fn static_label(s: String) -> Self {
         Self::Static(s)
     }
 
     /// Create a label for an operation with multiple expression
-    #[must_use]
     pub fn with_exprs(op_name: String, exprs: Vec<DebugExpr>) -> Self {
         Self::WithExprs { op_name, exprs }
     }
@@ -159,7 +157,6 @@ pub mod node_type_utils {
     ];
 
     /// Convert `HydroNodeType` to string representation (used by JSON format)
-    #[must_use]
     pub fn to_string(node_type: HydroNodeType) -> &'static str {
         NODE_TYPE_DATA
             .iter()
@@ -169,7 +166,6 @@ pub mod node_type_utils {
     }
 
     /// Get all node types with their string representations (used by JSON format)
-    #[must_use]
     pub fn all_types_with_strings() -> Vec<(HydroNodeType, &'static str)> {
         NODE_TYPE_DATA.to_vec()
     }
@@ -296,7 +292,6 @@ impl Default for UnifiedEdgeStyle {
 /// | Boundedness | Halo | Bounded (none), Unbounded (light-blue transparent) |
 /// | Keyedness | Line Style | NotKeyed (plain line), Keyed (line with hash marks/dots) |
 /// | Collection Type | Color + Arrowhead | Stream (blue #2563eb, triangle), Singleton (black, circle), Optional (gray, diamond) |
-#[must_use]
 pub fn get_unified_edge_style(
     edge_properties: &HashSet<HydroEdgeProp>,
     src_location: Option<usize>,
@@ -361,7 +356,6 @@ pub fn get_unified_edge_style(
 /// Extract semantic edge properties from `CollectionKind` metadata.
 /// This function analyzes the collection type and extracts relevant semantic tags
 /// for visualization purposes.
-#[must_use]
 pub fn extract_edge_properties_from_collection_kind(
     collection_kind: &crate::compile::ir::CollectionKind,
 ) -> HashSet<HydroEdgeProp> {
@@ -497,7 +491,6 @@ fn add_order_property(
 
 /// Detect if an edge crosses network boundaries by comparing source and destination locations.
 /// Returns true if the edge represents network communication between different locations.
-#[must_use]
 pub fn is_network_edge(src_location: &LocationId, dst_location: &LocationId) -> bool {
     // Compare the root locations to determine if they differ
     src_location.root() != dst_location.root()
@@ -599,7 +592,6 @@ pub struct HydroGraphStructure {
 }
 
 impl HydroGraphStructure {
-    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -679,7 +671,6 @@ impl HydroGraphStructure {
 }
 
 /// Function to extract an `op_name` from a `print_root()` result for use in labels.
-#[must_use]
 pub fn extract_op_name(full_label: String) -> String {
     full_label
         .split('(')
@@ -689,7 +680,6 @@ pub fn extract_op_name(full_label: String) -> String {
 }
 
 /// Extract a short, readable label from the full token stream label using `print_root()` style naming
-#[must_use]
 pub fn extract_short_label(full_label: &str) -> String {
     // Use the same logic as extract_op_name but handle the specific cases we need for UI display
     if let Some(op_name) = full_label.split('(').next() {
