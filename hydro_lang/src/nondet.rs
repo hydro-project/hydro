@@ -44,6 +44,7 @@ impl<H> NonDet<H> {
     /// Creates a guard with no hook attached. Use the [`nondet!`] macro instead of calling
     /// this directly, so that the reason for the non-determinism is documented.
     #[doc(hidden)]
+    #[must_use]
     pub fn unhooked() -> Self
     where
         H: Default,

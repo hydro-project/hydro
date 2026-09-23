@@ -208,7 +208,7 @@ mod tests {
     }
 
     /// Regression test: when the future resolves but downstream is not ready,
-    /// the resolved item must be preserved and delivered on the next poll_ready.
+    /// the resolved item must be preserved and delivered on the next `poll_ready`.
     #[test]
     fn filter_map_async_resolved_item_survives_downstream_pending() {
         let waker = Waker::noop();

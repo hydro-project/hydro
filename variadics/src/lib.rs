@@ -134,7 +134,7 @@ pub trait VariadicExt: Variadic {
     type Reverse: VariadicExt;
     /// Reverses this variadic value.
     fn reverse(self) -> Self::Reverse;
-    /// Reverses an AsRefVar variadic value
+    /// Reverses an `AsRefVar` variadic value
     fn reverse_ref(this: Self::AsRefVar<'_>) -> <Self::Reverse as VariadicExt>::AsRefVar<'_>;
 
     /// The length of this variadic type
@@ -192,7 +192,7 @@ pub trait VariadicExt: Variadic {
 
     /// type for all elements of the variadic being wrapped in `Option`
     type IntoOption;
-    /// wrap all elements of the variadic in `Option``
+    /// wrap all elements of the variadic in `Option`
     fn into_option(self) -> Self::IntoOption;
 
     /// type for all elements of the variadic being wrapped in `Vec`
@@ -778,16 +778,16 @@ pub trait VecVariadic: VariadicExt {
     /// Individual variadic items without the Vec wrapper
     type UnVec: VariadicExt<IntoVec = Self>;
 
-    /// zip across all the vecs in this VariadicVec
+    /// zip across all the vecs in this `VariadicVec`
     fn zip_vecs(&self) -> impl Iterator<Item = <Self::UnVec as VariadicExt>::AsRefVar<'_>>;
 
-    /// append an unvec'ed Variadic into this VariadicVec
+    /// append an unvec'ed Variadic into this `VariadicVec`
     fn push(&mut self, item: Self::UnVec);
 
     /// get the unvec'ed Variadic at position `index`
     fn get(&mut self, index: usize) -> Option<<Self::UnVec as VariadicExt>::AsRefVar<'_>>;
 
-    /// result type from into_zip
+    /// result type from `into_zip`
     type IntoZip: Iterator<Item = Self::UnVec>;
     /// Turns into an iterator of items `UnVec` -- i.e. iterate through rows (not columns!).
     fn into_zip(self) -> Self::IntoZip;
@@ -895,7 +895,7 @@ mod test {
     #[test]
     // #[expect(clippy::let_unit_value, reason = "var_expr macro test")]
     fn test_basic_expr() {
-        let _ = var_expr!();
+        let () = var_expr!();
         let _ = var_expr!(1);
         let _ = var_expr!(1, "b",);
         let _ = var_expr!("a",);

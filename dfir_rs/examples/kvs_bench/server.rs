@@ -141,7 +141,7 @@ pub fn run_server<RX>(
 
             let mut df = dfir_syntax! {
 
-                simulated_put_requests = spin() -> flat_map(|_| {
+                simulated_put_requests = spin() -> flat_map(|()| {
                     let buffer_pool = buffer_pool.clone();
                     let pre_gen_random_numbers = &pre_gen_random_numbers;
                     std::iter::repeat_with(move || {

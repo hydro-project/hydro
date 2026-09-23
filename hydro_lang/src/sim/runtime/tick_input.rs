@@ -986,9 +986,10 @@ impl<T: Clone> TickInputHook for SingletonHook<T> {
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool {
         let mut current_input = self.input.borrow_mut();
         if current_input.is_empty() {
-            if force_trigger {
-                panic!("Cannot make a triggering decision when there is no input");
-            }
+            assert!(
+                !force_trigger,
+                "Cannot make a triggering decision when there is no input"
+            );
 
             if let Some(last) = &self.last_released {
                 // Re-release the last item
@@ -1141,9 +1142,10 @@ impl<T: Clone> TickInputHook for OptionalInitNoneHook<T> {
         let mut current_input = self.input.borrow_mut();
         if current_input.is_empty() {
             // Case 1 (trivial): No input.
-            if force_nontrivial {
-                panic!("Cannot make nontrivial decision when there is no input");
-            }
+            assert!(
+                !force_nontrivial,
+                "Cannot make nontrivial decision when there is no input"
+            );
 
             if let Some(last) = &self.last_released {
                 // Presence is monotone: once non-null, re-release the latest value.

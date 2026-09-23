@@ -281,8 +281,8 @@ where
     }
 }
 
-/// Forms the cartesian product of the ValTypes only
-/// Used on GhtLeaf nodes to implement DeepJoinLatticeBimorphism
+/// Forms the cartesian product of the `ValTypes` only
+/// Used on `GhtLeaf` nodes to implement `DeepJoinLatticeBimorphism`
 pub struct GhtValTypeProductBimorphism<GhtOut> {
     _phantom: std::marker::PhantomData<fn() -> GhtOut>,
 }
@@ -398,12 +398,12 @@ where
     }
 }
 
-/// bimorphism trait for equijoin on full tuple (keys in all GhtInner nodes)
+/// bimorphism trait for equijoin on full tuple (keys in all `GhtInner` nodes)
 pub trait DeepJoinLatticeBimorphism<Storage> {
-    /// bimorphism type for equijoin on full tuple (keys in all GhtInner nodes)
+    /// bimorphism type for equijoin on full tuple (keys in all `GhtInner` nodes)
     type DeepJoinLatticeBimorphism;
 }
-/// bimorphism implementation for equijoin on full tuple (keys in all GhtInner nodes)
+/// bimorphism implementation for equijoin on full tuple (keys in all `GhtInner` nodes)
 impl<Head, NodeA, NodeB, Storage> DeepJoinLatticeBimorphism<Storage>
     for (GhtInner<Head, NodeA>, GhtInner<Head, NodeB>)
 where

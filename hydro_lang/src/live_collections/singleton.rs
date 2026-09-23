@@ -919,7 +919,7 @@ where
     }
 
     /// Filters this singleton into an [`Optional`], passing through the singleton value if the
-    /// argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is null.
+    /// argument (a [`Bounded`] [`Optional`]) is non-null, otherwise the output is null.
     ///
     /// Useful for conditionally processing, such as only emitting a singleton's value outside
     /// a tick if some other condition is satisfied.
@@ -965,7 +965,7 @@ where
     }
 
     /// Filters this singleton into an [`Optional`], passing through the singleton value if the
-    /// argument (a [`Bounded`] [`Optional`]`) is null, otherwise the output is null.
+    /// argument (a [`Bounded`] [`Optional`]) is null, otherwise the output is null.
     ///
     /// Like [`Singleton::filter_if_some`], this is useful for conditional processing, but inverts
     /// the condition.
@@ -1855,9 +1855,10 @@ mod tests {
         let out_recv = batch.all_ticks().sim_output();
 
         flow.sim().exhaustive(async || {
-            if out_recv.next().await == (1, 3) && out_recv.next().await == (2, 3) {
-                panic!("repeated snapshot");
-            }
+            assert!(
+                !(out_recv.next().await == (1, 3) && out_recv.next().await == (2, 3)),
+                "repeated snapshot"
+            );
         });
     }
 
@@ -1971,7 +1972,7 @@ mod tests {
         assert_eq!(count, 4);
     }
 
-    /// Reproducer for simulator hang when using cross_singleton on a top-level
+    /// Reproducer for simulator hang when using `cross_singleton` on a top-level
     /// unbounded stream (not inside sliced!). The exhaustive simulator hangs
     /// after the first iteration.
     #[cfg(feature = "sim")]

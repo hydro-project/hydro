@@ -42,7 +42,7 @@ pub struct InitBody {
     pub node_ids: Vec<String>,
 }
 
-/// Maelstrom init_ok response body.
+/// Maelstrom `init_ok` response body.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InitOkBody {
     #[serde(rename = "type")]
@@ -61,6 +61,7 @@ pub struct MaelstromMeta {
 impl MaelstromMeta {
     /// Subscribe to stdin lines. Each subscriber receives all lines read from stdin.
     /// Multiple subscribers can be created and each will receive a copy of every line.
+    #[must_use]
     pub fn subscribe_stdin(&self) -> tokio_stream::wrappers::BroadcastStream<String> {
         tokio_stream::wrappers::BroadcastStream::new(self.stdin_tx.subscribe())
     }
@@ -86,8 +87,9 @@ impl MaelstromMeta {
 }
 
 /// Initialize a Maelstrom node by reading the init message from stdin.
-/// Returns the node metadata and sends init_ok response.
+/// Returns the node metadata and sends `init_ok` response.
 /// Also spawns a background thread to read stdin and broadcast lines to subscribers.
+#[must_use]
 pub fn maelstrom_init() -> MaelstromMeta {
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout();
@@ -162,7 +164,7 @@ pub fn maelstrom_init() -> MaelstromMeta {
 }
 
 /// Get the cluster member IDs from the Maelstrom metadata.
-/// The `meta` parameter is a RuntimeData reference to the MaelstromMeta that will be
+/// The `meta` parameter is a `RuntimeData` reference to the `MaelstromMeta` that will be
 /// available at runtime as `__hydro_lang_maelstrom_meta`.
 pub(super) fn cluster_members<'a>(
     meta: RuntimeData<&'a MaelstromMeta>,
@@ -273,8 +275,8 @@ pub(super) fn deploy_maelstrom_m2m(meta: RuntimeData<&MaelstromMeta>) -> (syn::E
 }
 
 /// Creates a stream of client messages from Maelstrom stdin.
-/// Returns tuples of (client_id, message_body) where client_id is the source client
-/// and message_body is the JSON value of the message body.
+/// Returns tuples of (`client_id`, `message_body`) where `client_id` is the source client
+/// and `message_body` is the JSON value of the message body.
 ///
 /// This function is meant to be used with `source_stream` on a Cluster location.
 pub fn maelstrom_client_source(

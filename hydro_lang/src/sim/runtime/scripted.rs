@@ -87,6 +87,7 @@ pub enum ScriptTarget {
 
 impl ScriptTarget {
     /// The location of the targeted action.
+    #[must_use]
     pub fn location(&self) -> &SimLocation {
         match self {
             ScriptTarget::Tick { location } | ScriptTarget::Observation { location, .. } => {

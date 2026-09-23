@@ -168,6 +168,7 @@ pub struct SortState<T> {
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 impl<T> SortState<T> {
     /// Creates a new empty `SortState`.
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             buf: alloc::vec::Vec::new(),

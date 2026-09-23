@@ -30,20 +30,23 @@ struct PriorityBroadcastInternal {
 }
 
 impl PriorityBroadcast {
+    #[must_use]
     pub fn receive_priority(&self) -> oneshot::Receiver<String> {
         let (sender, receiver) = oneshot::channel::<String>();
 
         if let Some(internal) = self.0.upgrade() {
             let mut internal = internal.lock().unwrap();
             let prev_sender = internal.priority_sender.replace(sender);
-            if prev_sender.is_some() {
-                panic!("Only one deploy stdout receiver is allowed at a time");
-            }
+            assert!(
+                prev_sender.is_none(),
+                "Only one deploy stdout receiver is allowed at a time"
+            )
         }
 
         receiver
     }
 
+    #[must_use]
     pub fn receive(&self, prefix: Option<String>) -> mpsc::UnboundedReceiver<String> {
         let (sender, receiver) = mpsc::unbounded_channel::<String>();
 

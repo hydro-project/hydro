@@ -68,6 +68,7 @@ pub(crate) fn build_inner(
 
 impl<'a> BuiltFlow<'a> {
     /// Returns all [`HydroRoot`]s in the IR.
+    #[must_use]
     pub fn ir(&self) -> &[HydroRoot] {
         &self.ir
     }
@@ -79,19 +80,22 @@ impl<'a> BuiltFlow<'a> {
     }
 
     /// Returns all raw location ID -> location name mappings.
+    #[must_use]
     pub fn location_names(&self) -> &SecondaryMap<LocationKey, String> {
         &self.location_names
     }
 
-    /// Get a GraphApi instance for this built flow
+    /// Get a `GraphApi` instance for this built flow
     #[cfg(stageleft_runtime)]
     #[cfg(feature = "viz")]
+    #[must_use]
     pub fn graph_api(&self) -> GraphApi<'_> {
         GraphApi::new(&self.ir, self.location_names())
     }
 
     /// Render graph to string in the given format.
     #[cfg(feature = "viz")]
+    #[must_use]
     pub fn render_graph(
         &self,
         format: crate::viz::config::GraphType,
@@ -129,6 +133,7 @@ impl<'a> BuiltFlow<'a> {
         self
     }
 
+    #[must_use]
     pub fn with_default_optimize<D: Deploy<'a>>(self) -> DeployFlow<'a, D> {
         self.into_deploy()
     }
@@ -136,6 +141,7 @@ impl<'a> BuiltFlow<'a> {
     #[cfg(feature = "sim")]
     /// Creates a simulation for this builder, which can be used to run deterministic simulations
     /// of the Hydro program.
+    #[must_use]
     pub fn sim(self) -> SimFlow<'a> {
         use std::cell::RefCell;
         use std::rc::Rc;
@@ -190,6 +196,7 @@ impl<'a> BuiltFlow<'a> {
         }
     }
 
+    #[must_use]
     pub fn into_deploy<D: Deploy<'a>>(self) -> DeployFlow<'a, D> {
         let (processes, clusters, externals) = Default::default();
         DeployFlow {
@@ -251,6 +258,7 @@ impl<'a> BuiltFlow<'a> {
         self.into_deploy().with_remaining_clusters(spec)
     }
 
+    #[must_use]
     pub fn compile<D: Deploy<'a, InstantiateEnv = ()>>(self) -> CompiledFlow<'a> {
         self.into_deploy::<D>().compile()
     }

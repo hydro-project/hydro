@@ -2,6 +2,7 @@ use hydro_lang::prelude::*;
 
 pub struct CounterServer;
 
+#[must_use]
 pub fn concurrent_counter_service<'a>(
     increment_requests: KeyedStream<u32, (), Process<'a, CounterServer>>,
     get_requests: KeyedStream<u32, (), Process<'a, CounterServer>>,

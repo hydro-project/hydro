@@ -45,6 +45,7 @@ pub trait Toggle: Sized {
     fn try_create() -> Option<Self>;
 
     /// Attempts to create this type, panicking if `Self` is `No`.
+    #[must_use]
     fn create() -> Self {
         Self::try_create().unwrap()
     }

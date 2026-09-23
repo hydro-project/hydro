@@ -289,6 +289,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 
     /// Returns the [`CollectionKind`] corresponding to this type.
+    #[must_use]
     pub fn collection_kind() -> CollectionKind {
         CollectionKind::KeyedStream {
             bound: B::BOUND_KIND,

@@ -30,11 +30,13 @@ pub enum NodeLabel {
 
 impl NodeLabel {
     /// Create a static label
+    #[must_use]
     pub fn static_label(s: String) -> Self {
         Self::Static(s)
     }
 
     /// Create a label for an operation with multiple expression
+    #[must_use]
     pub fn with_exprs(op_name: String, exprs: Vec<DebugExpr>) -> Self {
         Self::WithExprs { op_name, exprs }
     }
@@ -140,7 +142,7 @@ pub trait HydroGraphWrite {
     fn write_epilogue(&mut self) -> Result<(), Self::Err>;
 }
 
-/// Node type utilities - centralized handling of HydroNodeType operations
+/// Node type utilities - centralized handling of `HydroNodeType` operations
 pub mod node_type_utils {
     use super::HydroNodeType;
 
@@ -156,7 +158,8 @@ pub mod node_type_utils {
         (HydroNodeType::NonDeterministic, "NonDeterministic"),
     ];
 
-    /// Convert HydroNodeType to string representation (used by JSON format)
+    /// Convert `HydroNodeType` to string representation (used by JSON format)
+    #[must_use]
     pub fn to_string(node_type: HydroNodeType) -> &'static str {
         NODE_TYPE_DATA
             .iter()
@@ -166,6 +169,7 @@ pub mod node_type_utils {
     }
 
     /// Get all node types with their string representations (used by JSON format)
+    #[must_use]
     pub fn all_types_with_strings() -> Vec<(HydroNodeType, &'static str)> {
         NODE_TYPE_DATA.to_vec()
     }
@@ -280,7 +284,7 @@ impl Default for UnifiedEdgeStyle {
     }
 }
 
-/// Convert HydroEdgeType properties to unified edge style.
+/// Convert `HydroEdgeType` properties to unified edge style.
 /// This is the core logic for determining edge visual properties.
 ///
 /// # Visual Encoding Mapping
@@ -292,6 +296,7 @@ impl Default for UnifiedEdgeStyle {
 /// | Boundedness | Halo | Bounded (none), Unbounded (light-blue transparent) |
 /// | Keyedness | Line Style | NotKeyed (plain line), Keyed (line with hash marks/dots) |
 /// | Collection Type | Color + Arrowhead | Stream (blue #2563eb, triangle), Singleton (black, circle), Optional (gray, diamond) |
+#[must_use]
 pub fn get_unified_edge_style(
     edge_properties: &HashSet<HydroEdgeProp>,
     src_location: Option<usize>,
@@ -353,9 +358,10 @@ pub fn get_unified_edge_style(
     style
 }
 
-/// Extract semantic edge properties from CollectionKind metadata.
+/// Extract semantic edge properties from `CollectionKind` metadata.
 /// This function analyzes the collection type and extracts relevant semantic tags
 /// for visualization purposes.
+#[must_use]
 pub fn extract_edge_properties_from_collection_kind(
     collection_kind: &crate::compile::ir::CollectionKind,
 ) -> HashSet<HydroEdgeProp> {
@@ -401,7 +407,7 @@ pub fn extract_edge_properties_from_collection_kind(
     properties
 }
 
-/// Helper function to add bound property based on BoundKind.
+/// Helper function to add bound property based on `BoundKind`.
 fn add_bound_property(
     properties: &mut HashSet<HydroEdgeProp>,
     bound: &crate::compile::ir::BoundKind,
@@ -418,7 +424,7 @@ fn add_bound_property(
     }
 }
 
-/// Helper function to add bound property for Optional based on OptionalBoundKind.
+/// Helper function to add bound property for Optional based on `OptionalBoundKind`.
 fn add_optional_bound_property(
     properties: &mut HashSet<HydroEdgeProp>,
     bound: &crate::compile::ir::OptionalBoundKind,
@@ -435,7 +441,7 @@ fn add_optional_bound_property(
     }
 }
 
-/// Helper function to add bound property for Singleton based on SingletonBoundKind.
+/// Helper function to add bound property for Singleton based on `SingletonBoundKind`.
 fn add_singleton_bound_property(
     properties: &mut HashSet<HydroEdgeProp>,
     bound: &crate::compile::ir::SingletonBoundKind,
@@ -452,7 +458,7 @@ fn add_singleton_bound_property(
     }
 }
 
-/// Helper function to add bound property for KeyedSingleton based on KeyedSingletonBoundKind.
+/// Helper function to add bound property for `KeyedSingleton` based on `KeyedSingletonBoundKind`.
 fn add_keyed_singleton_bound_property(
     properties: &mut HashSet<HydroEdgeProp>,
     bound: &crate::compile::ir::KeyedSingletonBoundKind,
@@ -472,7 +478,7 @@ fn add_keyed_singleton_bound_property(
     }
 }
 
-/// Helper function to add order property based on StreamOrder.
+/// Helper function to add order property based on `StreamOrder`.
 fn add_order_property(
     properties: &mut HashSet<HydroEdgeProp>,
     order: &crate::compile::ir::StreamOrder,
@@ -491,6 +497,7 @@ fn add_order_property(
 
 /// Detect if an edge crosses network boundaries by comparing source and destination locations.
 /// Returns true if the edge represents network communication between different locations.
+#[must_use]
 pub fn is_network_edge(src_location: &LocationId, dst_location: &LocationId) -> bool {
     // Compare the root locations to determine if they differ
     src_location.root() != dst_location.root()
@@ -557,7 +564,7 @@ impl std::str::FromStr for VizNodeKey {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let nvn = s.strip_prefix("viz").ok_or(None)?;
-        let (idx, ver) = nvn.split_once("v").ok_or(None)?;
+        let (idx, ver) = nvn.split_once('v').ok_or(None)?;
         let idx: u64 = idx.parse()?;
         let ver: u64 = ver.parse()?;
         Ok(slotmap::KeyData::from_ffi((ver << 32) | idx).into())
@@ -592,6 +599,7 @@ pub struct HydroGraphStructure {
 }
 
 impl HydroGraphStructure {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -670,7 +678,8 @@ impl HydroGraphStructure {
     }
 }
 
-/// Function to extract an op_name from a print_root() result for use in labels.
+/// Function to extract an `op_name` from a `print_root()` result for use in labels.
+#[must_use]
 pub fn extract_op_name(full_label: String) -> String {
     full_label
         .split('(')
@@ -679,7 +688,8 @@ pub fn extract_op_name(full_label: String) -> String {
         .to_lowercase()
 }
 
-/// Extract a short, readable label from the full token stream label using print_root() style naming
+/// Extract a short, readable label from the full token stream label using `print_root()` style naming
+#[must_use]
 pub fn extract_short_label(full_label: &str) -> String {
     // Use the same logic as extract_op_name but handle the specific cases we need for UI display
     if let Some(op_name) = full_label.split('(').next() {
@@ -766,7 +776,7 @@ fn add_edge_with_metadata(
     structure.add_edge(src_id, dst_id, properties, label);
 }
 
-/// Helper function to write a graph structure using any GraphWrite implementation
+/// Helper function to write a graph structure using any `GraphWrite` implementation
 fn write_graph_structure<W>(
     structure: &HydroGraphStructure,
     graph_write: W,

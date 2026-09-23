@@ -110,7 +110,7 @@ mod tests {
         assert!(result.is_err(), "should fail without dedup scope");
     }
 
-    /// Builds a small flow (source → map → tee → two for_each sinks),
+    /// Builds a small flow (source → map → tee → two `for_each` sinks),
     /// serializes the IR to JSON, and snapshots the output.
     #[test]
     fn ir_json_snapshot() {

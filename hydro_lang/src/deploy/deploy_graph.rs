@@ -549,9 +549,11 @@ impl TrybuildHost {
     }
 
     pub fn display_name(self, display_name: impl Into<String>) -> Self {
-        if self.display_name.is_some() {
-            panic!("{} already set", name_of!(display_name in Self));
-        }
+        assert!(
+            self.display_name.is_none(),
+            "{} already set",
+            name_of!(display_name in Self)
+        );
 
         Self {
             display_name: Some(display_name.into()),
@@ -560,9 +562,11 @@ impl TrybuildHost {
     }
 
     pub fn rustflags(self, rustflags: impl Into<String>) -> Self {
-        if self.rustflags.is_some() {
-            panic!("{} already set", name_of!(rustflags in Self));
-        }
+        assert!(
+            self.rustflags.is_none(),
+            "{} already set",
+            name_of!(rustflags in Self)
+        );
 
         Self {
             rustflags: Some(rustflags.into()),
@@ -571,9 +575,11 @@ impl TrybuildHost {
     }
 
     pub fn profile(self, profile: impl Into<String>) -> Self {
-        if self.profile.is_some() {
-            panic!("{} already set", name_of!(profile in Self));
-        }
+        assert!(
+            self.profile.is_none(),
+            "{} already set",
+            name_of!(profile in Self)
+        );
 
         Self {
             profile: Some(profile.into()),
@@ -605,10 +611,13 @@ impl TrybuildHost {
         self
     }
 
+    #[must_use]
     pub fn tracing(self, tracing: TracingOptions) -> Self {
-        if self.tracing.is_some() {
-            panic!("{} already set", name_of!(tracing in Self));
-        }
+        assert!(
+            self.tracing.is_none(),
+            "{} already set",
+            name_of!(tracing in Self)
+        );
 
         Self {
             tracing: Some(tracing),
@@ -633,6 +642,7 @@ impl TrybuildHost {
         Self { env, ..self }
     }
 
+    #[must_use]
     pub fn pin_to_core(self, core: usize) -> Self {
         Self {
             pin_to_core: Some(core),
@@ -956,6 +966,7 @@ pub struct DeployCluster {
 
 impl DeployCluster {
     #[expect(missing_docs, reason = "TODO")]
+    #[must_use]
     pub fn members(&self) -> Vec<DeployClusterNode> {
         self.members.borrow().clone()
     }
@@ -1115,6 +1126,7 @@ pub struct DeployClusterSpec(Vec<(RustCrate, Arc<dyn Host>)>);
 
 impl DeployClusterSpec {
     #[expect(missing_docs, reason = "TODO")]
+    #[must_use]
     pub fn new(crates: Vec<(RustCrate, Arc<dyn Host>)>) -> Self {
         Self(crates)
     }

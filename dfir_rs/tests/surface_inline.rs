@@ -138,7 +138,7 @@ pub async fn test_inline_w_mesh() {
     assert_eq!(vec![1, 2, 10, 20], ys);
 }
 
-/// Test 8: source_stream
+/// Test 8: `source_stream`
 #[dfir_rs::test]
 pub async fn test_inline_source_stream() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -155,7 +155,7 @@ pub async fn test_inline_source_stream() {
     assert_eq!(vec![1, 2, 3], output);
 }
 
-/// Test 9: resolve_futures — proves real async suspension works.
+/// Test 9: `resolve_futures` — proves real async suspension works.
 #[dfir_rs::test]
 pub async fn test_inline_resolve_futures() {
     let mut output = Vec::<i32>::new();
@@ -176,7 +176,7 @@ pub async fn test_inline_resolve_futures() {
     assert_eq!(vec![42], output);
 }
 
-/// Test 10: Multi-tick with source_stream — data arrives across ticks.
+/// Test 10: Multi-tick with `source_stream` — data arrives across ticks.
 #[dfir_rs::test]
 pub async fn test_inline_multi_tick_source_stream() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -201,7 +201,7 @@ pub async fn test_inline_multi_tick_source_stream() {
     );
 }
 
-/// Test 11: Multi-tick with fold::<'static> — accumulator persists across ticks.
+/// Test 11: Multi-tick with `fold::<'static>` — accumulator persists across ticks.
 #[dfir_rs::test]
 pub async fn test_inline_multi_tick_fold_static() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -234,7 +234,7 @@ pub async fn test_inline_multi_tick_fold_static() {
     );
 }
 
-/// Test 12: Multi-tick with fold::<'tick> — accumulator resets each tick.
+/// Test 12: Multi-tick with `fold::<'tick>` — accumulator resets each tick.
 #[dfir_rs::test]
 pub async fn test_inline_multi_tick_fold_tick() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -261,7 +261,7 @@ pub async fn test_inline_multi_tick_fold_tick() {
     );
 }
 
-/// Test 13: defer_tick_lazy — data from tick N appears in tick N+1.
+/// Test 13: `defer_tick_lazy` — data from tick N appears in tick N+1.
 #[dfir_rs::test]
 pub async fn test_inline_defer_tick_lazy() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -295,7 +295,7 @@ pub async fn test_inline_defer_tick_lazy() {
     );
 }
 
-/// Test 14: defer_tick_lazy flip-flop — a cycle through defer_tick_lazy toggles a boolean.
+/// Test 14: `defer_tick_lazy` flip-flop — a cycle through `defer_tick_lazy` toggles a boolean.
 #[dfir_rs::test]
 pub async fn test_inline_defer_tick_flipflop() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<bool>();
@@ -334,7 +334,7 @@ pub async fn test_inline_defer_tick_flipflop() {
     );
 }
 
-/// Test 15: cross_singleton — the pattern Hydro generates for combining streams with singletons.
+/// Test 15: `cross_singleton` — the pattern Hydro generates for combining streams with singletons.
 /// This mimics what Hydro's `stream.cross_singleton(singleton)` compiles to.
 #[dfir_rs::test]
 pub async fn test_inline_cross_singleton() {
@@ -361,7 +361,7 @@ pub async fn test_inline_cross_singleton() {
     assert_eq!(vec![(10, 6), (20, 6)], result);
 }
 
-/// Test 16: Multi-tick Hydro-like pattern — source_stream → fold::<'static> → cross_singleton with
+/// Test 16: Multi-tick Hydro-like pattern — `source_stream` → `fold::<'static>` → `cross_singleton` with
 /// another stream, simulating a running total joined with incoming data.
 #[dfir_rs::test]
 pub async fn test_inline_hydro_pattern_multi_tick() {
@@ -400,8 +400,8 @@ pub async fn test_inline_hydro_pattern_multi_tick() {
     assert_eq!(vec![(200, 8), (300, 8)], result);
 }
 
-/// Regression test for https://github.com/hydro-project/hydro/issues/2747
-/// defer_tick_lazy in a cycle must deliver data on the next tick, not two ticks later.
+/// Regression test for <https://github.com/hydro-project/hydro/issues/2747>
+/// `defer_tick_lazy` in a cycle must deliver data on the next tick, not two ticks later.
 /// This was caused by missing topological sort of subgraphs within a stratum.
 #[dfir_rs::test]
 pub async fn test_inline_defer_tick_lazy_cycle() {
@@ -425,7 +425,7 @@ pub async fn test_inline_defer_tick_lazy_cycle() {
     assert_eq!(vec![4, 12], output.take());
 }
 
-/// Test: defer_tick (non-lazy) — data from tick N appears in tick N+1.
+/// Test: `defer_tick` (non-lazy) — data from tick N appears in tick N+1.
 #[dfir_rs::test]
 pub async fn test_inline_defer_tick() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -459,7 +459,7 @@ pub async fn test_inline_defer_tick() {
     );
 }
 
-/// Test: defer_tick (non-lazy) flip-flop — a cycle through defer_tick toggles a boolean.
+/// Test: `defer_tick` (non-lazy) flip-flop — a cycle through `defer_tick` toggles a boolean.
 #[dfir_rs::test]
 pub async fn test_inline_defer_tick_nonlazy_flipflop() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<bool>();
@@ -492,8 +492,8 @@ pub async fn test_inline_defer_tick_nonlazy_flipflop() {
     );
 }
 
-/// Test: defer_tick (non-lazy) with run_available — run_available should continue
-/// ticking as long as defer_tick buffers have data (the key difference from lazy).
+/// Test: `defer_tick` (non-lazy) with `run_available` — `run_available` should continue
+/// ticking as long as `defer_tick` buffers have data (the key difference from lazy).
 #[dfir_rs::test]
 pub async fn test_inline_defer_tick_run_available() {
     let output = std::rc::Rc::new(std::cell::RefCell::new(Vec::<usize>::new()));
@@ -519,8 +519,8 @@ pub async fn test_inline_defer_tick_run_available() {
     assert_eq!(vec![1, 3, 2, 6, 4, 12, 8, 16], result);
 }
 
-/// Test: mutual defer_tick — two subgraphs each defer_tick to each other.
-/// This tests that the topo sort in as_code handles mutual back-edges without
+/// Test: mutual `defer_tick` — two subgraphs each `defer_tick` to each other.
+/// This tests that the topo sort in `as_code` handles mutual back-edges without
 /// creating a cycle constraint.
 #[test]
 pub fn test_mutual_defer_tick() {

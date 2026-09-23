@@ -1,8 +1,8 @@
-//! A multiset backed by a HashMap
+//! A multiset backed by a `HashMap`
 use std::collections::HashMap;
 use std::hash::Hash;
 
-/// A multiset backed by a HashMap
+/// A multiset backed by a `HashMap`
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct HashMultiSet<T: Hash + Eq> {
     items: HashMap<T, usize>,

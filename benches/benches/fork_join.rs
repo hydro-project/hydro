@@ -18,7 +18,7 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
 fn benchmark_raw(c: &mut Criterion) {
     c.bench_function("fork_join/raw", |b| {
         b.iter(|| {
-            let mut parts = [(); BRANCH_FACTOR].map(|_| Vec::new());
+            let mut parts = [(); BRANCH_FACTOR].map(|()| Vec::new());
             let mut data: Vec<_> = (0..NUM_INTS).collect();
 
             for _ in 0..NUM_OPS {

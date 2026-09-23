@@ -84,9 +84,10 @@ impl RustCrateService {
     }
 
     pub fn update_meta<T: Serialize>(&self, meta: T) {
-        if self.launched_binary.get().is_some() {
-            panic!("Cannot update meta after binary has been launched")
-        }
+        assert!(
+            self.launched_binary.get().is_none(),
+            "Cannot update meta after binary has been launched"
+        );
         self.meta
             .set(serde_json::to_string(&meta).unwrap())
             .expect("Cannot set meta twice.");
@@ -207,7 +208,7 @@ impl Service for RustCrateService {
                         let launched_host = self.launched_host.get().unwrap();
 
                         let built = self.build().await?;
-                        let args = self.args.as_ref().cloned().unwrap_or_default();
+                        let args = self.args.clone().unwrap_or_default();
 
                         let binary = launched_host
                             .launch_binary(

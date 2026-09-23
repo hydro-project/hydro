@@ -117,7 +117,7 @@ pub fn test_join() {
     );
 }
 
-/// Test for https://github.com/hydro-project/hydro/issues/1298
+/// Test for <https://github.com/hydro-project/hydro/issues/1298>
 #[multiplatform_test]
 pub fn test_cartesian_product_tick_state() {
     let (lhs_send, lhs_recv) = dfir_rs::util::unbounded_channel::<u32>();

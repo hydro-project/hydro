@@ -56,11 +56,15 @@ impl<Schema, Head, Rest, Storage> ColtForestNode
     for GhtLeaf<Schema, var_type!(Head, ...Rest), Storage>
 where
     Head: 'static + Clone + Hash + Eq,
-    Rest: 'static + Clone + Hash + Eq + VariadicExt,
-    Schema: 'static + Hash + Eq + Clone + VariadicExt + PartialEqVariadic,
-    Rest: PartialEqVariadic,
-    Schema: SplitBySuffix<var_type!(Head, ...Rest)>,
-    Schema: SplitBySuffix<Rest>,
+    Rest: 'static + Clone + Hash + Eq + VariadicExt + PartialEqVariadic,
+    Schema: 'static
+        + Hash
+        + Eq
+        + Clone
+        + VariadicExt
+        + PartialEqVariadic
+        + SplitBySuffix<var_type!(Head, ...Rest)>
+        + SplitBySuffix<Rest>,
     <Schema as SplitBySuffix<(Head, Rest)>>::Prefix: Eq + Hash + Clone,
     <Schema as SplitBySuffix<Rest>>::Prefix: Eq + Hash + Clone,
     Storage: VariadicCollection<Schema = Schema> + Default + IntoIterator<Item = Schema>,
@@ -88,13 +92,13 @@ where
     }
 }
 
-/// Emulate the `get` and iter` functions for a single Ght node
-/// [`GhtGet`] across a forest of ColtForestNodes.
+/// Emulate the `get` and `iter` functions for a single Ght node
+/// [`GhtGet`] across a forest of `ColtForestNode`s.
 ///
-/// The "current" ColtGet node (corresponding to the "current" GhtGet node) at depth
+/// The "current" `ColtGet` node (corresponding to the "current" `GhtGet` node) at depth
 /// d from the root is a variadic list of nodes, each at depth d in its their
 /// respective trie in the forest, Tries of height d or smaller are omitted,
-/// hence the first element in any ColtGet is a GhtLeaf.
+/// hence the first element in any `ColtGet` is a `GhtLeaf`.
 pub trait ColtGet {
     /// Schema variadic: the schema of the relation stored in this COLT.
     /// This type is the same in all Tries and nodes of the COLT.
@@ -102,11 +106,11 @@ pub trait ColtGet {
     /// The type of Storage
     /// This type is the same in all Tries and nodes of the COLT
     type Storage: VariadicCollection;
-    /// SuffixSchema variadic: the suffix of the schema *from this node of the trie
+    /// `SuffixSchema` variadic: the suffix of the schema *from this node of the trie
     /// downward*. The first entry in this variadic is of type Head.
     /// This type is the same in all Tries of the COLT (but changes as we traverse downward)
     type SuffixSchema: VariadicExt + Eq + Hash + Clone;
-    /// The type of the first column in the SuffixSchema
+    /// The type of the first column in the `SuffixSchema`
     /// This type is the same in all Tries of the COLT (but changes as we traverse downward)
     type Head: Eq + Hash;
 
@@ -219,16 +223,13 @@ impl<'a, Head, Rest, Schema, ValType, Storage> ColtGet for var_type!(&'a mut Ght
 where
     Rest: ColtGet<Head = Head>,
     Head: Eq + Hash + Clone,
-    Schema: Eq + Hash + Clone + PartialEqVariadic,
+    Schema: 'static + Eq + VariadicExt + Hash + Clone + SplitBySuffix<ValType> + PartialEqVariadic,
     ValType: Eq + Hash + Clone + PartialEqVariadic,
     Storage: VariadicCollection<Schema = Schema>,
-    GhtLeaf<Schema, ValType, Storage>: GeneralizedHashTrieNode,
-    Schema: 'static + Eq + VariadicExt + Hash + Clone + SplitBySuffix<ValType> + PartialEqVariadic,
     <Schema as SplitBySuffix<ValType>>::Prefix: Eq + Hash + Clone,
-    GhtInner<Head, GhtLeaf<Schema, ValType, Storage>>:
-        GeneralizedHashTrieNode<Head = Head> + GhtGet,
-    GhtInner<Head, GhtLeaf<Schema, ValType, Storage>>:
-        GeneralizedHashTrieNode<Head = Rest::Head, Schema = Rest::Schema, Storage = Rest::Storage>,
+    GhtInner<Head, GhtLeaf<Schema, ValType, Storage>>: GeneralizedHashTrieNode<Head = Head>
+        + GeneralizedHashTrieNode<Head = Rest::Head, Schema = Rest::Schema, Storage = Rest::Storage>
+        + GhtGet,
     GhtLeaf<Schema, ValType, Storage>:
         GeneralizedHashTrieNode<Schema = Rest::Schema, Storage = Rest::Storage> + GhtGet,
 {

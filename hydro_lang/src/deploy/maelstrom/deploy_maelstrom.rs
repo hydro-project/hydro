@@ -434,6 +434,7 @@ impl MaelstromDeployment {
     }
 
     /// Set the node count.
+    #[must_use]
     pub fn node_count(mut self, count: usize) -> Self {
         self.node_count = count;
         self
@@ -446,12 +447,14 @@ impl MaelstromDeployment {
     }
 
     /// Set the time limit in seconds.
+    #[must_use]
     pub fn time_limit(mut self, seconds: u64) -> Self {
         self.time_limit = Some(seconds);
         self
     }
 
     /// Set the request rate per second.
+    #[must_use]
     pub fn rate(mut self, rate: u64) -> Self {
         self.rate = Some(rate);
         self
@@ -592,6 +595,7 @@ impl MaelstromDeployment {
     }
 
     /// Get the path to the compiled binary, building it if necessary.
+    #[must_use]
     pub fn binary_path(&self) -> Option<PathBuf> {
         self.build().ok()
     }

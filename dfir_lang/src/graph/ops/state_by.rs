@@ -13,7 +13,7 @@ use super::{
 /// - `[items]`: emits the input items that actually changed the lattice state (deltas).
 /// - `[state]`: emits a clone of the accumulated lattice value after all items are processed.
 ///
-/// The `[items]` output items are of the same type as the inputs to the state_by operator and are
+/// The `[items]` output items are of the same type as the inputs to the `state_by` operator and are
 /// not required to be a lattice type. This is useful for receiving pass-through context information
 /// on the output side.
 ///

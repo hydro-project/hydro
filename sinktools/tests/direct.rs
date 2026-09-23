@@ -6,7 +6,7 @@ use std::rc::Rc;
 use sinktools::sink::SinkExt;
 use sinktools::*;
 
-/// Helper function to create a collecting sink using Rc<RefCell<Vec<T>>>
+/// Helper function to create a collecting sink using `Rc<RefCell<Vec<T>>>`
 fn create_collecting_sink<T: Clone + 'static>() -> (
     impl Sink<T, Error = std::convert::Infallible>,
     Rc<RefCell<Vec<T>>>,

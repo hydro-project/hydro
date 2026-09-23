@@ -42,11 +42,13 @@ impl<Psh> SinkCompat<Psh> {
     }
 
     /// Returns a pinned mutable reference to the wrapped [`Push`].
+    #[must_use]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut Psh> {
         self.project().push
     }
 
     /// Returns a pinned reference to the wrapped [`Push`].
+    #[must_use]
     pub fn as_pin_ref(self: Pin<&Self>) -> Pin<&Psh> {
         self.project_ref().push
     }

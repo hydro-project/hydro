@@ -75,6 +75,7 @@ impl<T> Sender<T> {
     }
 
     /// If this sender or the corresponding [`Receiver`] is closed.
+    #[must_use]
     pub fn is_closed(&self) -> bool {
         0 == self.weak.strong_count()
     }
@@ -237,6 +238,7 @@ impl<T> Default for Shared<T> {
 }
 
 /// Create an unsync MPSC channel, either bounded (if `capacity` is `Some`) or unbounded (if `capacity` is `None`).
+#[must_use]
 pub fn channel<T>(capacity: Option<NonZeroUsize>) -> (Sender<T>, Receiver<T>) {
     let (buffer, send_wakers, recv_waker) = Default::default();
     let shared = Rc::new(RefCell::new(Shared {
@@ -253,6 +255,7 @@ pub fn channel<T>(capacity: Option<NonZeroUsize>) -> (Sender<T>, Receiver<T>) {
 }
 
 /// Create a bounded unsync MPSC channel. Panics if capacity is zero.
+#[must_use]
 pub fn bounded<T>(capacity: usize) -> (Sender<T>, Receiver<T>) {
     let capacity = NonZeroUsize::new(capacity);
     assert!(capacity.is_some(), "Capacity cannot be zero.");
@@ -260,6 +263,7 @@ pub fn bounded<T>(capacity: usize) -> (Sender<T>, Receiver<T>) {
 }
 
 /// Create an unbounded unsync MPSC channel.
+#[must_use]
 pub fn unbounded<T>() -> (Sender<T>, Receiver<T>) {
     channel(None)
 }

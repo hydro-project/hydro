@@ -33,6 +33,7 @@ pub mod deploy_runtime_maelstrom;
 ///     (client_id, response_body)
 /// })));
 /// ```
+#[must_use]
 pub fn maelstrom_bidi_clients<'a, C, In: DeserializeOwned, Out: Serialize>(
     cluster: &Cluster<'a, C>,
 ) -> (

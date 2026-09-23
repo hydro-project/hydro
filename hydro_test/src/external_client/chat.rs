@@ -29,6 +29,7 @@ fn hash_to_color<T: Hash>(input: T) -> Color {
 // `CLICOLOR_FORCE=1`. By default, the `colored` crate only applies color
 // when the output is a terminal, to avoid issues with terminals that do
 // not support color.
+#[must_use]
 pub fn chat_server<'a, P>(
     in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded>,
     membership: KeyedStream<u64, MembershipEvent, Process<'a, P>, Unbounded>,

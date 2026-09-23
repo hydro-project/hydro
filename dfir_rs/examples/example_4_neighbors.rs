@@ -12,7 +12,7 @@ pub fn main() {
         // the join
         origin -> map(|v| (v, ())) -> [0]my_join;
         stream_of_edges -> [1]my_join;
-        my_join = join() -> flat_map(|(src, (_, dst))| [src, dst]);
+        my_join = join() -> flat_map(|(src, ((), dst))| [src, dst]);
 
         // the output
         my_join -> unique() -> for_each(|n| println!("Reached: {}", n));

@@ -11,6 +11,7 @@ pub struct EchoMessage {
     pub echo: String,
 }
 
+#[must_use]
 pub fn echo_server<'a, C>(
     input: KeyedStream<String, EchoMessage, Cluster<'a, C>>,
 ) -> KeyedStream<String, serde_json::Value, Cluster<'a, C>> {
@@ -36,7 +37,10 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[cfg_attr(not(maelstrom_available), ignore)]
+    #[cfg_attr(
+        not(maelstrom_available),
+        ignore = "requires the Maelstrom binary (set the MAELSTROM_PATH env var)"
+    )]
     async fn test_with_maelstrom() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();

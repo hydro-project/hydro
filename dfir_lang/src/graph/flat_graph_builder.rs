@@ -71,7 +71,7 @@ pub struct FlatGraphBuilder {
     /// Use statements.
     uses: Vec<ItemUse>,
 
-    /// If the flat graph is being loaded as a module, then two initial ModuleBoundary nodes are inserted into the graph. One
+    /// If the flat graph is being loaded as a module, then two initial `ModuleBoundary` nodes are inserted into the graph. One
     /// for the input into the module and one for the output out of the module.
     module_boundary_nodes: Option<(GraphNodeId, GraphNodeId)>,
 }
@@ -88,11 +88,13 @@ pub struct FlatGraphBuilderOutput {
 
 impl FlatGraphBuilder {
     /// Create a new empty graph builder.
+    #[must_use]
     pub fn new() -> Self {
         Default::default()
     }
 
     /// Convert the DFIR code AST into a graph builder.
+    #[must_use]
     pub fn from_dfir(input: DfirCode) -> Self {
         let mut builder = Self::default();
         builder.add_dfir(input, None, None);
@@ -956,7 +958,7 @@ impl FlatGraphBuilder {
     }
 
     /// Warns about unused port indexing referenced in [`Self::varname_ends`].
-    /// https://github.com/hydro-project/hydro/issues/1108
+    /// <https://github.com/hydro-project/hydro/issues/1108>
     fn warn_unused_port_indexing(&mut self) {
         for varname_info in self.varname_ends.values() {
             if !varname_info.inn_used {

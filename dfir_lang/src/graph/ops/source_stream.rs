@@ -78,7 +78,7 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
             {
                 use #root::dfir_pipes::pull::Pull;
                 let mut drain = ::std::pin::pin!(#fused_ident);
-                while let #root::dfir_pipes::pull::PullStep::Ready(_, _) = drain.as_mut().pull(&mut ()) {}
+                while let #root::dfir_pipes::pull::PullStep::Ready(..) = drain.as_mut().pull(&mut ()) {}
             }
         };
 

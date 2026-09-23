@@ -24,7 +24,7 @@ use crate::diagnostic::Diagnostic;
 /// ```
 /// The three currently supported fused operator types are `Fold(Fn() -> A, Fn(A, T) -> A)`, `Reduce(Fn(A, A) -> A)`, and `FoldFrom(Fn(T) -> A, Fn(A, T) -> A)`
 ///
-/// `join_fused` first performs a fold_keyed/reduce_keyed operation on each input stream before performing joining. See `join()`. There is currently no equivalent for `FoldFrom` in dfir operators.
+/// `join_fused` first performs a `fold_keyed/reduce_keyed` operation on each input stream before performing joining. See `join()`. There is currently no equivalent for `FoldFrom` in dfir operators.
 ///
 /// For example, the following two dfir programs are equivalent, the former would optimize into the latter:
 ///

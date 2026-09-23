@@ -75,9 +75,9 @@ pub struct HydroJson<'a, W> {
     write: W,
     nodes: Vec<serde_json::Value>,
     edges: Vec<serde_json::Value>,
-    /// location_id -> (label, node_ids)
+    /// `location_id` -> (label, `node_ids`)
     locations: SecondaryMap<LocationKey, (String, Vec<VizNodeKey>)>,
-    /// node_id -> location_id
+    /// `node_id` -> `location_id`
     node_locations: SecondaryMap<VizNodeKey, LocationKey>,
     edge_count: usize,
     /// Map from raw location IDs to location names.
@@ -103,12 +103,12 @@ impl<'a, W> HydroJson<'a, W> {
         }
     }
 
-    /// Convert HydroNodeType to string representation
+    /// Convert `HydroNodeType` to string representation
     fn node_type_to_string(node_type: HydroNodeType) -> &'static str {
         super::render::node_type_utils::to_string(node_type)
     }
 
-    /// Convert HydroEdgeType to string representation for semantic tags
+    /// Convert `HydroEdgeType` to string representation for semantic tags
     fn edge_type_to_string(edge_type: HydroEdgeProp) -> String {
         match edge_type {
             HydroEdgeProp::Bounded => "Bounded".to_owned(),
@@ -956,8 +956,8 @@ impl<W> HydroJson<'_, W> {
     /// Collapse single-child container chains (top-down)
     /// When a container has exactly one child AND that child is also a container,
     /// we collapse them by keeping the child's ID and combining names.
-    /// parent_name is used to accumulate names during recursion (None for roots)
-    /// id_remapping tracks which old IDs map to which new IDs after collapsing
+    /// `parent_name` is used to accumulate names during recursion (None for roots)
+    /// `id_remapping` tracks which old IDs map to which new IDs after collapsing
     fn collapse_single_child_containers(
         node: serde_json::Value,
         parent_name: Option<&str>,

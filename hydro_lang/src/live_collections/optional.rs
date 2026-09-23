@@ -1263,7 +1263,7 @@ where
     }
 
     /// Filters this optional, passing through the optional value if it is non-null **and** the
-    /// argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is null.
+    /// argument (a [`Bounded`] [`Optional`]) is non-null, otherwise the output is null.
     ///
     /// Useful for conditionally processing, such as only emitting an optional's value outside
     /// a tick if some other condition is satisfied.
@@ -1307,7 +1307,7 @@ where
     }
 
     /// Filters this optional, passing through the optional value if it is non-null **and** the
-    /// argument (a [`Bounded`] [`Optional`]`) is _null_, otherwise the output is null.
+    /// argument (a [`Bounded`] [`Optional`]) is _null_, otherwise the output is null.
     ///
     /// Useful for conditionally processing, such as only emitting an optional's value outside
     /// a tick if some other condition is satisfied.

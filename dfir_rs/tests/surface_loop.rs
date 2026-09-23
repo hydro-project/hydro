@@ -34,7 +34,7 @@ pub fn test_loop_gating_basic() {
 }
 
 /// Regression test for a loop-contiguity toposort bug.
-/// https://github.com/hydro-project/hydro/issues/3048
+/// <https://github.com/hydro-project/hydro/issues/3048>
 ///
 /// A single loop has two ingress points, but the sources feeding them are declared
 /// *after* the loop (forward references). This causes the source that feeds the second
@@ -112,9 +112,9 @@ pub fn test_loop_independence() {
     assert_eq!(out_b, Vec::<&str>::new());
 }
 
-/// Test defer_tick (non-lazy): data deferred in one firing is available on the next,
-/// and the non-empty defer_tick buffer causes the loop to re-fire.
-/// Note: defer_tick only works in nested loops (not root-level ones, which are fused with tick).
+/// Test `defer_tick` (non-lazy): data deferred in one firing is available on the next,
+/// and the non-empty `defer_tick` buffer causes the loop to re-fire.
+/// Note: `defer_tick` only works in nested loops (not root-level ones, which are fused with tick).
 #[multiplatform_test(test, wasm, env_tracing)]
 pub fn test_defer_tick_basic() {
     let (in_send, in_recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -150,9 +150,9 @@ pub fn test_defer_tick_basic() {
     assert_eq!(out, vec![1, 10, 100]);
 }
 
-/// Test defer_tick_lazy: data deferred is available next firing but does NOT
+/// Test `defer_tick_lazy`: data deferred is available next firing but does NOT
 /// cause re-fire on its own.
-/// Note: defer_tick_lazy only works in nested loops.
+/// Note: `defer_tick_lazy` only works in nested loops.
 #[multiplatform_test(test, wasm, env_tracing)]
 pub fn test_defer_tick_lazy() {
     let (in_send, in_recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -192,7 +192,7 @@ pub fn test_defer_tick_lazy() {
     assert_eq!(out, vec![2, 10]);
 }
 
-/// Test batch_lazy: data enters the loop but does NOT trigger it to fire.
+/// Test `batch_lazy`: data enters the loop but does NOT trigger it to fire.
 /// If the loop fires for another reason, the lazy data is available.
 /// If the loop does not fire, the data is dropped.
 #[multiplatform_test(test, wasm, env_tracing)]
@@ -239,7 +239,7 @@ pub fn test_batch_lazy() {
     assert_eq!(out, Vec::<i32>::new());
 }
 
-/// Test batch_eager: the loop fires every tick, even when the eager input is empty.
+/// Test `batch_eager`: the loop fires every tick, even when the eager input is empty.
 /// A `fold` inside the loop should emit output on every tick regardless of input.
 #[multiplatform_test(test, wasm, env_tracing)]
 pub fn test_batch_eager() {
@@ -274,7 +274,7 @@ pub fn test_batch_eager() {
     assert_eq!(out, vec![0]);
 }
 
-/// Test batch_eager combined with batch_lazy: the eager input always fires the loop,
+/// Test `batch_eager` combined with `batch_lazy`: the eager input always fires the loop,
 /// making the lazy data visible on every tick it is present.
 #[multiplatform_test(test, wasm, env_tracing)]
 pub fn test_batch_eager_with_lazy() {
@@ -313,9 +313,9 @@ pub fn test_batch_eager_with_lazy() {
     assert_eq!(out, vec![1, 200]);
 }
 
-/// Test all_iterations: collects output from all loop iterations and emits
+/// Test `all_iterations`: collects output from all loop iterations and emits
 /// it outside the loop after the loop completes.
-/// Note: defer_tick only works in nested loops, so we use a nested structure.
+/// Note: `defer_tick` only works in nested loops, so we use a nested structure.
 #[multiplatform_test(test, wasm, env_tracing)]
 pub fn test_all_iterations() {
     let (in_send, in_recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -351,7 +351,7 @@ pub fn test_all_iterations() {
     assert_eq!(out, vec![1, 10, 100]);
 }
 
-/// Test batch_lazy in a nested loop: verify lazy data doesn't persist across
+/// Test `batch_lazy` in a nested loop: verify lazy data does not persist across
 /// outer loop iterations or across ticks.
 #[multiplatform_test(test, wasm, env_tracing)]
 pub fn test_batch_lazy_nested_no_stale_data() {

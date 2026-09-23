@@ -38,6 +38,7 @@ pub mod ops;
 
 impl GraphSubgraphId {
     /// Generate a deterministic `Ident` for the given subgraph ID.
+    #[must_use]
     pub fn as_ident(self, span: Span) -> Ident {
         use slotmap::Key;
         Ident::new(&format!("sgid_{:?}", self.data()), span)
@@ -46,6 +47,7 @@ impl GraphSubgraphId {
 
 impl GraphLoopId {
     /// Generate a deterministic `Ident` for the given loop ID.
+    #[must_use]
     pub fn as_ident(self, span: Span) -> Ident {
         use slotmap::Key;
         Ident::new(&format!("loop_{:?}", self.data()), span)
@@ -124,7 +126,7 @@ pub enum GraphNode {
         input: bool,
 
         /// The span of the import!() expression that imported this module.
-        /// The value of this span when the ModuleBoundary node is still inside the module is Span::call_site()
+        /// The value of this span when the `ModuleBoundary` node is still inside the module is `Span::call_site()`
         /// TODO: This could one day reference into the module file itself?
         #[serde(skip, default = "Span::call_site")]
         import_expr: Span,
@@ -132,6 +134,7 @@ pub enum GraphNode {
 }
 impl GraphNode {
     /// Return the node as a human-readable string.
+    #[must_use]
     pub fn to_pretty_string(&self) -> Cow<'static, str> {
         match self {
             GraphNode::Operator(op) => op.to_pretty_string().into(),
@@ -148,6 +151,7 @@ impl GraphNode {
     }
 
     /// Return the name of the node as a string, excluding parenthesis and op source code.
+    #[must_use]
     pub fn to_name_string(&self) -> Cow<'static, str> {
         match self {
             GraphNode::Operator(op) => op.name_string().into(),
@@ -164,6 +168,7 @@ impl GraphNode {
     }
 
     /// Return the source code span of the node.
+    #[must_use]
     pub fn span(&self) -> Span {
         match self {
             Self::Operator(op) => op.span(),
@@ -247,6 +252,7 @@ impl OpInstGenerics {
     }
 
     /// Returns a [`Span`] containing all persistence (lifetime) args if possible.
+    #[must_use]
     pub fn persistence_args_span(&self) -> Option<Span> {
         self.generic_args.as_ref().and_then(|args| {
             Self::join_spans(
@@ -258,6 +264,7 @@ impl OpInstGenerics {
     }
 
     /// Returns a [`Span`] containing all type args if possible.
+    #[must_use]
     pub fn type_args_span(&self) -> Option<Span> {
         self.generic_args.as_ref().and_then(|args| {
             Self::join_spans(
@@ -357,6 +364,7 @@ impl PortIndexValue {
     }
 
     /// Returns `true` if `self` is not [`PortIndexValue::Elided`].
+    #[must_use]
     pub fn is_specified(&self) -> bool {
         !matches!(self, Self::Elided(_))
     }
@@ -378,6 +386,7 @@ impl PortIndexValue {
     }
 
     /// Formats self as a human-readable string for error messages.
+    #[must_use]
     pub fn as_error_message_string(&self) -> String {
         match self {
             PortIndexValue::Int(n) => format!("`{}`", n.value),

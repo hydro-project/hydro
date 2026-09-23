@@ -138,7 +138,7 @@ impl std::str::FromStr for LocationKey {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let nvn = s.strip_prefix("loc").ok_or(None)?;
-        let (idx, ver) = nvn.split_once("v").ok_or(None)?;
+        let (idx, ver) = nvn.split_once('v').ok_or(None)?;
         let idx: u64 = idx.parse()?;
         let ver: u64 = ver.parse()?;
         Ok(slotmap::KeyData::from_ffi((ver << 32) | idx).into())

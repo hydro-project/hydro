@@ -35,13 +35,13 @@
 //!
 //! | Implementation | Space Efficiency | Merge Speed | Lookup Speed | False Positives |
 //! |----------------|------------------|-------------|--------------|-----------------|
-//! | RoaringBitmap  | Excellent        | Excellent   | Excellent    | None            |
+//! | `RoaringBitmap`  | Excellent        | Excellent   | Excellent    | None            |
 //! | FST            | Very Good        | Good        | Very Good    | None            |
-//! | HashSet        | Poor             | Good        | Excellent    | None            |
+//! | `HashSet`        | Poor             | Good        | Excellent    | None            |
 //!
 //! # Performance Considerations
 //!
-//! - **RoaringBitmap:** Optimized for dense integer sets. Very fast for all operations.
+//! - **`RoaringBitmap`:** Optimized for dense integer sets. Very fast for all operations.
 //! - **FST:** The `extend()` operation rebuilds the entire FST, so batch your insertions.
 //!   Use `from_iter()` when possible for better performance.
 //!
@@ -85,6 +85,7 @@ pub struct RoaringTombstoneSet {
 
 impl RoaringTombstoneSet {
     /// Create a new empty `RoaringTombstoneSet`.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             bitmap: RoaringTreemap::new(),
@@ -92,6 +93,7 @@ impl RoaringTombstoneSet {
     }
 
     /// Check if an item is in the tombstone set.
+    #[must_use]
     pub fn contains(&self, item: &u64) -> bool {
         self.bitmap.contains(*item)
     }
@@ -169,6 +171,7 @@ impl<Item> Default for FstTombstoneSet<Item> {
 #[cfg(feature = "alloc")]
 impl<Item> FstTombstoneSet<Item> {
     /// Create a new empty `FstTombstoneSet`.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             fst: FstSet::default(),
@@ -185,16 +188,19 @@ impl<Item> FstTombstoneSet<Item> {
     }
 
     /// Check if an item is in the tombstone set.
+    #[must_use]
     pub fn contains(&self, item: &[u8]) -> bool {
         self.fst.contains(item)
     }
 
     /// Get the number of items in the set.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.fst.len()
     }
 
     /// Check if the set is empty.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.fst.is_empty()
     }

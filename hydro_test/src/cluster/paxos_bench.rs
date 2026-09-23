@@ -130,6 +130,7 @@ pub fn paxos_bench<'a>(
 }
 
 /// Generates an incrementing u32 for each virtual client ID, starting at 0
+#[must_use]
 pub fn inc_i32_workload_generator<'a, Client>(
     ids_and_prev_payloads: KeyedStream<u32, Option<i32>, Cluster<'a, Client>, Unbounded, NoOrder>,
 ) -> KeyedStream<u32, i32, Cluster<'a, Client>, Unbounded, NoOrder> {

@@ -73,6 +73,7 @@ pub struct ManualProof<H = ()> {
 
 impl<H> ManualProof<H> {
     #[doc(hidden)]
+    #[must_use]
     pub fn unhooked() -> Self
     where
         H: Default,
@@ -146,6 +147,7 @@ pub struct VerusCommutativeProof {
 
 impl VerusCommutativeProof {
     #[doc(hidden)]
+    #[must_use]
     pub fn new() -> Self {
         VerusCommutativeProof { _private: () }
     }

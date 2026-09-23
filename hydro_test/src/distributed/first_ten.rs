@@ -10,6 +10,7 @@ struct SendOverNetwork {
 pub struct P1 {}
 pub struct P2 {}
 
+#[must_use]
 pub fn first_ten_distributed<'a>(
     external: &External<'a, ()>,
     process: &Process<'a, P1>,
@@ -39,7 +40,7 @@ mod tests {
         let external = builder.external();
         let p1 = builder.process();
         let p2 = builder.process();
-        super::first_ten_distributed(&external, &p1, &p2);
+        let _ = super::first_ten_distributed(&external, &p1, &p2);
 
         hydro_build_utils::assert_debug_snapshot!(builder.finalize().ir());
     }

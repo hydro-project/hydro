@@ -44,7 +44,7 @@ pub async fn test_echo_udp() -> Result<(), Box<dyn Error>> {
 
         tokio::select! {
             _ = df.run() => (),
-            _ = tokio::time::sleep(Duration::from_secs(1)) => (),
+            () = tokio::time::sleep(Duration::from_secs(1)) => (),
         };
 
         let seen: HashSet<_> = collect_ready_async(seen_recv).await;
@@ -79,7 +79,7 @@ pub async fn test_echo_udp() -> Result<(), Box<dyn Error>> {
 
         tokio::select! {
             _ = df.run() => (),
-            _ = tokio::time::sleep(Duration::from_secs(1)) => (),
+            () = tokio::time::sleep(Duration::from_secs(1)) => (),
         };
 
         let seen: Vec<_> = collect_ready_async(seen_recv).await;
@@ -110,7 +110,7 @@ pub async fn test_echo_udp() -> Result<(), Box<dyn Error>> {
 
         tokio::select! {
             _ = df.run() => (),
-            _ = tokio::time::sleep(Duration::from_secs(1)) => (),
+            () = tokio::time::sleep(Duration::from_secs(1)) => (),
         };
 
         let seen: Vec<_> = collect_ready_async(seen_recv).await;
@@ -365,7 +365,7 @@ async fn asynctest_source_stream() {
         biased;
         _ = task_a => unreachable!(),
         _ = task_b => unreachable!(),
-        _ = tokio::task::yield_now() => (),
+        () = tokio::task::yield_now() => (),
     };
 
     assert_eq!(
@@ -374,11 +374,11 @@ async fn asynctest_source_stream() {
     );
 }
 
-/// Check to make sure hf.run() does not hang due to replaying stateful operators saturating
+/// Check to make sure `hf.run()` does not hang due to replaying stateful operators saturating
 /// `run_available()`.
 ///
-/// This test is a little bit race-ey... if for some insane reason a tick (task_b) runs longer than
-/// the send loop delay (task_a).
+/// This test is a little bit race-ey... if for some insane reason a tick (`task_b`) runs longer than
+/// the send loop delay (`task_a`).
 #[multiplatform_test(dfir, env_tracing)]
 async fn asynctest_check_state_yielding() {
     let (a_send, a_recv) = dfir_rs::util::unbounded_channel::<usize>();

@@ -54,6 +54,7 @@ impl Deployment {
     }
 
     #[expect(non_snake_case, reason = "constructor-esque")]
+    #[must_use]
     pub fn Localhost(&self) -> Arc<LocalhostHost> {
         self.localhost_host.clone().unwrap()
     }
@@ -145,7 +146,7 @@ impl Deployment {
 
                 futures::stream::iter(services_future)
                     .buffer_unordered(16)
-                    .try_fold((), |_, _| async { Ok(()) })
+                    .try_fold((), |(), ()| async { Ok(()) })
             })
             .await?;
 

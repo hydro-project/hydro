@@ -49,6 +49,7 @@ pub struct Backtrace {
 #[cfg(stageleft_runtime)]
 #[cfg(feature = "build")]
 #[doc(hidden)]
+#[must_use]
 pub fn __macro_get_backtrace(col_offset: usize) -> Backtrace {
     let mut out = Backtrace::get_backtrace(1);
     out.col_offset = col_offset;
@@ -142,6 +143,7 @@ impl Backtrace {
 
     #[cfg(feature = "build")]
     /// Format the first user-code frame as `"file:line"`, or `None` if unavailable.
+    #[must_use]
     pub fn format_span(&self) -> Option<String> {
         let elem = self.elements().next()?;
         let file = elem.filename.as_ref()?;
