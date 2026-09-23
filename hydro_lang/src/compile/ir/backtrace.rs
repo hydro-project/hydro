@@ -15,7 +15,7 @@ use backtrace::BacktraceFrame;
 #[cfg(feature = "build")]
 fn strip_hash_brackets(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
-    let mut chars = s.chars().peekable();
+    let mut chars = s.chars();
     while let Some(c) = chars.next() {
         if c == '[' {
             let bracket_content: String = chars.by_ref().take_while(|&ch| ch != ']').collect();

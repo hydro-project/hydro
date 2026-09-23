@@ -76,8 +76,10 @@ pub const SOURCE_STREAM_SERDE: OperatorConstraints = OperatorConstraints {
                             #root::util::deserialize_from_bytes::<#generic_type>(payload).map(|payload| (payload, addr)),
                             ()
                         ),
-                    ::std::task::Poll::Ready(::std::option::Option::Some(::std::result::Result::Err(_)))
-                        | ::std::task::Poll::Ready(::std::option::Option::None)
+                    ::std::task::Poll::Ready(
+                        ::std::option::Option::Some(::std::result::Result::Err(_))
+                        | ::std::option::Option::None
+                    )
                         | ::std::task::Poll::Pending => #root::dfir_pipes::pull::PullStep::Ended(#root::dfir_pipes::Yes),
                 }
             });

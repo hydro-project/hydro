@@ -1682,7 +1682,7 @@ mod tests {
                 term: 1,
                 leader: leader_0.clone(),
                 prev_log_index: prev,
-                prev_log_term: if prev == 0 { 0 } else { 1 },
+                prev_log_term: usize::from(prev != 0),
                 entries,
                 leader_commit: 0,
             })

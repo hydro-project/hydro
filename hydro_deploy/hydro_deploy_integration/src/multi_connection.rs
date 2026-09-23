@@ -145,9 +145,8 @@ impl<
                     Poll::Ready(Err(e)) => {
                         if !me.active_connections.iter().any(|conn| conn.is_some()) {
                             return Poll::Ready(Some(Err(e.into())));
-                        } else {
-                            break;
                         }
+                        break;
                     }
                     Poll::Pending => {
                         break;
@@ -185,9 +184,8 @@ impl<
                     Poll::Ready(Err(e)) => {
                         if !me.active_connections.iter().any(|conn| conn.is_some()) {
                             return Poll::Ready(Some(Err(e.into())));
-                        } else {
-                            break;
                         }
+                        break;
                     }
                     Poll::Pending => {
                         break;
@@ -217,7 +215,7 @@ impl<
                         out = Poll::Ready(Some(Ok((connection_id, data))));
                         break;
                     }
-                    Poll::Ready(Some(Err(_))) | Poll::Ready(None) => {
+                    Poll::Ready(Some(Err(_)) | None) => {
                         let _ = me.membership_sender.send((connection_id, false));
                         *id_and_stream = None; // Mark connection as removed
                         any_removed = true;
@@ -270,9 +268,8 @@ impl<O, C: Encoder<O>> Sink<(u64, O)> for MultiConnectionSink<O, C> {
                             "No additional sinks are available (was the stream dropped)?",
                         )
                         .into()));
-                    } else {
-                        break;
                     }
+                    break;
                 }
                 Poll::Pending => {
                     break;
@@ -391,9 +388,8 @@ where
                 Poll::Ready(Err(e)) => {
                     if !me.active_connections.iter().any(|c| c.is_some()) {
                         return Poll::Ready(Some(Err(e.into())));
-                    } else {
-                        break;
                     }
+                    break;
                 }
                 Poll::Pending => {
                     break;
@@ -422,7 +418,7 @@ where
                         out = Poll::Ready(Some(Ok((connection_id, data))));
                         break;
                     }
-                    Poll::Ready(Some(Err(_))) | Poll::Ready(None) => {
+                    Poll::Ready(Some(Err(_)) | None) => {
                         let _ = me.membership_sender.send((connection_id, false));
                         *id_and_stream = None; // Mark connection as removed
                         any_removed = true;

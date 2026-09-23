@@ -889,7 +889,7 @@ impl DfirBuilder for ProdDfirBuilder {
                     None,
                 );
             }
-            (Some(_), None) | (None, None) => {
+            (Some(_) | None, None) => {
                 unreachable!("batch must target a tick location");
             }
         }
@@ -4109,7 +4109,7 @@ impl HydroNode {
                     HydroNode::Source {
                         source, metadata, ..
                     } => {
-                        if let HydroSource::ExternalNetwork() = source {
+                        if matches!(source, HydroSource::ExternalNetwork()) {
                             ident_stack.push(syn::Ident::new("DUMMY", Span::call_site()));
                         } else {
                             let stmt_id = next_stmt_id.get_and_increment();
@@ -4430,7 +4430,7 @@ impl HydroNode {
                                 }
                             }
 
-                            let idx = if is_true { 0 } else { 1 };
+                            let idx = usize::from(!is_true);
                             built_idents[idx].clone()
                         } else {
                             // The `PartitionShared` node was already processed by transform_bottom_up,

@@ -92,7 +92,7 @@ impl<T> TickInputHook for StreamHook<T, TotalOrder> {
 
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool {
         let mut current_input = self.input.borrow_mut();
-        let count = ((if force_trigger { 1 } else { 0 })..=current_input.len())
+        let count = (usize::from(force_trigger)..=current_input.len())
             .generate(driver)
             .unwrap();
 
@@ -498,11 +498,7 @@ impl<K: Hash + Eq + Clone, V> TickInputHook for KeyedStreamHook<K, V, TotalOrder
 
             remaining_nonempty_keys -= 1;
 
-            let count = ((if force_trigger && remaining_nonempty_keys == 0 {
-                1
-            } else {
-                0
-            })..=queue.len())
+            let count = (usize::from(force_trigger && remaining_nonempty_keys == 0)..=queue.len())
                 .generate(driver)
                 .unwrap();
 
@@ -1553,21 +1549,21 @@ impl<K: Hash + Eq + Clone, V: Clone> TickInputHook for KeyedSingletonHook<K, V> 
                 if allow_null_release && produce().generate(driver).unwrap() {
                     // Don't emit anything, this key is not yet added to the snapshot
                     continue;
-                } else {
-                    // Release a new item for this key
-                    let idx_to_release = (0..queue.len()).generate(driver).unwrap();
-                    let skipped: Vec<V> = queue.drain(0..idx_to_release).collect();
-                    let item = queue.pop_front().unwrap();
-                    self.skipped_states.insert(key.clone(), skipped);
-                    self.to_release
-                        .as_mut()
-                        .unwrap()
-                        .push((key.clone(), item.clone(), true));
-                    self.last_released.insert(key.clone(), item);
-
-                    any_triggered |= true;
-                    force_trigger = false;
                 }
+
+                // Release a new item for this key
+                let idx_to_release = (0..queue.len()).generate(driver).unwrap();
+                let skipped: Vec<V> = queue.drain(0..idx_to_release).collect();
+                let item = queue.pop_front().unwrap();
+                self.skipped_states.insert(key.clone(), skipped);
+                self.to_release
+                    .as_mut()
+                    .unwrap()
+                    .push((key.clone(), item.clone(), true));
+                self.last_released.insert(key.clone(), item);
+
+                any_triggered |= true;
+                force_trigger = false;
             }
         }
 
