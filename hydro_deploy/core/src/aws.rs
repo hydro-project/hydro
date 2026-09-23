@@ -356,7 +356,7 @@ impl AwsEc2IamInstanceProfile {
         self
     }
 
-    /// Enables running and emitting telemetry via the `CloudWatch` agent.
+    /// Enables running and emitting telemetry via the CloudWatch agent.
     #[must_use]
     pub fn add_cloudwatch_agent_server_policy_arn(self) -> Self {
         self.add_policy_arn("arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy")
@@ -479,7 +479,7 @@ impl AwsEc2IamInstanceProfile {
     }
 }
 
-/// Represents a `CloudWatch` log group.
+/// Represents a CloudWatch log group.
 #[derive(Debug)]
 pub struct AwsCloudwatchLogGroup {
     pub region: String,
@@ -488,7 +488,7 @@ pub struct AwsCloudwatchLogGroup {
 }
 
 impl AwsCloudwatchLogGroup {
-    /// Creates a new instance. If `existing_cloudwatch_log_group_name` is `Some`, that will be used as the `CloudWatch`
+    /// Creates a new instance. If `existing_cloudwatch_log_group_name` is `Some`, that will be used as the CloudWatch
     /// log group name which must already exist in the AWS account and region.
     pub fn new(
         region: impl Into<String>,

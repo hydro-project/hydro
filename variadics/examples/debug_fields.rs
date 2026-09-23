@@ -1,4 +1,4 @@
-//! <https://poignardazur.github.io/2023/11/08/time-for-variadic-generics>/
+//! <https://poignardazur.github.io/2023/11/08/time-for-variadic-generics>
 
 use std::fmt::{Debug, DebugTuple, Formatter, Result};
 

@@ -84,9 +84,8 @@ pub fn init_test() {
 fn clean_bin_name_prefix(bin_name_prefix: &str) -> String {
     bin_name_prefix
         .replace("::", "__")
-        .replace([' ', ',', '<'], "_")
+        .replace([' ', ',', '<', '{', '}'], "_")
         .replace(['>', '(', ')'], "")
-        .replace(['{', '}'], "_")
 }
 
 #[derive(Debug, Clone)]

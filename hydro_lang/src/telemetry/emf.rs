@@ -1,4 +1,4 @@
-//! AWS `CloudWatch` embedded metric format (EMF).
+//! AWS CloudWatch embedded metric format (EMF).
 //!
 //! <https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html>
 #[cfg(feature = "runtime_support")]
@@ -280,7 +280,7 @@ where
     Ok(())
 }
 
-/// AWS `CloudWatch` EMF units.
+/// AWS CloudWatch EMF units.
 ///
 /// <https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_MetricDatum.html#ACW-Type-MetricDatum-Unit>
 #[expect(missing_docs, reason = "self-explanatory")]

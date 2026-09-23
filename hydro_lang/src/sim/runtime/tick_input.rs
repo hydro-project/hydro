@@ -498,7 +498,8 @@ impl<K: Hash + Eq + Clone, V> TickInputHook for KeyedStreamHook<K, V, TotalOrder
 
             remaining_nonempty_keys -= 1;
 
-            let count = (usize::from(force_trigger && remaining_nonempty_keys == 0)..=queue.len())
+            let must_reveal = force_trigger && remaining_nonempty_keys == 0;
+            let count = (usize::from(must_reveal)..=queue.len())
                 .generate(driver)
                 .unwrap();
 

@@ -323,7 +323,7 @@ impl<Tick: TickClosure> Dfir<Tick> {
     /// Run a single tick. Returns `true` if any subgraph received input data.
     ///
     /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
-    /// and external events (via `can_start_tick` set by `wakers/schedule_subgraph`).
+    /// and external events (via `can_start_tick` set by `waker`/`schedule_subgraph`).
     pub async fn run_tick(&mut self) -> bool {
         #[cfg(feature = "tokio")]
         self.spawn_tasks();

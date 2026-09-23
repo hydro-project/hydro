@@ -24,11 +24,11 @@ use crate::staging_util::Invariant;
 pub struct SimFlow<'a> {
     pub(crate) ir: Vec<HydroRoot>,
 
-    /// `SimNode` for each Process.
+    /// [`SimNode`] for each Process.
     pub(crate) processes: SparseSecondaryMap<LocationKey, SimNode>,
-    /// `SimNode` for each Cluster.
+    /// [`SimNode`] for each Cluster.
     pub(crate) clusters: SparseSecondaryMap<LocationKey, SimNode>,
-    /// `SimExternal` for each External.
+    /// [`SimExternal`] for each External.
     pub(crate) externals: SparseSecondaryMap<LocationKey, SimExternal>,
 
     /// Max size of each cluster.

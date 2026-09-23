@@ -287,7 +287,7 @@ fn ecs_membership_stream(
     // Task family format: hy-{name_hint}-loc{idx}v{version}
     // Example: hy-p1-loc2v1
     let task_definition_arn_parser =
-        regex::Regex::new(r#"arn:aws:ecs:(?<region>.*):(?<account_id>.*):task-definition\/(?<container_id>hy-(?<type>[^-]+)-loc(?<location_idx>[0-9]+)v(?<location_version>[0-9]+)(?:-(?<instance_id>.*))?):.*"#).unwrap();
+        regex::Regex::new(r"arn:aws:ecs:(?<region>.*):(?<account_id>.*):task-definition\/(?<container_id>hy-(?<type>[^-]+)-loc(?<location_idx>[0-9]+)v(?<location_version>[0-9]+)(?:-(?<instance_id>.*))?):.*").unwrap();
 
     let poll_stream = futures::stream::unfold(
         (HashSet::<String>::new(), cluster_name, location_key),
@@ -521,7 +521,7 @@ async fn resolve_task_family_to_task_id(task_family: &str) -> String {
 /// Parse the ECS task ID from a metadata URI.
 ///
 /// URI format: `http://169.254.170.2/v4/{task_id}-{runtime_id}`
-/// where task_id is 32 hex chars and runtime_id is a numeric suffix.
+/// where `task_id` is 32 hex chars and `runtime_id` is a numeric suffix.
 fn parse_task_id_from_metadata_uri(metadata_uri: &str) -> Option<String> {
     let re = regex::Regex::new(r"/v4/(?P<task_id>[0-9a-f]{32})-\d+$").unwrap();
     re.captures(metadata_uri)

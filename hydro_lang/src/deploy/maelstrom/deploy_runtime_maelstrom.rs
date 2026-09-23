@@ -274,7 +274,7 @@ pub(super) fn deploy_maelstrom_m2m(meta: RuntimeData<&MaelstromMeta>) -> (syn::E
 }
 
 /// Creates a stream of client messages from Maelstrom stdin.
-/// Returns tuples of (`client_id`, `message_body`) where `client_id` is the source client
+/// Returns tuples of `(client_id, message_body)` where `client_id` is the source client
 /// and `message_body` is the JSON value of the message body.
 ///
 /// This function is meant to be used with `source_stream` on a Cluster location.
