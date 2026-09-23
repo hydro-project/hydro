@@ -1,4 +1,4 @@
-//! Originally discovered and fixed in https://github.com/hydro-project/hydro/pull/1701.
+//! Originally discovered and fixed in <https://github.com/hydro-project/hydro/pull/1701>.
 //!
 //! The original implementation of `sequence_payloads` for the KV replica in Paxos had a subtle
 //! bug that causes it to silently drop buffered payloads when they are received out of order.

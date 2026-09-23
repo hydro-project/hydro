@@ -90,9 +90,10 @@ impl<'a, C: ReceiverComplete<'a, ForwardRef>> ForwardHandle<'a, C> {
 
 impl<'a, C: ReceiverComplete<'a, ForwardRef>> Drop for ForwardHandle<'a, C> {
     fn drop(&mut self) {
-        if !self.completed && !std::thread::panicking() {
-            panic!("ForwardHandle dropped without being completed");
-        }
+        assert!(
+            self.completed || std::thread::panicking(),
+            "ForwardHandle dropped without being completed"
+        );
     }
 }
 
@@ -144,9 +145,10 @@ impl<'a, C: ReceiverComplete<'a, TickCycle>> TickCycleHandle<'a, C> {
 
 impl<'a, C: ReceiverComplete<'a, TickCycle>> Drop for TickCycleHandle<'a, C> {
     fn drop(&mut self) {
-        if !self.completed && !std::thread::panicking() {
-            panic!("TickCycleHandle dropped without being completed");
-        }
+        assert!(
+            self.completed || std::thread::panicking(),
+            "TickCycleHandle dropped without being completed"
+        );
     }
 }
 

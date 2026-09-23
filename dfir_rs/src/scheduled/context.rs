@@ -106,11 +106,13 @@ impl Context {
     // --- Methods called as `context.xxx()` in operator iterators ---
 
     /// Gets the current tick count.
+    #[must_use]
     pub fn current_tick(&self) -> TickInstant {
         self.current_tick
     }
 
     /// Returns a reference to the runtime metrics.
+    #[must_use]
     pub fn metrics(&self) -> &Rc<DfirMetrics> {
         &self.metrics
     }
@@ -123,6 +125,7 @@ impl Context {
     }
 
     /// Returns a waker that signals external data has arrived.
+    #[must_use]
     pub fn waker(&self) -> std::task::Waker {
         std::task::Waker::from(self.wake_state.clone())
     }
@@ -323,7 +326,7 @@ impl<Tick: TickClosure> Dfir<Tick> {
     /// Run a single tick. Returns `true` if any subgraph received input data.
     ///
     /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
-    /// and external events (via `can_start_tick` set by wakers/schedule_subgraph).
+    /// and external events (via `can_start_tick` set by `wakers/schedule_subgraph`).
     pub async fn run_tick(&mut self) -> bool {
         #[cfg(feature = "tokio")]
         self.spawn_tasks();

@@ -62,6 +62,7 @@ impl std::fmt::Debug for LocationId {
 
 impl LocationId {
     /// The [`LocationType`] of this location ID. `None` if this is not a root location.
+    #[must_use]
     pub fn location_type(&self) -> Option<LocationType> {
         match self {
             LocationId::Process(_) => Some(LocationType::Process),
@@ -73,6 +74,7 @@ impl LocationId {
 
 #[expect(missing_docs, reason = "TODO")]
 impl LocationId {
+    #[must_use]
     pub fn root(&self) -> &LocationId {
         match self {
             LocationId::Process(_) => self,
@@ -85,6 +87,7 @@ impl LocationId {
         }
     }
 
+    #[must_use]
     pub fn is_root(&self) -> bool {
         match self {
             LocationId::Process(_) | LocationId::Cluster(_) => true,
@@ -93,6 +96,7 @@ impl LocationId {
         }
     }
 
+    #[must_use]
     pub fn is_top_level(&self) -> bool {
         match self {
             LocationId::Process(_) | LocationId::Cluster(_) => true,
@@ -101,6 +105,7 @@ impl LocationId {
         }
     }
 
+    #[must_use]
     pub fn key(&self) -> LocationKey {
         match self {
             LocationId::Process(id) => *id,
@@ -128,6 +133,7 @@ impl LocationId {
         }
     }
 
+    #[must_use]
     pub fn new_node_metadata(
         self,
         collection_kind: CollectionKind,

@@ -149,9 +149,10 @@ impl ExampleChild {
                 .unwrap();
             self.output_len += bytes_read;
 
-            if 0 == bytes_read {
-                panic!("Child process exited before a match was found.");
-            }
+            assert_ne!(
+                0, bytes_read,
+                "Child process exited before a match was found."
+            )
         }
     }
 

@@ -231,6 +231,7 @@ impl<Item> Default for SinkBuilder<Item> {
 }
 impl<Item> SinkBuilder<Item> {
     /// Create a new sink builder.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

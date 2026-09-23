@@ -97,7 +97,7 @@ where
     }
 }
 
-/// Initialize tracing using the above custom formatter with the default directive level of "ERROR", if RUST_LOG is not set.
+/// Initialize tracing using the above custom formatter with the default directive level of "ERROR", if `RUST_LOG` is not set.
 pub fn initialize_tracing() {
     let rust_log = std::env::var("RUST_LOG").unwrap_or_else(|err| {
         match err {

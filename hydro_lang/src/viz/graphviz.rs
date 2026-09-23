@@ -8,6 +8,7 @@ use crate::location::{LocationKey, LocationType};
 use crate::viz::render::VizNodeKey;
 
 /// Escapes a string for use in a DOT graph label.
+#[must_use]
 pub fn escape_dot(string: &str, newline: &str) -> String {
     string.replace('"', "\\\"").replace('\n', newline)
 }

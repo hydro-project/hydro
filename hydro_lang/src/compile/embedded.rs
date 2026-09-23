@@ -199,7 +199,7 @@ pub struct EmbeddedInstantiateEnv {
     ///   external code that produces the stream.
     pub network_inputs: SparseSecondaryMap<LocationKey, Vec<(String, bool, Option<syn::Type>)>>,
     /// Cluster membership streams needed per location key.
-    /// Maps location_key -> vec of cluster LocationKeys whose membership is needed.
+    /// Maps `location_key` -> vec of cluster `LocationKeys` whose membership is needed.
     pub membership_streams: SparseSecondaryMap<LocationKey, Vec<LocationKey>>,
 }
 
@@ -560,6 +560,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
     /// ```ignore
     /// include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
     /// ```
+    #[must_use]
     pub fn generate_embedded(mut self, crate_name: &str) -> syn::File {
         let mut env = EmbeddedInstantiateEnv::default();
         let compiled = self.compile_internal(&mut env);

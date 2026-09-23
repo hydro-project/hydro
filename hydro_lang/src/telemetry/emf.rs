@@ -1,4 +1,4 @@
-//! AWS CloudWatch embedded metric format (EMF).
+//! AWS `CloudWatch` embedded metric format (EMF).
 //!
 //! <https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html>
 #[cfg(feature = "runtime_support")]
@@ -43,6 +43,7 @@ pub struct RecordMetricsSidecar {
 impl RecordMetricsSidecar {
     /// Build an instance. Any `None` will be replaced with the default value.
     #[builder]
+    #[must_use]
     pub fn new(file_path: Option<String>, interval: Option<Duration>) -> Self {
         Self {
             file_path: file_path.unwrap_or_else(|| DEFAULT_FILE_PATH.to_owned()),
@@ -111,7 +112,7 @@ pub fn record_metrics_sidecar(
         let mut rt_intervals = rt_monitor.intervals();
 
         loop {
-            let _ = tokio::time::sleep(interval).await;
+            let () = tokio::time::sleep(interval).await;
 
             let dfir_metrics = dfir_intervals.take_interval();
             let rt_metrics = rt_intervals.next().unwrap();
@@ -280,7 +281,7 @@ where
     Ok(())
 }
 
-/// AWS CloudWatch EMF units.
+/// AWS `CloudWatch` EMF units.
 ///
 /// <https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_MetricDatum.html#ACW-Type-MetricDatum-Unit>
 #[expect(missing_docs, reason = "self-explanatory")]

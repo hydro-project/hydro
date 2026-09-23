@@ -121,11 +121,13 @@ pub enum PullStep<Item, Meta, CanPend: Toggle, CanEnd: Toggle> {
 
 impl<Item, Meta, CanPend: Toggle, CanEnd: Toggle> PullStep<Item, Meta, CanPend, CanEnd> {
     /// Creates a new `PullStep::Ended`, or panics if `CanEnd = No`.
+    #[must_use]
     pub fn ended() -> Self {
         PullStep::Ended(Toggle::create())
     }
 
     /// Creates a new `PullStep::Pending`, or panics if `CanPend = No`.
+    #[must_use]
     pub fn pending() -> Self {
         PullStep::Pending(Toggle::create())
     }
@@ -535,7 +537,7 @@ pub trait Pull {
         CrossSingleton::new(self, singleton_pull, None)
     }
 
-    /// [Self::cross_singleton] with external state.
+    /// [`Self::cross_singleton`] with external state.
     fn cross_singleton_state<SinglePull>(
         self,
         singleton_pull: SinglePull,
@@ -577,7 +579,7 @@ pub trait Pull {
         SymmetricHashJoin::new(self, rhs, lhs_state, rhs_state)
     }
 
-    /// [Self::symmetric_hash_join] with external state.
+    /// [`Self::symmetric_hash_join`] with external state.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn symmetric_hash_join_state<'a, Key, V1, Rhs, V2, LhsState, RhsState>(

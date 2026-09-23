@@ -1,6 +1,7 @@
 use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::prelude::*;
 
+#[must_use]
 pub fn graph_reachability<'a>(
     roots: Stream<u32, Process<'a>, Unbounded>,
     edges: Stream<(u32, u32), Process<'a>, Unbounded>,

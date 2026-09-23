@@ -55,11 +55,13 @@ where
 }
 
 impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
+    #[must_use]
     pub fn ir(&self) -> &Vec<HydroRoot> {
         &self.ir
     }
 
     /// Application name used in telemetry.
+    #[must_use]
     pub fn flow_name(&self) -> &str {
         &self.flow_name
     }
@@ -282,6 +284,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     /// Compiles the flow into DFIR ([`dfir_lang::graph::DfirGraph`]) including networking.
     ///
     /// (This does not compile the DFIR itself, instead use [`Self::deploy`] to compile & deploy the DFIR).
+    #[must_use]
     pub fn compile(mut self) -> CompiledFlow<'a>
     where
         D: Deploy<'a, InstantiateEnv = ()>,
@@ -522,6 +525,7 @@ pub struct DeployResult<'a, D: Deploy<'a>> {
 }
 
 impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
+    #[must_use]
     pub fn get_process<P>(&self, p: &Process<'_, P>) -> &D::Process {
         let LocationId::Process(location_key) = p.id() else {
             panic!("Process ID expected")
@@ -529,6 +533,7 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
         self.processes.get(location_key).unwrap()
     }
 
+    #[must_use]
     pub fn get_cluster<C>(&self, c: &Cluster<'a, C>) -> &D::Cluster {
         let LocationId::Cluster(location_key) = c.id() else {
             panic!("Cluster ID expected")
@@ -536,6 +541,7 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
         self.clusters.get(location_key).unwrap()
     }
 
+    #[must_use]
     pub fn get_external<P>(&self, e: &External<'_, P>) -> &D::External {
         self.externals.get(e.key).unwrap()
     }
@@ -638,6 +644,7 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 impl DeployResult<'_, crate::deploy::HydroDeploy> {
     /// Get the raw port handle.
+    #[must_use]
     pub fn raw_port<M>(
         &self,
         port: ExternalBytesPort<M>,

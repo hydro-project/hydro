@@ -259,6 +259,7 @@ pub trait NetworkFor<T: ?Sized> {
     /// Whether this network channel leaves serialization to code outside of Hydro (see
     /// [`Embedded`]). When `true`, [`Self::serialize_thunk`] and [`Self::deserialize_thunk`] are
     /// never called; the raw element type flows across the channel unserialized.
+    #[must_use]
     fn is_embedded() -> bool {
         false
     }
@@ -360,6 +361,7 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     /// making progress, that channel will not experience a failure that would cause the test to
     /// block indefinitely. However, any *safety* issues caused by connection failures will still
     /// be caught, such as a race condition between a failed connection and some other message.
+    #[must_use]
     pub const fn fail_stop(self) -> NetworkingConfig<Tcp<FailStop>, S> {
         NetworkingConfig {
             name: self.name,
@@ -375,6 +377,7 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     ///
     /// # Non-Determinism
     /// A lossy TCP channel will non-deterministically drop messages during execution.
+    #[must_use]
     pub const fn lossy(self, nondet: NonDet) -> NetworkingConfig<Tcp<Lossy>, S> {
         let _ = nondet;
         NetworkingConfig {
@@ -398,6 +401,7 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) to opt in:
     /// the simulator will not actually drop packets—it delays "dropped" messages until
     /// the end of the execution, which catches safety bugs but cannot test liveness.
+    #[must_use]
     pub const fn lossy_delayed_forever(self) -> NetworkingConfig<Tcp<LossyDelayedForever>, S> {
         NetworkingConfig {
             name: self.name,
@@ -415,6 +419,7 @@ impl<S: ?Sized> NetworkingConfig<Udp<()>, S> {
     ///
     /// # Non-Determinism
     /// A lossy UDP channel will non-deterministically drop messages during execution.
+    #[must_use]
     pub const fn lossy(self, nondet: NonDet) -> NetworkingConfig<Udp<Lossy>, S> {
         let _ = nondet;
         NetworkingConfig {
@@ -438,6 +443,7 @@ impl<S: ?Sized> NetworkingConfig<Udp<()>, S> {
     /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) to opt in:
     /// the simulator will not actually drop packets—it delays "dropped" messages until
     /// the end of the execution, which catches safety bugs but cannot test liveness.
+    #[must_use]
     pub const fn lossy_delayed_forever(self) -> NetworkingConfig<Udp<LossyDelayedForever>, S> {
         NetworkingConfig {
             name: self.name,
@@ -447,10 +453,10 @@ impl<S: ?Sized> NetworkingConfig<Udp<()>, S> {
 }
 
 #[sealed::sealed]
-impl<Tr: ?Sized, S: ?Sized, T: ?Sized> NetworkFor<T> for NetworkingConfig<Tr, S>
+impl<Tr, S, T: ?Sized> NetworkFor<T> for NetworkingConfig<Tr, S>
 where
-    Tr: TransportKind,
-    S: SerKind<T>,
+    Tr: ?Sized + TransportKind,
+    S: ?Sized + SerKind<T>,
 {
     type OrderingGuarantee = Tr::OrderingGuarantee;
 
@@ -478,10 +484,10 @@ where
 }
 
 #[sealed::sealed]
-impl<Tr: ?Sized, S: ?Sized, T: ?Sized> NetworkFor<T> for NetworkingConfig<Tr, S, String>
+impl<Tr, S, T: ?Sized> NetworkFor<T> for NetworkingConfig<Tr, S, String>
 where
-    Tr: TransportKind,
-    S: SerKind<T>,
+    Tr: ?Sized + TransportKind,
+    S: ?Sized + SerKind<T>,
 {
     type OrderingGuarantee = Tr::OrderingGuarantee;
 

@@ -84,6 +84,7 @@ impl TaglessMemberId {
     ///
     /// # Panics
     /// Panics if the `deploy` / `deploy_integration` / `sim_runtime` / `embedded_runtime` feature is not enabled.
+    #[must_use]
     pub fn from_raw_id(_raw_id: u32) -> Self {
         assert_feature! {
             #[cfg(any(feature = "deploy", feature = "deploy_integration", feature = "sim", feature = "sim_runtime", feature = "embedded_runtime"))]
@@ -96,6 +97,7 @@ impl TaglessMemberId {
     /// # Panics
     /// Panics if this is not the `Legacy` variant or if the `deploy_integration` / `sim_runtime`
     /// feature is not enabled.
+    #[must_use]
     pub fn get_raw_id(&self) -> u32 {
         assert_feature! {
             #[cfg(any(feature = "deploy", feature = "deploy_integration", feature = "sim", feature = "sim_runtime", feature = "embedded_runtime"))]
@@ -129,6 +131,7 @@ impl TaglessMemberId {
     /// # Panics
     /// Panics if this is not the `Docker` variant or if the `docker_runtime` / `ecs_runtime`
     /// feature is not enabled.
+    #[must_use]
     pub fn get_container_name(&self) -> &str {
         assert_feature! {
             #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
@@ -162,6 +165,7 @@ impl TaglessMemberId {
     /// # Panics
     /// Panics if this is not the `Maelstrom` variant or if the `maelstrom_runtime`
     /// feature is not enabled.
+    #[must_use]
     pub fn get_maelstrom_node_id(&self) -> &str {
         assert_feature! {
             #[cfg(feature = "maelstrom_runtime")]
@@ -220,11 +224,13 @@ pub struct MemberId<Tag> {
 impl<Tag> MemberId<Tag> {
     /// Converts this typed member ID into an untyped [`TaglessMemberId`],
     /// discarding the compile-time cluster tag.
+    #[must_use]
     pub fn into_tagless(self) -> TaglessMemberId {
         self.inner
     }
 
     /// Creates a typed [`MemberId`] from an untyped [`TaglessMemberId`].
+    #[must_use]
     pub fn from_tagless(inner: TaglessMemberId) -> Self {
         Self {
             inner,
@@ -236,6 +242,7 @@ impl<Tag> MemberId<Tag> {
     ///
     /// # Panics
     /// Panics if the `deploy_integration` feature is not enabled.
+    #[must_use]
     pub fn from_raw_id(raw_id: u32) -> Self {
         #[expect(clippy::allow_attributes, reason = "Depends on features.")]
         #[allow(
@@ -253,6 +260,7 @@ impl<Tag> MemberId<Tag> {
     /// # Panics
     /// Panics if the underlying [`TaglessMemberId`] is not the `Legacy` variant
     /// or if the `deploy_integration` feature is not enabled.
+    #[must_use]
     pub fn get_raw_id(&self) -> u32 {
         self.inner.get_raw_id()
     }

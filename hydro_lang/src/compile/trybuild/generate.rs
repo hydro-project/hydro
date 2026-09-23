@@ -48,7 +48,7 @@ pub enum LinkingMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeployMode {
     #[cfg(feature = "deploy")]
-    /// Standard HydroDeploy
+    /// Standard `HydroDeploy`
     HydroDeploy,
     #[cfg(any(feature = "docker_deploy", feature = "ecs_deploy"))]
     /// Containerized deployment (Docker/ECS)
@@ -84,14 +84,9 @@ pub fn init_test() {
 fn clean_bin_name_prefix(bin_name_prefix: &str) -> String {
     bin_name_prefix
         .replace("::", "__")
-        .replace(" ", "_")
-        .replace(",", "_")
-        .replace("<", "_")
-        .replace(">", "")
-        .replace("(", "")
-        .replace(")", "")
-        .replace("{", "_")
-        .replace("}", "_")
+        .replace([' ', ',', '<'], "_")
+        .replace(['>', '(', ')'], "")
+        .replace(['{', '}'], "_")
 }
 
 #[derive(Debug, Clone)]
@@ -124,7 +119,7 @@ pub fn create_graph_trybuild(
 ) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
-    let crate_name = source_manifest.package.name.replace("-", "_");
+    let crate_name = source_manifest.package.name.replace('-', "_");
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
@@ -580,9 +575,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
                 lib_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
                 forward_rustflags(&mut lib_cmd);
                 let status = lib_cmd.stdin(Stdio::null()).status().unwrap();
-                if !status.success() {
-                    panic!("dep prebuild failed");
-                }
+                assert!(status.success(), "dep prebuild failed")
             },
         );
 
@@ -776,17 +769,19 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
     // (Only relevant when prebuild is active.)
     if use_prebuild {
         for line in stderr_output.lines() {
-            if line.contains("Compiling") && !line.contains("dylib-examples") {
-                panic!(
+            if line.contains("Compiling") {
+                assert!(
+                    line.contains("dylib-examples"),
                     "unexpected recompilation in final build: {line}\nfull stderr:\n{stderr_output}"
                 );
             }
         }
     }
 
-    if out.is_err() {
-        panic!("final build failed to produce binary.\nstderr:\n{stderr_output}");
-    }
+    assert!(
+        out.is_ok(),
+        "final build failed to produce binary.\nstderr:\n{stderr_output}"
+    );
 
     if coverage_enabled {
         // The coverage mapping needed to resolve profile data at report time lives in
@@ -1050,7 +1045,7 @@ pub fn create_trybuild()
         fs::create_dir_all(path!(project.dir / "examples"))?;
 
         let crate_name_ident = syn::Ident::new(
-            &crate_name.replace("-", "_"),
+            &crate_name.replace('-', "_"),
             proc_macro2::Span::call_site(),
         );
 
@@ -1082,7 +1077,7 @@ pub fn create_trybuild()
         fs::create_dir_all(path!(dylib_dir / "src"))?;
 
         let trybuild_crate_name_ident = syn::Ident::new(
-            &project_name.replace("-", "_"),
+            &project_name.replace('-', "_"),
             proc_macro2::Span::call_site(),
         );
         write_atomic(

@@ -231,7 +231,7 @@ pub fn right_distributes<S: PartialEq + Clone, const N: usize>(
     Ok(())
 }
 
-/// Defines the absorbing_element property.
+/// Defines the `absorbing_element` property.
 ///
 /// An element z is absorbing if az = z and za = z for all a.
 pub fn absorbing_element<S: PartialEq + Clone, const N: usize>(
@@ -274,7 +274,7 @@ pub fn inverse<S: PartialEq + Clone, const N: usize>(
     Ok(())
 }
 
-/// Defines the non_zero inverse property.
+/// Defines the `non_zero` inverse property.
 ///
 /// Every element except zero must have an inverse.
 pub fn nonzero_inverse<S: PartialEq + Clone, const N: usize>(
@@ -434,7 +434,7 @@ pub fn bilinearity<S: PartialEq + Clone, R: PartialEq + Clone, T: PartialEq + Cl
 //     ("inverse", inverse),
 //     ("absorbing_element", absorbing_element)];
 
-/// Loop through each algebraic property in SINGLE_FUNCTION_PROPERTIES and test for them.
+/// Loop through each algebraic property in `SINGLE_FUNCTION_PROPERTIES` and test for them.
 #[cfg(feature = "alloc")]
 pub fn get_single_function_properties<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -1012,6 +1012,7 @@ mod test {
     fn test_semiring() {
         use alloc::borrow::ToOwned;
         use alloc::format;
+        use alloc::string::String;
 
         // Test +, x is a semiring
         assert!(semiring(TEST_ITEMS, &u32::wrapping_add, &u32::wrapping_mul, 0, 1).is_ok());
@@ -1048,7 +1049,7 @@ mod test {
             semiring(
                 &[
                     HashSet::from([]),
-                    HashSet::from(["".to_owned()]),
+                    HashSet::from([String::new()]),
                     HashSet::from(["a".to_owned()]),
                     HashSet::from(["aa".to_owned(), "bb".to_owned()]),
                     HashSet::from(["ab".to_owned(), "bb".to_owned(), "cc".to_owned()]),
@@ -1071,7 +1072,7 @@ mod test {
                     new_set
                 },
                 HashSet::from([]),
-                HashSet::from(["".to_owned()]),
+                HashSet::from([String::new()]),
             )
             .is_ok()
         );

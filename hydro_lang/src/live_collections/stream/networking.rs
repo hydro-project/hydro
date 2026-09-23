@@ -124,6 +124,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # }));
     /// # }
     /// ```
+    #[must_use]
     pub fn send_bincode<L2>(
         self,
         other: &Process<'a, L2>,
@@ -171,11 +172,10 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -260,6 +260,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # }));
     /// # }
     /// ```
+    #[must_use]
     pub fn broadcast_bincode<L2: 'a>(
         self,
         other: &Cluster<'a, L2>,
@@ -460,6 +461,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # });
     /// # }
     /// ```
+    #[must_use]
     pub fn send_bincode_external<L2>(
         self,
         other: &External<'_, L2>,
@@ -505,6 +507,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// Sets up a bincode-encoded simulation output port for this stream, allowing test code to
     /// receive elements sent to this stream during simulation. Use [`Stream::sim_output_with`] to
     /// select another codec.
+    #[must_use]
     pub fn sim_output(self) -> SimReceiver<T, O, R>
     where
         T: Serialize + DeserializeOwned,
@@ -597,6 +600,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
+    #[must_use]
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -708,6 +712,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     /// # }));
     /// # }
     /// ```
+    #[must_use]
     pub fn round_robin_bincode<L2: 'a>(
         self,
         other: &Cluster<'a, L2>,
@@ -860,6 +865,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
     /// # }));
     /// # }
     /// ```
+    #[must_use]
     pub fn round_robin_bincode<L2: 'a>(
         self,
         other: &Cluster<'a, L2>,
@@ -1021,6 +1027,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
+    #[must_use]
     pub fn send_bincode<L2>(
         self,
         other: &Process<'a, L2>,
@@ -1101,11 +1108,10 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -1205,6 +1211,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
+    #[must_use]
     pub fn broadcast_bincode<L2: 'a>(
         self,
         other: &Cluster<'a, L2>,
@@ -1391,6 +1398,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// Sets up a bincode-encoded simulation output port for this cluster stream, allowing test
     /// code to receive `(member_id, T)` pairs during simulation. Use
     /// [`Stream::sim_cluster_output_with`] to select another codec.
+    #[must_use]
     pub fn sim_cluster_output(self) -> crate::sim::SimClusterReceiver<T, O, R>
     where
         T: Serialize + DeserializeOwned,
@@ -1471,6 +1479,7 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
+    #[must_use]
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,

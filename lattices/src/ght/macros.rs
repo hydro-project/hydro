@@ -73,7 +73,7 @@ macro_rules! GhtType {
 }
 
 #[macro_export]
-/// Construct a forest of Ghts (i.e. a ColtForest) with the given schema and storage type.
+/// Construct a forest of Ghts (i.e. a `ColtForest`) with the given schema and storage type.
 ///
 /// # Example
 /// ```

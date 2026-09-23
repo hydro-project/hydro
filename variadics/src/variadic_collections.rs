@@ -39,8 +39,8 @@ pub trait VariadicSet: VariadicCollection {}
 #[cfg(feature = "std")]
 pub type VariadicHashSetStd<T> = VariadicHashSet<T, std::hash::RandomState>;
 
-/// HashSet that stores Variadics of owned values but allows
-/// for lookups with RefVariadics as well
+/// `HashSet` that stores Variadics of owned values but allows
+/// for lookups with `RefVariadics` as well
 #[derive(Clone)]
 pub struct VariadicHashSet<T, S> {
     table: HashTable<T>,
@@ -50,6 +50,7 @@ pub struct VariadicHashSet<T, S> {
 #[cfg(feature = "std")]
 impl<T> VariadicHashSet<T, std::hash::RandomState> {
     /// Creates a new `VariadicHashSet` with a default hasher.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             table: HashTable::new(),
@@ -85,7 +86,7 @@ where
     for<'a> T::AsRefVar<'a>: Hash,
     S: BuildHasher,
 {
-    /// given a RefVariadic lookup key, get a RefVariadic version of a tuple in the set
+    /// given a `RefVariadic` lookup key, get a `RefVariadic` version of a tuple in the set
     pub fn get<'a>(&'a self, ref_var: T::AsRefVar<'_>) -> Option<&'a T> {
         let hash = self.hasher.hash_one(ref_var);
         self.table.find(hash, |item| {
@@ -160,14 +161,14 @@ where
 }
 
 impl<T, S> VariadicHashSet<T, S> {
-    /// allocate a new VariadicHashSet with a specific hasher
+    /// allocate a new `VariadicHashSet` with a specific hasher
     pub fn with_hasher(hasher: S) -> Self {
         Self {
             table: HashTable::new(),
             hasher,
         }
     }
-    /// allocate a new VariadicHashSet with a specific hasher and capacity
+    /// allocate a new `VariadicHashSet` with a specific hasher and capacity
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
         Self {
             table: HashTable::with_capacity(capacity),
@@ -238,8 +239,8 @@ pub type VariadicCountedHashSetStd<K> = VariadicCountedHashSet<K, std::hash::Ran
 /// Trait for a multiset of Tuples
 pub trait VariadicMultiset: VariadicCollection {}
 
-/// HashMap keyed on Variadics of (owned value, count) pairs, allows
-/// for lookups with RefVariadics.
+/// `HashMap` keyed on Variadics of (owned value, count) pairs, allows
+/// for lookups with `RefVariadics`.
 #[derive(Clone)]
 pub struct VariadicCountedHashSet<K, S>
 where
@@ -256,6 +257,7 @@ where
     K: VariadicExt,
 {
     /// Creates a new `VariadicCountedHashSet` with a default hasher.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             table: HashTable::new(),
@@ -292,7 +294,7 @@ where
     for<'a> K::AsRefVar<'a>: Hash,
     S: BuildHasher,
 {
-    /// given a RefVariadic lookup key, get a RefVariadic version of an entry in the map
+    /// given a `RefVariadic` lookup key, get a `RefVariadic` version of an entry in the map
     pub fn get<'a>(&'a self, ref_var: K::AsRefVar<'_>) -> Option<&'a (K, usize)> {
         let hash = self.hasher.hash_one(ref_var);
         self.table.find(hash, |(key, _val)| {
@@ -412,7 +414,7 @@ impl<K, S> VariadicCountedHashSet<K, S>
 where
     K: VariadicExt,
 {
-    /// allocate a new VariadicCountedHashSet with a specific hasher
+    /// allocate a new `VariadicCountedHashSet` with a specific hasher
     pub fn with_hasher(hasher: S) -> Self {
         Self {
             table: HashTable::new(),
@@ -420,7 +422,7 @@ where
             len: 0,
         }
     }
-    /// allocate a new VariadicCountedHashSet with a specific hasher and capacity
+    /// allocate a new `VariadicCountedHashSet` with a specific hasher and capacity
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
         Self {
             table: HashTable::with_capacity(capacity),
@@ -493,7 +495,7 @@ where
 }
 
 /// Column storage for Variadic tuples of type Schema
-/// An alternative to VariadicHashMultiset
+/// An alternative to `VariadicHashMultiset`
 #[cfg(feature = "alloc")]
 #[derive(Clone)]
 pub struct VariadicColumnMultiset<Schema>
@@ -510,6 +512,7 @@ where
     T: VariadicExt + Eq + Hash,
 {
     /// initialize an empty columnar multiset
+    #[must_use]
     pub fn new() -> Self {
         Self {
             columns: <T::IntoVec as Default>::default(),

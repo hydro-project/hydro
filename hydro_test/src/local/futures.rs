@@ -4,6 +4,7 @@ use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::prelude::*;
 use stageleft::q;
 
+#[must_use]
 pub fn unordered<'a>(process: &Process<'a>) -> Stream<u32, Process<'a>, Unbounded, NoOrder> {
     process
         .source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
@@ -14,6 +15,7 @@ pub fn unordered<'a>(process: &Process<'a>) -> Stream<u32, Process<'a>, Unbounde
         .resolve_futures()
 }
 
+#[must_use]
 pub fn ordered<'a>(process: &Process<'a>) -> Stream<u32, Process<'a>, Unbounded> {
     process
         .source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))

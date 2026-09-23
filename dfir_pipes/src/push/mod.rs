@@ -120,6 +120,7 @@ where
     CanPend: Toggle,
 {
     /// Creates a new `PushStep::Pending`, or panics if `CanPend = No`.
+    #[must_use]
     pub fn pending() -> Self {
         PushStep::Pending(Toggle::create())
     }

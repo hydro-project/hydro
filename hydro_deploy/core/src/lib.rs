@@ -167,13 +167,13 @@ pub enum ServerStrategy {
     Direct(BaseServerStrategy),
     Many(BaseServerStrategy),
     Demux(BTreeMap<u32, ServerStrategy>),
-    /// AppendOnlyVec has a quite large inline array, so we box it.
+    /// `AppendOnlyVec` has a quite large inline array, so we box it.
     Merge(Box<AppendOnlyVec<ServerStrategy>>),
     Tagged(Box<ServerStrategy>, u32),
     Null,
 }
 
-/// Like BindType, but includes metadata for determining whether a connection is possible.
+/// Like `BindType`, but includes metadata for determining whether a connection is possible.
 pub enum ClientStrategy<'a> {
     UnixSocket(
         /// Unique identifier for the host this socket will be on.

@@ -26,6 +26,7 @@ enum Role {
     GossipingServer5,
 }
 
+#[must_use]
 pub fn default_server_address() -> SocketAddr {
     ipv4_resolve("localhost:54321").unwrap()
 }

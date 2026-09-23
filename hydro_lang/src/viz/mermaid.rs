@@ -8,6 +8,7 @@ use crate::location::{LocationKey, LocationType};
 use crate::viz::render::VizNodeKey;
 
 /// Escapes a string for use in a mermaid graph label.
+#[must_use]
 pub fn escape_mermaid(string: &str) -> String {
     string
         .replace('&', "&amp;")
@@ -17,7 +18,7 @@ pub fn escape_mermaid(string: &str) -> String {
         .replace('#', "&num;")
         .replace('\n', "<br>")
         // Handle code block markers
-        .replace("`", "&#96;")
+        .replace('`', "&#96;")
         // Handle parentheses that can conflict with Mermaid syntax
         .replace('(', "&#40;")
         .replace(')', "&#41;")

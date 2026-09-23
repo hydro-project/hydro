@@ -189,6 +189,7 @@ impl<'t, 'a, S, L: Location<'a>> StateNullBuilder<'t, S, L> {
         private_bounds,
         reason = "only Hydro collections can implement CycleCollection"
     )]
+    #[must_use]
     pub fn build(self) -> (TickCycleHandle<'a, S>, S)
     where
         S: CycleCollection<'a, TickCycle, Location = Tick<L::DropConsistency>> + DeferTick,

@@ -11,6 +11,7 @@ pub struct GenerateMessage {
     pub msg_id: usize,
 }
 
+#[must_use]
 pub fn unique_id_server<'a, C: 'a>(
     input: KeyedStream<String, GenerateMessage, Cluster<'a, C>>,
     nondet_ids: NonDet,
@@ -49,7 +50,10 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[cfg_attr(not(maelstrom_available), ignore)]
+    #[cfg_attr(
+        not(maelstrom_available),
+        ignore = "requires the Maelstrom binary (set the MAELSTROM_PATH env var)"
+    )]
     async fn test_with_maelstrom() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();

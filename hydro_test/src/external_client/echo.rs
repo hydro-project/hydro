@@ -5,6 +5,7 @@ use hydro_lang::location::MembershipEvent;
 use hydro_lang::prelude::*;
 use hydro_std::membership::track_membership;
 
+#[must_use]
 pub fn echo_server<'a, P>(
     in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder>,
     membership: KeyedStream<u64, MembershipEvent, Process<'a, P>, Unbounded, TotalOrder>,

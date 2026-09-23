@@ -50,12 +50,14 @@ where
     E: Key,
 {
     /// Creates an empty `DiMulGraph`.
+    #[must_use]
     pub fn new() -> Self {
         Default::default()
     }
 
     /// Creates a `DiMulGraph` with pre-allocated memory for `capacity` vertices and `capacity`
     /// edges.
+    #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             // Estimate 1 edge per vertex.
@@ -205,11 +207,13 @@ where
     }
 
     /// Return an iterator over all edge IDs `E`.
+    #[must_use]
     pub fn edge_ids(&self) -> slotmap::basic::Keys<'_, E, (V, V)> {
         self.edges.keys()
     }
 
     /// Return an iterator over all edges in form `(E, (V, V))`.
+    #[must_use]
     pub fn edges(
         &self,
     ) -> impl '_ + ExactSizeIterator<Item = (E, (V, V))> + FusedIterator + Clone + Debug {

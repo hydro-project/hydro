@@ -358,7 +358,7 @@ pub struct TcpMultiConnectionSource<C: Decoder> {
     pub active_connections: Vec<Option<(u64, FramedRead<OwnedReadHalf, C>)>>,
     /// Cursor for fair round-robin polling
     pub poll_cursor: usize,
-    /// Channel to send new sinks to the TcpMultiConnectionSink
+    /// Channel to send new sinks to the `TcpMultiConnectionSink`
     pub new_sink_sender: mpsc::UnboundedSender<(u64, FramedWrite<OwnedWriteHalf, C>)>,
     /// Channel to send membership events
     pub membership_sender: mpsc::UnboundedSender<(u64, bool)>,
@@ -460,11 +460,11 @@ where
 }
 
 /// TCP-only multi-connection sink using concrete types (no boxing).
-/// Routes (connection_id, data) to the appropriate connection.
+/// Routes (`connection_id`, data) to the appropriate connection.
 pub struct TcpMultiConnectionSink<I, C: Encoder<I>> {
     /// Map of connection IDs to their framed writers
     pub connection_sinks: HashMap<u64, FramedWrite<OwnedWriteHalf, C>>,
-    /// Channel to receive new sinks from TcpMultiConnectionSource
+    /// Channel to receive new sinks from `TcpMultiConnectionSource`
     pub new_sink_receiver: mpsc::UnboundedReceiver<(u64, FramedWrite<OwnedWriteHalf, C>)>,
     _marker: std::marker::PhantomData<fn(I) -> I>, /* fn(I) -> I instead of just I to keep the struct invariant over I, which keeps it Unpin. */
 }

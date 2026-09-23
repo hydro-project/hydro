@@ -325,10 +325,7 @@ impl Host for GcpComputeEngineHost {
         // Name must match regex: (?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?), max length = 63 (61 + 1 a-z before and after)
         if let Some(mut display_name) = self.display_name.clone() {
             vm_name.push('-');
-            display_name = display_name
-                .replace("_", "-")
-                .replace(":", "-")
-                .to_lowercase();
+            display_name = display_name.replace(['_', ':'], "-").to_lowercase();
 
             // Keep the latter half of display_name if it is too long
             let num_chars_to_cut = vm_name.len() + display_name.len() - 63;
@@ -459,11 +456,7 @@ impl Host for GcpComputeEngineHost {
 
                 Arc::new(LaunchedComputeEngine {
                     resource_result: resource_result.clone(),
-                    user: self
-                        .user
-                        .as_ref()
-                        .cloned()
-                        .unwrap_or_else(|| "hydro".to_owned()),
+                    user: self.user.clone().unwrap_or_else(|| "hydro".to_owned()),
                     internal_ip,
                     external_ip,
                 })

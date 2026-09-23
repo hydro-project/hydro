@@ -1,5 +1,6 @@
 use hydro_lang::prelude::*;
 
+#[must_use]
 pub fn count_elems<'a, T: 'a>(
     input_stream: Stream<T, Process<'a>, Unbounded>,
 ) -> Stream<u32, Process<'a>, Unbounded> {

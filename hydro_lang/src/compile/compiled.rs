@@ -50,6 +50,7 @@ impl<'a> CompiledFlow<'a> {
     }
 
     /// Returns the DFIR graph (or [`PartitionError`]) for every location.
+    #[must_use]
     pub fn all_dfir(&self) -> &SecondaryMap<LocationKey, Result<DfirGraph, PartitionError>> {
         &self.dfir
     }
