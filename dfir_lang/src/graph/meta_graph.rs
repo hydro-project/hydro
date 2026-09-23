@@ -1023,14 +1023,17 @@ impl DfirGraph {
         let mut gate_checks: Vec<TokenStream> = entry_handoffs
             .iter()
             .filter(|&&hoff_id| {
-                // Check if the successor (windowing operator) is lazy.
+                // Check if the successor (windowing operator) is lazy or retaining.
                 // If so, exclude from the gate — it doesn't trigger the loop.
                 let is_lazy = self
                     .node_successors(hoff_id)
                     .next()
                     .and_then(|(_, succ)| self.node_op_inst(succ))
                     .is_some_and(|op_inst| {
-                        op_inst.op_constraints.flo_type == Some(FloType::WindowingLazy)
+                        matches!(
+                            op_inst.op_constraints.flo_type,
+                            Some(FloType::WindowingLazy | FloType::WindowingRetain)
+                        )
                     });
                 !is_lazy
             })
@@ -1261,6 +1264,43 @@ impl DfirGraph {
                 ))
             })
             .collect::<SparseSecondaryMap<_, _>>();
+
+        // Determine which handoff nodes feed a retaining windowing operator (`snapshot()`,
+        // `FloType::WindowingRetain`). Like defer_tick back-edges, these buffers must be
+        // captured `std::vec::Vec`s declared outside the tick closure so that pending data
+        // persists across ticks where the consuming loop does not fire (never dropped).
+        let retain_hoffs = handoff_nodes
+            .iter()
+            .map(|&(node_id, _, _)| node_id)
+            .filter(|&node_id| {
+                self.node_successors(node_id)
+                    .next()
+                    .and_then(|(_, succ)| self.node_op_inst(succ))
+                    .is_some_and(|op_inst| {
+                        op_inst.op_constraints.flo_type == Some(FloType::WindowingRetain)
+                    })
+            })
+            .collect::<BTreeSet<_>>();
+
+        // Buffer idents for retaining windowing handoffs, declared outside the tick closure.
+        let retain_buf_idents = handoff_nodes
+            .iter()
+            .filter(|&&(hoff_id, kind, _)| {
+                if !retain_hoffs.contains(&hoff_id) {
+                    return false;
+                }
+                assert_eq!(
+                    HandoffKind::Vec,
+                    kind,
+                    "retaining windowing (`snapshot()`) handoffs must be `Vec`-kind"
+                );
+                true
+            })
+            .map(|&(hoff_id, _kind, (src_span, dst_span))| {
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                self.hoff_buf_ident(hoff_id, span)
+            })
+            .collect::<Vec<_>>();
 
         // Back buffer idents, buf idents, and if they are lazy.
         let back_buffer_idents_laziness = handoff_nodes
@@ -1990,7 +2030,13 @@ impl DfirGraph {
                     .zip(send_hoffs.iter())
                     .filter_map(|((buf_ident, &kind), &hoff_id)| {
                         let span = buf_ident.span();
-                        if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
+                        if retain_hoffs.contains(&hoff_id) {
+                            // Retaining windowing (`snapshot()`) buffers are declared outside
+                            // the tick closure and must NOT be re-declared or cleared: the
+                            // producer appends across ticks until the consuming loop fires and
+                            // drains.
+                            None
+                        } else if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
                             // Defer_tick send buffers are declared outside the tick closure
                             // as std::vec::Vec for O(1) swap. Just clear here.
                             Some(quote_spanned! {span=>
@@ -2030,7 +2076,10 @@ impl DfirGraph {
                 let recv_hoff_drop_code = recv_buf_idents
                     .iter()
                     .zip(recv_hoffs.iter())
-                    .filter(|&(_, &hoff_id)| !back_edge_hoffs_and_lazyness.contains_key(hoff_id))
+                    .filter(|&(_, &hoff_id)| {
+                        !back_edge_hoffs_and_lazyness.contains_key(hoff_id)
+                            && !retain_hoffs.contains(&hoff_id)
+                    })
                     .map(|(buf_ident, _)| {
                         let span = buf_ident.span();
                         quote_spanned! {span=>
@@ -2223,6 +2272,11 @@ impl DfirGraph {
                 // This enables O(1) mem::swap at end of tick for double-buffering.
                 #( let mut #back_buffer_idents = ::std::vec::Vec::new(); )*
                 #( let mut #defer_tick_buf_idents = ::std::vec::Vec::new(); )*
+
+                // Retaining windowing (`snapshot()`) handoff buffers: declared outside the tick
+                // closure so pending data persists across ticks where the consuming loop does
+                // not fire. Producers append each tick; the loop drains at its next firing.
+                #( let mut #retain_buf_idents = ::std::vec::Vec::new(); )*
 
                 // Bump allocator for handoffs (except for back-edge handoffs, above).
                 let mut #bump_ident = #root::bumpalo::Bump::new();
