@@ -329,11 +329,10 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     // Check for unexpected recompilations (only in dylib mode with prebuild).
                                     if params.is_dylib {
                                         for line in &stderr_lines {
-                                            if line.contains("Compiling")
-                                                && !line.contains("dylib-examples")
-                                            {
+                                            if line.contains("Compiling") {
                                                 assert!(
-                                                    line.contains(job_name),
+                                                    line.contains("dylib-examples")
+                                                        || line.contains(job_name),
                                                     "unexpected recompilation in deploy final build: {line}\nfull stderr:\n{}",
                                                     stderr_lines.join("\n")
                                                 );

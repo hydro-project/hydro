@@ -127,7 +127,7 @@ mod tests {
     use crate::pull::test_utils::TestPull;
     use crate::pull::{Pull, Repeat};
 
-    /// When `item_pull` CanEnd=No and `singleton_pull` CanEnd=Yes,
+    /// When `item_pull` has `CanEnd = No` and `singleton_pull` has `CanEnd = Yes`,
     /// `CanEnd` should allow ending when `singleton_pull` ends empty.
     #[test]
     fn cross_singleton_ends_when_singleton_ends_empty() {
@@ -139,7 +139,7 @@ mod tests {
         let _ = cs.as_mut().pull(&mut ());
     }
 
-    /// When `item_pull` CanEnd=Yes and `singleton_pull` CanEnd=No,
+    /// When `item_pull` has `CanEnd = Yes` and `singleton_pull` has `CanEnd = No`,
     /// `CanEnd` should allow ending when `item_pull` ends.
     #[test]
     fn cross_singleton_ends_when_item_pull_ends() {
