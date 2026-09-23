@@ -147,7 +147,6 @@ impl From<DebugExpr> for ClosureExpr {
 }
 
 impl ClosureExpr {
-    #[must_use]
     pub fn new(expr: DebugExpr, singleton_refs: Vec<(HydroNode, bool)>) -> Self {
         Self {
             expr,
@@ -155,7 +154,6 @@ impl ClosureExpr {
         }
     }
 
-    #[must_use]
     pub fn has_mut_ref(&self) -> bool {
         self.singleton_refs.iter().any(|(_, is_mut)| *is_mut)
     }
@@ -2088,7 +2086,6 @@ impl HydroRoot {
         }
     }
 
-    #[must_use]
     pub fn op_metadata(&self) -> &HydroIrOpMetadata {
         match self {
             HydroRoot::ForEach { op_metadata, .. }
@@ -2111,7 +2108,6 @@ impl HydroRoot {
         }
     }
 
-    #[must_use]
     pub fn input(&self) -> &HydroNode {
         match self {
             HydroRoot::ForEach { input, .. }
@@ -2123,12 +2119,10 @@ impl HydroRoot {
         }
     }
 
-    #[must_use]
     pub fn input_metadata(&self) -> &HydroIrMetadata {
         self.input().metadata()
     }
 
-    #[must_use]
     pub fn print_root(&self) -> String {
         match self {
             HydroRoot::ForEach { f, .. } => format!("ForEach({:?})", f),
@@ -2340,7 +2334,6 @@ pub fn transform_bottom_up(
     });
 }
 
-#[must_use]
 pub fn deep_clone(ir: &[HydroRoot]) -> Vec<HydroRoot> {
     let mut seen_tees = HashMap::new();
     ir.iter()
@@ -2453,7 +2446,6 @@ impl serde::Serialize for SharedNode {
 }
 
 impl SharedNode {
-    #[must_use]
     pub fn as_ptr(&self) -> *const RefCell<HydroNode> {
         Rc::as_ptr(&self.0)
     }
@@ -2507,7 +2499,6 @@ pub enum AccessCounter {
 }
 
 impl AccessCounter {
-    #[must_use]
     pub fn new() -> Self {
         Self::Counting(Cell::new(0))
     }
@@ -2641,7 +2632,6 @@ pub enum CollectionKind {
 }
 
 impl CollectionKind {
-    #[must_use]
     pub fn is_bounded(&self) -> bool {
         matches!(
             self,
@@ -2666,7 +2656,6 @@ impl CollectionKind {
 
     /// Returns whether this collection kind is already "strict" (`TotalOrder` + `ExactlyOnce`),
     /// meaning no non-determinism needs to be observed for mut closures.
-    #[must_use]
     pub fn is_strict(&self) -> bool {
         match self {
             CollectionKind::Stream { order, retry, .. } => {
@@ -2688,7 +2677,6 @@ impl CollectionKind {
     }
 
     /// Creates a "strict" version of this kind with `TotalOrder` and `ExactlyOnce`.
-    #[must_use]
     pub fn strict_kind(&self) -> CollectionKind {
         match self {
             CollectionKind::Stream {
@@ -2771,7 +2759,6 @@ impl HydroIrOpMetadata {
         clippy::new_without_default,
         reason = "explicit calls to new ensure correct backtrace bounds"
     )]
-    #[must_use]
     pub fn new() -> HydroIrOpMetadata {
         Self::new_with_skip(1)
     }

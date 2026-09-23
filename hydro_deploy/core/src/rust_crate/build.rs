@@ -108,7 +108,6 @@ pub struct BuildOutput {
 }
 impl BuildOutput {
     /// A unique ID for the binary, based its contents.
-    #[must_use]
     pub fn unique_id(&self) -> impl use<> + Display {
         blake3::hash(&self.bin_data).to_hex()
     }

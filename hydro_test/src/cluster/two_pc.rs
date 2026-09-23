@@ -11,7 +11,6 @@ pub struct Participant {}
 
 pub struct Coordinator {}
 
-#[must_use]
 pub fn two_pc<'a, Payload>(
     coordinator: &Process<'a, Coordinator>,
     participants: &Cluster<'a, Participant>,

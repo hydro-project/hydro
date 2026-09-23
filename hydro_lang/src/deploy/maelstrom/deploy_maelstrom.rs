@@ -595,7 +595,6 @@ impl MaelstromDeployment {
     }
 
     /// Get the path to the compiled binary, building it if necessary.
-    #[must_use]
     pub fn binary_path(&self) -> Option<PathBuf> {
         self.build().ok()
     }

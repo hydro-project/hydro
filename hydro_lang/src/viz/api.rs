@@ -15,7 +15,6 @@ pub struct GraphApi<'a> {
 }
 
 impl<'a> GraphApi<'a> {
-    #[must_use]
     pub fn new(ir: &'a [HydroRoot], location_names: &'a SecondaryMap<LocationKey, String>) -> Self {
         Self { ir, location_names }
     }
@@ -30,7 +29,6 @@ impl<'a> GraphApi<'a> {
     }
 
     /// Render graph to string in the given format.
-    #[must_use]
     pub fn render(
         &self,
         format: crate::viz::config::GraphType,

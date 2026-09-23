@@ -121,13 +121,11 @@ pub enum PullStep<Item, Meta, CanPend: Toggle, CanEnd: Toggle> {
 
 impl<Item, Meta, CanPend: Toggle, CanEnd: Toggle> PullStep<Item, Meta, CanPend, CanEnd> {
     /// Creates a new `PullStep::Ended`, or panics if `CanEnd = No`.
-    #[must_use]
     pub fn ended() -> Self {
         PullStep::Ended(Toggle::create())
     }
 
     /// Creates a new `PullStep::Pending`, or panics if `CanPend = No`.
-    #[must_use]
     pub fn pending() -> Self {
         PullStep::Pending(Toggle::create())
     }

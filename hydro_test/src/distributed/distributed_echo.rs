@@ -9,7 +9,6 @@ pub struct C2 {}
 pub struct C3 {}
 pub struct P4 {}
 
-#[must_use]
 pub fn distributed_echo<'a>(
     external: &External<'a, ()>,
     p1: &Process<'a, P1>,

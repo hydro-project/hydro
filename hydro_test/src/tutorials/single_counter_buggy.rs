@@ -3,7 +3,6 @@ use hydro_lang::prelude::*;
 pub struct CounterServer;
 
 // buggy version which does not guarantee consistent reads after increment acks
-#[must_use]
 pub fn single_counter_service_buggy<'a>(
     increment_requests: KeyedStream<u32, (), Process<'a, CounterServer>>,
     get_requests: KeyedStream<u32, (), Process<'a, CounterServer>>,

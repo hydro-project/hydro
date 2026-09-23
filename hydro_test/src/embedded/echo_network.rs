@@ -3,7 +3,6 @@ use hydro_lang::prelude::*;
 pub struct Sender {}
 pub struct Receiver {}
 
-#[must_use]
 pub fn echo_network<'a>(
     receiver: &Process<'a, Receiver>,
     input: Stream<String, Process<'a, Sender>>,

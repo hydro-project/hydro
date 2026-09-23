@@ -68,7 +68,6 @@ impl CycleId {
 
 impl SidecarId {
     /// Derives the two idents for a bidi sidecar: `(stream, sink)`.
-    #[must_use]
     pub fn idents(&self) -> (syn::Ident, syn::Ident) {
         let span = proc_macro2::Span::call_site();
         (
@@ -203,7 +202,6 @@ impl<'a> FlowBuilder<'a> {
         clippy::new_without_default,
         reason = "call `new` explicitly, not `default`"
     )]
-    #[must_use]
     pub fn new() -> Self {
         let mut name = std::env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "unknown".to_owned());
         if let Ok(bin_path) = std::env::current_exe()
@@ -362,7 +360,6 @@ impl<'a> FlowBuilder<'a> {
         }
     }
 
-    #[must_use]
     pub fn with_default_optimize<D: Deploy<'a>>(self) -> DeployFlow<'a, D> {
         self.finalize().with_default_optimize()
     }
@@ -416,7 +413,6 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize().with_remaining_clusters(spec)
     }
 
-    #[must_use]
     pub fn compile<D: Deploy<'a, InstantiateEnv = ()>>(self) -> CompiledFlow<'a> {
         self.with_default_optimize::<D>().compile()
     }
@@ -428,12 +424,10 @@ impl<'a> FlowBuilder<'a> {
     #[cfg(feature = "sim")]
     /// Creates a simulation for this builder, which can be used to run deterministic simulations
     /// of the Hydro program.
-    #[must_use]
     pub fn sim(self) -> SimFlow<'a> {
         self.finalize().sim()
     }
 
-    #[must_use]
     pub fn from_built<'b>(built: &super::built::BuiltFlow<'_>) -> FlowBuilder<'b> {
         FlowBuilder {
             flow_state: Rc::new(RefCell::new(FlowStateInner {

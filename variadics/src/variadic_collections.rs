@@ -50,7 +50,6 @@ pub struct VariadicHashSet<T, S> {
 #[cfg(feature = "std")]
 impl<T> VariadicHashSet<T, std::hash::RandomState> {
     /// Creates a new `VariadicHashSet` with a default hasher.
-    #[must_use]
     pub fn new() -> Self {
         Self {
             table: HashTable::new(),
@@ -257,7 +256,6 @@ where
     K: VariadicExt,
 {
     /// Creates a new `VariadicCountedHashSet` with a default hasher.
-    #[must_use]
     pub fn new() -> Self {
         Self {
             table: HashTable::new(),
@@ -512,7 +510,6 @@ where
     T: VariadicExt + Eq + Hash,
 {
     /// initialize an empty columnar multiset
-    #[must_use]
     pub fn new() -> Self {
         Self {
             columns: <T::IntoVec as Default>::default(),

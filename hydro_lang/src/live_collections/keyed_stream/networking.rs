@@ -55,7 +55,6 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[must_use]
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -205,7 +204,6 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[must_use]
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -371,7 +369,6 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[must_use]
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -552,7 +549,6 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    #[must_use]
     pub fn send_bincode<L2>(
         self,
         other: &Process<'a, L2>,

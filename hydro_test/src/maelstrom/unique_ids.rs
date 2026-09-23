@@ -11,7 +11,6 @@ pub struct GenerateMessage {
     pub msg_id: usize,
 }
 
-#[must_use]
 pub fn unique_id_server<'a, C: 'a>(
     input: KeyedStream<String, GenerateMessage, Cluster<'a, C>>,
     nondet_ids: NonDet,

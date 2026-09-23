@@ -34,7 +34,6 @@ pub enum Level {
 }
 impl Level {
     /// Iterator of all levels from most to least severe.
-    #[must_use]
     pub fn iter() -> std::array::IntoIter<Self, 4> {
         [Self::Error, Self::Warning, Self::Note, Self::Help].into_iter()
     }
@@ -84,7 +83,6 @@ impl Diagnostic {
 
     /// Used to emulate `proc_macro::Diagnostic::emit` by turning this diagnostic into a properly spanned [`TokenStream`]
     /// that emits an error via `compile_error!(...)` with this diagnostic's message.
-    #[must_use]
     pub fn to_tokens(&self) -> TokenStream {
         let msg_lit: Literal = Literal::string(&self.message);
         let unique_ident = {
@@ -121,7 +119,6 @@ impl Diagnostic {
     /// Converts this into a serializable and deserializable Diagnostic. Span information is
     /// converted into [`SerdeSpan`] which keeps the span info but cannot be plugged into or
     /// emitted through the Rust compiler's diagnostic system.
-    #[must_use]
     pub fn to_serde(&self) -> Diagnostic<SerdeSpan> {
         let Self {
             span,
@@ -211,7 +208,6 @@ impl<S> Default for Diagnostics<S> {
 
 impl<S> Diagnostics<S> {
     /// Creates a new empty `Diagnostics`.
-    #[must_use]
     pub fn new() -> Self {
         Self {
             diagnostics: Vec::new(),
@@ -224,7 +220,6 @@ impl<S> Diagnostics<S> {
     }
 
     /// Returns if any errors exist in this collection.
-    #[must_use]
     pub fn has_error(&self) -> bool {
         self.diagnostics.iter().any(|d| Level::Error == d.level)
     }
@@ -240,13 +235,11 @@ impl<S> Diagnostics<S> {
     }
 
     /// Returns the number of diagnostics in this collection.
-    #[must_use]
     pub fn len(&self) -> usize {
         self.diagnostics.len()
     }
 
     /// Returns if this collection is empty.
-    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.diagnostics.is_empty()
     }

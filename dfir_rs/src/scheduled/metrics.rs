@@ -72,7 +72,6 @@ impl DfirMetricsIntervals {
     /// Returns a reference-counted handle to the original continually-updated runtime metrics for this DFIR instance.
     ///
     /// See [`Dfir::metrics`](super::context::Dfir::metrics).
-    #[must_use]
     pub fn all_metrics(&self) -> Rc<DfirMetrics> {
         Rc::clone(&self.curr)
     }

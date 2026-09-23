@@ -29,7 +29,6 @@ struct PriorityBroadcastInternal {
 }
 
 impl PriorityBroadcast {
-    #[must_use]
     pub fn receive_priority(&self) -> oneshot::Receiver<String> {
         let (sender, receiver) = oneshot::channel::<String>();
 
@@ -45,7 +44,6 @@ impl PriorityBroadcast {
         receiver
     }
 
-    #[must_use]
     pub fn receive(&self, prefix: Option<String>) -> mpsc::UnboundedReceiver<String> {
         let (sender, receiver) = mpsc::unbounded_channel::<String>();
 

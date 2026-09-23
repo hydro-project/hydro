@@ -58,7 +58,6 @@ pub struct AzureHost {
 
 impl AzureHost {
     #[expect(clippy::too_many_arguments, reason = "used via builder pattern")]
-    #[must_use]
     pub fn new(
         id: usize,
         project: String,

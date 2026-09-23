@@ -31,7 +31,6 @@ pub struct LocalhostHost {
 }
 
 impl LocalhostHost {
-    #[must_use]
     pub fn new(id: usize) -> LocalhostHost {
         LocalhostHost {
             id,
@@ -39,7 +38,6 @@ impl LocalhostHost {
         }
     }
 
-    #[must_use]
     pub fn client_only(&self) -> LocalhostHost {
         LocalhostHost {
             id: self.id,

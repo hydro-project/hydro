@@ -20,7 +20,6 @@ pub struct VecUnion<Lat> {
 
 impl<Lat> VecUnion<Lat> {
     /// Create a new `VecUnion` from a `Vec` of `Lat` instances.
-    #[must_use]
     pub fn new(vec: Vec<Lat>) -> Self {
         Self { vec }
     }
@@ -31,7 +30,6 @@ impl<Lat> VecUnion<Lat> {
     }
 
     /// Reveal the inner value as a shared reference.
-    #[must_use]
     pub fn as_reveal_ref(&self) -> &Vec<Lat> {
         &self.vec
     }
@@ -42,7 +40,6 @@ impl<Lat> VecUnion<Lat> {
     }
 
     /// Gets the inner by value, consuming self.
-    #[must_use]
     pub fn into_reveal(self) -> Vec<Lat> {
         self.vec
     }

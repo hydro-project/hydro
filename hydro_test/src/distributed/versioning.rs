@@ -171,7 +171,6 @@ pub enum GossipVersion {
     V3,
 }
 
-#[must_use]
 pub fn gossip_server_versioned<'a>(
     version: GossipVersion,
     requests: Stream<Request, Cluster<'a, GossipServer>, Unbounded, TotalOrder>,

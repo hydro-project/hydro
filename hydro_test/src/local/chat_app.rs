@@ -2,7 +2,6 @@ use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::nondet::NonDet;
 use hydro_lang::prelude::*;
 
-#[must_use]
 pub fn chat_app<'a>(
     users_stream: Stream<u32, Process<'a>, Unbounded>,
     messages: Stream<String, Process<'a>, Unbounded>,

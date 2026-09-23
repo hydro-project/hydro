@@ -158,7 +158,6 @@ impl<'a, C> Cluster<'a, C> {
     /// unordered inputs (e.g. anything downstream of a `NoOrder` network channel), create the
     /// input with `O = NoOrder` and drive it with
     /// [`SimClusterSender::send_many_unordered`](crate::sim::SimClusterSender::send_many_unordered).
-    #[must_use]
     pub fn sim_input<
         T,
         O: crate::live_collections::stream::Ordering,

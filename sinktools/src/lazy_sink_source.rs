@@ -77,7 +77,6 @@ impl<Fut, St, Si, Item, Error> LazySinkSource<Fut, St, Si, Item, Error> {
     }
 
     /// Splits into a sink and stream that share the same underlying connection.
-    #[must_use]
     pub fn split(
         self,
     ) -> (

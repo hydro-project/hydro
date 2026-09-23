@@ -8,7 +8,6 @@ pub struct CounterServer;
 pub struct CounterShard;
 
 #[expect(clippy::type_complexity, reason = "output types with orderings")]
-#[must_use]
 pub fn sharded_counter_service<'a>(
     leader: &Process<'a, CounterServer>,
     shard_servers: &Cluster<'a, CounterShard>,

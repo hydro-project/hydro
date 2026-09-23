@@ -250,7 +250,6 @@ pub fn paxos_core<'a, P: PaxosPayload + 'a>(
     clippy::too_many_arguments,
     reason = "internal paxos code // TODO"
 )]
-#[must_use]
 pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
     proposers: &Cluster<'a, Proposer>,
     acceptors: &Cluster<'a, Acceptor>,
@@ -594,7 +593,6 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
 }
 
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-#[must_use]
 pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
     accepted_logs: Stream<
         (Option<usize>, HashMap<usize, LogValue<P>>),
@@ -808,7 +806,6 @@ pub fn index_payloads<'a, L: Location<'a>, P: PaxosPayload>(
 }
 
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-#[must_use]
 pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
     acceptor_tick: &Tick<Cluster<'a, Acceptor>>,
     a_max_ballot: Singleton<Option<Ballot>, Tick<Cluster<'a, Acceptor>>, Bounded>,

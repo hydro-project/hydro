@@ -3,7 +3,6 @@ use hydro_lang::prelude::*;
 pub struct Src {}
 pub struct Dst {}
 
-#[must_use]
 pub fn o2m_broadcast<'a>(
     cluster: &Cluster<'a, Dst>,
     input: Stream<String, Process<'a, Src>>,

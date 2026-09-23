@@ -966,7 +966,6 @@ pub struct DeployCluster {
 
 impl DeployCluster {
     #[expect(missing_docs, reason = "TODO")]
-    #[must_use]
     pub fn members(&self) -> Vec<DeployClusterNode> {
         self.members.borrow().clone()
     }
@@ -1126,7 +1125,6 @@ pub struct DeployClusterSpec(Vec<(RustCrate, Arc<dyn Host>)>);
 
 impl DeployClusterSpec {
     #[expect(missing_docs, reason = "TODO")]
-    #[must_use]
     pub fn new(crates: Vec<(RustCrate, Arc<dyn Host>)>) -> Self {
         Self(crates)
     }

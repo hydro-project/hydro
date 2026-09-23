@@ -13,7 +13,6 @@ pub enum GraphType {
 
 impl GraphType {
     /// File extension for this format.
-    #[must_use]
     pub fn file_extension(self) -> &'static str {
         match self {
             GraphType::Mermaid => "mmd",

@@ -106,13 +106,11 @@ impl Context {
     // --- Methods called as `context.xxx()` in operator iterators ---
 
     /// Gets the current tick count.
-    #[must_use]
     pub fn current_tick(&self) -> TickInstant {
         self.current_tick
     }
 
     /// Returns a reference to the runtime metrics.
-    #[must_use]
     pub fn metrics(&self) -> &Rc<DfirMetrics> {
         &self.metrics
     }
@@ -125,7 +123,6 @@ impl Context {
     }
 
     /// Returns a waker that signals external data has arrived.
-    #[must_use]
     pub fn waker(&self) -> std::task::Waker {
         std::task::Waker::from(self.wake_state.clone())
     }

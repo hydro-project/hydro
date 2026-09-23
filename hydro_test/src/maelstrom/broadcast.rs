@@ -74,7 +74,6 @@ fn broadcast_core<'a, C: 'a>(
     cur_state
 }
 
-#[must_use]
 pub fn broadcast_server<'a, C: 'a>(
     cluster: &Cluster<'a, C>,
     input: KeyedStream<String, Request, Cluster<'a, C>>,

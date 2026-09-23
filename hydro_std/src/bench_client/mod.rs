@@ -134,7 +134,6 @@ where
 /// # Non-Determinism
 /// This function uses non-deterministic wall-clock windows for measuring throughput.
 #[cfg(feature = "tokio")]
-#[must_use]
 pub fn compute_throughput_latency<'a, Client: 'a>(
     clients: &Cluster<'a, Client>,
     latencies: Stream<Duration, Cluster<'a, Client>, Unbounded, NoOrder>,
@@ -207,7 +206,6 @@ pub fn compute_throughput_latency<'a, Client: 'a>(
 ///
 /// Note: Inconsistent windowing may result in unexpected outputs unless `output_interval_millis` >> `interval_millis`.
 #[cfg(feature = "tokio")]
-#[must_use]
 pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
     results: BenchResult<Cluster<'a, Client>>,
     aggregator: &Process<'a, Aggregator>,

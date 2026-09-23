@@ -560,7 +560,6 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
     /// ```ignore
     /// include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
     /// ```
-    #[must_use]
     pub fn generate_embedded(mut self, crate_name: &str) -> syn::File {
         let mut env = EmbeddedInstantiateEnv::default();
         let compiled = self.compile_internal(&mut env);

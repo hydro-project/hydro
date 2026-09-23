@@ -19,12 +19,10 @@ where
     K: Key,
 {
     /// Creates a new `UnionFind`, same as [`Default::default()`].
-    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
     /// Creates a new `UnionFind` with the given key capacity pre-allocated.
-    #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             links: SecondaryMap::with_capacity(capacity),
