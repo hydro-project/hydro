@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1790067662971,
+  "lastUpdate": 1790154208810,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -312441,6 +312441,208 @@
             "name": "paxos_bench",
             "value": 229340,
             "range": "± 10546.01",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Aanand Kainth",
+            "username": "akainth015",
+            "email": "aakainth@amazon.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "86f437af69560061c59c8603d1a82bde052b645b",
+          "message": "feat(hydro_lang): forward `CARGO_ENCODED_RUSTFLAGS` to generated-program builds and fingerprint the prebuild on rustflags (#3197)",
+          "timestamp": "2026-09-22T19:24:22Z",
+          "url": "https://github.com/hydro-project/hydro/commit/86f437af69560061c59c8603d1a82bde052b645b"
+        },
+        "date": 1790154208754,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311083,
+            "range": "± 4781",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6531901,
+            "range": "± 6560",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6882530,
+            "range": "± 27514",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 48798,
+            "range": "± 1376",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 11320320,
+            "range": "± 57863",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1275304,
+            "range": "± 22140",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1338754,
+            "range": "± 21864",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 44616922,
+            "range": "± 569004",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6830717,
+            "range": "± 25516",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 13562681,
+            "range": "± 1261894",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6532552,
+            "range": "± 6533",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 7000006,
+            "range": "± 10068",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 42423552,
+            "range": "± 254110",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 6461,
+            "range": "± 215",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 24722,
+            "range": "± 416",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4108,
+            "range": "± 139",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6779,
+            "range": "± 90",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 530312,
+            "range": "± 6922",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55321,
+            "range": "± 491",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 43588,
+            "range": "± 766",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 17171,
+            "range": "± 128",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6970,
+            "range": "± 67",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7320,
+            "range": "± 233",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72300,
+            "range": "± 435",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 79907,
+            "range": "± 313",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7526,
+            "range": "± 175",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15598,
+            "range": "± 231",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 61315,
+            "range": "± 2865",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7556,
+            "range": "± 135",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 197300,
+            "range": "± 244.95",
             "unit": "ops/s"
           }
         ]
