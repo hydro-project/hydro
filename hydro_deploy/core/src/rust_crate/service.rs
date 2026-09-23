@@ -289,10 +289,12 @@ impl Service for RustCrateService {
                     .unwrap();
 
                 let start_ack_line = ProgressTracker::leaf(
-                    self.display_id
-                        .clone()
-                        .unwrap_or_else(|| format!("service/{}", self.id))
-                        + " / waiting for ack start",
+                    format!(
+                        "{} / waiting for ack start",
+                        self.display_id
+                            .clone()
+                            .unwrap_or_else(|| format!("service/{}", self.id))
+                    ),
                     tokio::time::timeout(Duration::from_secs(60), stdout_receiver),
                 )
                 .await??;

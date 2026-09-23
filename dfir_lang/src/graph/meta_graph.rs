@@ -672,17 +672,16 @@ impl DfirGraph {
                         mod_succ_ports.keys().map(|x| x.to_string()).join(", ")
                     ),
                 });
-            } else {
-                return Err(Diagnostic {
-                    span: *import_expr,
-                    level: Level::Error,
-                    message: format!(
-                        "The ports out of the module did not match. output: {:?}, expected: {:?}",
-                        mod_succ_ports.keys().map(|x| x.to_string()).join(", "),
-                        mod_pred_ports.keys().map(|x| x.to_string()).join(", "),
-                    ),
-                });
             }
+            return Err(Diagnostic {
+                span: *import_expr,
+                level: Level::Error,
+                message: format!(
+                    "The ports out of the module did not match. output: {:?}, expected: {:?}",
+                    mod_succ_ports.keys().map(|x| x.to_string()).join(", "),
+                    mod_pred_ports.keys().map(|x| x.to_string()).join(", "),
+                ),
+            });
         }
 
         for (port, (pred_edge, pred_port)) in mod_pred_ports {

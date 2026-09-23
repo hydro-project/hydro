@@ -95,11 +95,11 @@ where
             }
             (PullStep::Pending(_), PullStep::Pending(_)) => PullStep::pending(),
             // Any Ended → whole zip ends.
-            (PullStep::Ready(..), PullStep::Ended(_))
-            | (PullStep::Ended(_), PullStep::Ready(..))
-            | (PullStep::Pending(_), PullStep::Ended(_))
-            | (PullStep::Ended(_), PullStep::Pending(_))
-            | (PullStep::Ended(_), PullStep::Ended(_)) => PullStep::ended(),
+            (
+                PullStep::Ready(..) | PullStep::Pending(_) | PullStep::Ended(_),
+                PullStep::Ended(_),
+            )
+            | (PullStep::Ended(_), PullStep::Ready(..) | PullStep::Pending(_)) => PullStep::ended(),
         }
     }
 

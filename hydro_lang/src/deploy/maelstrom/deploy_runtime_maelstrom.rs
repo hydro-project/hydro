@@ -129,12 +129,11 @@ pub fn maelstrom_init() -> MaelstromMeta {
                 dest: parsed.dest,
                 body,
             };
-        } else {
-            eprintln!(
-                "dropping message received before init (lossy channel): {}",
-                line.trim_end()
-            );
         }
+        eprintln!(
+            "dropping message received before init (lossy channel): {}",
+            line.trim_end()
+        );
     };
 
     // Set up broadcast channel for stdin lines
@@ -228,7 +227,9 @@ pub(super) fn deploy_maelstrom_m2m(meta: RuntimeData<&MaelstromMeta>) -> (syn::E
                         "data": payload.to_vec()
                     }
                 });
-                serde_json::to_string(&msg).unwrap() + "\n"
+                let mut line = serde_json::to_string(&msg).unwrap();
+                line.push('\n');
+                line
             },
             futures::sink::unfold((), |(), line: String| {
                 Box::pin(async move {

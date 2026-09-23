@@ -872,7 +872,7 @@ impl Host for AwsEc2Host {
                 // `$$` to escape for terraform, becomes `\$` in bash, becomes `$` in echo output.
                 .replace("${aws:", r"\$${aws:");
             format!(
-                r##"
+                r#"
 #!/bin/bash
 set -euxo pipefail
 
@@ -892,7 +892,7 @@ echo -e "{cwa_config_esc}" > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwa
     -a fetch-config -m ec2 \
     -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
     -s
-"##
+"#
             )
         });
 
