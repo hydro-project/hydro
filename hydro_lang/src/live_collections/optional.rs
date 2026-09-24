@@ -1408,7 +1408,14 @@ where
     /// if it is [`Unbounded`], the [`KeyedSingleton`] will be [`Unbounded`], which means that
     /// the entry will be updated and appear / disappear according to the state of the
     /// [`Optional`].
-    pub fn into_keyed_singleton(self) -> KeyedSingleton<K, V, L, B::UnderlyingBound> {
+    ///
+    /// The `K: Clone + PartialEq` bounds are needed because when the optional is [`Unbounded`]
+    /// at a top-level location, the compiled representation tracks the previously emitted key
+    /// so the entry can be removed when the optional becomes null or moves to a different key.
+    pub fn into_keyed_singleton(self) -> KeyedSingleton<K, V, L, B::UnderlyingBound>
+    where
+        K: Clone + PartialEq,
+    {
         KeyedSingleton::new(
             self.location.clone(),
             HydroNode::Cast {

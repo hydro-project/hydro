@@ -1580,7 +1580,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # .into_singleton()
     /// # .sample_eager(nondet!(/** test */))
     /// # }, |mut stream| async move {
-    /// // (2, 456)
+    /// // sampled as `Option<(K, V)>` snapshots, eventually Some((2, 456))
     /// # let mut recv = std::pin::pin!(stream.filter(|v| futures::future::ready(v.is_some())));
     /// # assert_eq!(recv.next().await.unwrap(), Some((2, 456)));
     /// # }));

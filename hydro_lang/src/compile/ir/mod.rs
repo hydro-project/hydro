@@ -854,15 +854,27 @@ impl DfirBuilder for ProdDfirBuilder {
                 // into a tick; when ticks become lazy (#2902 phase 2), the windowing operator
                 // for the held-state paths below should become `batch_lazy()` (snapshots must
                 // not cause the tick to fire on their own).
+                //
+                // TODO: the held-state paths below (`batch_eager()` + cross-firing `fold`)
+                // could eventually be a dedicated `snapshot_last()`-style windowing operator,
+                // which would let each firing observe the held value by reference instead of
+                // `fold` cloning its accumulator to emit it downstream every firing.
                 match in_kind {
                     // A *bounded* singleton-like value is produced exactly once. Persist it at
                     // the root (a `loop { ... }` context cannot contain `persist`) so it remains
                     // available, then window it into the loop on each firing.
-                    CollectionKind::Singleton { .. }
-                    | CollectionKind::Optional { .. }
-                    | CollectionKind::KeyedSingleton { .. }
-                        if in_kind.is_bounded() =>
-                    {
+                    CollectionKind::Singleton {
+                        bound: SingletonBoundKind::Bounded,
+                        ..
+                    }
+                    | CollectionKind::Optional {
+                        bound: OptionalBoundKind::Bounded,
+                        ..
+                    }
+                    | CollectionKind::KeyedSingleton {
+                        bound: KeyedSingletonBoundKind::Bounded,
+                        ..
+                    } => {
                         let persisted_ident = self.intermediate_ident();
                         self.add_dfir_in(
                             in_location,
@@ -888,7 +900,10 @@ impl DfirBuilder for ProdDfirBuilder {
                     // arrives before any consumer could observe it (the upstream aggregation
                     // emits its initial value immediately), and for an `InitNone` optional
                     // "no update yet" genuinely means null.
-                    CollectionKind::Singleton { .. }
+                    CollectionKind::Singleton {
+                        bound: SingletonBoundKind::Unbounded | SingletonBoundKind::Monotonic,
+                        ..
+                    }
                     | CollectionKind::Optional {
                         bound: OptionalBoundKind::InitNone,
                         ..
@@ -916,9 +931,9 @@ impl DfirBuilder for ProdDfirBuilder {
 
                     // A root unbounded optional is a tombstoned update feed of `Option<T>`
                     // (see [`CollectionKind::root_repr_is_tombstoned_update_feed`]). Hold the
-                    // latest update across firings, then flatten: "no update yet" (outer
-                    // `None`) and "latest update is a tombstone" (inner `None`) both mean the
-                    // optional is currently null.
+                    // latest update across firings directly as the current `Option<T>` value:
+                    // "no update yet" and "latest update is a tombstone" both leave the state
+                    // `None`, and both mean the optional is currently null.
                     CollectionKind::Optional {
                         bound: OptionalBoundKind::Unbounded,
                         ..
@@ -937,8 +952,8 @@ impl DfirBuilder for ProdDfirBuilder {
                             out_location,
                             parse_quote! {
                                 #out_ident = #batched_ident
-                                    -> fold::<#lifetime>(|| None, |current, update| { *current = Some(update); })
-                                    -> filter_map(|current| current.flatten());
+                                    -> fold::<#lifetime>(|| None, |current, update| { *current = update; })
+                                    -> filter_map(|current| current);
                             },
                             None,
                         );
@@ -983,10 +998,22 @@ impl DfirBuilder for ProdDfirBuilder {
                         );
                     }
 
-                    // Monotonic keyed singletons (keys never removed) keep the plain update
-                    // feed; upstream keyed aggregations re-emit current entries eagerly.
-                    // Streams and keyed streams are plain event feeds.
-                    _ => {
+                    // Streams and keyed streams are plain event feeds: a batch is simply the
+                    // new events. The remaining keyed-singleton kinds never remove keys, so
+                    // they keep the plain `(K, V)` entry feed: for the value-unbounded kinds
+                    // (`MonotonicKeys`/`MonotonicValue`), upstream keyed aggregations re-emit
+                    // an entry's current value eagerly whenever it changes; for
+                    // `BoundedValue`, each entry's value arrives exactly once, and a batch is
+                    // defined to contain just the *new* finalized entries.
+                    CollectionKind::Stream { .. }
+                    | CollectionKind::KeyedStream { .. }
+                    | CollectionKind::KeyedSingleton {
+                        bound:
+                            KeyedSingletonBoundKind::MonotonicKeys
+                            | KeyedSingletonBoundKind::MonotonicValue
+                            | KeyedSingletonBoundKind::BoundedValue,
+                        ..
+                    } => {
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
@@ -4219,7 +4246,8 @@ impl HydroNode {
                                                 // `Optional::into_keyed_singleton` at the root.
                                                 // Generated code requires `K: Clone + PartialEq`
                                                 // (to compare against and tombstone the previous
-                                                // key).
+                                                // key); these bounds are expressed on the
+                                                // `into_keyed_singleton` API itself.
                                                 let lifetime: TokenStream = graph_builders
                                                     .cross_tick_state_lifetime(&out_location);
                                                 let lifetime: syn::Lifetime =
@@ -4275,6 +4303,16 @@ impl HydroNode {
                                                 }
                                             }
                                             (UpdateFeedRepr::Tombstoned, UpdateFeedRepr::Plain) => {
+                                                // Reached when a root unbounded optional is cast
+                                                // back to a plain-repr kind: `Optional::unwrap_or`
+                                                // (and its derivatives `into_singleton`,
+                                                // `unwrap_or_default`, `is_some`, `is_none`) casts
+                                                // the always-present `or` result to a `Singleton`,
+                                                // and top-level `zip` casts the `latest()` result
+                                                // back to a `Bounded` optional. Dropping
+                                                // tombstones is sound only because these feeds
+                                                // never become null after having a value, so no
+                                                // tombstone is ever emitted at runtime.
                                                 match &inner.metadata().collection_kind {
                                                     CollectionKind::Optional { .. } => {
                                                         quote! { filter_map(|__hydro_update| __hydro_update) }
@@ -5779,10 +5817,13 @@ impl HydroNode {
                         let inspect_ident =
                             syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
-                        // No `Optional`/`Singleton` API constructs `Inspect` nodes, so a
-                        // tombstoned update feed (root unbounded optional/keyed singleton)
-                        // cannot reach this arm today; guard against silently inspecting raw
-                        // update records if one ever does.
+                        // A tombstoned update feed (root unbounded Optional/KeyedSingleton)
+                        // cannot reach this arm today: no `Optional`/`Singleton` API
+                        // constructs `Inspect` nodes, and `KeyedSingleton::inspect` /
+                        // `inspect_with_key` are only available for `ValueBound = Bounded`
+                        // kinds (`BoundedValue`/`Bounded`), which keep the plain entry
+                        // representation. Guard against silently inspecting raw update
+                        // records if a future API change makes this reachable.
                         if update_feed_repr(input.metadata()) == UpdateFeedRepr::Tombstoned
                             || update_feed_repr(metadata) == UpdateFeedRepr::Tombstoned
                         {
@@ -6029,25 +6070,21 @@ impl HydroNode {
                                         Some(&stmt_id.to_string()),
                                     );
                                 } else {
-                                    // Defensive: no `fold`-family API currently produces a root
-                                    // unbounded (tombstoned) keyed singleton
-                                    // (`KeyedStream::fold` yields monotone keyed bounds), but
-                                    // wrap upserts if one ever does, mirroring the
-                                    // `ReduceKeyed` arm.
-                                    let wrap_op: TokenStream = if matches!(
-                                        node.metadata().collection_kind,
-                                        CollectionKind::KeyedSingleton { .. }
-                                    ) && update_feed_repr(node.metadata())
-                                        == UpdateFeedRepr::Tombstoned
-                                    {
-                                        quote! { -> map(|(__hydro_key, __hydro_value)| (__hydro_key, ::std::option::Option::Some(__hydro_value))) }
-                                    } else {
-                                        quote! {}
-                                    };
+                                    // No `fold`-family API currently produces a root unbounded
+                                    // (tombstoned) keyed singleton (`KeyedStream::fold` yields
+                                    // monotone keyed bounds), so there are no update records to
+                                    // wrap here; fail loudly if that ever changes rather than
+                                    // emitting plain entries onto a tombstoned feed.
+                                    assert_eq!(
+                                        update_feed_repr(node.metadata()),
+                                        UpdateFeedRepr::Plain,
+                                        "`fold`-family aggregation into a tombstoned update feed \
+                                         (root unbounded Optional/KeyedSingleton) is not supported"
+                                    );
                                     graph_builders.add_dfir_at(
                                         &out_location,
                                         parse_quote! {
-                                            #fold_ident = #input_ident -> #operator::<#lifetime>(#init_tokens, #acc_tokens) #wrap_op;
+                                            #fold_ident = #input_ident -> #operator::<#lifetime>(#init_tokens, #acc_tokens);
                                         },
                                         Some(&stmt_id.to_string()),
                                     );
@@ -6226,8 +6263,10 @@ impl HydroNode {
                                     // tombstone `(k, None)`. Downstream consumers reconstruct
                                     // the current map by applying updates (see
                                     // [`DfirBuilder::batch`]). Generated code requires
-                                    // `K: Clone` and `V: Clone` (as the whole-map emission
-                                    // already did).
+                                    // `K: Clone` and `V: Clone`, as the whole-map form below
+                                    // does too (there the clones are hidden inside the `fold`
+                                    // operator, which clones its accumulator — the entire map —
+                                    // each time it emits downstream).
                                     graph_builders.add_dfir_at(
                                         &out_location,
                                         parse_quote! {

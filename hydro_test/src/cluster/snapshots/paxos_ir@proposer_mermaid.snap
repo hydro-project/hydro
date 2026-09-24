@@ -16,14 +16,14 @@ linkStyle default stroke:#aaa
 6v1["<div style=text-align:center>(6v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_optional_rs_LINE_COL!(<br>        [] [| v | Some(v)]<br>    )<br>})</code>"]:::otherClass
 7v1["<div style=text-align:center>(7v1)</div> <code><br>map(::std::option::Option::Some)</code>"]:::otherClass
 8v1["<div style=text-align:center>(8v1)</div> <code><br>batch_eager()</code>"]:::otherClass
-9v1["<div style=text-align:center>(9v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    || None,<br>    |current, update| {<br>        *current = Some(update);<br>    },<br>)</code>"]:::otherClass
-10v1["<div style=text-align:center>(10v1)</div> <code><br>filter_map(|current| current.flatten())</code>"]:::otherClass
+9v1["<div style=text-align:center>(9v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    || None,<br>    |current, update| {<br>        *current = update;<br>    },<br>)</code>"]:::otherClass
+10v1["<div style=text-align:center>(10v1)</div> <code><br>filter_map(|current| current)</code>"]:::otherClass
 11v1["<div style=text-align:center>(11v1)</div> <code><br>source_iter([::std::option::Option::None])</code>"]:::otherClass
 12v1["<div style=text-align:center>(12v1)</div> <code><br>persist::&lt;'static&gt;()</code>"]:::otherClass
 13v1["<div style=text-align:center>(13v1)</div> <code><br>map(::std::option::Option::Some)</code>"]:::otherClass
 14v1["<div style=text-align:center>(14v1)</div> <code><br>batch_eager()</code>"]:::otherClass
-15v1["<div style=text-align:center>(15v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    || None,<br>    |current, update| {<br>        *current = Some(update);<br>    },<br>)</code>"]:::otherClass
-16v1["<div style=text-align:center>(16v1)</div> <code><br>filter_map(|current| current.flatten())</code>"]:::otherClass
+15v1["<div style=text-align:center>(15v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    || None,<br>    |current, update| {<br>        *current = update;<br>    },<br>)</code>"]:::otherClass
+16v1["<div style=text-align:center>(16v1)</div> <code><br>filter_map(|current| current)</code>"]:::otherClass
 17v1["<div style=text-align:center>(17v1)</div> <code><br>chain_first_n(1)</code>"]:::otherClass
 18v1["<div style=text-align:center>(18v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    || None,<br>    |update, value| {<br>        *update = Some(value);<br>    },<br>)</code>"]:::otherClass
 19v1["<div style=text-align:center>(19v1)</div> <code><br>all_iterations()</code>"]:::otherClass
@@ -67,8 +67,8 @@ linkStyle default stroke:#aaa
 57v1["<div style=text-align:center>(57v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    || None,<br>    |update, value| {<br>        *update = Some(value);<br>    },<br>)</code>"]:::otherClass
 58v1["<div style=text-align:center>(58v1)</div> <code><br>all_iterations()</code>"]:::otherClass
 59v1["<div style=text-align:center>(59v1)</div> <code><br>batch_eager()</code>"]:::otherClass
-60v1["<div style=text-align:center>(60v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    || None,<br>    |current, update| {<br>        *current = Some(update);<br>    },<br>)</code>"]:::otherClass
-61v1["<div style=text-align:center>(61v1)</div> <code><br>filter_map(|current| current.flatten())</code>"]:::otherClass
+60v1["<div style=text-align:center>(60v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    || None,<br>    |current, update| {<br>        *current = update;<br>    },<br>)</code>"]:::otherClass
+61v1["<div style=text-align:center>(61v1)</div> <code><br>filter_map(|current| current)</code>"]:::otherClass
 62v1["<div style=text-align:center>(62v1)</div> <code><br>source_stream({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_LINE_COL!(<br>        [interval__free = { use crate ::__staged::__deps:: *; use crate<br>        ::__staged::cluster::paxos:: *; crate<br>        ::__staged::__stageleft_quote_src_cluster_paxos_rs_LINE_COL!([i_am_leader_send_timeout__free<br>        = 5u64,] [Duration::from_secs(i_am_leader_send_timeout__free)]) },]<br>        [tokio_stream::StreamExt::map(tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(interval__free)),<br>        | _ | ())]<br>    )<br>})</code>"]:::otherClass
 63v1["<div style=text-align:center>(63v1)</div> <code><br>batch_eager()</code>"]:::otherClass
 64v1["<div style=text-align:center>(64v1)</div> <code><br>scan::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>            [] [| | None]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>            [f__free = stageleft::runtime_support::fn2_borrow_mut_type_hint:: &lt; (),<br>            (),<br>            hydro_test::__staged::__deps::hydro_lang::live_collections::keyed_stream::Generate<br>            &lt; () &gt; &gt; ({ use hydro_lang::__staged::__deps:: *; use<br>            hydro_lang::__staged::live_collections::stream:: *;<br>            hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!([]<br>            [| _, item | Generate::Return(item)]) }), init__free =<br>            stageleft::runtime_support::fn0_type_hint:: &lt; () &gt; ({ use<br>            hydro_lang::__staged::__deps:: *; use<br>            hydro_lang::__staged::live_collections::stream:: *;<br>            hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!([]<br>            [| | ()]) }),] [move | state : &amp; mut Option &lt; Option &lt; _ &gt; &gt;, v | { if<br>            state.is_none() { * state = Some(Some(init__free())); } match state {<br>            Some(Some(state_value)) =&gt; match f__free(state_value, v) {<br>            Generate::Yield(out) =&gt; Some(Some(out)), Generate::Return(out) =&gt; { *<br>            state = Some(None); Some(Some(out)) } Generate::Break =&gt; None,<br>            Generate::Continue =&gt; Some(None), }, _ =&gt; None, } }]<br>        )<br>    },<br>)</code>"]:::otherClass
@@ -110,8 +110,8 @@ linkStyle default stroke:#aaa
 100v1["<div style=text-align:center>(100v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    || None,<br>    |update, value| {<br>        *update = Some(value);<br>    },<br>)</code>"]:::otherClass
 101v1["<div style=text-align:center>(101v1)</div> <code><br>all_iterations()</code>"]:::otherClass
 102v1["<div style=text-align:center>(102v1)</div> <code><br>batch_eager()</code>"]:::otherClass
-103v1["<div style=text-align:center>(103v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    || None,<br>    |current, update| {<br>        *current = Some(update);<br>    },<br>)</code>"]:::otherClass
-104v1["<div style=text-align:center>(104v1)</div> <code><br>filter_map(|current| current.flatten())</code>"]:::otherClass
+103v1["<div style=text-align:center>(103v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    || None,<br>    |current, update| {<br>        *current = update;<br>    },<br>)</code>"]:::otherClass
+104v1["<div style=text-align:center>(104v1)</div> <code><br>filter_map(|current| current)</code>"]:::otherClass
 105v1["<div style=text-align:center>(105v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_singleton_rs_LINE_COL!(<br>        [] [| b | ! b]<br>    )<br>})</code>"]:::otherClass
 106v1["<div style=text-align:center>(106v1)</div> <code><br>filter({<br>    hydro_lang::__stageleft_quote_src_live_collections_optional_rs_LINE_COL!(<br>        [] [| b | * b]<br>    )<br>})</code>"]:::otherClass
 107v1["<div style=text-align:center>(107v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
