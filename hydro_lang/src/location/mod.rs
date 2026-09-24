@@ -242,8 +242,18 @@ pub trait Location<'a>: DynLocation {
     /// For nested locations like [`Tick`], this is the root location that contains it.
     type Root: Location<'a>;
 
+    /// The scope of simulator hook handles (see [`crate::sim_hooks`]) bindable to
+    /// unsafe operators at this location: [`OnProcess<P>`] for a [`Process<P>`](Process)
+    /// root, [`OnCluster<C>`] for a [`Cluster<C>`](Cluster) root. Operators name this in
+    /// their `NonDet` hook payload, so a handle can only bind to a matching location
+    /// kind.
+    ///
+    /// [`OnProcess<P>`]: crate::sim_hooks::OnProcess
+    /// [`OnCluster<C>`]: crate::sim_hooks::OnCluster
+    type SimHookScope: crate::sim_hooks::BindableHookScope;
+
     /// Location type with consistency guarantees dropped for the live collection on it.
-    type DropConsistency: Location<'a, DropConsistency = Self::DropConsistency>;
+    type DropConsistency: Location<'a, DropConsistency = Self::DropConsistency, SimHookScope = Self::SimHookScope>;
 
     /// Returns the root location for this location.
     ///

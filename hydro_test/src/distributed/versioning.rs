@@ -7,7 +7,7 @@ use hydro_lang::location::tick::Tick;
 use hydro_lang::networking::NetworkFor;
 use hydro_lang::nondet::NonDet;
 use hydro_lang::prelude::*;
-use hydro_lang::properties::StreamMapFuncAlgebra;
+use hydro_lang::properties::{NotProved, StreamMapFuncAlgebra};
 use hydro_std::membership::track_membership;
 use serde::{Deserialize, Serialize};
 use stageleft::IntoQuotedMut;
@@ -44,7 +44,13 @@ fn hash_demux<'a, F, N: NetworkFor<Request>>(
         'a,
         F,
         OperatorContext<Tick<Cluster<'a, GossipServer>>, Bounded>,
-        StreamMapFuncAlgebra<(Request, Vec<MemberId<GossipServer>>), Bounded>,
+        StreamMapFuncAlgebra<
+            (Request, Vec<MemberId<GossipServer>>),
+            Bounded,
+            NotProved,
+            NotProved,
+            hydro_lang::sim_hooks::OnCluster<GossipServer>,
+        >,
     >,
     via: N,
     nondet_membership: NonDet,
@@ -105,7 +111,13 @@ fn gossip_server<'a, F>(
         'a,
         F,
         OperatorContext<Tick<Cluster<'a, GossipServer>>, Bounded>,
-        StreamMapFuncAlgebra<(Request, Vec<MemberId<GossipServer>>), Bounded>,
+        StreamMapFuncAlgebra<
+            (Request, Vec<MemberId<GossipServer>>),
+            Bounded,
+            NotProved,
+            NotProved,
+            hydro_lang::sim_hooks::OnCluster<GossipServer>,
+        >,
     >,
 ) -> (
     Stream<Response, Cluster<'a, GossipServer>, Unbounded, NoOrder>,

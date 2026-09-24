@@ -113,6 +113,8 @@ impl<'a, C, Con: Consistency> super::dynamic::DynLocation for Cluster<'a, C, Con
 impl<'a, C, Con: Consistency> Location<'a> for Cluster<'a, C, Con> {
     type Root = Cluster<'a, C, Con>;
 
+    type SimHookScope = crate::sim_hooks::OnCluster<C>;
+
     type DropConsistency = Cluster<'a, C, NoConsistency>;
 
     fn consistency() -> Option<ClusterConsistency> {

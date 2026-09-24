@@ -1780,7 +1780,7 @@ where
     pub fn snapshot<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        mut nondet: NonDet<Option<crate::sim_hooks::KeyedSnapshotHook<K, V>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedSnapshotHook<K, V, L::SimHookScope>>>,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
         assert_eq!(
             Location::id(tick.parent_location()),
@@ -1981,7 +1981,7 @@ where
     pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        mut nondet: NonDet<Option<crate::sim_hooks::KeyedSnapshotHook<K, V>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedSnapshotHook<K, V, L::SimHookScope>>>,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
         assert_eq!(
             Location::id(tick.parent_location()),

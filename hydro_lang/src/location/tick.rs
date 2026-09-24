@@ -77,6 +77,8 @@ where
 {
     type Root = L::Root;
 
+    type SimHookScope = L::SimHookScope;
+
     type DropConsistency = Atomic<L::DropConsistency>;
 
     fn consistency() -> Option<super::dynamic::ClusterConsistency> {
@@ -150,6 +152,8 @@ where
     L: Location<'a>,
 {
     type Root = L::Root;
+
+    type SimHookScope = L::SimHookScope;
 
     type DropConsistency = Tick<L::DropConsistency>;
 

@@ -1,0 +1,21 @@
+error[E0277]: `OnMember` is not a scope that sim hook handles can be created with
+  --> tests/compile-fail/nightly/sim_hook_member_scope_not_creatable.rs:11:62
+   |
+11 |     let _hook: OrderingHook<u32, Unbounded, OnMember> = flow.sim_hook();
+   |                                                              ^^^^^^^^ the trait `BindableHookScope` is not implemented for `OnMember`
+   |
+   = note: handles are created with the `OnProcess<P>` or `OnCluster<C>` scope of the operator they will be bound to; `OnMember` handles only arise from `.on(member_id)` at scripting time
+help: the following other types implement trait `BindableHookScope`
+  --> src/sim_hooks.rs
+   |
+   | impl<P> BindableHookScope for OnProcess<P> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `OnProcess<P>`
+   | #[sealed::sealed]
+   | impl<C> BindableHookScope for OnCluster<C> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `OnCluster<C>`
+   = note: required for `OrderingHook<u32, hydro_lang::prelude::Unbounded, OnMember>` to implement `SimHook`
+note: required by a bound in `hydro_lang::prelude::FlowBuilder::<'a>::sim_hook`
+  --> src/compile/builder.rs
+   |
+   |     pub fn sim_hook<B: crate::sim_hooks::SimHook>(&mut self) -> B {
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `FlowBuilder::<'a>::sim_hook`
