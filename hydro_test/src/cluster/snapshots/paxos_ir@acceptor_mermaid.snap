@@ -40,8 +40,8 @@ linkStyle default stroke:#aaa
 30v1["<div style=text-align:center>(30v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
 31v1["<div style=text-align:center>(31v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
 32v1["<div style=text-align:center>(32v1)</div> <code><br>batch_eager()</code>"]:::otherClass
-33v1["<div style=text-align:center>(33v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    || None,<br>    |current, update| {<br>        *current = Some(update);<br>    },<br>)</code>"]:::otherClass
-34v1["<div style=text-align:center>(34v1)</div> <code><br>filter_map(|current| current.flatten())</code>"]:::otherClass
+33v1["<div style=text-align:center>(33v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    || None,<br>    |current, update| {<br>        *current = update;<br>    },<br>)</code>"]:::otherClass
+34v1["<div style=text-align:center>(34v1)</div> <code><br>filter_map(|current| current)</code>"]:::otherClass
 35v1["<div style=text-align:center>(35v1)</div> <code><br>tee()</code>"]:::otherClass
 36v1["<div style=text-align:center>(36v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_optional_rs_LINE_COL!(<br>        [] [| v | Some(v)]<br>    )<br>})</code>"]:::otherClass
 37v1["<div style=text-align:center>(37v1)</div> <code><br>source_iter([::std::option::Option::None])</code>"]:::otherClass
