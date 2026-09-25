@@ -50,6 +50,25 @@ use crate::staging_util::get_this_crate;
 ///     }
 /// }
 /// ```
+///
+/// # Codecs from a test-only crate
+///
+/// A codec may instead live in a separate crate the tests depend on, keeping `hydro_lang/sim`
+/// out of the tested crate's regular dependencies. Generated dylib code cannot yet name a
+/// dev-dependency ([stageleft#104]), so also declare the crate as an optional regular
+/// dependency, and name a feature on the dev entry so the simulator's generated crate enables it:
+///
+/// ```toml
+/// [dependencies]
+/// my_codecs = { version = "...", optional = true }
+///
+/// [dev-dependencies]
+/// my_codecs = { version = "...", features = ["default"] }
+/// ```
+///
+/// `my_codecs` must define the named feature; an empty `default = []` suffices.
+///
+/// [stageleft#104]: https://github.com/hydro-project/stageleft/pull/104
 pub trait SimCodec<T> {
     /// Encodes `value` for transport across the simulation dylib boundary.
     fn encode(value: &T) -> Vec<u8>;
