@@ -240,6 +240,40 @@ mod tests {
         });
     }
 
+    #[test]
+    fn paxos_ir_json() {
+        let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
+        let proposers = builder.cluster();
+        let acceptors = builder.cluster();
+        let clients = builder.cluster();
+        let client_aggregator = builder.process();
+        let replicas = builder.cluster();
+
+        create_paxos(
+            &proposers,
+            &acceptors,
+            &clients,
+            &client_aggregator,
+            &replicas,
+        );
+        let built = builder.finalize();
+
+        let json = hydro_lang::compile::ir::serialize_dedup_shared(|| {
+            serde_json::to_string_pretty(built.ir()).unwrap()
+        });
+
+        // Redact absolute paths for CI portability.
+        let workspace_root = env!("CARGO_MANIFEST_DIR")
+            .strip_suffix("/hydro_test")
+            .or_else(|| env!("CARGO_MANIFEST_DIR").strip_suffix("\\hydro_test"))
+            .unwrap_or(env!("CARGO_MANIFEST_DIR"));
+        let json_escaped_root = workspace_root.replace('\\', "\\\\");
+        let json = json.replace(&json_escaped_root, "[workspace]");
+        let json = json.replace("\\\\", "/");
+
+        hydro_build_utils::assert_snapshot!(json);
+    }
+
     #[tokio::test]
     async fn paxos_some_throughput() {
         let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
