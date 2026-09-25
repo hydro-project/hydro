@@ -67,114 +67,76 @@ pub enum TaglessMemberId {
     },
 }
 
-macro_rules! assert_feature {
-    (#[cfg($meta:meta)] $( $code:stmt )+) => {
-        #[cfg(not($meta))]
-        panic!("Feature {:?} is not enabled.", stringify!($meta));
-
-        #[cfg($meta)]
-        {
-            $( $code )+
-        }
-    };
-}
-
 impl TaglessMemberId {
+    #[cfg(any(
+        feature = "deploy",
+        feature = "deploy_integration",
+        feature = "sim",
+        feature = "sim_runtime",
+        feature = "embedded_runtime"
+    ))]
     /// Creates a [`TaglessMemberId`] from a raw numeric ID.
-    ///
-    /// # Panics
-    /// Panics if the `deploy` / `deploy_integration` / `sim_runtime` / `embedded_runtime` feature is not enabled.
     pub fn from_raw_id(_raw_id: u32) -> Self {
-        assert_feature! {
-            #[cfg(any(feature = "deploy", feature = "deploy_integration", feature = "sim", feature = "sim_runtime", feature = "embedded_runtime"))]
-            Self::Legacy { raw_id: _raw_id }
-        }
+        Self::Legacy { raw_id: _raw_id }
     }
 
+    #[cfg(any(
+        feature = "deploy",
+        feature = "deploy_integration",
+        feature = "sim",
+        feature = "sim_runtime",
+        feature = "embedded_runtime"
+    ))]
     /// Returns the raw numeric ID from this member identifier.
     ///
     /// # Panics
-    /// Panics if this is not the `Legacy` variant or if the `deploy_integration` / `sim_runtime`
-    /// feature is not enabled.
+    /// Panics if this is not the `Legacy` variant.
     pub fn get_raw_id(&self) -> u32 {
-        assert_feature! {
-            #[cfg(any(feature = "deploy", feature = "deploy_integration", feature = "sim", feature = "sim_runtime", feature = "embedded_runtime"))]
-            #[expect(clippy::allow_attributes, reason = "Depends on features.")]
-            #[allow(
-                irrefutable_let_patterns,
-                reason = "Depends on features."
-            )]
-            let TaglessMemberId::Legacy { raw_id } = self else {
-                panic!("Not `Legacy` variant.");
-            }
-            *raw_id
-        }
+        let TaglessMemberId::Legacy { raw_id } = self else {
+            panic!("Not `Legacy` variant.");
+        };
+        *raw_id
     }
 
+    #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
     /// Creates a [`TaglessMemberId`] from a Docker container name.
-    ///
-    /// # Panics
-    /// Panics if the `docker_runtime` / `ecs_runtime` feature is not enabled.
     pub fn from_container_name(_container_name: impl Into<String>) -> Self {
-        assert_feature! {
-            #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
-            Self::Docker {
-                container_name: _container_name.into(),
-            }
+        Self::Docker {
+            container_name: _container_name.into(),
         }
     }
 
+    #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
     /// Returns the Docker container name from this member identifier.
     ///
     /// # Panics
-    /// Panics if this is not the `Docker` variant or if the `docker_runtime` / `ecs_runtime`
-    /// feature is not enabled.
+    /// Panics if this is not the `Docker` variant.
     pub fn get_container_name(&self) -> &str {
-        assert_feature! {
-            #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
-            #[expect(clippy::allow_attributes, reason = "Depends on features.")]
-            #[allow(
-                irrefutable_let_patterns,
-                reason = "Depends on features."
-            )]
-            let TaglessMemberId::Docker { container_name } = self else {
-                panic!("Not `Docker` variant.");
-            }
-            container_name
-        }
+        let TaglessMemberId::Docker { container_name } = self else {
+            panic!("Not `Docker` variant.");
+        };
+
+        container_name
     }
 
+    #[cfg(feature = "maelstrom_runtime")]
     /// Creates a [`TaglessMemberId`] from a Maelstrom node ID.
-    ///
-    /// # Panics
-    /// Panics if the `maelstrom_runtime` feature is not enabled.
     pub fn from_maelstrom_node_id(_node_id: impl Into<String>) -> Self {
-        assert_feature! {
-                #[cfg(feature = "maelstrom_runtime")]
-                Self::Maelstrom {
-                node_id: _node_id.into(),
-            }
+        Self::Maelstrom {
+            node_id: _node_id.into(),
         }
     }
 
+    #[cfg(feature = "maelstrom_runtime")]
     /// Returns the Maelstrom node ID from this member identifier.
     ///
     /// # Panics
-    /// Panics if this is not the `Maelstrom` variant or if the `maelstrom_runtime`
-    /// feature is not enabled.
+    /// Panics if this is not the `Maelstrom` variant.
     pub fn get_maelstrom_node_id(&self) -> &str {
-        assert_feature! {
-            #[cfg(feature = "maelstrom_runtime")]
-            #[expect(clippy::allow_attributes, reason = "Depends on features.")]
-            #[allow(
-                irrefutable_let_patterns,
-                reason = "Depends on features."
-            )]
-            let TaglessMemberId::Maelstrom { node_id } = self else {
-                panic!("Not `Maelstrom` variant.");
-            }
-            node_id
-        }
+        let TaglessMemberId::Maelstrom { node_id } = self else {
+            panic!("Not `Maelstrom` variant.");
+        };
+        node_id
     }
 }
 
@@ -232,27 +194,32 @@ impl<Tag> MemberId<Tag> {
         }
     }
 
+    #[cfg(any(
+        feature = "deploy",
+        feature = "deploy_integration",
+        feature = "sim",
+        feature = "sim_runtime",
+        feature = "embedded_runtime"
+    ))]
     /// Creates a typed [`MemberId`] from a raw numeric ID.
-    ///
-    /// # Panics
-    /// Panics if the `deploy_integration` feature is not enabled.
     pub fn from_raw_id(raw_id: u32) -> Self {
-        #[expect(clippy::allow_attributes, reason = "Depends on features.")]
-        #[allow(
-            unreachable_code,
-            reason = "`inner` may be uninhabited depending on features."
-        )]
         Self {
             inner: TaglessMemberId::from_raw_id(raw_id),
             _phantom: Default::default(),
         }
     }
 
+    #[cfg(any(
+        feature = "deploy",
+        feature = "deploy_integration",
+        feature = "sim",
+        feature = "sim_runtime",
+        feature = "embedded_runtime"
+    ))]
     /// Returns the raw numeric ID from this member identifier.
     ///
     /// # Panics
-    /// Panics if the underlying [`TaglessMemberId`] is not the `Legacy` variant
-    /// or if the `deploy_integration` feature is not enabled.
+    /// Panics if the underlying [`TaglessMemberId`] is not the `Legacy` variant.
     pub fn get_raw_id(&self) -> u32 {
         self.inner.get_raw_id()
     }
