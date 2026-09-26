@@ -178,9 +178,7 @@ impl<S: DeserializeOwned, F: Fn(&S) -> bool + Unpin> Future for PauseUntilFuture
         // boundary scan would see the exposed hook mid-group. And if that group is
         // stuck, it is the root cause — report it instead of blaming the predicate.
         if let Some(stuck) = script_unconsumed_description() {
-            if ctx.is_quiescent() {
-                panic!("{}", script_stuck_error(&stuck));
-            }
+            assert!(!ctx.is_quiescent(), "{}", script_stuck_error(&stuck));
             ctx.push_park_waker(cx.waker());
             return Poll::Pending;
         }

@@ -551,11 +551,10 @@ impl Drop for SettlePauseGuard {
 /// to quiesce (running pending nondeterministic work), and new input has been sent since, so
 /// further observations could misattribute failures caused by the forced overrun.
 fn guard_not_poisoned(quiescence: &QuiescenceState) {
-    if quiescence.poisoned.get() {
-        panic!(
-            "cannot receive more simulator output: an earlier observation (such as `try_next`, `collect`, or a quiescence assertion outside exhaustive mode) forced the simulation to quiesce by running pending nondeterministic work, and new input has been sent since. Failures observed now could be misattributed, so either restructure the test to make quiescence-forcing observations its last step, or insert an explicit `sim::quiesce().await` phase barrier before sending more input."
-        );
-    }
+    assert!(
+        !quiescence.poisoned.get(),
+        "cannot receive more simulator output: an earlier observation (such as `try_next`, `collect`, or a quiescence assertion outside exhaustive mode) forced the simulation to quiesce by running pending nondeterministic work, and new input has been sent since. Failures observed now could be misattributed, so either restructure the test to make quiescence-forcing observations its last step, or insert an explicit `sim::quiesce().await` phase barrier before sending more input."
+    );
 }
 
 /// Runs the simulation to quiescence, as an explicit *phase barrier* between rounds of a
@@ -631,9 +630,7 @@ async fn try_next_bytes(
         // waiting, that decision can never be honored — panic instead of yielding output
         // or end-of-stream, so a stuck script cannot masquerade as a completed one.
         if let Some(stuck) = script_unconsumed_description() {
-            if quiescence.is_quiescent() {
-                panic!("{}", script_stuck_error(&stuck));
-            }
+            assert!(!quiescence.is_quiescent(), "{}", script_stuck_error(&stuck));
             quiescence.push_park_waker(cx.waker());
             return Poll::Pending;
         }
@@ -1308,9 +1305,11 @@ impl<'a> CompiledSimInstance<'a> {
                 let Some(stuck) = script_unconsumed_description() else {
                     break;
                 };
-                if sim.quiescence.is_quiescent() {
-                    panic!("{}", script_stuck_error(&stuck));
-                }
+                assert!(
+                    !sim.quiescence.is_quiescent(),
+                    "{}",
+                    script_stuck_error(&stuck)
+                );
                 sim.step().await;
                 continue;
             }
@@ -2668,14 +2667,11 @@ impl<W: std::io::Write> LaunchedSim<W> {
                         .filter(|_| scripted_tick_runnable),
                 ) {
                     for hook in &tick.hooks {
-                        if !hook.only_one_possible_decision() {
-                            panic!(
-                                "{}",
-                                crate::sim::runtime::render_unhooked_nondet_error(
-                                    hook.location_meta()
-                                )
-                            );
-                        }
+                        assert!(
+                            hook.only_one_possible_decision(),
+                            "{}",
+                            crate::sim::runtime::render_unhooked_nondet_error(hook.location_meta())
+                        );
                     }
                 }
                 for obs in &self.possibly_ready_observations {
@@ -2688,13 +2684,12 @@ impl<W: std::io::Write> LaunchedSim<W> {
                         );
                     }
                 }
-                if candidate_count > 1 {
-                    // Each action on its own may be free of choices, but the order in
-                    // which they run is not determined, and it can be observable.
-                    panic!(
-                        "deterministic simulation reached a state with more than one runnable tick/observation; the order in which they run is not deterministic\nhelp: script the involved operators so the schedule is explicit, or run under `fuzz` / `exhaustive` instead"
-                    );
-                }
+                // Each action on its own may be free of choices, but the order in
+                // which they run is not determined, and it can be observable.
+                assert!(
+                    candidate_count <= 1,
+                    "deterministic simulation reached a state with more than one runnable tick/observation; the order in which they run is not deterministic\nhelp: script the involved operators so the schedule is explicit, or run under `fuzz` / `exhaustive` instead"
+                );
                 0
             } else {
                 (0..candidate_count).any()
@@ -2761,7 +2756,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                                 abort_assert!(r, "runnable tick's DFIR run_tick() returned false");
                                 break;
                             }
-                            _ = async {} => {
+                            () = async {} => {
                                   for hook in &tick.scripted_inline_hooks {
                                       if hook.borrow().has_pending_input() {
                                           let run = hook.borrow_mut().run_decision(
@@ -2784,8 +2779,9 @@ impl<W: std::io::Write> LaunchedSim<W> {
                                                   // to decide for this operator; it may only
                                                   // proceed when exactly one outcome is
                                                   // possible.
-                                                  if deterministic && !hook.only_one_possible_decision() {
-                                                      panic!(
+                                                  if deterministic {
+                                                      assert!(
+                                                          hook.only_one_possible_decision(),
                                                           "{}",
                                                           crate::sim::runtime::render_unhooked_nondet_error(
                                                               hook.location_meta()

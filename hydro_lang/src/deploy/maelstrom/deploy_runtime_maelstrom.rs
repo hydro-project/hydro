@@ -42,7 +42,7 @@ pub struct InitBody {
     pub node_ids: Vec<String>,
 }
 
-/// Maelstrom init_ok response body.
+/// Maelstrom `init_ok` response body.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InitOkBody {
     #[serde(rename = "type")]
@@ -86,7 +86,7 @@ impl MaelstromMeta {
 }
 
 /// Initialize a Maelstrom node by reading the init message from stdin.
-/// Returns the node metadata and sends init_ok response.
+/// Returns the node metadata and sends `init_ok` response.
 /// Also spawns a background thread to read stdin and broadcast lines to subscribers.
 pub fn maelstrom_init() -> MaelstromMeta {
     let stdin = std::io::stdin();
@@ -127,12 +127,11 @@ pub fn maelstrom_init() -> MaelstromMeta {
                 dest: parsed.dest,
                 body,
             };
-        } else {
-            eprintln!(
-                "dropping message received before init (lossy channel): {}",
-                line.trim_end()
-            );
         }
+        eprintln!(
+            "dropping message received before init (lossy channel): {}",
+            line.trim_end()
+        );
     };
 
     // Set up broadcast channel for stdin lines
@@ -162,7 +161,7 @@ pub fn maelstrom_init() -> MaelstromMeta {
 }
 
 /// Get the cluster member IDs from the Maelstrom metadata.
-/// The `meta` parameter is a RuntimeData reference to the MaelstromMeta that will be
+/// The `meta` parameter is a `RuntimeData` reference to the `MaelstromMeta` that will be
 /// available at runtime as `__hydro_lang_maelstrom_meta`.
 pub(super) fn cluster_members<'a>(
     meta: RuntimeData<&'a MaelstromMeta>,
@@ -226,7 +225,9 @@ pub(super) fn deploy_maelstrom_m2m(meta: RuntimeData<&MaelstromMeta>) -> (syn::E
                         "data": payload.to_vec()
                     }
                 });
-                serde_json::to_string(&msg).unwrap() + "\n"
+                let mut line = serde_json::to_string(&msg).unwrap();
+                line.push('\n');
+                line
             },
             futures::sink::unfold((), |(), line: String| {
                 Box::pin(async move {
@@ -273,8 +274,8 @@ pub(super) fn deploy_maelstrom_m2m(meta: RuntimeData<&MaelstromMeta>) -> (syn::E
 }
 
 /// Creates a stream of client messages from Maelstrom stdin.
-/// Returns tuples of (client_id, message_body) where client_id is the source client
-/// and message_body is the JSON value of the message body.
+/// Returns tuples of `(client_id, message_body)` where `client_id` is the source client
+/// and `message_body` is the JSON value of the message body.
 ///
 /// This function is meant to be used with `source_stream` on a Cluster location.
 pub fn maelstrom_client_source(

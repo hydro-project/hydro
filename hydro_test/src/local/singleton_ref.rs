@@ -147,7 +147,7 @@ mod tests {
         assert_eq!(results, vec![6, 7, 8]);
     }
 
-    /// Test: by_ref() + consume via into_stream() on the same singleton.
+    /// Test: `by_ref()` + consume via `into_stream()` on the same singleton.
     #[tokio::test]
     async fn test_singleton_ref_and_consume() {
         let mut deployment = Deployment::new();
@@ -248,8 +248,8 @@ mod tests {
 
     /// Test: two singleton refs of *different incompatible types* captured in one closure.
     ///
-    /// This catches bugs where singleton refs get mixed up (e.g., wrong ident_stack ordering).
-    /// If ref_a (i32) and ref_b (String) are swapped, the code won't compile or will
+    /// This catches bugs where singleton refs get mixed up (e.g., wrong `ident_stack` ordering).
+    /// If `ref_a` (i32) and `ref_b` (String) are swapped, the code won't compile or will
     /// produce a type error at runtime — which is exactly the failure mode we want to guard.
     #[tokio::test]
     async fn test_singleton_ref_two_different_types_one_closure() {
@@ -417,13 +417,13 @@ mod tests {
 
     /// Test: singleton ref in partition with downstream map operators on both branches.
     ///
-    /// This specifically exercises the ident_stack pop logic in the "already built" path
+    /// This specifically exercises the `ident_stack` pop logic in the "already built" path
     /// of Partition code generation (lines 3462-3466 in ir/mod.rs). When the second branch
-    /// of a partition is processed, transform_children pushes singleton ref idents onto the
+    /// of a partition is processed, `transform_children` pushes singleton ref idents onto the
     /// stack, but since the partition was already built by the first branch, those idents
     /// must be popped to keep the stack consistent for downstream operators.
     ///
-    /// Without the pop, the ident_stack would be corrupted and downstream operators (the
+    /// Without the pop, the `ident_stack` would be corrupted and downstream operators (the
     /// maps on each branch) would read wrong idents, causing a compile/runtime failure.
     #[tokio::test]
     async fn test_singleton_ref_partition_with_downstream_ops() {
@@ -483,7 +483,7 @@ mod tests {
 
     /// Test: singleton ref in partition where the false branch is chained with another stream.
     ///
-    /// This creates a scenario where the stale singleton ref ident left on the ident_stack
+    /// This creates a scenario where the stale singleton ref ident left on the `ident_stack`
     /// (if the pop is missing) would be incorrectly consumed by the chain operator,
     /// causing a compilation or runtime failure.
     #[tokio::test]
@@ -544,7 +544,7 @@ mod tests {
         assert_eq!(results_below, vec![5, 8, 99]);
     }
 
-    /// Test: singleton ref inside a flat_map closure.
+    /// Test: singleton ref inside a `flat_map` closure.
     #[tokio::test]
     async fn test_singleton_ref_flat_map() {
         let mut deployment = Deployment::new();

@@ -24,7 +24,7 @@ use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd};
 
 /// Set-union lattice with tombstones.
 ///
-/// When an item is deleted from the SetUnionWithTombstones, it is removed from `set` and added to `tombstones`.
+/// When an item is deleted from the `SetUnionWithTombstones`, it is removed from `set` and added to `tombstones`.
 /// This also is an invariant, if an item appears in `tombstones` it must not also be in `set`.
 ///
 /// Merging set-union lattices is done by unioning the keys of both the (set and tombstone) sets,

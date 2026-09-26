@@ -331,13 +331,9 @@ impl Host for AzureHost {
                 })
             );
 
-        let user = self
-            .user
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(|| "hydro".to_owned());
+        let user = self.user.clone().unwrap_or_else(|| "hydro".to_owned());
         let os_type = format!("azurerm_{}_virtual_machine", self.os_type.clone());
-        let image = self.image.as_ref().cloned().unwrap_or_else(|| {
+        let image = self.image.clone().unwrap_or_else(|| {
             HashMap::from([
                 ("publisher".to_owned(), "Canonical".to_owned()),
                 (
@@ -417,11 +413,7 @@ impl Host for AzureHost {
 
                 Arc::new(LaunchedVirtualMachine {
                     resource_result: resource_result.clone(),
-                    user: self
-                        .user
-                        .as_ref()
-                        .cloned()
-                        .unwrap_or_else(|| "hydro".to_owned()),
+                    user: self.user.clone().unwrap_or_else(|| "hydro".to_owned()),
                     internal_ip,
                     external_ip,
                 })

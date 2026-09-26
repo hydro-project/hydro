@@ -535,7 +535,7 @@ pub trait Pull {
         CrossSingleton::new(self, singleton_pull, None)
     }
 
-    /// [Self::cross_singleton] with external state.
+    /// [`Self::cross_singleton`] with external state.
     fn cross_singleton_state<SinglePull>(
         self,
         singleton_pull: SinglePull,
@@ -577,7 +577,7 @@ pub trait Pull {
         SymmetricHashJoin::new(self, rhs, lhs_state, rhs_state)
     }
 
-    /// [Self::symmetric_hash_join] with external state.
+    /// [`Self::symmetric_hash_join`] with external state.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn symmetric_hash_join_state<'a, Key, V1, Rhs, V2, LhsState, RhsState>(

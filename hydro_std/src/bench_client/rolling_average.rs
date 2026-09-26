@@ -74,7 +74,7 @@ impl RollingAverage {
         Some((mean - margin, mean + margin))
     }
 
-    /// Combine two RollingAverage instances
+    /// Combine two `RollingAverage` instances
     pub fn add(&mut self, other: Self) {
         for sample in other.samples {
             self.add_sample(sample);

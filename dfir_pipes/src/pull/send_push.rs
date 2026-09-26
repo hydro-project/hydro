@@ -107,7 +107,7 @@ mod tests {
     use crate::push::PushStep;
     use crate::push::test_utils::{PushCall, TestPush};
 
-    /// size_hint is forwarded exactly once from pull to push, even across multiple polls.
+    /// `size_hint` is forwarded exactly once from pull to push, even across multiple polls.
     #[test]
     fn send_push_forwards_size_hint_once() {
         let pull = TestPull::items(0..2);
@@ -145,8 +145,8 @@ mod tests {
         assert_eq!(hint_calls[0], &PushCall::SizeHint(2, Some(2)));
     }
 
-    /// SendPush must not re-poll the pull after it returned Ended,
-    /// even if poll_finalize returns Pending.
+    /// `SendPush` must not re-poll the pull after it returned Ended,
+    /// even if `poll_finalize` returns Pending.
     #[test]
     fn send_push_no_repoll_after_ended_on_finalize_pending() {
         let pull = TestPull::items(0..2);

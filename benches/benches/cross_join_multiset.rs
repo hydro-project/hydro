@@ -30,7 +30,7 @@ fn run_shj_cross_benchmark<V1, V2>(
     let mut join = pin!(join);
     loop {
         match join.as_mut().pull(&mut ()) {
-            PullStep::Ready(item, _) => {
+            PullStep::Ready(item, ()) => {
                 black_box(item);
             }
             PullStep::Ended(_) => break,

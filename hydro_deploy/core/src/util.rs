@@ -13,9 +13,8 @@ pub async fn async_retry<T, E, F: Future<Output = Result<T, E>>>(
         let result = thunk().await;
         if result.is_ok() {
             return result;
-        } else {
-            tokio::time::sleep(delay).await;
         }
+        tokio::time::sleep(delay).await;
     }
 
     thunk().await
@@ -36,9 +35,10 @@ impl PriorityBroadcast {
         if let Some(internal) = self.0.upgrade() {
             let mut internal = internal.lock().unwrap();
             let prev_sender = internal.priority_sender.replace(sender);
-            if prev_sender.is_some() {
-                panic!("Only one deploy stdout receiver is allowed at a time");
-            }
+            assert!(
+                prev_sender.is_none(),
+                "Only one deploy stdout receiver is allowed at a time"
+            )
         }
 
         receiver

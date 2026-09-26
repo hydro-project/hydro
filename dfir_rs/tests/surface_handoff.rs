@@ -256,7 +256,7 @@ pub async fn test_handoff_reference() {
     let mut flow = dfir_rs::dfir_syntax! {
         my_buf = source_iter(1..=5_i32) -> handoff();
         my_buf -> for_each(|_| {});
-        source_iter([()]) -> map(|_| #my_buf.len()) -> for_each(|v: usize| out.push(v));
+        source_iter([()]) -> map(|()| #my_buf.len()) -> for_each(|v: usize| out.push(v));
     };
     flow.run_tick().await;
     drop(flow);
@@ -270,7 +270,7 @@ pub async fn test_handoff_reference_only() {
     let out = &mut output;
     let mut flow = dfir_rs::dfir_syntax! {
         my_buf = source_iter(1..=5_i32) -> handoff();
-        source_iter([()]) -> map(|_| #my_buf.len()) -> for_each(|v: usize| out.push(v));
+        source_iter([()]) -> map(|()| #my_buf.len()) -> for_each(|v: usize| out.push(v));
     };
     flow.run_tick().await;
     drop(flow);
@@ -286,7 +286,7 @@ pub async fn test_handoff_mut_reference() {
         my_buf = source_iter(1..=5_i32) -> handoff();
         my_buf -> for_each(|v: i32| out.push(v));
         // Mutably reference the buffer to retain only items > 3 before the pipe consumer drains.
-        source_iter([()]) -> map(|_| { #mut my_buf.retain(|x| *x > 3); }) -> for_each(|_| {});
+        source_iter([()]) -> map(|()| { #mut my_buf.retain(|x| *x > 3); }) -> for_each(|()| {});
     };
     flow.run_tick().await;
     drop(flow);

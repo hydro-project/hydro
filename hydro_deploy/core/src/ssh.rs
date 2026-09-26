@@ -350,7 +350,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
                         drop(created_file);
 
                         match sftp.rename(&temp_path, binary_path).await {
-                            Ok(_) => {}
+                            Ok(()) => {}
                             Err(SftpError::Status(Status {
                                 status_code: StatusCode::Failure, // SSH_FXP_STATUS = 4
                                 ..

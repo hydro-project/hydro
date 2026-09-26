@@ -647,8 +647,8 @@ impl Parse for SingletonRef {
         let ident = input.parse()?;
         Ok(Self {
             hash,
-            token_mut,
             access_group,
+            token_mut,
             ident,
         })
     }

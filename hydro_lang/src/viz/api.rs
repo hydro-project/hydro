@@ -56,7 +56,7 @@ impl<'a> GraphApi<'a> {
         Ok(())
     }
 
-    /// Generate graph based on CLI GraphConfig. Returns Some(path) if a file was written.
+    /// Generate graph based on CLI `GraphConfig`. Returns Some(path) if a file was written.
     #[cfg(feature = "build")]
     pub fn generate_graph(
         &self,

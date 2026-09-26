@@ -179,7 +179,7 @@ pub struct FlowBuilder<'a> {
     /// drop without finalizing.
     finalized: bool,
 
-    /// 'a on a FlowBuilder is used to ensure that staged code does not
+    /// 'a on a `FlowBuilder` is used to ensure that staged code does not
     /// capture more data that it is allowed to; 'a is generated at the
     /// entrypoint of the staged code and we keep it invariant here
     /// to enforce the appropriate constraints
@@ -188,11 +188,10 @@ pub struct FlowBuilder<'a> {
 
 impl Drop for FlowBuilder<'_> {
     fn drop(&mut self) {
-        if !self.finalized && !std::thread::panicking() {
-            panic!(
-                "Dropped FlowBuilder without finalizing, you may have forgotten to call `with_default_optimize`, `optimize_with`, or `finalize`."
-            );
-        }
+        assert!(
+            self.finalized || std::thread::panicking(),
+            "Dropped FlowBuilder without finalizing, you may have forgotten to call `with_default_optimize`, `optimize_with`, or `finalize`."
+        );
     }
 }
 

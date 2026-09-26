@@ -460,7 +460,7 @@ pub(super) fn create_sim_graph_trybuild(
 ) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
-    let crate_name = source_manifest.package.name.replace("-", "_");
+    let crate_name = source_manifest.package.name.replace('-', "_");
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
