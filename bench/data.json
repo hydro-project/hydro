@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1790502180226,
+  "lastUpdate": 1790590990771,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -313451,6 +313451,208 @@
             "name": "paxos_bench",
             "value": 272880,
             "range": "± 643.12",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "9e2a120ac8e2e753932e7fd36728f0e6813979bd",
+          "message": "feat(hydro_lang): support scripted sim hooks on cluster operators, with typed per-member scoping (#3201)\n\nScripted sim hooks previously panicked at flow build time when bound to\nan operator\nrunning on a cluster. They now work with **independent decision\nscripting per member**,\nand every member's hook instance independently participates in the\nmissing-decision\nprotocol.\n\n## Typed hook scopes\n\nEvery handle type (`BatchHook`, `SnapshotHook`, `OrderingHook`,\nkeyed/merge variants)\ngains a trailing `Scope` type parameter mirroring the *root location\nkind* of the\noperator it binds to, via a new `Location::SimHookScope` associated type\n(`Process<P>` → `OnProcess<P>`, `Cluster<C, Con>` → `OnCluster<C>`\nnormalizing away the\nlifetime/consistency, `Tick`/`Atomic` delegate to the parent — the\ntype-level `::Root`\nstep). Operators name the scope in their `NonDet` payload\n(`NonDet<Option<BatchHook<T, O, R, L::SimHookScope>>>`), so scope misuse\nis a **compile\nerror** instead of a runtime panic:\n\n- An `OnCluster`-scoped handle has no decision/pause methods: select a\nmember's\ninstance with `.on(member_id)`, which returns an `OnMember<C>`-scoped\nhandle\n  carrying the full scripting API (`hook.on(0).release(2).await`).\n- `.on(..)` does not exist on process-scoped handles.\n- `OnMember` handles cannot be created (`FlowBuilder::sim_hook`) or\nbound; binding\n  always uses the unscoped handle (every member runs the operator).\n- Sealed `BindableHookScope` / `ScriptableHookScope` traits carry\n  `#[diagnostic::on_unimplemented]` messages explaining the fix.\n\nOnly \"member N does not exist under the cluster sizing\" remains a\nruntime error\n(reported at the scripting `.await` with the members that do exist).\n\nThe scope threads through the proof path too: `CommutativeProof<T, B,\nS>`, the\n`ManualProof`/Verus impls, and the `AggFuncAlgebra` /\n`StreamMapFuncAlgebra` /\n`SingletonMapFuncAlgebra` property types gain a defaulted scope\nparameter, so\n`manual_proof!(hook = ...)` on cluster folds works.\n`Location::DropConsistency` now\nalso guarantees `SimHookScope` equality so hooks flow across\n`assume_retries` /\n`drop_consistency` chains.\n\n## Runtime semantics\n\n- Codegen (`SimBuilder::add_scripted_hook` / `add_scripted_inline_hook`)\nemits one\n`Scripted` instance per cluster member inside the per-member\ninstantiation loop,\nregistered under `(handle_id, Some(member))` in the\n`ScriptedHookRegistry` (now keyed\nby `(usize, Option<u32>)`), with `ScriptTarget`s carrying the member's\n`cluster_id`.\n- Each member's tick/observation is its own scheduler action: decisions\nfor different\nmembers never share a script group, so they form consecutive groups in\nscript order\n  (the script remains the schedule, per member).\n- Every member's instance is independently subject to the boundary scan:\na member with\nbuffered input and no decision (or pause) is a forgotten-hook error —\nincluding while\nanother member's decision is installed or waiting — reported **naming\nthe member**\n(`--> loc (cluster member 1)`). Stuck-decision and group-cannot-trigger\nerrors also\n  name the member.\n\n## Tests\n\n- 6 new sim tests: per-member batch scripting, per-member top-level\nobservations,\nper-member inline (in-tick) hooks with the only-possibility implicit\npath, forgotten\nmember errors (direct and behind a waiting decision), and\nnonexistent-member errors.\n- 3 new compile-fail tests (stable + nightly stderr): missing `.on(..)`\non a\ncluster-bound handle (bind-time scope mismatch), `.on(..)` on a\nprocess-scoped\n  handle, and creating an `OnMember`-scoped handle.\n- `hydro_std::compartmentalize` and `hydro_test` component signatures\nupdated to name\n  the `OnCluster<..>` scope in their property/algebra types.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-09-24T22:15:27Z",
+          "url": "https://github.com/hydro-project/hydro/commit/9e2a120ac8e2e753932e7fd36728f0e6813979bd"
+        },
+        "date": 1790590990707,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311350,
+            "range": "± 5184",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6533998,
+            "range": "± 8197",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6912460,
+            "range": "± 22710",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 48417,
+            "range": "± 1301",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 11334166,
+            "range": "± 80236",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1273746,
+            "range": "± 9757",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1342621,
+            "range": "± 12794",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 44236916,
+            "range": "± 494114",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6830651,
+            "range": "± 15829",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 13391180,
+            "range": "± 1459335",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6536759,
+            "range": "± 64825",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 7001785,
+            "range": "± 18998",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 42553893,
+            "range": "± 314278",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 6454,
+            "range": "± 84",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22772,
+            "range": "± 237",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4109,
+            "range": "± 64",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6589,
+            "range": "± 69",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 530636,
+            "range": "± 3322",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55690,
+            "range": "± 506",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 42068,
+            "range": "± 376",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 17152,
+            "range": "± 323",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6985,
+            "range": "± 123",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7279,
+            "range": "± 84",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72146,
+            "range": "± 582",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 79817,
+            "range": "± 491",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7558,
+            "range": "± 205",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15395,
+            "range": "± 113",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 61853,
+            "range": "± 2924",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7587,
+            "range": "± 149",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 186160,
+            "range": "± 9929.07",
             "unit": "ops/s"
           }
         ]
