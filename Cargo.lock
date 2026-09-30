@@ -1793,7 +1793,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_pipes"
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 dependencies = [
  "futures-core",
  "futures-sink",
@@ -1810,7 +1810,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_rs"
-version = "0.17.0-alpha.5"
+version = "0.17.0-alpha.6"
 dependencies = [
  "bincode",
  "bumpalo",
@@ -2629,7 +2629,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_concurrent_cargo"
-version = "0.1.1-alpha.0"
+version = "0.1.2-alpha.0"
 dependencies = [
  "parking_lot",
  "toml_edit 0.23.9",
@@ -2637,7 +2637,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_deploy"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.5"
 dependencies = [
  "anyhow",
  "append-only-vec",
@@ -2690,7 +2690,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_lang"
-version = "0.17.0-alpha.5"
+version = "0.17.0-alpha.6"
 dependencies = [
  "anyhow",
  "auto_impl",
@@ -2754,7 +2754,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_std"
-version = "0.17.0-alpha.5"
+version = "0.17.0-alpha.6"
 dependencies = [
  "hdrhistogram",
  "hydro_deploy",
@@ -3331,7 +3331,7 @@ dependencies = [
 
 [[package]]
 name = "lattices_macro"
-version = "0.6.1-alpha.0"
+version = "0.6.1-alpha.1"
 dependencies = [
  "hydro_build_utils",
  "prettyplease",
