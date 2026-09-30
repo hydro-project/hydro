@@ -1,7 +1,7 @@
 //! Pull-based stream combinators for dataflow pipelines.
 //!
 //! This module provides pull-based operators that can be chained via method calls
-//! on [`pull::Pull`], similar to iterator adapters.
+//! on [`crate::pull::Pull`], similar to iterator adapters.
 
 use core::pin::Pin;
 use core::task::{Poll, Waker};
