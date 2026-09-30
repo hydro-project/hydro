@@ -74,7 +74,7 @@ jobs:
         run: cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       - name: Install cargo-smart-release
-        run: cargo install cargo-smart-release --locked --git https://github.com/hydro-project/cargo-smart-release.git --rev e6f3368337a0
+        run: cargo install cargo-smart-release --locked --git https://github.com/hydro-project/cargo-smart-release.git --rev 074248ec3f337a9a4270a285a6a965c08630f0fc
 
       - name: Determine crates to publish
         id: crates
