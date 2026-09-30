@@ -1584,7 +1584,7 @@ mod tests {
             in_send.send(());
 
             let received = out_recv.collect::<Vec<_>>().await;
-            assert!(received.into_iter().sum::<usize>() == 3);
+            assert_eq!(received.into_iter().sum::<usize>(), 3);
         });
 
         assert_eq!(instances, 4); // 2^{3 - 1}
