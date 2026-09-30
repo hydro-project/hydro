@@ -417,9 +417,9 @@ mod tests {
                     },
                 );
 
-                assert!(grouped.len() == 2);
+                assert_eq!(grouped.len(), 2);
                 for (_id, v) in grouped {
-                    assert!(v == 3);
+                    assert_eq!(v, 3);
                 }
             });
 
