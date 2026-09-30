@@ -46,11 +46,11 @@ use serde::{Deserialize, Serialize};
 #[doc(hidden)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum RaftState {
-    /// When in follower mode, a RAFT server receives AppendEntries RPCs and updates its log
+    /// When in follower mode, a RAFT server receives `AppendEntries` RPCs and updates its log
     Follower,
     /// When in candidate mode, a RAFT server requests votes and is trying to become the leader
     Candidate,
-    /// When leader, the RAFT server sends AppendEntries RPCs and serves client requests
+    /// When leader, the RAFT server sends `AppendEntries` RPCs and serves client requests
     Leader,
 }
 
@@ -1680,7 +1680,7 @@ mod tests {
                 term: 1,
                 leader: leader_0.clone(),
                 prev_log_index: prev,
-                prev_log_term: if prev == 0 { 0 } else { 1 },
+                prev_log_term: usize::from(prev != 0),
                 entries,
                 leader_commit: 0,
             })
@@ -2053,7 +2053,7 @@ mod tests {
     /// installed with `crown` (as the pre-unification test did with injected views)
     /// while replication runs the real protocol:
     /// * Term 1: member 0 appends "old" but never heartbeats it (figure 8(a)).
-    /// * Term 2: member 0, re-crowned, replicates "old" everywhere — match_index
+    /// * Term 2: member 0, re-crowned, replicates "old" everywhere — `match_index`
     ///   reaches 1 on every member, beyond a majority, yet nothing may commit:
     ///   "old" is a term-1 entry under a term-2 leader. This is the trap that catches
     ///   a dropped §5.4.2 restriction (figure 8(c)).
@@ -2061,7 +2061,7 @@ mod tests {
     ///   the common prefix keeps later empty heartbeats from disturbing it).
     /// * Term 4: member 0, re-crowned, appends "winner" at index 2, unreplicated —
     ///   the doomed entry.
-    /// * Term 5: member 2 is crowned; its log is authoritative: the next_index
+    /// * Term 5: member 2 is crowned; its log is authoritative: the `next_index`
     ///   walk-back truncates "winner" in favor of "conflict", and a fresh
     ///   current-term entry "new" commits by counting — carrying "old" and
     ///   "conflict" with it transitively (figure 8(d)/(e)).
@@ -2320,7 +2320,7 @@ mod tests {
     /// The choreography deliberately overlaps replication and elections without
     /// intermediate quiescence: each round primes a challenger's heartbeat-
     /// suppression flag, then in one un-quiesced burst sends a fresh request to
-    /// member 0, pumps its heartbeat timer (pushing AppendEntries with the new
+    /// member 0, pumps its heartbeat timer (pushing `AppendEntries` with the new
     /// entry), and fires the challenger's election timer (a concurrent candidacy).
     /// The fuzzer explores the delivery interleavings. No liveness is asserted in
     /// the racy rounds — a stalled round is a legal outcome.

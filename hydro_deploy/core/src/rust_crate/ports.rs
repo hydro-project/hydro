@@ -191,6 +191,7 @@ pub struct RustCratePortConfig {
 }
 
 impl RustCratePortConfig {
+    #[must_use]
     pub fn merge(mut self) -> Self {
         self.merge = true;
         self
@@ -388,7 +389,7 @@ pub enum ServerConfig {
     /// The other side of a demux, with a port to extract the appropriate connection.
     DemuxSelect(Box<ServerConfig>, u32),
     /// A merge that will be used at runtime to combine many connections.
-    /// AppendOnlyVec has a quite large inline array, so we box it.
+    /// `AppendOnlyVec` has a quite large inline array, so we box it.
     Merge(Box<AppendOnlyVec<ServerConfig>>),
     /// The other side of a merge, with a port to extract the appropriate connection.
     MergeSelect(Box<ServerConfig>, usize),

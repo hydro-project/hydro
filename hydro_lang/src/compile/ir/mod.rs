@@ -887,7 +887,7 @@ impl DfirBuilder for ProdDfirBuilder {
                     None,
                 );
             }
-            (Some(_), None) | (None, None) => {
+            (Some(_) | None, None) => {
                 unreachable!("batch must target a tick location");
             }
         }
@@ -2654,7 +2654,7 @@ impl CollectionKind {
         )
     }
 
-    /// Returns whether this collection kind is already "strict" (TotalOrder + ExactlyOnce),
+    /// Returns whether this collection kind is already "strict" (`TotalOrder` + `ExactlyOnce`),
     /// meaning no non-determinism needs to be observed for mut closures.
     pub fn is_strict(&self) -> bool {
         match self {
@@ -2676,7 +2676,7 @@ impl CollectionKind {
         }
     }
 
-    /// Creates a "strict" version of this kind with TotalOrder and ExactlyOnce.
+    /// Creates a "strict" version of this kind with `TotalOrder` and `ExactlyOnce`.
     pub fn strict_kind(&self) -> CollectionKind {
         match self {
             CollectionKind::Stream {
@@ -2951,7 +2951,7 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
-    /// A reference materialization point. Wraps a SharedNode so that:
+    /// A reference materialization point. Wraps a `SharedNode` so that:
     /// - The pipe output delivers data to one consumer
     /// - `#var` references can borrow the value from the slot
     ///
@@ -3223,7 +3223,7 @@ pub type SeenSharedNodeLocations = HashMap<*const RefCell<HydroNode>, LocationId
 
 /// If `f` has a mut singleton ref and `in_kind` is non-strict, emits an
 /// `observe_for_mut` node and returns the new ident. Otherwise returns
-/// `in_ident` unchanged. Always consumes a stmt_id when applicable.
+/// `in_ident` unchanged. Always consumes a `stmt_id` when applicable.
 #[cfg(feature = "build")]
 fn maybe_observe_for_mut(
     f: &ClosureExpr,
@@ -3272,15 +3272,14 @@ impl HydroNode {
                 HydroNode::Network { .. } => {}
                 _ => {
                     self.input_metadata().iter().for_each(|i| {
-                        if i.location_id.root() != self_location {
-                            panic!(
-                                "Mismatching IR locations, child: {:?} ({:?}) of: {:?} ({:?})",
-                                i,
-                                i.location_id.root(),
-                                self,
-                                self_location
-                            )
-                        }
+                        assert!(
+                            i.location_id.root() == self_location,
+                            "Mismatching IR locations, child: {:?} ({:?}) of: {:?} ({:?})",
+                            i,
+                            i.location_id.root(),
+                            self,
+                            self_location
+                        );
                     });
                 }
             }
@@ -4097,7 +4096,7 @@ impl HydroNode {
                     HydroNode::Source {
                         source, metadata, ..
                     } => {
-                        if let HydroSource::ExternalNetwork() = source {
+                        if matches!(source, HydroSource::ExternalNetwork()) {
                             ident_stack.push(syn::Ident::new("DUMMY", Span::call_site()));
                         } else {
                             let stmt_id = next_stmt_id.get_and_increment();
@@ -4418,7 +4417,7 @@ impl HydroNode {
                                 }
                             }
 
-                            let idx = if is_true { 0 } else { 1 };
+                            let idx = usize::from(!is_true);
                             built_idents[idx].clone()
                         } else {
                             // The `PartitionShared` node was already processed by transform_bottom_up,
@@ -6285,8 +6284,9 @@ fn instantiate_network<'a, D>(
 where
     D: Deploy<'a>,
 {
-    if external_types.is_some() && !D::SUPPORTS_EXTERNAL_SERIALIZATION {
-        panic!(
+    if external_types.is_some() {
+        assert!(
+            D::SUPPORTS_EXTERNAL_SERIALIZATION,
             "`.embedded()` serialization leaves serialization to code outside of Hydro and is \
              only supported by the embedded deployment backend. Use `.bincode()` (or another \
              supported serialization backend) for this deployment target instead."

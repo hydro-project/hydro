@@ -57,7 +57,7 @@ pub async fn test_defered_tick_and_no_io_with_run_async() {
     let mut df = dfir_rs::dfir_syntax! {
         source_iter([()])
             -> defer_tick()
-            -> for_each(|_| tx.send(()).unwrap());
+            -> for_each(|()| tx.send(()).unwrap());
     };
 
     tokio::select! {

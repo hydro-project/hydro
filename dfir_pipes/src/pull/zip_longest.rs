@@ -172,7 +172,7 @@ mod tests {
 
         loop {
             match zip.as_mut().pull(&mut ()) {
-                PullStep::Ready(item, _) => results.push(item),
+                PullStep::Ready(item, ()) => results.push(item),
                 PullStep::Ended(_) => break,
                 PullStep::Pending(_) => unreachable!(),
             }
@@ -194,7 +194,7 @@ mod tests {
 
         loop {
             match zip.as_mut().pull(&mut ()) {
-                PullStep::Ready(item, _) => results.push(item),
+                PullStep::Ready(item, ()) => results.push(item),
                 PullStep::Ended(_) => break,
                 PullStep::Pending(_) => unreachable!(),
             }
@@ -220,7 +220,7 @@ mod tests {
 
         loop {
             match zip.as_mut().pull(&mut ()) {
-                PullStep::Ready(item, _) => results.push(item),
+                PullStep::Ready(item, ()) => results.push(item),
                 PullStep::Ended(_) => break,
                 PullStep::Pending(_) => unreachable!(),
             }
@@ -335,7 +335,7 @@ mod tests {
         // prev1 Ready(0), prev2 Ready(0) → Both(0, 0)
         assert!(matches!(
             zip.as_mut().pull(&mut ()),
-            PullStep::Ready(EitherOrBoth::Both(0, 0), _)
+            PullStep::Ready(EitherOrBoth::Both(0, 0), ())
         ));
 
         // prev1 Pending, prev2 Ready(1) → buffer Right(1), Pending
@@ -345,7 +345,7 @@ mod tests {
         // Buffered Right(1) pairs with prev1 Ready(1) → Both(1, 1)
         assert!(matches!(
             zip.as_mut().pull(&mut ()),
-            PullStep::Ready(EitherOrBoth::Both(1, 1), _)
+            PullStep::Ready(EitherOrBoth::Both(1, 1), ())
         ));
 
         // prev1 Pending, prev2 Ended → Pending

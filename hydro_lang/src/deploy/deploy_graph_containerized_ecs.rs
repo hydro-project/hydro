@@ -434,7 +434,7 @@ fn build_info_from_config(
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("unknown")
-        .replace("_", "-");
+        .replace('_', "-");
 
     let package_name = format!("{}-hydro-trybuild", crate_name);
 
@@ -783,8 +783,7 @@ fn get_ecs_image_name(name_hint: &str, location: LocationKey) -> String {
         .last()
         .unwrap()
         .to_ascii_lowercase()
-        .replace(".", "-")
-        .replace("_", "-")
+        .replace(['.', '_'], "-")
         .replace("::", "-");
 
     format!("hy-{name_hint}-{location}")

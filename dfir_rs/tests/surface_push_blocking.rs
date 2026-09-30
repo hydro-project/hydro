@@ -5,7 +5,7 @@ use dfir_rs::dfir_syntax;
 use dfir_rs::util::collect_ready;
 use multiplatform_test::multiplatform_test;
 
-/// sort on push side: source -> tee -> sort -> for_each
+/// `sort` on push side: `source -> tee -> sort -> for_each`
 #[multiplatform_test]
 pub fn test_sort_push() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -18,7 +18,7 @@ pub fn test_sort_push() {
     assert_eq!(&[1, 2, 3], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 }
 
-/// sort_by_key on push side: source -> tee -> sort_by_key -> for_each
+/// `sort_by_key` on push side: `source -> tee -> sort_by_key -> for_each`
 #[multiplatform_test]
 pub fn test_sort_by_key_push() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(i32, char)>();
@@ -34,7 +34,7 @@ pub fn test_sort_by_key_push() {
     );
 }
 
-/// reduce on push side: source -> tee -> reduce -> for_each
+/// `reduce` on push side: `source -> tee -> reduce -> for_each`
 #[multiplatform_test]
 pub fn test_reduce_push() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -47,7 +47,7 @@ pub fn test_reduce_push() {
     assert_eq!(&[6], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 }
 
-/// fold_keyed on push side
+/// `fold_keyed` on push side
 #[multiplatform_test]
 pub fn test_fold_keyed_push() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(i32, i32)>();
@@ -62,7 +62,7 @@ pub fn test_fold_keyed_push() {
     assert_eq!(&[(1, 30), (2, 30)], &*out);
 }
 
-/// reduce_keyed on push side
+/// `reduce_keyed` on push side
 #[multiplatform_test]
 pub fn test_reduce_keyed_push() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(i32, i32)>();
@@ -77,7 +77,7 @@ pub fn test_reduce_keyed_push() {
     assert_eq!(&[(1, 30), (2, 30)], &*out);
 }
 
-/// fold on push side: source -> tee -> fold -> for_each
+/// `fold` on push side: `source -> tee -> fold -> for_each`
 #[multiplatform_test]
 pub fn test_fold_push() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -90,7 +90,7 @@ pub fn test_fold_push() {
     assert_eq!(&[6], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 }
 
-/// fold_no_replay on push side: source -> tee -> fold_no_replay -> for_each
+/// `fold_no_replay` on push side: `source -> tee -> fold_no_replay -> for_each`
 #[multiplatform_test]
 pub fn test_fold_no_replay_push() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -116,7 +116,7 @@ pub fn test_fold_no_replay_push() {
     assert_eq!(&[13], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 }
 
-/// reduce_no_replay on push side: source -> tee -> reduce_no_replay -> for_each
+/// `reduce_no_replay` on push side: `source -> tee -> reduce_no_replay -> for_each`
 #[multiplatform_test]
 pub fn test_reduce_no_replay_push() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -142,7 +142,7 @@ pub fn test_reduce_no_replay_push() {
     assert_eq!(&[13], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 }
 
-/// lattice_reduce on push side: source -> tee -> lattice_reduce -> for_each
+/// `lattice_reduce` on push side: `source -> tee -> lattice_reduce -> for_each`
 #[multiplatform_test]
 pub fn test_lattice_reduce_push() {
     use dfir_rs::lattices::Max;
@@ -157,7 +157,7 @@ pub fn test_lattice_reduce_push() {
     assert_eq!(&[Max::new(5)], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 }
 
-/// lattice_fold on push side: source -> tee -> lattice_fold -> for_each
+/// `lattice_fold` on push side: `source -> tee -> lattice_fold -> for_each`
 #[multiplatform_test]
 pub fn test_lattice_fold_push() {
     use dfir_rs::lattices::Max;

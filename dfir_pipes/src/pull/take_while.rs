@@ -74,9 +74,9 @@ mod tests {
         let mut pull = TestPull::items_fused(0..5);
         let mut p = pin!((&mut pull).take_while(|x| *x < 2));
         let step = p.as_mut().pull(&mut ());
-        assert!(matches!(step, crate::pull::PullStep::Ready(0, _)));
+        assert!(matches!(step, crate::pull::PullStep::Ready(0, ())));
         let step = p.as_mut().pull(&mut ());
-        assert!(matches!(step, crate::pull::PullStep::Ready(1, _)));
+        assert!(matches!(step, crate::pull::PullStep::Ready(1, ())));
         let step = p.as_mut().pull(&mut ());
         assert!(matches!(step, crate::pull::PullStep::Ended(_)));
     }

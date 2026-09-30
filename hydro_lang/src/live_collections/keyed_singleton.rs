@@ -1660,7 +1660,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     }
 }
 
-impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B>
+impl<'a, K, V, L, B> KeyedSingleton<K, V, L, B>
 where
     L: Location<'a>,
     B: KeyedSingletonBound<ValueBound = Bounded>,

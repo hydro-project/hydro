@@ -20,7 +20,7 @@ use crate::staging_util::get_this_crate;
 /// "top-level" operators guarantee "eventual determinism" (per Flo), we do not need to simulate
 /// every possible interleaving of message arrivals and processing. Instead, we only need to
 /// simulate sources of non-determinism at the points in the program where a user intentionally
-/// observes them (such as batch or assume_ordering).
+/// observes them (such as batch or `assume_ordering`).
 ///
 /// Because each tick relies on a set of decisions being made to select their inputs (batch,
 /// snapshot), we emit each tick's code into a separate DFIR graph. Each non-deterministic input
@@ -2567,5 +2567,5 @@ fn location_for_op(op_meta: &HydroIrOpMetadata) -> (String, String, String) {
                 format!("{:>1$}", "", (colno - 1).try_into().unwrap()),
             ))
         })
-        .unwrap_or_else(|| ("unknown location".to_owned(), "".to_owned(), "".to_owned()))
+        .unwrap_or_else(|| ("unknown location".to_owned(), String::new(), String::new()))
 }

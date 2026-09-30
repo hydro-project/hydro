@@ -406,7 +406,7 @@ impl DfirGraph {
 
     /// Inserts a node between two existing nodes connected by the given `edge_id`.
     ///
-    /// `edge`: (src, dst, dst_idx)
+    /// `edge`: (src, dst, `dst_idx`)
     ///
     /// Before: A (src) ------------> B (dst)
     /// After:  A (src) -> X (new) -> B (dst)
@@ -585,18 +585,22 @@ impl DfirGraph {
 }
 
 /// Per-node handoff references, in turn grouped by access group.
-/// Map: handoff_node_id -> access_group -> (source `GraphNodeId`, `ResolvedHandoffRef`, `#ref` span)
+/// Map: `handoff_node_id` -> `access_group` -> (source `GraphNodeId`, `ResolvedHandoffRef`, `#ref` span)
 pub type NodeHandoffReferenceGroups<'a> =
     BTreeMap<GraphNodeId, BTreeMap<Option<u32>, Vec<(GraphNodeId, &'a ResolvedHandoffRef, Span)>>>;
 
 /// Module methods.
 impl DfirGraph {
-    /// When modules are imported into a flat graph, they come with an input and output ModuleBoundary node.
+    /// When modules are imported into a flat graph, they come with an input and output `ModuleBoundary` node.
     /// The partitioner doesn't understand these nodes and will panic if it encounters them.
-    /// merge_modules removes them from the graph, stitching the input and ouput sides of the ModuleBondaries based on their ports
+    /// `merge_modules` removes them from the graph, stitching the input and output sides of the `ModuleBoundary`s based on their ports.
     /// For example:
-    ///     source_iter([]) -> \[myport\]ModuleBoundary(input)\[my_port\] -> map(|x| x) -> ModuleBoundary(output) -> null();
-    /// in the above eaxmple, the \[myport\] port will be used to connect the source_iter with the map that is inside of the module.
+    ///
+    /// ```text
+    /// source_iter([]) -> [myport]ModuleBoundary(input)[my_port] -> map(|x| x) -> ModuleBoundary(output) -> null();
+    /// ```
+    ///
+    /// In the above example, the `[myport]` port will be used to connect the `source_iter` with the `map` that is inside of the module.
     /// The output module boundary has elided ports, this is also used to match up the input/output across the module boundary.
     pub fn merge_modules(&mut self) -> Result<(), Diagnostic> {
         let mod_bound_nodes = self
@@ -652,17 +656,16 @@ impl DfirGraph {
                         mod_succ_ports.keys().map(|x| x.to_string()).join(", ")
                     ),
                 });
-            } else {
-                return Err(Diagnostic {
-                    span: *import_expr,
-                    level: Level::Error,
-                    message: format!(
-                        "The ports out of the module did not match. output: {:?}, expected: {:?}",
-                        mod_succ_ports.keys().map(|x| x.to_string()).join(", "),
-                        mod_pred_ports.keys().map(|x| x.to_string()).join(", "),
-                    ),
-                });
             }
+            return Err(Diagnostic {
+                span: *import_expr,
+                level: Level::Error,
+                message: format!(
+                    "The ports out of the module did not match. output: {:?}, expected: {:?}",
+                    mod_succ_ports.keys().map(|x| x.to_string()).join(", "),
+                    mod_pred_ports.keys().map(|x| x.to_string()).join(", "),
+                ),
+            });
         }
 
         for (port, (pred_edge, pred_port)) in mod_pred_ports {
@@ -861,11 +864,11 @@ impl DfirGraph {
 
     /// Resolve the handoff references via [`Self::node_handoff_references`] for the given `node_id`.
     /// Returns token streams for each reference:
-    /// - For HandoffKind::Singleton: `buf.as_ref().unwrap()` (shared, `&T`) or
+    /// - For `HandoffKind::Singleton`: `buf.as_ref().unwrap()` (shared, `&T`) or
     ///   `buf.as_mut().unwrap()` (mutable, `&mut T`)
-    /// - For HandoffKind::Optional: `&buf` (shared, `&Option<T>`) or
+    /// - For `HandoffKind::Optional`: `&buf` (shared, `&Option<T>`) or
     ///   `&mut buf` (mutable, `&mut Option<T>`)
-    /// - For HandoffKind::Vec: `&buf` (shared, `&Vec<T>`) or
+    /// - For `HandoffKind::Vec`: `&buf` (shared, `&Vec<T>`) or
     ///   `&mut buf` (mutable, `&mut Vec<T>`)
     fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<TokenStream> {
         self.node_handoff_references(node_id)
@@ -1216,7 +1219,7 @@ impl DfirGraph {
 
     /// Like [`Self::as_code`] but with the full set of [`AsCodeOptions`].
     ///
-    /// The simulator calls Dfir::new() on each iteration, and as a part of that
+    /// The simulator calls `Dfir::new()` on each iteration, and as a part of that
     /// it does parsing of the metagraph and diagnostics blob. One of them causes spans to get allocated,
     /// each time a span is allocated, some threadlocal u32 is being incremented, and, on a long simulator run,
     /// the u32 overflows and panics.
@@ -2330,7 +2333,7 @@ impl DfirGraph {
         self.write_graph(&mut graph_write, write_config)
     }
 
-    /// Write out this graph using the given `GraphWrite`. E.g. `Mermaid` or `Dot.
+    /// Write out this graph using the given `GraphWrite`. E.g. `Mermaid` or `Dot`.
     pub(crate) fn write_graph<W>(
         &self,
         mut graph_write: W,

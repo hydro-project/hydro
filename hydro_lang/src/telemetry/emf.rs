@@ -111,7 +111,7 @@ pub fn record_metrics_sidecar(
         let mut rt_intervals = rt_monitor.intervals();
 
         loop {
-            let _ = tokio::time::sleep(interval).await;
+            let () = tokio::time::sleep(interval).await;
 
             let dfir_metrics = dfir_intervals.take_interval();
             let rt_metrics = rt_intervals.next().unwrap();

@@ -153,7 +153,10 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[cfg_attr(not(maelstrom_available), ignore)]
+    #[cfg_attr(
+        not(maelstrom_available),
+        ignore = "requires the Maelstrom binary (set the MAELSTROM_PATH env var)"
+    )]
     async fn broadcast_3a_maelstrom() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
@@ -181,7 +184,10 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(not(maelstrom_available), ignore)]
+    #[cfg_attr(
+        not(maelstrom_available),
+        ignore = "requires the Maelstrom binary (set the MAELSTROM_PATH env var)"
+    )]
     async fn broadcast_3b_maelstrom() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
@@ -209,7 +215,10 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(not(maelstrom_available), ignore)]
+    #[cfg_attr(
+        not(maelstrom_available),
+        ignore = "requires the Maelstrom binary (set the MAELSTROM_PATH env var)"
+    )]
     async fn broadcast_3c_maelstrom() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();

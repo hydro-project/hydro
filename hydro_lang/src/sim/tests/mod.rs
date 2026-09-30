@@ -29,9 +29,15 @@ fn sim_crash_in_output() {
         in_send.send(bolero::any::<Vec<u8>>().into());
 
         let x = out_recv.next().await;
-        if !x.is_empty() && x[0] == 42 && x.len() > 1 && x[1] == 43 && x.len() > 2 && x[2] == 44 {
-            panic!("boom");
-        }
+        assert!(
+            !(!x.is_empty()
+                && x[0] == 42
+                && x.len() > 1
+                && x[1] == 43
+                && x.len() > 2
+                && x[2] == 44),
+            "boom"
+        )
     });
 }
 
@@ -657,7 +663,7 @@ fn sim_collect_waits_for_all_ticks() {
     });
 }
 
-/// Regression test for https://github.com/hydro-project/hydro/issues/2602
+/// Regression test for <https://github.com/hydro-project/hydro/issues/2602>
 /// Verifies that `resolve_futures_blocking` preserves `Bounded`, allowing
 /// its output to be used with APIs that require boundedness (e.g. `cross_singleton`).
 /// If `resolve_futures_blocking` ever regresses to return `Unbounded`, this test
@@ -1011,7 +1017,7 @@ fn sim_fold_catches_false_commutativity() {
 }
 
 /// Verifies that the simulator catches false commutativity for in-tick folds on
-/// NoOrder streams by permuting the batch before it reaches the fold.
+/// `NoOrder` streams by permuting the batch before it reaches the fold.
 ///
 /// Top-level folds ARE tested via cross-batch subset selection + permutation
 /// (see `sim_fold_catches_false_commutativity`).
@@ -1403,10 +1409,8 @@ fn sim_crash_behind_continue_if() {
             counts.first().is_some_and(|c| *c >= 2),
             "first batch was a singleton"
         );
-        if counts.first() == Some(&3) {
-            // Only reachable in instances that passed the assumption.
-            panic!("boom");
-        }
+        // Only reachable in instances that passed the assumption.
+        assert!(counts.first() != Some(&3), "boom")
     });
 }
 

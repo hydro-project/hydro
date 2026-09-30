@@ -24,11 +24,11 @@ use crate::staging_util::Invariant;
 pub struct SimFlow<'a> {
     pub(crate) ir: Vec<HydroRoot>,
 
-    /// SimNode for each Process.
+    /// [`SimNode`] for each Process.
     pub(crate) processes: SparseSecondaryMap<LocationKey, SimNode>,
-    /// SimNode for each Cluster.
+    /// [`SimNode`] for each Cluster.
     pub(crate) clusters: SparseSecondaryMap<LocationKey, SimNode>,
-    /// SimExternal for each External.
+    /// [`SimExternal`] for each External.
     pub(crate) externals: SparseSecondaryMap<LocationKey, SimExternal>,
 
     /// Max size of each cluster.
@@ -61,6 +61,7 @@ pub struct SimFlow<'a> {
 
 impl<'a> SimFlow<'a> {
     /// Sets the maximum size of the given cluster in the simulation.
+    #[must_use]
     pub fn with_cluster_size<C>(mut self, cluster: &Cluster<'a, C>, max_size: usize) -> Self {
         self.cluster_max_sizes.insert(cluster.key, max_size);
         self
@@ -74,6 +75,7 @@ impl<'a> SimFlow<'a> {
     /// it only tests safety properties—not liveness—since messages may never arrive.
     /// Calling this method acknowledges that the simulation will not verify that the
     /// program eventually makes progress.
+    #[must_use]
     pub fn test_safety_only(mut self) -> Self {
         self.test_safety_only = true;
         self
@@ -83,6 +85,7 @@ impl<'a> SimFlow<'a> {
     /// nodes are treated as identity no-ops in the simulator. When disabled (the default),
     /// encountering a consistency assertion will panic because validating consistency
     /// assertions is not yet supported in the simulator.
+    #[must_use]
     pub fn skip_consistency_assertions(mut self) -> Self {
         self.skip_consistency_assertions = true;
         self
@@ -90,6 +93,7 @@ impl<'a> SimFlow<'a> {
 
     /// Sets the number of fuzz iterations for this test. Overrides the
     /// the default value of 8192
+    #[must_use]
     pub fn unit_test_fuzz_iterations(mut self, iterations: usize) -> Self {
         self.unit_test_fuzz_iterations = iterations;
         self

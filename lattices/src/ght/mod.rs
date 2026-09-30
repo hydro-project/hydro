@@ -15,7 +15,7 @@ pub mod lattice;
 pub mod macros;
 pub mod test;
 
-/// The GeneralizedHashTrieNode trait captures the properties of nodes in a Ght.
+/// The `GeneralizedHashTrieNode` trait captures the properties of nodes in a Ght.
 ///
 /// The Ght, defined by Wang/Willsey/Suciu, is a hash-based trie for storing tuples.
 /// It is parameterized by an ordered schema [`VariadicExt`] of the relation stored in the trie.
@@ -37,7 +37,7 @@ pub trait GeneralizedHashTrieNode: Default {
         + IntoIterator<Item = Self::Schema>;
 
     // types that vary per node
-    /// SuffixSchema variadic: the suffix of [`Self::Schema`] from this node of the trie
+    /// `SuffixSchema` variadic: the suffix of [`Self::Schema`] from this node of the trie
     /// downward. The first entry in this variadic is of type [`Self::Head`].
     type SuffixSchema: VariadicExt + Eq + Hash + Clone;
     /// The first field in [`Self::SuffixSchema`], and the key for the next node in the trie.
@@ -50,13 +50,13 @@ pub trait GeneralizedHashTrieNode: Default {
     fn merge_node(&mut self, other: Self) -> bool;
 
     /// Report the height of this node. This is the length of path from this node to a leaf - 1.
-    /// E.g. if we have GhtInner<GhtInner<GhtLeaf...>> the height is 2
+    /// E.g. if we have `GhtInner<GhtInner<GhtLeaf<...>>>` the height is 2.
     /// This is a static property of the type of this node, so simply invokes the static method.
     fn height(&self) -> usize {
         Self::HEIGHT
     }
 
-    /// The height of this node in the GhT. Leaf = 0.
+    /// The height of this node in the Ght. Leaf = 0.
     const HEIGHT: usize;
 
     /// Inserts an item into the hash trie.
@@ -66,7 +66,7 @@ pub trait GeneralizedHashTrieNode: Default {
     /// See [`GhtGet::get`] to look just for "head" keys in this node
     fn contains<'a>(&'a self, row: <Self::Schema as VariadicExt>::AsRefVar<'a>) -> bool;
 
-    /// Iterate through (entire) rows stored in this HashTrie.
+    /// Iterate through (entire) rows stored in this `HashTrie`.
     fn recursive_iter(&self) -> impl Iterator<Item = <Self::Schema as VariadicExt>::AsRefVar<'_>>;
 
     /// return the leaf below that contains this row, or `None` if not found.
@@ -75,14 +75,14 @@ pub trait GeneralizedHashTrieNode: Default {
         row: <Self::Schema as VariadicExt>::AsRefVar<'_>,
     ) -> Option<&'_ GhtLeaf<Self::Schema, Self::ValType, Self::Storage>>;
 
-    /// into_iter for leaf elements, or None for inner nodes
+    /// `into_iter` for leaf elements, or None for inner nodes
     fn into_iter(self) -> Option<impl Iterator<Item = Self::Schema>>;
 
     /// pull all the data out of this trie node but retain the reference
     fn drain(&mut self) -> Option<impl Iterator<Item = Self::Schema>>;
 }
 
-/// internal node of a HashTrie
+/// internal node of a `HashTrie`
 #[derive(Debug, Clone)]
 pub struct GhtInner<Head, Node>
 where
@@ -95,7 +95,6 @@ where
 impl<Head, Node: GeneralizedHashTrieNode> Default for GhtInner<Head, Node>
 where
     Head: Clone,
-    Node: GeneralizedHashTrieNode,
 {
     fn default() -> Self {
         let children = Default::default();
@@ -200,7 +199,7 @@ where
     }
 }
 
-/// leaf node of a HashTrie
+/// leaf node of a `HashTrie`
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct GhtLeaf<Schema, ValType, Storage>
 where
@@ -209,7 +208,7 @@ where
 {
     pub(crate) elements: Storage,
     pub(crate) forced: bool,
-    /// defines ValType for the parents, recursively
+    /// defines `ValType` for the parents, recursively
     pub(crate) _suffix_schema: PhantomData<ValType>,
 }
 impl<Schema, ValType, Storage> Default for GhtLeaf<Schema, ValType, Storage>
@@ -528,8 +527,7 @@ impl<KeyPrefixRef, Schema, ValType, Storage> GhtPrefixIter<KeyPrefixRef>
 where
     KeyPrefixRef: 'static + RefVariadic,
     Schema: 'static + VariadicExt + Hash + Eq + SplitBySuffix<ValType>,
-    ValType: VariadicExt,
-    ValType: Split<KeyPrefixRef::UnRefVar>,
+    ValType: VariadicExt + Split<KeyPrefixRef::UnRefVar>,
     KeyPrefixRef::UnRefVar: PartialEqVariadic,
     Storage: 'static + VariadicCollection<Schema = Schema>,
 {

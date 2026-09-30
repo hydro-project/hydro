@@ -348,14 +348,16 @@ impl AwsEc2IamInstanceProfile {
 
     /// Permits the given ARN.
     pub fn add_policy_arn(mut self, policy_arn: impl Into<String>) -> Self {
-        if self.existing_instance_profile_key_or_name.is_some() {
-            panic!("Adding an ARN to an existing instance profile is not supported.");
-        }
+        assert!(
+            self.existing_instance_profile_key_or_name.is_none(),
+            "Adding an ARN to an existing instance profile is not supported."
+        );
         self.policy_arns.push(policy_arn.into());
         self
     }
 
     /// Enables running and emitting telemetry via the CloudWatch agent.
+    #[must_use]
     pub fn add_cloudwatch_agent_server_policy_arn(self) -> Self {
         self.add_policy_arn("arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy")
     }
@@ -749,7 +751,7 @@ impl Host for AwsEc2Host {
 
         if let Some(mut display_name) = self.display_name.clone() {
             instance_name.push('-');
-            display_name = display_name.replace("_", "-").to_lowercase();
+            display_name = display_name.replace('_', "-").to_lowercase();
 
             let num_chars_to_cut = instance_name.len() + display_name.len() - 63;
             if num_chars_to_cut > 0 {
@@ -863,14 +865,14 @@ impl Host for AwsEc2Host {
         // TODO(mingwei): Run this in SSH instead of `user_data` to avoid racing and capture errors.
         let user_data_script = cloudwatch_agent_config.map(|cwa_config| {
             let cwa_config_esc = cwa_config
-                .replace("\\", r"\\") // escape backslashes
-                .replace("\"", r#"\""#) // escape quotes
-                .replace("\n", r"\n") // escape newlines
+                .replace('\\', r"\\") // escape backslashes
+                .replace('"', r#"\""#) // escape quotes
+                .replace('\n', r"\n") // escape newlines
                 // Special handling of AWS `append_dimensions` fields:
                 // `$$` to escape for terraform, becomes `\$` in bash, becomes `$` in echo output.
                 .replace("${aws:", r"\$${aws:");
             format!(
-                r##"
+                r#"
 #!/bin/bash
 set -euxo pipefail
 
@@ -890,7 +892,7 @@ echo -e "{cwa_config_esc}" > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwa
     -a fetch-config -m ec2 \
     -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
     -s
-"##
+"#
             )
         });
 

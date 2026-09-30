@@ -24,7 +24,7 @@ pub fn log_build_event(project_dir: &Path, msg: &str) {
         .append(true)
         .open(log_path)
         .unwrap();
-    let now = std::time::SystemTime::now()
+    let now = SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_millis();

@@ -10,12 +10,12 @@ use super::{
 ///
 /// Performs a [`fold_keyed`](#fold_keyed) with lattice-merge aggregate function on each input and then forms the
 /// equijoin of the resulting key/value pairs in the input streams by their first (key) attribute.
-/// Unlike [`join`](#join), the result is not a stream of tuples, it's a stream of MapUnionSingletonMap
+/// Unlike [`join`](#join), the result is not a stream of tuples, it's a stream of `MapUnionSingletonMap`
 /// lattices. You can (non-monotonically) "reveal" these as tuples if desired via [`map`](#map); see the examples below.
 ///
 /// You must specify the accumulating lattice types, they cannot be inferred. The first type argument corresponds to the `[0]` input of the join, and the second to the `[1]` input.
 /// Type arguments are specified in dfir using the rust turbofish syntax `::<>`, for example `_lattice_join_fused_join::<Min<_>, Max<_>>()`
-/// The accumulating lattice type is not necessarily the same type as the input, see the below example involving SetUnion for such a case.
+/// The accumulating lattice type is not necessarily the same type as the input, see the below example involving `SetUnion` for such a case.
 ///
 /// Like [`join`](#join), `_lattice_join_fused_join` can also be provided with one or two generic lifetime persistence arguments, either
 /// `'tick` or `'static`, to specify how join data persists. With `'tick`, pairs will only be

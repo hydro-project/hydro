@@ -244,7 +244,7 @@ pub fn null_write_iterator_fn(
         }
     } else {
         quote_spanned! {op_span=>
-            #[allow(clippy::let_unit_value)]
+            #[allow(clippy::let_unit_value, clippy::ignored_unit_patterns)]
             let _ = (#(#outputs),*);
             let #ident = #root::dfir_pipes::push::for_each::<_, #iter_type>(::std::mem::drop::<#iter_type>);
         }
@@ -598,11 +598,11 @@ pub enum OperatorCategory {
 impl OperatorCategory {
     /// Human-readible heading name, for docs.
     pub fn name(self) -> &'static str {
-        self.get_variant_docs().split_once(":").unwrap().0
+        self.get_variant_docs().split_once(':').unwrap().0
     }
     /// Human description, for docs.
     pub fn description(self) -> &'static str {
-        self.get_variant_docs().split_once(":").unwrap().1
+        self.get_variant_docs().split_once(':').unwrap().1
     }
 }
 

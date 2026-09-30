@@ -199,7 +199,7 @@ pub struct EmbeddedInstantiateEnv {
     ///   external code that produces the stream.
     pub network_inputs: SparseSecondaryMap<LocationKey, Vec<(String, bool, Option<syn::Type>)>>,
     /// Cluster membership streams needed per location key.
-    /// Maps location_key -> vec of cluster LocationKeys whose membership is needed.
+    /// Maps `location_key` -> vec of cluster [`LocationKey`]s whose membership is needed.
     pub membership_streams: SparseSecondaryMap<LocationKey, Vec<LocationKey>>,
 }
 

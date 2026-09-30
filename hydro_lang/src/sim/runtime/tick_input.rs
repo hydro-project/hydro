@@ -92,7 +92,7 @@ impl<T> TickInputHook for StreamHook<T, TotalOrder> {
 
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool {
         let mut current_input = self.input.borrow_mut();
-        let count = ((if force_trigger { 1 } else { 0 })..=current_input.len())
+        let count = (usize::from(force_trigger)..=current_input.len())
             .generate(driver)
             .unwrap();
 
@@ -498,11 +498,8 @@ impl<K: Hash + Eq + Clone, V> TickInputHook for KeyedStreamHook<K, V, TotalOrder
 
             remaining_nonempty_keys -= 1;
 
-            let count = ((if force_trigger && remaining_nonempty_keys == 0 {
-                1
-            } else {
-                0
-            })..=queue.len())
+            let must_reveal = force_trigger && remaining_nonempty_keys == 0;
+            let count = (usize::from(must_reveal)..=queue.len())
                 .generate(driver)
                 .unwrap();
 
@@ -986,9 +983,10 @@ impl<T: Clone> TickInputHook for SingletonHook<T> {
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool {
         let mut current_input = self.input.borrow_mut();
         if current_input.is_empty() {
-            if force_trigger {
-                panic!("Cannot make a triggering decision when there is no input");
-            }
+            assert!(
+                !force_trigger,
+                "Cannot make a triggering decision when there is no input"
+            );
 
             if let Some(last) = &self.last_released {
                 // Re-release the last item
@@ -1141,9 +1139,10 @@ impl<T: Clone> TickInputHook for OptionalInitNoneHook<T> {
         let mut current_input = self.input.borrow_mut();
         if current_input.is_empty() {
             // Case 1 (trivial): No input.
-            if force_nontrivial {
-                panic!("Cannot make nontrivial decision when there is no input");
-            }
+            assert!(
+                !force_nontrivial,
+                "Cannot make nontrivial decision when there is no input"
+            );
 
             if let Some(last) = &self.last_released {
                 // Presence is monotone: once non-null, re-release the latest value.
@@ -1551,21 +1550,21 @@ impl<K: Hash + Eq + Clone, V: Clone> TickInputHook for KeyedSingletonHook<K, V> 
                 if allow_null_release && produce().generate(driver).unwrap() {
                     // Don't emit anything, this key is not yet added to the snapshot
                     continue;
-                } else {
-                    // Release a new item for this key
-                    let idx_to_release = (0..queue.len()).generate(driver).unwrap();
-                    let skipped: Vec<V> = queue.drain(0..idx_to_release).collect();
-                    let item = queue.pop_front().unwrap();
-                    self.skipped_states.insert(key.clone(), skipped);
-                    self.to_release
-                        .as_mut()
-                        .unwrap()
-                        .push((key.clone(), item.clone(), true));
-                    self.last_released.insert(key.clone(), item);
-
-                    any_triggered |= true;
-                    force_trigger = false;
                 }
+
+                // Release a new item for this key
+                let idx_to_release = (0..queue.len()).generate(driver).unwrap();
+                let skipped: Vec<V> = queue.drain(0..idx_to_release).collect();
+                let item = queue.pop_front().unwrap();
+                self.skipped_states.insert(key.clone(), skipped);
+                self.to_release
+                    .as_mut()
+                    .unwrap()
+                    .push((key.clone(), item.clone(), true));
+                self.last_released.insert(key.clone(), item);
+
+                any_triggered |= true;
+                force_trigger = false;
             }
         }
 

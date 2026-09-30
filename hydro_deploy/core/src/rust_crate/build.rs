@@ -125,8 +125,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                 tokio::task::spawn_blocking(move || {
                     let base_target_dir = params
                         .target_dir
-                        .as_ref()
-                        .cloned()
+                        .clone()
                         .unwrap_or_else(|| params.src.join("target"));
                     let job_name = params
                         .bin
@@ -217,9 +216,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     .stdin(Stdio::null())
                                     .status()
                                     .unwrap();
-                                if !lib_status.success() {
-                                    panic!("dep prebuild failed");
-                                }
+                                assert!(lib_status.success(), "dep prebuild failed")
                             },
                         );
 
@@ -332,8 +329,10 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     // Check for unexpected recompilations (only in dylib mode with prebuild).
                                     if params.is_dylib {
                                         for line in &stderr_lines {
-                                            if line.contains("Compiling") && !line.contains("dylib-examples") && !line.contains(job_name) {
-                                                panic!(
+                                            if line.contains("Compiling") {
+                                                assert!(
+                                                    line.contains("dylib-examples")
+                                                        || line.contains(job_name),
                                                     "unexpected recompilation in deploy final build: {line}\nfull stderr:\n{}",
                                                     stderr_lines.join("\n")
                                                 );
