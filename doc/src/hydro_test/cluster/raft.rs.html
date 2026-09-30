@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/raft.rs`."><title>raft.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (c1070d693 2026-09-28)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test/cluster/</div>raft.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! An implementation of the RAFT consensus protocol for replicating a log across a
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/raft.rs`."><title>raft.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (5c543b0b8 2026-09-29)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test/cluster/</div>raft.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! An implementation of the RAFT consensus protocol for replicating a log across a
 <a href=#2 id=2 data-nosnippet>2</a>//! cluster.
 <a href=#3 id=3 data-nosnippet>3</a>//!
 <a href=#4 id=4 data-nosnippet>4</a>//! The protocol logic is a pure, sequential step function over one unified per-member
@@ -46,11 +46,11 @@
 <a href=#46 id=46 data-nosnippet>46</a></span><span class="attr">#[doc(hidden)]
 <a href=#47 id=47 data-nosnippet>47</a>#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 <a href=#48 id=48 data-nosnippet>48</a></span><span class="kw">pub enum </span>RaftState {
-<a href=#49 id=49 data-nosnippet>49</a>    <span class="doccomment">/// When in follower mode, a RAFT server receives AppendEntries RPCs and updates its log
+<a href=#49 id=49 data-nosnippet>49</a>    <span class="doccomment">/// When in follower mode, a RAFT server receives `AppendEntries` RPCs and updates its log
 <a href=#50 id=50 data-nosnippet>50</a>    </span>Follower,
 <a href=#51 id=51 data-nosnippet>51</a>    <span class="doccomment">/// When in candidate mode, a RAFT server requests votes and is trying to become the leader
 <a href=#52 id=52 data-nosnippet>52</a>    </span>Candidate,
-<a href=#53 id=53 data-nosnippet>53</a>    <span class="doccomment">/// When leader, the RAFT server sends AppendEntries RPCs and serves client requests
+<a href=#53 id=53 data-nosnippet>53</a>    <span class="doccomment">/// When leader, the RAFT server sends `AppendEntries` RPCs and serves client requests
 <a href=#54 id=54 data-nosnippet>54</a>    </span>Leader,
 <a href=#55 id=55 data-nosnippet>55</a>}
 <a href=#56 id=56 data-nosnippet>56</a>
@@ -1680,7 +1680,7 @@
 <a href=#1680 id=1680 data-nosnippet>1680</a>                term: <span class="number">1</span>,
 <a href=#1681 id=1681 data-nosnippet>1681</a>                leader: leader_0.clone(),
 <a href=#1682 id=1682 data-nosnippet>1682</a>                prev_log_index: prev,
-<a href=#1683 id=1683 data-nosnippet>1683</a>                prev_log_term: <span class="kw">if </span>prev == <span class="number">0 </span>{ <span class="number">0 </span>} <span class="kw">else </span>{ <span class="number">1 </span>},
+<a href=#1683 id=1683 data-nosnippet>1683</a>                prev_log_term: usize::from(prev != <span class="number">0</span>),
 <a href=#1684 id=1684 data-nosnippet>1684</a>                entries,
 <a href=#1685 id=1685 data-nosnippet>1685</a>                leader_commit: <span class="number">0</span>,
 <a href=#1686 id=1686 data-nosnippet>1686</a>            })
@@ -2053,7 +2053,7 @@
 <a href=#2053 id=2053 data-nosnippet>2053</a>    /// installed with `crown` (as the pre-unification test did with injected views)
 <a href=#2054 id=2054 data-nosnippet>2054</a>    /// while replication runs the real protocol:
 <a href=#2055 id=2055 data-nosnippet>2055</a>    /// * Term 1: member 0 appends "old" but never heartbeats it (figure 8(a)).
-<a href=#2056 id=2056 data-nosnippet>2056</a>    /// * Term 2: member 0, re-crowned, replicates "old" everywhere — match_index
+<a href=#2056 id=2056 data-nosnippet>2056</a>    /// * Term 2: member 0, re-crowned, replicates "old" everywhere — `match_index`
 <a href=#2057 id=2057 data-nosnippet>2057</a>    ///   reaches 1 on every member, beyond a majority, yet nothing may commit:
 <a href=#2058 id=2058 data-nosnippet>2058</a>    ///   "old" is a term-1 entry under a term-2 leader. This is the trap that catches
 <a href=#2059 id=2059 data-nosnippet>2059</a>    ///   a dropped §5.4.2 restriction (figure 8(c)).
@@ -2061,7 +2061,7 @@
 <a href=#2061 id=2061 data-nosnippet>2061</a>    ///   the common prefix keeps later empty heartbeats from disturbing it).
 <a href=#2062 id=2062 data-nosnippet>2062</a>    /// * Term 4: member 0, re-crowned, appends "winner" at index 2, unreplicated —
 <a href=#2063 id=2063 data-nosnippet>2063</a>    ///   the doomed entry.
-<a href=#2064 id=2064 data-nosnippet>2064</a>    /// * Term 5: member 2 is crowned; its log is authoritative: the next_index
+<a href=#2064 id=2064 data-nosnippet>2064</a>    /// * Term 5: member 2 is crowned; its log is authoritative: the `next_index`
 <a href=#2065 id=2065 data-nosnippet>2065</a>    ///   walk-back truncates "winner" in favor of "conflict", and a fresh
 <a href=#2066 id=2066 data-nosnippet>2066</a>    ///   current-term entry "new" commits by counting — carrying "old" and
 <a href=#2067 id=2067 data-nosnippet>2067</a>    ///   "conflict" with it transitively (figure 8(d)/(e)).
@@ -2320,7 +2320,7 @@
 <a href=#2320 id=2320 data-nosnippet>2320</a>    /// The choreography deliberately overlaps replication and elections without
 <a href=#2321 id=2321 data-nosnippet>2321</a>    /// intermediate quiescence: each round primes a challenger's heartbeat-
 <a href=#2322 id=2322 data-nosnippet>2322</a>    /// suppression flag, then in one un-quiesced burst sends a fresh request to
-<a href=#2323 id=2323 data-nosnippet>2323</a>    /// member 0, pumps its heartbeat timer (pushing AppendEntries with the new
+<a href=#2323 id=2323 data-nosnippet>2323</a>    /// member 0, pumps its heartbeat timer (pushing `AppendEntries` with the new
 <a href=#2324 id=2324 data-nosnippet>2324</a>    /// entry), and fires the challenger's election timer (a concurrent candidacy).
 <a href=#2325 id=2325 data-nosnippet>2325</a>    /// The fuzzer explores the delivery interleavings. No liveness is asserted in
 <a href=#2326 id=2326 data-nosnippet>2326</a>    /// the racy rounds — a stalled round is a legal outcome.

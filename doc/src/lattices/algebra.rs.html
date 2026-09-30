@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `lattices/src/algebra.rs`."><title>algebra.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="lattices" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (c1070d693 2026-09-28)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">lattices/</div>algebra.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::test::cartesian_power;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `lattices/src/algebra.rs`."><title>algebra.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="lattices" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (5c543b0b8 2026-09-29)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">lattices/</div>algebra.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::test::cartesian_power;
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="doccomment">/// Defines a monoid structure.
 <a href=#4 id=4 data-nosnippet>4</a>///
@@ -231,7 +231,7 @@
 <a href=#231 id=231 data-nosnippet>231</a>    <span class="prelude-val">Ok</span>(())
 <a href=#232 id=232 data-nosnippet>232</a>}
 <a href=#233 id=233 data-nosnippet>233</a>
-<a href=#234 id=234 data-nosnippet>234</a><span class="doccomment">/// Defines the absorbing_element property.
+<a href=#234 id=234 data-nosnippet>234</a><span class="doccomment">/// Defines the `absorbing_element` property.
 <a href=#235 id=235 data-nosnippet>235</a>///
 <a href=#236 id=236 data-nosnippet>236</a>/// An element z is absorbing if az = z and za = z for all a.
 <a href=#237 id=237 data-nosnippet>237</a></span><span class="kw">pub fn </span>absorbing_element&lt;S: PartialEq + Clone, <span class="kw">const </span>N: usize&gt;(
@@ -274,7 +274,7 @@
 <a href=#274 id=274 data-nosnippet>274</a>    <span class="prelude-val">Ok</span>(())
 <a href=#275 id=275 data-nosnippet>275</a>}
 <a href=#276 id=276 data-nosnippet>276</a>
-<a href=#277 id=277 data-nosnippet>277</a><span class="doccomment">/// Defines the non_zero inverse property.
+<a href=#277 id=277 data-nosnippet>277</a><span class="doccomment">/// Defines the `non_zero` inverse property.
 <a href=#278 id=278 data-nosnippet>278</a>///
 <a href=#279 id=279 data-nosnippet>279</a>/// Every element except zero must have an inverse.
 <a href=#280 id=280 data-nosnippet>280</a></span><span class="kw">pub fn </span>nonzero_inverse&lt;S: PartialEq + Clone, <span class="kw">const </span>N: usize&gt;(
@@ -434,7 +434,7 @@
 <a href=#434 id=434 data-nosnippet>434</a>//     ("inverse", inverse),
 <a href=#435 id=435 data-nosnippet>435</a>//     ("absorbing_element", absorbing_element)];
 <a href=#436 id=436 data-nosnippet>436</a>
-<a href=#437 id=437 data-nosnippet>437</a></span><span class="doccomment">/// Loop through each algebraic property in SINGLE_FUNCTION_PROPERTIES and test for them.
+<a href=#437 id=437 data-nosnippet>437</a></span><span class="doccomment">/// Loop through each algebraic property in `SINGLE_FUNCTION_PROPERTIES` and test for them.
 <a href=#438 id=438 data-nosnippet>438</a></span><span class="attr">#[cfg(feature = <span class="string">"alloc"</span>)]
 <a href=#439 id=439 data-nosnippet>439</a></span><span class="kw">pub fn </span>get_single_function_properties&lt;S: PartialEq + Clone, <span class="kw">const </span>N: usize&gt;(
 <a href=#440 id=440 data-nosnippet>440</a>    items: <span class="kw-2">&amp;</span>[S; N],
@@ -1012,107 +1012,108 @@
 <a href=#1012 id=1012 data-nosnippet>1012</a>    </span><span class="kw">fn </span>test_semiring() {
 <a href=#1013 id=1013 data-nosnippet>1013</a>        <span class="kw">use </span>alloc::borrow::ToOwned;
 <a href=#1014 id=1014 data-nosnippet>1014</a>        <span class="kw">use </span>alloc::format;
-<a href=#1015 id=1015 data-nosnippet>1015</a>
-<a href=#1016 id=1016 data-nosnippet>1016</a>        <span class="comment">// Test +, x is a semiring
-<a href=#1017 id=1017 data-nosnippet>1017</a>        </span><span class="macro">assert!</span>(semiring(TEST_ITEMS, <span class="kw-2">&amp;</span>u32::wrapping_add, <span class="kw-2">&amp;</span>u32::wrapping_mul, <span class="number">0</span>, <span class="number">1</span>).is_ok());
-<a href=#1018 id=1018 data-nosnippet>1018</a>
-<a href=#1019 id=1019 data-nosnippet>1019</a>        <span class="comment">// Test boolean semiring with AND as + and OR as x
-<a href=#1020 id=1020 data-nosnippet>1020</a>        </span><span class="macro">assert!</span>(semiring(<span class="kw-2">&amp;</span>[<span class="bool-val">false</span>, <span class="bool-val">true</span>], <span class="kw-2">&amp;</span>|x, y| x | y, <span class="kw-2">&amp;</span>|x, y| x &amp; y, <span class="bool-val">false</span>, <span class="bool-val">true</span>).is_ok());
-<a href=#1021 id=1021 data-nosnippet>1021</a>
-<a href=#1022 id=1022 data-nosnippet>1022</a>        <span class="comment">// Test min plus semiring. + is min and x is plus. Also known as the "tropical semiring"
-<a href=#1023 id=1023 data-nosnippet>1023</a>        </span><span class="macro">assert!</span>(
-<a href=#1024 id=1024 data-nosnippet>1024</a>            semiring(
-<a href=#1025 id=1025 data-nosnippet>1025</a>                <span class="kw-2">&amp;</span>[<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, f64::INFINITY],
-<a href=#1026 id=1026 data-nosnippet>1026</a>                <span class="kw-2">&amp;</span>f64::min,
-<a href=#1027 id=1027 data-nosnippet>1027</a>                <span class="kw-2">&amp;</span>|x, y| x + y,
-<a href=#1028 id=1028 data-nosnippet>1028</a>                f64::INFINITY,
-<a href=#1029 id=1029 data-nosnippet>1029</a>                <span class="number">0.0</span>,
-<a href=#1030 id=1030 data-nosnippet>1030</a>            )
-<a href=#1031 id=1031 data-nosnippet>1031</a>            .is_ok()
-<a href=#1032 id=1032 data-nosnippet>1032</a>        );
-<a href=#1033 id=1033 data-nosnippet>1033</a>
-<a href=#1034 id=1034 data-nosnippet>1034</a>        <span class="comment">// Test max plus semiring. + is max and x is plus.
-<a href=#1035 id=1035 data-nosnippet>1035</a>        </span><span class="macro">assert!</span>(
-<a href=#1036 id=1036 data-nosnippet>1036</a>            semiring(
-<a href=#1037 id=1037 data-nosnippet>1037</a>                <span class="kw-2">&amp;</span>[<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, f64::NEG_INFINITY],
-<a href=#1038 id=1038 data-nosnippet>1038</a>                <span class="kw-2">&amp;</span>f64::max,
-<a href=#1039 id=1039 data-nosnippet>1039</a>                <span class="kw-2">&amp;</span>|x, y| x + y,
-<a href=#1040 id=1040 data-nosnippet>1040</a>                f64::NEG_INFINITY,
-<a href=#1041 id=1041 data-nosnippet>1041</a>                <span class="number">0.0</span>,
-<a href=#1042 id=1042 data-nosnippet>1042</a>            )
-<a href=#1043 id=1043 data-nosnippet>1043</a>            .is_ok()
-<a href=#1044 id=1044 data-nosnippet>1044</a>        );
-<a href=#1045 id=1045 data-nosnippet>1045</a>
-<a href=#1046 id=1046 data-nosnippet>1046</a>        <span class="comment">// Test sets of strings semiring with union as + and concatenation as x
-<a href=#1047 id=1047 data-nosnippet>1047</a>        </span><span class="macro">assert!</span>(
-<a href=#1048 id=1048 data-nosnippet>1048</a>            semiring(
-<a href=#1049 id=1049 data-nosnippet>1049</a>                <span class="kw-2">&amp;</span>[
-<a href=#1050 id=1050 data-nosnippet>1050</a>                    HashSet::from([]),
-<a href=#1051 id=1051 data-nosnippet>1051</a>                    HashSet::from([<span class="string">""</span>.to_owned()]),
-<a href=#1052 id=1052 data-nosnippet>1052</a>                    HashSet::from([<span class="string">"a"</span>.to_owned()]),
-<a href=#1053 id=1053 data-nosnippet>1053</a>                    HashSet::from([<span class="string">"aa"</span>.to_owned(), <span class="string">"bb"</span>.to_owned()]),
-<a href=#1054 id=1054 data-nosnippet>1054</a>                    HashSet::from([<span class="string">"ab"</span>.to_owned(), <span class="string">"bb"</span>.to_owned(), <span class="string">"cc"</span>.to_owned()]),
-<a href=#1055 id=1055 data-nosnippet>1055</a>                    HashSet::from([<span class="string">"ba"</span>.to_owned()]),
-<a href=#1056 id=1056 data-nosnippet>1056</a>                    HashSet::from([<span class="string">"bb"</span>.to_owned()]),
-<a href=#1057 id=1057 data-nosnippet>1057</a>                ],
-<a href=#1058 id=1058 data-nosnippet>1058</a>                <span class="kw-2">&amp;</span>|x, y| x.union(<span class="kw-2">&amp;</span>y).cloned().collect(),
-<a href=#1059 id=1059 data-nosnippet>1059</a>                <span class="kw-2">&amp;</span>|x, y| {
-<a href=#1060 id=1060 data-nosnippet>1060</a>                    <span class="kw">let </span><span class="kw-2">mut </span>new_set = HashSet::new();
-<a href=#1061 id=1061 data-nosnippet>1061</a>
-<a href=#1062 id=1062 data-nosnippet>1062</a>                    <span class="attr">#[expect(
-<a href=#1063 id=1063 data-nosnippet>1063</a>                        clippy::disallowed_methods,
-<a href=#1064 id=1064 data-nosnippet>1064</a>                        reason = <span class="string">"nondeterministic iteration order, fine to collect into set"
-<a href=#1065 id=1065 data-nosnippet>1065</a>                    </span>)]
-<a href=#1066 id=1066 data-nosnippet>1066</a>                    </span><span class="kw">for </span>a <span class="kw">in </span>x.iter() {
-<a href=#1067 id=1067 data-nosnippet>1067</a>                        <span class="kw">for </span>b <span class="kw">in </span>y.iter() {
-<a href=#1068 id=1068 data-nosnippet>1068</a>                            new_set.insert(<span class="macro">format!</span>(<span class="string">"{a}{b}"</span>));
-<a href=#1069 id=1069 data-nosnippet>1069</a>                        }
-<a href=#1070 id=1070 data-nosnippet>1070</a>                    }
-<a href=#1071 id=1071 data-nosnippet>1071</a>                    new_set
-<a href=#1072 id=1072 data-nosnippet>1072</a>                },
-<a href=#1073 id=1073 data-nosnippet>1073</a>                HashSet::from([]),
-<a href=#1074 id=1074 data-nosnippet>1074</a>                HashSet::from([<span class="string">""</span>.to_owned()]),
-<a href=#1075 id=1075 data-nosnippet>1075</a>            )
-<a href=#1076 id=1076 data-nosnippet>1076</a>            .is_ok()
-<a href=#1077 id=1077 data-nosnippet>1077</a>        );
-<a href=#1078 id=1078 data-nosnippet>1078</a>    }
-<a href=#1079 id=1079 data-nosnippet>1079</a>
-<a href=#1080 id=1080 data-nosnippet>1080</a>    <span class="attr">#[test]
-<a href=#1081 id=1081 data-nosnippet>1081</a>    </span><span class="kw">fn </span>test_get_single_function_properties() {
-<a href=#1082 id=1082 data-nosnippet>1082</a>        <span class="comment">// Test that get single function properties on addition returns associative, commutative, identity, and inverses.
-<a href=#1083 id=1083 data-nosnippet>1083</a>        </span><span class="kw">let </span>test_properties_satisfied = get_single_function_properties(
-<a href=#1084 id=1084 data-nosnippet>1084</a>            TEST_ITEMS,
-<a href=#1085 id=1085 data-nosnippet>1085</a>            u32::wrapping_add,
-<a href=#1086 id=1086 data-nosnippet>1086</a>            <span class="number">0</span>,
-<a href=#1087 id=1087 data-nosnippet>1087</a>            |x| <span class="number">0u32</span>.wrapping_sub(x),
-<a href=#1088 id=1088 data-nosnippet>1088</a>            <span class="number">0</span>,
-<a href=#1089 id=1089 data-nosnippet>1089</a>        );
-<a href=#1090 id=1090 data-nosnippet>1090</a>        <span class="kw">let </span>correct_properties = <span class="kw-2">&amp;</span>[<span class="string">"associativity"</span>, <span class="string">"commutativity"</span>, <span class="string">"identity"</span>, <span class="string">"inverse"</span>];
-<a href=#1091 id=1091 data-nosnippet>1091</a>        <span class="macro">assert_eq!</span>(test_properties_satisfied, correct_properties);
-<a href=#1092 id=1092 data-nosnippet>1092</a>
-<a href=#1093 id=1093 data-nosnippet>1093</a>        <span class="comment">// Test that get single function properties on max returns associative, commutative, idempotent, identity, and absorbing element.
-<a href=#1094 id=1094 data-nosnippet>1094</a>        </span><span class="kw">let </span>test_properties_satisfied = get_single_function_properties(
-<a href=#1095 id=1095 data-nosnippet>1095</a>            <span class="kw-2">&amp;</span>[<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, f64::INFINITY],
-<a href=#1096 id=1096 data-nosnippet>1096</a>            f64::max,
-<a href=#1097 id=1097 data-nosnippet>1097</a>            <span class="number">0.0</span>,
-<a href=#1098 id=1098 data-nosnippet>1098</a>            |x| x,
-<a href=#1099 id=1099 data-nosnippet>1099</a>            f64::INFINITY,
-<a href=#1100 id=1100 data-nosnippet>1100</a>        );
-<a href=#1101 id=1101 data-nosnippet>1101</a>        <span class="kw">let </span>correct_properties = <span class="kw-2">&amp;</span>[
-<a href=#1102 id=1102 data-nosnippet>1102</a>            <span class="string">"associativity"</span>,
-<a href=#1103 id=1103 data-nosnippet>1103</a>            <span class="string">"commutativity"</span>,
-<a href=#1104 id=1104 data-nosnippet>1104</a>            <span class="string">"idempotency"</span>,
-<a href=#1105 id=1105 data-nosnippet>1105</a>            <span class="string">"identity"</span>,
-<a href=#1106 id=1106 data-nosnippet>1106</a>            <span class="string">"absorbing_element"</span>,
-<a href=#1107 id=1107 data-nosnippet>1107</a>        ];
-<a href=#1108 id=1108 data-nosnippet>1108</a>        <span class="macro">assert_eq!</span>(test_properties_satisfied, correct_properties);
-<a href=#1109 id=1109 data-nosnippet>1109</a>
-<a href=#1110 id=1110 data-nosnippet>1110</a>        <span class="comment">// Define a function that takes in two u32s and returns the first one
-<a href=#1111 id=1111 data-nosnippet>1111</a>        </span><span class="kw">let </span>f = |x: u32, _y: u32| x;
-<a href=#1112 id=1112 data-nosnippet>1112</a>        <span class="kw">let </span>test_properties_satisfied =
-<a href=#1113 id=1113 data-nosnippet>1113</a>            get_single_function_properties(TEST_ITEMS, f, <span class="number">0</span>, |x| <span class="number">0u32</span>.wrapping_sub(x), <span class="number">0</span>);
-<a href=#1114 id=1114 data-nosnippet>1114</a>        <span class="kw">let </span>correct_properties = <span class="kw-2">&amp;</span>[<span class="string">"associativity"</span>, <span class="string">"idempotency"</span>];
-<a href=#1115 id=1115 data-nosnippet>1115</a>        <span class="macro">assert_eq!</span>(test_properties_satisfied, correct_properties);
-<a href=#1116 id=1116 data-nosnippet>1116</a>    }
-<a href=#1117 id=1117 data-nosnippet>1117</a>}
+<a href=#1015 id=1015 data-nosnippet>1015</a>        <span class="kw">use </span>alloc::string::String;
+<a href=#1016 id=1016 data-nosnippet>1016</a>
+<a href=#1017 id=1017 data-nosnippet>1017</a>        <span class="comment">// Test +, x is a semiring
+<a href=#1018 id=1018 data-nosnippet>1018</a>        </span><span class="macro">assert!</span>(semiring(TEST_ITEMS, <span class="kw-2">&amp;</span>u32::wrapping_add, <span class="kw-2">&amp;</span>u32::wrapping_mul, <span class="number">0</span>, <span class="number">1</span>).is_ok());
+<a href=#1019 id=1019 data-nosnippet>1019</a>
+<a href=#1020 id=1020 data-nosnippet>1020</a>        <span class="comment">// Test boolean semiring with AND as + and OR as x
+<a href=#1021 id=1021 data-nosnippet>1021</a>        </span><span class="macro">assert!</span>(semiring(<span class="kw-2">&amp;</span>[<span class="bool-val">false</span>, <span class="bool-val">true</span>], <span class="kw-2">&amp;</span>|x, y| x | y, <span class="kw-2">&amp;</span>|x, y| x &amp; y, <span class="bool-val">false</span>, <span class="bool-val">true</span>).is_ok());
+<a href=#1022 id=1022 data-nosnippet>1022</a>
+<a href=#1023 id=1023 data-nosnippet>1023</a>        <span class="comment">// Test min plus semiring. + is min and x is plus. Also known as the "tropical semiring"
+<a href=#1024 id=1024 data-nosnippet>1024</a>        </span><span class="macro">assert!</span>(
+<a href=#1025 id=1025 data-nosnippet>1025</a>            semiring(
+<a href=#1026 id=1026 data-nosnippet>1026</a>                <span class="kw-2">&amp;</span>[<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, f64::INFINITY],
+<a href=#1027 id=1027 data-nosnippet>1027</a>                <span class="kw-2">&amp;</span>f64::min,
+<a href=#1028 id=1028 data-nosnippet>1028</a>                <span class="kw-2">&amp;</span>|x, y| x + y,
+<a href=#1029 id=1029 data-nosnippet>1029</a>                f64::INFINITY,
+<a href=#1030 id=1030 data-nosnippet>1030</a>                <span class="number">0.0</span>,
+<a href=#1031 id=1031 data-nosnippet>1031</a>            )
+<a href=#1032 id=1032 data-nosnippet>1032</a>            .is_ok()
+<a href=#1033 id=1033 data-nosnippet>1033</a>        );
+<a href=#1034 id=1034 data-nosnippet>1034</a>
+<a href=#1035 id=1035 data-nosnippet>1035</a>        <span class="comment">// Test max plus semiring. + is max and x is plus.
+<a href=#1036 id=1036 data-nosnippet>1036</a>        </span><span class="macro">assert!</span>(
+<a href=#1037 id=1037 data-nosnippet>1037</a>            semiring(
+<a href=#1038 id=1038 data-nosnippet>1038</a>                <span class="kw-2">&amp;</span>[<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, f64::NEG_INFINITY],
+<a href=#1039 id=1039 data-nosnippet>1039</a>                <span class="kw-2">&amp;</span>f64::max,
+<a href=#1040 id=1040 data-nosnippet>1040</a>                <span class="kw-2">&amp;</span>|x, y| x + y,
+<a href=#1041 id=1041 data-nosnippet>1041</a>                f64::NEG_INFINITY,
+<a href=#1042 id=1042 data-nosnippet>1042</a>                <span class="number">0.0</span>,
+<a href=#1043 id=1043 data-nosnippet>1043</a>            )
+<a href=#1044 id=1044 data-nosnippet>1044</a>            .is_ok()
+<a href=#1045 id=1045 data-nosnippet>1045</a>        );
+<a href=#1046 id=1046 data-nosnippet>1046</a>
+<a href=#1047 id=1047 data-nosnippet>1047</a>        <span class="comment">// Test sets of strings semiring with union as + and concatenation as x
+<a href=#1048 id=1048 data-nosnippet>1048</a>        </span><span class="macro">assert!</span>(
+<a href=#1049 id=1049 data-nosnippet>1049</a>            semiring(
+<a href=#1050 id=1050 data-nosnippet>1050</a>                <span class="kw-2">&amp;</span>[
+<a href=#1051 id=1051 data-nosnippet>1051</a>                    HashSet::from([]),
+<a href=#1052 id=1052 data-nosnippet>1052</a>                    HashSet::from([String::new()]),
+<a href=#1053 id=1053 data-nosnippet>1053</a>                    HashSet::from([<span class="string">"a"</span>.to_owned()]),
+<a href=#1054 id=1054 data-nosnippet>1054</a>                    HashSet::from([<span class="string">"aa"</span>.to_owned(), <span class="string">"bb"</span>.to_owned()]),
+<a href=#1055 id=1055 data-nosnippet>1055</a>                    HashSet::from([<span class="string">"ab"</span>.to_owned(), <span class="string">"bb"</span>.to_owned(), <span class="string">"cc"</span>.to_owned()]),
+<a href=#1056 id=1056 data-nosnippet>1056</a>                    HashSet::from([<span class="string">"ba"</span>.to_owned()]),
+<a href=#1057 id=1057 data-nosnippet>1057</a>                    HashSet::from([<span class="string">"bb"</span>.to_owned()]),
+<a href=#1058 id=1058 data-nosnippet>1058</a>                ],
+<a href=#1059 id=1059 data-nosnippet>1059</a>                <span class="kw-2">&amp;</span>|x, y| x.union(<span class="kw-2">&amp;</span>y).cloned().collect(),
+<a href=#1060 id=1060 data-nosnippet>1060</a>                <span class="kw-2">&amp;</span>|x, y| {
+<a href=#1061 id=1061 data-nosnippet>1061</a>                    <span class="kw">let </span><span class="kw-2">mut </span>new_set = HashSet::new();
+<a href=#1062 id=1062 data-nosnippet>1062</a>
+<a href=#1063 id=1063 data-nosnippet>1063</a>                    <span class="attr">#[expect(
+<a href=#1064 id=1064 data-nosnippet>1064</a>                        clippy::disallowed_methods,
+<a href=#1065 id=1065 data-nosnippet>1065</a>                        reason = <span class="string">"nondeterministic iteration order, fine to collect into set"
+<a href=#1066 id=1066 data-nosnippet>1066</a>                    </span>)]
+<a href=#1067 id=1067 data-nosnippet>1067</a>                    </span><span class="kw">for </span>a <span class="kw">in </span>x.iter() {
+<a href=#1068 id=1068 data-nosnippet>1068</a>                        <span class="kw">for </span>b <span class="kw">in </span>y.iter() {
+<a href=#1069 id=1069 data-nosnippet>1069</a>                            new_set.insert(<span class="macro">format!</span>(<span class="string">"{a}{b}"</span>));
+<a href=#1070 id=1070 data-nosnippet>1070</a>                        }
+<a href=#1071 id=1071 data-nosnippet>1071</a>                    }
+<a href=#1072 id=1072 data-nosnippet>1072</a>                    new_set
+<a href=#1073 id=1073 data-nosnippet>1073</a>                },
+<a href=#1074 id=1074 data-nosnippet>1074</a>                HashSet::from([]),
+<a href=#1075 id=1075 data-nosnippet>1075</a>                HashSet::from([String::new()]),
+<a href=#1076 id=1076 data-nosnippet>1076</a>            )
+<a href=#1077 id=1077 data-nosnippet>1077</a>            .is_ok()
+<a href=#1078 id=1078 data-nosnippet>1078</a>        );
+<a href=#1079 id=1079 data-nosnippet>1079</a>    }
+<a href=#1080 id=1080 data-nosnippet>1080</a>
+<a href=#1081 id=1081 data-nosnippet>1081</a>    <span class="attr">#[test]
+<a href=#1082 id=1082 data-nosnippet>1082</a>    </span><span class="kw">fn </span>test_get_single_function_properties() {
+<a href=#1083 id=1083 data-nosnippet>1083</a>        <span class="comment">// Test that get single function properties on addition returns associative, commutative, identity, and inverses.
+<a href=#1084 id=1084 data-nosnippet>1084</a>        </span><span class="kw">let </span>test_properties_satisfied = get_single_function_properties(
+<a href=#1085 id=1085 data-nosnippet>1085</a>            TEST_ITEMS,
+<a href=#1086 id=1086 data-nosnippet>1086</a>            u32::wrapping_add,
+<a href=#1087 id=1087 data-nosnippet>1087</a>            <span class="number">0</span>,
+<a href=#1088 id=1088 data-nosnippet>1088</a>            |x| <span class="number">0u32</span>.wrapping_sub(x),
+<a href=#1089 id=1089 data-nosnippet>1089</a>            <span class="number">0</span>,
+<a href=#1090 id=1090 data-nosnippet>1090</a>        );
+<a href=#1091 id=1091 data-nosnippet>1091</a>        <span class="kw">let </span>correct_properties = <span class="kw-2">&amp;</span>[<span class="string">"associativity"</span>, <span class="string">"commutativity"</span>, <span class="string">"identity"</span>, <span class="string">"inverse"</span>];
+<a href=#1092 id=1092 data-nosnippet>1092</a>        <span class="macro">assert_eq!</span>(test_properties_satisfied, correct_properties);
+<a href=#1093 id=1093 data-nosnippet>1093</a>
+<a href=#1094 id=1094 data-nosnippet>1094</a>        <span class="comment">// Test that get single function properties on max returns associative, commutative, idempotent, identity, and absorbing element.
+<a href=#1095 id=1095 data-nosnippet>1095</a>        </span><span class="kw">let </span>test_properties_satisfied = get_single_function_properties(
+<a href=#1096 id=1096 data-nosnippet>1096</a>            <span class="kw-2">&amp;</span>[<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, f64::INFINITY],
+<a href=#1097 id=1097 data-nosnippet>1097</a>            f64::max,
+<a href=#1098 id=1098 data-nosnippet>1098</a>            <span class="number">0.0</span>,
+<a href=#1099 id=1099 data-nosnippet>1099</a>            |x| x,
+<a href=#1100 id=1100 data-nosnippet>1100</a>            f64::INFINITY,
+<a href=#1101 id=1101 data-nosnippet>1101</a>        );
+<a href=#1102 id=1102 data-nosnippet>1102</a>        <span class="kw">let </span>correct_properties = <span class="kw-2">&amp;</span>[
+<a href=#1103 id=1103 data-nosnippet>1103</a>            <span class="string">"associativity"</span>,
+<a href=#1104 id=1104 data-nosnippet>1104</a>            <span class="string">"commutativity"</span>,
+<a href=#1105 id=1105 data-nosnippet>1105</a>            <span class="string">"idempotency"</span>,
+<a href=#1106 id=1106 data-nosnippet>1106</a>            <span class="string">"identity"</span>,
+<a href=#1107 id=1107 data-nosnippet>1107</a>            <span class="string">"absorbing_element"</span>,
+<a href=#1108 id=1108 data-nosnippet>1108</a>        ];
+<a href=#1109 id=1109 data-nosnippet>1109</a>        <span class="macro">assert_eq!</span>(test_properties_satisfied, correct_properties);
+<a href=#1110 id=1110 data-nosnippet>1110</a>
+<a href=#1111 id=1111 data-nosnippet>1111</a>        <span class="comment">// Define a function that takes in two u32s and returns the first one
+<a href=#1112 id=1112 data-nosnippet>1112</a>        </span><span class="kw">let </span>f = |x: u32, _y: u32| x;
+<a href=#1113 id=1113 data-nosnippet>1113</a>        <span class="kw">let </span>test_properties_satisfied =
+<a href=#1114 id=1114 data-nosnippet>1114</a>            get_single_function_properties(TEST_ITEMS, f, <span class="number">0</span>, |x| <span class="number">0u32</span>.wrapping_sub(x), <span class="number">0</span>);
+<a href=#1115 id=1115 data-nosnippet>1115</a>        <span class="kw">let </span>correct_properties = <span class="kw-2">&amp;</span>[<span class="string">"associativity"</span>, <span class="string">"idempotency"</span>];
+<a href=#1116 id=1116 data-nosnippet>1116</a>        <span class="macro">assert_eq!</span>(test_properties_satisfied, correct_properties);
+<a href=#1117 id=1117 data-nosnippet>1117</a>    }
+<a href=#1118 id=1118 data-nosnippet>1118</a>}
 </code></pre></div></section></main></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/viz/render.rs`."><title>render.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (c1070d693 2026-09-28)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/viz/</div>render.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::{HashMap, HashSet};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/viz/render.rs`."><title>render.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (5c543b0b8 2026-09-29)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/viz/</div>render.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::{HashMap, HashSet};
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>std::error::Error;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>std::fmt::{Display, Write};
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>std::num::ParseIntError;
@@ -140,7 +140,7 @@
 <a href=#140 id=140 data-nosnippet>140</a>    </span><span class="kw">fn </span>write_epilogue(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Err&gt;;
 <a href=#141 id=141 data-nosnippet>141</a>}
 <a href=#142 id=142 data-nosnippet>142</a>
-<a href=#143 id=143 data-nosnippet>143</a><span class="doccomment">/// Node type utilities - centralized handling of HydroNodeType operations
+<a href=#143 id=143 data-nosnippet>143</a><span class="doccomment">/// Node type utilities - centralized handling of `HydroNodeType` operations
 <a href=#144 id=144 data-nosnippet>144</a></span><span class="kw">pub mod </span>node_type_utils {
 <a href=#145 id=145 data-nosnippet>145</a>    <span class="kw">use </span><span class="kw">super</span>::HydroNodeType;
 <a href=#146 id=146 data-nosnippet>146</a>
@@ -156,7 +156,7 @@
 <a href=#156 id=156 data-nosnippet>156</a>        (HydroNodeType::NonDeterministic, <span class="string">"NonDeterministic"</span>),
 <a href=#157 id=157 data-nosnippet>157</a>    ];
 <a href=#158 id=158 data-nosnippet>158</a>
-<a href=#159 id=159 data-nosnippet>159</a>    <span class="doccomment">/// Convert HydroNodeType to string representation (used by JSON format)
+<a href=#159 id=159 data-nosnippet>159</a>    <span class="doccomment">/// Convert `HydroNodeType` to string representation (used by JSON format)
 <a href=#160 id=160 data-nosnippet>160</a>    </span><span class="kw">pub fn </span>to_string(node_type: HydroNodeType) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str {
 <a href=#161 id=161 data-nosnippet>161</a>        NODE_TYPE_DATA
 <a href=#162 id=162 data-nosnippet>162</a>            .iter()
@@ -280,7 +280,7 @@
 <a href=#280 id=280 data-nosnippet>280</a>    }
 <a href=#281 id=281 data-nosnippet>281</a>}
 <a href=#282 id=282 data-nosnippet>282</a>
-<a href=#283 id=283 data-nosnippet>283</a><span class="doccomment">/// Convert HydroEdgeType properties to unified edge style.
+<a href=#283 id=283 data-nosnippet>283</a><span class="doccomment">/// Convert `HydroEdgeType` properties to unified edge style.
 <a href=#284 id=284 data-nosnippet>284</a>/// This is the core logic for determining edge visual properties.
 <a href=#285 id=285 data-nosnippet>285</a>///
 <a href=#286 id=286 data-nosnippet>286</a>/// # Visual Encoding Mapping
@@ -353,7 +353,7 @@
 <a href=#353 id=353 data-nosnippet>353</a>    style
 <a href=#354 id=354 data-nosnippet>354</a>}
 <a href=#355 id=355 data-nosnippet>355</a>
-<a href=#356 id=356 data-nosnippet>356</a><span class="doccomment">/// Extract semantic edge properties from CollectionKind metadata.
+<a href=#356 id=356 data-nosnippet>356</a><span class="doccomment">/// Extract semantic edge properties from `CollectionKind` metadata.
 <a href=#357 id=357 data-nosnippet>357</a>/// This function analyzes the collection type and extracts relevant semantic tags
 <a href=#358 id=358 data-nosnippet>358</a>/// for visualization purposes.
 <a href=#359 id=359 data-nosnippet>359</a></span><span class="kw">pub fn </span>extract_edge_properties_from_collection_kind(
@@ -401,7 +401,7 @@
 <a href=#401 id=401 data-nosnippet>401</a>    properties
 <a href=#402 id=402 data-nosnippet>402</a>}
 <a href=#403 id=403 data-nosnippet>403</a>
-<a href=#404 id=404 data-nosnippet>404</a><span class="doccomment">/// Helper function to add bound property based on BoundKind.
+<a href=#404 id=404 data-nosnippet>404</a><span class="doccomment">/// Helper function to add bound property based on `BoundKind`.
 <a href=#405 id=405 data-nosnippet>405</a></span><span class="kw">fn </span>add_bound_property(
 <a href=#406 id=406 data-nosnippet>406</a>    properties: <span class="kw-2">&amp;mut </span>HashSet&lt;HydroEdgeProp&gt;,
 <a href=#407 id=407 data-nosnippet>407</a>    bound: <span class="kw-2">&amp;</span><span class="kw">crate</span>::compile::ir::BoundKind,
@@ -418,7 +418,7 @@
 <a href=#418 id=418 data-nosnippet>418</a>    }
 <a href=#419 id=419 data-nosnippet>419</a>}
 <a href=#420 id=420 data-nosnippet>420</a>
-<a href=#421 id=421 data-nosnippet>421</a><span class="doccomment">/// Helper function to add bound property for Optional based on OptionalBoundKind.
+<a href=#421 id=421 data-nosnippet>421</a><span class="doccomment">/// Helper function to add bound property for Optional based on `OptionalBoundKind`.
 <a href=#422 id=422 data-nosnippet>422</a></span><span class="kw">fn </span>add_optional_bound_property(
 <a href=#423 id=423 data-nosnippet>423</a>    properties: <span class="kw-2">&amp;mut </span>HashSet&lt;HydroEdgeProp&gt;,
 <a href=#424 id=424 data-nosnippet>424</a>    bound: <span class="kw-2">&amp;</span><span class="kw">crate</span>::compile::ir::OptionalBoundKind,
@@ -435,7 +435,7 @@
 <a href=#435 id=435 data-nosnippet>435</a>    }
 <a href=#436 id=436 data-nosnippet>436</a>}
 <a href=#437 id=437 data-nosnippet>437</a>
-<a href=#438 id=438 data-nosnippet>438</a><span class="doccomment">/// Helper function to add bound property for Singleton based on SingletonBoundKind.
+<a href=#438 id=438 data-nosnippet>438</a><span class="doccomment">/// Helper function to add bound property for Singleton based on `SingletonBoundKind`.
 <a href=#439 id=439 data-nosnippet>439</a></span><span class="kw">fn </span>add_singleton_bound_property(
 <a href=#440 id=440 data-nosnippet>440</a>    properties: <span class="kw-2">&amp;mut </span>HashSet&lt;HydroEdgeProp&gt;,
 <a href=#441 id=441 data-nosnippet>441</a>    bound: <span class="kw-2">&amp;</span><span class="kw">crate</span>::compile::ir::SingletonBoundKind,
@@ -452,7 +452,7 @@
 <a href=#452 id=452 data-nosnippet>452</a>    }
 <a href=#453 id=453 data-nosnippet>453</a>}
 <a href=#454 id=454 data-nosnippet>454</a>
-<a href=#455 id=455 data-nosnippet>455</a><span class="doccomment">/// Helper function to add bound property for KeyedSingleton based on KeyedSingletonBoundKind.
+<a href=#455 id=455 data-nosnippet>455</a><span class="doccomment">/// Helper function to add bound property for `KeyedSingleton` based on `KeyedSingletonBoundKind`.
 <a href=#456 id=456 data-nosnippet>456</a></span><span class="kw">fn </span>add_keyed_singleton_bound_property(
 <a href=#457 id=457 data-nosnippet>457</a>    properties: <span class="kw-2">&amp;mut </span>HashSet&lt;HydroEdgeProp&gt;,
 <a href=#458 id=458 data-nosnippet>458</a>    bound: <span class="kw-2">&amp;</span><span class="kw">crate</span>::compile::ir::KeyedSingletonBoundKind,
@@ -472,7 +472,7 @@
 <a href=#472 id=472 data-nosnippet>472</a>    }
 <a href=#473 id=473 data-nosnippet>473</a>}
 <a href=#474 id=474 data-nosnippet>474</a>
-<a href=#475 id=475 data-nosnippet>475</a><span class="doccomment">/// Helper function to add order property based on StreamOrder.
+<a href=#475 id=475 data-nosnippet>475</a><span class="doccomment">/// Helper function to add order property based on `StreamOrder`.
 <a href=#476 id=476 data-nosnippet>476</a></span><span class="kw">fn </span>add_order_property(
 <a href=#477 id=477 data-nosnippet>477</a>    properties: <span class="kw-2">&amp;mut </span>HashSet&lt;HydroEdgeProp&gt;,
 <a href=#478 id=478 data-nosnippet>478</a>    order: <span class="kw-2">&amp;</span><span class="kw">crate</span>::compile::ir::StreamOrder,
@@ -557,7 +557,7 @@
 <a href=#557 id=557 data-nosnippet>557</a>
 <a href=#558 id=558 data-nosnippet>558</a>    <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
 <a href=#559 id=559 data-nosnippet>559</a>        <span class="kw">let </span>nvn = s.strip_prefix(<span class="string">"viz"</span>).ok_or(<span class="prelude-val">None</span>)<span class="question-mark">?</span>;
-<a href=#560 id=560 data-nosnippet>560</a>        <span class="kw">let </span>(idx, ver) = nvn.split_once(<span class="string">"v"</span>).ok_or(<span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+<a href=#560 id=560 data-nosnippet>560</a>        <span class="kw">let </span>(idx, ver) = nvn.split_once(<span class="string">'v'</span>).ok_or(<span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 <a href=#561 id=561 data-nosnippet>561</a>        <span class="kw">let </span>idx: u64 = idx.parse()<span class="question-mark">?</span>;
 <a href=#562 id=562 data-nosnippet>562</a>        <span class="kw">let </span>ver: u64 = ver.parse()<span class="question-mark">?</span>;
 <a href=#563 id=563 data-nosnippet>563</a>        <span class="prelude-val">Ok</span>(slotmap::KeyData::from_ffi((ver &lt;&lt; <span class="number">32</span>) | idx).into())
@@ -670,7 +670,7 @@
 <a href=#670 id=670 data-nosnippet>670</a>    }
 <a href=#671 id=671 data-nosnippet>671</a>}
 <a href=#672 id=672 data-nosnippet>672</a>
-<a href=#673 id=673 data-nosnippet>673</a><span class="doccomment">/// Function to extract an op_name from a print_root() result for use in labels.
+<a href=#673 id=673 data-nosnippet>673</a><span class="doccomment">/// Function to extract an `op_name` from a `print_root()` result for use in labels.
 <a href=#674 id=674 data-nosnippet>674</a></span><span class="kw">pub fn </span>extract_op_name(full_label: String) -&gt; String {
 <a href=#675 id=675 data-nosnippet>675</a>    full_label
 <a href=#676 id=676 data-nosnippet>676</a>        .split(<span class="string">'('</span>)
@@ -679,7 +679,7 @@
 <a href=#679 id=679 data-nosnippet>679</a>        .to_lowercase()
 <a href=#680 id=680 data-nosnippet>680</a>}
 <a href=#681 id=681 data-nosnippet>681</a>
-<a href=#682 id=682 data-nosnippet>682</a><span class="doccomment">/// Extract a short, readable label from the full token stream label using print_root() style naming
+<a href=#682 id=682 data-nosnippet>682</a><span class="doccomment">/// Extract a short, readable label from the full token stream label using `print_root()` style naming
 <a href=#683 id=683 data-nosnippet>683</a></span><span class="kw">pub fn </span>extract_short_label(full_label: <span class="kw-2">&amp;</span>str) -&gt; String {
 <a href=#684 id=684 data-nosnippet>684</a>    <span class="comment">// Use the same logic as extract_op_name but handle the specific cases we need for UI display
 <a href=#685 id=685 data-nosnippet>685</a>    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(op_name) = full_label.split(<span class="string">'('</span>).next() {
@@ -766,7 +766,7 @@
 <a href=#766 id=766 data-nosnippet>766</a>    structure.add_edge(src_id, dst_id, properties, label);
 <a href=#767 id=767 data-nosnippet>767</a>}
 <a href=#768 id=768 data-nosnippet>768</a>
-<a href=#769 id=769 data-nosnippet>769</a><span class="doccomment">/// Helper function to write a graph structure using any GraphWrite implementation
+<a href=#769 id=769 data-nosnippet>769</a><span class="doccomment">/// Helper function to write a graph structure using any `GraphWrite` implementation
 <a href=#770 id=770 data-nosnippet>770</a></span><span class="kw">fn </span>write_graph_structure&lt;W&gt;(
 <a href=#771 id=771 data-nosnippet>771</a>    structure: <span class="kw-2">&amp;</span>HydroGraphStructure,
 <a href=#772 id=772 data-nosnippet>772</a>    graph_write: W,

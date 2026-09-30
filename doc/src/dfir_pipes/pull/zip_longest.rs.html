@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_pipes/src/pull/zip_longest.rs`."><title>zip_longest.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="dfir_pipes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (c1070d693 2026-09-28)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">dfir_pipes/pull/</div>zip_longest.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>core::pin::Pin;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_pipes/src/pull/zip_longest.rs`."><title>zip_longest.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="dfir_pipes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (5c543b0b8 2026-09-29)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">dfir_pipes/pull/</div>zip_longest.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>core::pin::Pin;
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>itertools::{Either, EitherOrBoth};
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>pin_project_lite::pin_project;
@@ -172,7 +172,7 @@
 <a href=#172 id=172 data-nosnippet>172</a>
 <a href=#173 id=173 data-nosnippet>173</a>        <span class="kw">loop </span>{
 <a href=#174 id=174 data-nosnippet>174</a>            <span class="kw">match </span>zip.as_mut().pull(<span class="kw-2">&amp;mut </span>()) {
-<a href=#175 id=175 data-nosnippet>175</a>                PullStep::Ready(item, <span class="kw">_</span>) =&gt; results.push(item),
+<a href=#175 id=175 data-nosnippet>175</a>                PullStep::Ready(item, ()) =&gt; results.push(item),
 <a href=#176 id=176 data-nosnippet>176</a>                PullStep::Ended(<span class="kw">_</span>) =&gt; <span class="kw">break</span>,
 <a href=#177 id=177 data-nosnippet>177</a>                PullStep::Pending(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
 <a href=#178 id=178 data-nosnippet>178</a>            }
@@ -194,7 +194,7 @@
 <a href=#194 id=194 data-nosnippet>194</a>
 <a href=#195 id=195 data-nosnippet>195</a>        <span class="kw">loop </span>{
 <a href=#196 id=196 data-nosnippet>196</a>            <span class="kw">match </span>zip.as_mut().pull(<span class="kw-2">&amp;mut </span>()) {
-<a href=#197 id=197 data-nosnippet>197</a>                PullStep::Ready(item, <span class="kw">_</span>) =&gt; results.push(item),
+<a href=#197 id=197 data-nosnippet>197</a>                PullStep::Ready(item, ()) =&gt; results.push(item),
 <a href=#198 id=198 data-nosnippet>198</a>                PullStep::Ended(<span class="kw">_</span>) =&gt; <span class="kw">break</span>,
 <a href=#199 id=199 data-nosnippet>199</a>                PullStep::Pending(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
 <a href=#200 id=200 data-nosnippet>200</a>            }
@@ -220,7 +220,7 @@
 <a href=#220 id=220 data-nosnippet>220</a>
 <a href=#221 id=221 data-nosnippet>221</a>        <span class="kw">loop </span>{
 <a href=#222 id=222 data-nosnippet>222</a>            <span class="kw">match </span>zip.as_mut().pull(<span class="kw-2">&amp;mut </span>()) {
-<a href=#223 id=223 data-nosnippet>223</a>                PullStep::Ready(item, <span class="kw">_</span>) =&gt; results.push(item),
+<a href=#223 id=223 data-nosnippet>223</a>                PullStep::Ready(item, ()) =&gt; results.push(item),
 <a href=#224 id=224 data-nosnippet>224</a>                PullStep::Ended(<span class="kw">_</span>) =&gt; <span class="kw">break</span>,
 <a href=#225 id=225 data-nosnippet>225</a>                PullStep::Pending(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
 <a href=#226 id=226 data-nosnippet>226</a>            }
@@ -335,7 +335,7 @@
 <a href=#335 id=335 data-nosnippet>335</a>        <span class="comment">// prev1 Ready(0), prev2 Ready(0) → Both(0, 0)
 <a href=#336 id=336 data-nosnippet>336</a>        </span><span class="macro">assert!</span>(<span class="macro">matches!</span>(
 <a href=#337 id=337 data-nosnippet>337</a>            zip.as_mut().pull(<span class="kw-2">&amp;mut </span>()),
-<a href=#338 id=338 data-nosnippet>338</a>            PullStep::Ready(EitherOrBoth::Both(<span class="number">0</span>, <span class="number">0</span>), <span class="kw">_</span>)
+<a href=#338 id=338 data-nosnippet>338</a>            PullStep::Ready(EitherOrBoth::Both(<span class="number">0</span>, <span class="number">0</span>), ())
 <a href=#339 id=339 data-nosnippet>339</a>        ));
 <a href=#340 id=340 data-nosnippet>340</a>
 <a href=#341 id=341 data-nosnippet>341</a>        <span class="comment">// prev1 Pending, prev2 Ready(1) → buffer Right(1), Pending
@@ -345,7 +345,7 @@
 <a href=#345 id=345 data-nosnippet>345</a>        <span class="comment">// Buffered Right(1) pairs with prev1 Ready(1) → Both(1, 1)
 <a href=#346 id=346 data-nosnippet>346</a>        </span><span class="macro">assert!</span>(<span class="macro">matches!</span>(
 <a href=#347 id=347 data-nosnippet>347</a>            zip.as_mut().pull(<span class="kw-2">&amp;mut </span>()),
-<a href=#348 id=348 data-nosnippet>348</a>            PullStep::Ready(EitherOrBoth::Both(<span class="number">1</span>, <span class="number">1</span>), <span class="kw">_</span>)
+<a href=#348 id=348 data-nosnippet>348</a>            PullStep::Ready(EitherOrBoth::Both(<span class="number">1</span>, <span class="number">1</span>), ())
 <a href=#349 id=349 data-nosnippet>349</a>        ));
 <a href=#350 id=350 data-nosnippet>350</a>
 <a href=#351 id=351 data-nosnippet>351</a>        <span class="comment">// prev1 Pending, prev2 Ended → Pending
