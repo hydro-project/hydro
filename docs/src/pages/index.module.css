@@ -294,6 +294,161 @@
   }
 }
 
+/* ===== Toolbox and FAQ blocks ===== */
+
+.block {
+  max-width: 1200px;
+  margin: 12vh auto 0;
+  padding: 0 40px;
+  color: var(--lp-ink);
+}
+
+.blockTitle {
+  font-family: var(--ifm-heading-font-family);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 120%;
+  text-align: center;
+  margin-bottom: 16px;
+  text-wrap: balance;
+}
+
+.blockLede {
+  max-width: 760px;
+  margin: 0 auto 40px;
+  text-align: center;
+  font-size: 17.5px;
+  line-height: 160%;
+  color: var(--lp-muted);
+  text-wrap: pretty;
+}
+
+.toolGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.toolCard {
+  display: flex;
+  flex-direction: column;
+  padding: 22px 22px 18px;
+  background: var(--lp-panel-bg);
+  border: 1.5px solid var(--lp-border);
+  border-top: 4px solid var(--tool-accent);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 6%);
+}
+
+.toolStage {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tool-accent);
+}
+
+.toolName {
+  font-size: 22px;
+  margin: 6px 0 12px;
+}
+
+/* Doubled class to beat Infima's global `code` styles. */
+.toolCode.toolCode {
+  display: block;
+  padding: 8px 10px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+  line-height: 140%;
+  white-space: pre;
+  overflow-x: auto;
+  background: var(--lp-code-title-bg);
+  border: 1px solid var(--lp-border);
+  border-radius: 8px;
+}
+
+.toolBody {
+  flex-grow: 1;
+  font-size: 15.5px;
+  line-height: 155%;
+  text-wrap: pretty;
+}
+
+.toolLink {
+  font-weight: 600;
+  color: var(--tool-accent);
+}
+
+.toolLink:hover {
+  color: var(--tool-accent);
+  text-decoration: underline;
+}
+
+.faqList {
+  max-width: 860px;
+  margin: 32px auto 0;
+  border-top: 1.5px solid var(--lp-border);
+}
+
+.faqItem {
+  border-bottom: 1.5px solid var(--lp-border);
+}
+
+.faqQuestion {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 4px;
+  font-size: 19px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faqQuestion::-webkit-details-marker {
+  display: none;
+}
+
+.faqQuestion::after {
+  content: "+";
+  flex-shrink: 0;
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--lp-muted);
+  transition: transform 0.2s ease;
+}
+
+.faqItem[open] > .faqQuestion::after {
+  transform: rotate(45deg);
+}
+
+.faqAnswer {
+  padding: 0 4px 18px;
+  font-size: 16.5px;
+  line-height: 160%;
+  text-wrap: pretty;
+}
+
+.faqAnswer p:last-child {
+  margin-bottom: 0;
+}
+
+@media screen and (max-width: 996px) {
+  .block {
+    margin-top: 60px;
+    padding: 0 16px;
+  }
+
+  .blockTitle {
+    font-size: 28px;
+  }
+
+  .faqQuestion {
+    font-size: 17px;
+  }
+}
+
 /* ===== Bottom panels ===== */
 
 .panel h1 {
