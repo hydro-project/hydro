@@ -959,10 +959,8 @@ mod tests {
                 let (next_slot, v) = out_recv.next().await;
                 assert_eq!(v, i);
 
-                if next_expected < 123 {
-                    assert!(next_slot == next_expected || next_slot == 124);
-                } else {
-                    assert!(next_slot == next_expected);
+                if !(next_expected < 123 && next_slot == 124) {
+                    assert_eq!(next_slot, next_expected);
                 }
 
                 next_expected = next_slot + 1;

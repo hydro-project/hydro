@@ -4079,7 +4079,7 @@ mod tests {
 
         let instance_count = flow.sim().exhaustive(async || {
             in_send.send_many_unordered([1, 2, 3, 4]);
-            assert!(out_recv.collect::<Vec<_>>().await.last().unwrap() == &4);
+            assert_eq!(out_recv.collect::<Vec<_>>().await.last(), Some(&4));
         });
 
         assert_eq!(
