@@ -1,0 +1,69 @@
+theorem count_list_sum {α : Type _} [DecidableEq α] (b : α) :
+    ∀ (l : List (Multiset α)), l.sum.count b = (l.map (·.count b)).sum
+  | [] => rfl
+  | m :: ms => by
+    rw [List.sum_cons, Multiset.count_add, List.map_cons, List.sum_cons,
+      count_list_sum b ms]
+
+
+theorem countP_list_sum {α : Type _} [DecidableEq α]
+    (p : α → Prop) [DecidablePred p] :
+    ∀ (l : List (Multiset α)), l.sum.countP p = (l.map (·.countP p)).sum
+  | [] => rfl
+  | m :: ms => by
+    rw [List.sum_cons, Multiset.countP_add, List.map_cons, List.sum_cons,
+      countP_list_sum p ms]
+
+
+theorem countP_filterMap_le {α β : Type _} [DecidableEq α]
+    [DecidableEq β] (f : α → Option β) (p : β → Prop) [DecidablePred p]
+    (q : α → Prop) [DecidablePred q]
+    (h : ∀ a b', f a = some b' → p b' → q a) (S : Multiset α) :
+    (S.filterMap f).countP p ≤ S.countP q := by
+  induction S using Multiset.induction_on with
+  | empty => rfl
+  | cons a S ih =>
+    rw [Multiset.filterMap_cons, Multiset.countP_cons]
+    cases hfa : f a with
+    | none =>
+      rw [show ((Option.map (fun b => ({b} : Multiset β)) none).getD 0)
+        = (0 : Multiset β) from rfl, Multiset.zero_add]
+      exact le_trans ih (Nat.le_add_right _ _)
+    | some b' =>
+      rw [show ((Option.map (fun b => ({b} : Multiset β)) (some b')).getD 0)
+        = ({b'} : Multiset β) from rfl, Multiset.singleton_add,
+        Multiset.countP_cons]
+      by_cases hp : p b'
+      · rw [if_pos hp, if_pos (h a b' hfa hp)]
+        omega
+      · rw [if_neg hp]
+        omega
+
+
+theorem countP_map_le_count {α β : Type _} [DecidableEq α]
+    [DecidableEq β] (f : α → β) (p : β → Prop) [DecidablePred p] (b : α)
+    (h : ∀ a, p (f a) → a = b) (s : Multiset α) :
+    (s.map f).countP p ≤ s.count b := by
+  induction s using Multiset.induction_on with
+  | empty => rfl
+  | cons a s ih =>
+    rw [Multiset.map_cons, Multiset.countP_cons, Multiset.count_cons]
+    by_cases hp : p (f a)
+    · rw [if_pos hp, if_pos (h a hp).symm]
+      omega
+    · rw [if_neg hp]
+      omega
+
+
+theorem sum_map_zip_le {α β : Type _} (g : α × β → Nat)
+    (h : α → Nat) (hg : ∀ x, g x ≤ h x.1) :
+    ∀ (l : List α) (l' : List β),
+      ((l.zip l').map g).sum ≤ (l.map h).sum
+  | [], _ => Nat.zero_le _
+  | _ :: _, [] => Nat.zero_le _
+  | a :: l, b :: l' => by
+    rw [List.zip_cons_cons, List.map_cons, List.map_cons, List.sum_cons,
+      List.sum_cons]
+    exact Nat.add_le_add (hg (a, b)) (sum_map_zip_le g h hg l l')
+
+
