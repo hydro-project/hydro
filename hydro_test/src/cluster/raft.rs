@@ -83,11 +83,9 @@ pub struct LogEntry<T> {
     serialize = "T: Serialize",
     deserialize = "T: serde::de::DeserializeOwned"
 ))]
-pub struct AppendEntriesRequest<T, ClusterTag> {
+pub struct AppendEntriesRequest<T> {
     /// The leader's term.
     pub term: usize,
-    /// The leader's identity, so followers can redirect clients to it.
-    pub leader: MemberId<ClusterTag>,
     /// Index of the log entry immediately preceding `entries`.
     pub prev_log_index: usize,
     /// Term of the entry at `prev_log_index`.
@@ -98,11 +96,10 @@ pub struct AppendEntriesRequest<T, ClusterTag> {
     pub leader_commit: usize,
 }
 
-impl<T: Clone, ClusterTag> Clone for AppendEntriesRequest<T, ClusterTag> {
+impl<T: Clone> Clone for AppendEntriesRequest<T> {
     fn clone(&self) -> Self {
         AppendEntriesRequest {
             term: self.term,
-            leader: self.leader.clone(),
             prev_log_index: self.prev_log_index,
             prev_log_term: self.prev_log_term,
             entries: self.entries.clone(),
@@ -111,11 +108,10 @@ impl<T: Clone, ClusterTag> Clone for AppendEntriesRequest<T, ClusterTag> {
     }
 }
 
-impl<T: Debug, ClusterTag> Debug for AppendEntriesRequest<T, ClusterTag> {
+impl<T: Debug> Debug for AppendEntriesRequest<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppendEntriesRequest")
             .field("term", &self.term)
-            .field("leader", &self.leader)
             .field("prev_log_index", &self.prev_log_index)
             .field("prev_log_term", &self.prev_log_term)
             .field("entries", &self.entries)
@@ -159,18 +155,18 @@ pub struct AppendEntriesReply {
     serialize = "T: Serialize",
     deserialize = "T: serde::de::DeserializeOwned"
 ))]
-pub enum RaftRpc<T, ClusterTag> {
+pub enum RaftRpc<T> {
     /// Candidate -> everyone: request a vote for `term` (RAFT §5.2).
     RequestVote(RequestVoteDto),
     /// Voter -> candidate: grant a vote for `term`.
     RequestVoteResponse(RequestVoteResponseDto),
     /// Leader -> follower: replicate entries / heartbeat (RAFT §5.3).
-    AppendEntries(AppendEntriesRequest<T, ClusterTag>),
+    AppendEntries(AppendEntriesRequest<T>),
     /// Follower -> leader: acknowledge or reject an `AppendEntries`.
     AppendEntriesReply(AppendEntriesReply),
 }
 
-impl<T: Clone, ClusterTag> Clone for RaftRpc<T, ClusterTag> {
+impl<T: Clone> Clone for RaftRpc<T> {
     fn clone(&self) -> Self {
         match self {
             RaftRpc::RequestVote(dto) => RaftRpc::RequestVote(dto.clone()),
@@ -181,7 +177,7 @@ impl<T: Clone, ClusterTag> Clone for RaftRpc<T, ClusterTag> {
     }
 }
 
-impl<T: Debug, ClusterTag> Debug for RaftRpc<T, ClusterTag> {
+impl<T: Debug> Debug for RaftRpc<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RaftRpc::RequestVote(dto) => f.debug_tuple("RequestVote").field(dto).finish(),
@@ -399,7 +395,7 @@ pub struct RaftStepInput<T, ClusterTag> {
     pub requests: Vec<T>,
     /// Intra-cluster messages received this tick, as an unordered batch; the step
     /// sorts them canonically so its outcome depends only on the batch *multiset*.
-    pub messages: Vec<(MemberId<ClusterTag>, RaftRpc<T, ClusterTag>)>,
+    pub messages: Vec<(MemberId<ClusterTag>, RaftRpc<T>)>,
 }
 
 /// One tick's worth of outputs from [`raft_step`].
@@ -408,7 +404,7 @@ pub struct RaftStepInput<T, ClusterTag> {
 #[doc(hidden)]
 pub struct RaftStepOutput<T, ClusterTag> {
     /// Messages to send to specific members.
-    pub outbound: Vec<(MemberId<ClusterTag>, RaftRpc<T, ClusterTag>)>,
+    pub outbound: Vec<(MemberId<ClusterTag>, RaftRpc<T>)>,
     /// Entries newly committed this tick, in log order (each index emitted exactly
     /// once over the member's lifetime).
     pub committed: Vec<LogEntry<T>>,
@@ -502,7 +498,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
 
     // (a) Process this tick's messages in a canonical order (so the step is a
     // function of the batch multiset), each one sequentially against live state.
-    fn sort_key<T, ClusterTag>(rpc: &RaftRpc<T, ClusterTag>) -> (u8, usize, usize, usize) {
+    fn sort_key<T>(rpc: &RaftRpc<T>) -> (u8, usize, usize, usize) {
         match rpc {
             RaftRpc::RequestVote(dto) => (0, dto.term, dto.last_log_term, dto.last_log_index),
             RaftRpc::RequestVoteResponse(dto) => (1, dto.term, 0, 0),
@@ -583,7 +579,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 if state.role == RaftState::Candidate {
                     state.role = RaftState::Follower;
                 }
-                state.known_leader = Some(request.leader.clone());
+                state.known_leader = Some(sender.clone());
 
                 // Log-matching check (RAFT §5.3).
                 let log_matches = request.prev_log_index == 0
@@ -766,7 +762,6 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 follower.clone(),
                 RaftRpc::AppendEntries(AppendEntriesRequest {
                     term: state.term,
-                    leader: me.clone(),
                     prev_log_index,
                     prev_log_term,
                     entries: state.log[prev_log_index..].to_vec(),
@@ -848,7 +843,7 @@ where
     T: Clone + Serialize + DeserializeOwned + 'a,
     ClusterTag: 'a,
     O: Ordering,
-    Net: NetworkFor<RaftRpc<T, ClusterTag>>,
+    Net: NetworkFor<RaftRpc<T>>,
     NoOrder: MinOrder<Net::OrderingGuarantee, Min = NoOrder>,
 {
     let cluster_size = config.cluster_size;
@@ -872,14 +867,14 @@ where
         ForwardHandle<
             'a,
             Stream<
-                (MemberId<ClusterTag>, RaftRpc<T, ClusterTag>),
+                (MemberId<ClusterTag>, RaftRpc<T>),
                 Cluster<'a, ClusterTag>,
                 Unbounded,
                 NoOrder,
             >,
         >,
         Stream<
-            (MemberId<ClusterTag>, RaftRpc<T, ClusterTag>),
+            (MemberId<ClusterTag>, RaftRpc<T>),
             Cluster<'a, ClusterTag>,
             Unbounded,
             NoOrder,
@@ -901,7 +896,7 @@ where
         reason = "the sliced! outputs are annotated with their full stream types"
     )]
     let (outbound_messages, committed, redirected, view_transitions): (
-        Stream<(MemberId<ClusterTag>, RaftRpc<T, ClusterTag>), Cluster<'a, ClusterTag>>,
+        Stream<(MemberId<ClusterTag>, RaftRpc<T>), Cluster<'a, ClusterTag>>,
         Stream<LogEntry<T>, Cluster<'a, ClusterTag>>,
         Stream<(T, Option<MemberId<ClusterTag>>), Cluster<'a, ClusterTag>>,
         Stream<LeaderView<ClusterTag>, Cluster<'a, ClusterTag>>,
@@ -1124,7 +1119,7 @@ where
     O: Ordering,
     Con: Consistency,
     ClusterTag: 'a,
-    Net: NetworkFor<RaftRpc<T, ClusterTag>>,
+    Net: NetworkFor<RaftRpc<T>>,
     NoOrder: MinOrder<Net::OrderingGuarantee, Min = NoOrder>,
 {
     // The server runs on the consistency-less view of the cluster: `Cluster`'s
@@ -1482,7 +1477,7 @@ mod tests {
     /// messages to them pile up unanswered.
     struct StepCluster {
         states: Vec<RaftServerState<String, Replica>>,
-        inboxes: Vec<Vec<(MemberId<Replica>, RaftRpc<String, Replica>)>>,
+        inboxes: Vec<Vec<(MemberId<Replica>, RaftRpc<String>)>>,
         committed: Vec<Vec<LogEntry<String>>>,
         redirected: Vec<Vec<(String, Option<MemberId<Replica>>)>>,
         cluster_size: usize,
@@ -1680,7 +1675,6 @@ mod tests {
         let append = |entries: Vec<LogEntry<String>>, prev: usize| {
             RaftRpc::AppendEntries(AppendEntriesRequest {
                 term: 1,
-                leader: leader_0.clone(),
                 prev_log_index: prev,
                 prev_log_term: usize::from(prev != 0),
                 entries,
