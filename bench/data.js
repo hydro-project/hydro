@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1790936068015,
+  "lastUpdate": 1791020373588,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -314462,6 +314462,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 297520,
             "range": "± 1547.13",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mingwei Samuel",
+            "username": "MingweiSamuel",
+            "email": "mingwei.samuel@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "aca1170a363791ebc2a16ad9d255527b65a5c500",
+          "message": "chore: enable many new workspace clippy lints and fix all resulting warnings (#3204)\n\nEnables a large batch of new clippy lints in `[workspace.lints.clippy]`\nand fixes every resulting warning — the workspace is now clean under\n`cargo clippy --workspace --all-targets`.\n\n## Lint config changes (`Cargo.toml`)\n\n**Round 1 — initial batch:** `collapsible_else_if`, `doc_markdown`,\n`format_collect`, `ignore_without_reason`, `ignored_unit_patterns`,\n`inconsistent_struct_constructor`, `manual_assert`, `manual_string_new`,\n`match_bool`, `mismatching_type_param_order`, `mut_mut`,\n`nonminimal_bool`, `option_as_ref_cloned`, `ptr_cast_constness`,\n`pub_underscore_fields`, `ref_binding_to_reference`, `ref_option`,\n`ref_option_ref`, `single_char_pattern`, `str_split_at_newline`,\n`string_add_assign`, `transmute_ptr_to_ptr`, `type_repetition_in_bounds`\n\n**Round 2 — added after auditing hit counts across the workspace:**\n- Zero-hit future-guards: `borrow_as_ptr`, `doc_link_with_quotes`,\n`expl_impl_clone_on_copy`, `inefficient_to_string`, `macro_use_imports`,\n`range_minus_one`, `rest_pat_in_fully_bound_structs`,\n`string_to_string`, `trait_duplication_in_bounds`, `unnecessary_join`\n- Low-noise with fixes: `bool_to_int_with_if`, `cast_lossless`,\n`equatable_if_let`, `needless_raw_string_hashes`, `redundant_else`,\n`string_add`, `unnested_or_patterns`, `unused_peekable`\n\n**Removed / deferred:**\n- `many_single_char_names` — removed; only fired on idiomatic\nsingle-letter names in bench/test code (effectively all false positives)\n- `must_use_candidate` — tried it, then removed: it demands annotations\nstricter than std itself (std doesn't mark `Vec::iter()` etc.), and its\nheuristic misfired on dataflow-builder functions whose side effects are\nthe point. Kept a **curated set of 19 `#[must_use]`s** on consuming\nbuilder setters (`RustCrate::pin_to_core`, `TrybuildHost::tracing`,\n`MaelstromDeploy::node_count`/`rate`/`time_limit`, `SimFlow` options,\nthe `NetworkingConfig` transport/reliability chain, …) where dropping\nthe return value silently discards configuration.\n- `manual_assert_eq` — commented out as TODO; requires clippy 1.97.0\n- `dbg_macro`, `undocumented_unsafe_blocks` — commented out as TODOs for\nfollow-up\n\n## Warning fixes (~350 warnings)\n\n**Auto-fixed via `cargo clippy --fix` (all reviewed):** `doc_markdown`\nbackticks/`<URL>`s, `_` → `()` for unit patterns, `if cond { panic!() }`\n→ `assert!()`, char patterns, `usize::from(..)` instead of `as` casts /\nbool-to-int `if`s, `matches!()`, nested or-patterns, redundant `else`\nremoval, etc.\n\n**dfir_lang codegen fixes** — the most interesting finding: ~270\nwarnings pointed at *user call sites* of `source_stream`,\n`difference`/`anti_join`, `null`, and `source_stream_serde`, but the\noffending patterns were in dfir_lang's *generated* code (which carries\ncall-site spans). Fixed at the source so downstream users with these\nlints enabled won't see them either:\n- `source_stream`: `PullStep::Ready(_, _)` → `PullStep::Ready(..)`\n- `anti_join`/`difference`: `|(k, _)|` → `|(k, _v)|` (the `_` matched\n`()` values)\n- `null`: allow `ignored_unit_patterns` on the generated `let _ = (...)`\n- `source_stream_serde`: nested the generated `Poll::Ready(Some(Err(_)))\n| Poll::Ready(None)` or-pattern\n\n**Manual cleanups on top of the auto-fixes:**\n- Rewrote De Morgan-ugly generated asserts (`assert!(!(!a && !b))`) into\nreadable positive forms or `if` + `assert!` (FlowBuilder/handle drop\nguards, multiversioned network sends, recompilation checks, sim\ndeterministic-hook checks)\n- Fixed doc comments the autofix mangled (`merge_modules` example is now\na ` ```text ` block; `GhtInner<GhtInner<GhtLeaf<...>>>`;\n`Rc<RefCell<Vec<T>>>`) plus nearby typos and formatting not caught by\nthe lint\n- `type_repetition_in_bounds`: merged duplicate where-clause predicates\nin lattices GHT and hydro_lang stream/keyed_singleton/networking\n- `ignore_without_reason`: maelstrom tests now `ignore = \"requires the\nMaelstrom binary (set the MAELSTROM_PATH env var)\"`\n- `unused_peekable` caught a genuinely unused `.peekable()` in\n`hydro_lang` `ir/backtrace.rs`\n- `string_add`: `format!()` / `push('\\n')` rewrites (verified the\n`q!`-quoted maelstrom body isn't embedded in any snapshots)\n- `String::new()` in the no_std `lattices` test needed `use\nalloc::string::String`\n\n## Verification\n\n- `cargo clippy --workspace --all-targets` — zero warnings\n- `cargo +nightly fmt --all` — clean\n- Test suites pass: `lattices`, `dfir_lang`, `dfir_pipes`, and `dfir_rs`\n(309 tests incl. compile-fail/trybuild and graphviz/mermaid snapshots)\n\n---------\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-09-30T19:31:32Z",
+          "url": "https://github.com/hydro-project/hydro/commit/aca1170a363791ebc2a16ad9d255527b65a5c500"
+        },
+        "date": 1791020373534,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311311,
+            "range": "± 5469",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6533611,
+            "range": "± 79795",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6911602,
+            "range": "± 14678",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 45768,
+            "range": "± 1339",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 8528957,
+            "range": "± 66935",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 993926,
+            "range": "± 20807",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1059994,
+            "range": "± 18945",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 43788399,
+            "range": "± 200811",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6863481,
+            "range": "± 21173",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 13764938,
+            "range": "± 1443796",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6533856,
+            "range": "± 13053",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 7032528,
+            "range": "± 21682",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 42249035,
+            "range": "± 241458",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 4065,
+            "range": "± 92",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 24702,
+            "range": "± 450",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4146,
+            "range": "± 65",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6648,
+            "range": "± 85",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 376597,
+            "range": "± 3277",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55941,
+            "range": "± 398",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 44846,
+            "range": "± 395",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 15265,
+            "range": "± 383",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 7033,
+            "range": "± 67",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7354,
+            "range": "± 85",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72525,
+            "range": "± 501",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 81650,
+            "range": "± 593",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7563,
+            "range": "± 196",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15471,
+            "range": "± 87",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 62396,
+            "range": "± 2799",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7603,
+            "range": "± 156",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 184060,
+            "range": "± 9501.71",
             "unit": "ops/s"
           }
         ]
