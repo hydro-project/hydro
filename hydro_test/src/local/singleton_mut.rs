@@ -61,4 +61,66 @@ mod tests {
         // count starts at 10 (fold of 0..5), then increments once per item
         assert_eq!(results, vec![11, 12, 13]);
     }
+
+    #[tokio::test]
+    async fn test_singleton_mut_idempotent() {
+        let mut deployment = Deployment::new();
+
+        let mut builder = FlowBuilder::new();
+        let external = builder.external::<()>();
+        let p1 = builder.process::<()>();
+
+        // Create a singleton: max of 0..5 => 4
+        let my_max = p1.source_iter(q!(0..5u32)).fold(
+            q!(|| 0u32),
+            q!(|acc: &mut u32, x| {
+                if x > *acc {
+                    *acc = x;
+                }
+            }),
+        );
+
+        let max_mut = my_max.by_mut();
+
+        // Use the singleton mut in a map on a stream with retries (the `7` is delivered
+        // twice). The closure emits the running maximum: processing an element twice in a
+        // row leaves the maximum unchanged and re-emits the same output, so this is
+        // idempotent. Emitting whether the element is a *new* maximum would expose the
+        // retry and be rejected by the proof.
+        let out_port = p1
+            .source_iter(q!(vec![3u32, 7, 7, 5]))
+            .weaken_retries::<hydro_lang::live_collections::stream::AtLeastOnce>()
+            .map(q!(
+                |x| {
+                    if x > *max_mut {
+                        *max_mut = x;
+                    }
+                    *max_mut
+                },
+                idempotent = hydro_lang::properties::verus_proof_idempotent_map!(
+                    item = u32,
+                    captures_mut = |max_mut: u32|
+                )
+            ))
+            .send_bincode_external(&external);
+
+        let nodes = builder
+            .with_default_optimize()
+            .with_process(&p1, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut out_recv = nodes.connect(out_port).await;
+
+        deployment.start().await.unwrap();
+
+        let mut results = Vec::new();
+        for _ in 0..4 {
+            results.push(out_recv.next().await.unwrap());
+        }
+        // max starts at 4 (max of 0..5); the retried `7` re-emits the same output
+        assert_eq!(results, vec![4, 7, 7, 7]);
+    }
 }

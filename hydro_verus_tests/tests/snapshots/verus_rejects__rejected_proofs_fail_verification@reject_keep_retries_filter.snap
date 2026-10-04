@@ -1,0 +1,17 @@
+---
+source: hydro_verus_tests/tests/verus_rejects.rs
+expression: "format!(\"{}\\n{}\", verification_results(&stdout), verus_diagnostics(&stderr))"
+---
+verification results:: 22 verified, 1 errors
+error: assertion failed
+   --> hydro_verus_tests/src/lib.rs:706:34
+    |
+706 |                       idempotent = verus_proof_idempotent_filter!(
+    |  __________________________________^
+707 | |                         item = &u32,
+708 | |                         captures_mut = |max_mut: u32|
+709 | |                     )
+    | |_____________________^ assertion failed
+    |
+    = note: this error originates in the macro `verus_proof_idempotent_filter` (in Nightly builds, run with -Z macro-backtrace for more info)
+error: could not compile `hydro_verus_tests` (lib) due to 1 previous error

@@ -2,11 +2,11 @@
 source: hydro_verus_tests/tests/verus_rejects.rs
 expression: "format!(\"{}\\n{}\", verification_results(&stdout), verus_diagnostics(&stderr))"
 ---
-verification results:: 9 verified, 1 errors
+verification results:: 22 verified, 1 errors
 error: assertion failed
-   --> hydro_verus_tests/src/lib.rs:233:39
+   --> hydro_verus_tests/src/lib.rs:443:39
     |
-233 |                         commutative = verus_proof_commutative_fold!(acc = u32, item = u32)
+443 |                         commutative = verus_proof_commutative_fold!(acc = u32, item = u32)
     |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assertion failed
     |
     = note: this error originates in the macro `verus_proof_commutative_fold` (in Nightly builds, run with -Z macro-backtrace for more info)
