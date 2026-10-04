@@ -1770,7 +1770,7 @@ mod tests {
                 election_timer_fired: false,
                 heartbeat_timer_fired: false,
                 requests: vec![],
-                messages: vec![(leader_0.clone(), append(vec![entry(1)], 0))],
+                messages: vec![(leader_0, append(vec![entry(1)], 0))],
             },
         );
         assert_eq!(
