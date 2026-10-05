@@ -339,11 +339,11 @@ where
                 let sg_idx = &self.sg_idx;
                 topo_sort(reps_in_window, |k| {
                     subgraph_preds[k]
-                    .iter()
-                    .map(|&p| subgraph_unionfind.find(p))
-                    .filter(|&p| window.contains(&sg_idx[p])) // Prune to window.
-                    .collect::<Vec<_>>()
-                    .into_iter()
+                        .iter()
+                        .map(|&p| subgraph_unionfind.find(p))
+                        .filter(|&p| window.contains(&sg_idx[p])) // Prune to window.
+                        .collect::<Vec<_>>()
+                        .into_iter()
                 })
                 .expect("bug: cycle check passed but re-toposort found cycle")
             };

@@ -636,7 +636,8 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             let me: KeyedSingleton<K, V, L, MonotonicKeys> =
                 KeyedSingleton::new(location.clone(), ir_node);
 
-            let out = key_count_inside_tick(me.snapshot(&tick, nondet!(/** eventually stabilizes */)))
+            let out =
+                key_count_inside_tick(me.snapshot(&tick, nondet!(/** eventually stabilizes */)))
                     .latest()
                     // The key count is folded with an initial value, so it is always present
                     // (0 when there are no keys). `latest()` is null until the producing tick

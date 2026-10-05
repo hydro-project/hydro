@@ -615,27 +615,33 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
         .map(q!(|(_checkpoint, log)| log))
         .flatten_unordered() // Convert HashMap log back to stream
         .into_keyed()
-        .fold::<(usize, Option<LogValue<P>>), _, _, _, _, _, _>(q!(|| (0, None)), q!(|curr_entry, new_entry| {
-            if let Some(curr_entry_payload) = &mut curr_entry.1 {
-                let same_values = new_entry.value == curr_entry_payload.value;
-                let higher_ballot = new_entry.ballot > curr_entry_payload.ballot;
-                // Increment count if the values are the same
-                if same_values {
-                    curr_entry.0 += 1;
-                }
-                // Replace the ballot with the largest one
-                if higher_ballot {
-                    curr_entry_payload.ballot = new_entry.ballot;
-                    // Replace the value with the one from the largest ballot, if necessary
-                    if !same_values {
-                        curr_entry.0 = 1;
-                        curr_entry_payload.value = new_entry.value;
+        .fold::<(usize, Option<LogValue<P>>), _, _, _, _, _, _>(
+            q!(|| (0, None)),
+            q!(
+                |curr_entry, new_entry| {
+                    if let Some(curr_entry_payload) = &mut curr_entry.1 {
+                        let same_values = new_entry.value == curr_entry_payload.value;
+                        let higher_ballot = new_entry.ballot > curr_entry_payload.ballot;
+                        // Increment count if the values are the same
+                        if same_values {
+                            curr_entry.0 += 1;
+                        }
+                        // Replace the ballot with the largest one
+                        if higher_ballot {
+                            curr_entry_payload.ballot = new_entry.ballot;
+                            // Replace the value with the one from the largest ballot, if necessary
+                            if !same_values {
+                                curr_entry.0 = 1;
+                                curr_entry_payload.value = new_entry.value;
+                            }
+                        }
+                    } else {
+                        *curr_entry = (1, Some(new_entry));
                     }
-                }
-            } else {
-                *curr_entry = (1, Some(new_entry));
-            }
-        }, commutative = manual_proof!(/** TODO */)))
+                },
+                commutative = manual_proof!(/** TODO */)
+            ),
+        )
         .map(q!(|(count, entry)| (count, entry.unwrap())));
     let p_log_to_try_commit = p_p1b_highest_entries_and_count
         .clone()
@@ -838,12 +844,15 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
     let a_p2as_to_place_in_log = p_to_acceptors_p2a_batch
         .clone()
         .cross_singleton(a_max_ballot.clone()) // Don't consider p2as if the current ballot is higher
-        .filter_map(q!(|(p2a, max_ballot)|
-            if Some(&p2a.ballot) >= max_ballot.as_ref() {
-                Some((p2a.slot, LogValue {
-                    ballot: p2a.ballot,
-                    value: p2a.value,
-                }))
+        .filter_map(q!(
+            |(p2a, max_ballot)| if Some(&p2a.ballot) >= max_ballot.as_ref() {
+                Some((
+                    p2a.slot,
+                    LogValue {
+                        ballot: p2a.ballot,
+                        value: p2a.value,
+                    },
+                ))
             } else {
                 None
             }

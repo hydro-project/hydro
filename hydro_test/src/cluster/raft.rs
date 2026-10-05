@@ -1025,7 +1025,8 @@ where
         (outbound, committed, redirected, view_transitions)
     };
 
-    traffic_handle.complete(outbound_messages
+    traffic_handle.complete(
+        outbound_messages
             .into_keyed()
             // The channel's fault model is chosen by the caller: sim tests use
             // `TCP.fail_stop()` (the simulator cannot explore lossy channels without
@@ -1035,7 +1036,8 @@ where
             // heartbeat, and lost vote traffic is retried at the next election
             // timeout.
             .demux(cluster, net)
-            .entries());
+            .entries(),
+    );
 
     RaftOutputs {
         // The RAFT protocol itself is what justifies the consistency cast: every
