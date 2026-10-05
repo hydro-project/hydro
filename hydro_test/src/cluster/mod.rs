@@ -2,6 +2,7 @@
 pub mod compartmentalized_paxos;
 #[cfg(feature = "tokio")]
 pub mod compute_pi;
+pub mod dyn_raft;
 pub mod kv_replica;
 pub mod many_to_many;
 pub mod map_reduce;
