@@ -816,7 +816,17 @@ where
             )
             .latest();
 
-            Optional::new(self_location, out.ir_node.replace(HydroNode::Placeholder))
+            // `latest()` produces an `Unbounded` optional; cast it back to this method's
+            // (bounded) output kind. The cast is not just metadata: at the root, unbounded
+            // optionals are tombstoned update feeds while bounded ones are plain values.
+            Optional::new(
+                self_location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(out.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self_location
+                        .new_node_metadata(Optional::<(T, O), L, B>::collection_kind()),
+                },
+            )
         } else {
             zip_inside_tick(self, other)
         }
@@ -1398,7 +1408,14 @@ where
     /// if it is [`Unbounded`], the [`KeyedSingleton`] will be [`Unbounded`], which means that
     /// the entry will be updated and appear / disappear according to the state of the
     /// [`Optional`].
-    pub fn into_keyed_singleton(self) -> KeyedSingleton<K, V, L, B::UnderlyingBound> {
+    ///
+    /// The `K: Clone + PartialEq` bounds are needed because when the optional is [`Unbounded`]
+    /// at a top-level location, the compiled representation tracks the previously emitted key
+    /// so the entry can be removed when the optional becomes null or moves to a different key.
+    pub fn into_keyed_singleton(self) -> KeyedSingleton<K, V, L, B::UnderlyingBound>
+    where
+        K: Clone + PartialEq,
+    {
         KeyedSingleton::new(
             self.location.clone(),
             HydroNode::Cast {
