@@ -866,19 +866,9 @@ where
     let (traffic_handle, traffic): (
         ForwardHandle<
             'a,
-            Stream<
-                (MemberId<ClusterTag>, RaftRpc<T>),
-                Cluster<'a, ClusterTag>,
-                Unbounded,
-                NoOrder,
-            >,
+            Stream<(MemberId<ClusterTag>, RaftRpc<T>), Cluster<'a, ClusterTag>, Unbounded, NoOrder>,
         >,
-        Stream<
-            (MemberId<ClusterTag>, RaftRpc<T>),
-            Cluster<'a, ClusterTag>,
-            Unbounded,
-            NoOrder,
-        >,
+        Stream<(MemberId<ClusterTag>, RaftRpc<T>), Cluster<'a, ClusterTag>, Unbounded, NoOrder>,
     ) = cluster.forward_ref();
 
     // The cluster membership list, resolved on each member at runtime (identical
