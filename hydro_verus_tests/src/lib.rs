@@ -190,6 +190,45 @@ pub mod accepted {
                 )
             ));
     }
+
+    /// Plain `+=` guarded by `verus_panic!`: the overflowing path panics, so Verus only
+    /// requires commutativity on the paths that continue, where `+=` cannot overflow.
+    pub fn guarded_sum_fold<'a>(process: &Process<'a, ()>) {
+        let _sum = process
+            .source_iter(q!(vec![1u32, 2, 3]))
+            .weaken_ordering::<NoOrder>()
+            .fold(
+                q!(|| 0u32),
+                q!(
+                    |acc, x| {
+                        if *acc > u32::MAX - x {
+                            verus_panic!("sum overflowed");
+                        }
+                        *acc += x;
+                    },
+                    commutative = verus_proof_commutative_fold!(acc = u32, item = u32)
+                ),
+            );
+    }
+
+    /// A guard stricter than necessary is still sound (it really panics at runtime).
+    pub fn strictly_guarded_sum_fold<'a>(process: &Process<'a, ()>) {
+        let _sum = process
+            .source_iter(q!(vec![1u32, 2, 3]))
+            .weaken_ordering::<NoOrder>()
+            .fold(
+                q!(|| 0u32),
+                q!(
+                    |acc, x| {
+                        if *acc > 1_000_000 || x > 1_000_000 {
+                            verus_panic!("sum overflowed");
+                        }
+                        *acc += x;
+                    },
+                    commutative = verus_proof_commutative_fold!(acc = u32, item = u32)
+                ),
+            );
+    }
 }
 
 /// Flows whose commutativity annotations must be **rejected** by Verus. Each is behind a
@@ -236,9 +275,9 @@ pub mod rejected {
         }
     }
 
-    /// Plain `+=` is mathematically commutative, but the obligation currently also
-    /// requires panic-freedom, so the potential overflow is rejected. (Making the
-    /// obligation conditional on both orders completing without panics is future work.)
+    /// Plain `+=` is mathematically commutative, but Verus requires the closure to be
+    /// panic-free, so the potential overflow is rejected (see `guarded_sum_fold` for the
+    /// accepted version using `verus_panic!`).
     #[cfg(feature = "reject_overflowing_fold")]
     pub mod overflowing_fold {
         use hydro_lang::live_collections::stream::NoOrder;
@@ -352,6 +391,58 @@ pub mod rejected {
                         captures_mut = |budget_mut: u32|
                     )
                 ));
+        }
+    }
+
+    /// A `verus_panic!` guard that is too weak (it misses the case `x == 1`) must not
+    /// make the overflowing `+=` verify.
+    #[cfg(feature = "reject_weak_panic_guard")]
+    pub mod weak_panic_guard {
+        use hydro_lang::live_collections::stream::NoOrder;
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let _sum = process
+                .source_iter(q!(vec![1u32, 2, 3]))
+                .weaken_ordering::<NoOrder>()
+                .fold(
+                    q!(|| 0u32),
+                    q!(
+                        |acc, x| {
+                            if *acc > u32::MAX - x && x > 1 {
+                                verus_panic!("sum overflowed");
+                            }
+                            *acc += x;
+                        },
+                        commutative = verus_proof_commutative_fold!(acc = u32, item = u32)
+                    ),
+                );
+        }
+    }
+
+    /// `verus_panic!` only removes the paths that reach it; a non-commutative update on
+    /// the paths that continue (`acc / 2 + x`) must still be rejected.
+    #[cfg(feature = "reject_guarded_halving_fold")]
+    pub mod guarded_halving_fold {
+        use hydro_lang::live_collections::stream::NoOrder;
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let _acc = process
+                .source_iter(q!(vec![1u32, 2, 3]))
+                .weaken_ordering::<NoOrder>()
+                .fold(
+                    q!(|| 0u32),
+                    q!(
+                        |acc, x| {
+                            if *acc / 2 > u32::MAX - x {
+                                verus_panic!("sum overflowed");
+                            }
+                            *acc = *acc / 2 + x;
+                        },
+                        commutative = verus_proof_commutative_fold!(acc = u32, item = u32)
+                    ),
+                );
         }
     }
 }

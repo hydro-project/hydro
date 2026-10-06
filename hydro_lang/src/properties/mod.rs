@@ -171,6 +171,79 @@ impl<T, B: Boundedness, S> CommutativeProof<T, B, S> for VerusCommutativeProof {
 #[doc(inline)]
 pub use crate::__manual_proof__ as manual_proof;
 
+// Verus only sees items declared inside `verus!`, so under the Verus driver (with the
+// `verus` feature) the function backing `verus_panic!` is declared there.
+// `external_body`: Verus trusts the signature without checking the body (which calls
+// `panic!`, whose vstd specification is `requires false`). The signature has no
+// precondition and the default unwind specification (may unwind), so callers need not
+// prove anything, and since the return type is `!`, nothing after the call is reachable.
+#[cfg(all(verus_keep_ghost, feature = "verus"))]
+vstd::prelude::verus! {
+    #[doc(hidden)]
+    #[verifier::external_body]
+    pub fn __verus_panic() -> ! {
+        panic!("verus_panic! was reached")
+    }
+}
+
+#[doc(inline)]
+pub use crate::__verus_panic__ as verus_panic;
+
+#[cfg(all(verus_keep_ghost, feature = "verus"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __verus_panic__ {
+    // The message arguments are dropped: Verus does not support `format_args!`, and they
+    // would only be evaluated on a path that panics anyway.
+    ($($arg:tt)*) => {
+        $crate::properties::__verus_panic()
+    };
+}
+
+#[cfg(not(all(verus_keep_ghost, feature = "verus")))]
+#[macro_export]
+/// Panics, in a way that **Verus proofs of algebraic properties treat as an acceptable
+/// outcome**. Takes the same arguments as [`panic!`].
+///
+/// A Verus proof (e.g. [`verus_proof_commutative_fold!`]) normally requires the closure body
+/// to be panic-free for every input, which rejects closures such as `*acc += x` (which
+/// panics on overflow) even though they are commutative whenever they complete. Calling
+/// `verus_panic!(...)` instead tells Verus that this path ends the program: the property
+/// only has to hold for executions that do **not** reach it. That matches Hydro's
+/// requirement, since a panicking closure crashes the process rather than producing a
+/// result.
+///
+/// The typical use is to guard an operation that could otherwise panic, so that Verus
+/// knows it cannot fail on the paths that continue:
+///
+/// ```rust,ignore
+/// q!(
+///     |acc, x| {
+///         if *acc > u32::MAX - x {
+///             verus_panic!("sum overflowed");
+///         }
+///         *acc += x; // cannot overflow here, so Verus accepts it
+///     },
+///     commutative = verus_proof_commutative_fold!(acc = u32, item = u32)
+/// )
+/// ```
+///
+/// This is sound because the guard really executes: the closure panics at runtime whenever
+/// the guard condition holds, so a guard that is stricter than necessary is still correct.
+/// A guard that is too weak is caught by Verus, which reports the operation that may still
+/// panic. Unlike `assume(...)` in a proof script, nothing is taken on faith beyond the fact
+/// that `verus_panic!` never returns.
+///
+/// Under normal compilation, this forwards its arguments to [`panic!`]. When verifying
+/// with `cargo verus verify`, the `verus` feature of `hydro_lang` must be enabled; Verus
+/// then sees a call to a function that never returns (the message arguments are not
+/// evaluated by the proof).
+macro_rules! __verus_panic__ {
+    ($($arg:tt)*) => {
+        ::core::panic!($($arg)*)
+    };
+}
+
 #[macro_export]
 /// Fulfills a proof parameter by declaring a human-written justification for why
 /// the algebraic property (e.g. commutativity, idempotence) holds.

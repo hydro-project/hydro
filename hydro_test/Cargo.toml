@@ -23,7 +23,7 @@ stageleft_macro_entrypoint = ["hydro_lang/stageleft_macro_entrypoint"]
 # checked when building with the Verus driver: `cargo verus verify --features verus`.
 # Under normal compilation the proofs are erased, and without this feature `vstd`
 # is not part of the dependency graph at all.
-verus = ["dep:vstd"]
+verus = ["dep:vstd", "hydro_lang/verus"]
 
 [dependencies]
 hydro_lang = { path = "../hydro_lang", version = "=0.17.0-alpha.6", default-features = false }

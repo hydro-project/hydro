@@ -8,11 +8,22 @@ edition = { workspace = true }
 repository = { workspace = true }
 license = { workspace = true }
 
+# Processed by the Verus driver under `cargo verus verify` (no effect on normal cargo
+# builds), so that the Verus specifications in `hydro_lang` (e.g. for
+# `properties::verus_panic`) are exported to verified crates. Requires the `verus`
+# feature whenever `hydro_lang` is built by `cargo verus`.
+[package.metadata.verus]
+verify = true
+
 [lints]
 workspace = true
 
 [features]
 default = ["tokio"]
+# Exports Verus specifications for Verus-checked proofs of algebraic properties (see
+# `properties::verus_panic`). Must be enabled by crates verified with `cargo verus verify`;
+# has no effect on normal builds besides adding `vstd` to the dependency graph.
+verus = ["dep:vstd"]
 tokio = ["dep:tokio", "dep:tokio-metrics", "dep:tokio-stream", "dep:tokio-util", "dfir_rs?/tokio"]
 stageleft_macro_entrypoint = []
 viz = [
@@ -118,6 +129,16 @@ runtime_support = ["dep:dfir_rs"]
 telemetry_emf = ["tokio", "dep:serde_json", "tokio/fs", "tokio/io-util"]
 dfir_context = ["dep:dfir_rs"]
 
+# Only meaningful with the simulator; declared explicitly so that they are not built
+# (as empty crates) otherwise, e.g. by `cargo verus verify --tests`.
+[[test]]
+name = "sim_fuzzer"
+required-features = ["sim"]
+
+[[test]]
+name = "rustflags_propagation"
+required-features = ["sim"]
+
 [package.metadata.docs.rs]
 all-features = true
 
@@ -160,6 +181,9 @@ tokio-util = { version = "0.7.5", features = ["codec"], optional = true }
 toml = { version = "0.9", optional = true }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+# Lower bound only, so that verified crates can pin the `vstd` matching their installed
+# Verus release (Verus requires an exact match).
+vstd = { version = ">=0.0.0-2026-08-02-0125", optional = true }
 trybuild-internals-api = { version = "=1.0.114", optional = true }
 
 # Optional dependencies for graph rendering (now behind viz feature)
