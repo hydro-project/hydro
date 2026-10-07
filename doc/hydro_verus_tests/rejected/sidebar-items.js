@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["halving_fold","overflowing_fold","overwrite_fold","overwrite_map_capture","rate_limit_filter","running_total_map"]};
+window.SIDEBAR_ITEMS = {"mod":["guarded_halving_fold","halving_fold","overflowing_fold","overwrite_fold","overwrite_map_capture","rate_limit_filter","running_total_map","weak_panic_guard"]};
