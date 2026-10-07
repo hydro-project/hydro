@@ -47,7 +47,7 @@ linkStyle default stroke:#aaa
 37v1["<div style=text-align:center>(37v1)</div> <code><br>batch_eager()</code>"]:::otherClass
 38v1["<div style=text-align:center>(38v1)</div> <code><br>chain_first_n(1)</code>"]:::otherClass
 39v1["<div style=text-align:center>(39v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-40v1["<div style=text-align:center>(40v1)</div> <code><br>filter_map({<br>    crate::__staged::__stageleft_quote_src_cluster_paxos_rs_LINE_COL!(<br>        [] [| (p2a, max_ballot) | if Some(&amp; p2a.ballot) &gt;= max_ballot.as_ref() {<br>        Some((p2a.slot, LogValue { ballot : p2a.ballot, value : p2a.value, })) } else<br>        { None }]<br>    )<br>})</code>"]:::otherClass
+40v1["<div style=text-align:center>(40v1)</div> <code><br>filter_map({<br>    crate::__staged::__stageleft_quote_src_cluster_paxos_rs_LINE_COL!(<br>        [] [| (p2a, max_ballot) | if Some(&amp; p2a.ballot) &gt;= max_ballot.as_ref() {<br>        Some((p2a.slot, LogValue { ballot : p2a.ballot, value : p2a.value, },)) }<br>        else { None }]<br>    )<br>})</code>"]:::otherClass
 41v1["<div style=text-align:center>(41v1)</div> <code><br>chain()</code>"]:::otherClass
 42v1["<div style=text-align:center>(42v1)</div> <code><br>map(|x| (Some(x), None))</code>"]:::otherClass
 43v1["<div style=text-align:center>(43v1)</div> <code><br>map(|watermark| (None, Some(watermark)))</code>"]:::otherClass
