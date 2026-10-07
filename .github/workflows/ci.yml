@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Keep in sync with the `vstd` version pinned in `hydro_test/Cargo.toml` and
-      # `hydro_verus_tests/Cargo.toml`.
+      # `hydro_verus_tests/Cargo.toml` (and the lower bound in `hydro_lang/Cargo.toml`).
       VERUS_VERSION: 0.2026.09.13.671956e
       VERUS_TOOLCHAIN: 1.98.1
     steps:

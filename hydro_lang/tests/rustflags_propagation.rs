@@ -1,5 +1,12 @@
 #![cfg(feature = "sim")]
 
+// `hydro_lang` is processed by the Verus driver (see `[package.metadata.verus]`), which
+// requires the `vstd` prelude in every crate it verifies, including test targets.
+// Erased under normal compilation.
+#[cfg(all(verus_keep_ghost, feature = "verus"))]
+#[allow(unused_imports, reason = "required by the Verus driver")]
+use vstd::prelude::*;
+
 /// Compiles and runs `sim::tests::sim_generated_code_sees_root_rustflags` with a probe cfg
 /// injected via `--config build.rustflags`. Unlike the `RUSTFLAGS` environment variable, config
 /// rustflags never appear in the test process's environment, so the generated sim program only

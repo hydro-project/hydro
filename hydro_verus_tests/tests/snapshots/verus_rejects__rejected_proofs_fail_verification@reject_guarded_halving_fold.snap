@@ -4,10 +4,10 @@ expression: "format!(\"{}\\n{}\", verification_results(&stdout), verus_diagnosti
 ---
 verification results:: 11 verified, 1 errors
 error: assertion failed
-   --> hydro_verus_tests/src/lib.rs:251:35
+   --> hydro_verus_tests/src/lib.rs:443:39
     |
-251 |                     commutative = verus_proof_commutative_fold!(acc = usize, item = usize)
-    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assertion failed
+443 |                         commutative = verus_proof_commutative_fold!(acc = u32, item = u32)
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assertion failed
     |
     = note: this error originates in the macro `verus_proof_commutative_fold` (in Nightly builds, run with -Z macro-backtrace for more info)
 error: could not compile `hydro_verus_tests` (lib) due to 1 previous error

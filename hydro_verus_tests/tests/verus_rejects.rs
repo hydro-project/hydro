@@ -24,6 +24,8 @@ const REJECT_FEATURES: &[&str] = &[
     "reject_overwrite_map_capture",
     "reject_running_total_map",
     "reject_rate_limit_filter",
+    "reject_weak_panic_guard",
+    "reject_guarded_halving_fold",
 ];
 
 fn workspace_root() -> PathBuf {
@@ -101,11 +103,24 @@ fn verus_diagnostics(stderr: &str) -> String {
         "warning: failed to write cache",
     ];
 
+    // Drop whole `warning:` diagnostics (header plus its indented body), e.g. the
+    // "Verus doesn't know how to handle this automatically derived item" notes that the
+    // Verus driver emits while processing `hydro_lang` to export its specifications.
+    // Only errors (and their notes) are relevant to whether a proof is rejected.
+    let mut in_warning = false;
     stderr
         .lines()
         .filter(|line| {
             let trimmed = line.trim_start();
-            !trimmed.is_empty() && !noise_prefixes.iter().any(|p| trimmed.starts_with(p))
+            if trimmed.is_empty() || noise_prefixes.iter().any(|p| trimmed.starts_with(p)) {
+                return false;
+            }
+            if line.starts_with("warning") {
+                in_warning = true;
+            } else if line.starts_with("error") || line.starts_with("note") {
+                in_warning = false;
+            }
+            !in_warning
         })
         .collect::<Vec<_>>()
         .join("\n")

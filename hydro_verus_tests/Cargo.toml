@@ -22,9 +22,12 @@ reject_overflowing_fold = []
 reject_overwrite_map_capture = []
 reject_running_total_map = []
 reject_rate_limit_filter = []
+reject_weak_panic_guard = []
+reject_guarded_halving_fold = []
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "=0.17.0-alpha.6", default-features = false }
+# The `verus` feature exports `hydro_lang`'s Verus specifications (e.g. `verus_panic`).
+hydro_lang = { path = "../hydro_lang", version = "=0.17.0-alpha.6", default-features = false, features = ["verus"] }
 stageleft.workspace = true
 # Unlike production crates (where `vstd` is gated behind a `verus` feature), this
 # crate exists solely to test Verus proofs, so `vstd` is a regular dependency (it
