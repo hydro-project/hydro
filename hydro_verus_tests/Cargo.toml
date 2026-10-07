@@ -13,15 +13,21 @@ workspace = true
 
 [features]
 # Each `reject_*` feature enables exactly one flow containing a bogus
-# `verus_proof_commutative_*` annotation that Verus must refuse to verify. They are
-# selected one at a time by the `verus_rejects` test harness, since a failed proof
-# aborts verification of the whole crate.
+# `verus_proof_commutative_*` or `verus_proof_idempotent_*` annotation that Verus must
+# refuse to verify. They are selected one at a time by the `verus_rejects` test harness,
+# since a failed proof aborts verification of the whole crate.
 reject_overwrite_fold = []
 reject_halving_fold = []
 reject_overflowing_fold = []
 reject_overwrite_map_capture = []
 reject_running_total_map = []
 reject_rate_limit_filter = []
+reject_sum_fold_idempotent = []
+reject_reduce_seed = []
+reject_counter_map_idempotent = []
+reject_is_new_map = []
+reject_keep_retries_filter = []
+reject_toggle_effect = []
 
 [dependencies]
 hydro_lang = { path = "../hydro_lang", version = "=0.17.0-alpha.6", default-features = false }

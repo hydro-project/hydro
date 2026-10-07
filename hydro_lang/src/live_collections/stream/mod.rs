@@ -573,6 +573,13 @@ where
     /// processing order (e.g. emitting a running total is not commutative even though
     /// addition is).
     ///
+    /// Similarly, if the input stream has retries (`AtLeastOnce`) **and** `f` mutably
+    /// captures state, `f` must be proven **idempotent**: processing an element twice in
+    /// a row must leave the mutably-captured state in the same final value as processing
+    /// it once *and* return the same output both times. In particular, outputs must not
+    /// expose whether an element is a retry (e.g. emitting "is this a new maximum?" is not
+    /// idempotent even though `max` is).
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -858,6 +865,12 @@ where
     /// processing order: a stateful predicate like a rate limiter is not commutative —
     /// its budget converges either way, but *which* element passes depends on the order.
     ///
+    /// Similarly, if the input stream has retries (`AtLeastOnce`) **and** `f` mutably
+    /// captures state, `f` must be proven **idempotent**: processing an element twice in
+    /// a row must leave the mutably-captured state in the same final value as processing
+    /// it once *and* make the same decision both times. In particular, the decision must
+    /// not depend on whether the element was seen before.
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -916,6 +929,12 @@ where
     /// The closure `f` receives a reference `&T` rather than an owned value `T` because
     /// the predicate is only used for routing; the element itself is moved to the
     /// appropriate output stream.
+    ///
+    /// If the input stream has retries (`AtLeastOnce`) **and** `f` mutably captures
+    /// state, `f` must be proven **idempotent**: processing an element twice in a row
+    /// must leave the mutably-captured state in the same final value as processing it
+    /// once *and* make the same decision both times (otherwise a retried element would
+    /// appear in the *other* output).
     ///
     /// # Example
     /// ```rust
@@ -1319,7 +1338,10 @@ where
     /// If the input stream is unordered **and** `f` mutably captures state, `f` must be
     /// proven **commutative**: executing it on any two elements in either order must
     /// leave the mutably-captured state in the same final value. (The elements
-    /// themselves pass through unchanged.)
+    /// themselves pass through unchanged.) Similarly, if the input stream has retries
+    /// (`AtLeastOnce`), `f` must be proven **idempotent**: executing it on an element
+    /// twice in a row must leave the mutably-captured state in the same final value as
+    /// executing it once.
     ///
     /// # Example
     /// ```rust
@@ -1384,7 +1406,9 @@ where
     ///
     /// **Commutative** here means that executing the closure on any two elements in
     /// either order must leave its side effects (e.g. mutably-captured state) in the
-    /// same final value.
+    /// same final value. **Idempotent** here means that executing the closure on an
+    /// element twice in a row must leave its side effects in the same final value as
+    /// executing it once.
     ///
     /// On a `TotalOrder + ExactlyOnce` stream, no annotations are needed.
     ///

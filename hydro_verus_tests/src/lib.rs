@@ -1,5 +1,5 @@
 //! Test fixtures for Verus-checked proofs of algebraic properties
-//! (`verus_proof_commutative_fold!` / `verus_proof_commutative_map!`).
+//! (`verus_proof_commutative_*!` / `verus_proof_idempotent_*!`).
 //!
 //! The flows in this crate are never executed; they exist so that the proof obligations
 //! generated at their `q!(...)` call sites are verified (or rejected) by Verus. Run:
@@ -9,13 +9,13 @@
 //! ```
 //!
 //! The `accepted` module must verify. Each module under `rejected` is gated behind a
-//! `reject_*` cargo feature and contains a *bogus* commutativity annotation that Verus
-//! must refuse to verify; the `verus_rejects` test harness enables them one at a time
-//! and asserts that verification fails.
+//! `reject_*` cargo feature and contains a *bogus* commutativity or idempotence
+//! annotation that Verus must refuse to verify; the `verus_rejects` test harness enables
+//! them one at a time and asserts that verification fails.
 
-/// Flows whose commutativity annotations must be accepted by Verus.
+/// Flows whose commutativity and idempotence annotations must be accepted by Verus.
 pub mod accepted {
-    use hydro_lang::live_collections::stream::NoOrder;
+    use hydro_lang::live_collections::stream::{AtLeastOnce, NoOrder};
     use hydro_lang::prelude::*;
 
     // Non-`Copy` types used by `noncopy_sum_fold`. Types that appear in proof
@@ -190,10 +190,220 @@ pub mod accepted {
                 )
             ));
     }
+
+    /// `max` on an unordered stream with retries is both commutative and idempotent;
+    /// both proofs annotate the same closure. As a `reduce`, the idempotence proof also
+    /// covers the seed obligation (`max(x, x) == x`).
+    pub fn max_reduce_commutative_idempotent<'a>(process: &Process<'a, ()>) {
+        let _max = process
+            .source_iter(q!(vec![1usize, 2, 3]))
+            .weaken_ordering::<NoOrder>()
+            .weaken_retries::<AtLeastOnce>()
+            .reduce(q!(
+                |curr, new| {
+                    if new > *curr {
+                        *curr = new;
+                    }
+                },
+                commutative = verus_proof_commutative_fold!(acc = usize, item = usize),
+                idempotent = verus_proof_idempotent_reduce!(item = usize)
+            ));
+    }
+
+    /// Bitwise `or` is idempotent, which needs solver help (`by (bit_vector)`) through
+    /// the `proof = ...` script.
+    pub fn bitor_fold_idempotent<'a>(process: &Process<'a, ()>) {
+        let _flags = process
+            .source_iter(q!(vec![1u32, 2, 4]))
+            .weaken_retries::<AtLeastOnce>()
+            .fold(
+                q!(|| 0u32),
+                q!(
+                    |flags, x| {
+                        *flags |= x;
+                    },
+                    idempotent = verus_proof_idempotent_fold!(
+                        acc = u32,
+                        item = u32,
+                        proof = |s, x| {
+                            assert(((s | x) | x) == (s | x)) by (bit_vector);
+                        }
+                    )
+                ),
+            );
+    }
+
+    /// A capped `max` that reads a captured (immutable) threshold; the obligation is
+    /// universally quantified over the capture value.
+    pub fn capped_max_fold_idempotent<'a>(process: &Process<'a, ()>) {
+        let cap = 100usize;
+        let _max = process
+            .source_iter(q!(vec![1usize, 2, 3]))
+            .weaken_retries::<AtLeastOnce>()
+            .fold(
+                q!(|| 0usize),
+                q!(
+                    move |curr, new| {
+                        if new > *curr && new <= cap {
+                            *curr = new;
+                        }
+                    },
+                    idempotent = verus_proof_idempotent_fold!(
+                        acc = usize,
+                        item = usize,
+                        captures = |cap: usize|
+                    )
+                ),
+            );
+    }
+
+    /// Max-by-key over `(key, value)` pairs, mirroring the `manual_proof!` idempotence
+    /// annotation on the `reduce` in `KeyedSingleton::get_max_key`: a repeated element
+    /// does not have a strictly greater key, so it is ignored.
+    pub fn max_by_key_reduce_idempotent<'a>(process: &Process<'a, ()>) {
+        let _max = process
+            .source_iter(q!(vec![(1u64, 10u64), (2, 20)]))
+            .weaken_retries::<AtLeastOnce>()
+            .reduce(q!(
+                |curr, new| {
+                    if new.0 > curr.0 {
+                        *curr = new;
+                    }
+                },
+                idempotent = verus_proof_idempotent_reduce!(item = (u64, u64))
+            ));
+    }
+
+    /// A map closure that tracks the maximum seen in a mutable singleton reference and
+    /// passes the item through: the state update is idempotent, and a retried element
+    /// re-emits the same output.
+    pub fn max_tracking_map_idempotent<'a>(process: &Process<'a, ()>) {
+        let max_seen = process
+            .source_iter(q!(0..5u32))
+            .fold(q!(|| 0u32), q!(|acc: &mut u32, x| *acc = x));
+
+        let max_mut = max_seen.by_mut();
+
+        let _out = process
+            .source_iter(q!(vec![1u32, 2, 3]))
+            .weaken_retries::<AtLeastOnce>()
+            .map(q!(
+                |x| {
+                    if x > *max_mut {
+                        *max_mut = x;
+                    }
+                    x
+                },
+                idempotent = verus_proof_idempotent_map!(
+                    item = u32,
+                    captures_mut = |max_mut: u32|
+                )
+            ));
+    }
+
+    /// A filter predicate that tracks the maximum seen but decides based only on the
+    /// item, so a retried element gets the same decision.
+    pub fn threshold_filter_idempotent<'a>(process: &Process<'a, ()>) {
+        let max_seen = process
+            .source_iter(q!(0..5u32))
+            .fold(q!(|| 0u32), q!(|acc: &mut u32, x| *acc = x));
+
+        let max_mut = max_seen.by_mut();
+
+        let _out = process
+            .source_iter(q!(vec![1u32, 2, 3]))
+            .weaken_retries::<AtLeastOnce>()
+            .filter(q!(
+                |x| {
+                    if *x > *max_mut {
+                        *max_mut = *x;
+                    }
+                    *x > 1
+                },
+                idempotent = verus_proof_idempotent_filter!(
+                    item = &u32,
+                    captures_mut = |max_mut: u32|
+                )
+            ));
+    }
+
+    /// The same predicate shape on `partition`, where the decision must match exactly
+    /// (a retried element must not land in the other output).
+    pub fn threshold_partition_idempotent<'a>(process: &Process<'a, ()>) {
+        let max_seen = process
+            .source_iter(q!(0..5u32))
+            .fold(q!(|| 0u32), q!(|acc: &mut u32, x| *acc = x));
+
+        let max_mut = max_seen.by_mut();
+
+        let (_big, _small) = process
+            .source_iter(q!(vec![1u32, 2, 3]))
+            .weaken_retries::<AtLeastOnce>()
+            .partition(q!(
+                |x| {
+                    if *x > *max_mut {
+                        *max_mut = *x;
+                    }
+                    *x > 1
+                },
+                idempotent = verus_proof_idempotent_filter!(
+                    item = &u32,
+                    captures_mut = |max_mut: u32|
+                )
+            ));
+    }
+
+    /// A unit-returning `for_each` closure that ORs a boolean into a mutable singleton
+    /// reference, the example from the `for_each` documentation.
+    pub fn bool_or_for_each_idempotent<'a>(process: &Process<'a, ()>) {
+        let failed = process
+            .source_iter(q!(vec![false]))
+            .fold(q!(|| false), q!(|acc: &mut bool, x| *acc = *acc || x));
+
+        let failed_mut = failed.by_mut();
+
+        process
+            .source_iter(q!(vec![false, true, false]))
+            .weaken_retries::<AtLeastOnce>()
+            .for_each(q!(
+                |x| {
+                    *failed_mut = *failed_mut || x;
+                },
+                idempotent = verus_proof_idempotent_effect!(
+                    item = bool,
+                    captures_mut = |failed_mut: bool|
+                )
+            ));
+    }
+
+    /// An `inspect` closure (which borrows its item) that tracks the maximum seen.
+    pub fn max_inspect_idempotent<'a>(process: &Process<'a, ()>) {
+        let max_seen = process
+            .source_iter(q!(0..5u32))
+            .fold(q!(|| 0u32), q!(|acc: &mut u32, x| *acc = x));
+
+        let max_mut = max_seen.by_mut();
+
+        let _out = process
+            .source_iter(q!(vec![1u32, 2, 3]))
+            .weaken_retries::<AtLeastOnce>()
+            .inspect(q!(
+                |x| {
+                    if *x > *max_mut {
+                        *max_mut = *x;
+                    }
+                },
+                idempotent = verus_proof_idempotent_effect!(
+                    item = &u32,
+                    captures_mut = |max_mut: u32|
+                )
+            ));
+    }
 }
 
-/// Flows whose commutativity annotations must be **rejected** by Verus. Each is behind a
-/// cargo feature so the `verus_rejects` harness can check them one at a time.
+/// Flows whose commutativity or idempotence annotations must be **rejected** by Verus.
+/// Each is behind a cargo feature so the `verus_rejects` harness can check them one at a
+/// time.
 pub mod rejected {
     /// Last-writer-wins overwrite is not commutative.
     #[cfg(feature = "reject_overwrite_fold")]
@@ -350,6 +560,180 @@ pub mod rejected {
                     commutative = verus_proof_commutative_filter!(
                         item = &u32,
                         captures_mut = |budget_mut: u32|
+                    )
+                ));
+        }
+    }
+
+    /// Wrapping addition is commutative but not idempotent: adding a retried element
+    /// twice double-counts it.
+    #[cfg(feature = "reject_sum_fold_idempotent")]
+    pub mod sum_fold_idempotent {
+        use hydro_lang::live_collections::stream::AtLeastOnce;
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let _sum = process
+                .source_iter(q!(vec![1u32, 2, 3]))
+                .weaken_retries::<AtLeastOnce>()
+                .fold(
+                    q!(|| 0u32),
+                    q!(
+                        |acc, x| {
+                            *acc = acc.wrapping_add(x);
+                        },
+                        idempotent = verus_proof_idempotent_fold!(acc = u32, item = u32)
+                    ),
+                );
+        }
+    }
+
+    /// `acc = max(acc, x + 1)` passes the fold obligation (applying `x` twice equals
+    /// applying it once), but not the `reduce` seed obligation: reducing `[a, a]` yields
+    /// `a + 1` instead of `a`.
+    #[cfg(feature = "reject_reduce_seed")]
+    pub mod reduce_seed {
+        use hydro_lang::live_collections::stream::AtLeastOnce;
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let _max = process
+                .source_iter(q!(vec![1u32, 2, 3]))
+                .weaken_retries::<AtLeastOnce>()
+                .reduce(q!(
+                    |acc, x| {
+                        let bumped = if x < u32::MAX { x + 1 } else { x };
+                        if bumped > *acc {
+                            *acc = bumped;
+                        }
+                    },
+                    idempotent = verus_proof_idempotent_reduce!(item = u32)
+                ));
+        }
+    }
+
+    /// Counting processed elements in a captured singleton reference is not an
+    /// idempotent state update: a retried element is counted twice.
+    #[cfg(feature = "reject_counter_map_idempotent")]
+    pub mod counter_map_idempotent {
+        use hydro_lang::live_collections::stream::AtLeastOnce;
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let count = process.source_iter(q!(0..5u32)).fold(
+                q!(|| 0u32),
+                q!(|acc: &mut u32, _x| *acc = acc.wrapping_add(1)),
+            );
+
+            let count_mut = count.by_mut();
+
+            let _out = process
+                .source_iter(q!(vec![1u32, 2, 3]))
+                .weaken_retries::<AtLeastOnce>()
+                .map(q!(
+                    |x| {
+                        *count_mut = count_mut.wrapping_add(1);
+                        x
+                    },
+                    idempotent = verus_proof_idempotent_map!(
+                        item = u32,
+                        captures_mut = |count_mut: u32|
+                    )
+                ));
+        }
+    }
+
+    /// A map that reports whether the element is a new maximum: the *state update*
+    /// (`max`) is idempotent, but the retried element emits `false` where the original
+    /// emitted `true`, so the output half of the obligation must reject it.
+    #[cfg(feature = "reject_is_new_map")]
+    pub mod is_new_map {
+        use hydro_lang::live_collections::stream::AtLeastOnce;
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let max_seen = process
+                .source_iter(q!(0..5u32))
+                .fold(q!(|| 0u32), q!(|acc: &mut u32, x| *acc = x));
+
+            let max_mut = max_seen.by_mut();
+
+            let _out = process
+                .source_iter(q!(vec![1u32, 2, 3]))
+                .weaken_retries::<AtLeastOnce>()
+                .map(q!(
+                    |x| {
+                        let is_new = x > *max_mut;
+                        if is_new {
+                            *max_mut = x;
+                        }
+                        is_new
+                    },
+                    idempotent = verus_proof_idempotent_map!(
+                        item = u32,
+                        captures_mut = |max_mut: u32|
+                    )
+                ));
+        }
+    }
+
+    /// A filter that retains only elements it has seen before: the state update is
+    /// idempotent, but a retried element is retained where the original was not, so
+    /// the decision half of the obligation must reject it.
+    #[cfg(feature = "reject_keep_retries_filter")]
+    pub mod keep_retries_filter {
+        use hydro_lang::live_collections::stream::AtLeastOnce;
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let max_seen = process
+                .source_iter(q!(0..5u32))
+                .fold(q!(|| 0u32), q!(|acc: &mut u32, x| *acc = x));
+
+            let max_mut = max_seen.by_mut();
+
+            let _out = process
+                .source_iter(q!(vec![1u32, 2, 3]))
+                .weaken_retries::<AtLeastOnce>()
+                .filter(q!(
+                    |x| {
+                        let seen = *x <= *max_mut;
+                        if *x > *max_mut {
+                            *max_mut = *x;
+                        }
+                        seen
+                    },
+                    idempotent = verus_proof_idempotent_filter!(
+                        item = &u32,
+                        captures_mut = |max_mut: u32|
+                    )
+                ));
+        }
+    }
+
+    /// Toggling a captured boolean is not idempotent: applying it twice undoes it.
+    #[cfg(feature = "reject_toggle_effect")]
+    pub mod toggle_effect {
+        use hydro_lang::live_collections::stream::AtLeastOnce;
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let parity = process
+                .source_iter(q!(vec![false]))
+                .fold(q!(|| false), q!(|acc: &mut bool, x| *acc = *acc != x));
+
+            let parity_mut = parity.by_mut();
+
+            process
+                .source_iter(q!(vec![1u32, 2, 3]))
+                .weaken_retries::<AtLeastOnce>()
+                .for_each(q!(
+                    |_x| {
+                        *parity_mut = !*parity_mut;
+                    },
+                    idempotent = verus_proof_idempotent_effect!(
+                        item = u32,
+                        captures_mut = |parity_mut: bool|
                     )
                 ));
         }
