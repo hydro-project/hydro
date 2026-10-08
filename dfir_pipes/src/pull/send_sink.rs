@@ -95,7 +95,7 @@ mod tests {
         assert!(result.is_pending());
 
         let result = send.as_mut().poll(&mut cx);
-        assert!(result == Poll::Ready(Ok(())));
+        assert_eq!(result, Poll::Ready(Ok(())));
 
         assert_eq!(push.items(), vec![0, 1]);
     }

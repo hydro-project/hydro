@@ -13,7 +13,7 @@ expression: "source_meta.backtrace.elements().collect::<Vec<_>>()"
         ),
     },
     BacktraceElement {
-        fn_name: "hydro_lang::live_collections::stream::tests::backtrace_chained_ops::backtrace_chained_ops::{{closure}}",
+        fn_name: "hydro_lang::live_collections::stream::tests::backtrace_chained_ops::backtrace_chained_ops::{closure#0}",
         lineno: Some(
             6,
         ),
@@ -22,7 +22,7 @@ expression: "source_meta.backtrace.elements().collect::<Vec<_>>()"
         ),
     },
     BacktraceElement {
-        fn_name: "core::ops::function::FnOnce::call_once",
+        fn_name: "<hydro_lang::live_collections::stream::tests::backtrace_chained_ops::backtrace_chained_ops::{closure#0} as core::ops::function::FnOnce<()>>::call_once",
         lineno: Some(
             250,
         ),
