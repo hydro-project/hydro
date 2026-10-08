@@ -63,7 +63,7 @@ pub mod prelude {
     pub use crate::networking::{TCP, UDP};
     pub use crate::nondet::{NonDet, nondet};
     pub use crate::properties::{
-        ConsistencyProof, ManualProof, VerusCommutativeProof, manual_proof,
+        ConsistencyProof, ManualProof, VerusCommutativeProof, manual_proof, verus_panic,
         verus_proof_commutative_effect, verus_proof_commutative_filter,
         verus_proof_commutative_fold, verus_proof_commutative_map,
     };
