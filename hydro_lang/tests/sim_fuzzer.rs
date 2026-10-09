@@ -10,7 +10,10 @@ use std::env::join_paths;
 use vstd::prelude::*;
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)] // `cargo-sim` script is currently Unix only
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "`cargo-sim` script is currently Unix only"
+)]
 fn fuzz_with_cargo_sim() {
     let command = std::process::Command::new("cargo")
         .args([
@@ -54,7 +57,10 @@ fn fuzz_with_cargo_sim() {
 }
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)] // `cargo-sim` script is currently Unix only
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "`cargo-sim` script is currently Unix only"
+)]
 fn fuzz_with_cargo_sim_continue_if() {
     let command = std::process::Command::new("cargo")
         .args([

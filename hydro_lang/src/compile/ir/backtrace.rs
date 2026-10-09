@@ -188,7 +188,10 @@ impl Debug for BacktraceElement {
 mod tests {
     #[cfg(feature = "build")]
     #[test]
-    #[cfg_attr(not(target_os = "linux"), ignore)]
+    #[cfg_attr(
+        not(target_os = "linux"),
+        ignore = "backtrace line numbers are only stable on Linux"
+    )]
     fn test_backtrace() {
         use super::*;
 

@@ -14,7 +14,10 @@ mod trophies;
 #[cfg(not(nightly))]
 #[test]
 #[should_panic]
-#[cfg_attr(not(target_os = "linux"), ignore)] // sim reproducer not yet reproducible on non-linux OSes
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "sim reproducer not yet reproducible on non-linux OSes"
+)]
 fn sim_crash_in_output() {
     use bytes::Bytes;
 
@@ -45,7 +48,10 @@ fn sim_crash_in_output() {
 #[cfg(not(nightly))]
 #[test]
 #[should_panic]
-#[cfg_attr(not(target_os = "linux"), ignore)] // sim reproducer not yet reproducible on non-linux OSes
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "sim reproducer not yet reproducible on non-linux OSes"
+)]
 fn sim_crash_in_output_with_filter() {
     use bytes::Bytes;
 
@@ -162,7 +168,10 @@ fn sim_crash_with_fuzzed_batching() {
 }
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)] // trace locations don't work on Windows right now
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "trace locations don't work on Windows right now"
+)]
 fn trace_for_fuzzed_batching() {
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
@@ -209,7 +218,10 @@ fn trace_for_fuzzed_batching() {
 }
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)] // trace locations don't work on Windows right now
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "trace locations don't work on Windows right now"
+)]
 fn trace_for_fuzzed_batching_sliced() {
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
@@ -1134,7 +1146,7 @@ fn sim_sliced_singleton_is_init_none_optional() {
 /// So a consumer scheduled before the producer observes `None` (rather than panicking), and once
 /// the producer runs it observes `Some(sum)`. The exhaustive engine must witness both.
 #[test]
-#[cfg_attr(target_os = "windows", ignore)]
+#[cfg_attr(target_os = "windows", ignore = "not yet supported on Windows")]
 fn sim_singleton_latest_is_init_none_optional() {
     use std::collections::HashSet;
 
@@ -1189,7 +1201,7 @@ fn sim_singleton_latest_is_init_none_optional() {
 }
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)]
+#[cfg_attr(target_os = "windows", ignore = "not yet supported on Windows")]
 fn sim_unbounded_keyed_singleton_rejected_snapshot() {
     use crate::compile::ir::KeyedSingletonBoundKind;
 
@@ -1240,7 +1252,7 @@ fn sim_unbounded_keyed_singleton_rejected_snapshot() {
 /// on a tick-level Optional that produces a top-level Unbounded Optional).
 /// This snapshot test verifies the panic message.
 #[test]
-#[cfg_attr(target_os = "windows", ignore)]
+#[cfg_attr(target_os = "windows", ignore = "not yet supported on Windows")]
 fn sim_unbounded_optional_rejected_snapshot() {
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
