@@ -133,7 +133,10 @@ fn test() {
 }
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)] // trace locations don't work on Windows right now
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "trace locations don't work on Windows right now"
+)]
 fn trace_snapshot() {
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
