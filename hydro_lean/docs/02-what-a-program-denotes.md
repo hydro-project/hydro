@@ -1,0 +1,115 @@
+# 02 — What a program denotes
+
+A `hydro def` is a function of `H : HydroSem L mem`. Instantiating `H := Values L mem`
+(`Hydro/Values.lean:236`) gives the program's **denotation**: a mathematical value,
+computed from its inputs and its decisions, with no schedule anywhere. Every contract
+is stated at `Values` and every proof lives there.
+
+## Carriers at `Values`
+
+```lean
+-- Hydro/Values.lean:236–250
+@[reducible] def Values (L : Type) (mem : L → Nat) : HydroSem L mem where
+  Stream ℓ α _ ord ret := Fin (mem ℓ) → PoolCarrier α ord ret
+  TransportDec _ _ := Unit
+  OrderSelDec n α := OrderSelection n α
+  SnapDec n α ord := SnapshotCuts n α ord
+  BatchDec n α := BatchCuts n α
+  …
+  FixDec := UnfoldFuel
+  …
+  Ticked ℓ σ := TickV (mem ℓ) σ
+  -- one tick's bounded stream: the graded content quotient
+  BoundedStream α _ ord ret := PoolCarrier α ord ret
+  BoundedSingleton σ := σ
+```
+
+Read the first line as the whole idea: a cluster stream at location `ℓ` is **one pool
+per member**, `Fin (mem ℓ) → PoolCarrier α ord ret`, and the pool's *type* is chosen by
+the grade (`Hydro/Grades.lean`): a `List` at `TotalOrder`/`ExactlyOnce`, a `Multiset` at
+`NoOrder`/`ExactlyOnce`, a destuttered sequence or a support quotient at `AtLeastOnce`.
+There is no order to observe in a `.noOrder` stream because there is no order in a
+`Multiset` — "what a stream's marker types refuse to promise is unobservable by
+construction" (`../ARCHITECTURE.md` §1).
+
+A tick-located wire (`Ticked ℓ σ`) is a per-member **trace**, `Fin (mem ℓ) → Trace σ`
+with `Trace σ := List σ` (`Hydro/Trace.lean:43`) — the value at each tick the member
+took, in order. One tick's content (`BoundedStream`) is the same graded pool; a
+`BoundedSingleton σ` is just `σ`.
+
+## Decisions are inputs
+
+The `…Dec` field types name what Rust's `nondet!` sites decide. A `BatchDec` is
+`BatchCuts n α := Fin n → List (Multiset α)` (`Hydro/Decisions.lean:29`): per member,
+the sequence of per-tick batches. The `batch` operator at `Values` is a `rfl` reader:
+
+```lean
+-- Hydro/Values.lean:416–419
+@[den] theorem values_batch {α : Type} [DecidableEq α]
+    (s : (Values L mem).Stream ℓ α .noOrder .exactlyOnce)
+    (d : (Values L mem).BatchDec (mem ℓ) α) (i : Fin (mem ℓ)) :
+    (Values L mem).batch s d i = batchCuts (s i) 0 (d i) := rfl
+```
+
+and `batchCuts` (`Hydro/Trace.lean:892–898`) walks the decision, keeping each claimed
+batch while it still fits inside the member's pool and **truncating the trace at the
+first illegal cut** — a decision that claims messages the pool never contained simply
+ends the run there. So *legality is realizability*: quantifying over all decisions
+quantifies over all batchings that could happen, and nothing else. (`cqConsumed pool d
+:= (batchCuts pool 0 d).sum` — `Trace.lean:1527` — is "what this member consumed under
+decision `d`", the vocabulary `CQEnsures` is stated in.)
+
+Transport cursors are `Unit` at `Values` (`TransportDec _ _ := Unit`): the denotation
+does not know *when* a message arrived, only that the receiver's pool contains it.
+Chapter 06 is where cursors become real.
+
+## Reading a wire: `den`
+
+Every `HydroSem` operator at `Values` is one `rfl` lemma tagged `@[den]`
+(`Hydro/SimpAttr.lean:27`, `Hydro/Values.lean:403–…`). To read what a wire *is*, name
+the `let`s it is built from and let the readers fire:
+
+```lean
+simp only [just_reached_quorum_step, den]      -- Quorum.lean:727, inside the tick obligation
+simp only [views, folded, quorum_outs, den]    -- a chain of stream-level ops (D66)
+```
+
+The `_step` name is the `tick` block's body as a function, emitted by the construct
+(chapter 04). After `simp only [den]` a goal about a wire is a goal about plain `List`/
+`Multiset` terms — `List.map`, `Multiset.filter`, `batchCuts`, `mapPool` — and ordinary
+Lean/Mathlib takes over. The house rule for what a proof cites, by what it meets: an
+operator → `den`; a `tick` block → its readers; a module call → the callee's `.ensures`
+face, never unfolded; a `fix` knot → its generated `stages` (`../ARCHITECTURE.md` §5).
+
+## Running it: `Eager` *is* the denotation
+
+`Values` carriers are functions, so evaluating them is call-by-name — a `paxos_core`
+run at `Values` used to take hours (`FINDINGS.md` D14). `Eager` (`Hydro/Eager.lean:218`)
+is the same semantics with data: each carrier pairs a `Vector` of member cells with the
+`Values` carrier it means and the pointwise agreement proof, and every operator is the
+`Values` operator applied twice. What an executable prints is therefore **provably** the
+`Values` run:
+
+```lean
+-- Hydro/Paxos/EagerCheck.lean:91–96
+theorem paxos_eager_den :
+    (paxos_core (Eager L mem) variant prop acc f cp ck
+        (pcdecE d) pcschedE).2.den
+      = (paxos_core (Values L mem) (ckret := ckret) variant prop acc f cp.den ck.den
+          d PaxosCoreSched.triv).2 :=
+  paxos_core_param₂ (eagC L mem) eagLaws () variant prop acc f …
+```
+
+The proof is the module's **free theorem** `paxos_core_param₂` (generated by
+`hydro def`, `../ARCHITECTURE.md` §4) instantiated at the eager relation — nothing
+Paxos-specific. This is why `lake exe paxos` (milliseconds) is a witness for the
+headline theorem rather than a separate program: `README.md` §headlines.
+
+## What this buys
+
+- A theorem quantified over `dec` is a theorem about every batching, every snapshot
+  cut, every order selection the Rust `nondet!` could realize.
+- A proof reads program wires as `List`/`Multiset` values after one `simp only [den]`.
+- Nothing about scheduling, delivery or time exists at this layer — that is the
+  machine's job (chapter 06), and the coupling corner is what lets the `Values` proofs
+  speak about machine runs.
