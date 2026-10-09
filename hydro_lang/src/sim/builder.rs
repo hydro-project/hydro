@@ -2528,21 +2528,30 @@ impl DfirBuilder for SimBuilder {
     }
 }
 
-/// Extract a location string, line, and caret indent from an op's metadata backtrace.
+/// The source position an operator stands for, as `(file:line:col, source line text, caret
+/// indent)`, for hook identities, hook error messages, and the per-tick trace. The return type
+/// mirrors `HookLocationMeta`, but with owned `String`s that will be inlined into the generated
+/// sources.
 ///
-/// The return type mirrors `HookLocationMeta`, but with owned `String` that will be inlined
-/// into the generated sources.
+/// An operator created by `sliced!` carries the position of the user's `use::batch(...)` or
+/// `use::snapshot(...)` expression, recorded while the macro expanded (see
+/// [`crate::compile::ir::backtrace::UserLocation`]); that is preferred, because the backtrace
+/// of such an operator names the `sliced!` invocation when the macro is expanded in another
+/// crate. Every other operator is positioned by the first frame of its backtrace.
 fn location_for_op(op_meta: &HydroIrOpMetadata) -> (String, String, String) {
-    op_meta
+    let position = op_meta
         .backtrace
-        .elements()
-        .next()
-        .and_then(|e| {
-            let filename = e.filename.as_deref()?;
-            let lineno = e.lineno?;
-            let colno = e.colno?;
+        .user_location()
+        .and_then(|u| Some((u.file?.to_owned(), u.line, u.column.saturating_sub(1))))
+        .or_else(|| {
+            op_meta.backtrace.elements().next().and_then(|e| {
+                Some((e.filename.as_deref()?.to_owned(), e.lineno?, e.colno?))
+            })
+        });
 
-            let line = std::fs::read_to_string(filename)
+    position
+        .map(|(filename, lineno, colno)| {
+            let line = std::fs::read_to_string(&filename)
                 .ok()
                 .and_then(|s| {
                     s.lines()
@@ -2551,21 +2560,26 @@ fn location_for_op(op_meta: &HydroIrOpMetadata) -> (String, String, String) {
                 })
                 .unwrap_or_default();
 
+            // Show the path relative to the working directory, or failing that to the nearest
+            // ancestor that contains it (the workspace root for a file in a sibling crate).
             let relative_path = (|| {
-                std::path::Path::new(filename)
-                    .strip_prefix(std::env::current_dir().ok()?)
-                    .ok()
+                let cwd = std::env::current_dir().ok()?;
+                let path = std::path::Path::new(&filename);
+                cwd.ancestors()
+                    .filter(|base| base.parent().is_some())
+                    .find_map(|base| path.strip_prefix(base).ok())
+                    .map(|p| p.to_path_buf())
             })();
 
             let filename_display = relative_path
                 .map(|p| p.display().to_string())
-                .unwrap_or_else(|| filename.to_owned());
+                .unwrap_or_else(|| filename.clone());
 
-            Some((
+            (
                 format!("{}:{}:{}", filename_display, lineno, colno),
                 line,
-                format!("{:>1$}", "", (colno - 1).try_into().unwrap()),
-            ))
+                format!("{:>1$}", "", colno.saturating_sub(1).try_into().unwrap()),
+            )
         })
         .unwrap_or_else(|| ("unknown location".to_owned(), String::new(), String::new()))
 }
