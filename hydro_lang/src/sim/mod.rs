@@ -62,6 +62,12 @@ pub mod flow;
 pub mod hooks;
 
 #[cfg(stageleft_runtime)]
+pub mod prompt_schedule;
+
+#[cfg(stageleft_runtime)]
+pub mod extension;
+
+#[cfg(stageleft_runtime)]
 pub(crate) mod versioned_network;
 
 #[cfg(stageleft_runtime)]
