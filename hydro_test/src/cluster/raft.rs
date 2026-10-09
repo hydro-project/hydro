@@ -233,6 +233,8 @@ pub struct RaftConfig {
     /// computed as `cluster_size / 2 + 1`. Must match the deployed cluster size (in
     /// simulation tests, the value passed to `with_cluster_size`).
     pub cluster_size: usize,
+    /// The duration of the lease on fast reads not requiring consensus after each
+    /// time a majority of followers acknowledge a heartbeat (milliseconds)
     pub read_lease_duration_ms: u128,
 }
 
