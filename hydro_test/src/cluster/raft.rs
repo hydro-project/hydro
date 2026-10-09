@@ -27,6 +27,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use hydro_lang::forward_handle::ForwardHandle;
 use hydro_lang::live_collections::stream::{MinOrder, NoOrder, Ordering, TotalOrder};
@@ -141,6 +142,7 @@ pub struct AppendEntriesReply {
     /// meaningful when `success`, and lets the leader advance its commit index once a
     /// majority of `match_index`es reach an entry of the current term.
     pub match_index: usize,
+    pub read_lease_expiration: u128,
 }
 
 /// The single wire format for all intra-cluster RAFT traffic: vote RPCs and
@@ -231,6 +233,7 @@ pub struct RaftConfig {
     /// computed as `cluster_size / 2 + 1`. Must match the deployed cluster size (in
     /// simulation tests, the value passed to `with_cluster_size`).
     pub cluster_size: usize,
+    pub read_lease_duration_ms: u128,
 }
 
 /// A member's view of the election: its current term, and the leader of that term if
@@ -307,6 +310,7 @@ pub struct RaftServerState<T, ClusterTag> {
     /// Whether an `AppendEntries` valid for the current term has been observed since
     /// the previous election timer interrupt (suppresses the next election).
     pub heartbeat_seen: bool,
+    pub heartbeat_repliers: HashSet<MemberId<ClusterTag>>,
     /// The leader of `term` as learned from received `AppendEntries`, if any. Not
     /// used while this member is itself the leader.
     pub known_leader: Option<MemberId<ClusterTag>>,
@@ -324,6 +328,8 @@ pub struct RaftServerState<T, ClusterTag> {
     /// for the current leadership only (acks are term-filtered). Reset on every
     /// leadership acquisition.
     pub match_index: HashMap<MemberId<ClusterTag>, usize>,
+    pub read_lease_expiration: u128,
+    pub has_committed_as_leader: bool,
 }
 
 impl<T, ClusterTag> RaftServerState<T, ClusterTag> {
@@ -336,12 +342,15 @@ impl<T, ClusterTag> RaftServerState<T, ClusterTag> {
             role: RaftState::Follower,
             votes: HashSet::new(),
             heartbeat_seen: false,
+            heartbeat_repliers: HashSet::new(),
             known_leader: None,
             log: Vec::new(),
             commit_index: 0,
             emitted_index: 0,
             next_index: HashMap::new(),
             match_index: HashMap::new(),
+            read_lease_expiration: 0,
+            has_committed_as_leader: false,
         }
     }
 
@@ -368,12 +377,15 @@ impl<T: Clone, ClusterTag> Clone for RaftServerState<T, ClusterTag> {
             role: self.role,
             votes: self.votes.clone(),
             heartbeat_seen: self.heartbeat_seen,
+            heartbeat_repliers: self.heartbeat_repliers.clone(),
             known_leader: self.known_leader.clone(),
             log: self.log.clone(),
             commit_index: self.commit_index,
             emitted_index: self.emitted_index,
             next_index: self.next_index.clone(),
             match_index: self.match_index.clone(),
+            read_lease_expiration: self.read_lease_expiration.clone(),
+            has_committed_as_leader: false,
         }
     }
 }
@@ -400,6 +412,13 @@ pub struct RaftStepInput<T, ClusterTag> {
     /// Intra-cluster messages received this tick, as an unordered batch; the step
     /// sorts them canonically so its outcome depends only on the batch *multiset*.
     pub messages: Vec<(MemberId<ClusterTag>, RaftRpc<T, ClusterTag>)>,
+    pub read_lease_duration_ms: u128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FastReadLease {
+    pub read_index: usize,
+    pub expiration_time: u128,
 }
 
 /// One tick's worth of outputs from [`raft_step`].
@@ -417,6 +436,7 @@ pub struct RaftStepOutput<T, ClusterTag> {
     pub redirected: Vec<(T, Option<MemberId<ClusterTag>>)>,
     /// The member's view after this tick, if it changed during the tick.
     pub view_transition: Option<LeaderView<ClusterTag>>,
+    pub read_lease: Option<FastReadLease>,
 }
 
 /// Advances one member's [`RaftServerState`] by one tick: processes the received
@@ -451,6 +471,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
         election_timer_fired,
         heartbeat_timer_fired,
         requests,
+        read_lease_duration_ms,
         mut messages,
     } = input;
     let majority = cluster_size / 2 + 1;
@@ -458,6 +479,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
     let mut outbound = Vec::new();
     let mut committed = Vec::new();
     let mut redirected = Vec::new();
+    let mut read_lease: Option<FastReadLease> = None;
 
     let old_view = LeaderView {
         term: state.term,
@@ -490,6 +512,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
     ) {
         state.role = RaftState::Leader;
         state.known_leader = None;
+        state.has_committed_as_leader = false;
         state.next_index.clear();
         state.match_index.clear();
         for follower in other_members {
@@ -536,8 +559,9 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 // is exactly the interlock the split-component design lacked.
                 let candidate_up_to_date =
                     (dto.last_log_term, dto.last_log_index) >= state.last_log_position();
+                let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
                 let can_vote =
-                    state.voted_for.is_none() || state.voted_for.as_ref() == Some(&sender);
+                    (state.voted_for.is_none() || state.voted_for.as_ref() == Some(&sender)) && now > state.read_lease_expiration;
                 if candidate_up_to_date && can_vote {
                     state.voted_for = Some(sender.clone());
                     outbound.push((
@@ -566,6 +590,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
                             term: state.term,
                             success: false,
                             match_index: 0,
+                            read_lease_expiration: 0,
                         }),
                     ));
                     continue;
@@ -590,6 +615,9 @@ pub fn raft_step<T: Clone, ClusterTag>(
                     || (state.log.len() >= request.prev_log_index
                         && state.log[request.prev_log_index - 1].term_received
                             == request.prev_log_term);
+                
+                state.read_lease_expiration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() + read_lease_duration_ms;
+
                 if !log_matches {
                     outbound.push((
                         sender,
@@ -597,6 +625,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
                             term: state.term,
                             success: false,
                             match_index: 0,
+                            read_lease_expiration: state.read_lease_expiration,
                         }),
                     ));
                     continue;
@@ -640,6 +669,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
                         term: state.term,
                         success: true,
                         match_index: new_match,
+                        read_lease_expiration: state.read_lease_expiration,
                     }),
                 ));
             }
@@ -652,6 +682,18 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 if state.role != RaftState::Leader {
                     continue;
                 }
+
+                state.read_lease_expiration = reply.read_lease_expiration;
+
+                state.heartbeat_repliers.insert(sender.clone());
+                let heartbeat_ack_count = state.heartbeat_repliers.len();
+                if heartbeat_ack_count >= majority && state.has_committed_as_leader {
+                    read_lease = Some(FastReadLease {
+                        expiration_time: state.read_lease_expiration,
+                        read_index: state.commit_index,
+                    })
+                }
+
                 if reply.success {
                     // Successful acknowledgements advance match/next monotonically.
                     let best = state.match_index.entry(sender.clone()).or_insert(0);
@@ -740,6 +782,11 @@ pub fn raft_step<T: Clone, ClusterTag>(
                     .count();
                 if acks >= majority {
                     state.commit_index = candidate;
+                    state.has_committed_as_leader = true;
+                    read_lease = Some(FastReadLease {
+                        expiration_time: state.read_lease_expiration,
+                        read_index: state.commit_index,
+                    });
                     break;
                 }
             }
@@ -762,6 +809,10 @@ pub fn raft_step<T: Clone, ClusterTag>(
             } else {
                 state.log[prev_log_index - 1].term_received
             };
+
+            state.heartbeat_repliers.clear();
+            state.heartbeat_repliers.insert(me.clone());
+
             outbound.push((
                 follower.clone(),
                 RaftRpc::AppendEntries(AppendEntriesRequest {
@@ -798,6 +849,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
         committed,
         redirected,
         view_transition,
+        read_lease,
     }
 }
 
@@ -825,6 +877,7 @@ pub struct RaftOutputs<'a, T, ClusterTag> {
     /// Each member's view transitions (term and known leader), emitted whenever the
     /// view changes. Useful for tests and observability; may be left unobserved.
     pub leader_views: Stream<LeaderView<ClusterTag>, Cluster<'a, ClusterTag>>,
+    pub read_leases: Stream<FastReadLease, Cluster<'a, ClusterTag>, Unbounded>,
 }
 
 /// The unified RAFT server: one state machine per member, advanced by [`raft_step`]
@@ -852,6 +905,7 @@ where
     NoOrder: MinOrder<Net::OrderingGuarantee, Min = NoOrder>,
 {
     let cluster_size = config.cluster_size;
+    let read_lease_duration_ms = config.read_lease_duration_ms;
 
     // Fix an arbitrary total order for incoming requests up front (a no-op when the
     // input is already `TotalOrder`): the leader must place concurrent requests at
@@ -900,11 +954,12 @@ where
         clippy::type_complexity,
         reason = "the sliced! outputs are annotated with their full stream types"
     )]
-    let (outbound_messages, committed, redirected, view_transitions): (
+    let (outbound_messages, committed, redirected, view_transitions, read_leases): (
         Stream<(MemberId<ClusterTag>, RaftRpc<T, ClusterTag>), Cluster<'a, ClusterTag>>,
         Stream<LogEntry<T>, Cluster<'a, ClusterTag>>,
         Stream<(T, Option<MemberId<ClusterTag>>), Cluster<'a, ClusterTag>>,
         Stream<LeaderView<ClusterTag>, Cluster<'a, ClusterTag>>,
+        Stream<FastReadLease, Cluster<'a, ClusterTag>>
     ) = sliced! {
         let request_batch = use::batch(requests, nondet!(
             /// Which requests are batched together only affects which log indexes the
@@ -989,6 +1044,9 @@ where
         let view_transitions: Stream<LeaderView<ClusterTag>, _, Bounded> =
             tick.source_iter(q!(Vec::new()));
         let view_transitions_ref = view_transitions.by_mut();
+        let read_leases: Stream<FastReadLease, _, Bounded> =
+            tick.source_iter(q!(Vec::new()));
+        let read_leases_ref = read_leases.by_mut();
 
         // The entire protocol step: hand this tick's aggregates to the pure
         // sequential state machine and distribute its outputs.
@@ -1008,6 +1066,7 @@ where
                         heartbeat_timer_fired: *heartbeat_fired_ref,
                         requests: request_vec_ref.clone(),
                         messages: message_vec_ref.clone(),
+                        read_lease_duration_ms: read_lease_duration_ms,
                     },
                 );
                 for entry in output.committed {
@@ -1019,10 +1078,13 @@ where
                 if let Some(view) = output.view_transition {
                     view_transitions_ref.push(view);
                 }
+                if let Some(read_lease) = output.read_lease {
+                    read_leases_ref.push(read_lease);
+                }
                 output.outbound
             }));
 
-        (outbound, committed, redirected, view_transitions)
+        (outbound, committed, redirected, view_transitions, read_leases)
     };
 
     traffic_handle.complete(
@@ -1053,6 +1115,7 @@ where
             .atomic(),
         redirected,
         leader_views: view_transitions,
+        read_leases,
     }
 }
 
@@ -1118,6 +1181,8 @@ pub fn raft<'a, T, ClusterTag, Con, O, Net>(
         Unbounded,
         TotalOrder,
     >,
+    Stream<LeaderView<ClusterTag>, Cluster<'a, ClusterTag>>,
+    Optional<FastReadLease, Cluster<'a, ClusterTag>, Unbounded>,
 )
 where
     T: Clone + Serialize + DeserializeOwned + 'a,
@@ -1147,7 +1212,7 @@ where
         ),
     );
 
-    (outputs.committed, outputs.redirected)
+    (outputs.committed, outputs.redirected, outputs.leader_views, outputs.read_leases.last().into())
 }
 
 #[cfg(test)]
@@ -1201,6 +1266,7 @@ mod tests {
             heartbeat_timer_interrupts,
             RaftConfig {
                 cluster_size: CLUSTER_SIZE,
+                read_lease_duration_ms: 100,
             },
             TCP.fail_stop().bincode(),
             nondet!(/** which member wins an election is inherently non-deterministic */),
@@ -1320,6 +1386,7 @@ mod tests {
             heartbeat_timer_interrupts,
             RaftConfig {
                 cluster_size: CLUSTER_SIZE,
+                read_lease_duration_ms: 100,
             },
             TCP.fail_stop().bincode(),
             nondet!(/** which member wins an election is inherently non-deterministic */),
@@ -1525,6 +1592,7 @@ mod tests {
                         .map(|request| (*request).to_owned())
                         .collect(),
                     messages,
+                    read_lease_duration_ms: 100,
                 },
             );
             for (target, message) in output.outbound {
@@ -1715,6 +1783,7 @@ mod tests {
                         }),
                     ),
                 ],
+                read_lease_duration_ms: 100,
             },
         );
         assert_eq!(state.term, 2, "the vote request's term must be adopted");
@@ -1752,6 +1821,7 @@ mod tests {
                 heartbeat_timer_fired: false,
                 requests: vec![],
                 messages: vec![(leader_0.clone(), append(vec![entry(1)], 0))],
+                read_lease_duration_ms: 100,
             },
         );
         assert!(
@@ -1777,6 +1847,7 @@ mod tests {
                 heartbeat_timer_fired: false,
                 requests: vec![],
                 messages: vec![(leader_0.clone(), append(vec![entry(1)], 0))],
+                read_lease_duration_ms: 100,
             },
         );
         assert_eq!(
@@ -1801,6 +1872,7 @@ mod tests {
                         last_log_term: 0,
                     }),
                 )],
+                read_lease_duration_ms: 100,
             },
         );
         assert_eq!(
@@ -1843,8 +1915,10 @@ mod tests {
                         term: 3,
                         success: false,
                         match_index: 0,
+                        read_lease_expiration: 0,
                     }),
                 )],
+                read_lease_duration_ms: 100,
             },
         );
         assert_eq!(state.term, 3, "the leader must adopt the higher term");
@@ -2158,11 +2232,11 @@ mod tests {
         let (heartbeat_interrupt_send, heartbeat_timer_interrupts) = cluster.sim_input();
         let (request_send, requests) = cluster.sim_input::<String, _, _>();
 
-        let (committed, redirected) = raft(
+        let (committed, redirected, _, _) = raft(
             requests,
             election_timer_interrupts,
             heartbeat_timer_interrupts,
-            RaftConfig { cluster_size: N },
+            RaftConfig { cluster_size: N, read_lease_duration_ms: 100 },
             || TCP.fail_stop().bincode(),
             nondet!(
                 /** which member leads and how concurrent requests are ordered is
@@ -2356,11 +2430,11 @@ mod tests {
         let (heartbeat_interrupt_send, heartbeat_timer_interrupts) = cluster.sim_input();
         let (request_send, requests) = cluster.sim_input::<String, _, _>();
 
-        let (committed, redirected) = raft(
+        let (committed, redirected, _, _) = raft(
             requests,
             election_timer_interrupts,
             heartbeat_timer_interrupts,
-            RaftConfig { cluster_size: N },
+            RaftConfig { cluster_size: N, read_lease_duration_ms: 100 },
             || TCP.fail_stop().bincode(),
             nondet!(
                 /** which member leads and how concurrent requests are ordered is
@@ -2499,11 +2573,11 @@ mod tests {
         let (heartbeat_interrupt_send, heartbeat_timer_interrupts) = cluster.sim_input();
         let (request_send, requests) = cluster.sim_input::<String, _, _>();
 
-        let (committed, redirected) = raft(
+        let (committed, redirected, _, _) = raft(
             requests,
             election_timer_interrupts,
             heartbeat_timer_interrupts,
-            RaftConfig { cluster_size: N },
+            RaftConfig { cluster_size: N, read_lease_duration_ms: 100 },
             || TCP.fail_stop().bincode(),
             nondet!(
                 /** which member leads and how concurrent requests are ordered is
@@ -2597,11 +2671,11 @@ mod tests {
         let heartbeat_timer_interrupts =
             replicas.source_interval(q!(std::time::Duration::from_millis(100)));
 
-        let (committed, redirected) = raft(
+        let (committed, redirected, _, _) = raft(
             requests,
             election_timer_interrupts,
             heartbeat_timer_interrupts,
-            RaftConfig { cluster_size: 3 },
+            RaftConfig { cluster_size: 3, read_lease_duration_ms: 100 },
             || TCP.fail_stop().bincode(),
             nondet!(
                 /// Which member leads and how concurrent requests interleave in the

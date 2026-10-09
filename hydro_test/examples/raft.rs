@@ -102,12 +102,14 @@ async fn main() {
     let heartbeat_timer_interrupts =
         replicas.source_interval(q!(std::time::Duration::from_millis(100)));
 
-    let (committed, redirected) = raft(
+    let (committed, redirected, _, _) = raft(
         requests,
         election_timer_interrupts,
         heartbeat_timer_interrupts,
         RaftConfig {
             cluster_size: CLUSTER_SIZE,
+            // same as heartbeat interval so that it stays active most of the time
+            read_lease_duration_ms: 100,
         },
         || TCP.fail_stop().bincode(),
         nondet!(
