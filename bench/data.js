@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1791457695619,
+  "lastUpdate": 1791543821976,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -315674,6 +315674,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 194440,
             "range": "± 7684.17",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "d3dffb4afae3033226d987f1304311dd5544e6e4",
+          "message": "feat(hydro_lang)!: add `verus_panic!` and document manual and Verus proofs (#3215)\n\n## Docs\nRestructured the proof docs under **Safety and Correctness**:\n- **Proof Obligations** (`correctness/proof-obligations.md`): a\nhigh-level page covering what property annotations are, which properties\naccept which proofs, manual proofs (and that nothing checks them), and a\nshort introduction to Verus proofs that links to the new section.\n- **Verus Proofs** (new category `correctness/verus/`):\n- **Verifying with Verus** (`index.md`): setting up a crate\n(`[package.metadata.verus]`, `verus = [\"dep:vstd\", \"hydro_lang/verus\"]`,\nrunning `cargo verus verify`), the macro for each closure shape,\nmutating closures (why `map` and `filter` outputs are checked),\n`captures`, and which types can appear in obligations.\n- **Handling Panics** (`panics.md`): Verus requires panic-free closures,\nand `catch_unwind` doesn't help. Covers the `verus_panic!` guard pattern\n(with a runnable doctest) and why it's sound (a stricter guard is fine,\na weaker one is caught, non-commutative closures are still rejected),\nplus the `wrapping_add`/`saturating_add`/`checked_add` alternatives.\n- **Custom Proof Scripts** (`proof-scripts.md`): the `proof = |s, x, y|\n{ ... }` clause with the `bit_vector` example, why a script can't weaken\nthe guarantee, and why `assume` is the exception.\n- The `streams.md` danger box (previously \"manual proofs only\", with a\nKani link), `references-mutations.md`, `nondet.md`, `index.md`,\n`singletons-optionals.md`, and `keyed-state.md` now show or link to\nVerus proofs.\n\n## `verus_panic!` (`hydro_lang::properties`, in the prelude)\nUnder a normal build, `verus_panic!(...)` forwards its arguments to\n`panic!`. Under `cargo verus` with `hydro_lang`'s `verus` feature, it\ncalls an `external_body` function with signature `fn() -> !`, no\nprecondition, and the default (may-unwind) unwind spec. Callers don't\nhave to prove the call is unreachable, and nothing after it is\nreachable, so a property only has to hold on paths that don't panic. The\nusual pattern is a guard right before an operation that could panic:\n\n```rust\nif *acc > u32::MAX - x {\n    verus_panic!(\"sum overflowed\");\n}\n*acc += x; // Verus now knows this cannot overflow\n```\n\nThis is sound because the guard really runs (and panics) at runtime,\nunlike `assume`. The message arguments are dropped under Verus, since\n`format_args!` isn't supported and they would only run on a path that\npanics anyway. It's a macro rather than a function because `q!` treats\nbare identifiers as captured variables; this also keeps panic messages\nworking.\n\n## `hydro_lang` Verus integration\n- `[package.metadata.verus] verify = true`, so cargo-verus runs\n`hydro_lang` through the Verus driver (with `--no-verify` when it's a\ndependency) and exports the specs declared in its `verus!` blocks.\n- New `verus` feature (`dep:vstd`), with `vstd =\n\">=0.0.0-2026-08-02-0125\"` as a lower bound only, so the consumer's\nexact `=` pin decides the version. The workspace's own pins\n(`hydro_test`, `hydro_verus_tests`, CI) stay on the tested\n`0.0.0-2026-09-06-0133`.\n- The test targets need the `vstd` prelude import under the Verus\ndriver. The two sim-only tests are now `required-features = [\"sim\"]`, so\nthey aren't built as empty crates.\n- `hydro_test`'s `verus` feature now forwards `hydro_lang/verus`, and\n`hydro_verus_tests` enables it directly.\n\n## Tests\n- New accepted fixtures: a fold with `+=` guarded by `verus_panic!`, and\none with a stricter-than-needed guard.\n- New rejected fixtures: `reject_weak_panic_guard` (caught at the `+=`\nthat can still overflow) and `reject_guarded_halving_fold`\n(`verus_panic!` doesn't hide non-commutativity).\n- `verus_rejects` now drops `warning:` diagnostics from snapshots.\nProcessing `hydro_lang` produces 37 harmless \"automatically derived\nitem\" warnings. (A crate-level `verifier::allow` would silence them, but\nunder the Verus driver it breaks `pub use` of `macro_export` macros.)\nThe existing snapshots changed only in line numbers and verified counts\n(9 → 11).\n\nVerified locally with a Verus build of the CI-pinned release, built from\nsource (the dev machine's glibc is too old for the prebuilt binaries,\nand only Z3 4.15.1 was available, so the solver version check was\npatched out locally): the `verus_rejects` harness passes, and so does\n`cargo-verus verify -p hydro_lang -p hydro_test --features verus\n--tests`. Doctests and clippy pass. CI on the real toolchain is the\nauthoritative check.\n\nBREAKING CHANGE: crates that run `cargo verus verify` with `hydro_lang`\nas a dependency must enable `hydro_lang`'s `verus` feature. Without it,\ncompiling `hydro_lang` under the Verus driver fails with \"the\nverus_builtin crate was not imported\".\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-10-07T22:44:28Z",
+          "url": "https://github.com/hydro-project/hydro/commit/d3dffb4afae3033226d987f1304311dd5544e6e4"
+        },
+        "date": 1791543821941,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 172532,
+            "range": "± 4728",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 2468170,
+            "range": "± 133636",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 2608760,
+            "range": "± 183949",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 22947,
+            "range": "± 1230",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 3819283,
+            "range": "± 302208",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 428139,
+            "range": "± 93374",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 442021,
+            "range": "± 21603",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 21779472,
+            "range": "± 875484",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 2631167,
+            "range": "± 60231",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 8060963,
+            "range": "± 1492847",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 2469287,
+            "range": "± 69083",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 2656998,
+            "range": "± 155830",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 25130912,
+            "range": "± 326906",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 2502,
+            "range": "± 36",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 14052,
+            "range": "± 163",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 2828,
+            "range": "± 149",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 2627,
+            "range": "± 42",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 224987,
+            "range": "± 8258",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 34585,
+            "range": "± 410",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 25094,
+            "range": "± 1006",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 8530,
+            "range": "± 381",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 3206,
+            "range": "± 87",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 3624,
+            "range": "± 171",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 40505,
+            "range": "± 1095",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 49806,
+            "range": "± 742",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 4495,
+            "range": "± 361",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 7445,
+            "range": "± 129",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 38203,
+            "range": "± 1091",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 3777,
+            "range": "± 150",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 358740,
+            "range": "± 9672.15",
             "unit": "ops/s"
           }
         ]
