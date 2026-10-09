@@ -2,7 +2,7 @@
 
 #[cfg(feature = "build")]
 #[test]
-#[cfg_attr(not(target_os = "linux"), ignore)]
+#[cfg_attr(not(target_os = "linux"), ignore = "backtraces only stable on Linux")]
 fn backtrace_chained_ops() {
     use stageleft::q;
 
