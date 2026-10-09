@@ -416,7 +416,7 @@ pub struct RaftStepInput<T, ClusterTag> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FastReadLease {
+pub struct ReadLease {
     pub read_index: usize,
     pub expiration_time: u128,
 }
@@ -436,7 +436,7 @@ pub struct RaftStepOutput<T, ClusterTag> {
     pub redirected: Vec<(T, Option<MemberId<ClusterTag>>)>,
     /// The member's view after this tick, if it changed during the tick.
     pub view_transition: Option<LeaderView<ClusterTag>>,
-    pub read_lease: Option<FastReadLease>,
+    pub read_lease: Option<ReadLease>,
 }
 
 /// Advances one member's [`RaftServerState`] by one tick: processes the received
@@ -479,7 +479,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
     let mut outbound = Vec::new();
     let mut committed = Vec::new();
     let mut redirected = Vec::new();
-    let mut read_lease: Option<FastReadLease> = None;
+    let mut read_lease: Option<ReadLease> = None;
 
     let old_view = LeaderView {
         term: state.term,
@@ -688,7 +688,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 state.heartbeat_repliers.insert(sender.clone());
                 let heartbeat_ack_count = state.heartbeat_repliers.len();
                 if heartbeat_ack_count >= majority && state.has_committed_as_leader {
-                    read_lease = Some(FastReadLease {
+                    read_lease = Some(ReadLease {
                         expiration_time: state.read_lease_expiration,
                         read_index: state.commit_index,
                     })
@@ -783,7 +783,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 if acks >= majority {
                     state.commit_index = candidate;
                     state.has_committed_as_leader = true;
-                    read_lease = Some(FastReadLease {
+                    read_lease = Some(ReadLease {
                         expiration_time: state.read_lease_expiration,
                         read_index: state.commit_index,
                     });
@@ -877,7 +877,7 @@ pub struct RaftOutputs<'a, T, ClusterTag> {
     /// Each member's view transitions (term and known leader), emitted whenever the
     /// view changes. Useful for tests and observability; may be left unobserved.
     pub leader_views: Stream<LeaderView<ClusterTag>, Cluster<'a, ClusterTag>>,
-    pub read_leases: Stream<FastReadLease, Cluster<'a, ClusterTag>, Unbounded>,
+    pub read_leases: Stream<ReadLease, Cluster<'a, ClusterTag>, Unbounded>,
 }
 
 /// The unified RAFT server: one state machine per member, advanced by [`raft_step`]
@@ -959,7 +959,7 @@ where
         Stream<LogEntry<T>, Cluster<'a, ClusterTag>>,
         Stream<(T, Option<MemberId<ClusterTag>>), Cluster<'a, ClusterTag>>,
         Stream<LeaderView<ClusterTag>, Cluster<'a, ClusterTag>>,
-        Stream<FastReadLease, Cluster<'a, ClusterTag>>
+        Stream<ReadLease, Cluster<'a, ClusterTag>>
     ) = sliced! {
         let request_batch = use::batch(requests, nondet!(
             /// Which requests are batched together only affects which log indexes the
@@ -1044,7 +1044,7 @@ where
         let view_transitions: Stream<LeaderView<ClusterTag>, _, Bounded> =
             tick.source_iter(q!(Vec::new()));
         let view_transitions_ref = view_transitions.by_mut();
-        let read_leases: Stream<FastReadLease, _, Bounded> =
+        let read_leases: Stream<ReadLease, _, Bounded> =
             tick.source_iter(q!(Vec::new()));
         let read_leases_ref = read_leases.by_mut();
 
@@ -1182,7 +1182,7 @@ pub fn raft<'a, T, ClusterTag, Con, O, Net>(
         TotalOrder,
     >,
     Stream<LeaderView<ClusterTag>, Cluster<'a, ClusterTag>>,
-    Optional<FastReadLease, Cluster<'a, ClusterTag>, Unbounded>,
+    Optional<ReadLease, Cluster<'a, ClusterTag>, Unbounded>,
 )
 where
     T: Clone + Serialize + DeserializeOwned + 'a,
