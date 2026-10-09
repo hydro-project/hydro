@@ -24,11 +24,11 @@ use crate::staging_util::Invariant;
 pub struct SimFlow<'a> {
     pub(crate) ir: Vec<HydroRoot>,
 
-    /// SimNode for each Process.
+    /// [`SimNode`] for each Process.
     pub(crate) processes: SparseSecondaryMap<LocationKey, SimNode>,
-    /// SimNode for each Cluster.
+    /// [`SimNode`] for each Cluster.
     pub(crate) clusters: SparseSecondaryMap<LocationKey, SimNode>,
-    /// SimExternal for each External.
+    /// [`SimExternal`] for each External.
     pub(crate) externals: SparseSecondaryMap<LocationKey, SimExternal>,
 
     /// Max size of each cluster.
@@ -61,6 +61,7 @@ pub struct SimFlow<'a> {
 
 impl<'a> SimFlow<'a> {
     /// Sets the maximum size of the given cluster in the simulation.
+    #[must_use]
     pub fn with_cluster_size<C>(mut self, cluster: &Cluster<'a, C>, max_size: usize) -> Self {
         self.cluster_max_sizes.insert(cluster.key, max_size);
         self
@@ -74,6 +75,7 @@ impl<'a> SimFlow<'a> {
     /// it only tests safety properties—not liveness—since messages may never arrive.
     /// Calling this method acknowledges that the simulation will not verify that the
     /// program eventually makes progress.
+    #[must_use]
     pub fn test_safety_only(mut self) -> Self {
         self.test_safety_only = true;
         self
@@ -83,6 +85,7 @@ impl<'a> SimFlow<'a> {
     /// nodes are treated as identity no-ops in the simulator. When disabled (the default),
     /// encountering a consistency assertion will panic because validating consistency
     /// assertions is not yet supported in the simulator.
+    #[must_use]
     pub fn skip_consistency_assertions(mut self) -> Self {
         self.skip_consistency_assertions = true;
         self
@@ -90,6 +93,7 @@ impl<'a> SimFlow<'a> {
 
     /// Sets the number of fuzz iterations for this test. Overrides the
     /// the default value of 8192
+    #[must_use]
     pub fn unit_test_fuzz_iterations(mut self, iterations: usize) -> Self {
         self.unit_test_fuzz_iterations = iterations;
         self
@@ -128,6 +132,13 @@ impl<'a> SimFlow<'a> {
         self.compiled().exhaustive(thunk)
     }
 
+    /// Runs the test body against exactly **one** execution of the program, with no fuzzer
+    /// involved anywhere. Requires every unsafe operator that receives data to be bound to
+    /// a sim hook and scripted; see [`crate::sim::compiled::CompiledSim::deterministic`].
+    pub fn deterministic(self, thunk: impl AsyncFnOnce() + RefUnwindSafe) {
+        self.compiled().deterministic(thunk)
+    }
+
     /// Compiles the simulation into a dynamically loadable library, and returns a handle to it.
     pub fn compiled(mut self) -> CompiledSim {
         use dfir_lang::graph::{eliminate_extra_unions_tees, partition_graph};
@@ -148,6 +159,7 @@ impl<'a> SimFlow<'a> {
             test_safety_only: self.test_safety_only,
             skip_consistency_assertions: self.skip_consistency_assertions,
             channel_tables: BTreeMap::new(),
+            bound_sim_hooks: HashMap::new(),
         };
 
         // Ensure the default (0) external is always present.
@@ -248,7 +260,7 @@ impl<'a> SimFlow<'a> {
         let out = compile_sim(bin, trybuild).unwrap();
         let lib = {
             let _span = tracing::debug_span!(target: "hydro_build", "load_dylib").entered();
-            unsafe { Library::new(&out).unwrap() }
+            unsafe { Library::new(&*out).unwrap() }
         };
         drop(compiled_span);
 

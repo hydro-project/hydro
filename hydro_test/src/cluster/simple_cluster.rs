@@ -3,7 +3,7 @@ use hydro_lang::live_collections::stream::TotalOrder;
 use hydro_lang::location::MemberId;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::prelude::*;
-use hydro_lang::properties::StreamMapFuncAlgebra;
+use hydro_lang::properties::{NotProved, StreamMapFuncAlgebra};
 use hydro_std::compartmentalize::{DecoupleClusterStream, DecoupleProcessStream, PartitionStream};
 use stageleft::IntoQuotedMut;
 
@@ -14,7 +14,13 @@ pub fn partition<'a, F>(
         'a,
         F,
         OperatorContext<Cluster<'a, ()>, Unbounded>,
-        StreamMapFuncAlgebra,
+        StreamMapFuncAlgebra<
+            (MemberId<()>, String),
+            Unbounded,
+            NotProved,
+            NotProved,
+            hydro_lang::sim_hooks::OnCluster<()>,
+        >,
     >,
 ) -> (Cluster<'a, ()>, Cluster<'a, ()>)
 where
@@ -39,7 +45,10 @@ pub fn decouple_cluster<'a>(flow: &mut FlowBuilder<'a>) -> (Cluster<'a, ()>, Clu
     cluster1
         .source_iter(q!(vec!(CLUSTER_SELF_ID)))
         // .for_each(q!(|message| println!("hey, {}", message)))
-        .inspect(q!(|message| println!("Cluster1 node sending message: {}", message)))
+        .inspect(q!(|message| println!(
+            "Cluster1 node sending message: {}",
+            message
+        )))
         .decouple_cluster(&cluster2)
         .for_each(q!(move |message| println!(
             "My self id is {}, my message is {}",

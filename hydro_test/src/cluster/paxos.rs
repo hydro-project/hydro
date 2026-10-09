@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::time::Duration;
 
+use hydro_lang::live_collections::optional::InitNone;
 use hydro_lang::live_collections::sliced::yield_atomic;
 use hydro_lang::live_collections::stream::{AtLeastOnce, NoOrder, TotalOrder};
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
@@ -94,7 +95,7 @@ impl<'a> PaxosLike<'a> for CorePaxos<'a> {
         ballot.map(q!(|ballot| ballot.proposer_id))
     }
 
-    fn build<P: PaxosPayload>(
+    fn build<P: PaxosPayload + 'a>(
         self,
         with_ballot: impl FnOnce(
             Stream<Ballot, Cluster<'a, Self::PaxosIn>, Unbounded>,
@@ -132,7 +133,7 @@ impl<'a> PaxosLike<'a> for CorePaxos<'a> {
 /// in deterministic order. However, when the leader is changing, payloads may be
 /// non-deterministically dropped. The stream of ballots is also non-deterministic because
 /// leaders are elected in a non-deterministic process.
-pub fn paxos_core<'a, P: PaxosPayload>(
+pub fn paxos_core<'a, P: PaxosPayload + 'a>(
     proposers: &Cluster<'a, Proposer>,
     acceptors: &Cluster<'a, Acceptor>,
     a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
@@ -223,14 +224,18 @@ pub fn paxos_core<'a, P: PaxosPayload>(
         ),
     );
 
-    a_log_complete_cycle.complete(a_log.snapshot_atomic(
-        &acceptor_tick,
-        nondet!(
-            /// We will always write payloads to the log before acknowledging them to the proposers,
-            /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
-            /// election will include the committed value.
-        ),
-    ));
+    a_log_complete_cycle.complete(
+        a_log
+            .snapshot_atomic(
+                &acceptor_tick,
+                nondet!(
+                    /// We will always write payloads to the log before acknowledging them to the proposers,
+                    /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
+                    /// election will include the committed value.
+                ),
+            )
+            .unwrap_or(acceptor_tick.singleton(q!((None, HashMap::new())))),
+    );
     sequencing_max_ballot_complete_cycle.complete(sequencing_max_ballots);
 
     (
@@ -348,7 +353,13 @@ fn p_ballot_calc<'a>(
 ) {
     let tick = p_received_max_ballot.location().clone();
     let (p_ballot, p_has_largest_ballot) = sliced! {
-        let p_received_max_ballot = use::atomic(p_received_max_ballot.latest_atomic(), nondet!(/** up to date with tick input */));
+        let p_received_max_ballot = use::atomic(
+            p_received_max_ballot
+                .latest_atomic()
+                .into_singleton()
+                .map(q!(|o| o.flatten())),
+            nondet!(/** up to date with tick input */),
+        );
         let mut p_ballot_num = use::state(|l| l.singleton(q!(0)));
 
         p_ballot_num = p_received_max_ballot
@@ -382,14 +393,21 @@ fn p_ballot_calc<'a>(
     };
 
     (
-        p_ballot.snapshot_atomic(
-            &tick,
-            nondet!(/** always up to date with received ballots */),
-        ),
-        p_has_largest_ballot.snapshot_atomic(
-            &tick,
-            nondet!(/** always up to date with received ballots */),
-        ),
+        p_ballot
+            .snapshot_atomic(
+                &tick,
+                nondet!(/** always up to date with received ballots */),
+            )
+            .unwrap_or(tick.singleton(q!(Ballot {
+                num: 0,
+                proposer_id: CLUSTER_SELF_ID.clone()
+            }))),
+        p_has_largest_ballot
+            .snapshot_atomic(
+                &tick,
+                nondet!(/** always up to date with received ballots */),
+            )
+            .unwrap_or(tick.singleton(q!(true))),
     )
 }
 
@@ -597,27 +615,33 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
         .map(q!(|(_checkpoint, log)| log))
         .flatten_unordered() // Convert HashMap log back to stream
         .into_keyed()
-        .fold::<(usize, Option<LogValue<P>>), _, _, _, _, _, _>(q!(|| (0, None)), q!(|curr_entry, new_entry| {
-            if let Some(curr_entry_payload) = &mut curr_entry.1 {
-                let same_values = new_entry.value == curr_entry_payload.value;
-                let higher_ballot = new_entry.ballot > curr_entry_payload.ballot;
-                // Increment count if the values are the same
-                if same_values {
-                    curr_entry.0 += 1;
-                }
-                // Replace the ballot with the largest one
-                if higher_ballot {
-                    curr_entry_payload.ballot = new_entry.ballot;
-                    // Replace the value with the one from the largest ballot, if necessary
-                    if !same_values {
-                        curr_entry.0 = 1;
-                        curr_entry_payload.value = new_entry.value;
+        .fold::<(usize, Option<LogValue<P>>), _, _, _, _, _, _>(
+            q!(|| (0, None)),
+            q!(
+                |curr_entry, new_entry| {
+                    if let Some(curr_entry_payload) = &mut curr_entry.1 {
+                        let same_values = new_entry.value == curr_entry_payload.value;
+                        let higher_ballot = new_entry.ballot > curr_entry_payload.ballot;
+                        // Increment count if the values are the same
+                        if same_values {
+                            curr_entry.0 += 1;
+                        }
+                        // Replace the ballot with the largest one
+                        if higher_ballot {
+                            curr_entry_payload.ballot = new_entry.ballot;
+                            // Replace the value with the one from the largest ballot, if necessary
+                            if !same_values {
+                                curr_entry.0 = 1;
+                                curr_entry_payload.value = new_entry.value;
+                            }
+                        }
+                    } else {
+                        *curr_entry = (1, Some(new_entry));
                     }
-                }
-            } else {
-                *curr_entry = (1, Some(new_entry));
-            }
-        }, commutative = manual_proof!(/** TODO */)))
+                },
+                commutative = manual_proof!(/** TODO */)
+            ),
+        )
         .map(q!(|(count, entry)| (count, entry.unwrap())));
     let p_log_to_try_commit = p_p1b_highest_entries_and_count
         .clone()
@@ -682,11 +706,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     nondet_commit: NonDet,
 ) -> (
     Stream<(usize, Option<P>), Cluster<'a, Proposer>, Unbounded, NoOrder>,
-    Singleton<
-        (Option<usize>, HashMap<usize, LogValue<P>>),
-        Atomic<Cluster<'a, Acceptor>>,
-        Unbounded,
-    >,
+    Optional<(Option<usize>, HashMap<usize, LogValue<P>>), Atomic<Cluster<'a, Acceptor>>, InitNone>,
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded, NoOrder>,
 ) {
     let (p_log_to_recommit, p_max_slot) =
@@ -799,11 +819,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
     a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
     proposers: &Cluster<'a, S>,
 ) -> (
-    Singleton<
-        (Option<usize>, HashMap<usize, LogValue<P>>),
-        Atomic<Cluster<'a, Acceptor>>,
-        Unbounded,
-    >,
+    Optional<(Option<usize>, HashMap<usize, LogValue<P>>), Atomic<Cluster<'a, Acceptor>>, InitNone>,
     Stream<((usize, Ballot), Result<(), Option<Ballot>>), Cluster<'a, S>, Unbounded, NoOrder>,
 ) {
     let p_to_acceptors_p2a_batch = p_to_acceptors_p2a.batch(
@@ -828,12 +844,15 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
     let a_p2as_to_place_in_log = p_to_acceptors_p2a_batch
         .clone()
         .cross_singleton(a_max_ballot.clone()) // Don't consider p2as if the current ballot is higher
-        .filter_map(q!(|(p2a, max_ballot)|
-            if Some(&p2a.ballot) >= max_ballot.as_ref() {
-                Some((p2a.slot, LogValue {
-                    ballot: p2a.ballot,
-                    value: p2a.value,
-                }))
+        .filter_map(q!(
+            |(p2a, max_ballot)| if Some(&p2a.ballot) >= max_ballot.as_ref() {
+                Some((
+                    p2a.slot,
+                    LogValue {
+                        ballot: p2a.ballot,
+                        value: p2a.value,
+                    },
+                ))
             } else {
                 None
             }

@@ -10,12 +10,13 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q}
 
 use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
-use super::optional::Optional;
+use super::optional::{InitNone, Optional};
 use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
-    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode, SingletonBoundKind,
+    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, OptionalBoundKind, SharedNode,
+    SingletonBoundKind,
 };
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
@@ -68,7 +69,7 @@ impl SingletonBound for Bounded {
 }
 
 /// Marks that the [`Singleton`] is monotonic, which means that its value will only grow over time.
-pub struct Monotonic;
+pub enum Monotonic {}
 
 impl SingletonBound for Monotonic {
     type UnderlyingBound = Unbounded;
@@ -516,7 +517,7 @@ where
             'a,
             F,
             OperatorContext<L, <B as SingletonBound>::UnderlyingBound>,
-            SingletonMapFuncAlgebra<OP>,
+            SingletonMapFuncAlgebra<T, <B as SingletonBound>::UnderlyingBound, OP>,
         >,
     ) -> Singleton<U, L, B2>
     where
@@ -527,7 +528,7 @@ where
             .splice_fn1_ctx_props(
                 &OperatorContext::<L, <B as SingletonBound>::UnderlyingBound>::new(&self.location),
             );
-        proof.register_proof(&f);
+        let _ = proof.register_proof(&f);
         let f = f.into();
         Singleton::new(
             self.location.clone(),
@@ -570,7 +571,12 @@ where
     /// ```
     pub fn flat_map_ordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, Bounded>, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, Bounded>,
+            StreamMapFuncAlgebra<T, Bounded, C, Idemp, L::SimHookScope>,
+        >,
     ) -> Stream<U, L, Bounded, TotalOrder, ExactlyOnce>
     where
         B: IsBounded,
@@ -612,7 +618,12 @@ where
     /// ```
     pub fn flat_map_unordered<U, I, F, C, Idemp, const WAS_MUT: bool>(
         self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, Bounded>, StreamMapFuncAlgebra<C, Idemp>>,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, Bounded>,
+            StreamMapFuncAlgebra<T, Bounded, C, Idemp, L::SimHookScope>,
+        >,
     ) -> Stream<U, L, Bounded, NoOrder, ExactlyOnce>
     where
         B: IsBounded,
@@ -854,7 +865,7 @@ where
                     left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                     right: Box::new(Self::other_ir_node(other)),
                     metadata: self.location.new_node_metadata(CollectionKind::Optional {
-                        bound: B::BOUND_KIND,
+                        bound: OptionalBoundKind::Bounded,
                         element_type: stageleft::quote_type::<
                             <Self as ZipResult<'a, O>>::ElementType,
                         >()
@@ -908,7 +919,7 @@ where
     }
 
     /// Filters this singleton into an [`Optional`], passing through the singleton value if the
-    /// argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is null.
+    /// argument (a [`Bounded`] [`Optional`]) is non-null, otherwise the output is null.
     ///
     /// Useful for conditionally processing, such as only emitting a singleton's value outside
     /// a tick if some other condition is satisfied.
@@ -954,7 +965,7 @@ where
     }
 
     /// Filters this singleton into an [`Optional`], passing through the singleton value if the
-    /// argument (a [`Bounded`] [`Optional`]`) is null, otherwise the output is null.
+    /// argument (a [`Bounded`] [`Optional`]) is null, otherwise the output is null.
     ///
     /// Like [`Singleton::filter_if_some`], this is useful for conditional processing, but inverts
     /// the condition.
@@ -1224,14 +1235,22 @@ where
     pub fn snapshot_atomic<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T, L::SimHookScope>>>,
     ) -> Singleton<T, Tick<L::DropConsistency>, Bounded> {
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(self.location.tick.parent_location())
+        );
+
+        let mut metadata =
+            tick.new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind());
+
+        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         Singleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick
-                    .new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind()),
+                metadata,
             },
         )
     }
@@ -1249,18 +1268,28 @@ where
     /// Because this picks a snapshot of a singleton whose value is continuously changing,
     /// the output singleton has a non-deterministic value since the snapshot can be at an
     /// arbitrary point in time.
+    ///
+    /// In simulation tests, the snapshot decisions can be scripted by attaching a
+    /// [`SnapshotHook`](crate::sim_hooks::SnapshotHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn snapshot<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T, L::SimHookScope>>>,
     ) -> Singleton<T, Tick<L::DropConsistency>, Bounded> {
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(&self.location)
+        );
+
+        let mut metadata =
+            tick.new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         Singleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick
-                    .new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind()),
+                metadata,
             },
         )
     }
@@ -1272,12 +1301,20 @@ where
     /// At runtime, the singleton will be arbitrarily sampled as fast as possible, but due
     /// to non-deterministic batching and arrival of inputs, the output stream is
     /// non-deterministic.
+    ///
+    /// In simulation tests, the internal snapshot decisions can be scripted by attaching
+    /// a [`SnapshotHook`](crate::sim_hooks::SnapshotHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn sample_eager(
         self,
-        nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T, L::SimHookScope>>>,
     ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce> {
+        let snapshot_hook = nondet.take_hook();
         sliced! {
-            let snapshot = use::snapshot(self, nondet);
+            let snapshot = use::snapshot(self, nondet!(
+                /// which snapshots are sampled is captured by the caller's guard
+                hook = snapshot_hook
+            ));
             snapshot.into_stream()
         }
         .weaken_retries()
@@ -1292,19 +1329,37 @@ where
     /// # Non-Determinism
     /// The output stream is non-deterministic in which elements are sampled, since this
     /// is controlled by a clock.
+    ///
+    /// In simulation tests, the internal snapshot decisions and the batching of clock
+    /// samples can be scripted through the guard's composite hook payload, e.g.
+    /// `nondet!(/** reason */ hook = (snapshot_hook.into(), None))`.
     #[cfg(feature = "tokio")]
+    #[expect(
+        clippy::type_complexity,
+        reason = "composite hook payload names each internal operator's handle type"
+    )]
     pub fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
-        nondet: NonDet,
+        mut nondet: NonDet<(
+            Option<crate::sim_hooks::SnapshotHook<T, L::SimHookScope>>,
+            Option<crate::sim_hooks::BatchHook<(), TotalOrder, ExactlyOnce, L::SimHookScope>>,
+        )>,
     ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce>
     where
         L: TopLevel<'a>,
     {
         let samples = self.location.source_interval(interval);
+        let (snapshot_hook, samples_hook) = nondet.take_hook();
         sliced! {
-            let snapshot = use::snapshot(self, nondet);
-            let sample_batch = use::batch(samples, nondet);
+            let snapshot = use::snapshot(self, nondet!(
+                /// which snapshots are sampled is captured by the caller's guard
+                hook = snapshot_hook
+            ));
+            let sample_batch = use::batch(samples, nondet!(
+                /// sample timing is captured by the caller's guard
+                hook = samples_hook
+            ));
 
             snapshot.filter_if(sample_batch.first().is_some()).into_stream()
         }
@@ -1492,8 +1547,13 @@ where
         self.into_stream().all_ticks_atomic()
     }
 
-    /// Asynchronously yields this singleton outside the tick as an unbounded singleton, which will
-    /// be asynchronously updated with the latest value of the singleton inside the tick.
+    /// Asynchronously yields this singleton outside the tick as an unbounded [`Optional`], which
+    /// will be asynchronously updated with the latest value of the singleton inside the tick.
+    ///
+    /// The result is an [`Optional`] rather than a [`Singleton`] because the producing tick does
+    /// not have to have run yet: before its first run there is no value, so the optional is null.
+    /// Once the tick has run the optional becomes non-null and stays non-null (its value tracks
+    /// the latest tick), hence the [`InitNone`] boundedness.
     ///
     /// This converts a bounded value _inside_ a tick into an asynchronous value outside the
     /// tick that tracks the inner value. This is useful for getting the value as of the
@@ -1519,6 +1579,7 @@ where
     /// input_batch // first tick: [1], second tick: [1, 2, 3]
     ///     .count()
     ///     .latest()
+    ///     .unwrap_or(process.singleton(q!(0usize)).into())
     /// # .sample_eager(nondet!(/** test */))
     /// # }, |mut stream| async move {
     /// // asynchronously changes from 1 ~> 3
@@ -1528,35 +1589,36 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn latest(self) -> Singleton<T, L, Unbounded> {
-        Singleton::new(
-            self.location.outer().clone(),
+    pub fn latest(self) -> Optional<T, L, InitNone> {
+        Optional::new(
+            self.location.parent_location().clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .outer()
-                    .new_node_metadata(Singleton::<T, L, Unbounded>::collection_kind()),
+                    .parent_location()
+                    .new_node_metadata(Optional::<T, L, InitNone>::collection_kind()),
             },
         )
     }
 
-    /// Synchronously yields this singleton outside the tick as an unbounded singleton, which will
-    /// be updated with the latest value of the singleton inside the tick.
+    /// Synchronously yields this singleton outside the tick as an unbounded [`Optional`], which
+    /// will be updated with the latest value of the singleton inside the tick.
     ///
-    /// Unlike [`Singleton::latest`], this preserves synchronous execution, as the output singleton
+    /// Unlike [`Singleton::latest`], this preserves synchronous execution, as the output optional
     /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
-    /// singleton's [`Tick`] context.
-    pub fn latest_atomic(self) -> Singleton<T, Atomic<L>, Unbounded> {
+    /// singleton's [`Tick`] context. As with [`Singleton::latest`], the result is an [`Optional`]
+    /// ([`InitNone`]) because it is null until the producing tick first runs.
+    pub fn latest_atomic(self) -> Optional<T, Atomic<L>, InitNone> {
         let out_location = Atomic {
             tick: self.location.clone(),
         };
-        Singleton::new(
+        Optional::new(
             out_location.clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: out_location
-                    .new_node_metadata(Singleton::<T, Atomic<L>, Unbounded>::collection_kind()),
+                    .new_node_metadata(Optional::<T, Atomic<L>, InitNone>::collection_kind()),
             },
         )
     }
@@ -1793,9 +1855,10 @@ mod tests {
         let out_recv = batch.all_ticks().sim_output();
 
         flow.sim().exhaustive(async || {
-            if out_recv.next().await == (1, 3) && out_recv.next().await == (2, 3) {
-                panic!("repeated snapshot");
-            }
+            assert!(
+                !(out_recv.next().await == (1, 3) && out_recv.next().await == (2, 3)),
+                "repeated snapshot"
+            );
         });
     }
 
@@ -1909,7 +1972,7 @@ mod tests {
         assert_eq!(count, 4);
     }
 
-    /// Reproducer for simulator hang when using cross_singleton on a top-level
+    /// Reproducer for simulator hang when using `cross_singleton` on a top-level
     /// unbounded stream (not inside sliced!). The exhaustive simulator hangs
     /// after the first iteration.
     #[cfg(feature = "sim")]

@@ -1,14 +1,18 @@
 [package]
 name = "hydro_concurrent_cargo"
 publish = true
-version = "0.1.0-alpha.0"
+version = "0.1.2-alpha.0"
 description = "Shared locking and job directory utilities for parallel cargo builds in Hydro"
 edition = { workspace = true }
 repository = { workspace = true }
 license = { workspace = true }
+
+[lints]
+workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
 
 [dependencies]
 parking_lot = "0.12"
+toml_edit = "0.23"

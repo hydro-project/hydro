@@ -194,43 +194,47 @@ async fn aws() {
     let nodes = builder
         .with_process(
             &p1,
-            deployment.AwsEc2Host()
-                        .region("us-east-1")
-                        .instance_type("t3.micro")
-                        .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
-                        .network(network.clone())
-                        .add(),
+            deployment
+                .AwsEc2Host()
+                .region("us-east-1")
+                .instance_type("t3.micro")
+                .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
+                .network(network.clone())
+                .add(),
         )
         .with_cluster(
             &c2,
             (0..CLUSTER_SIZE).map(|_| {
-                deployment.AwsEc2Host()
-                        .region("us-east-1")
-                        .instance_type("t3.micro")
-                        .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
-                        .network(network.clone())
-                        .add()
+                deployment
+                    .AwsEc2Host()
+                    .region("us-east-1")
+                    .instance_type("t3.micro")
+                    .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
+                    .network(network.clone())
+                    .add()
             }),
         )
         .with_cluster(
             &c3,
             (0..CLUSTER_SIZE).map(|_| {
-                deployment.AwsEc2Host()
-                        .region("us-east-1")
-                        .instance_type("t3.micro")
-                        .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
-                        .network(network.clone())
-                        .add()
+                deployment
+                    .AwsEc2Host()
+                    .region("us-east-1")
+                    .instance_type("t3.micro")
+                    .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
+                    .network(network.clone())
+                    .add()
             }),
         )
         .with_process(
             &p4,
-            deployment.AwsEc2Host()
-                        .region("us-east-1")
-                        .instance_type("t3.micro")
-                        .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
-                        .network(network.clone())
-                        .add(),
+            deployment
+                .AwsEc2Host()
+                .region("us-east-1")
+                .instance_type("t3.micro")
+                .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
+                .network(network.clone())
+                .add(),
         )
         .with_external(&external, deployment.Localhost())
         .deploy(&mut deployment);

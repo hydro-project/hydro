@@ -4,13 +4,12 @@ use std::fs;
 use std::rc::Rc;
 
 use dfir_lang::diagnostic::Diagnostics;
-use dfir_lang::graph::DfirGraph;
+use dfir_lang::graph::{AsCodeOptions, DfirGraph};
 use proc_macro2::Span;
 use quote::quote;
 use sha2::{Digest, Sha256};
 use slotmap::SparseSecondaryMap;
 use stageleft::QuotedWithContext;
-use tempfile::TempPath;
 use trybuild_internals_api::{cargo, dependencies, path};
 
 use crate::compile::builder::ExternalPortId;
@@ -18,8 +17,8 @@ use crate::compile::deploy_provider::{Deploy, DynSourceSink, Node, RegisterPort}
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use crate::compile::trybuild::generate::LinkingMode;
 use crate::compile::trybuild::generate::{
-    CONCURRENT_TEST_LOCK, ExampleBuildConfig, IS_TEST, TrybuildConfig, compile_trybuild_example,
-    create_trybuild, write_atomic, write_staged_source_cached,
+    BuiltArtifact, CONCURRENT_TEST_LOCK, ExampleBuildConfig, IS_TEST, TrybuildConfig,
+    compile_trybuild_example, create_trybuild, write_atomic, write_staged_source_cached,
 };
 use crate::deploy::deploy_runtime::cluster_membership_stream;
 use crate::location::dynamic::LocationId;
@@ -59,6 +58,7 @@ impl Node for SimNode {
         _graph: DfirGraph,
         _extra_stmts: &[syn::Stmt],
         _sidecars: &[syn::Expr],
+        _as_code_options: &AsCodeOptions,
     ) {
     }
 }
@@ -100,6 +100,7 @@ impl Node for SimExternal {
         _graph: DfirGraph,
         _extra_stmts: &[syn::Stmt],
         _sidecars: &[syn::Expr],
+        _as_code_options: &AsCodeOptions,
     ) {
     }
 }
@@ -432,7 +433,7 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 }
 
-pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempPath, ()> {
+pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<BuiltArtifact, ()> {
     compile_trybuild_example(ExampleBuildConfig {
         trybuild,
         bin_name: bin,
@@ -459,7 +460,7 @@ pub(super) fn create_sim_graph_trybuild(
 ) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
-    let crate_name = source_manifest.package.name.replace("-", "_");
+    let crate_name = source_manifest.package.name.replace('-', "_");
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
@@ -556,11 +557,15 @@ fn compile_sim_graph_trybuild(
     let mut diagnostics = Diagnostics::new();
 
     let mut dfir_into_code = |g: &DfirGraph| {
+        let mut options = AsCodeOptions::default();
+        options.exclude_type_guards = false;
+        options.exclude_meta = true;
+        options.include_metrics_tracking = false;
+
         let dfir_expr: syn::Expr = syn::parse2(
             g.as_code_with_options(
                 &quote! { __root_dfir_rs },
-                true,
-                false,
+                &options,
                 quote!(),
                 &mut diagnostics,
             )
@@ -579,12 +584,13 @@ fn compile_sim_graph_trybuild(
         }
     };
 
+    let root = get_this_crate();
     let process_dfir_exprs = process_graphs
         .into_iter()
         .map(|(lid, g)| {
             let dfir_expr = dfir_into_code_erased(&g);
             let ser_lid = serde_json::to_string(&lid).unwrap();
-            syn::parse_quote!((#ser_lid, None, #dfir_expr))
+            syn::parse_quote!((#root::sim::runtime::parse_location(#ser_lid), None, #dfir_expr))
         })
         .collect::<Vec<syn::Expr>>();
 
@@ -616,7 +622,7 @@ fn compile_sim_graph_trybuild(
                     let ser_tick_lid = serde_json::to_string(&tick_lid).unwrap();
                     syn::parse_quote! {
                         __tick_dfirs.push((
-                            #ser_tick_lid,
+                            #root::sim::runtime::parse_location(#ser_tick_lid),
                             Some(__current_cluster_id),
                             #tick_dfir_expr
                         ));
@@ -639,7 +645,7 @@ fn compile_sim_graph_trybuild(
             syn::parse_quote! {
                 for __current_cluster_id in [#(#member_ids),*] {
                     __async_dfirs.push((
-                        #ser_lid,
+                        #root::sim::runtime::parse_location(#ser_lid),
                         Some(__current_cluster_id),
                         {
                             #(#extra_stmts_per_cluster)*
@@ -660,7 +666,7 @@ fn compile_sim_graph_trybuild(
         .map(|(lid, g)| {
             let dfir_expr = dfir_into_code_erased(&g);
             let ser_lid = serde_json::to_string(&lid).unwrap();
-            syn::parse_quote!((#ser_lid, None, #dfir_expr))
+            syn::parse_quote!((#root::sim::runtime::parse_location(#ser_lid), None, #dfir_expr))
         })
         .collect::<Vec<syn::Expr>>();
 
@@ -713,10 +719,15 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            #root::sim::runtime::Hooks<&'static str>,
-            #root::sim::runtime::InlineHooks<&'static str>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            #root::sim::runtime::Hooks,
+            #root::sim::runtime::ObservationHooks,
+            #root::sim::runtime::InlineHooks,
+            #root::sim::runtime::ScriptedTickHooks,
+            #root::sim::runtime::ScriptedObservationHooks,
+            #root::sim::runtime::ScriptedInlineHooks,
+            #root::sim::runtime::ScriptedHookRegistry,
         ) {
             macro_rules! println {
                 ($($arg:tt)*) => ({
@@ -762,15 +773,20 @@ fn compile_sim_graph_trybuild(
                 };
             }
 
-            let mut __hydro_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn #root::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
-            let mut __hydro_inline_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn #root::sim::runtime::SimInlineHook>>> = ::std::collections::HashMap::new();
+            let mut __hydro_hooks: #root::sim::runtime::Hooks = ::std::collections::HashMap::new();
+            let mut __hydro_observation_hooks: #root::sim::runtime::ObservationHooks = ::std::collections::HashMap::new();
+            let mut __hydro_inline_hooks: #root::sim::runtime::InlineHooks = ::std::collections::HashMap::new();
+            let mut __hydro_scripted_hooks: #root::sim::runtime::ScriptedTickHooks = ::std::collections::HashMap::new();
+            let mut __hydro_scripted_observation_hooks: #root::sim::runtime::ScriptedObservationHooks = ::std::collections::HashMap::new();
+            let mut __hydro_scripted_inline_hooks: #root::sim::runtime::ScriptedInlineHooks = ::std::collections::HashMap::new();
+            let mut __hydro_scripted_registry: #root::sim::runtime::ScriptedHookRegistry = ::std::collections::BTreeMap::new();
             #(#extra_stmts_global)*
             #(#cluster_ids_stmts)*
 
             let mut __async_dfirs = vec![#(#process_dfir_exprs),*];
             let mut __tick_dfirs = vec![#(#process_tick_dfir_exprs),*];
             #(#cluster_dfir_stmts)*
-            (__async_dfirs, __tick_dfirs, __hydro_hooks, __hydro_inline_hooks)
+            (__async_dfirs, __tick_dfirs, __hydro_hooks, __hydro_observation_hooks, __hydro_inline_hooks, __hydro_scripted_hooks, __hydro_scripted_observation_hooks, __hydro_scripted_inline_hooks, __hydro_scripted_registry)
         }
 
         #[unsafe(no_mangle)]
@@ -783,10 +799,15 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            #root::sim::runtime::Hooks<&'static str>,
-            #root::sim::runtime::InlineHooks<&'static str>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            #root::sim::runtime::Hooks,
+            #root::sim::runtime::ObservationHooks,
+            #root::sim::runtime::InlineHooks,
+            #root::sim::runtime::ScriptedTickHooks,
+            #root::sim::runtime::ScriptedObservationHooks,
+            #root::sim::runtime::ScriptedInlineHooks,
+            #root::sim::runtime::ScriptedHookRegistry,
         ) {
             #root::runtime_support::colored::control::set_override(should_color);
             __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __hydro_cluster_external_out, __hydro_cluster_external_in, __println_handler, __eprintln_handler)

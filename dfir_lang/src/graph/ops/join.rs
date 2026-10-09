@@ -21,7 +21,7 @@ use super::{
 /// `'tick` or `'static`, to specify how join data persists. With `'tick`, pairs will only be
 /// joined with corresponding pairs within the same tick. With `'static`, pairs will be remembered
 /// across ticks and will be joined with pairs arriving in later ticks. When not explicitly
-/// specified persistence defaults to `tick.
+/// specified persistence defaults to `'tick`.
 ///
 /// When two persistence arguments are supplied the first maps to port `0` and the second maps to
 /// port `1`.

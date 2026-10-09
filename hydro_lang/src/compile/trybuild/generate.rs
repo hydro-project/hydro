@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use dfir_lang::diagnostic::Diagnostics;
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
-use dfir_lang::graph::DfirGraph;
+use dfir_lang::graph::{AsCodeOptions, DfirGraph};
 use sha2::{Digest, Sha256};
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use stageleft::internal::quote;
@@ -49,7 +49,7 @@ pub enum LinkingMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeployMode {
     #[cfg(feature = "deploy")]
-    /// Standard HydroDeploy
+    /// Standard `HydroDeploy`
     HydroDeploy,
     #[cfg(any(feature = "docker_deploy", feature = "ecs_deploy"))]
     /// Containerized deployment (Docker/ECS)
@@ -85,14 +85,8 @@ pub fn init_test() {
 fn clean_bin_name_prefix(bin_name_prefix: &str) -> String {
     bin_name_prefix
         .replace("::", "__")
-        .replace(" ", "_")
-        .replace(",", "_")
-        .replace("<", "_")
-        .replace(">", "")
-        .replace("(", "")
-        .replace(")", "")
-        .replace("{", "_")
-        .replace("}", "_")
+        .replace([' ', ',', '<', '{', '}'], "_")
+        .replace(['>', '(', ')'], "")
 }
 
 #[derive(Debug, Clone)]
@@ -118,19 +112,27 @@ pub fn create_graph_trybuild(
     graph: DfirGraph,
     extra_stmts: &[syn::Stmt],
     sidecars: &[syn::Expr],
+    as_code_options: &AsCodeOptions,
     bin_name_prefix: Option<&str>,
     deploy_mode: DeployMode,
     linking_mode: LinkingMode,
 ) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
-    let crate_name = source_manifest.package.name.replace("-", "_");
+    let crate_name = source_manifest.package.name.replace('-', "_");
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
     let generated_code = {
         let _span = tracing::debug_span!(target: "hydro_build", "graph_codegen").entered();
-        compile_graph_trybuild(graph, extra_stmts, sidecars, &crate_name, deploy_mode)
+        compile_graph_trybuild(
+            graph,
+            extra_stmts,
+            sidecars,
+            as_code_options,
+            &crate_name,
+            deploy_mode,
+        )
     };
 
     let source = {
@@ -201,6 +203,7 @@ pub fn compile_graph_trybuild(
     partitioned_graph: DfirGraph,
     extra_stmts: &[syn::Stmt],
     sidecars: &[syn::Expr],
+    as_code_options: &AsCodeOptions,
     crate_name: &str,
     deploy_mode: DeployMode,
 ) -> syn::File {
@@ -209,7 +212,12 @@ pub fn compile_graph_trybuild(
     let mut diagnostics = Diagnostics::new();
     let dfir_expr: syn::Expr = syn::parse2(
         partitioned_graph
-            .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
+            .as_code_with_options(
+                &quote! { __root_dfir_rs },
+                as_code_options,
+                quote!(),
+                &mut diagnostics,
+            )
             .expect("DFIR code generation failed with diagnostics."),
     )
     .unwrap();
@@ -376,15 +384,103 @@ fn rustc_target_libdir() -> Option<String> {
         .clone()
 }
 
+/// The built artifact returned by [`compile_trybuild_example`].
+///
+/// Outside coverage runs this is a delete-on-drop temporary copy: every build
+/// reuses the same example artifact path in the shared target dir (e.g. the
+/// simulator always builds `sim-dylib`, varying only `TRYBUILD_LIB_NAME`), so
+/// the caller gets a private copy that a later build cannot clobber.
+///
+/// In coverage runs the copy is instead persisted (keyed by the generated
+/// source's hash, which `bin_name` embeds, and by the toolchain fingerprint)
+/// under the shared target dir's `debug/deps`, and must outlive the process:
+/// the coverage mapping needed to resolve profile data lives in the artifact
+/// itself, and report-time tools (e.g. `grcov --binary-path target/debug` or
+/// `target/debug/deps`, both scanned recursively) run only after all test
+/// processes have exited.
+pub enum BuiltArtifact {
+    /// A delete-on-drop temporary copy of the artifact.
+    Temp(tempfile::TempPath),
+    /// A persistent copy that survives process exit, for coverage reporters.
+    Persisted(PathBuf),
+}
+
+impl std::ops::Deref for BuiltArtifact {
+    type Target = Path;
+
+    fn deref(&self) -> &Path {
+        match self {
+            BuiltArtifact::Temp(path) => path,
+            BuiltArtifact::Persisted(path) => path,
+        }
+    }
+}
+
+impl BuiltArtifact {
+    /// Persist the artifact at its current path, returning that path (the
+    /// temporary copy is kept rather than deleted on drop).
+    ///
+    /// Only the Maelstrom deploy path consumes this; gate it accordingly so
+    /// sim-only builds don't carry (and warn about) dead code.
+    #[cfg(feature = "maelstrom")]
+    pub fn keep(self) -> Result<PathBuf, std::io::Error> {
+        match self {
+            BuiltArtifact::Temp(path) => path.keep().map_err(|e| e.error),
+            BuiltArtifact::Persisted(path) => Ok(path),
+        }
+    }
+}
+
+/// The `CARGO_ENCODED_RUSTFLAGS` this crate was compiled with, captured by `build.rs`.
+///
+/// Generated Hydro programs are compiled by a child `cargo`, which is handed exactly these
+/// flags (see [`forward_rustflags`]) so the generated code matches the crate that produced it:
+/// same cfgs, same instrumentation, same codegen options. Unlike reading `RUSTFLAGS` from the
+/// process environment, this also sees flags injected through cargo config (`build.rustflags`,
+/// `target.*.rustflags`, `--config`), which never reach the test process's environment.
+///
+/// Also keys the trybuild dylib's target name (see [`create_trybuild`]).
+const ENCODED_RUSTFLAGS: &str = env!("HYDRO_ENCODED_RUSTFLAGS");
+
+/// Gives a child `cargo` the same rustflags as [`ENCODED_RUSTFLAGS`].
+///
+/// The flags are passed as CLI config (`--config build.rustflags=[...]`), not by setting
+/// `CARGO_ENCODED_RUSTFLAGS`/`RUSTFLAGS` in the child's environment, and the inherited
+/// environment is left untouched. Build scripts commonly emit
+/// `cargo:rerun-if-env-changed=CARGO_ENCODED_RUSTFLAGS` (e.g. `aws-lc-sys`), which cargo
+/// evaluates against *its own* process environment: a child whose environment differs from
+/// the outer build's — even by setting the variable to an empty string — gets different
+/// fingerprints and rebuilds those crates in the shared `deps/`, thrashing against the outer
+/// build and against sibling children that don't set it.
+///
+/// Precedence is consistent by construction: if `RUSTFLAGS` or `CARGO_ENCODED_RUSTFLAGS` is
+/// in the inherited environment it wins over this config in the child, but then it is also
+/// what the outer build's encoded flags were derived from, so the flags agree either way.
+/// Cargo merges `--config` arrays with those from config files, so a workspace whose
+/// `.cargo/config.toml` sets `build.rustflags` gets those flags twice in the child (once from
+/// the copied config, once forwarded); harmless to rustc, but the child's flag string then
+/// differs from the outer build's, so its dependency rlibs are not shared with it.
+#[cfg(any(feature = "sim", feature = "maelstrom"))]
+fn forward_rustflags(command: &mut std::process::Command) {
+    let flags = toml::Value::try_from(
+        ENCODED_RUSTFLAGS
+            .split('\x1f')
+            .filter(|flag| !flag.is_empty())
+            .collect::<Vec<_>>(),
+    )
+    .unwrap();
+    command.args(["--config", &format!("build.rustflags={flags}")]);
+}
+
 /// Compiles a generated trybuild example against the prebuilt dylib crate,
 /// using the shared parallel-compilation machinery (per-job target dirs with
 /// symlinked shared artifacts, plus a prebuild of the dylib dependencies).
 ///
-/// Returns the path to a temporary copy of the built artifact (a `cdylib` for
-/// the simulator, or an executable for Maelstrom). The copy allows the caller
-/// to hold onto the artifact independently of the shared target directory.
+/// Returns a [`BuiltArtifact`] handle to a copy of the built artifact (a
+/// `cdylib` for the simulator, or an executable for Maelstrom), which the
+/// caller can hold onto independently of the shared target directory.
 #[cfg(any(feature = "sim", feature = "maelstrom"))]
-pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfile::TempPath, ()> {
+pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltArtifact, ()> {
     use std::process::{Command, Stdio};
 
     let ExampleBuildConfig {
@@ -398,9 +494,26 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
     } = config;
 
     let is_fuzz = allow_fuzz && std::env::var("BOLERO_FUZZER").is_ok();
-    // When RUSTFLAGS is set, our prebuild fingerprint doesn't account for it, so skip the
-    // parallel build machinery entirely and build directly into the shared target dir.
-    let has_custom_rustflags = std::env::var("RUSTFLAGS").is_ok();
+
+    // The parallel build machinery (per-job target dirs symlinking the shared `debug/`
+    // artifacts, fronted by a fingerprinted prebuild) assumes the host `debug/` layout and
+    // dynamically linked examples. Fuzz builds statically link examples from the base crate,
+    // and `CARGO_BUILD_TARGET` moves artifacts under `<triple>/debug/`; both build directly
+    // into the shared target dir instead, where cargo's own fingerprinting applies.
+    let use_prebuild = !is_fuzz && std::env::var_os("CARGO_BUILD_TARGET").is_none();
+
+    // Coverage builds (`-C instrument-coverage`) need their covmap-bearing artifact copied to
+    // a stable location where coverage reporters can find it (see below).
+    // See https://github.com/hydro-project/hydro/issues/3160.
+    let coverage_enabled =
+        rustflags::from_encoded(std::ffi::OsStr::new(ENCODED_RUSTFLAGS)).any(|flag| {
+            matches!(
+                flag,
+                rustflags::Flag::Codegen { opt, value }
+                    if opt == "instrument-coverage"
+                        && !matches!(value.as_deref(), Some("off" | "no" | "n" | "false" | "0"))
+            )
+        });
 
     // Run from dylib-examples crate which has the dylib as a dev-dependency (only if not fuzzing)
     let crate_to_compile = if is_fuzz {
@@ -409,7 +522,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
         path!(trybuild.project_dir / "dylib-examples")
     };
 
-    let (final_target_dir, _prebuild_guard, _cargo_lock) = if !has_custom_rustflags {
+    let (final_target_dir, _prebuild_guard, _cargo_lock) = if use_prebuild {
         let prebuild_span =
             tracing::debug_span!(target: "hydro_build", "prebuild", bin_name = %bin_name).entered();
         let shared_debug = trybuild.target_dir.join("debug");
@@ -425,16 +538,23 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
             std::env::current_exe().unwrap(),
         ];
 
-        let project_dir = trybuild.project_dir.clone();
         let features_for_closure = features.clone();
-        let is_fuzz_for_closure = is_fuzz;
 
+        // The prebuild is fingerprinted on these features, our rustflags, and the compiler
+        // version: shared artifacts built under other flags or another toolchain are rebuilt
+        // (under the exclusive lock, after renaming the dylib for this configuration) before any
+        // final build links against them.
         let (guard, cargo_lock) = hydro_concurrent_cargo::run_prebuild(
             &trybuild.target_dir,
             trybuild.project_dir.file_name().unwrap().to_str().unwrap(),
             &features,
+            ENCODED_RUSTFLAGS,
             &staged_paths,
             |prebuild_target| {
+                hydro_concurrent_cargo::set_dylib_lib_name(
+                    &trybuild.project_dir,
+                    ENCODED_RUSTFLAGS,
+                );
                 let features_str = features_for_closure.join(",");
 
                 // Prebuild the lib that final builds will link against, which transitively
@@ -445,26 +565,17 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
                 // built first wins. Building the dylib as a primary target would poison the
                 // cache with a statically-linked-std variant that later fails to link into
                 // examples ("cannot satisfy dependencies so `std` only shows up once").
-                //
-                // In fuzz mode, examples are compiled from the base trybuild crate directly
-                // (no dylib-examples), so prebuild the base crate's lib instead.
-                let prebuild_crate = if is_fuzz_for_closure {
-                    project_dir.clone()
-                } else {
-                    path!(project_dir / "dylib-examples")
-                };
                 let mut lib_cmd = Command::new("cargo");
-                lib_cmd.current_dir(&prebuild_crate);
+                lib_cmd.current_dir(&crate_to_compile);
                 lib_cmd.args(["build", "--locked", "--lib"]);
                 lib_cmd.args(["--target-dir", prebuild_target.to_str().unwrap()]);
                 lib_cmd.arg("--no-default-features");
                 lib_cmd.args(["--features", &features_str]);
                 lib_cmd.args(["--config", "build.incremental = false"]);
                 lib_cmd.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
+                forward_rustflags(&mut lib_cmd);
                 let status = lib_cmd.stdin(Stdio::null()).status().unwrap();
-                if !status.success() {
-                    panic!("dep prebuild failed");
-                }
+                assert!(status.success(), "dep prebuild failed")
             },
         );
 
@@ -478,7 +589,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
     };
 
     // Populate per-job build/ dir right before final build. Hold guard for entire build.
-    let _job_build_guard = if !has_custom_rustflags {
+    let _job_build_guard = if use_prebuild {
         let populate_span =
             tracing::debug_span!(target: "hydro_build", "populate_job_dir", bin_name = %bin_name)
                 .entered();
@@ -499,14 +610,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
         tracing::debug_span!(target: "hydro_build", "final_build", bin_name = %bin_name).entered();
     let mut command = Command::new("cargo");
     command.current_dir(&crate_to_compile);
-    command.args([
-        "rustc",
-        if has_custom_rustflags {
-            "--locked"
-        } else {
-            "--frozen"
-        },
-    ]);
+    command.args(["rustc", if use_prebuild { "--frozen" } else { "--locked" }]);
     command.args(["--example", &example_name]);
     command.args(["--target-dir", final_target_dir.to_str().unwrap()]);
     // Never enable default features: the generated example gets exactly the
@@ -528,6 +632,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
             .join(","),
     ]);
     command.args(["--config", "build.incremental = false"]);
+    forward_rustflags(&mut command);
     if let Some(crate_type) = crate_type {
         command.args(["--crate-type", crate_type]);
     }
@@ -665,24 +770,52 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<tempfi
     drop(final_build_span);
 
     // Check for unexpected recompilations — only dylib-examples should be compiled.
-    // (Only relevant when prebuild is active, i.e. no custom RUSTFLAGS.)
-    if !has_custom_rustflags {
+    // (Only relevant when prebuild is active.)
+    if use_prebuild {
         for line in stderr_output.lines() {
-            if line.contains("Compiling") && !line.contains("dylib-examples") {
-                panic!(
+            if line.contains("Compiling") {
+                assert!(
+                    line.contains("dylib-examples"),
                     "unexpected recompilation in final build: {line}\nfull stderr:\n{stderr_output}"
                 );
             }
         }
     }
 
-    if out.is_err() {
-        panic!("final build failed to produce binary.\nstderr:\n{stderr_output}");
+    assert!(
+        out.is_ok(),
+        "final build failed to produce binary.\nstderr:\n{stderr_output}"
+    );
+
+    if coverage_enabled {
+        // The coverage mapping needed to resolve profile data at report time lives in
+        // the artifact itself, and reporters run only after all test processes have
+        // exited — so the copy must be persistent, not a delete-on-drop temp file.
+        // Persist it keyed by the generated source's hash (embedded in `bin_name`;
+        // the shared artifact path itself is reused by every build and would be
+        // clobbered) and by the toolchain fingerprint (the same program built under
+        // other flags or another compiler carries a different coverage mapping and
+        // must not overwrite this one), under the shared target dir's `debug/deps` so
+        // reporters find every mapping whether they scan `target/debug` or the narrower
+        // `target/debug/deps` (both are common `grcov --binary-path` conventions,
+        // and both are scanned recursively). This persisted copy doubles as the
+        // artifact handed to the caller.
+        let coverage_dir = path!(trybuild.target_dir / "debug" / "deps" / "hydro-coverage");
+        fs::create_dir_all(&coverage_dir).unwrap();
+        let artifact_name = out.as_ref().unwrap().file_name().unwrap().to_str().unwrap();
+        let fingerprint = hydro_concurrent_cargo::toolchain_fingerprint(ENCODED_RUSTFLAGS);
+        let persisted = path!(coverage_dir / format!("{bin_name}-{fingerprint}-{artifact_name}"));
+        // Write via a unique temp file + rename so concurrent test processes
+        // building the same flow never observe a partially-copied artifact.
+        let staging = tempfile::NamedTempFile::new_in(&coverage_dir).unwrap();
+        fs::copy(out.as_ref().unwrap(), staging.path()).unwrap();
+        staging.persist(&persisted).unwrap();
+        return Ok(BuiltArtifact::Persisted(persisted));
     }
 
     let out_file = tempfile::NamedTempFile::new().unwrap().into_temp_path();
     fs::copy(out.as_ref().unwrap(), &out_file).unwrap();
-    Ok(out_file)
+    Ok(BuiltArtifact::Temp(out_file))
 }
 
 /// Generates the inlined `__staged.rs` source for the source crate and writes it into the
@@ -911,14 +1044,13 @@ pub fn create_trybuild()
         let _span = tracing::debug_span!(target: "hydro_build", "write_project_files").entered();
         let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
 
-        let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
-        project_lock.lock()?;
+        let _project_lock = hydro_concurrent_cargo::lock_project(project.dir.as_ref());
 
         fs::create_dir_all(path!(project.dir / "src"))?;
         fs::create_dir_all(path!(project.dir / "examples"))?;
 
         let crate_name_ident = syn::Ident::new(
-            &crate_name.replace("-", "_"),
+            &crate_name.replace('-', "_"),
             proc_macro2::Span::call_site(),
         );
 
@@ -950,7 +1082,7 @@ pub fn create_trybuild()
         fs::create_dir_all(path!(dylib_dir / "src"))?;
 
         let trybuild_crate_name_ident = syn::Ident::new(
-            &project_name.replace("-", "_"),
+            &project_name.replace('-', "_"),
             proc_macro2::Span::call_site(),
         );
         write_atomic(
@@ -987,13 +1119,27 @@ pub fn create_trybuild()
             .collect::<Vec<_>>()
             .join("\n");
 
+        // The dylib is the one shared artifact cargo does not name per configuration (unless
+        // `__CARGO_DEFAULT_LIB_METADATA` is set), so `hydro_concurrent_cargo` decides its
+        // `[lib] name` and only changes it under the exclusive prebuild lock, once every
+        // in-flight final build that links the current name has finished. Reuse whatever name
+        // the manifest has now; a fresh project gets this configuration's name. The package
+        // name (and so `Cargo.lock`) never changes, and generated code never names the target
+        // — it reaches the dylib through the `dylib-examples` dependency rename below.
+        let dylib_package_name = format!("{project_name}-dylib");
+        let dylib_lib_name = hydro_concurrent_cargo::current_dylib_lib_name(project.dir.as_ref())
+            .unwrap_or_else(|| {
+                hydro_concurrent_cargo::dylib_lib_name(&dylib_package_name, ENCODED_RUSTFLAGS)
+            });
+
         let dylib_manifest = format!(
             r#"[package]
-name = "{project_name}-dylib"
+name = "{dylib_package_name}"
 version = "0.0.0"
 {}
 
 [lib]
+name = "{dylib_lib_name}"
 crate-type = ["{}"]
 
 [dependencies]
@@ -1093,11 +1239,14 @@ members = ["dylib", "dylib-examples"]
         )?;
 
         // Compute hash for cache invalidation, covering all generated manifests (the dylib and
-        // dylib-examples manifests affect Cargo.lock, so they must participate in the hash)
+        // dylib-examples manifests affect Cargo.lock, so they must participate in the hash).
+        // The dylib's target name does not affect Cargo.lock (only package names do), so it is
+        // excluded: otherwise every toolchain/rustflags switch would pay for a lockfile
+        // regeneration.
         let manifest_hash = {
             let mut hasher = Sha256::new();
             hasher.update(&workspace_manifest);
-            hasher.update(&dylib_manifest);
+            hasher.update(dylib_manifest.replace(&dylib_lib_name, ""));
             hasher.update(&dylib_examples_manifest);
             format!("{:X}", hasher.finalize())
                 .chars()

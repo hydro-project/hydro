@@ -116,7 +116,7 @@ where
     /// All operators in global topo-sort order (fixed length, reshuffled in windows).
     /// Invariant: subgraphs are contiguous & non-overlapping ranges in this vec.
     toposort_node: Vec<K>,
-    /// Reverse index: SG representative node -> index (in toposort_node).
+    /// Reverse index: SG representative node -> index (in `toposort_node`).
     /// Invariant: `K` is both the representative node and the first node in the SG.
     sg_idx: SparseSecondaryMap<K, usize>,
     /// SG representative node -> SG len.
@@ -339,11 +339,11 @@ where
                 let sg_idx = &self.sg_idx;
                 topo_sort(reps_in_window, |k| {
                     subgraph_preds[k]
-                    .iter()
-                    .map(|&p| subgraph_unionfind.find(p))
-                    .filter(|&p| window.contains(&sg_idx[p])) // Prune to window.
-                    .collect::<Vec<_>>()
-                    .into_iter()
+                        .iter()
+                        .map(|&p| subgraph_unionfind.find(p))
+                        .filter(|&p| window.contains(&sg_idx[p])) // Prune to window.
+                        .collect::<Vec<_>>()
+                        .into_iter()
                 })
                 .expect("bug: cycle check passed but re-toposort found cycle")
             };

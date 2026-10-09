@@ -7,7 +7,7 @@ use hydro_lang::location::tick::Tick;
 use hydro_lang::networking::NetworkFor;
 use hydro_lang::nondet::NonDet;
 use hydro_lang::prelude::*;
-use hydro_lang::properties::StreamMapFuncAlgebra;
+use hydro_lang::properties::{NotProved, StreamMapFuncAlgebra};
 use hydro_std::membership::track_membership;
 use serde::{Deserialize, Serialize};
 use stageleft::IntoQuotedMut;
@@ -44,7 +44,13 @@ fn hash_demux<'a, F, N: NetworkFor<Request>>(
         'a,
         F,
         OperatorContext<Tick<Cluster<'a, GossipServer>>, Bounded>,
-        StreamMapFuncAlgebra,
+        StreamMapFuncAlgebra<
+            (Request, Vec<MemberId<GossipServer>>),
+            Bounded,
+            NotProved,
+            NotProved,
+            hydro_lang::sim_hooks::OnCluster<GossipServer>,
+        >,
     >,
     via: N,
     nondet_membership: NonDet,
@@ -68,13 +74,22 @@ where
             .source_cluster_membership_stream(to, nondet_membership),
     );
     let (filtered, members_out) = sliced! {
-        let members_snapshot = use::snapshot(ids, nondet_membership);
-        let elements = use::batch(requests, nondet_membership);
+        let members_snapshot = use::snapshot(ids, nondet!(
+            /// membership timing is captured by the caller's guard
+            nondet_membership
+        ));
+        let elements = use::batch(requests, nondet!(
+            /// batching timing is captured by the caller's guard
+            nondet_membership
+        ));
 
         let current_members = members_snapshot
             .filter(q!(|b| *b))
             .keys()
-            .assume_ordering::<TotalOrder>(nondet_membership)
+            .assume_ordering::<TotalOrder>(nondet!(
+                /// membership timing is captured by the caller's guard
+                nondet_membership
+            ))
             .collect_vec();
 
         let filtered = elements
@@ -96,7 +111,13 @@ fn gossip_server<'a, F>(
         'a,
         F,
         OperatorContext<Tick<Cluster<'a, GossipServer>>, Bounded>,
-        StreamMapFuncAlgebra,
+        StreamMapFuncAlgebra<
+            (Request, Vec<MemberId<GossipServer>>),
+            Bounded,
+            NotProved,
+            NotProved,
+            hydro_lang::sim_hooks::OnCluster<GossipServer>,
+        >,
     >,
 ) -> (
     Stream<Response, Cluster<'a, GossipServer>, Unbounded, NoOrder>,

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use hydro_lang::live_collections::optional::InitNone;
 use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::location::{Atomic, Location, MemberId};
 use hydro_lang::prelude::*;
@@ -56,7 +57,7 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
         ballot.map(q!(|ballot| ballot.proposer_id))
     }
 
-    fn build<P: PaxosPayload>(
+    fn build<P: PaxosPayload + 'a>(
         self,
         with_ballot: impl FnOnce(
             Stream<Ballot, Cluster<'a, Self::PaxosIn>, Unbounded>,
@@ -99,7 +100,7 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
 /// non-deterministically dropped. The stream of ballots is also non-deterministic because
 /// leaders are elected in a non-deterministic process.
 #[expect(clippy::too_many_arguments, reason = "internal paxos code // TODO")]
-pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
+pub fn compartmentalized_paxos_core<'a, P: PaxosPayload + 'a>(
     proposers: &Cluster<'a, Proposer>,
     proxy_leaders: &Cluster<'a, ProxyLeader>,
     acceptors: &Cluster<'a, Acceptor>,
@@ -195,14 +196,18 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
         ),
     );
 
-    a_log_complete_cycle.complete(a_log.snapshot_atomic(
-        &acceptor_tick,
-        nondet!(
-            /// We will always write payloads to the log before acknowledging them to the proposers,
-            /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
-            /// election will include the committed value.
-        ),
-    ));
+    a_log_complete_cycle.complete(
+        a_log
+            .snapshot_atomic(
+                &acceptor_tick,
+                nondet!(
+                    /// We will always write payloads to the log before acknowledging them to the proposers,
+                    /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
+                    /// election will include the committed value.
+                ),
+            )
+            .unwrap_or(acceptor_tick.singleton(q!((None, HashMap::new())))),
+    );
     sequencing_max_ballot_complete_cycle.complete(sequencing_max_ballots);
 
     (
@@ -241,11 +246,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     nondet_commit_leader_change: NonDet,
 ) -> (
     Stream<(usize, Option<P>), Cluster<'a, ProxyLeader>, Unbounded, NoOrder>,
-    Singleton<
-        (Option<usize>, HashMap<usize, LogValue<P>>),
-        Atomic<Cluster<'a, Acceptor>>,
-        Unbounded,
-    >,
+    Optional<(Option<usize>, HashMap<usize, LogValue<P>>), Atomic<Cluster<'a, Acceptor>>, InitNone>,
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded, NoOrder>,
 ) {
     let (p_log_to_recommit, p_max_slot) =

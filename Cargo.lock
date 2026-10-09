@@ -305,7 +305,7 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b681c58ec6001e5385fb80647299e8a5f796d17ab33ffe81a17408899f008208"
 dependencies = [
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -346,7 +346,7 @@ dependencies = [
  "async-promise",
  "russh",
  "russh-sftp",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tokio",
  "tracing",
 ]
@@ -1475,6 +1475,12 @@ checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
 
 [[package]]
 name = "convert_case"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
+
+[[package]]
+name = "convert_case"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baaaa0ecca5b51987b9423ccdc971514dd8b0bb7b4060b983d3664dad3f1f89f"
@@ -1484,7 +1490,7 @@ dependencies = [
 
 [[package]]
 name = "copy_span"
-version = "0.1.1"
+version = "0.1.2-alpha.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1753,7 +1759,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_lang"
-version = "0.17.0-alpha.3"
+version = "0.17.0-alpha.4"
 dependencies = [
  "auto_impl",
  "clap",
@@ -1774,7 +1780,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_macro"
-version = "0.17.0-alpha.3"
+version = "0.17.0-alpha.4"
 dependencies = [
  "dfir_lang",
  "hydro_build_utils",
@@ -1787,7 +1793,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_pipes"
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 dependencies = [
  "futures-core",
  "futures-sink",
@@ -1804,7 +1810,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_rs"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.6"
 dependencies = [
  "bincode",
  "bumpalo",
@@ -1925,7 +1931,7 @@ version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1149cf7462e5e79e17a3c05fd5b1f9055092bbfa95e04c319395c3beacc9370f"
 dependencies = [
- "convert_case",
+ "convert_case 0.8.0",
  "itertools 0.14.0",
  "optfield",
  "proc-macro2",
@@ -2107,7 +2113,7 @@ dependencies = [
 
 [[package]]
 name = "example_test"
-version = "0.0.1"
+version = "0.0.2-alpha.0"
 dependencies = [
  "ctor",
  "log",
@@ -2614,7 +2620,7 @@ checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
 name = "hydro_build_utils"
-version = "0.1.1-alpha.0"
+version = "0.1.1-alpha.1"
 dependencies = [
  "insta",
  "rustc_version",
@@ -2623,14 +2629,15 @@ dependencies = [
 
 [[package]]
 name = "hydro_concurrent_cargo"
-version = "0.1.0-alpha.0"
+version = "0.1.2-alpha.0"
 dependencies = [
  "parking_lot",
+ "toml_edit 0.23.9",
 ]
 
 [[package]]
 name = "hydro_deploy"
-version = "0.17.0-alpha.3"
+version = "0.17.0-alpha.5"
 dependencies = [
  "anyhow",
  "append-only-vec",
@@ -2666,7 +2673,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_deploy_integration"
-version = "0.17.0-alpha.2"
+version = "0.17.0-alpha.3"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -2683,7 +2690,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_lang"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.6"
 dependencies = [
  "anyhow",
  "auto_impl",
@@ -2722,6 +2729,7 @@ dependencies = [
  "procfs",
  "quote",
  "regex",
+ "rustflags",
  "sealed",
  "serde",
  "serde_json",
@@ -2742,11 +2750,12 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "trybuild-internals-api",
+ "vstd",
 ]
 
 [[package]]
 name = "hydro_std"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.6"
 dependencies = [
  "hdrhistogram",
  "hydro_deploy",
@@ -2784,6 +2793,7 @@ dependencies = [
  "tokio-test",
  "tokio-util",
  "tracing-subscriber",
+ "vstd",
 ]
 
 [[package]]
@@ -2812,6 +2822,17 @@ dependencies = [
  "tokio",
  "tokio-test",
  "tokio-util",
+]
+
+[[package]]
+name = "hydro_verus_tests"
+version = "0.0.0"
+dependencies = [
+ "hydro_build_utils",
+ "hydro_lang",
+ "stageleft",
+ "stageleft_tool",
+ "vstd",
 ]
 
 [[package]]
@@ -3296,7 +3317,7 @@ dependencies = [
 
 [[package]]
 name = "lattices"
-version = "0.8.0-alpha.3"
+version = "0.8.0-alpha.4"
 dependencies = [
  "cc-traits",
  "fst",
@@ -3311,7 +3332,7 @@ dependencies = [
 
 [[package]]
 name = "lattices_macro"
-version = "0.6.1-alpha.0"
+version = "0.6.1-alpha.1"
 dependencies = [
  "hydro_build_utils",
  "prettyplease",
@@ -4284,9 +4305,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.103"
+version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ee95bc4ef87b8d5ba32e8b7714ccc834865276eab0aed5c9958d00ec45f49e8"
+checksum = "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9"
 dependencies = [
  "unicode-ident",
 ]
@@ -4895,6 +4916,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustflags"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a39e0e9135d7a7208ee80aa4e3e4b88f0f5ad7be92153ed70686c38a03db2e63"
+
+[[package]]
 name = "rustix"
 version = "0.38.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5356,7 +5383,7 @@ checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
 name = "sinktools"
-version = "0.2.0-alpha.3"
+version = "0.2.0-alpha.4"
 dependencies = [
  "bytes",
  "futures-task",
@@ -5471,9 +5498,9 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "stageleft"
-version = "0.15.1"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19d1e313737e051a78f7dd3bc9d0cec17fe9bde4aaae37718016cdf002f97493"
+checksum = "922df3f7ce3d8b0cf6378bbdb6e23f2edc44aa7e2a6126b546d2b72a5c6f8ee0"
 dependencies = [
  "ctor",
  "parking_lot",
@@ -5486,9 +5513,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_macro"
-version = "0.15.1"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81339bbfea24d25eb4aecf32e9eb37308ed801993f0879b99562b5cc0590b29d"
+checksum = "21b51057b6d651b3cb965699cd53fb50492d1625b50d47f6bb646176c09dc42c"
 dependencies = [
  "proc-macro-crate 3.4.0",
  "proc-macro2",
@@ -5499,9 +5526,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_tool"
-version = "0.15.1"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acd847bcaabcdfe9a650cb4aa5d7f136e5905d86881703bc41bcaaf3cd51c588"
+checksum = "ea9ab7d6b6661cdb6b0a1378b07235c864d58eb5e6ca1872918e31cf4d805d9a"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.4.0",
@@ -6028,6 +6055,7 @@ dependencies = [
  "indexmap 2.12.1",
  "toml_datetime 0.7.3",
  "toml_parser",
+ "toml_writer",
  "winnow 0.7.14",
 ]
 
@@ -6323,7 +6351,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "variadics"
-version = "0.2.0-alpha.2"
+version = "0.2.0-alpha.3"
 dependencies = [
  "hashbrown 0.14.5",
  "hydro_build_utils",
@@ -6332,7 +6360,7 @@ dependencies = [
 
 [[package]]
 name = "variadics_macro"
-version = "0.8.0-alpha.1"
+version = "0.8.0-alpha.2"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.4.0",
@@ -6349,10 +6377,75 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
+name = "verus_builtin"
+version = "0.0.0-2026-09-06-0133"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "856c9979b5ed3b75a2371d8667602da1839ab0cbb3720a2c1c8a182bcdb27cf7"
+
+[[package]]
+name = "verus_builtin_macros"
+version = "0.0.0-2026-09-06-0133"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "466bb5ed102507ccbcd002410e73716c9eb27b602980d81bbd176860ace8a89b"
+dependencies = [
+ "convert_case 0.4.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
+ "synstructure 0.13.2",
+ "verus_prettyplease",
+ "verus_syn",
+]
+
+[[package]]
+name = "verus_prettyplease"
+version = "0.0.0-2026-09-06-0133"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71956c0dcf55f57fd5a5335fff16981f7e0912d2e887914518c5a64fe36c063c"
+dependencies = [
+ "proc-macro2",
+ "verus_syn",
+]
+
+[[package]]
+name = "verus_state_machines_macros"
+version = "0.0.0-2026-09-06-0133"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f78ea16629331605a440e9e0a259dd3492a78212186ba82253ad0988127407f"
+dependencies = [
+ "indexmap 2.12.1",
+ "proc-macro2",
+ "quote",
+ "verus_syn",
+]
+
+[[package]]
+name = "verus_syn"
+version = "0.0.0-2026-09-06-0133"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d8b53574934e1f608dfccd809ce17f3733d6eb99c14ce8220326121929e1637"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-ident",
+]
+
+[[package]]
 name = "vsimd"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c3082ca00d5a5ef149bb8b555a72ae84c9c59f7250f013ac822ac2e49b19c64"
+
+[[package]]
+name = "vstd"
+version = "0.0.0-2026-09-06-0133"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e5391d6f656ab9a485169f7e9fe87d3db1f0a6aa116fcb630dd0bef224170e7"
+dependencies = [
+ "verus_builtin",
+ "verus_builtin_macros",
+ "verus_state_machines_macros",
+]
 
 [[package]]
 name = "walkdir"

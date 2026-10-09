@@ -60,6 +60,17 @@ pub mod o2m_broadcast {
     reason = "generated code"
 )]
 #[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod o2m_demux_embedded {
+    include!(concat!(env!("OUT_DIR"), "/o2m_demux_embedded.rs"));
+}
+
+#[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
 pub mod m2o_send {
     include!(concat!(env!("OUT_DIR"), "/m2o_send.rs"));
 }
@@ -241,6 +252,52 @@ mod tests {
         };
         let mut flow_receiver =
             crate::o2m_broadcast::o2m_receiver(&member_id, &mut outputs, net_in);
+        run_flow(&mut flow_receiver).await;
+        drop(flow_receiver);
+        assert_eq!(received, vec!["HELLO", "WORLD"]);
+    }
+
+    // --- o2m_demux_embedded (process -> cluster demux, `.embedded()` serialization) ---
+    // The payload type has no serde derives; the embedded channel moves it in-process
+    // (regression test for hydro-project/hydro#3158).
+    // sender (process): (inputs, network_out)
+    // receiver (cluster): (self_id, outputs, network_in)
+    #[tokio::test]
+    async fn test_o2m_demux_embedded() {
+        use hydro_test::embedded::o2m_demux_embedded::OpaquePayload;
+
+        let member_id = TaglessMemberId::from_raw_id(0);
+        let (tx, mut rx) =
+            tokio::sync::mpsc::unbounded_channel::<(TaglessMemberId, OpaquePayload)>();
+
+        // Sender (process): (input, net_out); the channel carries the raw payload (not `Bytes`).
+        let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
+        let mut net_out = crate::o2m_demux_embedded::o2m_demux_sender::EmbeddedNetworkOut {
+            demux_data: move |item: (TaglessMemberId, OpaquePayload)| {
+                tx.send(item).unwrap();
+            },
+        };
+        let mut flow_sender = crate::o2m_demux_embedded::o2m_demux_sender(input, &mut net_out);
+        run_flow(&mut flow_sender).await;
+        drop(flow_sender);
+
+        let mut payloads = vec![];
+        while let Ok((id, payload)) = rx.try_recv() {
+            assert_eq!(id, member_id);
+            payloads.push(payload);
+        }
+        assert_eq!(payloads.len(), 2);
+
+        // Receiver (cluster): (self_id, outputs, network_in); raw payloads, no deserialization.
+        let net_in = crate::o2m_demux_embedded::o2m_demux_receiver::EmbeddedNetworkIn {
+            demux_data: stream::iter(payloads),
+        };
+        let mut received = vec![];
+        let mut outputs = crate::o2m_demux_embedded::o2m_demux_receiver::EmbeddedOutputs {
+            output: |s: String| received.push(s),
+        };
+        let mut flow_receiver =
+            crate::o2m_demux_embedded::o2m_demux_receiver(&member_id, &mut outputs, net_in);
         run_flow(&mut flow_receiver).await;
         drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);

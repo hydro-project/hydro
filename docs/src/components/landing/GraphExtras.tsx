@@ -11,7 +11,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-import { COLOR_VARS, SIM_TOTAL_INSTANCES } from "./scenes";
+import { COLOR_VARS } from "./scenes";
 import type { Frame, Scene, SceneKey } from "./scenes";
 import styles from "./landing.module.css";
 import animStyles from "../svg-animation.module.css";
@@ -20,7 +20,8 @@ import animStyles from "../svg-animation.module.css";
  * The simulator log, formatted like a real `HYDRO_SIM_LOG=1` trace. The log
  * accumulates across all explored instances (with a header between each)
  * before resetting, and the scroll region stays pinned to the bottom so the
- * tail is always visible.
+ * tail is always visible. Line content is data-driven (see SimLogLine),
+ * including failing assertions rendered in red.
  */
 function SimLog({
   frame,
@@ -31,11 +32,6 @@ function SimLog({
   done: boolean;
   onRestart: () => void;
 }) {
-  const memberColors: Record<number, string> = {
-    0: COLOR_VARS.client,
-    1: COLOR_VARS.chanB,
-    2: COLOR_VARS.pink,
-  };
   const log = frame.log ?? [];
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -46,8 +42,14 @@ function SimLog({
   return (
     <div className={`${styles.extraPanel} ${styles.simLogPanel}`}>
       <span className={styles.logCorner}>
-        <span className={styles.instanceChip}>
-          instance {frame.instanceNum}/{SIM_TOTAL_INSTANCES}
+        <span
+          className={`${styles.instanceChip} ${
+            frame.failed ? styles.instanceChipFail : ""
+          }`}
+        >
+          {frame.failed
+            ? "bug found!"
+            : `instance ${frame.instanceNum}/${frame.totalInstances}`}
         </span>
         <button
           type="button"
@@ -84,29 +86,44 @@ function SimLog({
             case "context":
               return (
                 <div key={line.key} className={styles.logContext}>
-                  {"--> "}.entries_partially_ordered(nondet!(…))
+                  {line.text}
                 </div>
               );
             case "decision":
               return (
                 <div key={line.key} className={styles.logLine}>
-                  {"     ^ observed interleaving: [("}
-                  <span
-                    style={{
-                      color: memberColors[line.member],
-                      fontWeight: 700,
-                    }}
-                  >
-                    MemberId({line.member})
-                  </span>
-                  {`, "${line.msg}")]`}
+                  {line.parts.map((part, i) => (
+                    <span
+                      key={i}
+                      style={
+                        part.color
+                          ? {
+                              color: COLOR_VARS[part.color],
+                              fontWeight: part.bold ? 700 : undefined,
+                            }
+                          : undefined
+                      }
+                    >
+                      {part.text}
+                    </span>
+                  ))}
                 </div>
               );
             case "ok":
               return (
                 <div key={line.key} className={styles.logOk}>
-                  ✓ assert!(pos("a1") &lt; pos("a2")) passed
+                  {line.text}
                 </div>
+              );
+            case "fail":
+              return (
+                <React.Fragment key={line.key}>
+                  {line.lines.map((text, i) => (
+                    <div key={i} className={styles.logFail}>
+                      {text}
+                    </div>
+                  ))}
+                </React.Fragment>
               );
             default:
               return null;

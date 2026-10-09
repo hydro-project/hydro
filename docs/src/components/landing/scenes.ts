@@ -1,5 +1,6 @@
 /**
- * Scene definitions for the landing-page pinned flow graph.
+ * Scene definitions and animation choreography for the landing-page pinned
+ * flow graph.
  *
  * Each scene describes the diagram for one section of the scrollytelling
  * landing page. Elements carry stable IDs so that the graph can smoothly
@@ -7,8 +8,26 @@
  * that appear/disappear fade in/out. Scenes may have entirely different
  * layouts and numbers of elements.
  *
+ * The running example is a two-phase-commit protocol with one fixed
+ * topology across all sections: a Cluster<Participant> (top) and a
+ * Process<Leader> (bottom).
+ *
+ *  - global:      the prepare round — the leader broadcasts a transaction to
+ *                 every participant, each writes its WAL and votes, and the
+ *                 votes flow back, all in one function.
+ *  - correctness: counting votes over a retrying channel is rejected at
+ *                 compile time: a re-sent Yes would be counted twice — a
+ *                 phantom quorum. No race here; the delivery *cardinality*
+ *                 is the problem.
+ *  - sim:         a buggy leader treats a majority (2 of 3) of votes as a
+ *                 commit quorum; the simulator finds the vote arrival order
+ *                 where both Yes votes win the race and the veto is cut off.
+ *
  * Coordinate space: viewBox 0 0 440 420 (see VIEWBOX below).
  */
+
+import { simFrame, simLastStep } from "./sim-script";
+import type { SimScript } from "./sim-script";
 
 export const VIEWBOX = { width: 440, height: 420 };
 
@@ -93,13 +112,30 @@ export interface LabelSpec {
   mono?: boolean;
 }
 
-export interface SwapPacketsSpec {
-  x: number;
-  yTop: number;
-  a: { label: string; color: ColorToken };
-  b: { label: string; color: ColorToken };
-  /** Anchor of the fold's result string, rendered next to the result node. */
-  output?: { x: number; y: number };
+/**
+ * A "ghost" delivery: a message whose *cardinality* is non-deterministic.
+ * The ghost pill slowly pulses between barely-there and fully delivered
+ * (e.g. a retry that may or may not arrive), and the optional result
+ * preview crossfades between two values in sync (e.g. `n = 1` ↔ `n = 2`).
+ */
+export interface GhostSpec {
+  /** A solid delivery drawn above the ghost (optional anchor). */
+  solid?: { x: number; y: number };
+  /** The pulsing ghost delivery. */
+  ghost: { x: number; y: number };
+  label: string;
+  color: ColorToken;
+  /** Note rendered beside the ghost (e.g. "retry?"), pulsing with it. */
+  ghostNote?: string;
+  output?: {
+    x: number;
+    y: number;
+    prefix: string;
+    /** Value shown while the ghost is fully delivered. */
+    solid: string;
+    /** Value shown while the ghost is pale. */
+    pale: string;
+  };
 }
 
 export interface Scene {
@@ -108,7 +144,7 @@ export interface Scene {
   ops: OpSpec[];
   edges: EdgeSpec[];
   labels: LabelSpec[];
-  swapPackets?: SwapPacketsSpec;
+  ghost?: GhostSpec;
 }
 
 export type SceneKey =
@@ -131,19 +167,34 @@ export interface PacketSpec {
   enterFrom?: { x: number; y: number };
 }
 
+/** A colored piece of a simulator-trace line. */
+export interface LogPart {
+  text: string;
+  color?: ColorToken;
+  bold?: boolean;
+}
+
 export type SimLogLine =
-  | { type: "header" | "context" | "ok"; key: string }
-  | { type: "decision"; key: string; member: number; msg: string };
+  | { type: "header"; key: string }
+  | { type: "context"; key: string; text: string }
+  | { type: "decision"; key: string; parts: LogPart[] }
+  | { type: "ok"; key: string; text: string }
+  | { type: "fail"; key: string; lines: string[] };
 
 export interface Frame {
   packets: PacketSpec[];
   activeLines: number[];
   instanceNum?: number;
+  totalInstances?: number;
   log?: SimLogLine[];
   flashOp?: string | null;
   flashLines?: number[];
   flashKey?: number;
   activeMember?: number | null;
+  /** Code lines highlighted in "failing assertion" red. */
+  failLines?: number[];
+  /** The current sim instance has hit a failing assertion. */
+  failed?: boolean;
 }
 
 // Color *tokens* are resolved to CSS variables so they adapt to dark mode.
@@ -162,8 +213,31 @@ export const COLOR_VARS: Record<ColorToken, string> = {
 // Shared geometry
 // ---------------------------------------------------------------------------
 
-const GROUP_CLIENT = { x: 220, y: 109, w: 380, h: 138 };
-const GROUP_SERVER = { x: 220, y: 327, w: 380, h: 138 };
+const GROUP_TOP = { x: 220, y: 109, w: 380, h: 138 };
+const GROUP_BOTTOM = { x: 220, y: 327, w: 380, h: 138 };
+
+const PARTICIPANTS_GROUP: GroupSpec = {
+  id: "g-client",
+  ...GROUP_TOP,
+  color: "client",
+  dashed: true,
+  label: "Cluster<Participant>",
+  labelMono: true,
+  labelBold: true,
+  stack: true,
+  // Card colors for each member of the cluster: the front card is member 0,
+  // the cards peeking out behind are members 1 and 2.
+  memberColors: ["client", "chanB", "pink"],
+};
+
+const LEADER_GROUP: GroupSpec = {
+  id: "g-server",
+  ...GROUP_BOTTOM,
+  color: "server",
+  dashed: true,
+  label: "Process<Leader>",
+  labelMono: true,
+};
 
 // ---------------------------------------------------------------------------
 // Scenes
@@ -252,7 +326,7 @@ export const SCENES: Record<SceneKey, Scene> = {
     groups: [
       {
         id: "g-client",
-        ...GROUP_CLIENT,
+        ...GROUP_TOP,
         color: "grey",
         dashed: false,
         label: "node 1",
@@ -260,7 +334,7 @@ export const SCENES: Record<SceneKey, Scene> = {
       },
       {
         id: "g-server",
-        ...GROUP_SERVER,
+        ...GROUP_BOTTOM,
         color: "grey",
         dashed: false,
         label: "node 2",
@@ -312,36 +386,77 @@ export const SCENES: Record<SceneKey, Scene> = {
     ],
   },
 
-  /** Section: "Hydro is global" */
+  /** Section: "Hydro is global" — the prepare round of 2PC. */
   global: {
-    groups: [
-      {
-        id: "g-client",
-        ...GROUP_CLIENT,
-        color: "client",
-        dashed: true,
-        label: "Process<Client>",
-        labelMono: true,
-      },
-      {
-        id: "g-server",
-        ...GROUP_SERVER,
-        color: "server",
-        dashed: true,
-        label: "Process<Server>",
-        labelMono: true,
-      },
-    ],
+    groups: [PARTICIPANTS_GROUP, LEADER_GROUP],
     bars: [],
     ops: [
-      { id: "op-src", x: 180, y: 126, color: "client", label: "requests", labelPos: "top" },
-      { id: "op-sink", x: 260, y: 126, color: "client", label: "responses", labelPos: "top" },
-      { id: "op-agg", x: 180, y: 330, color: "server" },
-      { id: "op-out", x: 260, y: 330, color: "server" },
+      { id: "op-prep", x: 180, y: 126, color: "client" },
+      { id: "op-src", x: 260, y: 126, color: "client" },
+      { id: "op-txn", x: 180, y: 330, color: "server", label: "txns" },
+      { id: "op-agg", x: 260, y: 330, color: "server", label: "votes" },
     ],
     edges: [
       {
         id: "e-req",
+        x1: 180,
+        y1: 314,
+        x2: 180,
+        y2: 140,
+        color: "network",
+        dashed: false,
+        opacity: 1,
+        label: "broadcast",
+        labelX: 138,
+        labelY: 228,
+      },
+      {
+        id: "e-map",
+        x1: 194,
+        y1: 126,
+        x2: 246,
+        y2: 126,
+        color: "client",
+        dashed: false,
+        opacity: 1,
+        label: "map(prepare)",
+        labelX: 220,
+        labelY: 100,
+      },
+      // The votes pipeline (op-src → e-resp → op-agg) persists into the
+      // correctness and sim scenes: it slides left as one unit.
+      {
+        id: "e-resp",
+        x1: 260,
+        y1: 140,
+        x2: 260,
+        y2: 314,
+        color: "network",
+        dashed: false,
+        opacity: 1,
+        label: "TCP",
+        labelX: 284,
+        labelY: 228,
+      },
+    ],
+    labels: [],
+  },
+
+  /**
+   * Section: "Hydro catches distributed bugs at compile time" — counting
+   * votes on an at-least-once channel is rejected.
+   */
+  correctness: {
+    groups: [PARTICIPANTS_GROUP, LEADER_GROUP],
+    bars: [],
+    ops: [
+      { id: "op-src", x: 180, y: 126, color: "client", label: "votes", labelPos: "top" },
+      { id: "op-agg", x: 180, y: 330, color: "server" },
+      { id: "op-out", x: 260, y: 330, color: "error", error: true },
+    ],
+    edges: [
+      {
+        id: "e-resp",
         x1: 180,
         y1: 140,
         x2: 180,
@@ -351,86 +466,10 @@ export const SCENES: Record<SceneKey, Scene> = {
         opacity: 1,
         label: "TCP",
         labelX: 156,
-        labelY: 218,
+        labelY: 228,
       },
       {
-        id: "e-map",
-        x1: 194,
-        y1: 330,
-        x2: 246,
-        y2: 330,
-        color: "server",
-        dashed: false,
-        opacity: 1,
-        label: "map(to_uppercase)",
-        labelX: 220,
-        labelY: 358,
-      },
-      {
-        id: "e-resp",
-        x1: 260,
-        y1: 314,
-        x2: 260,
-        y2: 140,
-        color: "network",
-        dashed: false,
-        opacity: 1,
-        label: "TCP",
-        labelX: 284,
-        labelY: 218,
-      },
-    ],
-    labels: [],
-  },
-
-  /** Section: "Compile-time distributed correctness" */
-  correctness: {
-    groups: [
-      {
-        id: "g-client",
-        ...GROUP_CLIENT,
-        color: "client",
-        dashed: true,
-        label: "Cluster<Client>",
-        labelMono: true,
-        labelBold: true,
-        stack: true,
-        memberColors: ["client", "chanB", "pink"],
-      },
-      {
-        id: "g-server",
-        ...GROUP_SERVER,
-        color: "server",
-        dashed: true,
-        label: "Process<Server>",
-        labelMono: true,
-      },
-    ],
-    bars: [],
-    ops: [
-      { id: "op-src", x: 180, y: 126, color: "client", label: "words", labelPos: "top" },
-      { id: "op-agg", x: 180, y: 330, color: "server" },
-      {
-        id: "op-out",
-        x: 260,
-        y: 330,
-        color: "error",
-        error: true,
-      },
-    ],
-    edges: [
-      {
-        id: "e-req",
-        x1: 180,
-        y1: 140,
-        x2: 180,
-        y2: 314,
-        color: "network",
-        dashed: false,
-        opacity: 1,
-      },
-      {
-        id: "e-map",
+        id: "e-fold",
         x1: 194,
         y1: 330,
         x2: 246,
@@ -438,7 +477,7 @@ export const SCENES: Record<SceneKey, Scene> = {
         color: "error",
         dashed: false,
         opacity: 1,
-        label: "fold(concat)",
+        label: "fold(+1)",
         labelX: 220,
         labelY: 358,
       },
@@ -446,49 +485,31 @@ export const SCENES: Record<SceneKey, Scene> = {
     labels: [
       {
         id: "l-noorder",
-        x: 318,
+        x: 320,
         y: 210,
-        lines: ["messages", "interleave"],
+        lines: ["one vote,", "delivered twice?"],
         italic: true,
       },
     ],
-    // Two in-flight packets pinned on the UDP edge that continually swap
-    // positions (rendered with a looping arc animation, see
-    // PinnedFlowGraph), plus the fold's result string shown next to the
-    // result node, its letters swapping in sync.
-    swapPackets: {
-      x: 202,
-      yTop: 202,
-      a: { label: "a", color: "client" },
-      b: { label: "b", color: "chanB" },
-      output: { x: 288, y: 330 },
+    // A vote and its retry: the second copy pulses between barely-there and
+    // fully delivered, and the tally next to the result node flickers
+    // between 1 and 2 in sync — the count is not well-defined.
+    ghost: {
+      solid: { x: 204, y: 196 },
+      ghost: { x: 204, y: 230 },
+      label: "Yes",
+      color: "client",
+      ghostNote: "retry?",
+      output: { x: 286, y: 330, prefix: "n = ", solid: "2", pale: "1" },
     },
   },
 
-  /** Section: "Hydro lets you write distributed tests" */
+  /**
+   * Section: "Hydro lets you write distributed tests" — three votes race to
+   * a leader with a majority-quorum bug.
+   */
   sim: {
-    groups: [
-      {
-        id: "g-client",
-        ...GROUP_CLIENT,
-        color: "client",
-        dashed: true,
-        label: "Cluster<Client>",
-        labelMono: true,
-        stack: true,
-        // Card colors for each member of the cluster: the front card is
-        // member 0, the cards peeking out behind are members 1 and 2.
-        memberColors: ["client", "chanB", "pink"],
-      },
-      {
-        id: "g-server",
-        ...GROUP_SERVER,
-        color: "server",
-        dashed: true,
-        label: "Process<Server>",
-        labelMono: true,
-      },
-    ],
+    groups: [PARTICIPANTS_GROUP, LEADER_GROUP],
     bars: [],
     ops: [
       {
@@ -496,7 +517,7 @@ export const SCENES: Record<SceneKey, Scene> = {
         x: 220,
         y: 126,
         color: "client",
-        label: "events",
+        label: "votes",
         labelPos: "top",
       },
       {
@@ -504,12 +525,12 @@ export const SCENES: Record<SceneKey, Scene> = {
         x: 220,
         y: 330,
         color: "server",
-        label: "entries_partially_ordered",
+        label: "limit(2) “quorum”",
       },
     ],
     edges: [
       {
-        id: "e-req",
+        id: "e-resp",
         x1: 220,
         y1: 140,
         x2: 220,
@@ -522,44 +543,34 @@ export const SCENES: Record<SceneKey, Scene> = {
     labels: [],
   },
 
-  /** Section: "Native cloud infrastructure" */
+  /** Section: "Native cloud infrastructure" (section currently disabled) */
   cloud: {
     groups: [
       {
-        id: "g-client",
-        ...GROUP_CLIENT,
-        color: "client",
-        dashed: true,
-        label: "Process<Client>",
+        ...PARTICIPANTS_GROUP,
         sublabel: "us-east-1",
-        labelMono: true,
         badge: "ECS",
       },
       {
-        id: "g-server",
-        ...GROUP_SERVER,
-        color: "server",
-        dashed: true,
-        label: "Process<Server>",
+        ...LEADER_GROUP,
         sublabel: "us-west-2",
-        labelMono: true,
         badge: "ECS",
       },
     ],
     bars: [],
     ops: [
-      { id: "op-src", x: 180, y: 126, color: "client", label: "requests", labelPos: "top" },
-      { id: "op-sink", x: 260, y: 126, color: "client", label: "responses", labelPos: "top" },
-      { id: "op-agg", x: 180, y: 330, color: "server" },
-      { id: "op-out", x: 260, y: 330, color: "server" },
+      { id: "op-prep", x: 180, y: 126, color: "client" },
+      { id: "op-src", x: 260, y: 126, color: "client" },
+      { id: "op-txn", x: 180, y: 330, color: "server", label: "txns" },
+      { id: "op-agg", x: 260, y: 330, color: "server", label: "votes" },
     ],
     edges: [
       {
         id: "e-req",
         x1: 180,
-        y1: 140,
+        y1: 314,
         x2: 180,
-        y2: 314,
+        y2: 140,
         color: "network",
         dashed: false,
         opacity: 1,
@@ -567,22 +578,22 @@ export const SCENES: Record<SceneKey, Scene> = {
       {
         id: "e-map",
         x1: 194,
-        y1: 330,
+        y1: 126,
         x2: 246,
-        y2: 330,
-        color: "server",
+        y2: 126,
+        color: "client",
         dashed: false,
         opacity: 1,
-        label: "map(to_uppercase)",
+        label: "map(prepare)",
         labelX: 220,
-        labelY: 358,
+        labelY: 100,
       },
       {
         id: "e-resp",
         x1: 260,
-        y1: 314,
+        y1: 140,
         x2: 260,
-        y2: 140,
+        y2: 314,
         color: "network",
         dashed: false,
         opacity: 1,
@@ -593,163 +604,82 @@ export const SCENES: Record<SceneKey, Scene> = {
 };
 
 // ---------------------------------------------------------------------------
-// Animation frames (step-driven choreography)
+// Sim choreography
 // ---------------------------------------------------------------------------
 
 /**
- * Sim scene: a cluster of clients emits events ("a1"/"a2" from member 0,
- * "b1" from member 1) into an ordered event log on the server. Each send is
- * animated one at a time (with the sending member's card highlighted in the
- * stack); the messages accumulate at the input of
- * `entries_partially_ordered`, and the simulator then makes a decision at
- * the `nondet!` point for each release: the operator and the nondet code
- * line flash, one message passes through, and a trace line is appended.
- *
- * The real test for this example lives at
- * `hydro_test/src/distributed/event_log.rs`; the simulator explores exactly
- * 3 interleavings (all arrival orders of [a1, a2] × [b1] that preserve
- * per-member prefix order), which is what we replay here.
- *
- * An instance is 9 steps: three sends, accumulate, three releases, assert,
- * pause.
+ * Three participants vote on a transaction (No from member 0, Yes from
+ * members 1 and 2) and a buggy leader decides on the first two votes to
+ * arrive — a majority, not unanimity. The simulator explores the three
+ * distinct arrival orders; in the last one both Yes votes win the race, the
+ * assertion panics, and the veto is still sitting in the queue.
  */
-const SIM_ORDERS = [
-  ["a1", "a2", "b1"],
-  ["a1", "b1", "a2"],
-  ["b1", "a1", "a2"],
-];
-const SIM_MSGS: Record<string, { member: number; color: ColorToken; sendPhase: number; sendLine: number }> = {
-  a1: { member: 0, color: "client", sendPhase: 0, sendLine: 9 },
-  a2: { member: 0, color: "client", sendPhase: 1, sendLine: 10 },
-  b1: { member: 1, color: "chanB", sendPhase: 2, sendLine: 11 },
+const VOTE_SPECS = {
+  n0: { member: 0, color: "client" as const, text: "No" },
+  y1: { member: 1, color: "chanB" as const, text: "Yes" },
+  y2: { member: 2, color: "pink" as const, text: "Yes" },
 };
-const SIM_MSG_PRIORITY = ["a1", "a2", "b1"];
-const SIM_SPAWN = { x: 220, y: 146 };
-const SIM_QUEUE_X = 220;
-const SIM_QUEUE_BASE_Y = 292;
-const SIM_QUEUE_SPACING = 22;
-const SIM_RELEASE_POS = { x: 220, y: 352 };
-const SIM_NONDET_LINE = 5;
-export const SIM_TOTAL_INSTANCES = 3;
-/** Steps per instance x instances; the sim animation runs once and stops here. */
-export const SIM_LAST_STEP = SIM_TOTAL_INSTANCES * 9 - 1;
 
-export function simFrame(step: number): Frame {
-  const per = 9;
-  const inst = Math.floor(step / per) % SIM_TOTAL_INSTANCES;
-  const phase = step % per;
-  const order = SIM_ORDERS[inst];
-  const instanceNum = inst + 1;
-
-  // How many releases have happened so far (releases occur at phases 4..6).
-  const released = Math.max(0, Math.min(3, phase - 3));
-  const releasedSet = new Set(order.slice(0, released));
-  const waiting = SIM_MSG_PRIORITY.filter((m) => !releasedSet.has(m));
-
-  const packets: PacketSpec[] = [];
-  for (const msg of SIM_MSG_PRIORITY) {
-    const { color, sendPhase } = SIM_MSGS[msg];
-    if (phase < sendPhase) continue; // not sent yet
-    const justReleased = released > 0 && order[released - 1] === msg;
-    if (phase === sendPhase) {
-      // Sent this step: spawns at the cluster's `events` operator and
-      // travels to its queue slot *while* its send line is highlighted.
-      const slot = waiting.indexOf(msg);
-      packets.push({
-        id: `pkt-${msg}-${inst}`,
-        x: SIM_QUEUE_X,
-        y: SIM_QUEUE_BASE_Y - slot * SIM_QUEUE_SPACING,
-        enterFrom: { x: SIM_SPAWN.x, y: SIM_SPAWN.y },
-        color,
-        label: msg,
-        pill: true,
-        opacity: 1,
-      });
-    } else if (justReleased) {
-      // Chosen by the simulator: passes through the operator and fades.
-      packets.push({
-        id: `pkt-${msg}-${inst}`,
-        x: SIM_RELEASE_POS.x,
-        y: SIM_RELEASE_POS.y,
-        color,
-        label: msg,
-        pill: true,
-        opacity: 0,
-      });
-    } else if (waiting.includes(msg)) {
-      // Accumulated at the operator's input, in arrival order.
-      const slot = waiting.indexOf(msg);
-      packets.push({
-        id: `pkt-${msg}-${inst}`,
-        x: SIM_QUEUE_X,
-        y: SIM_QUEUE_BASE_Y - slot * SIM_QUEUE_SPACING,
-        color,
-        label: msg,
-        pill: true,
-        opacity: 1,
-      });
-    }
-  }
-
-  // Sim log in the real `HYDRO_SIM_LOG=1` trace format. The log accumulates
-  // across all instances of the current exploration cycle (resetting when
-  // instance 1 starts over), with a "New Simulation Instance" header between
-  // instances. The nondet context line appears together with the first
-  // released element of each instance.
-  const log: SimLogLine[] = [];
-  for (let i = 0; i <= inst; i++) {
-    const isCurrent = i === inst;
-    const instOrder = SIM_ORDERS[i];
-    const rel = isCurrent ? released : 3;
-    log.push({ type: "header", key: `h${i}` });
-    if (rel > 0) {
-      log.push({ type: "context", key: `c${i}` });
-      for (let k = 0; k < rel; k++) {
-        const msg = instOrder[k];
-        log.push({
-          type: "decision",
-          key: `d${i}-${k}`,
-          member: SIM_MSGS[msg].member,
-          msg,
-        });
-      }
-    }
-    if (!isCurrent || phase >= 7) {
-      log.push({ type: "ok", key: `ok${i}` });
-    }
-  }
-
-  // Code line highlights stay in the test body; the nondet line in the
-  // dataflow definition *flashes* whenever the simulator makes a decision.
-  let activeLines: number[] = [];
-  let activeMember: number | null = null;
-  if (phase <= 2) {
-    const sending = SIM_MSG_PRIORITY.find(
-      (m) => SIM_MSGS[m].sendPhase === phase,
-    );
-    if (sending) {
-      activeLines = [SIM_MSGS[sending].sendLine];
-      activeMember = SIM_MSGS[sending].member;
-    }
-  } else if (phase >= 3 && phase <= 6) activeLines = [13];
-  else if (phase === 7) activeLines = [14];
-
-  const deciding = phase >= 4 && phase <= 6;
+const arrival = (id: keyof typeof VOTE_SPECS) => {
+  const spec = VOTE_SPECS[id];
   return {
-    packets,
-    instanceNum,
-    log,
-    // The operator and the `nondet!` code line flash on release decisions.
-    flashOp: deciding ? "op-agg" : null,
-    flashLines: deciding ? [SIM_NONDET_LINE] : [],
-    flashKey: step,
-    activeMember,
-    activeLines,
+    msgs: [id as string],
+    decision: [
+      { text: "     ^ releasing items: [(" },
+      { text: `MemberId(${spec.member})`, color: spec.color, bold: true },
+      { text: `, ${spec.text})]` },
+    ],
   };
-}
+};
+
+const OK_TEXT = "✓ assert!(seen.contains(&No)) passed";
+
+const SIM_SCRIPT: SimScript = {
+  msgs: {
+    n0: { label: "No", color: "client", member: 0, spawn: { x: 220, y: 146 }, sendLine: 12 },
+    y1: { label: "Yes", color: "chanB", member: 1, spawn: { x: 220, y: 146 }, sendLine: 13 },
+    y2: { label: "Yes", color: "pink", member: 2, spawn: { x: 220, y: 146 }, sendLine: 14 },
+  },
+  sendOrder: ["n0", "y1", "y2"],
+  queue: { x: 220, baseY: 292, spacing: 22 },
+  releasePos: { x: 220, y: 352 },
+  releaseOpId: "op-agg",
+  contextText: "--> .entries_partially_ordered(nondet!(…))",
+  flashLines: [5, 6],
+  collectLines: [16],
+  assertLines: [17],
+  instances: [
+    // `collect()` returns as soon as `limit(2)` completes the stream, so
+    // each instance releases exactly two votes; the third is never even
+    // looked at (it stays in the queue).
+    {
+      // The No arrives within the first two votes: the veto is seen.
+      batches: [arrival("n0"), arrival("y1")],
+      outcome: { type: "ok", text: OK_TEXT },
+    },
+    {
+      batches: [arrival("y1"), arrival("n0")],
+      outcome: { type: "ok", text: OK_TEXT },
+    },
+    {
+      // Both Yes votes win the race: `collect()` returns [Yes, Yes] and
+      // the assertion panics on the spot — the veto still in the queue.
+      batches: [arrival("y1"), arrival("y2")],
+      outcome: {
+        type: "fail",
+        lines: [
+          "✗ panicked: assertion failed: seen.contains(&Vote::No)",
+        ],
+      },
+    },
+  ],
+};
+
+/** Last animation step of the sim scene; the animation pauses here. */
+export const SIM_LAST_STEP = simLastStep(SIM_SCRIPT);
 
 /** Compute the animation frame for the active scene at a given step. */
 export function computeFrame(sceneKey: SceneKey, step: number): Frame {
-  if (sceneKey === "sim") return simFrame(step);
+  if (sceneKey === "sim") return simFrame(SIM_SCRIPT, step);
   return { packets: [], activeLines: [] };
 }

@@ -17,7 +17,7 @@ pub fn escape_mermaid(string: &str) -> String {
         .replace('#', "&num;")
         .replace('\n', "<br>")
         // Handle code block markers
-        .replace("`", "&#96;")
+        .replace('`', "&#96;")
         // Handle parentheses that can conflict with Mermaid syntax
         .replace('(', "&#40;")
         .replace(')', "&#41;")

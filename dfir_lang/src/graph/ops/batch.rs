@@ -6,6 +6,13 @@ use super::{
 /// Given an _unbounded_ input stream, emits values arbitrarily split into batches over multiple iterations in the same order.
 ///
 /// Will cause additional loop iterations as long as new values arrive.
+///
+/// `batch()` is one of three loop-ingress ("windowing") operators, which differ only in whether
+/// they cause the surrounding `loop { ... }` to fire:
+/// - `batch()` triggers the loop only when its windowed input is non-empty.
+/// - `batch_lazy()` never triggers the loop on its own; its data is only observed if the loop
+///   fires for some other reason (otherwise dropped at tick end).
+/// - `batch_eager()` always triggers the loop, even when the windowed input is empty.
 pub const BATCH: OperatorConstraints = OperatorConstraints {
     name: "batch",
     categories: &[OperatorCategory::Windowing],

@@ -13,7 +13,7 @@ use std::process::Stdio;
 use std::rc::Rc;
 
 use bytes::{Bytes, BytesMut};
-use dfir_lang::graph::DfirGraph;
+use dfir_lang::graph::{AsCodeOptions, DfirGraph};
 use futures::{Sink, Stream};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -241,6 +241,7 @@ impl Node for MaelstromProcess {
         _graph: DfirGraph,
         _extra_stmts: &[syn::Stmt],
         _sidecars: &[syn::Expr],
+        _as_code_options: &AsCodeOptions,
     ) {
         panic!("Maelstrom deployment does not support processes")
     }
@@ -273,11 +274,13 @@ impl Node for MaelstromCluster {
         graph: DfirGraph,
         extra_stmts: &[syn::Stmt],
         sidecars: &[syn::Expr],
+        as_code_options: &AsCodeOptions,
     ) {
         let (bin_name, config) = create_graph_trybuild(
             graph,
             extra_stmts,
             sidecars,
+            as_code_options,
             self.name_hint.as_deref(),
             crate::compile::trybuild::generate::DeployMode::Maelstrom,
             LinkingMode::Dynamic,
@@ -310,6 +313,7 @@ impl Node for MaelstromExternal {
         _graph: DfirGraph,
         _extra_stmts: &[syn::Stmt],
         _sidecars: &[syn::Expr],
+        _as_code_options: &AsCodeOptions,
     ) {
         unreachable!()
     }
@@ -430,6 +434,7 @@ impl MaelstromDeployment {
     }
 
     /// Set the node count.
+    #[must_use]
     pub fn node_count(mut self, count: usize) -> Self {
         self.node_count = count;
         self
@@ -442,12 +447,14 @@ impl MaelstromDeployment {
     }
 
     /// Set the time limit in seconds.
+    #[must_use]
     pub fn time_limit(mut self, seconds: u64) -> Self {
         self.time_limit = Some(seconds);
         self
     }
 
     /// Set the request rate per second.
+    #[must_use]
     pub fn rate(mut self, rate: u64) -> Self {
         self.rate = Some(rate);
         self

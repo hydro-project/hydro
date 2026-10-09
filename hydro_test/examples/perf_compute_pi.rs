@@ -138,7 +138,8 @@ async fn main() {
     let mut optimized = if args.tracing {
         // With tracing.
         let setup_command = setup_command.unwrap_or_default();
-        built.with_default_optimize()
+        built
+            .with_default_optimize()
             //[trybuildhost]//
             .with_process(
                 &leader,
@@ -158,7 +159,7 @@ async fn main() {
                             .setup_command(setup_command)
                             .build(),
                     ),
-                    //[/tracing]//
+                //[/tracing]//
             )
             .with_cluster(
                 &cluster,

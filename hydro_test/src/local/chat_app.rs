@@ -16,8 +16,14 @@ pub fn chat_app<'a>(
         let current_users = users_stream.collect_vec();
 
         sliced! {
-            let users = use::snapshot(current_users, nondet_user_arrival_broadcast);
-            let messages = use::batch(messages, nondet_user_arrival_broadcast);
+            let users = use::snapshot(current_users, nondet!(
+                /// user snapshot timing is captured by the caller's guard
+                nondet_user_arrival_broadcast
+            ));
+            let messages = use::batch(messages, nondet!(
+                /// message batching timing is captured by the caller's guard
+                nondet_user_arrival_broadcast
+            ));
 
             users.flatten_ordered().cross_product(messages).weaken_ordering::<NoOrder>()
         }

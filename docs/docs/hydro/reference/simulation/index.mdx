@@ -3,6 +3,8 @@ Hydro comes with a built-in deterministic simulation environment that lets you t
 
 In many cases, the Hydro simulator can perform **exhaustive** checks, which ensure that your application will behave correctly in _all_ possible distributed executions. For particularly complex tests where there are too many scenarios to check, the Hydro simulator can use [coverage-guided fuzzing](https://en.wikipedia.org/wiki/Fuzzing) to _intelligently_ explore the space of executions and find bugs.
 
+Beyond automatic exploration, tests can take manual control of individual decision points with [simulator hooks](./scripting.mdx), pinning a specific scenario while everything else continues to be explored. A test that scripts every decision can run in [deterministic mode](./deterministic.mdx), which executes exactly one interleaving with no exploration at all.
+
 Writing a simulation test involves three steps:
 1. Defining your Hydro application, with regular Hydro APIs
 2. Creating external inputs / outputs that you will use in the test
@@ -18,3 +20,8 @@ The simulator uses the exact same Hydro code you will run in production, and req
 | Batching / Snapshotting             | Partial             | Supported on all live collections except `Optional` |
 | Unordered Reductions                        | Full             | Built-in operators like `count` are accelerated, but not arbitrary `{fold/reduce}` |
 | Non-Deterministic Observations | Limited             | `assume_ordering::<TotalOrder>` is supported, `assume_retries::<ExactlyOnce>` is not supported |
+
+## Code Coverage
+Simulation tests execute your Hydro code inside a dynamic library that is compiled on the fly when the test runs, rather than inside the test binary itself. The simulator compiles that library with exactly the rustflags your crate was compiled with — including `-C instrument-coverage`, whether it came from `RUSTFLAGS`, cargo config, or `--config` — so lines exercised only through the simulator are attributed to your source files like any other test coverage.
+
+One note for custom coverage pipelines: the coverage mapping for simulator-executed code lives in the compiled library itself, not in the test binary. During a coverage run the simulator keeps a copy of each compiled library under `target/debug/deps/hydro-coverage/`, so tools like `grcov` or `llvm-cov` that take explicit binary paths will find these mappings whether they are pointed at `target/debug` or `target/debug/deps` alongside the test binaries when generating reports.

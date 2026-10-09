@@ -71,7 +71,7 @@ pub struct FlatGraphBuilder {
     /// Use statements.
     uses: Vec<ItemUse>,
 
-    /// If the flat graph is being loaded as a module, then two initial ModuleBoundary nodes are inserted into the graph. One
+    /// If the flat graph is being loaded as a module, then two initial `ModuleBoundary` nodes are inserted into the graph. One
     /// for the input into the module and one for the output out of the module.
     module_boundary_nodes: Option<(GraphNodeId, GraphNodeId)>,
 }
@@ -956,7 +956,7 @@ impl FlatGraphBuilder {
     }
 
     /// Warns about unused port indexing referenced in [`Self::varname_ends`].
-    /// https://github.com/hydro-project/hydro/issues/1108
+    /// <https://github.com/hydro-project/hydro/issues/1108>
     fn warn_unused_port_indexing(&mut self) {
         for varname_info in self.varname_ends.values() {
             if !varname_info.inn_used {
@@ -1127,6 +1127,33 @@ impl FlatGraphBuilder {
                             Level::Error,
                             format!(
                                 "Windowing operator `{}(...)` must be the first input operator into a `loop {{ ... }} context.",
+                                op_inst.op_constraints.name
+                            )
+                        ));
+                    }
+                }
+                Some(FloType::WindowingEager) => {
+                    if !is_input {
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            format!(
+                                "Windowing operator `{}(...)` must be the first input operator into a `loop {{ ... }}` context.",
+                                op_inst.op_constraints.name
+                            )
+                        ));
+                    } else if loop_id
+                        .and_then(|lid| self.flat_graph.loop_parent(lid))
+                        .is_some()
+                    {
+                        // An eager windowing operator forces the loop to always fire. In a nested
+                        // loop this would prevent the fixpoint iteration from ever terminating, so
+                        // it is only allowed at the entry of a root-level loop.
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            format!(
+                                "Eager windowing operator `{}(...)` is only allowed at the entry of a root-level `loop {{ ... }}` context, not a nested loop.",
                                 op_inst.op_constraints.name
                             )
                         ));

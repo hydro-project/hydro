@@ -1,0 +1,7 @@
+error[E0599]: no method named `on` found for struct `OrderingHook<u32>` in the current scope
+  --> tests/compile-fail/stable/sim_hook_on_member_requires_cluster_scope.rs:13:28
+   |
+13 |     let _scoped = ordering.on(0);
+   |                            ^^ method not found in `OrderingHook<u32>`
+   |
+   = note: the method was found for `OrderingHook<T, B, OnCluster<C>>`

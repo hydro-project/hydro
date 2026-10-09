@@ -78,8 +78,8 @@ mod tests {
     use crate::push::test_utils::TestPush;
     use crate::push::{PushStep, sink_compat};
 
-    /// SendSink must not re-poll the pull after it returned Ended,
-    /// even if poll_flush returns Pending.
+    /// `SendSink` must not re-poll the pull after it returned Ended,
+    /// even if `poll_flush` returns Pending.
     #[test]
     fn send_sink_no_repoll_after_ended_on_flush_pending() {
         let pull = TestPull::items_fused(0..2);

@@ -406,7 +406,7 @@ impl DfirGraph {
 
     /// Inserts a node between two existing nodes connected by the given `edge_id`.
     ///
-    /// `edge`: (src, dst, dst_idx)
+    /// `edge`: (src, dst, `dst_idx`)
     ///
     /// Before: A (src) ------------> B (dst)
     /// After:  A (src) -> X (new) -> B (dst)
@@ -585,18 +585,22 @@ impl DfirGraph {
 }
 
 /// Per-node handoff references, in turn grouped by access group.
-/// Map: handoff_node_id -> access_group -> (source `GraphNodeId`, `ResolvedHandoffRef`, `#ref` span)
+/// Map: `handoff_node_id` -> `access_group` -> (source `GraphNodeId`, `ResolvedHandoffRef`, `#ref` span)
 pub type NodeHandoffReferenceGroups<'a> =
     BTreeMap<GraphNodeId, BTreeMap<Option<u32>, Vec<(GraphNodeId, &'a ResolvedHandoffRef, Span)>>>;
 
 /// Module methods.
 impl DfirGraph {
-    /// When modules are imported into a flat graph, they come with an input and output ModuleBoundary node.
+    /// When modules are imported into a flat graph, they come with an input and output `ModuleBoundary` node.
     /// The partitioner doesn't understand these nodes and will panic if it encounters them.
-    /// merge_modules removes them from the graph, stitching the input and ouput sides of the ModuleBondaries based on their ports
+    /// `merge_modules` removes them from the graph, stitching the input and output sides of the `ModuleBoundary`s based on their ports.
     /// For example:
-    ///     source_iter([]) -> \[myport\]ModuleBoundary(input)\[my_port\] -> map(|x| x) -> ModuleBoundary(output) -> null();
-    /// in the above eaxmple, the \[myport\] port will be used to connect the source_iter with the map that is inside of the module.
+    ///
+    /// ```text
+    /// source_iter([]) -> [myport]ModuleBoundary(input)[my_port] -> map(|x| x) -> ModuleBoundary(output) -> null();
+    /// ```
+    ///
+    /// In the above example, the `[myport]` port will be used to connect the `source_iter` with the `map` that is inside of the module.
     /// The output module boundary has elided ports, this is also used to match up the input/output across the module boundary.
     pub fn merge_modules(&mut self) -> Result<(), Diagnostic> {
         let mod_bound_nodes = self
@@ -652,17 +656,16 @@ impl DfirGraph {
                         mod_succ_ports.keys().map(|x| x.to_string()).join(", ")
                     ),
                 });
-            } else {
-                return Err(Diagnostic {
-                    span: *import_expr,
-                    level: Level::Error,
-                    message: format!(
-                        "The ports out of the module did not match. output: {:?}, expected: {:?}",
-                        mod_succ_ports.keys().map(|x| x.to_string()).join(", "),
-                        mod_pred_ports.keys().map(|x| x.to_string()).join(", "),
-                    ),
-                });
             }
+            return Err(Diagnostic {
+                span: *import_expr,
+                level: Level::Error,
+                message: format!(
+                    "The ports out of the module did not match. output: {:?}, expected: {:?}",
+                    mod_succ_ports.keys().map(|x| x.to_string()).join(", "),
+                    mod_pred_ports.keys().map(|x| x.to_string()).join(", "),
+                ),
+            });
         }
 
         for (port, (pred_edge, pred_port)) in mod_pred_ports {
@@ -861,11 +864,11 @@ impl DfirGraph {
 
     /// Resolve the handoff references via [`Self::node_handoff_references`] for the given `node_id`.
     /// Returns token streams for each reference:
-    /// - For HandoffKind::Singleton: `buf.as_ref().unwrap()` (shared, `&T`) or
+    /// - For `HandoffKind::Singleton`: `buf.as_ref().unwrap()` (shared, `&T`) or
     ///   `buf.as_mut().unwrap()` (mutable, `&mut T`)
-    /// - For HandoffKind::Optional: `&buf` (shared, `&Option<T>`) or
+    /// - For `HandoffKind::Optional`: `&buf` (shared, `&Option<T>`) or
     ///   `&mut buf` (mutable, `&mut Option<T>`)
-    /// - For HandoffKind::Vec: `&buf` (shared, `&Vec<T>`) or
+    /// - For `HandoffKind::Vec`: `&buf` (shared, `&Vec<T>`) or
     ///   `&mut buf` (mutable, `&mut Vec<T>`)
     fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<TokenStream> {
         self.node_handoff_references(node_id)
@@ -1101,7 +1104,24 @@ impl DfirGraph {
             }
         }
 
-        if gate_checks.is_empty() {
+        // An eager windowing operator (`batch_eager()`) forces the loop to fire unconditionally,
+        // even when its windowed input is empty. It is only valid at the entry of a root-level
+        // loop (disallowed in nested loops during validation, since forcing a nested loop to
+        // always fire would prevent its fixpoint iteration from terminating).
+        let has_eager = entry_handoffs.iter().any(|&hoff_id| {
+            self.node_successors(hoff_id)
+                .next()
+                .and_then(|(_, succ)| self.node_op_inst(succ))
+                .is_some_and(|op_inst| {
+                    op_inst.op_constraints.flo_type == Some(FloType::WindowingEager)
+                })
+        });
+
+        if has_eager && is_root_loop {
+            // Eager entry: always run the loop body (gate forced true).
+            output.extend(child_body);
+            output.extend(quote! { #( #swap_code )* });
+        } else if gate_checks.is_empty() {
             // No entry handoffs — always run.
             output.extend(child_body);
             output.extend(quote! { #( #swap_code )* });
@@ -1171,6 +1191,10 @@ impl DfirGraph {
     /// before it is moved into `Dfir::new`. `Dfir` provides the `Context`
     /// to the closure on each tick run.
     ///
+    /// Uses the default [`AsCodeOptions`] (aside from `include_type_guards`), so runtime metrics
+    /// tracking is *not* included; use [`Self::as_code_with_options`] to opt in via
+    /// [`AsCodeOptions::include_metrics_tracking`].
+    ///
     /// # Errors
     ///
     /// Returns all diagnostics as `Err(diagnostics)` if any are errors
@@ -1182,22 +1206,27 @@ impl DfirGraph {
         prefix: TokenStream,
         diagnostics: &mut Diagnostics,
     ) -> Result<TokenStream, Diagnostics> {
-        self.as_code_with_options(root, include_type_guards, true, prefix, diagnostics)
+        self.as_code_with_options(
+            root,
+            &AsCodeOptions {
+                exclude_type_guards: !include_type_guards,
+                ..Default::default()
+            },
+            prefix,
+            diagnostics,
+        )
     }
 
-    /// Like [`Self::as_code`], but with `include_meta` controlling whether
-    /// the runtime meta graph + diagnostics JSON blobs are baked into the
-    /// generated `Dfir::new(...)` call.
+    /// Like [`Self::as_code`] but with the full set of [`AsCodeOptions`].
     ///
-    /// The simulator calls Dfir::new() on each iteration, and as a part of that
-    /// it does parsing of the metagraph and diganostics blob. One of them causes spans to get allocated,
+    /// The simulator calls `Dfir::new()` on each iteration, and as a part of that
+    /// it does parsing of the metagraph and diagnostics blob. One of them causes spans to get allocated,
     /// each time a span is allocated, some threadlocal u32 is being incremented, and, on a long simulator run,
     /// the u32 overflows and panics.
     pub fn as_code_with_options(
         &self,
         root: &TokenStream,
-        include_type_guards: bool,
-        include_meta: bool,
+        options: &AsCodeOptions,
         prefix: TokenStream,
         diagnostics: &mut Diagnostics,
     ) -> Result<TokenStream, Diagnostics> {
@@ -1504,17 +1533,23 @@ impl DfirGraph {
                             }
                         };
 
+                        let track_hoff_metrics = options.include_metrics_tracking.then(|| {
+                            quote_spanned! {port_ident.span()=>
+                                let hoff_metrics = &#metrics.handoffs[
+                                    #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
+                                ];
+                                hoff_metrics.total_items_count.update(|x| x + hoff_len);
+                                hoff_metrics.curr_items_count.set(hoff_len);
+                            }
+                        });
+
                         quote_spanned! {port_ident.span()=>
                             {
                                 let hoff_len = #len_expr;
                                 if hoff_len > 0 {
                                     #work_done = true;
                                 }
-                                let hoff_metrics = &#metrics.handoffs[
-                                    #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
-                                ];
-                                hoff_metrics.total_items_count.update(|x| x + hoff_len);
-                                hoff_metrics.curr_items_count.set(hoff_len);
+                                #track_hoff_metrics
                             }
                             let #port_ident = #drain_expr;
                         }
@@ -1743,7 +1778,7 @@ impl DfirGraph {
                             op_tick_end_code.push(write_tick_end);
                             subgraph_op_iter_code.push(write_iterator);
 
-                            if include_type_guards {
+                            if !options.exclude_type_guards {
                                 let type_guard = if is_pull {
                                     quote_spanned! {op_span=>
                                         let #ident = {
@@ -1924,27 +1959,31 @@ impl DfirGraph {
                 let sg_fut_ident = subgraph_id.as_ident(Span::call_site());
 
                 // Generate send-side curr_items_count updates (after subgraph runs).
-                let send_metrics_code = send_hoffs
-                    .iter()
-                    .zip(send_buf_idents.iter())
-                    .zip(send_kinds.iter())
-                    .map(|((&hoff_id, buf_ident), &kind)| {
-                        let hoff_ffi = hoff_id.data().as_ffi();
-                        let len_expr = match kind {
-                            HandoffKind::Singleton | HandoffKind::Optional => {
-                                quote! { if #buf_ident.is_some() { 1 } else { 0 } }
+                let send_metrics_code = if options.include_metrics_tracking {
+                    send_hoffs
+                        .iter()
+                        .zip(send_buf_idents.iter())
+                        .zip(send_kinds.iter())
+                        .map(|((&hoff_id, buf_ident), &kind)| {
+                            let hoff_ffi = hoff_id.data().as_ffi();
+                            let len_expr = match kind {
+                                HandoffKind::Singleton | HandoffKind::Optional => {
+                                    quote! { if #buf_ident.is_some() { 1 } else { 0 } }
+                                }
+                                HandoffKind::Vec => {
+                                    quote! { #buf_ident.len() }
+                                }
+                            };
+                            quote! {
+                                __dfir_metrics.handoffs[
+                                    #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
+                                ].curr_items_count.set(#len_expr);
                             }
-                            HandoffKind::Vec => {
-                                quote! { #buf_ident.len() }
-                            }
-                        };
-                        quote! {
-                            __dfir_metrics.handoffs[
-                                #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
-                            ].curr_items_count.set(#len_expr);
-                        }
-                    })
-                    .collect::<Vec<_>>();
+                        })
+                        .collect::<Vec<_>>()
+                } else {
+                    Vec::new()
+                };
 
                 // Create the handoffs we are about to push to (send).
                 // Exit handoffs (sender inside a loop, receiver in parent) are already declared
@@ -2002,6 +2041,26 @@ impl DfirGraph {
                         }
                     });
 
+                let run_sg = if options.include_metrics_tracking {
+                    quote! {
+                        // Instrument w/ the subgraph metrics.
+                        let sg_metrics = &__dfir_metrics.subgraphs[
+                            #root::slotmap::KeyData::from_ffi(#sg_metrics_ffi).into()
+                        ];
+                        #root::scheduled::metrics::InstrumentSubgraph::new(
+                            #sg_fut_ident, sg_metrics
+                        ).await;
+                        sg_metrics.total_run_count.update(|x| x + 1);
+
+                        // Update send (output) handoff metrics.
+                        #( #send_metrics_code )*
+                    }
+                } else {
+                    quote! {
+                        #sg_fut_ident.await;
+                    }
+                };
+
                 // Emit subgraph block to the current loop level (top of stack or root).
                 let sg_block = quote! {
                     // Create the handoffs we are about to push to (send).
@@ -2015,17 +2074,7 @@ impl DfirGraph {
                         #( #subgraph_op_iter_after_code )*
                     };
                     {
-                        // Instrument w/ the subgraph metrics.
-                        let sg_metrics = &__dfir_metrics.subgraphs[
-                            #root::slotmap::KeyData::from_ffi(#sg_metrics_ffi).into()
-                        ];
-                        #root::scheduled::metrics::InstrumentSubgraph::new(
-                            #sg_fut_ident, sg_metrics
-                        ).await;
-                        sg_metrics.total_run_count.update(|x| x + 1);
-
-                        // Update send (output) handoff metrics.
-                        #( #send_metrics_code )*
+                        #run_sg
 
                         // Drop the handoffs we just drained (recv).
                         #( #recv_hoff_drop_code )*
@@ -2064,7 +2113,7 @@ impl DfirGraph {
         }
         let _ = diagnostics; // Ensure no more diagnostics may be added after checking for errors.
 
-        let (meta_graph_arg, diagnostics_arg) = if include_meta {
+        let (meta_graph_arg, diagnostics_arg) = if !options.exclude_meta {
             let meta_graph_json = serde_json::to_string(&self).unwrap();
             let meta_graph_json = Literal::string(&meta_graph_json);
 
@@ -2081,7 +2130,7 @@ impl DfirGraph {
         };
 
         // Generate metrics initialization: one entry per handoff and per subgraph.
-        let metrics_init_code = {
+        let metrics_init_code = if options.include_metrics_tracking {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _, _)| {
                 let ffi = node_id.data().as_ffi();
                 quote! {
@@ -2101,6 +2150,8 @@ impl DfirGraph {
                 }
             });
             handoff_inits.chain(subgraph_inits).collect::<Vec<_>>()
+        } else {
+            Vec::new()
         };
 
         // For creating back-buffer handoff vecs.
@@ -2282,7 +2333,7 @@ impl DfirGraph {
         self.write_graph(&mut graph_write, write_config)
     }
 
-    /// Write out this graph using the given `GraphWrite`. E.g. `Mermaid` or `Dot.
+    /// Write out this graph using the given `GraphWrite`. E.g. `Mermaid` or `Dot`.
     pub(crate) fn write_graph<W>(
         &self,
         mut graph_write: W,
@@ -2672,6 +2723,22 @@ impl DfirGraph {
     pub fn root_loops(&self) -> &[GraphLoopId] {
         &self.root_loops
     }
+}
+
+/// Options for [`DfirGraph::as_code_with_options`].
+#[derive(Default)]
+#[non_exhaustive]
+pub struct AsCodeOptions {
+    /// Controls whether type guards are emitted in codegen. Excluding type guards may result in worse
+    /// error messages, and may have little benefit on `--release` builds.
+    pub exclude_type_guards: bool,
+    /// Controls whether the runtime meta graph + diagnostics JSON blobs are baked into the generated
+    /// `Dfir::new(...)` call.
+    pub exclude_meta: bool,
+    /// Controls whether metrics are tracked. Metrics tracking is opt-in: no tracking code is
+    /// generated unless this is set. Even if metrics are tracked, they still need to be reported
+    /// via the `Context::metrics` field.
+    pub include_metrics_tracking: bool,
 }
 
 /// Configuration for writing graphs.

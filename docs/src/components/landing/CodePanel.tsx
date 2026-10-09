@@ -78,6 +78,7 @@ export default function CodePanel({
   activeLines = [],
   staticLines = [],
   flashLines = [],
+  failLines = [],
   flashKey = 0,
   error = null,
 }: {
@@ -89,6 +90,8 @@ export default function CodePanel({
   activeLines?: number[];
   staticLines?: number[];
   flashLines?: number[];
+  /** Lines highlighted in "failing assertion" red. */
+  failLines?: number[];
   flashKey?: number;
   error?: ErrorSpec | null;
 }) {
@@ -118,11 +121,13 @@ export default function CodePanel({
               const isFlash = flashLines.includes(lineNo);
               const highlightClass = isFlash
                 ? styles.codeLineFlash
-                : activeLines.includes(lineNo)
-                  ? styles.codeLineActive
-                  : staticLines.includes(lineNo)
-                    ? styles.codeLineStatic
-                    : "";
+                : failLines.includes(lineNo)
+                  ? styles.codeLineFail
+                  : activeLines.includes(lineNo)
+                    ? styles.codeLineActive
+                    : staticLines.includes(lineNo)
+                      ? styles.codeLineStatic
+                      : "";
               return (
                 <React.Fragment
                   key={isFlash ? `${i}-flash-${flashKey}` : `${i}`}

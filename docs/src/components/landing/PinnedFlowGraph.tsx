@@ -15,25 +15,28 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import { animate } from "animejs";
+import { animate, cubicBezier } from "animejs";
 
 import { COLOR_VARS, VIEWBOX } from "./scenes";
 import type {
   BarSpec,
   ColorToken,
   EdgeSpec,
+  GhostSpec,
   GroupSpec,
   LabelSpec,
   OpSpec,
   PacketSpec,
   Scene,
-  SwapPacketsSpec,
 } from "./scenes";
-import { runSwapLoop } from "./swap-clock";
 import styles from "./landing.module.css";
 
 const MORPH_MS = 650;
-const MORPH_EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
+// The same curve everywhere: CSS transitions (nodes, labels, groups) and
+// animejs (line endpoints) must stay in lockstep during morphs.
+const MORPH_BEZIER = [0.4, 0, 0.2, 1] as const;
+const MORPH_EASE = `cubic-bezier(${MORPH_BEZIER.join(", ")})`;
+const MORPH_EASE_ANIME = cubicBezier(...MORPH_BEZIER);
 
 /**
  * Merge the current scene's elements with recently-removed ones so exits can
@@ -329,14 +332,14 @@ function Edge({ edge, exiting }: { edge: EdgeSpec; exiting: boolean }) {
       last.x2 !== edge.x2 ||
       last.y2 !== edge.y2
     ) {
-      animate(el, {
-        x1: edge.x1,
-        y1: edge.y1,
-        x2: edge.x2,
-        y2: edge.y2,
-        duration: MORPH_MS,
-        ease: "inOutQuad",
-      });
+        animate(el, {
+          x1: edge.x1,
+          y1: edge.y1,
+          x2: edge.x2,
+          y2: edge.y2,
+          duration: MORPH_MS,
+          ease: MORPH_EASE_ANIME,
+        });
     }
     prev.current = edge;
   }, [edge.x1, edge.y1, edge.x2, edge.y2]);
@@ -542,124 +545,72 @@ function Packet({ packet, stepMs }: { packet: PacketSpec; stepMs: number }) {
 }
 
 /**
- * Two in-flight packets pinned next to an edge that continually swap
- * positions along opposite elliptical arcs, plus the fold's result string
- * rendered next to the result node with its letters swapping in sync.
- * Positions are computed per-frame from the shared swap clock (see
- * ./swap-clock.ts) and written directly to the DOM — smooth true-arc
- * motion, everything phase-locked.
+ * GhostPacket: a delivery with non-deterministic cardinality. The ghost pill
+ * pulses between barely-there and fully delivered (CSS-driven), and the
+ * cardinality preview crossfades between two values in sync (both texts sit
+ * at the same position with inverse opacity keyframes of the same duration).
  */
-const SWAP_SLOT_DY = 32;
-const SWAP_BULGE = 12;
-const OUT_LETTER_DX = 11;
-const OUT_LETTER_BULGE = 7;
-
-function SwapPackets({ cfg }: { cfg: SwapPacketsSpec }) {
-  const aRef = useRef<SVGGElement>(null);
-  const bRef = useRef<SVGGElement>(null);
-  const outARef = useRef<SVGGElement>(null);
-  const outBRef = useRef<SVGGElement>(null);
-
-  useEffect(
-    () =>
-      runSwapLoop(({ x, y }) => {
-        const ax = x * SWAP_BULGE;
-        const ay = y * SWAP_SLOT_DY;
-        if (aRef.current) {
-          aRef.current.setAttribute("transform", `translate(${ax}, ${ay})`);
-        }
-        if (bRef.current) {
-          bRef.current.setAttribute(
-            "transform",
-            `translate(${-ax}, ${SWAP_SLOT_DY - ay})`,
-          );
-        }
-        // Output letters: horizontal analogue of the same pose. The *bottom*
-        // packet is processed first, so its letter takes the first slot:
-        // at rest (a on top, b on bottom) the string reads "ba", and after
-        // the swap it reads "ab".
-        const lx = y * OUT_LETTER_DX;
-        const ly = x * OUT_LETTER_BULGE;
-        if (outARef.current) {
-          outARef.current.setAttribute(
-            "transform",
-            `translate(${-lx}, ${ly})`,
-          );
-        }
-        if (outBRef.current) {
-          outBRef.current.setAttribute(
-            "transform",
-            `translate(${lx}, ${-ly})`,
-          );
-        }
-      }),
-    [],
-  );
-
-  const renderPacket = (
-    spec: { label: string; color: ColorToken },
-    ref: React.RefObject<SVGGElement | null>,
-    initialDy: number,
-  ) => (
-    <g ref={ref} transform={`translate(0, ${initialDy})`}>
-      <circle r={8.5} fill={COLOR_VARS[spec.color]} />
+function GhostPacket({ cfg }: { cfg: GhostSpec }) {
+  const w = cfg.label.length * 6.5 + 12;
+  const pill = (
+    <>
+      <rect
+        x={-w / 2}
+        y={-9}
+        width={w}
+        height={18}
+        rx={9}
+        fill={COLOR_VARS[cfg.color]}
+      />
       <text
         className={styles.packetLabel}
         textAnchor="middle"
         dominantBaseline="central"
       >
-        {spec.label}
+        {cfg.label}
       </text>
-    </g>
+    </>
   );
-
   return (
-    <>
+    <g className={styles.ghostEnter}>
+      {cfg.solid && (
+        <g transform={`translate(${cfg.solid.x}, ${cfg.solid.y})`}>{pill}</g>
+      )}
       <g
-        className={styles.swapPacketsEnter}
-        transform={`translate(${cfg.x}, ${cfg.yTop})`}
+        className={styles.ghostPulse}
+        transform={`translate(${cfg.ghost.x}, ${cfg.ghost.y})`}
       >
-        {renderPacket(cfg.a, aRef, 0)}
-        {renderPacket(cfg.b, bRef, SWAP_SLOT_DY)}
+        {pill}
+        {cfg.ghostNote && (
+          <text className={styles.ghostNote} x={w / 2 + 7} dominantBaseline="central">
+            {cfg.ghostNote}
+          </text>
+        )}
       </g>
       {cfg.output && (
-        <g
-          className={styles.swapPacketsEnter}
-          transform={`translate(${cfg.output.x}, ${cfg.output.y})`}
-        >
-          <text className={styles.swapOutQuote} x={0} dominantBaseline="central">
-            "
+        <g transform={`translate(${cfg.output.x}, ${cfg.output.y})`}>
+          <text className={styles.previewMuted} x={0} dominantBaseline="central">
+            {cfg.output.prefix}
           </text>
-          <g ref={outARef}>
-            <text
-              className={styles.swapOutLetter}
-              x={8 + OUT_LETTER_DX}
-              dominantBaseline="central"
-              fill={COLOR_VARS[cfg.a.color]}
-            >
-              {cfg.a.label}
-            </text>
-          </g>
-          <g ref={outBRef}>
-            <text
-              className={styles.swapOutLetter}
-              x={8}
-              dominantBaseline="central"
-              fill={COLOR_VARS[cfg.b.color]}
-            >
-              {cfg.b.label}
-            </text>
-          </g>
           <text
-            className={styles.swapOutQuote}
-            x={8 + 2 * OUT_LETTER_DX}
+            className={`${styles.previewValue} ${styles.ghostPulse}`}
+            x={cfg.output.prefix.length * 9 + 2}
             dominantBaseline="central"
+            fill={COLOR_VARS[cfg.color]}
           >
-            "
+            {cfg.output.solid}
+          </text>
+          <text
+            className={`${styles.previewValue} ${styles.ghostPulseInverse}`}
+            x={cfg.output.prefix.length * 9 + 2}
+            dominantBaseline="central"
+            fill={COLOR_VARS[cfg.color]}
+          >
+            {cfg.output.pale}
           </text>
         </g>
       )}
-    </>
+    </g>
   );
 }
 
@@ -743,7 +694,7 @@ export default function PinnedFlowGraph({
       {labels.map(({ item, exiting }) => (
         <FreeLabel key={item.id} label={item} exiting={exiting} />
       ))}
-      {scene.swapPackets && <SwapPackets cfg={scene.swapPackets} />}
+      {scene.ghost && <GhostPacket cfg={scene.ghost} />}
       {packets.map((packet) => (
         <Packet key={packet.id} packet={packet} stepMs={stepMs} />
       ))}

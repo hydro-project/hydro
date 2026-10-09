@@ -1,7 +1,7 @@
 [package]
 name = "copy_span"
 publish = true
-version = "0.1.1"
+version = "0.1.2-alpha.0"
 documentation = "https://docs.rs/copy_span/"
 description = "Macro emitting tokens with the span of another set of tokens."
 edition = { workspace = true }

@@ -31,12 +31,15 @@ use crate::staging_util::Invariant;
 ///
 /// # Creating a Process
 /// ```rust
+/// # #[cfg(feature = "build")]
+/// # {
 /// # use hydro_lang::prelude::*;
 /// struct MyTag;
 /// let mut flow = FlowBuilder::new();
 /// let node = flow.process::<MyTag>();
 /// # let _ = &node;
 /// # let _ = flow.finalize();
+/// # }
 /// ```
 pub struct Process<'a, ProcessTag = ()> {
     pub(crate) key: LocationKey,
@@ -91,6 +94,8 @@ impl<'a, P> super::dynamic::DynLocation for Process<'a, P> {
 
 impl<'a, P> Location<'a> for Process<'a, P> {
     type Root = Self;
+
+    type SimHookScope = crate::sim_hooks::OnProcess<P>;
 
     type DropConsistency = Self;
 

@@ -8,6 +8,7 @@ use stageleft::{q, quote_type};
 use syn::parse_quote;
 
 use super::{ExactlyOnce, MinOrder, Ordering, Stream, TotalOrder};
+use crate::compile::builder::ExternalPortId;
 use crate::compile::ir::{
     DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot, NetworkRecv, NetworkSend,
 };
@@ -167,15 +168,13 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         via: N,
     ) -> Stream<T, Process<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
     where
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -318,16 +317,26 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         nondet_membership: NonDet,
     ) -> Stream<T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
     where
-        T: Clone + Serialize + DeserializeOwned,
+        T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
     {
+        // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
+        // sim hooks do not exist yet. Once they do, expose a composite hook payload here
+        // (`NonDet<(Option<KeyedSnapshotHook<..>>, Option<BatchHook<T, O, R>>)>`) so tests
+        // can script the membership snapshot and the element batching independently.
         let ids = track_membership(self.location.source_cluster_membership_stream(
             to,
             nondet!(/** dropped prefixes don't affect broadcast */),
         ));
         sliced! {
-            let members_snapshot = use::snapshot(ids, nondet_membership);
-            let elements = use::batch(self, nondet_membership);
+            let members_snapshot = use::snapshot(ids, nondet!(
+                /// membership timing is captured by the caller's guard
+                nondet_membership
+            ));
+            let elements = use::batch(self, nondet!(
+                /// batching timing is captured by the caller's guard
+                nondet_membership
+            ));
 
             let current_members = members_snapshot.filter(q!(|b| *b));
             elements.repeat_with_keys(current_members)
@@ -393,7 +402,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         R,
     >
     where
-        T: Clone + Serialize + DeserializeOwned,
+        T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let cluster_ids = ClusterIds {
@@ -457,8 +466,22 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     where
         T: Serialize + DeserializeOwned,
     {
-        let serialize_pipeline = Some(serialize_bincode::<T>(false));
+        let external_port_id =
+            self.register_serialized_external_port(other, serialize_bincode::<T>(false));
 
+        ExternalBincodeStream {
+            process_key: other.key,
+            port_id: external_port_id,
+            _phantom: PhantomData,
+        }
+    }
+
+    // TODO: Add a codec-parameterized external stream handle once deployment supports custom codecs.
+    fn register_serialized_external_port<L2>(
+        self,
+        other: &External<'_, L2>,
+        serialize_pipeline: syn::Expr,
+    ) -> ExternalPortId {
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
 
         let external_port_id = flow_state_borrow.next_external_port();
@@ -468,25 +491,34 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             to_port_id: external_port_id,
             to_many: false,
             unpaired: true,
-            serialize_fn: serialize_pipeline.map(|e| e.into()),
+            serialize_fn: Some(serialize_pipeline.into()),
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
-        ExternalBincodeStream {
-            process_key: other.key,
-            port_id: external_port_id,
-            _phantom: PhantomData,
-        }
+        external_port_id
     }
 
     #[cfg(feature = "sim")]
-    /// Sets up a simulation output port for this stream, allowing test code to receive elements
-    /// sent to this stream during simulation.
+    /// Sets up a bincode-encoded simulation output port for this stream, allowing test code to
+    /// receive elements sent to this stream during simulation. Use [`Stream::sim_output_with`] to
+    /// select another codec.
     pub fn sim_output(self) -> SimReceiver<T, O, R>
     where
         T: Serialize + DeserializeOwned,
+    {
+        self.sim_output_with::<crate::sim::codec::BincodeCodec>()
+    }
+
+    #[cfg(feature = "sim")]
+    /// Sets up a simulation output port using the codec `C`, allowing test code to receive
+    /// elements sent to this stream during simulation: `stream.sim_output_with::<MyCodec>()`.
+    /// Custom codecs implement [`SimCodec`](crate::sim::codec::SimCodec), which documents
+    /// where they must be defined.
+    pub fn sim_output_with<C>(self) -> SimReceiver<T, O, R>
+    where
+        C: crate::sim::codec::SimCodec<T>,
     {
         let external_location: External<'a, ()> = External {
             key: LocationKey::FIRST,
@@ -494,9 +526,12 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             _phantom: PhantomData,
         };
 
-        let external = self.send_bincode_external(&external_location);
+        let external_port_id = self.register_serialized_external_port(
+            &external_location,
+            crate::sim::codec::staged_serialize::<T, C>(),
+        );
 
-        SimReceiver(external.port_id, PhantomData)
+        SimReceiver(external_port_id, PhantomData, C::decode)
     }
 }
 
@@ -619,7 +654,6 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         self.into_keyed().demux(to, via)
@@ -734,22 +768,29 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
         to: &Cluster<'a, L2>,
         via: N,
         nondet_membership: NonDet,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce>
-    where
-        T: Serialize + DeserializeOwned,
-    {
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce> {
+        // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
+        // sim hooks do not exist yet. Once they do, expose a composite hook payload here
+        // (`NonDet<(Option<KeyedSnapshotHook<..>>, Option<BatchHook<T, O, R>>)>`) so tests
+        // can script the membership snapshot and the element batching independently.
         let ids = track_membership(self.location.source_cluster_membership_stream(
             to,
             nondet!(/** dropped prefixes don't affect broadcast */),
         ));
         sliced! {
-            let members_snapshot = use::snapshot(ids, nondet_membership);
-            let elements = use::batch(self.enumerate(), nondet_membership);
+            let members_snapshot = use::snapshot(ids, nondet!(
+                /// membership timing is captured by the caller's guard
+                nondet_membership
+            ));
+            let elements = use::batch(self.enumerate(), nondet!(
+                /// batching timing is captured by the caller's guard
+                nondet_membership
+            ));
 
             let current_members = members_snapshot
                 .filter(q!(|b| *b))
                 .keys()
-                .assume_ordering::<TotalOrder>(nondet_membership)
+                .assume_ordering::<TotalOrder>(nondet!(/** membership timing is captured by the caller guard */ nondet_membership))
                 .collect_vec();
 
             elements
@@ -883,21 +924,29 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
         via: N,
         nondet_membership: NonDet,
     ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce>
-    where
-        T: Serialize + DeserializeOwned,
     {
+        // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
+        // sim hooks do not exist yet. Once they do, expose a composite hook payload here
+        // (`NonDet<(Option<KeyedSnapshotHook<..>>, Option<BatchHook<T, O, R>>)>`) so tests
+        // can script the membership snapshot and the element batching independently.
         let ids = track_membership(self.location.source_cluster_membership_stream(
             to,
             nondet!(/** dropped prefixes don't affect broadcast */),
         ));
         sliced! {
-            let members_snapshot = use::snapshot(ids, nondet_membership);
-            let elements = use::batch(self.enumerate(), nondet_membership);
+            let members_snapshot = use::snapshot(ids, nondet!(
+                /// membership timing is captured by the caller's guard
+                nondet_membership
+            ));
+            let elements = use::batch(self.enumerate(), nondet!(
+                /// batching timing is captured by the caller's guard
+                nondet_membership
+            ));
 
             let current_members = members_snapshot
                 .filter(q!(|b| *b))
                 .keys()
-                .assume_ordering::<TotalOrder>(nondet_membership)
+                .assume_ordering::<TotalOrder>(nondet!(/** membership timing is captured by the caller guard */ nondet_membership))
                 .collect_vec();
 
             elements
@@ -1048,15 +1097,13 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -1228,16 +1275,26 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Clone + Serialize + DeserializeOwned,
+        T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
     {
+        // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
+        // sim hooks do not exist yet. Once they do, expose a composite hook payload here
+        // (`NonDet<(Option<KeyedSnapshotHook<..>>, Option<BatchHook<T, O, R>>)>`) so tests
+        // can script the membership snapshot and the element batching independently.
         let ids = track_membership(self.location.source_cluster_membership_stream(
             to,
             nondet!(/** dropped prefixes don't affect broadcast */),
         ));
         sliced! {
-            let members_snapshot = use::snapshot(ids, nondet_membership);
-            let elements = use::batch(self, nondet_membership);
+            let members_snapshot = use::snapshot(ids, nondet!(
+                /// membership timing is captured by the caller's guard
+                nondet_membership
+            ));
+            let elements = use::batch(self, nondet!(
+                /// batching timing is captured by the caller's guard
+                nondet_membership
+            ));
 
             let current_members = members_snapshot.filter(q!(|b| *b));
             elements.repeat_with_keys(current_members)
@@ -1276,7 +1333,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Clone + Serialize + DeserializeOwned,
+        T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let cluster_ids = ClusterIds {
@@ -1305,13 +1362,11 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     }
 
     #[cfg(feature = "sim")]
-    /// Sends elements of this cluster stream to an external location using bincode serialization.
-    fn send_bincode_external<L2>(self, other: &External<'_, L2>) -> ExternalBincodeStream<T, O, R>
-    where
-        T: Serialize + DeserializeOwned,
-    {
-        let serialize_pipeline = Some(serialize_bincode::<T>(false));
-
+    fn register_serialized_external_port<L2>(
+        self,
+        other: &External<'_, L2>,
+        serialize_pipeline: syn::Expr,
+    ) -> ExternalPortId {
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
 
         let external_port_id = flow_state_borrow.next_external_port();
@@ -1321,25 +1376,34 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
             to_port_id: external_port_id,
             to_many: false,
             unpaired: true,
-            serialize_fn: serialize_pipeline.map(|e| e.into()),
+            serialize_fn: Some(serialize_pipeline.into()),
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
-        ExternalBincodeStream {
-            process_key: other.key,
-            port_id: external_port_id,
-            _phantom: PhantomData,
-        }
+        external_port_id
     }
 
     #[cfg(feature = "sim")]
-    /// Sets up a simulation output port for this cluster stream, allowing test code
-    /// to receive `(member_id, T)` pairs during simulation.
+    /// Sets up a bincode-encoded simulation output port for this cluster stream, allowing test
+    /// code to receive `(member_id, T)` pairs during simulation. Use
+    /// [`Stream::sim_cluster_output_with`] to select another codec.
     pub fn sim_cluster_output(self) -> crate::sim::SimClusterReceiver<T, O, R>
     where
         T: Serialize + DeserializeOwned,
+    {
+        self.sim_cluster_output_with::<crate::sim::codec::BincodeCodec>()
+    }
+
+    #[cfg(feature = "sim")]
+    /// Sets up a simulation output port for this cluster stream using the codec `Codec`,
+    /// allowing test code to receive `(member_id, T)` pairs during simulation:
+    /// `stream.sim_cluster_output_with::<MyCodec>()`. Custom codecs implement
+    /// [`SimCodec`](crate::sim::codec::SimCodec), which documents where they must be defined.
+    pub fn sim_cluster_output_with<Codec>(self) -> crate::sim::SimClusterReceiver<T, O, R>
+    where
+        Codec: crate::sim::codec::SimCodec<T>,
     {
         let external_location: External<'a, ()> = External {
             key: LocationKey::FIRST,
@@ -1347,9 +1411,12 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
             _phantom: PhantomData,
         };
 
-        let external = self.send_bincode_external(&external_location);
+        let external_port_id = self.register_serialized_external_port(
+            &external_location,
+            crate::sim::codec::staged_serialize::<T, Codec>(),
+        );
 
-        crate::sim::SimClusterReceiver(external.port_id, PhantomData)
+        crate::sim::SimClusterReceiver(external_port_id, PhantomData, Codec::decode)
     }
 }
 
@@ -1471,7 +1538,6 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         self.into_keyed().demux(to, via)

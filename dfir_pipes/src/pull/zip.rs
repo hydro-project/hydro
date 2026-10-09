@@ -95,11 +95,11 @@ where
             }
             (PullStep::Pending(_), PullStep::Pending(_)) => PullStep::pending(),
             // Any Ended → whole zip ends.
-            (PullStep::Ready(..), PullStep::Ended(_))
-            | (PullStep::Ended(_), PullStep::Ready(..))
-            | (PullStep::Pending(_), PullStep::Ended(_))
-            | (PullStep::Ended(_), PullStep::Pending(_))
-            | (PullStep::Ended(_), PullStep::Ended(_)) => PullStep::ended(),
+            (
+                PullStep::Ready(..) | PullStep::Pending(_) | PullStep::Ended(_),
+                PullStep::Ended(_),
+            )
+            | (PullStep::Ended(_), PullStep::Ready(..) | PullStep::Pending(_)) => PullStep::ended(),
         }
     }
 
@@ -155,7 +155,7 @@ mod tests {
 
         loop {
             match zip.as_mut().pull(&mut ()) {
-                PullStep::Ready(item, _) => results.push(item),
+                PullStep::Ready(item, ()) => results.push(item),
                 PullStep::Ended(_) => break,
                 PullStep::Pending(_) => unreachable!(),
             }
@@ -171,7 +171,7 @@ mod tests {
 
         loop {
             match zip.as_mut().pull(&mut ()) {
-                PullStep::Ready(item, _) => results.push(item),
+                PullStep::Ready(item, ()) => results.push(item),
                 PullStep::Ended(_) => break,
                 PullStep::Pending(_) => unreachable!(),
             }
@@ -187,7 +187,7 @@ mod tests {
 
         loop {
             match zip.as_mut().pull(&mut ()) {
-                PullStep::Ready(item, _) => results.push(item),
+                PullStep::Ready(item, ()) => results.push(item),
                 PullStep::Ended(_) => break,
                 PullStep::Pending(_) => unreachable!(),
             }
@@ -250,7 +250,7 @@ mod tests {
         // Pull 1: both Ready → Ready((0, 0))
         assert!(matches!(
             zip.as_mut().pull(&mut ()),
-            PullStep::Ready((0, 0), _)
+            PullStep::Ready((0, 0), ())
         ));
 
         // Pull 2: prev1 Pending, prev2 Ready(1) → buffered as Right, Pending
@@ -260,7 +260,7 @@ mod tests {
         // This proves prev2 was polled (not starved) when prev1 was Pending.
         assert!(matches!(
             zip.as_mut().pull(&mut ()),
-            PullStep::Ready((1, 1), _)
+            PullStep::Ready((1, 1), ())
         ));
     }
 }

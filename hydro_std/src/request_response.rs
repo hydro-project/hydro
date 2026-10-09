@@ -46,7 +46,7 @@ pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<
 mod tests {
     use super::*;
 
-    /// Test that join_responses correctly joins metadata with responses.
+    /// Test that `join_responses` correctly joins metadata with responses.
     #[test]
     fn test_join_responses_basic() {
         let mut flow = FlowBuilder::new();

@@ -143,8 +143,14 @@ pub fn compute_throughput_latency<'a, Client: 'a>(
     let punctuation = clients.source_interval(q!(Duration::from_millis(interval_millis)));
 
     let (interval_throughput, interval_latency) = sliced! {
-        let punctuation = use::batch(punctuation, nondet_measurement_window);
-        let latencies = use::batch(latencies, nondet_measurement_window);
+        let punctuation = use::batch(punctuation, nondet!(
+            /// measurement windowing timing is captured by the caller's guard
+            nondet_measurement_window
+        ));
+        let latencies = use::batch(latencies, nondet!(
+            /// measurement windowing timing is captured by the caller's guard
+            nondet_measurement_window
+        ));
         let mut latency_histogram = use::state(|l| l.singleton(q!(Rc::new(RefCell::new(Histogram::<u64>::new(3).unwrap())))));
         let mut throughput = use::state(|l| l.singleton(q!(0usize)));
 
@@ -205,7 +211,7 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
     aggregator: &Process<'a, Aggregator>,
     output_interval_millis: u64,
 ) -> BenchResult<Process<'a, Aggregator>> {
-    let nondet_sampling = nondet!(/** non-deterministic samping only affects logging */);
+    let nondet_sampling: NonDet = nondet!(/** non-deterministic sampling only affects logging */);
     let punctuation = aggregator.source_interval(q!(Duration::from_millis(output_interval_millis)));
 
     let a_throughputs = results
@@ -225,9 +231,18 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
         .map(q!(|wrapper| wrapper.histogram));
 
     let (combined_throughputs, combined_latencies) = sliced! {
-        let punctuation = use::batch(punctuation, nondet_sampling);
-        let a_throughputs = use::batch(a_throughputs, nondet_sampling);
-        let a_latencies = use::batch(a_latencies, nondet_sampling);
+        let punctuation = use::batch(punctuation, nondet!(
+            /// sampling timing is captured by the caller's guard
+            nondet_sampling
+        ));
+        let a_throughputs = use::batch(a_throughputs, nondet!(
+            /// sampling timing is captured by the caller's guard
+            nondet_sampling
+        ));
+        let a_latencies = use::batch(a_latencies, nondet!(
+            /// sampling timing is captured by the caller's guard
+            nondet_sampling
+        ));
         let mut latency_histogram = use::state(|l| l.singleton(q!(Rc::new(RefCell::new(Histogram::<u64>::new(3).unwrap())))));
         let mut throughput = use::state(|l| l.singleton(q!(0usize)));
 

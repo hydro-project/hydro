@@ -28,7 +28,7 @@ use crate::live_collections::stream::{Ordering, Retries};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::DeferTick;
-use crate::location::{Atomic, Location, Tick, check_matching_location};
+use crate::location::{Atomic, Location, Tick, TopLevel, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::properties::manual_proof;
@@ -97,7 +97,7 @@ impl KeyedSingletonBound for Bounded {
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key appears,
 /// its value is bounded and will never change, but new entries may appear asynchronously
-pub struct BoundedValue;
+pub enum BoundedValue {}
 
 impl KeyedSingletonBound for BoundedValue {
     type UnderlyingBound = Unbounded;
@@ -114,7 +114,7 @@ impl KeyedSingletonBound for BoundedValue {
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key appears,
 /// it will never be removed, and the corresponding value will only increase monotonically.
-pub struct MonotonicValue;
+pub enum MonotonicValue {}
 
 impl KeyedSingletonBound for MonotonicValue {
     type UnderlyingBound = Unbounded;
@@ -131,7 +131,7 @@ impl KeyedSingletonBound for MonotonicValue {
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key
 /// appears, it will never be removed, but the corresponding value may change arbitrarily.
-pub struct MonotonicKeys;
+pub enum MonotonicKeys {}
 
 impl KeyedSingletonBound for MonotonicKeys {
     type UnderlyingBound = Unbounded;
@@ -638,7 +638,13 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
 
             let out =
                 key_count_inside_tick(me.snapshot(&tick, nondet!(/** eventually stabilizes */)))
-                    .latest();
+                    .latest()
+                    // The key count is folded with an initial value, so it is always present
+                    // (0 when there are no keys). `latest()` is null until the producing tick
+                    // first runs; fill that prefix with 0 to recover an always-present count.
+                    .unwrap_or(location.singleton(q!(0usize)).into());
+            // Re-tag the node from the concrete `Unbounded` singleton to the `B::UnderlyingBound`
+            // that this method returns (equal at runtime for this branch).
             Singleton::new(location, out.ir_node.replace(HydroNode::Placeholder))
         } else {
             panic!("BoundedValue or Unbounded KeyedSingleton inside a tick, not supported");
@@ -672,7 +678,8 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// ```
     pub fn into_singleton(self) -> Singleton<HashMap<K, V>, L, B::UnderlyingBound>
     where
-        K: Eq + Hash,
+        K: Eq + Hash + Clone + 'a,
+        V: Clone + 'a,
     {
         if B::ValueBound::BOUNDED {
             let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
@@ -715,7 +722,13 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             let out = into_singleton_inside_tick(
                 me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
             )
-            .latest();
+            .latest()
+            // The map is folded with an initial value, so it is always present (empty when
+            // there are no keys). `latest()` is null until the producing tick first runs; fill
+            // that prefix with an empty map to recover an always-present map.
+            .unwrap_or(location.singleton(q!(HashMap::new())).into());
+            // Re-tag the node from the concrete `Unbounded` singleton to the `B::UnderlyingBound`
+            // that this method returns (equal at runtime for this branch).
             Singleton::new(location, out.ir_node.replace(HydroNode::Placeholder))
         } else {
             panic!("BoundedValue or Unbounded KeyedSingleton inside a tick, not supported");
@@ -1572,7 +1585,9 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # }));
     /// # }
     /// ```
-    pub fn get_max_key(self) -> Optional<(K, V), L, B::UnderlyingBound>
+    pub fn get_max_key(
+        self,
+    ) -> Optional<(K, V), L, <B::UnderlyingBound as Boundedness>::AggregatedOptional>
     where
         K: Ord,
     {
@@ -1646,7 +1661,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     }
 }
 
-impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B>
+impl<'a, K, V, L, B> KeyedSingleton<K, V, L, B>
 where
     L: Location<'a>,
     B: KeyedSingletonBound<ValueBound = Bounded>,
@@ -1656,13 +1671,12 @@ where
     ///
     /// This is useful to enforce local consistency constraints, such as ensuring that a write is
     /// processed before an acknowledgement is emitted.
-    pub fn atomic(self) -> KeyedSingleton<K, V, Atomic<L>, B> {
-        let id = self.location.flow_state().borrow_mut().next_clock_id();
+    pub fn atomic(self) -> KeyedSingleton<K, V, Atomic<L>, B>
+    where
+        L: TopLevel<'a>,
+    {
         let out_location = Atomic {
-            tick: Tick {
-                id,
-                l: self.location.clone(),
-            },
+            tick: self.location.tick(),
         };
         KeyedSingleton::new(
             out_location.clone(),
@@ -1760,18 +1774,27 @@ where
     /// # Non-Determinism
     /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
     /// non-deterministic set of entries since each snapshot can be at an arbitrary point in time.
+    ///
+    /// In simulation tests, the snapshot decisions can be scripted by attaching a
+    /// [`KeyedSnapshotHook`](crate::sim_hooks::KeyedSnapshotHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn snapshot<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedSnapshotHook<K, V, L::SimHookScope>>>,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(&self.location)
+        );
+        let mut metadata =
+            tick.new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick
-                    .new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind()),
+                metadata,
             },
         )
     }
@@ -1792,6 +1815,10 @@ where
         tick: &Tick<L2>,
         _nondet: NonDet,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(self.location.tick.parent_location())
+        );
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
@@ -1948,18 +1975,27 @@ where
     /// # Non-Determinism
     /// Because this picks a batch of asynchronously added entries, each output keyed singleton
     /// has a non-deterministic set of key-value pairs.
+    ///
+    /// In simulation tests, the batching decisions can be scripted by attaching a
+    /// [`KeyedSnapshotHook`](crate::sim_hooks::KeyedSnapshotHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedSnapshotHook<K, V, L::SimHookScope>>>,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(&self.location)
+        );
+        let mut metadata =
+            tick.new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick
-                    .new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind()),
+                metadata,
             },
         )
     }
@@ -1984,6 +2020,10 @@ where
         nondet: NonDet,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
         let _ = nondet;
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(self.location.tick.parent_location())
+        );
         KeyedSingleton::new(
             tick.drop_consistency(),
             HydroNode::Batch {

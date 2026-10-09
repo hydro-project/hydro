@@ -33,7 +33,7 @@ where
     }
 }
 
-/// StreamReady uses its own waker, so it ignores the context parameter.
+/// `StreamReady` uses its own waker, so it ignores the context parameter.
 /// It implements `Pull` with `Ctx = ()`.
 impl<S> Pull for StreamReady<S>
 where

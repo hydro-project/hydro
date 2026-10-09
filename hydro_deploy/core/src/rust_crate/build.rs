@@ -125,8 +125,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                 tokio::task::spawn_blocking(move || {
                     let base_target_dir = params
                         .target_dir
-                        .as_ref()
-                        .cloned()
+                        .clone()
                         .unwrap_or_else(|| params.src.join("target"));
                     let job_name = params
                         .bin
@@ -157,13 +156,20 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         let rustflags = params.rustflags.clone();
                         let build_env = params.build_env.clone();
 
+                        // In dylib mode `src` is the generated project's `dylib-examples` crate.
+                        let project_dir = params.src.parent().unwrap();
                         let (prebuild_guard, cargo_lock) = hydro_concurrent_cargo::run_prebuild(
                             &base_target_dir,
-                            params.src.parent().unwrap().file_name().unwrap().to_str().unwrap(),
+                            project_dir.file_name().unwrap().to_str().unwrap(),
                             &features,
+                            params.rustflags.as_deref().unwrap_or_default(),
                             &staged_paths,
                             |prebuild_target| {
                                 set_msg("building dependencies".to_owned());
+                                hydro_concurrent_cargo::set_dylib_lib_name(
+                                    project_dir,
+                                    params.rustflags.as_deref().unwrap_or_default(),
+                                );
 
                                 // Prebuild the dylib-examples lib (`src` in dylib mode), which
                                 // transitively builds the trybuild dylib *as a dependency*.
@@ -210,9 +216,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     .stdin(Stdio::null())
                                     .status()
                                     .unwrap();
-                                if !lib_status.success() {
-                                    panic!("dep prebuild failed");
-                                }
+                                assert!(lib_status.success(), "dep prebuild failed")
                             },
                         );
 
@@ -325,8 +329,10 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     // Check for unexpected recompilations (only in dylib mode with prebuild).
                                     if params.is_dylib {
                                         for line in &stderr_lines {
-                                            if line.contains("Compiling") && !line.contains("dylib-examples") && !line.contains(job_name) {
-                                                panic!(
+                                            if line.contains("Compiling") {
+                                                assert!(
+                                                    line.contains("dylib-examples")
+                                                        || line.contains(job_name),
                                                     "unexpected recompilation in deploy final build: {line}\nfull stderr:\n{}",
                                                     stderr_lines.join("\n")
                                                 );

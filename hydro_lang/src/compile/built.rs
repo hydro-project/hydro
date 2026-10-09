@@ -83,7 +83,7 @@ impl<'a> BuiltFlow<'a> {
         &self.location_names
     }
 
-    /// Get a GraphApi instance for this built flow
+    /// Get a `GraphApi` instance for this built flow
     #[cfg(stageleft_runtime)]
     #[cfg(feature = "viz")]
     pub fn graph_api(&self) -> GraphApi<'_> {
@@ -200,6 +200,7 @@ impl<'a> BuiltFlow<'a> {
             clusters,
             externals,
             sidecars: self.sidecars,
+            as_code_options: Default::default(),
             flow_name: self.flow_name,
             _phantom: PhantomData,
         }

@@ -77,6 +77,8 @@ where
 {
     type Root = L::Root;
 
+    type SimHookScope = L::SimHookScope;
+
     type DropConsistency = Atomic<L::DropConsistency>;
 
     fn consistency() -> Option<super::dynamic::ClusterConsistency> {
@@ -114,14 +116,18 @@ pub trait DeferTick {
 /// Marks the stream as being inside the single global clock domain.
 #[derive(Clone)]
 pub struct Tick<L> {
-    pub(crate) id: ClockId,
+    /// `None` if `l` is `Atomic`.
+    pub(crate) id: Option<ClockId>,
     /// Location.
     pub(crate) l: L,
 }
 
 impl<L: DynLocation> DynLocation for Tick<L> {
     fn dyn_id(&self) -> LocationId {
-        LocationId::Tick(self.id, Box::new(self.l.dyn_id()))
+        LocationId::Tick {
+            tick: self.id,
+            parent_location: Box::new(self.l.dyn_id()),
+        }
     }
 
     fn flow_state(&self) -> &FlowState {
@@ -146,6 +152,8 @@ where
     L: Location<'a>,
 {
     type Root = L::Root;
+
+    type SimHookScope = L::SimHookScope;
 
     type DropConsistency = Tick<L::DropConsistency>;
 
@@ -176,12 +184,18 @@ impl<'a, L> Tick<L>
 where
     L: Location<'a>,
 {
-    /// Returns a reference to the outer (parent) location that this tick is nested within.
+    /// Returns a reference to the parent location that this tick is located at.
     ///
     /// For example, if a `Tick` was created from a `Process`, this returns a reference
     /// to that `Process`.
-    pub fn outer(&self) -> &L {
+    pub fn parent_location(&self) -> &L {
         &self.l
+    }
+
+    /// Use [`Self::parent_location`] instead.
+    #[deprecated(note = "use `.parent_location()` instead")]
+    pub fn outer(&self) -> &L {
+        self.parent_location()
     }
 
     /// Creates a bounded stream of `()` values inside this tick, with a fixed batch size.
@@ -449,7 +463,7 @@ mod tests {
             write_ack_recv.assert_yields([1]).await;
             read_send.send(());
 
-            let (_, v) = read_response_recv.next().await;
+            let ((), v) = read_response_recv.next().await;
             assert_eq!(v, 1);
         });
     }

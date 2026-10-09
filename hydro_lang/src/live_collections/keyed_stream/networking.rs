@@ -116,15 +116,13 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -263,16 +261,13 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         R,
     >
     where
-        K: Serialize + DeserializeOwned,
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -444,15 +439,13 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         R,
     >
     where
-        T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -634,16 +627,13 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         R,
     >
     where
-        K: Serialize + DeserializeOwned,
-        V: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (

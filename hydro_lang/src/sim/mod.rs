@@ -4,41 +4,47 @@
 
 use std::marker::PhantomData;
 
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-
 use crate::compile::builder::ExternalPortId;
 use crate::live_collections::stream::{Ordering, Retries};
 
-/// A receiver for an external bincode stream in a simulation.
-pub struct SimReceiver<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+/// A receiver for an external stream in a simulation.
+pub struct SimReceiver<T, O: Ordering, R: Retries>(
     pub(crate) ExternalPortId,
     pub(crate) PhantomData<(T, O, R)>,
+    pub(crate) fn(&[u8]) -> T,
 );
 
-/// A sender to an external bincode sink in a simulation.
-pub struct SimSender<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+/// A sender to an external sink in a simulation.
+pub struct SimSender<T, O: Ordering, R: Retries>(
     pub(crate) ExternalPortId,
     pub(crate) PhantomData<(T, O, R)>,
+    pub(crate) fn(&T) -> Vec<u8>,
 );
 
 /// A receiver for an external cluster stream in a simulation.
 ///
 /// Each received value is a `(u32, T)` tuple where the `u32` is the raw
 /// cluster member ID that produced the value.
-pub struct SimClusterReceiver<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+pub struct SimClusterReceiver<T, O: Ordering, R: Retries>(
     pub(crate) ExternalPortId,
     pub(crate) PhantomData<(T, O, R)>,
+    pub(crate) fn(&[u8]) -> T,
 );
 
 /// A sender to an external cluster sink in a simulation.
 ///
 /// Each sent value is a `(u32, T)` tuple where the `u32` is the raw
 /// cluster member ID that should receive the value.
-pub struct SimClusterSender<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+pub struct SimClusterSender<T, O: Ordering, R: Retries>(
     pub(crate) ExternalPortId,
     pub(crate) PhantomData<(T, O, R)>,
+    pub(crate) fn(&T) -> Vec<u8>,
 );
+
+pub mod codec;
+
+#[doc(hidden)]
+pub mod test_codec;
 
 #[cfg(stageleft_runtime)]
 mod builder;
@@ -51,6 +57,9 @@ pub(crate) mod graph;
 
 #[cfg(stageleft_runtime)]
 pub mod flow;
+
+#[cfg(stageleft_runtime)]
+pub mod hooks;
 
 #[cfg(stageleft_runtime)]
 pub(crate) mod versioned_network;

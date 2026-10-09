@@ -1,4 +1,4 @@
-//! Originally discovered and fixed in https://github.com/hydro-project/hydro/pull/1701.
+//! Originally discovered and fixed in <https://github.com/hydro-project/hydro/pull/1701>.
 //!
 //! The original implementation of `sequence_payloads` for the KV replica in Paxos had a subtle
 //! bug that causes it to silently drop buffered payloads when they are received out of order.
@@ -36,10 +36,13 @@ fn sequence_payloads_old<'a, L: Location<'a>>(
         replica_tick.cycle::<Stream<SequencedKv, Tick<L::DropConsistency>, Bounded>, _>();
 
     let r_sorted_payloads = p_to_replicas
-        .batch(replica_tick, nondet!(
-            /// because we fill slots one-by-one, we can safely batch
-            /// because non-determinism is resolved when we sort by slots
-        ))
+        .batch(
+            replica_tick,
+            nondet!(
+                /// because we fill slots one-by-one, we can safely batch
+                /// because non-determinism is resolved when we sort by slots
+            ),
+        )
         .chain(r_buffered_payloads) // Combine with all payloads that we've received and not processed yet
         .sort();
     // Create a cycle since we'll use this seq before we define it

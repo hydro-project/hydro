@@ -1,0 +1,58 @@
+error[E0277]: the trait bound `OpaquePayload: serde::Serialize` is not satisfied
+  --> tests/compile-fail/nightly/demux_bincode_requires_serde.rs:33:29
+   |
+33 |     payloads.demux(workers, TCP.fail_stop().bincode());
+   |              -----          ^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |              |
+   |              required by a bound introduced by this call
+   |
+help: the trait `Serialize` is not implemented for `OpaquePayload`
+  --> tests/compile-fail/nightly/demux_bincode_requires_serde.rs:10:1
+   |
+10 | struct OpaquePayload {
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: for local types consider adding `#[derive(serde::Serialize)]` to your `OpaquePayload` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Serialize`:
+             &'a T
+             &'a mut T
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+             (T0, T1, T2, T3)
+             (T0, T1, T2, T3, T4)
+           and $N others
+   = note: required for `Bincode` to implement `hydro_lang::networking::SerKind<OpaquePayload>`
+   = note: required for `NetworkingConfig<hydro_lang::networking::Tcp<hydro_lang::networking::FailStop>, Bincode>` to implement `NetworkFor<OpaquePayload>`
+note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<(MemberId<L2>, T), hydro_lang::prelude::Process<'a, L>, B, O, R>>::demux`
+  --> src/live_collections/stream/networking.rs
+   |
+   |     pub fn demux<N: NetworkFor<T>>(
+   |                     ^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R>>::demux`
+
+error[E0277]: the trait bound `OpaquePayload: serde::Serialize` is not satisfied
+  --> tests/compile-fail/nightly/demux_bincode_requires_serde.rs:33:5
+   |
+33 |     payloads.demux(workers, TCP.fail_stop().bincode());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Serialize` is not implemented for `OpaquePayload`
+  --> tests/compile-fail/nightly/demux_bincode_requires_serde.rs:10:1
+   |
+10 | struct OpaquePayload {
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: for local types consider adding `#[derive(serde::Serialize)]` to your `OpaquePayload` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Serialize`:
+             &'a T
+             &'a mut T
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+             (T0, T1, T2, T3)
+             (T0, T1, T2, T3, T4)
+           and $N others
+   = note: required for `Bincode` to implement `hydro_lang::networking::SerKind<OpaquePayload>`
+   = note: required for `NetworkingConfig<hydro_lang::networking::Tcp<hydro_lang::networking::FailStop>, Bincode>` to implement `NetworkFor<OpaquePayload>`

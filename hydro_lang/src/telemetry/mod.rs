@@ -97,7 +97,7 @@ where
     }
 }
 
-/// Initialize tracing using the above custom formatter with the default directive level of "ERROR", if RUST_LOG is not set.
+/// Initialize tracing using the above custom formatter with the default directive level of "ERROR", if `RUST_LOG` is not set.
 pub fn initialize_tracing() {
     let rust_log = std::env::var("RUST_LOG").unwrap_or_else(|err| {
         match err {
@@ -166,4 +166,17 @@ pub trait Sidecar {
         location_name: &str,
         dfir_ident: &syn::Ident,
     ) -> syn::Expr;
+
+    /// Edits the [`AsCodeOptions`](dfir_lang::graph::AsCodeOptions) which will later be used when
+    /// generating the DFIR code for each location this sidecar is attached to.
+    ///
+    /// For example, a metrics-recording sidecar can use this to opt in to (otherwise disabled)
+    /// runtime metrics tracking, via
+    /// [`AsCodeOptions::include_metrics_tracking`](dfir_lang::graph::AsCodeOptions::include_metrics_tracking).
+    ///
+    /// The default implementation makes no changes.
+    #[cfg(feature = "build")]
+    fn edit_as_code_options(&self, options: &mut dfir_lang::graph::AsCodeOptions) {
+        let _ = options;
+    }
 }

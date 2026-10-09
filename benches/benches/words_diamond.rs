@@ -26,7 +26,7 @@ fn words() -> impl Iterator<Item = String> + Clone {
 }
 fn hash_code(s: &str) -> u32 {
     s.bytes()
-        .fold(0, |n, c| n.wrapping_mul(31).wrapping_add(c as u32))
+        .fold(0, |n, c| n.wrapping_mul(31).wrapping_add(u32::from(c)))
 }
 
 fn dfir_rs_diamond(c: &mut Criterion) {

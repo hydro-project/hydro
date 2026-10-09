@@ -128,11 +128,11 @@ pub fn run_server<RX>(
                 assert!(tick < TickInstant(1_000_000_000));
                 assert!(e < 1_000_000_000);
 
-                (relatively_recent_timestamp.load(Ordering::Relaxed) as u128)
+                u128::from(relatively_recent_timestamp.load(Ordering::Relaxed))
                     .checked_mul(100).unwrap()
                     .checked_add(server_id).unwrap()
                     .checked_mul(1_000_000_000).unwrap()
-                    .checked_add(tick.0 as u128).unwrap()
+                    .checked_add(u128::from(tick.0)).unwrap()
                     .checked_mul(1_000_000_000).unwrap()
                     .checked_add(e).unwrap()
             };
@@ -141,7 +141,7 @@ pub fn run_server<RX>(
 
             let mut df = dfir_syntax! {
 
-                simulated_put_requests = spin() -> flat_map(|_| {
+                simulated_put_requests = spin() -> flat_map(|()| {
                     let buffer_pool = buffer_pool.clone();
                     let pre_gen_random_numbers = &pre_gen_random_numbers;
                     std::iter::repeat_with(move || {

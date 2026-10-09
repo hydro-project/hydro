@@ -55,14 +55,18 @@ pub mod prelude {
     pub use crate::live_collections::boundedness::{Bounded, Unbounded};
     pub use crate::live_collections::keyed_singleton::{KeyedSingleton, MonotonicKeys};
     pub use crate::live_collections::keyed_stream::KeyedStream;
-    pub use crate::live_collections::optional::Optional;
+    pub use crate::live_collections::optional::{InitNone, Optional};
     pub use crate::live_collections::singleton::Singleton;
     pub use crate::live_collections::sliced::sliced;
     pub use crate::live_collections::stream::Stream;
     pub use crate::location::{Cluster, External, Location as _, Process, Tick};
     pub use crate::networking::{TCP, UDP};
     pub use crate::nondet::{NonDet, nondet};
-    pub use crate::properties::{ConsistencyProof, ManualProof, manual_proof};
+    pub use crate::properties::{
+        ConsistencyProof, ManualProof, VerusCommutativeProof, manual_proof, verus_panic,
+        verus_proof_commutative_effect, verus_proof_commutative_filter,
+        verus_proof_commutative_fold, verus_proof_commutative_map,
+    };
 
     #[cfg(feature = "trybuild")]
     /// A macro to set up a Hydro crate.
@@ -120,6 +124,8 @@ pub mod deploy;
 #[cfg(feature = "sim")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sim")))]
 pub mod sim;
+
+pub mod sim_hooks;
 
 pub mod forward_handle;
 

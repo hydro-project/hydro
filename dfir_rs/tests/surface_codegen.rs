@@ -126,7 +126,7 @@ pub fn test_large_diamond() {
     df.run_available_sync();
 }
 
-/// Test that source_stream can handle "complex" expressions.
+/// Test that `source_stream` can handle "complex" expressions.
 #[multiplatform_test]
 pub fn test_recv_expr() {
     let send_recv = dfir_rs::util::unbounded_channel::<usize>();

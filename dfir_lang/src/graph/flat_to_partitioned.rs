@@ -348,7 +348,7 @@ fn make_subgraphs(
 /// ingress (from outer to inner loop) or egress (from inner to outer). This method hoists all members of a loop to the
 /// **first** subgraph of the loop in the flat order, hence the correctness requirement only on the ingress side.
 ///
-/// https://github.com/hydro-project/hydro/issues/3048
+/// <https://github.com/hydro-project/hydro/issues/3048>
 fn make_loops_contiguous(
     graph: &DfirGraph,
     flat_order: &[GraphSubgraphId],
@@ -573,7 +573,7 @@ mod tests {
     use crate::graph::GraphNode;
 
     /// Regression test for a loop-contiguity toposort bug.
-    /// https://github.com/hydro-project/hydro/issues/3048
+    /// <https://github.com/hydro-project/hydro/issues/3048>
     ///
     /// [`make_loops_contiguous`] gathers every subgraph of a loop at the position of the
     /// loop's *first* subgraph in the flat order. If an external subgraph that *feeds into*

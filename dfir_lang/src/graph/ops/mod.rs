@@ -244,7 +244,7 @@ pub fn null_write_iterator_fn(
         }
     } else {
         quote_spanned! {op_span=>
-            #[allow(clippy::let_unit_value)]
+            #[allow(clippy::let_unit_value, clippy::ignored_unit_patterns)]
             let _ = (#(#outputs),*);
             let #ident = #root::dfir_pipes::push::for_each::<_, #iter_type>(::std::mem::drop::<#iter_type>);
         }
@@ -276,6 +276,7 @@ declare_ops![
     assert::ASSERT,
     assert_eq::ASSERT_EQ,
     batch::BATCH,
+    batch_eager::BATCH_EAGER,
     batch_lazy::BATCH_LAZY,
     chain::CHAIN,
     chain_first_n::CHAIN_FIRST_N,
@@ -597,11 +598,11 @@ pub enum OperatorCategory {
 impl OperatorCategory {
     /// Human-readible heading name, for docs.
     pub fn name(self) -> &'static str {
-        self.get_variant_docs().split_once(":").unwrap().0
+        self.get_variant_docs().split_once(':').unwrap().0
     }
     /// Human description, for docs.
     pub fn description(self) -> &'static str {
-        self.get_variant_docs().split_once(":").unwrap().1
+        self.get_variant_docs().split_once(':').unwrap().1
     }
 }
 
@@ -615,6 +616,10 @@ pub enum FloType {
     /// A lazy windowing operator — moves data into a loop context but does not trigger the loop.
     /// Data is dropped if the loop does not fire that tick.
     WindowingLazy,
+    /// An eager windowing operator — moves data into a loop context and always triggers the loop,
+    /// even when the windowed input is empty. Only valid at the entry of a root-level loop (it is
+    /// disallowed in nested loops, where it would prevent the fixpoint iteration from terminating).
+    WindowingEager,
     /// An un-windowing operator, for moving data out of a loop context.
     Unwindowing,
 }
