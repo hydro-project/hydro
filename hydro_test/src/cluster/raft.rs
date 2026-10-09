@@ -385,7 +385,7 @@ impl<T: Clone, ClusterTag> Clone for RaftServerState<T, ClusterTag> {
             next_index: self.next_index.clone(),
             match_index: self.match_index.clone(),
             read_lease_expiration: self.read_lease_expiration.clone(),
-            has_committed_as_leader: false,
+            has_committed_as_leader: self.has_committed_as_leader,
         }
     }
 }
