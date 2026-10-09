@@ -48,7 +48,6 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
-                   work_fn,
                    work_fn_async,
                    ident,
                    inputs,
@@ -104,35 +103,34 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = if is_pull {
             let input = &inputs[0];
-            // `'tick`: the accumulator is a local created fresh this tick, so move it into the
-            // output without cloning. `'static`: the accumulator persists in the prologue state,
-            // so emit a clone of its current value.
-            let output_expr = match persistence {
+            match persistence {
+                // `'tick`: owned-mode reduce. The accumulator is created fresh this tick and the
+                // output pull emits it by move (not cloned); 1 or 0 items (`Some` or `None`).
                 Persistence::Tick => quote_spanned! {op_span=>
-                    #singleton_output_ident
+                    // Eagerly consumes the input to ensure updated state.
+                    let #ident = #work_fn_async(
+                        #root::dfir_pipes::pull::Pull::reduce(#input, #func)
+                    ).await;
                 },
+                // `'static`: borrowed-mode reduce. The accumulator persists in the prologue state,
+                // and the output pull emits a clone of its current value; 1 or 0 items (`Some` or
+                // `None`).
                 Persistence::Static => quote_spanned! {op_span=>
-                    ::std::clone::Clone::clone(&*#accumulator_ident)
+                    let #ident = {
+                        // Eagerly consumes the input to ensure updated state.
+                        let __accumulated = #work_fn_async(
+                            #root::dfir_pipes::pull::Pull::reduce_ref(
+                                #input,
+                                &mut #singleton_output_ident,
+                                #func,
+                            )
+                        ).await;
+                        #root::dfir_pipes::pull::Pull::map(
+                            __accumulated,
+                            |__val: &mut _| ::std::clone::Clone::clone(&*__val),
+                        )
+                    };
                 },
-            };
-            quote_spanned! {op_span=>
-                #make_tick_state
-                #assign_accum_ident
-
-                // Eagerly consume input to ensure updated state.
-                {
-                    let __fut = #root::dfir_pipes::pull::Pull::for_each(#input, |#item_ident| {
-                        #foreach_body
-                    });
-                    let () = #work_fn_async(__fut).await;
-                }
-
-                let #ident = #work_fn(
-                    || #root::dfir_pipes::pull::iter(
-                        // 1 or 0 items (`Some` or `None`).
-                        #output_expr
-                    )
-                );
             }
         } else if outputs.is_empty() {
             // Terminal push: reduce is a singleton reference target with no downstream.
@@ -151,10 +149,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
                 let #ident = #root::dfir_pipes::push::reduce(
                     ::std::option::Option::None,
-                    |#accumulator_ident: &mut _, #item_ident| {
-                        #[allow(clippy::redundant_closure_call)]
-                        (#func)(#accumulator_ident, #item_ident);
-                    },
+                    #func,
                     #output,
                 );
             }
@@ -165,10 +160,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
                 let #ident = #root::dfir_pipes::push::reduce_ref(
                     &mut #singleton_output_ident,
-                    |#accumulator_ident: &mut _, #item_ident| {
-                        #[allow(clippy::redundant_closure_call)]
-                        (#func)(#accumulator_ident, #item_ident);
-                    },
+                    #func,
                     #root::dfir_pipes::push::map(
                         |__val: &mut _| ::std::clone::Clone::clone(&*__val),
                         #output,

@@ -1,16 +1,63 @@
-//! [`AccumState`] implementations for common accumulator patterns.
+//! Shared accumulator state machinery used by both the pull-based and push-based `Accumulate`
+//! combinators ([`crate::pull::Accumulate`] and [`crate::push::Accumulate`]).
 //!
-//! Each struct here encapsulates the accumulation logic and drain behavior
-//! for a specific operator (fold, reduce, sort), in both owned and borrowed modes.
+//! The [`AccumState`] trait defines how items are accumulated and how the accumulated state is
+//! drained into an iterator on finalization. Each struct here encapsulates the accumulation
+//! logic and drain behavior for a specific operator (fold, reduce, sort), in both owned and
+//! borrowed modes.
 
 use core::borrow::BorrowMut;
 use core::iter::Once;
 use core::marker::PhantomData;
 
-#[cfg(feature = "alloc")]
+#[cfg(any(test, feature = "alloc"))]
 extern crate alloc;
 
-use super::accumulate::AccumState;
+/// Trait for accumulator state used by the accumulate combinators
+/// ([`crate::pull::Accumulate`] and [`crate::push::Accumulate`]).
+///
+/// Implementors define how items are accumulated and how the accumulated state
+/// is drained into an iterator on finalization.
+///
+/// The key insight is that [`AccumState::into_iter`] consumes `self` by value,
+/// which allows borrowed-mode implementations to return references with the
+/// original lifetime (e.g., `&'a mut T` from `&'a mut Option<T>`).
+///
+/// # Two modes
+///
+/// - **Owned / `'tick` mode**: The state is created fresh each tick and consumed
+///   on finalize. Example: `FoldState<i32, F, i32, Item>` yields `Once<i32>`.
+/// - **Borrowed / `'static` mode**: The state borrows externally-owned storage
+///   that persists across ticks. Example: `FoldState<&'a mut i32, F, i32, Item>`
+///   yields `Once<&'a mut i32>`.
+pub trait AccumState: Sized {
+    /// The type of items being accumulated (input to the combinator).
+    type Input;
+    /// The type of items emitted downstream after finalization.
+    type Output;
+    /// The iterator type returned by [`AccumState::into_iter`].
+    type Iter: Iterator<Item = Self::Output>;
+
+    /// Fold an incoming item into the accumulator.
+    fn accumulate(&mut self, item: Self::Input);
+
+    /// Consume the accumulator and return an iterator over the output items.
+    ///
+    /// This is called once during finalization. Because it takes `self` by
+    /// value, borrowed-mode implementations can release their full lifetime.
+    fn into_iter(self) -> Self::Iter;
+
+    /// Returns the size hint for the output iterator, given the input's size hint.
+    ///
+    /// This is called during `size_hint` while still accumulating, allowing the
+    /// combinator to inform downstream of expected output cardinality before
+    /// finalization occurs.
+    ///
+    /// The default returns `(0, None)` (unknown).
+    fn size_hint(&self, _input_hint: (usize, Option<usize>)) -> (usize, Option<usize>) {
+        (0, None)
+    }
+}
 
 // ============================================================================
 // Fold (unified: owned T or borrowed &'a mut T via BorrowMut)
@@ -157,14 +204,14 @@ where
 ///
 /// Collects all items into a `Vec`, sorts them on finalize, and emits
 /// them in sorted order.
-#[cfg(feature = "alloc")]
+#[cfg(any(test, feature = "alloc"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub struct SortState<T> {
     /// Buffer for collected items.
     pub buf: alloc::vec::Vec<T>,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(any(test, feature = "alloc"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 impl<T> SortState<T> {
     /// Creates a new empty `SortState`.
@@ -175,14 +222,14 @@ impl<T> SortState<T> {
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(any(test, feature = "alloc"))]
 impl<T> Default for SortState<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(any(test, feature = "alloc"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 impl<T: Ord> AccumState for SortState<T> {
     type Input = T;

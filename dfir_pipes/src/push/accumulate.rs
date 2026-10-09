@@ -3,52 +3,8 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
+use crate::accum::AccumState;
 use crate::push::{Push, PushStep, ready};
-
-/// Trait for accumulator state used by the [`Accumulate`] push combinator.
-///
-/// Implementors define how items are accumulated during `start_send` and how
-/// the accumulated state is drained into an iterator during `poll_finalize`.
-///
-/// The key insight is that [`AccumState::into_iter`] consumes `self` by value,
-/// which allows borrowed-mode implementations to return references with the
-/// original lifetime (e.g., `&'a mut T` from `&'a mut Option<T>`).
-///
-/// # Two modes
-///
-/// - **Owned / `'tick` mode**: The state is created fresh each tick and consumed
-///   on finalize. Example: `FoldState<i32, F, i32, Item>` yields `Once<i32>`.
-/// - **Borrowed / `'static` mode**: The state borrows externally-owned storage
-///   that persists across ticks. Example: `FoldState<&'a mut i32, F, i32, Item>`
-///   yields `Once<&'a mut i32>`.
-pub trait AccumState: Sized {
-    /// The type of items being accumulated (input to the combinator).
-    type Input;
-    /// The type of items emitted downstream after finalization.
-    type Output;
-    /// The iterator type returned by [`AccumState::into_iter`].
-    type Iter: Iterator<Item = Self::Output>;
-
-    /// Fold an incoming item into the accumulator.
-    fn accumulate(&mut self, item: Self::Input);
-
-    /// Consume the accumulator and return an iterator over the output items.
-    ///
-    /// This is called once during `poll_finalize`. Because it takes `self` by
-    /// value, borrowed-mode implementations can release their full lifetime.
-    fn into_iter(self) -> Self::Iter;
-
-    /// Returns the size hint for the output iterator, given the input's size hint.
-    ///
-    /// This is called during `size_hint` while still in the `Accumulating` phase,
-    /// allowing the combinator to inform downstream of expected output cardinality
-    /// before finalization occurs.
-    ///
-    /// The default returns `(0, None)` (unknown).
-    fn size_hint(&self, _input_hint: (usize, Option<usize>)) -> (usize, Option<usize>) {
-        (0, None)
-    }
-}
 
 /// Internal enum representing the phase of the accumulator.
 enum AccumPhase<State, Iter> {
@@ -166,9 +122,9 @@ mod tests {
     use alloc::vec::Vec;
     use core::pin::Pin;
 
-    use super::super::accum_state::{FoldState, ReduceState};
     use super::Accumulate;
     use crate::Yes;
+    use crate::accum::{FoldState, ReduceState};
     use crate::push::test_utils::TestPush;
     use crate::push::{Push, PushStep};
 
@@ -342,7 +298,7 @@ mod tests {
 
     #[test]
     fn sort_emits_sorted_on_finalize() {
-        use super::super::accum_state::SortState;
+        use crate::accum::SortState;
 
         let mut tp = TestPush::no_pend();
         let state = SortState { buf: Vec::new() };
@@ -361,7 +317,7 @@ mod tests {
 
     #[test]
     fn accumulate_resumes_after_pending() {
-        use super::super::accum_state::SortState;
+        use crate::accum::SortState;
 
         // Downstream returns Pending on the second poll_ready.
         let mut tp: TestPush<i32, Yes, true> = TestPush::new_fused(

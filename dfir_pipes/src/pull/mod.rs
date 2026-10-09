@@ -6,8 +6,10 @@
 use core::pin::Pin;
 use core::task::{Poll, Waker};
 
+use crate::accum::{AccumState, FoldState, ReduceState};
 use crate::{Context, No, Toggle, Yes};
 
+mod accumulate;
 #[cfg(feature = "std")]
 mod accumulator;
 mod chain;
@@ -53,6 +55,7 @@ pub(crate) mod test_utils;
 mod zip;
 mod zip_longest;
 
+pub use accumulate::Accumulate;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use accumulator::{AccumulateAll, Accumulator, Fold, FoldFrom, Reduce, accumulate_all};
@@ -370,6 +373,91 @@ pub trait Pull {
         C: Default + Extend<Self::Item>,
     {
         Collect::new(self)
+    }
+
+    /// Creates a future that eagerly drains this pull into the given [`AccumState`] `state`,
+    /// resolving to an [`Iter`] pull over the accumulated output items.
+    ///
+    /// This is the pull-side counterpart of [`crate::push::accumulate`]: the input is fully
+    /// consumed when the future is awaited (not lazily when the output is pulled), so the
+    /// accumulator state is fully updated even if the resulting output pull is never (fully)
+    /// consumed.
+    ///
+    /// This is the unified accumulator entry point; see [`Pull::fold`], [`Pull::fold_ref`],
+    /// [`Pull::reduce`], and [`Pull::reduce_ref`] for the common cases.
+    fn accumulate<State>(self, state: State) -> Accumulate<Self, State>
+    where
+        Self: Sized,
+        State: AccumState<Input = Self::Item>,
+    {
+        Accumulate::new(self, state)
+    }
+
+    /// Creates a future that folds every item into the owned accumulator `acc` via `comb_fn`,
+    /// resolving to a pull that emits the final accumulated value (exactly one item).
+    ///
+    /// The accumulated value is emitted **by move**, so no `Clone` bound is required.
+    /// For persistent externally-owned state, use [`Pull::fold_ref`].
+    fn fold<Acc, CombFn>(
+        self,
+        acc: Acc,
+        comb_fn: CombFn,
+    ) -> Accumulate<Self, FoldState<Acc, CombFn, Acc, Self::Item>>
+    where
+        Self: Sized,
+        CombFn: FnMut(&mut Acc, Self::Item),
+    {
+        self.accumulate(FoldState::new(acc, comb_fn))
+    }
+
+    /// Creates a future that folds every item into the borrowed accumulator `acc_ref` via
+    /// `comb_fn`, resolving to a pull that emits `&mut Acc` (exactly one item).
+    ///
+    /// The accumulated value persists in the external storage, e.g. across ticks.
+    fn fold_ref<Acc, CombFn>(
+        self,
+        acc_ref: &mut Acc,
+        comb_fn: CombFn,
+    ) -> Accumulate<Self, FoldState<&mut Acc, CombFn, Acc, Self::Item>>
+    where
+        Self: Sized,
+        CombFn: FnMut(&mut Acc, Self::Item),
+    {
+        self.accumulate(FoldState::new(acc_ref, comb_fn))
+    }
+
+    /// Creates a future that reduces all items into a single value via `reduce_fn` (the first
+    /// item initializes the accumulator), resolving to a pull that emits the final value
+    /// (one item, or none if the input was empty).
+    ///
+    /// The accumulated value is emitted **by move**, so no `Clone` bound is required.
+    /// For persistent externally-owned state, use [`Pull::reduce_ref`].
+    fn reduce<ReduceFn>(
+        self,
+        reduce_fn: ReduceFn,
+    ) -> Accumulate<Self, ReduceState<Option<Self::Item>, ReduceFn, Self::Item>>
+    where
+        Self: Sized,
+        ReduceFn: FnMut(&mut Self::Item, Self::Item),
+    {
+        self.accumulate(ReduceState::new(None, reduce_fn))
+    }
+
+    /// Creates a future that reduces all items into the borrowed accumulator `acc` via
+    /// `reduce_fn`, resolving to a pull that emits `&mut Item` (one item if the accumulator
+    /// is occupied — including solely from prior external state — or none).
+    ///
+    /// The accumulated value persists in the external storage, e.g. across ticks.
+    fn reduce_ref<ReduceFn>(
+        self,
+        acc: &mut Option<Self::Item>,
+        reduce_fn: ReduceFn,
+    ) -> Accumulate<Self, ReduceState<&mut Option<Self::Item>, ReduceFn, Self::Item>>
+    where
+        Self: Sized,
+        ReduceFn: FnMut(&mut Self::Item, Self::Item),
+    {
+        self.accumulate(ReduceState::new(acc, reduce_fn))
     }
 
     /// Creates a pull that ends after the first `None`.
