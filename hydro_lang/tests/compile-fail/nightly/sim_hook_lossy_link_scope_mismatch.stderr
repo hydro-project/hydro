@@ -1,0 +1,48 @@
+error[E0277]: this network configuration cannot be used for a channel from `OnProcess` to `OnCluster<Workers>`
+  --> tests/compile-fail/nightly/sim_hook_lossy_link_scope_mismatch.rs:16:9
+   |
+14 |     numbers.broadcast_closed(
+   |             ---------------- required by a bound introduced by this call
+15 |         workers,
+16 |         TCP.lossy(nondet!(/** test */ hook = hook)).bincode(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the trait `NetworkForLink<u32, OnProcess, OnCluster<Workers>>` is not implemented for `NetworkingConfig<hydro_lang::networking::Tcp<hydro_lang::networking::Lossy>, Bincode, (), Option<LossHook<u32>>>`
+   = note: a `LossHook` bound with `lossy(nondet!(... hook = handle))` is typed by the channel's endpoints: the handle's sender scope must be the sending location's kind (`OnProcess<P>` / `OnCluster<C>`) and its trailing scope the receiving location's kind
+help: the following other types implement trait `NetworkForLink<T, FromScope, ToScope>`
+  --> src/networking/mod.rs
+   |
+   | / impl<Tr: ?Sized, S: ?Sized, T: ?Sized, FromScope, ToScope> NetworkForLink<T, FromScope, ToScope>
+   | |     for NetworkingConfig<Tr, S>
+   | | where
+   | |     Tr: TransportKind,
+   | |     S: SerKind<T>,
+   | |__________________^ `NetworkingConfig<Tr, S>`
+...
+   | / impl<Tr: ?Sized, S: ?Sized, T: ?Sized, FromScope, ToScope> NetworkForLink<T, FromScope, ToScope>
+   | |     for NetworkingConfig<Tr, S, String>
+   | | where
+   | |     Tr: TransportKind,
+   | |     S: SerKind<T>,
+   | |__________________^ `NetworkingConfig<Tr, S, String>`
+...
+   | / impl<Tr: ?Sized, S: ?Sized, T, FromScope, ToScope> NetworkForLink<T, FromScope, ToScope>
+   | |     for NetworkingConfig<Tr, S, (), Option<LossHook<T, Tr::OrderingGuarantee, FromScope, ToScope>>>
+   | | where
+   | |     Tr: TransportKind,
+   | |     S: SerKind<T>,
+   | |__________________^ `NetworkingConfig<Tr, S, (), Option<LossHook<T, <Tr as TransportKind>::OrderingGuarantee, FromScope, ToScope>>>`
+...
+   | / impl<Tr: ?Sized, S: ?Sized, T, FromScope, ToScope> NetworkForLink<T, FromScope, ToScope>
+   | |     for NetworkingConfig<
+   | |         Tr,
+   | |         S,
+...  |
+   | |     Tr: TransportKind,
+   | |     S: SerKind<T>,
+   | |__________________^ `NetworkingConfig<Tr, S, String, Option<LossHook<T, <Tr as TransportKind>::OrderingGuarantee, FromScope, ToScope>>>`
+note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<T, hydro_lang::prelude::Process<'a, L>, B, O, R>>::broadcast_closed`
+  --> src/live_collections/stream/networking.rs
+   |
+   |     pub fn broadcast_closed<L2: 'a, N: NetworkForLink<T, OnProcess<L>, OnCluster<L2>>>(
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R>>::broadcast_closed`
