@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1791543821976,
+  "lastUpdate": 1791627718289,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -315876,6 +315876,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 358740,
             "range": "± 9672.15",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "4cc71e2c0ddf59218bf5a92bf9dfe875f444d4cc",
+          "message": "feat(hydro_lang)!: scripted sim hooks for retry non-determinism (`assume_retries`, and `assume_ordering` on at-least-once streams) (#3185)\n\nAdds simulator hook support for the nondet points that have **no\nautonomous\nhooks** — the retry dimension — implementing only scripted decisions:\nevery\nelement admits arbitrarily many retries, so the decision space is\ninfinite and\ncan never be fuzzed/exhaustively explored. Under simulation these\noperators now\n**require** a bound hook; leaving one unhooked is a build-time error\n(previously\na `todo!()`).\n\n## Formal semantics the hooks encode\n\nAn `AtLeastOnce` collection `[A, B]` denotes the physical realizations\n`A⁺B⁺` —\neach element instance stutters **in place**. A delayed redelivery\n(`ABAB…`) is a\n*different collection* (`[A, B, A, B]`, extra slots for the same\ninstances),\nmintable only where the **order** dimension is observed. This factors\nthe two\nobservations so that `assume_ordering().assume_retries()` and\n`assume_retries().assume_ordering()` explore the same state space (any\nsequence\nwhere every input instance appears ≥ 1 times), pinned by the\n`scripted_order_then_retries_matches_retries_then_order` test:\n\n- **`assume_retries` on `NoOrder`** (`TopLevelNoOrderStreamRetriesHook`\n/\nin-tick `NoOrderStreamRetriesHook`, decision `NoOrderRetriesDecision`):\n`release(value, copies)` names any buffered element, releases `copies >=\n1`\ntotal deliveries (`release(v, 1)` = no duplicate), and consumes it — the\n  output stays `NoOrder`, so the copy count is the entire decision and\n  downstream ordering points shuffle the now-distinct copies (including\nadjacently). Releases stay one-element-per-decision because timing\nmatters on\nunordered streams (a released element can cycle back through feedback\nand be\n  chosen ahead of still-buffered input). In-tick `release(values)` is a\n  multiset cover.\n- **`assume_retries` on `TotalOrder`**\n(`TopLevelOrderedStreamRetriesHook` /\nin-tick `OrderedStreamRetriesHook`, decision `OrderedRetriesDecision`):\na\ndecision supplies the released sequence for a **prefix** of the buffered\nqueue (values in arrival order, back-to-back repeats simulate retries) —\nbatched rather than one-at-a-time, since ordered arrivals cannot race\npast\npending input and downstream batching is independent of release\ngranularity.\nA decision fires only when honorable in full; a partial decision leaves\nthe\nrest pending (ordinary forgotten-hook check). Finality of the *trailing*\nvalue is explicit: `release(values)` keeps its copies open\n(`front_started`)\nfor later decisions, `release_final(values)` consumes it\n(`release_final([])`\n  retires an element whose copies were all released earlier), and the\npositional `release_next(copies)` releases copies of the front without\nnaming\n  it. In-tick validation is the same walk requiring full consumption.\n- **`assume_ordering` on `AtLeastOnce`** (`TopLevelAtLeastOnceOrderHook`\n/\nin-tick `AtLeastOnceStreamOrderHook`): ordering chooses which *slots*\neach\nelement's retries occupy, so `emit(value)` releases a slot keeping the\nvalue\nbuffered for later re-emission, while `emit_final(value)` releases the\nlast\nslot. The non-consuming form is the unmarked default in both hook\nfamilies\n(finality is the stronger, unverifiable claim; forgotten retirement is\ncaught\nloudly, accidental finality never could be). Zero-copy decisions are\nrejected\n— at-least-once permits duplicates, not losses. In-tick `order(values)`\n  supplies the complete slot sequence.\n\nHook-kind names make the ordering explicit on both sides of each pair\n(`NoOrder…` vs `Ordered…`) so neither reads as the unmarked default.\n\n**Value-class semantics for `emit`/`emit_final`** (the script names\nvalues;\nequal buffered elements are indistinguishable to it): the hook tracks\nper-class\nprovisional emission counts and the last emitted value. `emit_final(v)`\nreleases the class's last slot and consumes **every** buffered element\nequal to\n`v`, checking each got a slot (`k` equal elements need ≥ `k` slots — no\nlosses). Redundant back-to-back duplicates are rejected: a decision may\nname\nthe just-emitted value again only when two or more buffered elements\nshare it.\nThe in-tick equivalent: duplicate values next to each other require ≥ 2\nequal\nelements in the tick's input.\n\nDuplication uses a `T: Clone` bound on the scriptable impls (retries\nmean\nduplication; kept simple per discussion).\n\n## Review feedback addressed\n\nScripted-decision error messages match the established sim log style —\none\nsentence, no method-name prefixes, no internal \"slot\" vocabulary,\nmechanism in\na short parenthetical, counts and offending values inline. The multiset\nvalidator returns a named-field `MultisetCoverMismatch<'p, 's, T>`\n(distinct\nlifetimes) and is documented as not-hot-path; the redundant \"same\nphysical\nsequence is reachable…\" paragraph was dropped from `scripting.mdx`.\n\n## API changes (breaking)\n\n- `Stream::assume_retries` now takes\n`NonDet<Option<RetriesHook<T, O, B, L::SimHookScope>>>` (was plain\n`NonDet`)\n  and threads `sim_hook_id` into op metadata.\n- `sim_hooks::OrderingHook` gains `R: Retries = ExactlyOnce` (before the\nscope\n  parameter from #3201: `OrderingHook<T, B, R, S>`), selecting the\n`next`/`order` (exactly-once) vs `emit`/`emit_final`/`order`\n(at-least-once)\n  decision surfaces. Its `SimHook` impl is split by `R` (at-least-once\nadditionally requires `Clone`), both generic over `S:\nBindableHookScope`.\n- New `sim_hooks::RetriesHook<T, O = NoOrder, B = Unbounded, S =\nOnProcess>`\nhandle with the #3201 scope system (`.on(member_id)` on\n`OnCluster`-scoped\n  handles, decisions carrying the member): `release` (both orders),\n  `release_final` / `release_next` (`TotalOrder`), the pause family +\n  `pause_until_count`, and in-tick `release(values)`; its `SimHook` impl\nrequires `Clone + Serialize + DeserializeOwned + PartialEq`. Ordered and\nunordered retries use separate decision enums, so each hook kind only\never\n  sees decisions it can honor.\n- `Stream::timeout` re-wraps its forwarded guard for the internal\n  `assume_retries`.\n- `SimReceiver` assertion methods deliberately remain\n`ExactlyOnce`-only:\nasserting on an at-least-once output would let a test forget that\nretries\nexist, so tests observe such streams through an explicit\n`assume_retries`\n  hook before asserting.\n\n## Rebase onto cluster hook support (#3201)\n\n`OrderingHook` and `RetriesHook` carry both `R` and `S` (scope last,\nmatching\nthe other handles), scripting impls are generic over `Scope:\nScriptableHookScope`\nand pass `self.member` into `DecisionFuture`, `CommutativeProof`'s hook\ntype in\n`properties/mod.rs` is pinned to `OrderingHook<T, B, ExactlyOnce, S>`\n(proof\nhooks always script the post-`assume_retries` ordering), and the cluster\ncompile-fail tests' `OrderingHook` arities and stderr snapshots were\nupdated\n(stable + nightly).\n\n## Supporting changes\n\n- `ScriptableInlineHook` now requires only `RuntimeHook` (not\n`InlineHook`), so\n  scripted-only kinds need no autonomous surface.\n- Builder: six new `observe_nondet` arms (top-level + in-tick × three\nkinds),\neach emitting only the `Scripted`/`ScriptedInline` wrapper and panicking\nwith\n  a bind-a-hook help message when unhooked.\n- 20 new tests in `sim/tests/scripted.rs` (batched prefix release with\nan open\ntrailing value + `release_final([])` retirement, the forgotten\nunfinalized\nelement, ABAB delayed redeliveries, positional `release_next`,\nshared-value\nback-to-back duplicates, per-kind validation errors, state-space\nsymmetry,\nand the two unhooked build-time panics); `scripting.mdx` gains a\n\"Retries\n  Hooks\" section whose example is a compiled mdtest.\n\nBREAKING CHANGE: `Stream::assume_retries` takes a hookable\n`NonDet<Option<RetriesHook<T, O, B, S>>>` guard; `OrderingHook` gained a\ndefaulted `R: Retries` parameter ahead of the scope parameter (handles\nbound to\n`assume_ordering` on `AtLeastOnce` streams must now be typed\n`OrderingHook<T, B, AtLeastOnce>`, and scope-explicit handles must name\n`R`,\ne.g. `OrderingHook<u32, Unbounded, ExactlyOnce, OnCluster>`); simulating\na flow\nwith an unhooked strengthening `assume_retries` (or `assume_ordering` on\nan\nat-least-once stream) panics at build time with guidance instead of\n`todo!()`.\n\nNot included (follow-up): the keyed liftings\n(`KeyedStream::assume_retries`,\nkeyed `assume_ordering` with at-least-once values), which still hit the\npre-existing `todo!()` arms.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-10-09T22:09:50Z",
+          "url": "https://github.com/hydro-project/hydro/commit/4cc71e2c0ddf59218bf5a92bf9dfe875f444d4cc"
+        },
+        "date": 1791627718222,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311212,
+            "range": "± 7454",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6533553,
+            "range": "± 23006",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6910439,
+            "range": "± 26741",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 45210,
+            "range": "± 2264",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 8530402,
+            "range": "± 52853",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 995141,
+            "range": "± 9540",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1060319,
+            "range": "± 27719",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 44594211,
+            "range": "± 670929",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6869762,
+            "range": "± 21711",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 13418258,
+            "range": "± 1282762",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6533866,
+            "range": "± 9413",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 7018571,
+            "range": "± 62378",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 42274788,
+            "range": "± 364461",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 4032,
+            "range": "± 76",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22640,
+            "range": "± 271",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4138,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6883,
+            "range": "± 100",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 376010,
+            "range": "± 1975",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55921,
+            "range": "± 1017",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 44630,
+            "range": "± 429",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 15230,
+            "range": "± 323",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 7028,
+            "range": "± 78",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 7314,
+            "range": "± 91",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 83585,
+            "range": "± 760",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 80509,
+            "range": "± 321",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7603,
+            "range": "± 226",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15437,
+            "range": "± 114",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 62077,
+            "range": "± 2871",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7608,
+            "range": "± 117",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 196360,
+            "range": "± 1917.92",
             "unit": "ops/s"
           }
         ]
