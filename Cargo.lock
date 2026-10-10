@@ -2795,6 +2795,7 @@ dependencies = [
  "bytes",
  "clap",
  "colored 3.1.1",
+ "cress",
  "dfir_lang",
  "dfir_rs",
  "example_test",

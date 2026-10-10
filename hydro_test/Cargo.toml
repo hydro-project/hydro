@@ -27,6 +27,10 @@ verus = ["dep:vstd", "hydro_lang/verus"]
 
 [dependencies]
 hydro_lang = { path = "../hydro_lang", version = "=0.17.0-alpha.6", default-features = false }
+# The schedule-amplification checker. Optional: `./scripts/cress hydro_test` turns it on, as does
+# `cargo test --features cress` for the hand-wired checker tests; nothing else links it (every use
+# is gated on `cfg(feature = "cress")`).
+cress = { path = "../cress", version = "^0.1.0", optional = true }
 hydro_std = { path = "../hydro_std", version = "=0.17.0-alpha.6", default-features = false }
 stageleft.workspace = true
 rand = "0.10"

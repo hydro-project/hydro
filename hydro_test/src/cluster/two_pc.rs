@@ -11,6 +11,16 @@ pub struct Participant {}
 
 pub struct Coordinator {}
 
+/// Two-phase commit has no timers and no retries, so delaying any edge only delays the
+/// outcome; the check is a benign control (`./scripts/cress hydro_test two_pc`).
+#[cfg_attr(feature = "cress", cress::amplification_check(
+    name = three_participants,
+    participants = 3,
+    num_participants = 3,
+    Payload = u64,
+    workload(payloads = 1),
+    workload_rounds = 125,
+))]
 pub fn two_pc<'a, Payload>(
     coordinator: &Process<'a, Coordinator>,
     participants: &Cluster<'a, Participant>,
