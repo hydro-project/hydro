@@ -97,6 +97,7 @@ pub struct AppendEntriesRequest<T, ClusterTag> {
     pub entries: Vec<LogEntry<T>>,
     /// The leader's commit index.
     pub leader_commit: usize,
+    pub read_lease_expiration: u128,
 }
 
 impl<T: Clone, ClusterTag> Clone for AppendEntriesRequest<T, ClusterTag> {
@@ -108,6 +109,7 @@ impl<T: Clone, ClusterTag> Clone for AppendEntriesRequest<T, ClusterTag> {
             prev_log_term: self.prev_log_term,
             entries: self.entries.clone(),
             leader_commit: self.leader_commit,
+            read_lease_expiration: self.read_lease_expiration,
         }
     }
 }
@@ -142,7 +144,6 @@ pub struct AppendEntriesReply {
     /// meaningful when `success`, and lets the leader advance its commit index once a
     /// majority of `match_index`es reach an entry of the current term.
     pub match_index: usize,
-    pub read_lease_expiration: u128,
 }
 
 /// The single wire format for all intra-cluster RAFT traffic: vote RPCs and
@@ -596,7 +597,6 @@ pub fn raft_step<T: Clone, ClusterTag>(
                             term: state.term,
                             success: false,
                             match_index: 0,
-                            read_lease_expiration: 0,
                         }),
                     ));
                     continue;
@@ -615,14 +615,13 @@ pub fn raft_step<T: Clone, ClusterTag>(
                     state.role = RaftState::Follower;
                 }
                 state.known_leader = Some(request.leader.clone());
+                state.read_lease_expiration = request.read_lease_expiration;
 
                 // Log-matching check (RAFT §5.3).
                 let log_matches = request.prev_log_index == 0
                     || (state.log.len() >= request.prev_log_index
                         && state.log[request.prev_log_index - 1].term_received
                             == request.prev_log_term);
-                
-                state.read_lease_expiration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() + read_lease_duration_ms;
 
                 if !log_matches {
                     outbound.push((
@@ -631,7 +630,6 @@ pub fn raft_step<T: Clone, ClusterTag>(
                             term: state.term,
                             success: false,
                             match_index: 0,
-                            read_lease_expiration: state.read_lease_expiration,
                         }),
                     ));
                     continue;
@@ -675,7 +673,6 @@ pub fn raft_step<T: Clone, ClusterTag>(
                         term: state.term,
                         success: true,
                         match_index: new_match,
-                        read_lease_expiration: state.read_lease_expiration,
                     }),
                 ));
             }
@@ -688,8 +685,6 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 if state.role != RaftState::Leader {
                     continue;
                 }
-
-                state.read_lease_expiration = reply.read_lease_expiration;
 
                 state.heartbeat_repliers.insert(sender.clone());
                 let heartbeat_ack_count = state.heartbeat_repliers.len();
@@ -820,6 +815,8 @@ pub fn raft_step<T: Clone, ClusterTag>(
             state.heartbeat_repliers.clear();
             state.heartbeat_repliers.insert(me.clone());
 
+            state.read_lease_expiration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() + read_lease_duration_ms;
+
             outbound.push((
                 follower.clone(),
                 RaftRpc::AppendEntries(AppendEntriesRequest {
@@ -829,6 +826,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
                     prev_log_term,
                     entries: state.log[prev_log_index..].to_vec(),
                     leader_commit: state.commit_index,
+                    read_lease_expiration: state.read_lease_expiration,
                 }),
             ));
         }
@@ -1760,6 +1758,7 @@ mod tests {
                 prev_log_term: usize::from(prev != 0),
                 entries,
                 leader_commit: 0,
+                read_lease_expiration: 0
             })
         };
 
@@ -1922,7 +1921,6 @@ mod tests {
                         term: 3,
                         success: false,
                         match_index: 0,
-                        read_lease_expiration: 0,
                     }),
                 )],
                 read_lease_duration_ms: 100,
