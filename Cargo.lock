@@ -1565,6 +1565,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "cress"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "cress_config_macro",
+ "hydro_lang",
+ "quote",
+ "serde",
+ "stageleft",
+ "stageleft_tool",
+ "syn 2.0.111",
+]
+
+[[package]]
+name = "cress_config_macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
+]
+
+[[package]]
 name = "criterion"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2772,6 +2795,7 @@ dependencies = [
  "bytes",
  "clap",
  "colored 3.1.1",
+ "cress",
  "dfir_lang",
  "dfir_rs",
  "example_test",

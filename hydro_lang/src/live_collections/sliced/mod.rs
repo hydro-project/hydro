@@ -76,11 +76,19 @@ macro_rules! __sliced_parse_uses__ {
             );
 
             let __tick = $crate::live_collections::sliced::Slicable::create_tick(&__styled.0);
+            // Each backtrace also carries the position of the user's `use` expression, read
+            // from its span while this macro expands. A runtime backtrace cannot recover it:
+            // rustc collapses debug-info locations of code expanded from an external macro to
+            // the `sliced!` call site, so the backtrace's first frame names this invocation,
+            // not the `use::batch(...)` inside it.
             let __backtraces = {
-                use $crate::compile::ir::backtrace::__macro_get_backtrace;
+                use $crate::compile::ir::backtrace::__macro_get_backtrace_at;
                 (
                     $($crate::macro_support::copy_span::copy_span!($($invocation_spans,)* {
-                        __macro_get_backtrace(1)
+                        __macro_get_backtrace_at(
+                            1,
+                            $crate::macro_support::copy_span::span_location!($($invocation_spans),*),
+                        )
                     }),)+
                 )
             };

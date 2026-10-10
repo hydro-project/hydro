@@ -36,6 +36,24 @@ fn strip_hash_brackets(s: &str) -> String {
 #[derive(Clone)]
 pub struct Backtrace;
 
+/// A source position recorded at macro expansion time, for operators created inside a
+/// `macro_rules!` body such as `sliced!`.
+///
+/// A runtime backtrace cannot recover the position of a token written inside a macro
+/// invocation: rustc collapses the debug-info location of code expanded from an external
+/// macro to the macro's call site, so the first frame of the backtrace names the `sliced!`
+/// invocation rather than the `use::batch(...)` inside it. The macro therefore reads the
+/// span of the user's tokens while it expands and records it here.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct UserLocation {
+    /// The source file as the compiler saw it, or `None` when the span had no local file.
+    pub file: Option<&'static str>,
+    /// The one-based line of the user's expression.
+    pub line: u32,
+    /// The one-based column of the user's expression.
+    pub column: u32,
+}
+
 #[cfg(feature = "build")]
 /// Captures an entire backtrace, whose elements will be lazily resolved. See
 /// [`Backtrace::elements`] for more information.
@@ -43,6 +61,10 @@ pub struct Backtrace;
 pub struct Backtrace {
     skip_count: usize,
     col_offset: usize, // whether this is from `sliced!` which requires an offset
+    /// The position of the user's expression, when the operator was created by a macro that
+    /// recorded it (see [`UserLocation`]). A reference to a promoted constant, so that this
+    /// costs one pointer on every IR node rather than the tuple itself.
+    user_location: Option<&'static (Option<&'static str>, u32, u32)>,
     frames: Vec<(RefCell<Option<BacktraceFrame>>, OnceLock<BacktraceFrame>)>,
 }
 
@@ -61,7 +83,51 @@ pub fn __macro_get_backtrace(_col_offset: usize) -> Backtrace {
     panic!();
 }
 
+/// Like [`__macro_get_backtrace`], and also records the position of the user's expression
+/// that the macro read while expanding (see [`UserLocation`]). A `line` of zero means the
+/// macro could not read a position, and no location is recorded.
+#[cfg(stageleft_runtime)]
+#[cfg(feature = "build")]
+#[doc(hidden)]
+pub fn __macro_get_backtrace_at(
+    col_offset: usize,
+    location: &'static (Option<&'static str>, u32, u32),
+) -> Backtrace {
+    let mut out = Backtrace::get_backtrace(1);
+    out.col_offset = col_offset;
+    if location.1 > 0 {
+        out.user_location = Some(location);
+    }
+    out
+}
+
+#[cfg(not(feature = "build"))]
+#[doc(hidden)]
+pub fn __macro_get_backtrace_at(
+    _col_offset: usize,
+    _location: &'static (Option<&'static str>, u32, u32),
+) -> Backtrace {
+    panic!();
+}
+
 impl Backtrace {
+    /// The position of the user's expression recorded at macro expansion time, if the
+    /// operator was created by a macro that records one (see [`UserLocation`]). Operators
+    /// created by ordinary method calls have none; their position is the first element of
+    /// [`Backtrace::elements`].
+    #[cfg(feature = "build")]
+    pub fn user_location(&self) -> Option<UserLocation> {
+        self.user_location
+            .map(|&(file, line, column)| UserLocation { file, line, column })
+    }
+
+    /// The position of the user's expression recorded at macro expansion time. Always `None`
+    /// without the `build` feature.
+    #[cfg(not(feature = "build"))]
+    pub fn user_location(&self) -> Option<UserLocation> {
+        None
+    }
+
     #[cfg(feature = "build")]
     #[inline(never)]
     pub(crate) fn get_backtrace(skip_count: usize) -> Backtrace {
@@ -70,6 +136,7 @@ impl Backtrace {
         Backtrace {
             skip_count,
             col_offset: 0,
+            user_location: None,
             frames: frames_vec
                 .into_iter()
                 .map(|f| (RefCell::new(Some(f)), OnceLock::new()))

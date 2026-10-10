@@ -603,6 +603,22 @@ pub async fn quiesce() {
     quiescence.tainted.set(false);
 }
 
+/// Removes every message already delivered to `receiver` and returns how many there were. This
+/// never runs the scheduler: it neither settles the simulation nor forces pending work, so it
+/// cannot taint or poison the instance, and messages that pending work would still produce are
+/// not waited for. Callers that need a final count reach quiescence first (see [`quiesce`]).
+fn drain_delivered_bytes(receiver: &Mutex<UnsyncReceiver<Bytes>>) -> usize {
+    let mut receiver = receiver
+        .try_lock()
+        .expect("simulation output is being received elsewhere");
+    let mut cx = std::task::Context::from_waker(std::task::Waker::noop());
+    let mut count = 0;
+    while let Poll::Ready(Some(_)) = receiver.poll_next_unpin(&mut cx) {
+        count += 1;
+    }
+    count
+}
+
 /// Receives the next message from `receiver` while trying not to overrun the simulation:
 /// first the simulation *settles* (deterministic work runs, but the scheduler pauses before
 /// nondeterministic work). If a message arrives, it is returned; if the simulation settles to
@@ -1037,6 +1053,44 @@ impl CompiledSim {
         }
     }
 
+    /// Executes the given closure with a single instance of the compiled simulation, drawing
+    /// every scheduling decision from the provided bolero [`Driver`] instead of a fuzzer.
+    /// [`super::prompt_schedule::PromptScheduleDriver`] is a deterministic driver that always
+    /// moves the most data forward; a custom driver can implement any fixed scheduling policy.
+    ///
+    /// This is a stand-in for [`CompiledSim::deterministic`] for callers that script some hooks
+    /// and need a fixed default for the rest: `deterministic()` refuses hooks with more than one
+    /// legal decision and more than one runnable tick, and not every hook kind can be scripted
+    /// yet (see the [`prompt_schedule`](super::prompt_schedule) docs). Once they can, or once
+    /// `deterministic()` takes a default policy, this method should be deleted.
+    ///
+    /// The closure receives the instance without the scheduler running; use
+    /// [`CompiledSimInstance::run_with_scheduler_and_logger`] (or a receiver's methods, which
+    /// drive the scheduler while they wait) inside it. Tick logging follows `HYDRO_SIM_LOG`.
+    ///
+    /// [`Driver`]: bolero::bolero_engine::driver::Driver
+    pub fn run_with_driver<D: bolero::bolero_engine::driver::Driver + 'static>(
+        &self,
+        driver: D,
+        thunk: impl AsyncFnOnce(CompiledSimInstance<'_>) + RefUnwindSafe,
+    ) {
+        self.with_instantiator(
+            |instantiator| {
+                let instance = instantiator();
+                bolero::bolero_engine::any::scope::with(
+                    Box::new(bolero::bolero_engine::driver::object::Object(driver)),
+                    || {
+                        tokio::runtime::Builder::new_current_thread()
+                            .build()
+                            .unwrap()
+                            .block_on(async { instance.run_without_launching(thunk).await })
+                    },
+                );
+            },
+            false,
+        );
+    }
+
     /// Exhaustively searches all possible executions of the simulation. The provided
     /// closure will be repeatedly executed with instances of the Hydro program where the
     /// batching boundaries, order of messages, and retries are varied.
@@ -1262,9 +1316,10 @@ impl<'a> CompiledSimInstance<'a> {
     /// The future always gets to run first; whenever it is blocked (e.g. waiting to receive
     /// simulation outputs), the scheduler runs a single step to completion. Steps are atomic
     /// with respect to the future: it is re-polled between every pair of scheduler steps, but
-    /// never while a step is in flight. The [`LaunchedSim`] state struct lives across steps,
-    /// in this function's frame.
-    async fn run_with_scheduler(self, thunk: impl Future<Output = ()>) {
+    /// never while a step is in flight. The `LaunchedSim` state struct lives across steps,
+    /// in this function's frame. Tick logging is off; see
+    /// [`CompiledSimInstance::run_with_scheduler_and_logger`] for a trace.
+    pub async fn run_with_scheduler(self, thunk: impl Future<Output = ()>) {
         self.run_with_scheduler_and_maybe_logger::<std::io::Empty>(None, thunk)
             .await;
     }
@@ -1615,6 +1670,12 @@ impl<T, O: Ordering, R: Retries> SimReceiver<T, O, R> {
         try_next_bytes(&receiver, &quiescence)
             .await
             .map(|bytes| (self.2)(&bytes))
+    }
+
+    /// See [`drain_delivered_bytes`].
+    pub(crate) fn drain_delivered(&self) -> usize {
+        let (receiver, _) = self.connections();
+        drain_delivered_bytes(&receiver)
     }
 
     /// Asserts that the stream has ended and no more messages can possibly arrive.
@@ -2058,6 +2119,12 @@ impl<T, O: Ordering, R: Retries> SimClusterReceiver<T, O, R> {
         try_next_bytes(&receiver, &quiescence)
             .await
             .map(|bytes| (self.2)(&bytes))
+    }
+
+    /// See [`drain_delivered_bytes`].
+    pub(crate) fn drain_delivered(&self, member_id: u32) -> usize {
+        let (receiver, _) = self.member_connections(member_id);
+        drain_delivered_bytes(&receiver)
     }
 
     /// Asserts that the stream from a specific cluster member has ended and no more messages
