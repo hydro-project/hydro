@@ -224,6 +224,7 @@ pub struct RequestVoteDto {
 pub struct RequestVoteResponseDto {
     /// The term the vote is granted for.
     pub term: usize,
+    pub read_lease_expiration: u128,
 }
 
 /// Configuration shared by [`raft`] and its inner server component.
@@ -331,6 +332,7 @@ pub struct RaftServerState<T, ClusterTag> {
     /// leadership acquisition.
     pub match_index: HashMap<MemberId<ClusterTag>, usize>,
     pub read_lease_expiration: u128,
+    pub deposed_leader_expiration: u128,
     pub has_committed_as_leader: bool,
 }
 
@@ -352,6 +354,7 @@ impl<T, ClusterTag> RaftServerState<T, ClusterTag> {
             next_index: HashMap::new(),
             match_index: HashMap::new(),
             read_lease_expiration: 0,
+            deposed_leader_expiration: 0,
             has_committed_as_leader: false,
         }
     }
@@ -387,6 +390,7 @@ impl<T: Clone, ClusterTag> Clone for RaftServerState<T, ClusterTag> {
             next_index: self.next_index.clone(),
             match_index: self.match_index.clone(),
             read_lease_expiration: self.read_lease_expiration.clone(),
+            deposed_leader_expiration: self.deposed_leader_expiration.clone(),
             has_committed_as_leader: self.has_committed_as_leader,
         }
     }
@@ -561,14 +565,13 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 // is exactly the interlock the split-component design lacked.
                 let candidate_up_to_date =
                     (dto.last_log_term, dto.last_log_index) >= state.last_log_position();
-                let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
                 let can_vote =
-                    (state.voted_for.is_none() || state.voted_for.as_ref() == Some(&sender)) && now > state.read_lease_expiration;
+                    state.voted_for.is_none() || state.voted_for.as_ref() == Some(&sender);
                 if candidate_up_to_date && can_vote {
                     state.voted_for = Some(sender.clone());
                     outbound.push((
                         sender,
-                        RaftRpc::RequestVoteResponse(RequestVoteResponseDto { term: state.term }),
+                        RaftRpc::RequestVoteResponse(RequestVoteResponseDto { term: state.term, read_lease_expiration: state.read_lease_expiration }),
                     ));
                 }
             }
@@ -578,6 +581,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 }
                 if state.role == RaftState::Candidate {
                     state.votes.insert(sender);
+                    state.deposed_leader_expiration = state.deposed_leader_expiration.max(dto.read_lease_expiration);
                     if state.votes.len() >= majority {
                         become_leader(state, &other_members);
                     }
@@ -766,7 +770,8 @@ pub fn raft_step<T: Clone, ClusterTag>(
     // (d) Advance the leader's commit index: the §5.4.2 rule — only entries of the
     // leader's own term commit by counting replicas; earlier-term entries commit
     // transitively beneath them.
-    if state.role == RaftState::Leader {
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+    if state.role == RaftState::Leader && state.deposed_leader_expiration < now {
         let mut candidate = state.log.len();
         while candidate > state.commit_index {
             if state.log[candidate - 1].term_received == state.term {
