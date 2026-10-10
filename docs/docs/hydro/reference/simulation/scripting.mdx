@@ -17,6 +17,7 @@ Handles are small `Copy` values containing no simulator machinery: the same hand
 - **`BatchHook<T>`** controls which buffered elements a `batch` releases into each tick
 - **`SnapshotHook<T>`** controls which version of a `Singleton` each `snapshot` reveals
 - **`OrderingHook<T>`** controls the order chosen by an `assume_ordering`
+- **`RetriesHook<T>`** controls how many times each element is observed through an `assume_retries`
 - **`KeyedBatchHook<K, V>`** controls which buffered entries a keyed `batch` releases into each tick
 - **`KeyedSnapshotHook<K, V>`** controls which version of each key's state a `KeyedSingleton` `snapshot` (or `batch`) reveals
 - **`KeyedOrderingHook<K, V>`** controls the per-key order chosen by a keyed `assume_ordering`
@@ -372,3 +373,123 @@ The remaining hook kinds follow the same top-level / in-tick split as `OrderingH
 - **Inside a tick** (`Bounded` handles), a single `order(values)` decision supplies the complete result for that tick's input: a per-key ordering for `KeyedOrderingHook`, an interleaving preserving each key's order for `PartialOrderingHook`, and — for `MergeOrderedHook` / `KeyedMergeOrderedHook` — the merged sequence with each value labeled by the input it is drawn from (`false` = first, `true` = second), where each input's labeled values must be exactly that input's batch in order. As with in-tick orderings, an operator that faces a genuine choice with no scripted decision fails the tick.
 
 `KeyedBatchHook` mirrors `BatchHook`, with `release_values` naming `(key, value)` entries: for streams ordered within each key the entries must match each key's buffered prefix in order (and a positional `release([(key, count), ...])` releases each named key's prefix by count), and for unordered streams they are matched per key as multisets. `KeyedSnapshotHook::reveal(entries)` names the version each key observes next, scanning forward through that key's buffered versions; keys that are not named observe their previously revealed version again.
+
+## Retries Hooks
+
+An `AtLeastOnce` stream may deliver each element more than once. `RetriesHook` scripts the `assume_retries::<ExactlyOnce>` where those duplicates become visible, and `OrderingHook<T, _, AtLeastOnce>` scripts an `assume_ordering` on a stream that still carries them. The number of possible duplicates is unbounded, so these operators cannot be explored by `fuzz()` or `exhaustive()`: in a simulated flow they **must** be bound to a hook, and an unhooked one is a build-time error.
+
+The two hooks split the work as follows. An at-least-once stream `[A, B]` may be delivered as `A B`, `A A B`, `A B B B`, and so on — each element repeats **in place**. A sequence like `A B A B`, where a redelivery comes after a different element, involves a choice of *order*, so:
+
+- the **retries hook** decides how many times each element repeats in place, and
+- the **ordering hook** decides where each element appears, including appearing again later.
+
+### Retries on a `TotalOrder` stream
+
+On an ordered stream, a decision lists the delivered values for a prefix of the buffered input, in order; repeating a value back-to-back delivers it again.
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::stream::{AtLeastOnce, ExactlyOnce, TotalOrder};
+# use hydro_lang::sim_hooks::RetriesHook;
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+let retries: RetriesHook<u32, TotalOrder> = flow.sim_hook();
+let (input_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+let output = input
+    .weaken_retries::<AtLeastOnce>()
+    .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+    .sim_output();
+
+flow.sim().deterministic(async || {
+    retries.auto_pause();
+    input_send.send_many([1, 2, 3]);
+    retries.release([1, 1]).await; // 1 is delivered twice, and may repeat again
+    retries.release([1, 2, 2, 3]).await; // 1 once more, 2 twice, then 3
+    retries.release_final([]).await; // no more deliveries of 3
+    output.assert_yields_only([1, 1, 1, 2, 2, 3]).await;
+});
+```
+
+- **`release(values)`** consumes every element it moves past, but leaves the **last** one buffered so a later decision can deliver it again.
+- **`release_final(values)`** also consumes the last element. With no values, it finishes an element left open by an earlier `release`.
+- **`release_next(copies)`** delivers the next buffered element `copies` times without naming it, like `advance_first` on a merge hook. `copies` is the total number of deliveries: `1` means no duplicate, and `0` is rejected.
+
+A decision waits until every value it lists has arrived, and fails if a value does not match the buffered input. Elements it does not consume remain pending, so the hook must be scripted again or paused before the simulation moves on.
+
+### Retries on a `NoOrder` stream
+
+`release(value, copies)` delivers a buffered element `copies` times and consumes it.
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::stream::{AtLeastOnce, ExactlyOnce, NoOrder};
+# use hydro_lang::sim_hooks::RetriesHook;
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+let retries: RetriesHook<u32, NoOrder> = flow.sim_hook();
+let (input_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+let output = input
+    .weaken_retries::<AtLeastOnce>()
+    .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+    .sim_output();
+
+flow.sim().deterministic(async || {
+    input_send.send_many_unordered([1, 2]);
+    retries.release(2, 2).await; // 2 is delivered twice
+    retries.release(1, 1).await; // 1 is delivered once
+    output.assert_yields_only_unordered([2, 2, 1]).await;
+});
+```
+
+Any buffered element may be named. Like a top-level `OrderingHook`, each decision releases a single element, so the script controls how releases interleave with feedback from the rest of the program.
+
+### Ordering an `AtLeastOnce` stream
+
+`OrderingHook<T, Unbounded, AtLeastOnce>` releases one element per decision, like the exactly-once ordering hook, but an element can be released more than once:
+
+- **`emit(value)`** releases `value` and keeps it buffered, so it can be released again after other elements.
+- **`emit_final(value)`** releases `value` for the last time and consumes it. If several buffered elements are equal to `value`, all of them are consumed, so each must have been emitted at least once.
+
+Back-to-back repeats are the retries hook's job, so a value can only be emitted twice in a row if two equal elements are buffered.
+
+Chaining the ordering hook with a retries hook:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::stream::{AtLeastOnce, ExactlyOnce, NoOrder, TotalOrder};
+# use hydro_lang::sim_hooks::{OrderingHook, RetriesHook};
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+let ordering: OrderingHook<u32, Unbounded, AtLeastOnce> = flow.sim_hook();
+let retries: RetriesHook<u32, TotalOrder> = flow.sim_hook();
+let (input_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+let output = input
+    .weaken_retries::<AtLeastOnce>()
+    .assume_ordering::<TotalOrder>(nondet!(/** scripted */ hook = ordering))
+    .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+    .sim_output();
+
+flow.sim().deterministic(async || {
+    ordering.auto_pause();
+    retries.auto_pause();
+    input_send.send_many_unordered([10, 20]);
+
+    ordering.emit(10).await; // 10, to be redelivered later
+    retries.release_final([10]).await;
+    ordering.emit(20).await; // 20, to be redelivered later
+    retries.release_final([20, 20]).await; // delivered twice in place
+    ordering.emit_final(10).await; // the redelivery of 10
+    retries.release_final([10]).await;
+    ordering.emit_final(20).await; // the redelivery of 20
+    retries.release_final([20]).await;
+
+    output.assert_yields_only([10, 20, 20, 10, 20]).await;
+});
+```
+
+### Inside a tick
+
+As with other in-tick hooks, a single decision covers everything the operator receives in that tick:
+
+- `RetriesHook<T, O, Bounded>::release(values)` lists every received value at least once and nothing else. On a `TotalOrder` stream, the values must stay in input order, repeating only back-to-back.
+- `OrderingHook<T, Bounded, AtLeastOnce>::order(values)` lists the output in order, and may include a value more than once.

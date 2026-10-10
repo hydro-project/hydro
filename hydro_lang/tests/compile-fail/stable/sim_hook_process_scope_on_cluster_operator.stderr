@@ -6,8 +6,8 @@ error[E0308]: mismatched types
    |          |
    |          arguments to this method are incorrect
    |
-   = note: expected struct `NonDet<Option<OrderingHook<u32, hydro_lang::prelude::Bounded, OnCluster<Workers>>>>`
-              found struct `NonDet<Option<OrderingHook<u32, hydro_lang::prelude::Unbounded, OnProcess>>>`
+   = note: expected struct `NonDet<Option<OrderingHook<u32, hydro_lang::prelude::Bounded, hydro_lang::live_collections::stream::ExactlyOnce, OnCluster<Workers>>>>`
+              found struct `NonDet<Option<OrderingHook<u32, hydro_lang::prelude::Unbounded, hydro_lang::live_collections::stream::ExactlyOnce, OnProcess>>>`
 note: method defined here
   --> src/live_collections/stream/mod.rs
    |
