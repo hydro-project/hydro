@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# Cress: runs every `#[cress::amplification_check(...)]` in a crate as a normal command.
+#
+#   ./scripts/cress [--include-ignored] [--config NAME] <crate> [function-substring]
+#
+# The crate under check lists `cress` as an optional dependency and writes its attributes as
+# `#[cfg_attr(feature = "cress", cress::amplification_check(...))]`; this command enables that
+# feature when it builds the crate, so ordinary builds and tests never link the checker.
+#
+# The terminal shows one status line, then the complete concise verdict for each matching check:
+# label, growth, multiplier, and source location. Detailed reports are written to
+# target/cress/reports/. Checks with `ignore = "..."` are skipped unless requested.
+#
+# Requires python3 (to read `cargo metadata` and write the runner's manifest).
+set -euo pipefail
+
+include_ignored=false
+configuration=
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --include-ignored) include_ignored=true; shift ;;
+    --config)
+      if [[ $# -lt 2 ]]; then echo "--config requires a name" >&2; exit 2; fi
+      configuration=$2
+      shift 2
+      ;;
+    -h|--help)
+      echo "usage: $0 [--include-ignored] [--config NAME] <crate> [function-substring]"
+      exit 0
+      ;;
+    --*) echo "unknown option: $1" >&2; exit 2 ;;
+    *) break ;;
+  esac
+done
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+  echo "usage: $0 [--include-ignored] [--config NAME] <crate> [function-substring]" >&2
+  exit 2
+fi
+crate=$1
+substring=${2:-}
+
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
+# Resolve the package through Cargo rather than guessing its directory or Rust library name, and
+# check that it declares the `cress` feature (an optional dependency on the `cress` crate).
+metadata=$(cargo metadata --format-version=1 --no-deps --manifest-path "$root/Cargo.toml")
+package_manifest=$(python3 -c '
+import json, sys
+name = sys.argv[1]
+packages = [p for p in json.load(sys.stdin)["packages"] if p["name"] == name]
+if len(packages) != 1:
+    print(f"expected one workspace package named {name!r}, found {len(packages)}", file=sys.stderr)
+    raise SystemExit(2)
+if "cress" not in packages[0]["features"]:
+    print(f"package {name!r} has no `cress` feature; add `cress = {{ path = \"../cress\", optional = true }}` "
+          "to its [dependencies] and gate the attributes on cfg(feature = \"cress\")", file=sys.stderr)
+    raise SystemExit(2)
+print(packages[0]["manifest_path"])
+' "$crate" <<<"$metadata")
+package_dir=$(dirname "$package_manifest")
+# The runner needs the same `stageleft` the workspace uses; read its version from the workspace
+# manifest so the two cannot drift.
+stageleft_version=$(python3 - "$root/Cargo.toml" <<'PY'
+import re, sys
+text = open(sys.argv[1]).read()
+m = re.search(r'^stageleft\s*=\s*(?:"([^"]+)"|\{[^}]*version\s*=\s*"([^"]+)")', text, re.M)
+if not m:
+    print("could not find the workspace `stageleft` dependency in Cargo.toml", file=sys.stderr)
+    raise SystemExit(2)
+print(m.group(1) or m.group(2))
+PY
+)
+
+export CRESS_RESULTS_DIR="$root/target/cress"
+runner_dir="$CRESS_RESULTS_DIR/runner"
+mkdir -p "$CRESS_RESULTS_DIR/reports" "$runner_dir/src"
+: > "$CRESS_RESULTS_DIR/results.tsv"
+
+# This tiny generated binary links the requested crate so its registered checks are present. It
+# deliberately uses `cargo run`, not Cargo's test harness. Keeping it under target/ avoids adding
+# demo plumbing to the user's crate.
+python3 - "$runner_dir/Cargo.toml" "$package_dir" "$root/cress" "$crate" "$stageleft_version" <<'PY'
+import json, pathlib, sys
+out, checked, cress = map(pathlib.Path, sys.argv[1:4])
+crate, stageleft_version = sys.argv[4], sys.argv[5]
+out.write_text(f'''[package]
+name = "cress-runner"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[workspace.lints.rust]
+unexpected_cfgs = {{ level = "warn", check-cfg = ["cfg(stageleft_runtime)", "cfg(stageleft_trybuild)"] }}
+
+[dependencies]
+checked_crate = {{ path = {json.dumps(str(checked))}, package = {json.dumps(crate)}, features = ["cress"] }}
+cress = {{ path = {json.dumps(str(cress))} }}
+stageleft = {json.dumps(stageleft_version)}
+''')
+PY
+# Start the generated runner from the workspace lockfile so it resolves the same dependency versions
+# and can run offline after the workspace has been built once. It is a copy, not a link: the runner
+# has its own dependency graph, and Cargo would otherwise write that resolution back over the
+# workspace's lockfile.
+rm -f "$runner_dir/Cargo.lock"
+cp "$root/Cargo.lock" "$runner_dir/Cargo.lock"
+
+cat > "$runner_dir/src/main.rs" <<'RS'
+use checked_crate as _;
+
+fn main() {
+    // Simulation compilation must inspect the checked crate, rather than this generated runner.
+    // SAFETY: this process is single-threaded here, before the checker starts worker threads.
+    unsafe {
+        std::env::set_var(
+            "CARGO_MANIFEST_DIR",
+            std::env::var_os("CRESS_SOURCE_DIR").expect("missing checked crate path"),
+        );
+    }
+    cress::__private::hydro_lang::compile::init_test();
+    match cress::harness::run_registered_checks(
+        std::env::args().nth(1).as_deref(),
+        std::env::args().nth(2).as_deref(),
+        std::env::args().nth(3).as_deref() == Some("true"),
+    ) {
+        Ok(results) => {
+            cress::harness::print_verdicts(&results);
+            if results.iter().any(|r| matches!(r.verdict, cress::Verdict::NotExplored { .. })) {
+                std::process::exit(1);
+            }
+        }
+        Err(message) => {
+            eprintln!("cress: {message}");
+            std::process::exit(2);
+        }
+    }
+}
+RS
+
+CRESS_SOURCE_DIR="$package_dir" \
+CARGO_TARGET_DIR="$root/target" \
+cargo run --quiet --manifest-path "$runner_dir/Cargo.toml" -- "$substring" "$configuration" "$include_ignored"
