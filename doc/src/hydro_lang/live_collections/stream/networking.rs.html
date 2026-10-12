@@ -501,14 +501,14 @@
 <a href=#501 id=501 data-nosnippet>501</a>    }
 <a href=#502 id=502 data-nosnippet>502</a>
 <a href=#503 id=503 data-nosnippet>503</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#504 id=504 data-nosnippet>504</a>    </span><span class="doccomment">/// Sets up a bincode-encoded simulation output port for this stream, allowing test code to
+<a href=#504 id=504 data-nosnippet>504</a>    </span><span class="doccomment">/// Sets up a MessagePack-encoded simulation output port for this stream, allowing test code to
 <a href=#505 id=505 data-nosnippet>505</a>    /// receive elements sent to this stream during simulation. Use [`Stream::sim_output_with`] to
 <a href=#506 id=506 data-nosnippet>506</a>    /// select another codec.
 <a href=#507 id=507 data-nosnippet>507</a>    </span><span class="kw">pub fn </span>sim_output(<span class="self">self</span>) -&gt; SimReceiver&lt;T, O, R&gt;
 <a href=#508 id=508 data-nosnippet>508</a>    <span class="kw">where
 <a href=#509 id=509 data-nosnippet>509</a>        </span>T: Serialize + DeserializeOwned,
 <a href=#510 id=510 data-nosnippet>510</a>    {
-<a href=#511 id=511 data-nosnippet>511</a>        <span class="self">self</span>.sim_output_with::&lt;<span class="kw">crate</span>::sim::codec::BincodeCodec&gt;()
+<a href=#511 id=511 data-nosnippet>511</a>        <span class="self">self</span>.sim_output_with::&lt;<span class="kw">crate</span>::sim::codec::RmpCodec&gt;()
 <a href=#512 id=512 data-nosnippet>512</a>    }
 <a href=#513 id=513 data-nosnippet>513</a>
 <a href=#514 id=514 data-nosnippet>514</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
@@ -1386,14 +1386,14 @@
 <a href=#1386 id=1386 data-nosnippet>1386</a>    }
 <a href=#1387 id=1387 data-nosnippet>1387</a>
 <a href=#1388 id=1388 data-nosnippet>1388</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#1389 id=1389 data-nosnippet>1389</a>    </span><span class="doccomment">/// Sets up a bincode-encoded simulation output port for this cluster stream, allowing test
+<a href=#1389 id=1389 data-nosnippet>1389</a>    </span><span class="doccomment">/// Sets up a MessagePack-encoded simulation output port for this cluster stream, allowing test
 <a href=#1390 id=1390 data-nosnippet>1390</a>    /// code to receive `(member_id, T)` pairs during simulation. Use
 <a href=#1391 id=1391 data-nosnippet>1391</a>    /// [`Stream::sim_cluster_output_with`] to select another codec.
 <a href=#1392 id=1392 data-nosnippet>1392</a>    </span><span class="kw">pub fn </span>sim_cluster_output(<span class="self">self</span>) -&gt; <span class="kw">crate</span>::sim::SimClusterReceiver&lt;T, O, R&gt;
 <a href=#1393 id=1393 data-nosnippet>1393</a>    <span class="kw">where
 <a href=#1394 id=1394 data-nosnippet>1394</a>        </span>T: Serialize + DeserializeOwned,
 <a href=#1395 id=1395 data-nosnippet>1395</a>    {
-<a href=#1396 id=1396 data-nosnippet>1396</a>        <span class="self">self</span>.sim_cluster_output_with::&lt;<span class="kw">crate</span>::sim::codec::BincodeCodec&gt;()
+<a href=#1396 id=1396 data-nosnippet>1396</a>        <span class="self">self</span>.sim_cluster_output_with::&lt;<span class="kw">crate</span>::sim::codec::RmpCodec&gt;()
 <a href=#1397 id=1397 data-nosnippet>1397</a>    }
 <a href=#1398 id=1398 data-nosnippet>1398</a>
 <a href=#1399 id=1399 data-nosnippet>1399</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]

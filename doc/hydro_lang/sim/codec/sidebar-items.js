@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BincodeCodec"],"trait":["SimCodec"]};
+window.SIDEBAR_ITEMS = {"struct":["RmpCodec"],"trait":["SimCodec"]};

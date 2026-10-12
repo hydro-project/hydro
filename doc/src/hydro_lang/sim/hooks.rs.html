@@ -90,7 +90,7 @@
 <a href=#90 id=90 data-nosnippet>90</a>    <span class="doccomment">/// The cluster member whose hook instance the decision targets (from `.on(..)` on
 <a href=#91 id=91 data-nosnippet>91</a>    /// the handle); `None` for hooks on processes.
 <a href=#92 id=92 data-nosnippet>92</a>    </span>member: <span class="prelude-ty">Option</span>&lt;u32&gt;,
-<a href=#93 id=93 data-nosnippet>93</a>    <span class="doccomment">/// The decision, bincode-serialized (the handle and the hook it is bound to
+<a href=#93 id=93 data-nosnippet>93</a>    <span class="doccomment">/// The decision, MessagePack-serialized (the handle and the hook it is bound to
 <a href=#94 id=94 data-nosnippet>94</a>    /// statically know the same decision type). `None` once installed.
 <a href=#95 id=95 data-nosnippet>95</a>    </span>blob: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
 <a href=#96 id=96 data-nosnippet>96</a>}
@@ -100,7 +100,7 @@
 <a href=#100 id=100 data-nosnippet>100</a>        DecisionFuture {
 <a href=#101 id=101 data-nosnippet>101</a>            hook_id,
 <a href=#102 id=102 data-nosnippet>102</a>            member,
-<a href=#103 id=103 data-nosnippet>103</a>            blob: <span class="prelude-val">Some</span>(bincode::serialize(decision).unwrap()),
+<a href=#103 id=103 data-nosnippet>103</a>            blob: <span class="prelude-val">Some</span>(rmp_serde::to_vec_named(decision).unwrap()),
 <a href=#104 id=104 data-nosnippet>104</a>        }
 <a href=#105 id=105 data-nosnippet>105</a>    }
 <a href=#106 id=106 data-nosnippet>106</a>}
@@ -199,7 +199,7 @@
 <a href=#199 id=199 data-nosnippet>199</a>
 <a href=#200 id=200 data-nosnippet>200</a>        <span class="kw">let </span>hook = ctx.control(this.hook_id, this.member);
 <a href=#201 id=201 data-nosnippet>201</a>
-<a href=#202 id=202 data-nosnippet>202</a>        <span class="kw">let </span>status: S = bincode::deserialize(<span class="kw-2">&amp;</span>hook.borrow().status_blob())
+<a href=#202 id=202 data-nosnippet>202</a>        <span class="kw">let </span>status: S = rmp_serde::from_slice(<span class="kw-2">&amp;</span>hook.borrow().status_blob())
 <a href=#203 id=203 data-nosnippet>203</a>            .expect(<span class="string">"internal error: hook status blob did not match the handle's status type"</span>);
 <a href=#204 id=204 data-nosnippet>204</a>
 <a href=#205 id=205 data-nosnippet>205</a>        <span class="kw">if </span>(this.predicate)(<span class="kw-2">&amp;</span>status) {

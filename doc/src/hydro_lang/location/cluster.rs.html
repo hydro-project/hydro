@@ -146,7 +146,7 @@
 <a href=#146 id=146 data-nosnippet>146</a>
 <a href=#147 id=147 data-nosnippet>147</a><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#148 id=148 data-nosnippet>148</a></span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, C&gt; Cluster&lt;<span class="lifetime">'a</span>, C&gt; {
-<a href=#149 id=149 data-nosnippet>149</a>    <span class="doccomment">/// Sets up a bincode-encoded simulated input port on this cluster for testing.
+<a href=#149 id=149 data-nosnippet>149</a>    <span class="doccomment">/// Sets up a MessagePack-encoded simulated input port on this cluster for testing.
 <a href=#150 id=150 data-nosnippet>150</a>    ///
 <a href=#151 id=151 data-nosnippet>151</a>    /// Returns a `SimClusterSender` that sends `(member_id, T)` messages targeting
 <a href=#152 id=152 data-nosnippet>152</a>    /// specific cluster members, and a `Stream&lt;T&gt;` received by each member. Use
@@ -177,7 +177,7 @@
 <a href=#177 id=177 data-nosnippet>177</a>    <span class="kw">where
 <a href=#178 id=178 data-nosnippet>178</a>        </span>T: serde::Serialize + serde::de::DeserializeOwned,
 <a href=#179 id=179 data-nosnippet>179</a>    {
-<a href=#180 id=180 data-nosnippet>180</a>        <span class="self">self</span>.sim_input_with::&lt;<span class="kw">crate</span>::sim::codec::BincodeCodec, T, O, R&gt;()
+<a href=#180 id=180 data-nosnippet>180</a>        <span class="self">self</span>.sim_input_with::&lt;<span class="kw">crate</span>::sim::codec::RmpCodec, T, O, R&gt;()
 <a href=#181 id=181 data-nosnippet>181</a>    }
 <a href=#182 id=182 data-nosnippet>182</a>
 <a href=#183 id=183 data-nosnippet>183</a>    <span class="doccomment">/// Sets up a simulated input port on this cluster using the codec `Codec`.
