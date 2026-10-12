@@ -80,3 +80,24 @@ pub trait IsBounded: Boundedness {}
 #[sealed]
 #[diagnostic::do_not_recommend]
 impl IsBounded for Bounded {}
+
+/// Marker trait for a [`Boundedness`] that is available when `Self` is a weaker guarantee than
+/// `Other`, which means that a collection with `Other` guarantees can be safely converted to
+/// have `Self` guarantees instead: [`Unbounded`] is weaker than either, and [`Bounded`] only
+/// than itself.
+#[sealed]
+#[diagnostic::on_unimplemented(
+    message = "the stream must be bounded (`Bounded`), but has bound `{Other}`",
+    label = "required here",
+    note = "strengthen the boundedness upstream, or consider a different API",
+    note = "for an embedded input, the host promises it with `Promises::new().bounded(manual_proof!(/** why every element is available at once */))`"
+)]
+pub trait WeakerBoundednessThan<Other: ?Sized>: Boundedness {}
+
+#[sealed]
+#[diagnostic::do_not_recommend]
+impl<B: Boundedness> WeakerBoundednessThan<B> for Unbounded {}
+
+#[sealed]
+#[diagnostic::do_not_recommend]
+impl<B: IsBounded> WeakerBoundednessThan<B> for Bounded {}

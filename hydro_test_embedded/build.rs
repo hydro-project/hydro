@@ -1,4 +1,6 @@
 fn main() {
+    hydro_build_utils::emit_nightly_configuration!();
+
     #[cfg(feature = "test_embedded")]
     generate_embedded();
 }
@@ -6,7 +8,6 @@ fn main() {
 #[cfg(feature = "test_embedded")]
 fn generate_embedded() {
     use hydro_lang::location::Location;
-    use hydro_lang::prelude::nondet;
 
     println!("cargo::rerun-if-changed=build.rs");
 
@@ -24,6 +25,78 @@ fn generate_embedded() {
 
         std::fs::write(
             format!("{out_dir}/embedded.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- unordered_output (local; the dataflow assumes nothing of its input, and provides its
+    // output unordered, at least once) ---
+    {
+        use hydro_lang::live_collections::boundedness::Unbounded;
+        use hydro_lang::live_collections::stream::{AtLeastOnce, NoOrder};
+
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<()>();
+        process
+            .embedded_input::<String, Unbounded, NoOrder, AtLeastOnce>("input")
+            .embedded_output("output");
+
+        let code = flow
+            .with_process(&process, "unordered_echo")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/unordered_output.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- bounded_output (local; the dataflow assumes its input is complete from the start, so
+    // its output is too) ---
+    {
+        use hydro_lang::live_collections::boundedness::Bounded;
+        use hydro_lang::live_collections::stream::{ExactlyOnce, TotalOrder};
+
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<()>();
+        process
+            .embedded_input::<String, Bounded, TotalOrder, ExactlyOnce>("input")
+            .embedded_output("output");
+
+        let code = flow
+            .with_process(&process, "bounded_echo")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/bounded_output.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- duplicable_channel (o2o; the stream sent may already repeat messages) ---
+    {
+        use hydro_lang::live_collections::boundedness::Unbounded;
+        use hydro_lang::live_collections::stream::{AtLeastOnce, TotalOrder};
+        use hydro_lang::networking::EMBEDDED;
+
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let sender = flow.process::<()>();
+        let receiver = flow.process::<()>();
+        sender
+            .embedded_input::<String, Unbounded, TotalOrder, AtLeastOnce>("input")
+            .send(&receiver, EMBEDDED.fail_stop().name("messages"))
+            .embedded_output("output");
+
+        let code = flow
+            .with_process(&sender, "duplicable_sender")
+            .with_process(&receiver, "duplicable_receiver")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/duplicable_channel.rs"),
             prettyplease::unparse(&code),
         )
         .unwrap();
@@ -101,7 +174,6 @@ fn generate_embedded() {
             &cluster,
             process.embedded_input("input"),
         )
-        .assume_ordering(nondet!(/** test */))
         .embedded_output("output");
 
         let code = flow
@@ -147,7 +219,6 @@ fn generate_embedded() {
         let cluster = flow.cluster::<hydro_test::embedded::m2o_send::Src>();
         let process = flow.process::<hydro_test::embedded::m2o_send::Dst>();
         hydro_test::embedded::m2o_send::m2o_send(&process, cluster.embedded_input("input"))
-            .assume_ordering(nondet!(/** test */))
             .embedded_output("output");
 
         let code = flow
@@ -168,7 +239,6 @@ fn generate_embedded() {
         let src = flow.cluster::<hydro_test::embedded::m2m_broadcast::Src>();
         let dst = flow.cluster::<hydro_test::embedded::m2m_broadcast::Dst>();
         hydro_test::embedded::m2m_broadcast::m2m_broadcast(&dst, src.embedded_input("input"))
-            .assume_ordering(nondet!(/** test */))
             .embedded_output("output");
 
         let code = flow

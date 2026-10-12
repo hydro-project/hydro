@@ -1,0 +1,23 @@
+error[E0277]: the stream must be bounded (`Bounded`), but has bound `hydro_lang::prelude::Unbounded`
+  --> tests/compile-fail/nightly/embedded_input_missing_bounded.rs:13:13
+   |
+11 |           input: InputChannel::new(
+   |                  ----------------- required by a bound introduced by this call
+12 |               stream::iter(Vec::<String>::new()),
+13 | /             Promises::new()
+14 | |                 .total_order(manual_proof!(/** an in-memory list keeps its order */))
+15 | |                 .exactly_once(manual_proof!(/** each element appears once in the list */)),
+   | |__________________________________________________________________________________________^ required here
+   |
+   = help: the trait `WeakerBoundednessThan<hydro_lang::prelude::Unbounded>` is not implemented for `hydro_lang::prelude::Bounded`
+   = note: strengthen the boundedness upstream, or consider a different API
+   = note: for an embedded input, the host promises it with `Promises::new().bounded(manual_proof!(/** why every element is available at once */))`
+   = note: required for `hydro_test_embedded::bounded_output::bounded_echo::inputs::input` to implement `SatisfiedBy<hydro_lang::prelude::Unbounded, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::ExactlyOnce>`
+note: required by a bound in `InputChannel::<C, S>::new`
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   |     pub fn new<B, O, R>(inner: S, promises: Promises<B, O, R>) -> Self
+   |            --- required by a bound in this associated function
+   |     where
+   |         C: SatisfiedBy<B, O, R>,
+   |            ^^^^^^^^^^^^^^^^^^^^ required by this bound in `InputChannel::<C, S>::new`

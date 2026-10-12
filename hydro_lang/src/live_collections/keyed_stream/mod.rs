@@ -10,7 +10,7 @@ use std::rc::Rc;
 use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q};
 
 use super::OperatorContext;
-use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
+use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded, WeakerBoundednessThan};
 use super::keyed_singleton::KeyedSingleton;
 use super::optional::Optional;
 use super::stream::{
@@ -657,9 +657,11 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         self.weaken_boundedness()
     }
 
-    /// Weakens the boundedness guarantee to an arbitrary boundedness `B2`, given that `B: IsBounded`,
-    /// which implies that `B == Bounded`.
-    pub fn weaken_boundedness<B2: Boundedness>(self) -> KeyedStream<K, V, L, B2, O, R> {
+    /// Weakens the boundedness guarantee to `B2`, with the type-system enforcing that `B2` is
+    /// weaker than the input boundedness.
+    pub fn weaken_boundedness<B2: WeakerBoundednessThan<B>>(
+        self,
+    ) -> KeyedStream<K, V, L, B2, O, R> {
         if B::BOUNDED == B2::BOUNDED {
             KeyedStream::new(
                 self.location.clone(),
