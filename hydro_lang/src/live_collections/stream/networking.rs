@@ -501,14 +501,14 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     }
 
     #[cfg(feature = "sim")]
-    /// Sets up a bincode-encoded simulation output port for this stream, allowing test code to
+    /// Sets up a MessagePack-encoded simulation output port for this stream, allowing test code to
     /// receive elements sent to this stream during simulation. Use [`Stream::sim_output_with`] to
     /// select another codec.
     pub fn sim_output(self) -> SimReceiver<T, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.sim_output_with::<crate::sim::codec::BincodeCodec>()
+        self.sim_output_with::<crate::sim::codec::RmpCodec>()
     }
 
     #[cfg(feature = "sim")]
@@ -1386,14 +1386,14 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     }
 
     #[cfg(feature = "sim")]
-    /// Sets up a bincode-encoded simulation output port for this cluster stream, allowing test
+    /// Sets up a MessagePack-encoded simulation output port for this cluster stream, allowing test
     /// code to receive `(member_id, T)` pairs during simulation. Use
     /// [`Stream::sim_cluster_output_with`] to select another codec.
     pub fn sim_cluster_output(self) -> crate::sim::SimClusterReceiver<T, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.sim_cluster_output_with::<crate::sim::codec::BincodeCodec>()
+        self.sim_cluster_output_with::<crate::sim::codec::RmpCodec>()
     }
 
     #[cfg(feature = "sim")]
