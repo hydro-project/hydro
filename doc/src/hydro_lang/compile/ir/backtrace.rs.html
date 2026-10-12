@@ -188,7 +188,7 @@
 <a href=#188 id=188 data-nosnippet>188</a></span><span class="kw">mod </span>tests {
 <a href=#189 id=189 data-nosnippet>189</a>    <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 <a href=#190 id=190 data-nosnippet>190</a>    #[test]
-<a href=#191 id=191 data-nosnippet>191</a>    #[cfg_attr(not(target_os = <span class="string">"linux"</span>), ignore)]
+<a href=#191 id=191 data-nosnippet>191</a>    #[cfg_attr(not(target_os = <span class="string">"linux"</span>), ignore = <span class="string">"backtraces only stable on Linux"</span>)]
 <a href=#192 id=192 data-nosnippet>192</a>    </span><span class="kw">fn </span>test_backtrace() {
 <a href=#193 id=193 data-nosnippet>193</a>        <span class="kw">use super</span>::<span class="kw-2">*</span>;
 <a href=#194 id=194 data-nosnippet>194</a>
