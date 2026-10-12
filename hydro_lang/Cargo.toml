@@ -52,6 +52,7 @@ sim = [
     "dep:indenter",
     "dep:libloading",
     "dep:pin-project-lite",
+    "dep:rmp-serde",
     "dep:tempfile",
     "dep:serde_json",
     "dep:tokio",
@@ -163,6 +164,7 @@ prettyplease = { version = "0.2.0", features = ["verbatim"], optional = true }
 proc-macro-crate = "3.3"
 proc-macro2 = "1.0.95"
 quote = "1.0.35"
+rmp-serde = { version = "1.3.1", optional = true }
 rustflags = { version = "0.1.7", optional = true }
 sealed = "0.6.0"
 serde = { version = "1.0.197", features = ["derive"] }

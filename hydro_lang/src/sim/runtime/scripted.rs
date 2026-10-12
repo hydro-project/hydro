@@ -6,7 +6,8 @@
 //! ScriptedRuntimeHook>>`, between the scheduler's tick lists and a per-instance registry
 //! keyed by handle ID, so test-side handles can install decisions and read status
 //! on demand. Kind-specific payloads (decisions in, status out) cross the registry's
-//! type-erased surface bincode-serialized: the registry must be `dyn` (it holds every
+//! type-erased surface MessagePack-serialized (via [`rmp_serde`]): the registry must be
+//! `dyn` (it holds every
 //! hook kind), associated types are unusable through a `dyn` trait object, and
 //! downcasting is not an option because the generated dylib links its own copy of this
 //! crate — `TypeId`s differ across the boundary, so `Any`-based casts would fail (or
@@ -362,14 +363,14 @@ impl<H: ScriptableHook> ScriptedHookControl for Scripted<H> {
             self.next_decision.is_none(),
             "internal error: installed a scripted decision while one was still queued"
         );
-        self.next_decision = Some(bincode::deserialize(decision_blob).expect(
+        self.next_decision = Some(rmp_serde::from_slice(decision_blob).expect(
             "internal error: scripted decision blob did not match the hook's decision type",
         ));
         self.hold = self.auto_pause;
     }
 
     fn status_blob(&self) -> Vec<u8> {
-        bincode::serialize(&self.core.status()).unwrap()
+        rmp_serde::to_vec_named(&self.core.status()).unwrap()
     }
 
     fn set_hold(&mut self, hold: bool) {
@@ -464,13 +465,13 @@ impl<H: ScriptableInlineHook> ScriptedHookControl for ScriptedInline<H> {
     fn install_decision(&mut self, decision_blob: &[u8]) {
         assert!(self.next_decision.is_none());
         self.next_decision = Some(
-            bincode::deserialize(decision_blob)
+            rmp_serde::from_slice(decision_blob)
                 .expect("internal error: scripted inline decision had the wrong type"),
         );
     }
 
     fn status_blob(&self) -> Vec<u8> {
-        bincode::serialize(&self.core.status()).unwrap()
+        rmp_serde::to_vec_named(&self.core.status()).unwrap()
     }
 
     // The pause family is meaningless for an in-tick hook (see the struct docs), so holds
