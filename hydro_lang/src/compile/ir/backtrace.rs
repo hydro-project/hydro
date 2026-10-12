@@ -31,6 +31,24 @@ fn strip_hash_brackets(s: &str) -> String {
     result
 }
 
+/// Strips the trailing `::h<16 hex digits>` disambiguator that legacy symbol mangling appends
+/// to demangled names. Symbols demangled from the v0 mangling scheme (the default since the
+/// toolchain moved to it) have no such suffix, so the name is returned unchanged — blindly
+/// stripping the last `::` segment would chop off the actual function name.
+#[cfg(feature = "build")]
+fn strip_legacy_hash_suffix(full_fn_name: &str) -> String {
+    if let Some(idx) = full_fn_name.rfind("::") {
+        let last_segment = &full_fn_name[idx + 2..];
+        if last_segment.len() == 17
+            && last_segment.starts_with('h')
+            && last_segment[1..].bytes().all(|b| b.is_ascii_hexdigit())
+        {
+            return full_fn_name[..idx].to_owned();
+        }
+    }
+    full_fn_name.to_owned()
+}
+
 #[cfg(not(feature = "build"))]
 /// A dummy backtrace element with no data. Enable the `build` feature to collect backtraces.
 #[derive(Clone)]
@@ -120,10 +138,7 @@ impl Backtrace {
             .map(|(idx, symbol)| {
                 let full_fn_name = strip_hash_brackets(&symbol.name().unwrap().to_string());
                 let mut element = BacktraceElement {
-                    fn_name: full_fn_name
-                        .rfind("::")
-                        .map(|idx| full_fn_name.split_at(idx).0.to_owned())
-                        .unwrap_or(full_fn_name),
+                    fn_name: strip_legacy_hash_suffix(&full_fn_name),
                     filename: symbol.filename().map(|f| f.display().to_string()),
                     lineno: symbol.lineno(),
                     colno: symbol.colno(),
