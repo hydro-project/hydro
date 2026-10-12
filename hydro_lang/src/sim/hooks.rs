@@ -90,7 +90,7 @@ pub struct DecisionFuture {
     /// The cluster member whose hook instance the decision targets (from `.on(..)` on
     /// the handle); `None` for hooks on processes.
     member: Option<u32>,
-    /// The decision, bincode-serialized (the handle and the hook it is bound to
+    /// The decision, MessagePack-serialized (the handle and the hook it is bound to
     /// statically know the same decision type). `None` once installed.
     blob: Option<Vec<u8>>,
 }
@@ -100,7 +100,7 @@ impl DecisionFuture {
         DecisionFuture {
             hook_id,
             member,
-            blob: Some(bincode::serialize(decision).unwrap()),
+            blob: Some(rmp_serde::to_vec_named(decision).unwrap()),
         }
     }
 }
@@ -199,7 +199,7 @@ impl<S: DeserializeOwned, F: Fn(&S) -> bool + Unpin> Future for PauseUntilFuture
 
         let hook = ctx.control(this.hook_id, this.member);
 
-        let status: S = bincode::deserialize(&hook.borrow().status_blob())
+        let status: S = rmp_serde::from_slice(&hook.borrow().status_blob())
             .expect("internal error: hook status blob did not match the handle's status type");
 
         if (this.predicate)(&status) {
