@@ -280,17 +280,17 @@ fn sim_batch_nondebuggable_type() {
 
 #[test]
 fn sim_embedded_send() {
-    use crate::networking::TCP;
+    use crate::networking::EMBEDDED;
 
     let mut flow = FlowBuilder::new();
     let p1 = flow.process::<()>();
     let p2 = flow.process::<()>();
 
     let (in_send, input) = p1.sim_input::<i32, _, _>();
-    // `.embedded()` leaves serialization to external code; in the simulator the raw value is
-    // carried directly through the in-memory channel.
+    // An `EMBEDDED` channel leaves serialization to external code; in the simulator the raw
+    // value is carried directly through the in-memory channel.
     let out_recv = input
-        .send(&p2, TCP.fail_stop().embedded().name("ch"))
+        .send(&p2, EMBEDDED.fail_stop().name("ch"))
         .map(q!(|x| x * 10))
         .sim_output();
 

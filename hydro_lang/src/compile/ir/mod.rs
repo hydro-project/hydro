@@ -2807,7 +2807,7 @@ pub enum OptionalBoundKind {
     Bounded,
 }
 
-#[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum StreamOrder {
     NoOrder,
     TotalOrder,
@@ -7080,9 +7080,9 @@ where
     if external_types.is_some() {
         assert!(
             D::SUPPORTS_EXTERNAL_SERIALIZATION,
-            "`.embedded()` serialization leaves serialization to code outside of Hydro and is \
-             only supported by the embedded deployment backend. Use `.bincode()` (or another \
-             supported serialization backend) for this deployment target instead."
+            "`EMBEDDED` channels are implemented by the host of an embedded program and are \
+             only supported by the embedded deployment backend (and the simulator). Use `TCP` \
+             or `UDP` (with `.bincode()`) for this deployment target instead."
         );
     }
 

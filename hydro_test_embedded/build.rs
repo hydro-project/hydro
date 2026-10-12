@@ -69,7 +69,7 @@ fn generate_embedded() {
         .unwrap();
     }
 
-    // --- echo_network_embedded (o2o networking, `.embedded()` serialization) ---
+    // --- echo_network_embedded (o2o networking, an `EMBEDDED` channel) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
         let sender = flow.process::<hydro_test::embedded::echo_network_embedded::Sender>();
@@ -116,7 +116,7 @@ fn generate_embedded() {
         .unwrap();
     }
 
-    // --- o2m_demux_embedded (process -> cluster demux, `.embedded()` serialization) ---
+    // --- o2m_demux_embedded (process -> cluster demux, an `EMBEDDED` channel) ---
     // The payload type has no serde derives; constructing this flow in a build script
     // (a non-test context) is the regression scenario for hydro-project/hydro#3158.
     {

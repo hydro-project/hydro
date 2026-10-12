@@ -6,7 +6,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::live_collections::stream::networking::{deserialize_bincode, serialize_bincode};
-use crate::live_collections::stream::{NoOrder, TotalOrder};
+use crate::live_collections::stream::{NoOrder, Ordering, TotalOrder};
 use crate::location::cluster::{Consistency, EventualConsistency, NoConsistency};
 use crate::nondet::NonDet;
 
@@ -38,7 +38,7 @@ impl<T: Serialize + DeserializeOwned> SerKind<T> for Bincode {
     }
 }
 
-/// Leaves serialization of items to code outside of Hydro.
+/// Leaves serialization of items to code outside of Hydro. Every [`EMBEDDED`] channel uses it.
 ///
 /// This serialization backend is only supported by the embedded deployment backend (it will panic
 /// on all other backends). The generated network channel exposes the raw element type `T` to the
@@ -66,9 +66,13 @@ pub enum NoSer {}
 
 /// A transport backend for network channels.
 #[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "this network config requires a failure policy",
+    note = "for example, `EMBEDDED.fail_stop()` delivers, per sender, an in-order prefix of the messages it sent"
+)]
 pub trait TransportKind {
     /// The ordering guarantee provided by this transport.
-    type OrderingGuarantee: crate::live_collections::stream::Ordering;
+    type OrderingGuarantee: Ordering;
 
     /// The consistency guarantee this transport can preserve for replicated outputs
     /// (see [`NetworkFor::ConsistencyGuarantee`]).
@@ -87,7 +91,7 @@ pub trait TransportKind {
 /// connection failures and what ordering guarantees the output stream provides.
 pub trait TcpFailPolicy {
     /// The ordering guarantee provided by this failure policy.
-    type OrderingGuarantee: crate::live_collections::stream::Ordering;
+    type OrderingGuarantee: Ordering;
 
     /// The consistency guarantee this failure policy can preserve for replicated outputs
     /// (see [`NetworkFor::ConsistencyGuarantee`]).
@@ -213,6 +217,57 @@ impl<F: TcpFailPolicy> TransportKind for Tcp<F> {
     }
 }
 
+/// Items cross a channel that the host of an embedded program implements however it likes (a
+/// network connection, an in-memory queue, ...), keeping the guarantees of the policy `F`.
+pub struct EmbeddedTransport<F> {
+    _phantom: PhantomData<F>,
+}
+
+/// An [`EMBEDDED`] channel names no transport, so its [`NetworkingInfo`] is just the guarantees
+/// its received stream is declared with, which the host's channel must keep.
+fn embedded_info<K: TransportKind>() -> NetworkingInfo {
+    NetworkingInfo::Embedded {
+        ordering: K::OrderingGuarantee::ORDERING_KIND,
+        consistency: K::ConsistencyGuarantee::consistency(),
+    }
+}
+
+/// For each sender, an in-order prefix of the messages it sent.
+#[sealed::sealed]
+impl TransportKind for EmbeddedTransport<FailStop> {
+    type OrderingGuarantee = TotalOrder;
+
+    type ConsistencyGuarantee = EventualConsistency;
+
+    fn networking_info() -> NetworkingInfo {
+        embedded_info::<Self>()
+    }
+}
+
+/// Each sender's messages in order, any of which may be dropped.
+#[sealed::sealed]
+impl TransportKind for EmbeddedTransport<Lossy> {
+    type OrderingGuarantee = TotalOrder;
+
+    type ConsistencyGuarantee = NoConsistency;
+
+    fn networking_info() -> NetworkingInfo {
+        embedded_info::<Self>()
+    }
+}
+
+/// Messages in any order; a message never delivered counts as delayed forever.
+#[sealed::sealed]
+impl TransportKind for EmbeddedTransport<LossyDelayedForever> {
+    type OrderingGuarantee = NoOrder;
+
+    type ConsistencyGuarantee = EventualConsistency;
+
+    fn networking_info() -> NetworkingInfo {
+        embedded_info::<Self>()
+    }
+}
+
 /// Send items across a UDP channel, which does not guarantee delivery or ordering.
 pub struct Udp<F> {
     _phantom: PhantomData<F>,
@@ -237,7 +292,7 @@ pub trait NetworkFor<T: ?Sized> {
     /// The ordering guarantee provided by this network configuration.
     /// When combined with an input stream's ordering `O`, the output ordering
     /// will be `<O as MinOrder<Self::OrderingGuarantee>>::Min`.
-    type OrderingGuarantee: crate::live_collections::stream::Ordering;
+    type OrderingGuarantee: Ordering;
 
     /// The consistency guarantee this network configuration can preserve when the same data is
     /// replicated to several recipients (e.g. via
@@ -258,9 +313,10 @@ pub trait NetworkFor<T: ?Sized> {
     /// Generates deserialization logic for receiving `T`.
     fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr;
 
-    /// Whether this network channel leaves serialization to code outside of Hydro (see
-    /// [`Embedded`]). When `true`, [`Self::serialize_thunk`] and [`Self::deserialize_thunk`] are
-    /// never called; the raw element type flows across the channel unserialized.
+    /// Whether this network channel leaves serialization to code outside of Hydro (an
+    /// [`EMBEDDED`] channel). When `true`, [`Self::serialize_thunk`] and
+    /// [`Self::deserialize_thunk`] are never called; the raw element type flows across the
+    /// channel unserialized.
     fn is_embedded() -> bool {
         false
     }
@@ -308,6 +364,16 @@ pub enum NetworkingInfo {
         /// The fault model for this UDP channel.
         fault: UdpFault,
     },
+    /// A channel implemented by the host of an embedded program ([`EMBEDDED`]), described by
+    /// the guarantees its received stream is declared with, which the host's channel must keep.
+    Embedded {
+        /// The order the channel must deliver each sender's messages in: `TotalOrder` (the order
+        /// they were sent) or `NoOrder` (any).
+        ordering: crate::compile::ir::StreamOrder,
+        /// Whether the channel may lose a message and deliver later ones as if nothing were
+        /// missing (`NoConsistency`), or must not (`EventualConsistency`).
+        consistency: crate::location::dynamic::ClusterConsistency,
+    },
 }
 
 /// A network channel configuration with `T` as transport backend and `S` as the serialization
@@ -330,21 +396,6 @@ impl<Tr: ?Sized, S: ?Sized> NetworkingConfig<Tr, S> {
 impl<Tr: ?Sized, N> NetworkingConfig<Tr, NoSer, N> {
     /// Configures the network channel to use [`bincode`] to serialize items.
     pub const fn bincode(mut self) -> NetworkingConfig<Tr, Bincode, N> {
-        let taken_name = self.name.take();
-        std::mem::forget(self); // nothing else is stored
-        NetworkingConfig {
-            name: taken_name,
-            _phantom: (PhantomData, PhantomData),
-        }
-    }
-
-    /// Configures the network channel to leave serialization to code outside of Hydro.
-    ///
-    /// This is only supported by the embedded deployment backend (it will panic on all other
-    /// backends). The generated network channel exposes the raw element type to the developer
-    /// (rather than serialized bytes), so they can perform custom serialization logic outside of
-    /// the Hydro program for that channel.
-    pub const fn embedded(mut self) -> NetworkingConfig<Tr, Embedded, N> {
         let taken_name = self.name.take();
         std::mem::forget(self); // nothing else is stored
         NetworkingConfig {
@@ -404,6 +455,46 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     /// the end of the execution, which catches safety bugs but cannot test liveness.
     #[must_use]
     pub const fn lossy_delayed_forever(self) -> NetworkingConfig<Tcp<LossyDelayedForever>, S> {
+        NetworkingConfig {
+            name: self.name,
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
+}
+
+impl<S: ?Sized> NetworkingConfig<EmbeddedTransport<()>, S> {
+    /// Requires the host's channel to stop delivering messages after a failure, like
+    /// [`TCP.fail_stop()`](NetworkingConfig::fail_stop): for each sender, an in-order prefix of the
+    /// messages it sent.
+    #[must_use]
+    pub const fn fail_stop(self) -> NetworkingConfig<EmbeddedTransport<FailStop>, S> {
+        NetworkingConfig {
+            name: self.name,
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
+
+    /// Allows the host's channel to lose messages while delivering each sender's messages in
+    /// order, like [`TCP.lossy()`](NetworkingConfig::lossy).
+    ///
+    /// # Non-Determinism
+    /// A lossy channel will non-deterministically drop messages during execution.
+    #[must_use]
+    pub const fn lossy(self, nondet: NonDet) -> NetworkingConfig<EmbeddedTransport<Lossy>, S> {
+        let _ = nondet;
+        NetworkingConfig {
+            name: self.name,
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
+
+    /// Allows the host's channel to deliver messages in any order and treats a message that is
+    /// never delivered as indefinitely delayed, like
+    /// [`TCP.lossy_delayed_forever()`](NetworkingConfig::lossy_delayed_forever).
+    #[must_use]
+    pub const fn lossy_delayed_forever(
+        self,
+    ) -> NetworkingConfig<EmbeddedTransport<LossyDelayedForever>, S> {
         NetworkingConfig {
             name: self.name,
             _phantom: (PhantomData, PhantomData),
@@ -517,6 +608,19 @@ where
 
 /// A network channel that uses length-delimited TCP for transport.
 pub const TCP: NetworkingConfig<Tcp<()>, NoSer> = NetworkingConfig {
+    name: None,
+    _phantom: (PhantomData, PhantomData),
+};
+
+/// A network channel implemented by the host of an embedded program, which chooses how messages
+/// travel: a network connection, an in-memory queue, or anything else that delivers them with the
+/// guarantees of the chosen failure policy (for example `EMBEDDED.fail_stop().name("messages")`).
+///
+/// Items cross the channel unserialized: the generated channel ends carry the raw element type,
+/// and the host encodes it if its transport needs to. The program names only the guarantees, not
+/// a transport, so it is only supported by the embedded deployment backend and the Hydro
+/// simulator (which carries the raw values in memory); other backends use [`TCP`] or [`UDP`].
+pub const EMBEDDED: NetworkingConfig<EmbeddedTransport<()>, Embedded> = NetworkingConfig {
     name: None,
     _phantom: (PhantomData, PhantomData),
 };
