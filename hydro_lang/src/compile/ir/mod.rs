@@ -1768,10 +1768,8 @@ impl HydroRoot {
                         .into();
                     };
                 } else if let HydroRoot::EmbeddedOutput { ident, input, .. } = l {
-                    let element_type = match &input.metadata().collection_kind {
-                        CollectionKind::Stream { element_type, .. } => element_type.0.as_ref().clone(),
-                        _ => panic!("Embedded output must have Stream collection kind"),
-                    };
+                    let (element_type, guarantees) =
+                        embedded_input_output_guarantees(input.metadata(), "Embedded output");
                     let location_key = match input.metadata().location_id.root() {
                         LocationId::Process(key) | LocationId::Cluster(key) => *key,
                         _ => panic!("Embedded output must be on a process or cluster"),
@@ -1781,6 +1779,7 @@ impl HydroRoot {
                         location_key,
                         ident,
                         &element_type,
+                        &guarantees,
                     );
                 }
             },
@@ -1813,6 +1812,10 @@ impl HydroRoot {
                             name.as_deref(),
                             networking_info,
                             external_types,
+                            &crate::compile::deploy_provider::EmbeddedNetworkGuarantees {
+                                sent: network_stream_guarantees(input.metadata()),
+                                received: network_stream_guarantees(metadata),
+                            },
                         ),
 
                         DebugInstantiate::Finalized(_) => panic!("network already finalized"),
@@ -1925,10 +1928,8 @@ impl HydroRoot {
                     }
                     .into();
                 } else if let HydroNode::Source { source: HydroSource::Embedded(ident), metadata } = n {
-                    let element_type = match &metadata.collection_kind {
-                        CollectionKind::Stream { element_type, .. } => element_type.0.as_ref().clone(),
-                        _ => panic!("Embedded source must have Stream collection kind"),
-                    };
+                    let (element_type, guarantees) =
+                        embedded_input_output_guarantees(metadata, "Embedded source");
                     let location_key = match metadata.location_id.root() {
                         LocationId::Process(key) | LocationId::Cluster(key) => *key,
                         _ => panic!("Embedded source must be on a process or cluster"),
@@ -1938,6 +1939,7 @@ impl HydroRoot {
                         location_key,
                         ident,
                         &element_type,
+                        &guarantees,
                     );
                 } else if let HydroNode::Source { source: HydroSource::EmbeddedSingleton(ident), metadata } = n {
                     let element_type = match &metadata.collection_kind {
@@ -2902,6 +2904,53 @@ impl serde::Serialize for AccessCounter {
             AccessCounter::Frozen(count) => *count,
         };
         count.serialize(serializer)
+    }
+}
+
+/// The element type and guarantees of an embedded input or output (`what`), whose stream
+/// `metadata` describes.
+#[cfg(feature = "build")]
+fn embedded_input_output_guarantees(
+    metadata: &HydroIrMetadata,
+    what: &str,
+) -> (
+    syn::Type,
+    crate::compile::deploy_provider::EmbeddedStreamGuarantees,
+) {
+    match &metadata.collection_kind {
+        CollectionKind::Stream {
+            order,
+            retry,
+            element_type,
+            ..
+        } => (
+            element_type.0.as_ref().clone(),
+            crate::compile::deploy_provider::EmbeddedStreamGuarantees {
+                order: order.clone(),
+                retry: retry.clone(),
+            },
+        ),
+        _ => panic!("{what} must have Stream collection kind"),
+    }
+}
+
+/// The guarantees of a stream at one end of a network channel (the stream sent, or the one
+/// delivered to the receiver), whose `metadata` describes.
+#[cfg(feature = "build")]
+fn network_stream_guarantees(
+    metadata: &HydroIrMetadata,
+) -> crate::compile::deploy_provider::EmbeddedStreamGuarantees {
+    match &metadata.collection_kind {
+        CollectionKind::Stream { order, retry, .. }
+        | CollectionKind::KeyedStream {
+            value_order: order,
+            value_retry: retry,
+            ..
+        } => crate::compile::deploy_provider::EmbeddedStreamGuarantees {
+            order: order.clone(),
+            retry: retry.clone(),
+        },
+        kind => panic!("a network channel must send a stream or keyed stream, not {kind:?}"),
     }
 }
 
@@ -7243,6 +7292,7 @@ fn instantiate_network<'a, D>(
     name: Option<&str>,
     networking_info: &crate::networking::NetworkingInfo,
     external_types: Option<(&syn::Type, &syn::Type)>,
+    guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
 ) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>)
 where
     D: Deploy<'a>,
@@ -7250,7 +7300,7 @@ where
     if external_types.is_some() {
         assert!(
             D::SUPPORTS_EXTERNAL_SERIALIZATION,
-            "`EMBEDDED` channels are implemented by the host of an embedded program and are \
+            "`EMBEDDED` channels are implemented by the host of an embedded dataflow and are \
              only supported by the embedded deployment backend (and the simulator). Use `TCP` \
              or `UDP` (with `.bincode()`) for this deployment target instead."
         );
@@ -7284,6 +7334,7 @@ where
                     name,
                     networking_info,
                     external_types,
+                    guarantees,
                 ),
                 D::o2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
@@ -7315,6 +7366,7 @@ where
                     name,
                     networking_info,
                     external_types,
+                    guarantees,
                 ),
                 D::o2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
@@ -7346,6 +7398,7 @@ where
                     name,
                     networking_info,
                     external_types,
+                    guarantees,
                 ),
                 D::m2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
@@ -7377,6 +7430,7 @@ where
                     name,
                     networking_info,
                     external_types,
+                    guarantees,
                 ),
                 D::m2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )

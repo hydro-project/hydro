@@ -1,0 +1,21 @@
+error[E0277]: the channel end `hydro_test_embedded::echo_network::echo_sender::outgoing::messages` is serialized with `Bincode`, but the host acknowledges `NoSer`
+  --> tests/compile-fail/nightly/embedded_channel_serialization_mismatch.rs:13:13
+   |
+11 |         messages: SendChannel::new(
+   |                   ---------------- required by a bound introduced by this call
+12 |             |_: Bytes| {},
+13 |             ChannelConfiguration::new(TCP.fail_stop()),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ acknowledges `NoSer`
+   |
+   = help: the trait `AcknowledgesSerialization<Bincode, hydro_test_embedded::echo_network::echo_sender::outgoing::messages>` is not implemented for `NoSer`
+   = note: acknowledge the same network config the dataflow sends with; the marker's docs give it
+   = note: required for `hydro_test_embedded::echo_network::echo_sender::outgoing::messages` to implement `ConfiguredAs<hydro_lang::networking::Tcp<hydro_lang::networking::FailStop>, NoSer>`
+note: required by a bound in `SendChannel::<C, S>::new`
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   | impl<C: EmbeddedNetworkChannel, S> SendChannel<C, S> {
+...
+   |     pub fn new<Tr, Ser, O, R>(
+...
+   |         C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<O, R>,
+   |            ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `SendChannel::<C, S>::new`

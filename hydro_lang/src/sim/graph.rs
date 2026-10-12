@@ -188,6 +188,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
         _external_types: Option<(&syn::Type, &syn::Type)>,
+        _guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_o2o_sink_{}", p1_port), Span::call_site());
@@ -219,6 +220,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
         _external_types: Option<(&syn::Type, &syn::Type)>,
+        _guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_o2m_sink_{}", p1_port), Span::call_site());
@@ -250,6 +252,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
         _external_types: Option<(&syn::Type, &syn::Type)>,
+        _guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_m2o_sink_{}", c1_port), Span::call_site());
@@ -282,6 +285,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
         _external_types: Option<(&syn::Type, &syn::Type)>,
+        _guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_m2m_sink_{}", c1_port), Span::call_site());

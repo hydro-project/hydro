@@ -62,6 +62,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         _name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
         _external_types: Option<(&syn::Type, &syn::Type)>,
+        _guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
             crate::networking::NetworkingInfo::Tcp {
@@ -111,6 +112,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         _name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
         _external_types: Option<(&syn::Type, &syn::Type)>,
+        _guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
             crate::networking::NetworkingInfo::Tcp {
@@ -172,6 +174,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         _name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
         _external_types: Option<(&syn::Type, &syn::Type)>,
+        _guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
             crate::networking::NetworkingInfo::Tcp {
@@ -225,6 +228,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         _name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
         _external_types: Option<(&syn::Type, &syn::Type)>,
+        _guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
             crate::networking::NetworkingInfo::Tcp {

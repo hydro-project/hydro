@@ -55,6 +55,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
         _external_types: Option<(&syn::Type, &syn::Type)>,
+        _guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
@@ -77,6 +78,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
         _external_types: Option<(&syn::Type, &syn::Type)>,
+        _guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
@@ -99,6 +101,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _name: Option<&str>,
         _networking_info: &crate::networking::NetworkingInfo,
         _external_types: Option<(&syn::Type, &syn::Type)>,
+        _guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
@@ -121,6 +124,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
         _external_types: Option<(&syn::Type, &syn::Type)>,
+        _guarantees: &crate::compile::deploy_provider::EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         use crate::networking::{NetworkingInfo, TcpFault};
         match networking_info {

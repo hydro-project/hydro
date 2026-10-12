@@ -36,6 +36,11 @@ pub trait Deploy<'a> {
     /// When `external_types` is [`Some`], the channel leaves serialization to code outside
     /// of Hydro and the provided type is the raw element type that flows across the channel
     /// unserialized.
+    ///
+    /// `guarantees` gives the guarantees of the stream at each end of the channel: the one the
+    /// sender sends, and the one the channel delivers to its receiver. Backends that implement
+    /// the transport themselves keep them already and can ignore it; the embedded backend leaves
+    /// the transport to its host, so it has the host agree to them.
     #[expect(clippy::too_many_arguments, reason = "networking codegen")]
     fn o2o_sink_source(
         env: &mut Self::InstantiateEnv,
@@ -46,6 +51,7 @@ pub trait Deploy<'a> {
         name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
         external_types: Option<(&syn::Type, &syn::Type)>,
+        guarantees: &EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr);
 
     /// Performs any runtime wiring needed after code generation for a
@@ -69,7 +75,7 @@ pub trait Deploy<'a> {
     ///
     /// When `external_types` is [`Some`], the channel leaves serialization to code outside
     /// of Hydro and the provided type is the raw element type that flows across the channel
-    /// unserialized.
+    /// unserialized. `guarantees` is as in [`Self::o2o_sink_source`].
     #[expect(clippy::too_many_arguments, reason = "networking codegen")]
     fn o2m_sink_source(
         env: &mut Self::InstantiateEnv,
@@ -80,6 +86,7 @@ pub trait Deploy<'a> {
         name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
         external_types: Option<(&syn::Type, &syn::Type)>,
+        guarantees: &EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr);
 
     /// Performs any runtime wiring needed after code generation for a
@@ -103,7 +110,7 @@ pub trait Deploy<'a> {
     ///
     /// When `external_types` is [`Some`], the channel leaves serialization to code outside
     /// of Hydro and the provided type is the raw element type that flows across the channel
-    /// unserialized.
+    /// unserialized. `guarantees` is as in [`Self::o2o_sink_source`].
     #[expect(clippy::too_many_arguments, reason = "networking codegen")]
     fn m2o_sink_source(
         env: &mut Self::InstantiateEnv,
@@ -114,6 +121,7 @@ pub trait Deploy<'a> {
         name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
         external_types: Option<(&syn::Type, &syn::Type)>,
+        guarantees: &EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr);
 
     /// Performs any runtime wiring needed after code generation for a
@@ -137,7 +145,7 @@ pub trait Deploy<'a> {
     ///
     /// When `external_types` is [`Some`], the channel leaves serialization to code outside
     /// of Hydro and the provided type is the raw element type that flows across the channel
-    /// unserialized.
+    /// unserialized. `guarantees` is as in [`Self::o2o_sink_source`].
     #[expect(clippy::too_many_arguments, reason = "networking codegen")]
     fn m2m_sink_source(
         env: &mut Self::InstantiateEnv,
@@ -148,6 +156,7 @@ pub trait Deploy<'a> {
         name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
         external_types: Option<(&syn::Type, &syn::Type)>,
+        guarantees: &EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr);
 
     /// Performs any runtime wiring needed after code generation for a
@@ -251,7 +260,8 @@ pub trait Deploy<'a> {
         location_id: &LocationId,
     ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>;
 
-    /// Registers an embedded stream input for the given ident and element type.
+    /// Registers an embedded stream input for the given ident and element type, with the
+    /// `guarantees` the dataflow relies on.
     ///
     /// Only meaningful for the embedded deployment backend. The default
     /// implementation panics.
@@ -260,6 +270,7 @@ pub trait Deploy<'a> {
         _location_key: LocationKey,
         _ident: &syn::Ident,
         _element_type: &syn::Type,
+        _guarantees: &EmbeddedStreamGuarantees,
     ) {
         panic!("register_embedded_stream_input is only supported by EmbeddedDeploy");
     }
@@ -277,7 +288,8 @@ pub trait Deploy<'a> {
         panic!("register_embedded_singleton_input is only supported by EmbeddedDeploy");
     }
 
-    /// Registers an embedded output for the given ident and element type.
+    /// Registers an embedded output for the given ident and element type, with the
+    /// `guarantees` the dataflow provides on it.
     ///
     /// Only meaningful for the embedded deployment backend. The default
     /// implementation panics.
@@ -286,9 +298,32 @@ pub trait Deploy<'a> {
         _location_key: LocationKey,
         _ident: &syn::Ident,
         _element_type: &syn::Type,
+        _guarantees: &EmbeddedStreamGuarantees,
     ) {
         panic!("register_embedded_output is only supported by EmbeddedDeploy");
     }
+}
+
+/// The guarantees of a stream crossing an embedded dataflow's boundary, as Hydro's live
+/// collections track them: for a stream input, what the dataflow relies on, which the host must
+/// promise; for an output or the stream sent on a network channel, what the dataflow provides.
+#[derive(Clone, Debug)]
+pub struct EmbeddedStreamGuarantees {
+    /// Whether the stream's order is meaningful (`TotalOrder`).
+    pub order: crate::compile::ir::StreamOrder,
+    /// Whether an element may appear more than once (`AtLeastOnce`).
+    pub retry: crate::compile::ir::StreamRetry,
+}
+
+/// The guarantees of the streams at both ends of a network channel: the stream the sender sends
+/// (`sent`), and the one the channel delivers to its receiver (`received`), which is `sent`
+/// weakened by the channel's network config.
+#[derive(Clone, Debug)]
+pub struct EmbeddedNetworkGuarantees {
+    /// The guarantees of the stream the sender sends.
+    pub sent: EmbeddedStreamGuarantees,
+    /// The guarantees of the stream the channel delivers to its receiver.
+    pub received: EmbeddedStreamGuarantees,
 }
 
 pub trait ProcessSpec<'a, D>

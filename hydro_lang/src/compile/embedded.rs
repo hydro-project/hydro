@@ -15,8 +15,16 @@
 //! network port (named after the channel). Network channels must be named via
 //! `.name()` on the networking config.
 //!
-//! - Sinks (`EmbeddedNetworkOut`): one `FnMut(..)` field per outgoing channel.
-//! - Sources (`EmbeddedNetworkIn`): one `Stream` field per incoming channel.
+//! - Sinks (`EmbeddedNetworkOut`): one `FnMut(..)` field per outgoing channel, wrapped in a
+//!   [`SendChannel`](crate::compile::embedded_runtime::SendChannel).
+//! - Sources (`EmbeddedNetworkIn`): one `Stream` field per incoming channel, wrapped in a
+//!   [`ReceiveChannel`](crate::compile::embedded_runtime::ReceiveChannel).
+//!
+//! Each location's module also has a marker type per channel end (`outgoing::*` and
+//! `incoming::*`) implementing
+//! [`EmbeddedNetworkChannel`](crate::compile::embedded_runtime::EmbeddedNetworkChannel), which
+//! describes the field's channel end: the guarantees of the stream there (the stream sent, or the
+//! one delivered) and the channel's network config, which the host agrees to.
 //!
 //! The exact field types depend on the channel's serialization:
 //! - With [`bincode`](crate::networking::Bincode) serialization, Hydro serializes to bytes, so
@@ -46,7 +54,10 @@ use serde::de::DeserializeOwned;
 use slotmap::SparseSecondaryMap;
 use stageleft::{QuotedWithContext, q};
 
-use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, Node, ProcessSpec, RegisterPort};
+use super::deploy_provider::{
+    ClusterSpec, Deploy, EmbeddedNetworkGuarantees, EmbeddedStreamGuarantees, ExternalSpec, Node,
+    ProcessSpec, RegisterPort,
+};
 use crate::compile::builder::ExternalPortId;
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
@@ -165,6 +176,194 @@ impl<S: Into<String>> ExternalSpec<'_, EmbeddedDeploy> for S {
     }
 }
 
+/// One end of a named network channel at a location, as recorded for the embedded backend.
+///
+/// Like an [`EmbeddedStreamPort`], each end has the guarantees of one stream: at the sending end
+/// the stream the dataflow sends, and at the receiving end the stream the channel delivers (the
+/// sent stream weakened by the channel's network config). Unlike a stream port, it also has the
+/// channel's network config, which the host acknowledges at both ends.
+#[derive(Clone)]
+pub struct EmbeddedNetworkPort {
+    /// The channel name, from `.name()` on the networking config.
+    pub name: String,
+    /// Whether the port is keyed by a `TaglessMemberId`: each element's destination on the
+    /// sender side, or its sender on the receiver side.
+    pub is_tagged: bool,
+    /// `None` for bincode serialization (Hydro serializes to bytes), or the payload type for an
+    /// unserialized `EMBEDDED` channel (the raw payload crosses the channel).
+    pub external_type: Option<syn::Type>,
+    /// The location at the other end of the channel.
+    pub peer: LocationKey,
+    /// The guarantees of the stream at this end: at the sending end, those of the stream the
+    /// dataflow sends, which the host acknowledges; at the receiving end, those of the stream the
+    /// channel delivers, which the host promises.
+    pub guarantees: EmbeddedStreamGuarantees,
+    /// The transport type of the channel's network config (for example `Tcp<FailStop>`), which
+    /// the host acknowledges exactly.
+    pub transport: syn::Type,
+    /// The serialization of the channel's network config (`Bincode`, or `Embedded` for an
+    /// unserialized `EMBEDDED` channel), which the host acknowledges exactly.
+    pub serialization: syn::Type,
+    /// A network config expression with that transport and serialization, for the docs.
+    pub config: String,
+}
+
+impl EmbeddedNetworkPort {
+    /// The port at one end of the channel `name` to `peer`, whose stream at this end has
+    /// `guarantees`, sent with the network config `networking_info`, raw (unserialized) when
+    /// `external_type` is given.
+    fn new(
+        name: &str,
+        is_tagged: bool,
+        external_type: Option<&syn::Type>,
+        peer: LocationKey,
+        guarantees: &EmbeddedStreamGuarantees,
+        networking_info: &crate::networking::NetworkingInfo,
+    ) -> Self {
+        let (transport, serialization, config) =
+            channel_config_types(networking_info, external_type.is_some());
+        EmbeddedNetworkPort {
+            name: name.to_owned(),
+            is_tagged,
+            external_type: external_type.cloned(),
+            peer,
+            guarantees: guarantees.clone(),
+            transport,
+            serialization,
+            config,
+        }
+    }
+}
+
+/// The transport and serialization types of a network config, as the host's
+/// `ChannelConfiguration` names them: the config's `Tr` and `S` (see
+/// [`NetworkingConfig`](crate::networking::NetworkingConfig)), reconstructed from its
+/// `networking_info` and whether it is unserialized (`external`), and the config's expression in
+/// words, for example `EMBEDDED.may_reorder()`.
+fn channel_config_types(
+    networking_info: &crate::networking::NetworkingInfo,
+    external: bool,
+) -> (syn::Type, syn::Type, String) {
+    use crate::compile::ir::{StreamOrder, StreamRetry};
+    use crate::networking::{EmbeddedFault, NetworkingInfo, TcpFault, UdpFault};
+    let root = crate::staging_util::get_this_crate();
+    let fault = |name: &str| -> syn::Type {
+        let ident = syn::Ident::new(name, Span::call_site());
+        syn::parse_quote!(#root::networking::#ident)
+    };
+    let transport: syn::Type = match networking_info {
+        NetworkingInfo::Tcp { fault: f } => {
+            let f = fault(match f {
+                TcpFault::FailStop => "FailStop",
+                TcpFault::Lossy => "Lossy",
+                TcpFault::LossyDelayedForever => "LossyDelayedForever",
+            });
+            syn::parse_quote!(#root::networking::Tcp<#f>)
+        }
+        NetworkingInfo::Udp { fault: f } => {
+            let f = fault(match f {
+                UdpFault::Lossy => "Lossy",
+                UdpFault::LossyDelayedForever => "LossyDelayedForever",
+            });
+            syn::parse_quote!(#root::networking::Udp<#f>)
+        }
+        NetworkingInfo::Embedded {
+            retries,
+            ordering,
+            fault: f,
+        } => {
+            let retries: syn::Type = match retries {
+                StreamRetry::ExactlyOnce => {
+                    syn::parse_quote!(#root::live_collections::stream::ExactlyOnce)
+                }
+                StreamRetry::AtLeastOnce => {
+                    syn::parse_quote!(#root::live_collections::stream::AtLeastOnce)
+                }
+            };
+            let ordering: syn::Type = match ordering {
+                StreamOrder::TotalOrder => {
+                    syn::parse_quote!(#root::live_collections::stream::TotalOrder)
+                }
+                StreamOrder::NoOrder => syn::parse_quote!(#root::live_collections::stream::NoOrder),
+            };
+            let f = fault(match f {
+                EmbeddedFault::FailStop => "FailStop",
+                EmbeddedFault::Lossy => "Lossy",
+                EmbeddedFault::LossyDelayedForever => "LossyDelayedForever",
+            });
+            syn::parse_quote!(#root::networking::EmbeddedTransport<#retries, #ordering, #f>)
+        }
+    };
+    let serialization: syn::Type = if external {
+        syn::parse_quote!(#root::networking::Embedded)
+    } else {
+        syn::parse_quote!(#root::networking::Bincode)
+    };
+    (
+        transport,
+        serialization,
+        config_doc(networking_info, external),
+    )
+}
+
+/// A network config expression with the transport and serialization of `networking_info` (and
+/// `external`), for the host to acknowledge in a `ChannelConfiguration`.
+fn config_doc(networking_info: &crate::networking::NetworkingInfo, external: bool) -> String {
+    use crate::compile::ir::{StreamOrder, StreamRetry};
+    use crate::networking::{EmbeddedFault, NetworkingInfo, TcpFault, UdpFault};
+    let serialization = if external { "" } else { ".bincode()" };
+    match networking_info {
+        NetworkingInfo::Tcp { fault } => {
+            let fault = match fault {
+                TcpFault::FailStop => ".fail_stop()",
+                TcpFault::Lossy => ".lossy(nondet)",
+                TcpFault::LossyDelayedForever => ".lossy_delayed_forever()",
+            };
+            format!("TCP{fault}{serialization}")
+        }
+        NetworkingInfo::Udp { fault } => {
+            let fault = match fault {
+                UdpFault::Lossy => ".lossy(nondet)",
+                UdpFault::LossyDelayedForever => ".lossy_delayed_forever()",
+            };
+            format!("UDP{fault}{serialization}")
+        }
+        NetworkingInfo::Embedded {
+            retries,
+            ordering,
+            fault,
+        } => {
+            // `EMBEDDED` with a `may_*` builder for each anomaly it declares.
+            let reorder = match ordering {
+                StreamOrder::TotalOrder => "",
+                StreamOrder::NoOrder => ".may_reorder()",
+            };
+            let duplicate = match retries {
+                StreamRetry::ExactlyOnce => "",
+                StreamRetry::AtLeastOnce => ".may_duplicate()",
+            };
+            let loss = match fault {
+                EmbeddedFault::FailStop => "",
+                EmbeddedFault::Lossy => ".may_drop(nondet)",
+                EmbeddedFault::LossyDelayedForever => ".may_delay_forever()",
+            };
+            format!("EMBEDDED{reorder}{duplicate}{loss}")
+        }
+    }
+}
+
+/// A stream input or output of an embedded dataflow: the field it fills and the guarantees of its
+/// stream.
+#[derive(Clone)]
+pub struct EmbeddedStreamPort {
+    /// The field's name: the name given to `embedded_input` or `embedded_output`.
+    pub ident: syn::Ident,
+    /// The stream's element type.
+    pub element_type: syn::Type,
+    /// The stream's guarantees.
+    pub guarantees: EmbeddedStreamGuarantees,
+}
+
 /// Collected embedded input/output registrations, keyed by location.
 ///
 /// During `compile_network`, each `HydroSource::Embedded` and `HydroRoot::EmbeddedOutput`
@@ -173,31 +372,25 @@ impl<S: Into<String>> ExternalSpec<'_, EmbeddedDeploy> for S {
 /// to each generated function.
 #[derive(Default)]
 pub struct EmbeddedInstantiateEnv {
-    /// (ident name, element type) pairs per location key, for inputs.
-    pub inputs: SparseSecondaryMap<LocationKey, Vec<(syn::Ident, syn::Type)>>,
+    /// Stream inputs per location key: their guarantees are what the dataflow relies on, so the
+    /// host must promise them.
+    pub inputs: SparseSecondaryMap<LocationKey, Vec<EmbeddedStreamPort>>,
     /// (ident name, element type) pairs per location key, for singleton inputs.
     pub singleton_inputs: SparseSecondaryMap<LocationKey, Vec<(syn::Ident, syn::Type)>>,
-    /// (ident name, element type) pairs per location key, for outputs.
-    pub outputs: SparseSecondaryMap<LocationKey, Vec<(syn::Ident, syn::Type)>>,
-    /// Network output port names per location key (sender side of channels).
-    /// Each entry is `(port_name, is_tagged, external_type)`. `is_tagged` means the sink is keyed
-    /// by a `TaglessMemberId`. `external_type` distinguishes the two serialization modes:
-    /// - `None` (bincode): the sink is `FnMut(Bytes)` (or `FnMut((TaglessMemberId, Bytes))` when
-    ///   tagged) — Hydro serializes to `Bytes` before the sink.
-    /// - `Some(payload)` (embedded, see [`crate::networking::Embedded`]): the sink receives the raw
-    ///   payload — `FnMut(payload)` (or `FnMut((TaglessMemberId, payload))` when tagged).
-    pub network_outputs: SparseSecondaryMap<LocationKey, Vec<(String, bool, Option<syn::Type>)>>,
-    /// Network input port names per location key (receiver side of channels).
-    /// Each entry is `(port_name, is_tagged, external_type)`. `is_tagged` means the source is keyed
-    /// by a `TaglessMemberId`. `external_type` distinguishes the two serialization modes:
-    /// - `None` (bincode): the source is `Stream<Item = Result<BytesMut, Error>>` (or
-    ///   `Result<(TaglessMemberId, BytesMut), Error>` when tagged) — the transport `Result` is
-    ///   unwrapped and the `BytesMut` deserialized by Hydro.
-    /// - `Some(payload)` (embedded, see [`crate::networking::Embedded`]): the source delivers the
-    ///   raw payload with no transport `Result` — `Stream<Item = payload>` (or
-    ///   `Stream<Item = (TaglessMemberId, payload)>` when tagged); handling faults is left to the
-    ///   external code that produces the stream.
-    pub network_inputs: SparseSecondaryMap<LocationKey, Vec<(String, bool, Option<syn::Type>)>>,
+    /// Outputs per location key: their guarantees are what the output stream provides to the
+    /// host.
+    pub outputs: SparseSecondaryMap<LocationKey, Vec<EmbeddedStreamPort>>,
+    /// Network output ports per location key (sender side of channels). The sink is
+    /// `FnMut(Bytes)` with bincode serialization (Hydro serializes before the sink) or
+    /// `FnMut(payload)` with embedded serialization (see [`crate::networking::Embedded`]), with
+    /// the payload paired with a `TaglessMemberId` when the port is tagged.
+    pub network_outputs: SparseSecondaryMap<LocationKey, Vec<EmbeddedNetworkPort>>,
+    /// Network input ports per location key (receiver side of channels). The source is
+    /// `Stream<Item = Result<BytesMut, Error>>` with bincode serialization (Hydro unwraps the
+    /// transport `Result` and deserializes) or `Stream<Item = payload>` with embedded
+    /// serialization, with no transport `Result` (handling faults is left to the external code
+    /// that produces the stream); again paired with a `TaglessMemberId` when tagged.
+    pub network_inputs: SparseSecondaryMap<LocationKey, Vec<EmbeddedNetworkPort>>,
     /// Cluster membership streams needed per location key.
     /// Maps `location_key` -> vec of cluster [`LocationKey`]s whose membership is needed.
     pub membership_streams: SparseSecondaryMap<LocationKey, Vec<LocationKey>>,
@@ -220,8 +413,9 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         p2: &Self::Process,
         _p2_port: &(),
         name: Option<&str>,
-        _networking_info: &crate::networking::NetworkingInfo,
+        networking_info: &crate::networking::NetworkingInfo,
         external_types: Option<(&syn::Type, &syn::Type)>,
+        guarantees: &EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         let name = name.expect(
             "EmbeddedDeploy o2o networking requires a channel name. Use `TCP.name(\"my_channel\")` to provide one.",
@@ -234,19 +428,25 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
             .entry(p1.location_key)
             .unwrap()
             .or_default()
-            .push((
-                name.to_owned(),
+            .push(EmbeddedNetworkPort::new(
+                name,
                 false,
-                external_types.map(|(i, _)| i.clone()),
+                external_types.map(|(i, _)| i),
+                p2.location_key,
+                &guarantees.sent,
+                networking_info,
             ));
         env.network_inputs
             .entry(p2.location_key)
             .unwrap()
             .or_default()
-            .push((
-                name.to_owned(),
+            .push(EmbeddedNetworkPort::new(
+                name,
                 false,
-                external_types.map(|(_, o)| o.clone()),
+                external_types.map(|(_, o)| o),
+                p1.location_key,
+                &guarantees.received,
+                networking_info,
             ));
 
         (
@@ -271,8 +471,9 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         c2: &Self::Cluster,
         _c2_port: &(),
         name: Option<&str>,
-        _networking_info: &crate::networking::NetworkingInfo,
+        networking_info: &crate::networking::NetworkingInfo,
         external_types: Option<(&syn::Type, &syn::Type)>,
+        guarantees: &EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         let name = name.expect("EmbeddedDeploy o2m networking requires a channel name.");
         let sink_ident = syn::Ident::new(&format!("__network_out_{name}"), Span::call_site());
@@ -281,19 +482,25 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
             .entry(p1.location_key)
             .unwrap()
             .or_default()
-            .push((
-                name.to_owned(),
+            .push(EmbeddedNetworkPort::new(
+                name,
                 true,
-                external_types.map(|(i, _)| i.clone()),
+                external_types.map(|(i, _)| i),
+                c2.location_key,
+                &guarantees.sent,
+                networking_info,
             ));
         env.network_inputs
             .entry(c2.location_key)
             .unwrap()
             .or_default()
-            .push((
-                name.to_owned(),
+            .push(EmbeddedNetworkPort::new(
+                name,
                 false,
-                external_types.map(|(_, o)| o.clone()),
+                external_types.map(|(_, o)| o),
+                p1.location_key,
+                &guarantees.received,
+                networking_info,
             ));
         (
             syn::parse_quote!(__root_dfir_rs::sinktools::for_each(#sink_ident)),
@@ -317,8 +524,9 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         p2: &Self::Process,
         _p2_port: &(),
         name: Option<&str>,
-        _networking_info: &crate::networking::NetworkingInfo,
+        networking_info: &crate::networking::NetworkingInfo,
         external_types: Option<(&syn::Type, &syn::Type)>,
+        guarantees: &EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         let name = name.expect("EmbeddedDeploy m2o networking requires a channel name.");
         let sink_ident = syn::Ident::new(&format!("__network_out_{name}"), Span::call_site());
@@ -327,19 +535,25 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
             .entry(c1.location_key)
             .unwrap()
             .or_default()
-            .push((
-                name.to_owned(),
+            .push(EmbeddedNetworkPort::new(
+                name,
                 false,
-                external_types.map(|(i, _)| i.clone()),
+                external_types.map(|(i, _)| i),
+                p2.location_key,
+                &guarantees.sent,
+                networking_info,
             ));
         env.network_inputs
             .entry(p2.location_key)
             .unwrap()
             .or_default()
-            .push((
-                name.to_owned(),
+            .push(EmbeddedNetworkPort::new(
+                name,
                 true,
-                external_types.map(|(_, o)| o.clone()),
+                external_types.map(|(_, o)| o),
+                c1.location_key,
+                &guarantees.received,
+                networking_info,
             ));
         (
             syn::parse_quote!(__root_dfir_rs::sinktools::for_each(#sink_ident)),
@@ -363,8 +577,9 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         c2: &Self::Cluster,
         _c2_port: &(),
         name: Option<&str>,
-        _networking_info: &crate::networking::NetworkingInfo,
+        networking_info: &crate::networking::NetworkingInfo,
         external_types: Option<(&syn::Type, &syn::Type)>,
+        guarantees: &EmbeddedNetworkGuarantees,
     ) -> (syn::Expr, syn::Expr) {
         let name = name.expect("EmbeddedDeploy m2m networking requires a channel name.");
         let sink_ident = syn::Ident::new(&format!("__network_out_{name}"), Span::call_site());
@@ -373,19 +588,25 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
             .entry(c1.location_key)
             .unwrap()
             .or_default()
-            .push((
-                name.to_owned(),
+            .push(EmbeddedNetworkPort::new(
+                name,
                 true,
-                external_types.map(|(i, _)| i.clone()),
+                external_types.map(|(i, _)| i),
+                c2.location_key,
+                &guarantees.sent,
+                networking_info,
             ));
         env.network_inputs
             .entry(c2.location_key)
             .unwrap()
             .or_default()
-            .push((
-                name.to_owned(),
+            .push(EmbeddedNetworkPort::new(
+                name,
                 true,
-                external_types.map(|(_, o)| o.clone()),
+                external_types.map(|(_, o)| o),
+                c1.location_key,
+                &guarantees.received,
+                networking_info,
             ));
         (
             syn::parse_quote!(__root_dfir_rs::sinktools::for_each(#sink_ident)),
@@ -494,12 +715,17 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         location_key: LocationKey,
         ident: &syn::Ident,
         element_type: &syn::Type,
+        guarantees: &EmbeddedStreamGuarantees,
     ) {
         env.inputs
             .entry(location_key)
             .unwrap()
             .or_default()
-            .push((ident.clone(), element_type.clone()));
+            .push(EmbeddedStreamPort {
+                ident: ident.clone(),
+                element_type: element_type.clone(),
+                guarantees: guarantees.clone(),
+            });
     }
 
     fn register_embedded_singleton_input(
@@ -520,12 +746,211 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         location_key: LocationKey,
         ident: &syn::Ident,
         element_type: &syn::Type,
+        guarantees: &EmbeddedStreamGuarantees,
     ) {
         env.outputs
             .entry(location_key)
             .unwrap()
             .or_default()
-            .push((ident.clone(), element_type.clone()));
+            .push(EmbeddedStreamPort {
+                ident: ident.clone(),
+                element_type: element_type.clone(),
+                guarantees: guarantees.clone(),
+            });
+    }
+}
+
+/// `generate_embedded` turns each location into a function the host calls. Among its parameters
+/// are an `EmbeddedNetworkIn` struct, with a field per receiving end of the location's channels,
+/// and an `EmbeddedNetworkOut` struct, with a field per sending end, each next to a module
+/// (`incoming` / `outgoing`) of marker types describing those fields. Both directions are
+/// generated the same way, so this builds, for one direction, the pieces that struct, its module,
+/// and the function's signature are assembled from, one per port in port order.
+struct NetworkPortTokens {
+    fields: Vec<syn::Ident>,
+    field_docs: Vec<String>,
+    /// Each field's type: `ReceiveChannel<Marker, S>` (receiving) or `SendChannel<Marker, F>`
+    /// (sending), for the port's marker type (which carries its stream's guarantees and the
+    /// channel's configuration) and generic parameter.
+    field_types: Vec<proc_macro2::TokenStream>,
+    generics: Vec<syn::Ident>,
+    items: Vec<proc_macro2::TokenStream>,
+    marker_defs: Vec<proc_macro2::TokenStream>,
+}
+
+impl NetworkPortTokens {
+    fn new(
+        ports: &[EmbeddedNetworkPort],
+        fn_names: &SparseSecondaryMap<LocationKey, &str>,
+        generic_prefix: &str,
+        sending: bool,
+        item: impl Fn(&EmbeddedNetworkPort) -> proc_macro2::TokenStream,
+    ) -> Self {
+        let root = crate::staging_util::get_this_crate();
+        let items: Vec<proc_macro2::TokenStream> = ports.iter().map(&item).collect();
+        // Each port's field, which its marker type is named after.
+        let fields: Vec<syn::Ident> = ports
+            .iter()
+            .map(|port| syn::Ident::new(&port.name, Span::call_site()))
+            .collect();
+        let mut marker_defs = Vec::with_capacity(ports.len());
+        let mut field_docs = Vec::with_capacity(ports.len());
+        for (port, marker) in ports.iter().zip(&fields) {
+            let name = &port.name;
+            let peer = fn_names[port.peer];
+            let guarantees = &port.guarantees;
+            let doc = format!(
+                "The `{name}` channel's end at this location; its other end is at `{peer}`.\n\n{}",
+                network_end_doc(port, sending)
+            );
+            let marker_def = marker_def(&root, marker, &doc, guarantees);
+            let (transport, serialization) = (&port.transport, &port.serialization);
+            marker_defs.push(quote! {
+                #marker_def
+
+                impl #root::compile::embedded_runtime::EmbeddedNetworkChannel for #marker {
+                    type Transport = #transport;
+                    type Serialization = #serialization;
+                }
+            });
+            let (action, module) = if sending {
+                (format!("Sends on `{name}` to `{peer}`"), "outgoing")
+            } else {
+                (format!("Receives `{name}` from `{peer}`"), "incoming")
+            };
+            field_docs.push(format!("{action} (marker type: [`{module}::{marker}`])."));
+        }
+        let generics: Vec<syn::Ident> = (0..ports.len())
+            .map(|i| quote::format_ident!("{}{}", generic_prefix, i))
+            .collect();
+        let module = syn::Ident::new(
+            if sending { "outgoing" } else { "incoming" },
+            Span::call_site(),
+        );
+        // The host acknowledges the channel's configuration at both ends. At the sending end it
+        // acknowledges the stream sent, as for an output; at the receiving end it promises the
+        // stream delivered, as for an input.
+        let wrapper = if sending {
+            quote! { #root::compile::embedded_runtime::SendChannel }
+        } else {
+            quote! { #root::compile::embedded_runtime::ReceiveChannel }
+        };
+        let field_types = fields
+            .iter()
+            .zip(&generics)
+            .map(|(marker, generic)| quote! { #wrapper<#module::#marker, #generic> })
+            .collect();
+        NetworkPortTokens {
+            fields,
+            field_docs,
+            field_types,
+            generics,
+            items,
+            marker_defs,
+        }
+    }
+}
+
+/// The definition of the `marker` type of a channel crossing an embedded dataflow's
+/// boundary, documented with `doc`, and implementing `EmbeddedChannel` with its `guarantees`.
+///
+/// Channels are named by strings, but the host's side of each is checked by the type checker,
+/// so each needs a type: the marker, named as-is after its field (the channel's name).
+fn marker_def(
+    root: &proc_macro2::TokenStream,
+    marker: &syn::Ident,
+    doc: &str,
+    guarantees: &EmbeddedStreamGuarantees,
+) -> proc_macro2::TokenStream {
+    let ordering = match guarantees.order {
+        crate::compile::ir::StreamOrder::TotalOrder => {
+            quote! { #root::live_collections::stream::TotalOrder }
+        }
+        crate::compile::ir::StreamOrder::NoOrder => {
+            quote! { #root::live_collections::stream::NoOrder }
+        }
+    };
+    let retries = match guarantees.retry {
+        crate::compile::ir::StreamRetry::ExactlyOnce => {
+            quote! { #root::live_collections::stream::ExactlyOnce }
+        }
+        crate::compile::ir::StreamRetry::AtLeastOnce => {
+            quote! { #root::live_collections::stream::AtLeastOnce }
+        }
+    };
+    quote! {
+        #[doc = #doc]
+        #[allow(non_camel_case_types, reason = "named after its field")]
+        pub struct #marker;
+
+        impl #root::compile::embedded_runtime::EmbeddedChannel for #marker {
+            type Ordering = #ordering;
+            type Retries = #retries;
+        }
+    }
+}
+
+/// How a host promises `guarantees` for a stream flowing into the dataflow, in words.
+fn promise_doc(guarantees: &EmbeddedStreamGuarantees, wrapper: &str) -> String {
+    format!(
+        "Promise its guarantees with `{wrapper}::new(.., Promises::new(){})`.",
+        promises_chain(guarantees)
+    )
+}
+
+/// The `Promises` builder calls that promise exactly `guarantees`.
+fn promises_chain(guarantees: &EmbeddedStreamGuarantees) -> String {
+    use crate::compile::ir::{StreamOrder, StreamRetry};
+    [
+        (guarantees.order == StreamOrder::TotalOrder).then_some(".total_order(proof)"),
+        (guarantees.retry == StreamRetry::ExactlyOnce).then_some(".exactly_once(proof)"),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
+/// How a host acknowledges what an output with `guarantees` may do, in words.
+fn acknowledge_doc(guarantees: &EmbeddedStreamGuarantees) -> String {
+    format!(
+        "Acknowledge what it may do with \
+         `OutputChannel::new(.., Acknowledgements::new(){})`.",
+        acknowledgements_chain(guarantees)
+    )
+}
+
+/// The `Acknowledgements` builder calls that acknowledge exactly what a stream with `guarantees`
+/// may do.
+fn acknowledgements_chain(guarantees: &EmbeddedStreamGuarantees) -> String {
+    use crate::compile::ir::{StreamOrder, StreamRetry};
+    [
+        (guarantees.order == StreamOrder::NoOrder).then_some(".no_order(nondet)"),
+        (guarantees.retry == StreamRetry::AtLeastOnce).then_some(".at_least_once(nondet)"),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
+/// How a host builds the network channel end `port`, in words: it acknowledges the channel's
+/// configuration at both ends, and acknowledges the stream sent (`sending`) or promises the
+/// stream received.
+fn network_end_doc(port: &EmbeddedNetworkPort, sending: bool) -> String {
+    let config = &port.config;
+    if sending {
+        format!(
+            "Acknowledge the channel's configuration and what the stream sent on it may do with \
+             `SendChannel::new(.., ChannelConfiguration::new({config}), \
+             Acknowledgements::new(){})`.",
+            acknowledgements_chain(&port.guarantees)
+        )
+    } else {
+        format!(
+            "Acknowledge the channel's configuration and promise the guarantees of the stream it \
+             delivers with `ReceiveChannel::new(.., ChannelConfiguration::new({config}), \
+             Promises::new(){})`.",
+            promises_chain(&port.guarantees)
+        )
     }
 }
 
@@ -647,11 +1072,11 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
 
             // Get inputs for this location, sorted by name.
             let mut loc_inputs = env.inputs.get(location_key).cloned().unwrap_or_default();
-            loc_inputs.sort_by(|a, b| a.0.cmp(&b.0));
+            loc_inputs.sort_by(|a, b| a.ident.cmp(&b.ident));
 
             // Get outputs for this location, sorted by name.
             let mut loc_outputs = env.outputs.get(location_key).cloned().unwrap_or_default();
-            loc_outputs.sort_by(|a, b| a.0.cmp(&b.0));
+            loc_outputs.sort_by(|a, b| a.ident.cmp(&b.ident));
 
             let mut diagnostics = Diagnostics::new();
             // `as_code_options` is sparse: it only has entries for locations where a sidecar
@@ -723,24 +1148,48 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                     })
                     .collect();
 
+                let mem_item = quote! {
+                    (#root::location::member_id::TaglessMemberId, #root::location::MembershipEvent)
+                };
+                // Each member's events, in the order they happened, each once.
+                let mem_guarantees = EmbeddedStreamGuarantees {
+                    order: crate::compile::ir::StreamOrder::TotalOrder,
+                    retry: crate::compile::ir::StreamRetry::ExactlyOnce,
+                };
+                let mem_marker_defs = mem_field_names.iter().map(|field| {
+                    marker_def(
+                        &root,
+                        field,
+                        &format!(
+                            "The membership stream of the `{field}` cluster.\n\n{}",
+                            promise_doc(&mem_guarantees, "InputChannel")
+                        ),
+                        &mem_guarantees,
+                    )
+                });
+
                 let struct_fields: Vec<proc_macro2::TokenStream> = mem_field_names
                     .iter()
                     .zip(mem_generic_idents.iter())
                     .map(|(field, generic)| {
-                        quote! { pub #field: #generic }
+                        let doc = format!(
+                            "Each member's `Joined` / `Left` events (marker type: [`membership::{field}`])."
+                        );
+                        quote! {
+                            #[doc = #doc]
+                            pub #field: #root::compile::embedded_runtime::InputChannel<membership::#field, #generic>
+                        }
                     })
                     .collect();
 
                 let struct_generics: Vec<proc_macro2::TokenStream> = mem_generic_idents
                     .iter()
-                    .map(|generic| {
-                        quote! { #generic: __root_dfir_rs::futures::Stream<Item = (#root::location::member_id::TaglessMemberId, #root::location::MembershipEvent)> + Unpin }
-                    })
+                    .map(|generic| quote! { #generic: __root_dfir_rs::futures::Stream<Item = #mem_item> + Unpin })
                     .collect();
 
                 for generic in &mem_generic_idents {
                     extra_fn_generics.push(
-                        quote! { #generic: __root_dfir_rs::futures::Stream<Item = (#root::location::member_id::TaglessMemberId, #root::location::MembershipEvent)> + Unpin + 'a },
+                        quote! { #generic: __root_dfir_rs::futures::Stream<Item = #mem_item> + Unpin + 'a },
                     );
                 }
 
@@ -752,13 +1201,20 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                     let var_ident =
                         syn::Ident::new(&format!("__membership_{}", i), Span::call_site());
                     extra_destructure.push(quote! {
-                        let #var_ident = __membership.#field;
+                        let #var_ident = __membership.#field.into_inner();
                     });
                 }
 
                 mod_items.push(quote! {
                     pub struct #membership_struct_ident<#(#struct_generics),*> {
                         #(#struct_fields),*
+                    }
+
+                    /// Marker types for each membership stream, describing each field of
+                    /// `EmbeddedMembershipStreams`.
+                    pub mod membership {
+                        use super::*;
+                        #(#mem_marker_defs)*
                     }
                 });
             }
@@ -782,10 +1238,36 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                     .map(|(i, _)| quote::format_ident!("__In{}", i))
                     .collect();
 
+                // Every stream input must promise what its `embedded_input` declared, which its
+                // marker's guarantees state.
+                let input_marker_defs: Vec<proc_macro2::TokenStream> = loc_inputs
+                    .iter()
+                    .map(|input| {
+                        marker_def(
+                            &root,
+                            &input.ident,
+                            &format!(
+                                "The `{}` stream input.\n\n{}",
+                                input.ident,
+                                promise_doc(&input.guarantees, "InputChannel")
+                            ),
+                            &input.guarantees,
+                        )
+                    })
+                    .collect();
+
                 let struct_fields: Vec<proc_macro2::TokenStream> = loc_inputs
                     .iter()
                     .zip(input_generic_idents.iter())
-                    .map(|((ident, _), generic)| quote! { pub #ident: #generic })
+                    .map(|(input, generic)| {
+                        let ident = &input.ident;
+                        let doc =
+                            format!("The `{ident}` stream input (marker type: [`inputs::{ident}`]).");
+                        quote! {
+                            #[doc = #doc]
+                            pub #ident: #root::compile::embedded_runtime::InputChannel<inputs::#ident, #generic>
+                        }
+                    })
                     .chain(
                         loc_singleton_inputs
                             .iter()
@@ -796,14 +1278,14 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 let struct_generics: Vec<proc_macro2::TokenStream> = loc_inputs
                     .iter()
                     .zip(input_generic_idents.iter())
-                    .map(|((_, element_type), generic)| {
+                    .map(|(input, generic)| {
+                        let element_type = &input.element_type;
                         quote! { #generic: __root_dfir_rs::futures::Stream<Item = #element_type> + Unpin }
                     })
                     .collect();
 
-                for ((_, element_type), generic) in
-                    loc_inputs.iter().zip(input_generic_idents.iter())
-                {
+                for (input, generic) in loc_inputs.iter().zip(input_generic_idents.iter()) {
+                    let element_type = &input.element_type;
                     extra_fn_generics.push(
                         quote! { #generic: __root_dfir_rs::futures::Stream<Item = #element_type> + Unpin + 'a },
                     );
@@ -813,241 +1295,213 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                     __inputs: #fn_ident::#input_struct_ident<#(#input_generic_idents),*>
                 });
 
-                for (ident, _) in loc_inputs.iter().chain(&loc_singleton_inputs) {
+                for input in &loc_inputs {
+                    let ident = &input.ident;
+                    extra_destructure.push(quote! { let #ident = __inputs.#ident.into_inner(); });
+                }
+                for (ident, _) in &loc_singleton_inputs {
                     extra_destructure.push(quote! { let #ident = __inputs.#ident; });
                 }
 
+                let input_markers_mod = (!input_marker_defs.is_empty()).then(|| {
+                    quote! {
+                        /// Marker types for each stream input, describing each stream field of
+                        /// `EmbeddedInputs`.
+                        pub mod inputs {
+                            use super::*;
+                            #(#input_marker_defs)*
+                        }
+                    }
+                });
                 mod_items.push(quote! {
                     pub struct #input_struct_ident<#(#struct_generics),*> {
                         #(#struct_fields),*
                     }
+
+                    #input_markers_mod
                 });
             }
 
-            // Embedded outputs (FnMut callbacks).
+            // Embedded outputs: one `OutputChannel` sink per output, over a marker whose guarantees
+            // are what the output stream provides, which the host's acknowledgements must cover.
             if !loc_outputs.is_empty() {
                 let output_struct_ident = syn::Ident::new("EmbeddedOutputs", Span::call_site());
 
-                let output_generic_idents: Vec<syn::Ident> = loc_outputs
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| quote::format_ident!("__Out{}", i))
-                    .collect();
-
-                let struct_fields: Vec<proc_macro2::TokenStream> = loc_outputs
-                    .iter()
-                    .zip(output_generic_idents.iter())
-                    .map(|((ident, _), generic)| {
-                        quote! { pub #ident: #generic }
-                    })
-                    .collect();
-
-                let struct_generics: Vec<proc_macro2::TokenStream> = loc_outputs
-                    .iter()
-                    .zip(output_generic_idents.iter())
-                    .map(|((_, element_type), generic)| {
-                        quote! { #generic: FnMut(#element_type) }
-                    })
-                    .collect();
-
-                for ((_, element_type), generic) in
-                    loc_outputs.iter().zip(output_generic_idents.iter())
-                {
-                    extra_fn_generics.push(quote! { #generic: FnMut(#element_type) + 'a });
+                let mut struct_generics: Vec<proc_macro2::TokenStream> = Vec::new();
+                let mut struct_fields: Vec<proc_macro2::TokenStream> = Vec::new();
+                let mut generics: Vec<syn::Ident> = Vec::new();
+                let mut marker_defs: Vec<proc_macro2::TokenStream> = Vec::new();
+                for (i, output) in loc_outputs.iter().enumerate() {
+                    let ident = &output.ident;
+                    let element_type = &output.element_type;
+                    let generic = quote::format_ident!("__Out{}", i);
+                    marker_defs.push(marker_def(
+                        &root,
+                        ident,
+                        &format!(
+                            "The `{ident}` output.\n\n{}",
+                            acknowledge_doc(&output.guarantees)
+                        ),
+                        &output.guarantees,
+                    ));
+                    let doc = format!("The `{ident}` output (marker type: [`outputs::{ident}`]).");
+                    let sink_bound = quote! { FnMut(#element_type) };
+                    struct_generics.push(quote! { #generic: #sink_bound });
+                    extra_fn_generics.push(quote! { #generic: #sink_bound + 'a });
+                    struct_fields.push(quote! {
+                        #[doc = #doc]
+                        pub #ident: #root::compile::embedded_runtime::OutputChannel<outputs::#ident, #generic>
+                    });
+                    generics.push(generic);
+                    extra_destructure
+                        .push(quote! { let mut #ident = __outputs.#ident.inner_mut(); });
                 }
 
                 output_params.push(quote! {
-                    __outputs: &'a mut #fn_ident::#output_struct_ident<#(#output_generic_idents),*>
+                    __outputs: &'a mut #fn_ident::#output_struct_ident<#(#generics),*>
                 });
-
-                for (ident, _) in &loc_outputs {
-                    extra_destructure.push(quote! { let mut #ident = &mut __outputs.#ident; });
-                }
 
                 mod_items.push(quote! {
                     pub struct #output_struct_ident<#(#struct_generics),*> {
                         #(#struct_fields),*
                     }
+
+                    /// Marker types for each output, describing each field of `EmbeddedOutputs`.
+                    pub mod outputs {
+                        use super::*;
+                        #(#marker_defs)*
+                    }
                 });
             }
 
-            // Network outputs (FnMut sinks).
-            if let Some(mut loc_net_outputs) = env.network_outputs.remove(location_key) {
-                loc_net_outputs.sort_by(|a, b| a.0.cmp(&b.0));
-
-                let net_out_struct_ident = syn::Ident::new("EmbeddedNetworkOut", Span::call_site());
-
-                let net_out_generic_idents: Vec<syn::Ident> = loc_net_outputs
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| quote::format_ident!("__NetOut{}", i))
-                    .collect();
-
-                let struct_fields: Vec<proc_macro2::TokenStream> = loc_net_outputs
-                    .iter()
-                    .zip(net_out_generic_idents.iter())
-                    .map(|((name, _, _), generic)| {
-                        let field_ident = syn::Ident::new(name, Span::call_site());
-                        quote! { pub #field_ident: #generic }
-                    })
-                    .collect();
-
-                let struct_generics: Vec<proc_macro2::TokenStream> = loc_net_outputs
-                    .iter()
-                    .zip(net_out_generic_idents.iter())
-                    .map(|((_, is_tagged, ext_ty), generic)| {
-                        let payload = if let Some(ty) = ext_ty {
+            // Network outputs (sinks), plus a marker type per channel describing it.
+            if let Some(mut ports) = env.network_outputs.remove(location_key) {
+                ports.sort_by(|a, b| a.name.cmp(&b.name));
+                let channels =
+                    NetworkPortTokens::new(&ports, &fn_names, "__NetOut", true, |port| {
+                        let payload = if let Some(ty) = &port.external_type {
                             quote! { #ty }
                         } else {
                             quote! { #root::runtime_support::dfir_rs::bytes::Bytes }
                         };
-                        if *is_tagged {
-                            quote! { #generic: FnMut((#root::location::member_id::TaglessMemberId, #payload)) }
+                        if port.is_tagged {
+                            quote! { (#root::location::member_id::TaglessMemberId, #payload) }
                         } else {
-                            quote! { #generic: FnMut(#payload) }
+                            payload
                         }
-                    })
-                    .collect();
+                    });
+                let NetworkPortTokens {
+                    fields,
+                    field_docs,
+                    field_types,
+                    generics,
+                    items,
+                    marker_defs,
+                } = &channels;
 
-                for ((_, is_tagged, ext_ty), generic) in
-                    loc_net_outputs.iter().zip(net_out_generic_idents.iter())
-                {
-                    let payload = if let Some(ty) = ext_ty {
-                        quote! { #ty }
-                    } else {
-                        quote! { #root::runtime_support::dfir_rs::bytes::Bytes }
-                    };
-                    if *is_tagged {
-                        extra_fn_generics.push(
-                            quote! { #generic: FnMut((#root::location::member_id::TaglessMemberId, #payload)) + 'a },
-                        );
-                    } else {
-                        extra_fn_generics.push(quote! { #generic: FnMut(#payload) + 'a });
-                    }
+                for (generic, item) in generics.iter().zip(items) {
+                    extra_fn_generics.push(quote! { #generic: FnMut(#item) + 'a });
                 }
 
                 net_out_params.push(quote! {
-                    __network_out: &'a mut #fn_ident::#net_out_struct_ident<#(#net_out_generic_idents),*>
+                    __network_out: &'a mut #fn_ident::EmbeddedNetworkOut<#(#generics),*>
                 });
 
-                for (name, _, _) in &loc_net_outputs {
-                    let field_ident = syn::Ident::new(name, Span::call_site());
+                for (port, field) in ports.iter().zip(fields) {
                     let var_ident =
-                        syn::Ident::new(&format!("__network_out_{name}"), Span::call_site());
+                        syn::Ident::new(&format!("__network_out_{}", port.name), Span::call_site());
                     extra_destructure
-                        .push(quote! { let mut #var_ident = &mut __network_out.#field_ident; });
+                        .push(quote! { let mut #var_ident = __network_out.#field.inner_mut(); });
                 }
 
                 mod_items.push(quote! {
-                    pub struct #net_out_struct_ident<#(#struct_generics),*> {
-                        #(#struct_fields),*
+                    pub struct EmbeddedNetworkOut<#(#generics: FnMut(#items)),*> {
+                        #(#[doc = #field_docs] pub #fields: #field_types),*
+                    }
+
+                    /// Marker types for the sending end of each of this location's outgoing
+                    /// channels, describing each field of `EmbeddedNetworkOut`.
+                    pub mod outgoing {
+                        use super::*;
+                        #(#marker_defs)*
                     }
                 });
             }
 
-            // Network inputs (Stream sources).
-            if let Some(mut loc_net_inputs) = env.network_inputs.remove(location_key) {
-                loc_net_inputs.sort_by(|a, b| a.0.cmp(&b.0));
-
-                let net_in_struct_ident = syn::Ident::new("EmbeddedNetworkIn", Span::call_site());
-
-                let net_in_generic_idents: Vec<syn::Ident> = loc_net_inputs
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| quote::format_ident!("__NetIn{}", i))
-                    .collect();
-
-                let struct_fields: Vec<proc_macro2::TokenStream> = loc_net_inputs
-                    .iter()
-                    .zip(net_in_generic_idents.iter())
-                    .map(|((name, _, _), generic)| {
-                        let field_ident = syn::Ident::new(name, Span::call_site());
-                        quote! { pub #field_ident: #generic }
-                    })
-                    .collect();
-
-                let struct_generics: Vec<proc_macro2::TokenStream> = loc_net_inputs
-                    .iter()
-                    .zip(net_in_generic_idents.iter())
-                    .map(|((_, is_tagged, ext_ty), generic)| {
-                        match ext_ty {
-                            // Embedded (external) serialization: the raw payload is delivered
-                            // directly, with no transport `Result` wrapper.
-                            Some(ty) => {
-                                if *is_tagged {
-                                    quote! { #generic: __root_dfir_rs::futures::Stream<Item = (#root::location::member_id::TaglessMemberId, #ty)> + Unpin }
-                                } else {
-                                    quote! { #generic: __root_dfir_rs::futures::Stream<Item = #ty> + Unpin }
-                                }
+            // Network inputs (Stream sources), plus a marker type per channel describing it.
+            if let Some(mut ports) = env.network_inputs.remove(location_key) {
+                ports.sort_by(|a, b| a.name.cmp(&b.name));
+                let channels = NetworkPortTokens::new(
+                    &ports,
+                    &fn_names,
+                    "__NetIn",
+                    false,
+                    |port| {
+                        // With embedded (external) serialization, the raw payload is delivered
+                        // directly, with no transport `Result` wrapper.
+                        match (&port.external_type, port.is_tagged) {
+                            (Some(ty), true) => {
+                                quote! { (#root::location::member_id::TaglessMemberId, #ty) }
                             }
-                            None => {
-                                if *is_tagged {
-                                    quote! { #generic: __root_dfir_rs::futures::Stream<Item = Result<(#root::location::member_id::TaglessMemberId, __root_dfir_rs::bytes::BytesMut), std::io::Error>> + Unpin }
-                                } else {
-                                    quote! { #generic: __root_dfir_rs::futures::Stream<Item = Result<__root_dfir_rs::bytes::BytesMut, std::io::Error>> + Unpin }
-                                }
+                            (Some(ty), false) => quote! { #ty },
+                            (None, true) => {
+                                quote! { Result<(#root::location::member_id::TaglessMemberId, __root_dfir_rs::bytes::BytesMut), std::io::Error> }
+                            }
+                            (None, false) => {
+                                quote! { Result<__root_dfir_rs::bytes::BytesMut, std::io::Error> }
                             }
                         }
-                    })
-                    .collect();
+                    },
+                );
+                let NetworkPortTokens {
+                    fields,
+                    field_docs,
+                    field_types,
+                    generics,
+                    items,
+                    marker_defs,
+                } = &channels;
 
-                for ((_, is_tagged, ext_ty), generic) in
-                    loc_net_inputs.iter().zip(net_in_generic_idents.iter())
-                {
-                    match ext_ty {
-                        Some(ty) => {
-                            if *is_tagged {
-                                extra_fn_generics.push(
-                                    quote! { #generic: __root_dfir_rs::futures::Stream<Item = (#root::location::member_id::TaglessMemberId, #ty)> + Unpin + 'a },
-                                );
-                            } else {
-                                extra_fn_generics.push(
-                                    quote! { #generic: __root_dfir_rs::futures::Stream<Item = #ty> + Unpin + 'a },
-                                );
-                            }
-                        }
-                        None => {
-                            if *is_tagged {
-                                extra_fn_generics.push(
-                                    quote! { #generic: __root_dfir_rs::futures::Stream<Item = Result<(#root::location::member_id::TaglessMemberId, __root_dfir_rs::bytes::BytesMut), std::io::Error>> + Unpin + 'a },
-                                );
-                            } else {
-                                extra_fn_generics.push(
-                                    quote! { #generic: __root_dfir_rs::futures::Stream<Item = Result<__root_dfir_rs::bytes::BytesMut, std::io::Error>> + Unpin + 'a },
-                                );
-                            }
-                        }
-                    }
+                for (generic, item) in generics.iter().zip(items) {
+                    extra_fn_generics.push(
+                        quote! { #generic: __root_dfir_rs::futures::Stream<Item = #item> + Unpin + 'a },
+                    );
                 }
 
                 net_in_params.push(quote! {
-                    __network_in: #fn_ident::#net_in_struct_ident<#(#net_in_generic_idents),*>
+                    __network_in: #fn_ident::EmbeddedNetworkIn<#(#generics),*>
                 });
 
-                for (name, _, _) in &loc_net_inputs {
-                    let field_ident = syn::Ident::new(name, Span::call_site());
+                for (port, field) in ports.iter().zip(fields) {
                     let var_ident =
-                        syn::Ident::new(&format!("__network_in_{name}"), Span::call_site());
-                    extra_destructure.push(quote! { let #var_ident = __network_in.#field_ident; });
+                        syn::Ident::new(&format!("__network_in_{}", port.name), Span::call_site());
+                    extra_destructure
+                        .push(quote! { let #var_ident = __network_in.#field.into_inner(); });
                 }
 
                 mod_items.push(quote! {
-                    pub struct #net_in_struct_ident<#(#struct_generics),*> {
-                        #(#struct_fields),*
+                    pub struct EmbeddedNetworkIn<#(#generics: __root_dfir_rs::futures::Stream<Item = #items> + Unpin),*> {
+                        #(#[doc = #field_docs] pub #fields: #field_types),*
+                    }
+
+                    /// Marker types for the receiving end of each of this location's incoming
+                    /// channels, describing each field of `EmbeddedNetworkIn`.
+                    pub mod incoming {
+                        use super::*;
+                        #(#marker_defs)*
                     }
                 });
             }
 
-            // Emit the module if there are any structs.
-            if !mod_items.is_empty() {
-                let output_mod: syn::Item = syn::parse_quote! {
-                    pub mod #fn_ident {
-                        use super::*;
-                        #(#mod_items)*
-                    }
-                };
-                items.push(output_mod);
-            }
+            // Emit the location's module: its parameter structs and channel marker types.
+            let output_mod: syn::Item = syn::parse_quote! {
+                pub mod #fn_ident {
+                    use super::*;
+
+                    #(#mod_items)*
+                }
+            };
+            items.push(output_mod);
 
             // Build the function.
             let all_params: Vec<proc_macro2::TokenStream> = cluster_params

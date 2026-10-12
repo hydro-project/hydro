@@ -1,0 +1,22 @@
+error[E0277]: the channel end `hydro_test_embedded::echo_network_embedded::echo_receiver::incoming::messages` is configured with `EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::FailStop>`, but the host acknowledges `EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::LossyDelayedForever>`
+  --> tests/compile-fail/stable/embedded_channel_config_mismatch.rs:15:13
+   |
+13 |           messages: ReceiveChannel::new(
+   |                     ------------------- required by a bound introduced by this call
+14 |               stream::iter(Vec::<String>::new()),
+15 | /             ChannelConfiguration::new(
+16 | |                 EMBEDDED.may_delay_forever(),
+17 | |             ),
+   | |_____________^ acknowledges `EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::LossyDelayedForever>`
+   |
+   = help: the trait `AcknowledgesTransport<EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::FailStop>, hydro_test_embedded::echo_network_embedded::echo_receiver::incoming::messages>` is not implemented for `EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::LossyDelayedForever>`
+   = note: acknowledge the same network config the dataflow sends with; the marker's docs give it
+   = note: required for `hydro_test_embedded::echo_network_embedded::echo_receiver::incoming::messages` to implement `ConfiguredAs<EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::LossyDelayedForever>, hydro_lang::networking::Embedded>`
+note: required by a bound in `ReceiveChannel::<C, S>::new`
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   |     pub fn new<Tr, Ser, O, R>(
+   |            --- required by a bound in this associated function
+...
+   |         C: ConfiguredAs<Tr, Ser> + SatisfiedBy<O, R>,
+   |            ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `ReceiveChannel::<C, S>::new`

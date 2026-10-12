@@ -1,0 +1,19 @@
+error[E0271]: type mismatch resolving `<TotalOrder as MinOrder<NoOrder>>::Min == TotalOrder`
+  --> tests/compile-fail/stable/embedded_send_unacknowledged_order.rs:15:13
+   |
+12 |         messages: SendChannel::new(
+   |                   ---------------- required by a bound introduced by this call
+...
+15 |             Acknowledgements::new().at_least_once(nondet!(/** repeats are harmless */)),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `TotalOrder`, found `NoOrder`
+   |
+   = note: required for `hydro_lang::live_collections::stream::TotalOrder` to implement `WeakerOrderingThan<hydro_lang::live_collections::stream::NoOrder>`
+   = note: required for `hydro_test_embedded::weak_stream_channel::weak_stream_sender::outgoing::messages` to implement `AcknowledgedBy<hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::AtLeastOnce>`
+note: required by a bound in `SendChannel::<C, S>::new`
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   |     pub fn new<Tr, Ser, O, R>(
+   |            --- required by a bound in this associated function
+...
+   |         C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<O, R>,
+   |                                    ^^^^^^^^^^^^^^^^^^^^ required by this bound in `SendChannel::<C, S>::new`
