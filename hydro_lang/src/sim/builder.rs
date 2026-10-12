@@ -1184,6 +1184,7 @@ impl DfirBuilder for SimBuilder {
         in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         out_location: &LocationId,
+        _out_kind: &CollectionKind,
     ) {
         match in_kind {
             CollectionKind::Stream { .. }
@@ -1297,6 +1298,7 @@ impl DfirBuilder for SimBuilder {
         in_location: &LocationId,
         in_kind: &CollectionKind,
         out_ident: &syn::Ident,
+        out_kind: &CollectionKind,
     ) {
         if let LocationId::Atomic(tick) = in_location
             && let LocationId::Tick {
@@ -1310,6 +1312,7 @@ impl DfirBuilder for SimBuilder {
                 in_kind,
                 out_ident,
                 parent_location.as_ref(),
+                out_kind,
             );
         } else {
             unreachable!()

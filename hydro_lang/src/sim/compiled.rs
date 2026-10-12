@@ -331,7 +331,7 @@ impl ScriptCtx {
         self.quiescence.push_park_waker(waker);
     }
 
-    /// Attempts to install a decision (bincode-serialized; the handle and hook statically
+    /// Attempts to install a decision (MessagePack-serialized; the handle and hook statically
     /// know the matching type) for the hook instance `(hook_id, member)` under the group
     /// protocol: join the current group if this decision belongs to it, open a new group
     /// if the previous one has been consumed, or hand the decision back to be retried

@@ -638,7 +638,7 @@ pub trait Location<'a>: DynLocation {
         )
     }
 
-    /// Sets up a bincode-encoded simulated input port on this location for testing.
+    /// Sets up a MessagePack-encoded simulated input port on this location for testing.
     ///
     /// Returns a handle to send messages to the location as well as a stream
     /// of received messages. Use [`Location::sim_input_with`] to select another codec.
@@ -654,7 +654,7 @@ pub trait Location<'a>: DynLocation {
         Self: TopLevel<'a> + Sized,
         T: Serialize + DeserializeOwned,
     {
-        self.sim_input_with::<crate::sim::codec::BincodeCodec, T, O, R>()
+        self.sim_input_with::<crate::sim::codec::RmpCodec, T, O, R>()
     }
 
     /// Sets up a simulated input port using the codec `C`.
