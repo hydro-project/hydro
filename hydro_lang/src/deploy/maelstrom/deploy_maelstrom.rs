@@ -27,8 +27,7 @@ use crate::compile::trybuild::generate::{
     create_graph_trybuild,
 };
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MembershipEvent, NetworkHint};
+use crate::location::{LocationKey, NetworkHint};
 
 /// Deployment backend that targets Maelstrom for distributed systems testing.
 ///
@@ -200,23 +199,21 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
 
-    fn cluster_ids(
-        _of_cluster: LocationKey,
-    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
+    fn cluster_ids(_of_cluster: LocationKey) -> syn::Expr {
         cluster_members(RuntimeData::new("__hydro_lang_maelstrom_meta"), _of_cluster)
+            .splice_untyped()
     }
 
-    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
-        cluster_self_id(RuntimeData::new("__hydro_lang_maelstrom_meta"))
+    fn cluster_self_id() -> syn::Expr {
+        cluster_self_id(RuntimeData::new("__hydro_lang_maelstrom_meta")).splice_untyped()
     }
 
     fn cluster_membership_stream(
         _env: &mut Self::InstantiateEnv,
         _at_location: &LocationId,
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
-    {
-        cluster_membership_stream(location_id)
+    ) -> syn::Expr {
+        cluster_membership_stream(location_id).splice_untyped()
     }
 }
 

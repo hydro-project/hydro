@@ -38,8 +38,7 @@ use crate::compile::deploy_provider::{
 };
 use crate::compile::trybuild::generate::{LinkingMode, create_graph_trybuild};
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MembershipEvent, NetworkHint};
+use crate::location::{LocationKey, NetworkHint};
 
 /// represents a docker network
 #[derive(Clone, Debug)]
@@ -1310,15 +1309,13 @@ impl<'a> Deploy<'a> for DockerDeploy {
     }
 
     #[instrument(level = "trace", skip_all, fields(%of_cluster))]
-    fn cluster_ids(
-        of_cluster: LocationKey,
-    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
-        cluster_ids()
+    fn cluster_ids(of_cluster: LocationKey) -> syn::Expr {
+        cluster_ids().splice_untyped()
     }
 
     #[instrument(level = "trace", skip_all)]
-    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
-        cluster_self_id()
+    fn cluster_self_id() -> syn::Expr {
+        cluster_self_id().splice_untyped()
     }
 
     #[instrument(level = "trace", skip_all, fields(?location_id))]
@@ -1326,9 +1323,8 @@ impl<'a> Deploy<'a> for DockerDeploy {
         _env: &mut Self::InstantiateEnv,
         _at_location: &LocationId,
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
-    {
-        cluster_membership_stream(location_id)
+    ) -> syn::Expr {
+        cluster_membership_stream(location_id).splice_untyped()
     }
 }
 

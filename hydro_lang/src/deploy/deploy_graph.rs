@@ -35,7 +35,7 @@ use crate::compile::trybuild::generate::{
 };
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MembershipEvent, NetworkHint};
+use crate::location::{LocationKey, NetworkHint};
 use crate::staging_util::get_this_crate;
 
 /// Deployment backend that uses [`hydro_deploy`] for provisioning and launching.
@@ -427,23 +427,20 @@ impl<'a> Deploy<'a> for HydroDeploy {
         parse_quote!(#sink_ident)
     }
 
-    fn cluster_ids(
-        of_cluster: LocationKey,
-    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
-        cluster_members(RuntimeData::new("__hydro_lang_trybuild_cli"), of_cluster)
+    fn cluster_ids(of_cluster: LocationKey) -> syn::Expr {
+        cluster_members(RuntimeData::new("__hydro_lang_trybuild_cli"), of_cluster).splice_untyped()
     }
 
-    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
-        cluster_self_id(RuntimeData::new("__hydro_lang_trybuild_cli"))
+    fn cluster_self_id() -> syn::Expr {
+        cluster_self_id(RuntimeData::new("__hydro_lang_trybuild_cli")).splice_untyped()
     }
 
     fn cluster_membership_stream(
         _env: &mut Self::InstantiateEnv,
         _at_location: &LocationId,
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
-    {
-        cluster_membership_stream(location_id)
+    ) -> syn::Expr {
+        cluster_membership_stream(location_id).splice_untyped()
     }
 }
 

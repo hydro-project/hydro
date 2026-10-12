@@ -22,9 +22,8 @@ use crate::compile::trybuild::generate::{
     create_trybuild, write_atomic, write_staged_source_cached,
 };
 use crate::deploy::deploy_runtime::cluster_membership_stream;
+use crate::location::LocationKey;
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MembershipEvent};
 use crate::staging_util::get_this_crate;
 
 crate::newtype_counter! {
@@ -407,30 +406,20 @@ impl<'a> Deploy<'a> for SimDeploy {
         })
     }
 
-    #[expect(unreachable_code, reason = "todo!() is unreachable")]
-    fn cluster_ids(
-        _of_cluster: LocationKey,
-    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
+    fn cluster_ids(_of_cluster: LocationKey) -> syn::Expr {
         todo!("cluster_ids is not yet supported in simulation");
-        stageleft::q!(todo!())
     }
 
-    #[expect(unreachable_code, reason = "todo!() is unreachable")]
-    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
+    fn cluster_self_id() -> syn::Expr {
         todo!("cluster_self_id is not yet supported in simulation");
-        stageleft::q!(todo!())
     }
 
     fn cluster_membership_stream(
         _env: &mut Self::InstantiateEnv,
         _at_location: &LocationId,
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<
-        'a,
-        Box<dyn futures::Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>,
-        (),
-    > {
-        cluster_membership_stream(location_id)
+    ) -> syn::Expr {
+        cluster_membership_stream(location_id).splice_untyped()
     }
 }
 
