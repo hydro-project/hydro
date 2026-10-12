@@ -85,3 +85,78 @@ pub fn copy_span(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     proc_macro::TokenStream::from(output)
 }
+
+struct SpanLocationInput {
+    sources: Vec<syn::Expr>,
+}
+
+impl syn::parse::Parse for SpanLocationInput {
+    fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
+        let mut sources = vec![];
+        while !input.is_empty() {
+            sources.push(input.parse::<syn::Expr>()?);
+            if input.parse::<syn::Token![,]>().is_err() {
+                break;
+            }
+        }
+        Ok(SpanLocationInput { sources })
+    }
+}
+
+/// Expands to the source position of the first expression given, as a reference to the tuple
+/// `(file, line, column): &'static (Option<&'static str>, u32, u32)`, evaluated at macro
+/// expansion time. The tuple is a constant, so the reference is promoted to `'static` and the
+/// position costs one pointer wherever it is stored.
+///
+/// `file` is the path of the source file as the compiler saw it (`None` when the span has no
+/// local file, for example under some IDE proc-macro servers), and `line` and `column` are
+/// one-based. The position is that of the expression's first token, which for a call such as
+/// `batch(x, y)` is the `batch` identifier. With no expressions, or when the expression's span
+/// carries no position, the macro expands to `&(None, 0, 0)`.
+///
+/// This exists because a runtime backtrace cannot recover this position: rustc collapses the
+/// debug-info location of code produced by an external macro to that macro's call site, so a
+/// backtrace captured inside a `macro_rules!` expansion names the macro invocation, not the
+/// user's token inside it. Reading the span while the macro expands sidesteps that.
+#[proc_macro]
+pub fn span_location(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let SpanLocationInput { sources } = syn::parse_macro_input!(input as SpanLocationInput);
+
+    let position = sources.into_iter().next().and_then(|mut source| {
+        while let syn::Expr::Group(g) = source {
+            source = *g.expr;
+        }
+        if !proc_macro::is_available() {
+            return None;
+        }
+        let span = source.span().unwrap();
+        // Debug info records absolute paths, so make this one absolute too; the compiler's
+        // working directory is where the relative path it gives is rooted.
+        let file = span.local_file().map(|p| {
+            if p.is_absolute() {
+                p
+            } else {
+                std::env::current_dir().map(|d| d.join(&p)).unwrap_or(p)
+            }
+        });
+        Some((
+            file.map(|p| p.display().to_string()),
+            span.line() as u32,
+            span.column() as u32,
+        ))
+    });
+
+    let output = match position {
+        Some((Some(file), line, column)) => quote::quote! {
+            &(::core::option::Option::Some(#file), #line, #column)
+        },
+        Some((None, line, column)) => quote::quote! {
+            &(::core::option::Option::None, #line, #column)
+        },
+        None => quote::quote! {
+            &(::core::option::Option::None, 0u32, 0u32)
+        },
+    };
+
+    proc_macro::TokenStream::from(output)
+}

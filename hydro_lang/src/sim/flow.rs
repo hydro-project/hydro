@@ -139,6 +139,31 @@ impl<'a> SimFlow<'a> {
         self.compiled().deterministic(thunk)
     }
 
+    /// Runs the test body against one execution of the program in which every scheduling
+    /// decision is drawn from the given bolero driver. See
+    /// [`crate::sim::compiled::CompiledSim::run_with_driver`], including why it exists and when
+    /// it should be deleted in favor of [`SimFlow::deterministic`].
+    pub fn run_with_driver<D: bolero::bolero_engine::driver::Driver + 'static>(
+        self,
+        driver: D,
+        thunk: impl AsyncFnOnce() + RefUnwindSafe,
+    ) {
+        self.compiled().run_with_driver(driver, async |instance| {
+            instance.run_with_scheduler(thunk()).await
+        })
+    }
+
+    /// Runs the test body against one execution of the program under the *prompt* schedule:
+    /// every batch releases everything buffered, every snapshot observes the oldest unobserved
+    /// version, and ready ticks run round-robin. See
+    /// [`crate::sim::prompt_schedule::PromptScheduleDriver`]. Unlike
+    /// [`SimFlow::deterministic`], this does not require the program's hooks to be scripted; it
+    /// is the stand-in for `deterministic()` described there, to be deleted once
+    /// `deterministic()` can take its place.
+    pub fn run_prompt(self, thunk: impl AsyncFnOnce() + RefUnwindSafe) {
+        self.run_with_driver(super::prompt_schedule::PromptScheduleDriver::default(), thunk)
+    }
+
     /// Compiles the simulation into a dynamically loadable library, and returns a handle to it.
     pub fn compiled(mut self) -> CompiledSim {
         use dfir_lang::graph::{eliminate_extra_unions_tees, partition_graph};

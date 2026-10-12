@@ -4,6 +4,8 @@
 members = [
     "benches",
     "copy_span",
+    "cress",
+    "cress_config_macro",
     "dfir_lang",
     "dfir_macro",
     "dfir_rs",
