@@ -968,15 +968,13 @@
 <a href=#968 id=968 data-nosnippet>968</a>                <span class="kw">let </span>(next_slot, v) = out_recv.next().<span class="kw">await</span>;
 <a href=#969 id=969 data-nosnippet>969</a>                <span class="macro">assert_eq!</span>(v, i);
 <a href=#970 id=970 data-nosnippet>970</a>
-<a href=#971 id=971 data-nosnippet>971</a>                <span class="kw">if </span>next_expected &lt; <span class="number">123 </span>{
-<a href=#972 id=972 data-nosnippet>972</a>                    <span class="macro">assert!</span>(next_slot == next_expected || next_slot == <span class="number">124</span>);
-<a href=#973 id=973 data-nosnippet>973</a>                } <span class="kw">else </span>{
-<a href=#974 id=974 data-nosnippet>974</a>                    <span class="macro">assert!</span>(next_slot == next_expected);
-<a href=#975 id=975 data-nosnippet>975</a>                }
-<a href=#976 id=976 data-nosnippet>976</a>
-<a href=#977 id=977 data-nosnippet>977</a>                next_expected = next_slot + <span class="number">1</span>;
-<a href=#978 id=978 data-nosnippet>978</a>            }
-<a href=#979 id=979 data-nosnippet>979</a>        });
-<a href=#980 id=980 data-nosnippet>980</a>    }
-<a href=#981 id=981 data-nosnippet>981</a>}
+<a href=#971 id=971 data-nosnippet>971</a>                <span class="kw">if </span>!(next_expected &lt; <span class="number">123 </span>&amp;&amp; next_slot == <span class="number">124</span>) {
+<a href=#972 id=972 data-nosnippet>972</a>                    <span class="macro">assert_eq!</span>(next_slot, next_expected);
+<a href=#973 id=973 data-nosnippet>973</a>                }
+<a href=#974 id=974 data-nosnippet>974</a>
+<a href=#975 id=975 data-nosnippet>975</a>                next_expected = next_slot + <span class="number">1</span>;
+<a href=#976 id=976 data-nosnippet>976</a>            }
+<a href=#977 id=977 data-nosnippet>977</a>        });
+<a href=#978 id=978 data-nosnippet>978</a>    }
+<a href=#979 id=979 data-nosnippet>979</a>}
 </code></pre></div></section></main></body></html>

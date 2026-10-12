@@ -1584,7 +1584,7 @@
 <a href=#1584 id=1584 data-nosnippet>1584</a>            in_send.send(());
 <a href=#1585 id=1585 data-nosnippet>1585</a>
 <a href=#1586 id=1586 data-nosnippet>1586</a>            <span class="kw">let </span>received = out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#1587 id=1587 data-nosnippet>1587</a>            <span class="macro">assert!</span>(received.into_iter().sum::&lt;usize&gt;() == <span class="number">3</span>);
+<a href=#1587 id=1587 data-nosnippet>1587</a>            <span class="macro">assert_eq!</span>(received.into_iter().sum::&lt;usize&gt;(), <span class="number">3</span>);
 <a href=#1588 id=1588 data-nosnippet>1588</a>        });
 <a href=#1589 id=1589 data-nosnippet>1589</a>
 <a href=#1590 id=1590 data-nosnippet>1590</a>        <span class="macro">assert_eq!</span>(instances, <span class="number">4</span>); <span class="comment">// 2^{3 - 1}

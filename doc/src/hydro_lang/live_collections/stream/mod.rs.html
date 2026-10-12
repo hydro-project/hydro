@@ -4094,7 +4094,7 @@
 <a href=#4094 id=4094 data-nosnippet>4094</a>
 <a href=#4095 id=4095 data-nosnippet>4095</a>        <span class="kw">let </span>instance_count = flow.sim().exhaustive(<span class="kw">async </span>|| {
 <a href=#4096 id=4096 data-nosnippet>4096</a>            in_send.send_many_unordered([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]);
-<a href=#4097 id=4097 data-nosnippet>4097</a>            <span class="macro">assert!</span>(out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>.last().unwrap() == <span class="kw-2">&amp;</span><span class="number">4</span>);
+<a href=#4097 id=4097 data-nosnippet>4097</a>            <span class="macro">assert_eq!</span>(out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>.last(), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">4</span>));
 <a href=#4098 id=4098 data-nosnippet>4098</a>        });
 <a href=#4099 id=4099 data-nosnippet>4099</a>
 <a href=#4100 id=4100 data-nosnippet>4100</a>        <span class="macro">assert_eq!</span>(

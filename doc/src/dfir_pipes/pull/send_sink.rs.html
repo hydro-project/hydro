@@ -95,7 +95,7 @@
 <a href=#95 id=95 data-nosnippet>95</a>        <span class="macro">assert!</span>(result.is_pending());
 <a href=#96 id=96 data-nosnippet>96</a>
 <a href=#97 id=97 data-nosnippet>97</a>        <span class="kw">let </span>result = send.as_mut().poll(<span class="kw-2">&amp;mut </span>cx);
-<a href=#98 id=98 data-nosnippet>98</a>        <span class="macro">assert!</span>(result == Poll::Ready(<span class="prelude-val">Ok</span>(())));
+<a href=#98 id=98 data-nosnippet>98</a>        <span class="macro">assert_eq!</span>(result, Poll::Ready(<span class="prelude-val">Ok</span>(())));
 <a href=#99 id=99 data-nosnippet>99</a>
 <a href=#100 id=100 data-nosnippet>100</a>        <span class="macro">assert_eq!</span>(push.items(), <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>]);
 <a href=#101 id=101 data-nosnippet>101</a>    }
