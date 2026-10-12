@@ -1022,9 +1022,10 @@ impl<T, B: Boundedness, C, I, S> Property for StreamMapFuncAlgebra<T, B, C, I, S
 /// *intermediate* accumulator values may still differ and must not be observed without
 /// a non-determinism annotation.
 #[diagnostic::on_unimplemented(
-    message = "Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation.",
+    message = "because the input stream has ordering `{O}`, the closure must demonstrate commutativity",
     label = "required for this call",
-    note = "To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+    note = "prove it with a `commutative = manual_proof!(/** why the order does not matter */)` annotation on the closure",
+    note = "to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary"
 )]
 #[sealed::sealed]
 pub trait ValidCommutativityFor<O: Ordering> {}
@@ -1035,9 +1036,10 @@ impl<O: Ordering> ValidCommutativityFor<O> for Proved {}
 
 /// Marker trait identifying that the idempotence property is valid for the given stream ordering.
 #[diagnostic::on_unimplemented(
-    message = "Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation.",
+    message = "because the input stream has retries `{R}`, the closure must demonstrate idempotence",
     label = "required for this call",
-    note = "To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+    note = "prove it with an `idempotent = manual_proof!(/** why a repeat does not matter */)` annotation on the closure",
+    note = "to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary"
 )]
 #[sealed::sealed]
 pub trait ValidIdempotenceFor<R: Retries> {}
@@ -1060,9 +1062,10 @@ impl<R: Retries> ValidIdempotenceFor<R> for Proved {}
 /// [`Singleton::by_mut`]: crate::live_collections::singleton::Singleton::by_mut
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation.",
+    message = "because the input stream has ordering `{O}`, the closure must demonstrate commutativity",
     label = "required for this call",
-    note = "To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+    note = "prove it with a `commutative = manual_proof!(/** why the order does not matter */)` annotation on the closure",
+    note = "to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary"
 )]
 pub trait ValidMutCommutativityFor<F: FnMut(In) -> Out, In, Out, O: Ordering, const WAS_MUT: bool> {}
 #[sealed::sealed]
@@ -1088,9 +1091,10 @@ impl<In, Out, F: Fn(In) -> Out, O: Ordering> ValidMutCommutativityFor<F, In, Out
 
 /// Marker trait identifying that the idempotence property is valid for the given stream ordering.
 #[diagnostic::on_unimplemented(
-    message = "Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation.",
+    message = "because the input stream has retries `{R}`, the closure must demonstrate idempotence",
     label = "required for this call",
-    note = "To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+    note = "prove it with an `idempotent = manual_proof!(/** why a repeat does not matter */)` annotation on the closure",
+    note = "to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary"
 )]
 #[sealed::sealed]
 pub trait ValidMutIdempotenceFor<F: FnMut(In) -> Out, In, Out, R: Retries, const WAS_MUT: bool> {}
@@ -1131,9 +1135,10 @@ impl<In, Out, F: Fn(In) -> Out, R: Retries> ValidMutIdempotenceFor<F, In, Out, R
 /// [`Singleton::by_mut`]: crate::live_collections::singleton::Singleton::by_mut
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation.",
+    message = "because the input stream has ordering `{O}`, the closure must demonstrate commutativity",
     label = "required for this call",
-    note = "To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+    note = "prove it with a `commutative = manual_proof!(/** why the order does not matter */)` annotation on the closure",
+    note = "to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary"
 )]
 pub trait ValidMutBorrowCommutativityFor<
     F: FnMut(&In) -> Out,
@@ -1167,9 +1172,10 @@ impl<In: ?Sized, Out, F: Fn(&In) -> Out, O: Ordering>
 
 /// Marker trait for idempotence of closures that borrow their input (`FnMut(&In) -> Out`).
 #[diagnostic::on_unimplemented(
-    message = "Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation.",
+    message = "because the input stream has retries `{R}`, the closure must demonstrate idempotence",
     label = "required for this call",
-    note = "To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+    note = "prove it with an `idempotent = manual_proof!(/** why a repeat does not matter */)` annotation on the closure",
+    note = "to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary"
 )]
 #[sealed::sealed]
 pub trait ValidMutBorrowIdempotenceFor<

@@ -83,9 +83,10 @@ impl SingletonBound for Monotonic {
 
 #[sealed]
 #[diagnostic::on_unimplemented(
-    message = "The input singleton must be monotonic (`Monotonic`) or bounded (`Bounded`), but has bound `{Self}`. Strengthen the monotonicity upstream or consider a different API.",
+    message = "the input singleton must be monotonic (`Monotonic`) or bounded (`Bounded`), but has bound `{Self}`",
     label = "required here",
-    note = "To intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region. This introduces non-determinism so avoid unless necessary."
+    note = "strengthen the monotonicity upstream, or consider a different API",
+    note = "to intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region; this introduces non-determinism, so avoid it unless necessary"
 )]
 /// Marker trait that is implemented for the [`Monotonic`] boundedness guarantee.
 pub trait IsMonotonic: SingletonBound {}

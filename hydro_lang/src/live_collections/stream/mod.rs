@@ -153,9 +153,10 @@ impl<R: Retries> MinRetries<R> for AtLeastOnce {
 
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "The input stream must be totally-ordered (`TotalOrder`), but has order `{Self}`. Strengthen the order upstream or consider a different API.",
+    message = "the input stream must be totally ordered (`TotalOrder`), but has order `{Self}`",
     label = "required here",
-    note = "To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+    note = "strengthen the order upstream, or consider a different API",
+    note = "to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary"
 )]
 /// Marker trait that is implemented for the [`TotalOrder`] ordering guarantee.
 pub trait IsOrdered: Ordering {}
@@ -166,9 +167,10 @@ impl IsOrdered for TotalOrder {}
 
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "The input stream must be exactly-once (`ExactlyOnce`), but has retries `{Self}`. Strengthen the retries guarantee upstream or consider a different API.",
+    message = "the input stream must be exactly-once (`ExactlyOnce`), but has retries `{Self}`",
     label = "required here",
-    note = "To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+    note = "strengthen the retries guarantee upstream, or consider a different API",
+    note = "to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary"
 )]
 /// Marker trait that is implemented for the [`ExactlyOnce`] retries guarantee.
 pub trait IsExactlyOnce: Retries {}
