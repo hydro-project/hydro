@@ -1,0 +1,17 @@
+error[E0277]: the input stream must be totally ordered (`TotalOrder`), but has order `hydro_lang::live_collections::stream::NoOrder`
+ --> tests/compile-fail/nightly/embedded_output_requires_order.rs:9:52
+  |
+9 |         output: OutputChannel::new(|_: String| {}).require_total_order(),
+  |                                                    ^^^^^^^^^^^^^^^^^^^ required here
+  |
+  = help: the trait `IsOrdered` is not implemented for `hydro_lang::live_collections::stream::NoOrder`
+  = note: strengthen the order upstream, or consider a different API
+  = note: to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary
+note: required by a bound in `OutputChannel::<M, S>::require_total_order`
+ --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+  |
+  |     pub fn require_total_order(self) -> Self
+  |            ------------------- required by a bound in this associated function
+  |     where
+  |         M::Ordering: IsOrdered,
+  |                      ^^^^^^^^^ required by this bound in `OutputChannel::<M, S>::require_total_order`

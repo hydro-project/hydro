@@ -24,8 +24,10 @@ stageleft = { workspace = true, optional = true }
 [dev-dependencies]
 dfir_rs = { path = "../dfir_rs", version = "=0.17.0-alpha.6", default-features = false }
 tokio = { version = "1.29.0", features = ["full"] }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.1", features = ["trybuild"] }
 
 [build-dependencies]
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.1" }
 hydro_lang = { path = "../hydro_lang", version = "=0.17.0-alpha.6", default-features = false, features = ["build"], optional = true }
 hydro_test = { path = "../hydro_test", version = "0.0.0", default-features = false, optional = true }
 prettyplease = { version = "0.2.0", features = ["verbatim"], optional = true }

@@ -51,6 +51,28 @@ pub mod at_least_once_input {
     reason = "generated code"
 )]
 #[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod weak_stream_channel {
+    include!(concat!(env!("OUT_DIR"), "/weak_stream_channel.rs"));
+}
+
+#[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod weak_channel {
+    include!(concat!(env!("OUT_DIR"), "/weak_channel.rs"));
+}
+
+#[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
 pub mod singleton_input {
     include!(concat!(env!("OUT_DIR"), "/singleton_input.rs"));
 }
@@ -125,8 +147,31 @@ pub mod m2m_broadcast {
 mod tests {
     use dfir_rs::bytes::{Bytes, BytesMut};
     use dfir_rs::futures::stream;
+    use hydro_lang::compile::embedded_runtime::{
+        InputChannel, OutputChannel, Promises, SatisfiedBy,
+    };
+    use hydro_lang::live_collections::stream::{ExactlyOnce, TotalOrder};
     use hydro_lang::location::MembershipEvent;
     use hydro_lang::location::member_id::TaglessMemberId;
+    use hydro_lang::prelude::manual_proof;
+
+    /// Every stream input and channel in these tests is an in-memory list or queue, which keeps
+    /// its order and delivers each element once, so it serves any `C` needing at most that.
+    fn in_memory<C, S>(inner: S) -> InputChannel<C, S>
+    where
+        C: SatisfiedBy<TotalOrder, ExactlyOnce>,
+    {
+        InputChannel::new(
+            inner,
+            Promises::new()
+                .total_order(manual_proof!(
+                    /// An in-memory list or queue keeps the order of its elements.
+                ))
+                .exactly_once(manual_proof!(
+                    /// An in-memory list or queue holds each element once.
+                )),
+        )
+    }
 
     async fn run_flow(
         flow: &mut dfir_rs::scheduled::context::Dfir<impl dfir_rs::scheduled::context::TickClosure>,
@@ -148,10 +193,14 @@ mod tests {
             ]);
             let mut collected = vec![];
             let mut outputs = crate::$module::capitalize::EmbeddedOutputs {
-                output: |s: String| collected.push(s),
+                output: OutputChannel::new(|s: String| collected.push(s))
+                    .require_total_order()
+                    .require_exactly_once(),
             };
             let mut flow = crate::$module::capitalize(
-                crate::$module::capitalize::EmbeddedInputs { input },
+                crate::$module::capitalize::EmbeddedInputs {
+                    input: in_memory(input),
+                },
                 &mut outputs,
             );
             run_flow(&mut flow).await;
@@ -186,10 +235,12 @@ mod tests {
         ]);
         let mut collected = vec![];
         let mut outputs = crate::unordered_output::capitalize_unordered::EmbeddedOutputs {
-            output: |s: String| collected.push(s),
+            output: OutputChannel::new(|s: String| collected.push(s)),
         };
         let mut flow = crate::unordered_output::capitalize_unordered(
-            crate::unordered_output::capitalize_unordered::EmbeddedInputs { input },
+            crate::unordered_output::capitalize_unordered::EmbeddedInputs {
+                input: in_memory(input),
+            },
             &mut outputs,
         );
         run_flow(&mut flow).await;
@@ -212,10 +263,13 @@ mod tests {
         ]);
         let mut collected = vec![];
         let mut outputs = crate::at_least_once_input::unique_names::EmbeddedOutputs {
-            output: |s: String| collected.push(s),
+            output: OutputChannel::new(|s: String| collected.push(s)),
         };
         let mut flow = crate::at_least_once_input::unique_names(
-            crate::at_least_once_input::unique_names::EmbeddedInputs { input },
+            crate::at_least_once_input::unique_names::EmbeddedInputs {
+                // The dataflow relies on nothing about this input, so no promises are needed.
+                input: InputChannel::new(input, Promises::new()),
+            },
             &mut outputs,
         );
         run_flow(&mut flow).await;
@@ -225,6 +279,37 @@ mod tests {
         assert_eq!(collected, vec!["hello", "world"]);
     }
 
+    // The tests below construct valid combinations of host code and channels, and check that
+    // they compile.
+
+    // The dataflow sends an unordered, at-least-once stream on `messages`, so its receiving end
+    // needs no promises, even though the channel is declared `exactly_once().total_order()`.
+    #[test]
+    fn test_weak_stream_needs_no_channel_promises() {
+        use crate::weak_stream_channel::weak_stream_receiver;
+
+        let _net_in = weak_stream_receiver::EmbeddedNetworkIn {
+            messages: InputChannel::new(stream::empty::<String>(), Promises::new()),
+        };
+    }
+
+    // `messages` is declared `at_least_once().no_order()`, so its receiving end needs no
+    // promises, even though the dataflow sends an ordered, exactly-once stream, which a
+    // transport at its sending end may require.
+    #[test]
+    fn test_weak_channel_needs_no_promises() {
+        use crate::weak_channel::{weak_channel_receiver, weak_channel_sender};
+
+        let _net_in = weak_channel_receiver::EmbeddedNetworkIn {
+            messages: InputChannel::new(stream::empty::<String>(), Promises::new()),
+        };
+        let _net_out = weak_channel_sender::EmbeddedNetworkOut {
+            messages: OutputChannel::new(|_: String| {})
+                .require_total_order()
+                .require_exactly_once(),
+        };
+    }
+
     // --- singleton_input (singleton + stream, no networking) ---
     // Order: (singleton_inputs, inputs, outputs)
     #[tokio::test]
@@ -232,11 +317,11 @@ mod tests {
         let names = stream::iter(vec!["Alice".to_owned(), "Bob".to_owned()]);
         let mut collected = vec![];
         let mut outputs = crate::singleton_input::prefix_names::EmbeddedOutputs {
-            output: |s: String| collected.push(s),
+            output: OutputChannel::new(|s: String| collected.push(s)),
         };
         let mut flow = crate::singleton_input::prefix_names(
             crate::singleton_input::prefix_names::EmbeddedInputs {
-                names,
+                names: in_memory(names),
                 prefix: "Hello".to_owned(),
             },
             &mut outputs,
@@ -256,12 +341,14 @@ mod tests {
         // Sender: (input, net_out)
         let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
         let mut net_out = crate::echo_network::echo_sender::EmbeddedNetworkOut {
-            messages: move |bytes: Bytes| {
+            messages: OutputChannel::new(move |bytes: Bytes| {
                 tx.send(bytes).unwrap();
-            },
+            }),
         };
         let mut flow_sender = crate::echo_network::echo_sender(
-            crate::echo_network::echo_sender::EmbeddedInputs { input },
+            crate::echo_network::echo_sender::EmbeddedInputs {
+                input: in_memory(input),
+            },
             &mut net_out,
         );
         run_flow(&mut flow_sender).await;
@@ -275,11 +362,11 @@ mod tests {
 
         // Receiver: (outputs, network_in)
         let net_in = crate::echo_network::echo_receiver::EmbeddedNetworkIn {
-            messages: stream::iter(bytes_vec),
+            messages: in_memory(stream::iter(bytes_vec)),
         };
         let mut received = vec![];
         let mut outputs = crate::echo_network::echo_receiver::EmbeddedOutputs {
-            output: |s: String| received.push(s),
+            output: OutputChannel::new(|s: String| received.push(s)),
         };
         let mut flow_receiver = crate::echo_network::echo_receiver(&mut outputs, net_in);
         run_flow(&mut flow_receiver).await;
@@ -297,12 +384,18 @@ mod tests {
         // Sender: `messages` is now `FnMut(String)` (the raw payload, not `Bytes`).
         let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
         let mut net_out = crate::echo_network_embedded::echo_sender::EmbeddedNetworkOut {
-            messages: move |s: String| {
+            // The receiving end promises order and no duplicates; this transport (an in-order
+            // queue) keeps them only if the dataflow sends them, so it requires both.
+            messages: OutputChannel::new(move |s: String| {
                 tx.send(s).unwrap();
-            },
+            })
+            .require_total_order()
+            .require_exactly_once(),
         };
         let mut flow_sender = crate::echo_network_embedded::echo_sender(
-            crate::echo_network_embedded::echo_sender::EmbeddedInputs { input },
+            crate::echo_network_embedded::echo_sender::EmbeddedInputs {
+                input: in_memory(input),
+            },
             &mut net_out,
         );
         run_flow(&mut flow_sender).await;
@@ -317,11 +410,13 @@ mod tests {
 
         // Receiver: `messages` is now `Stream<Item = String>` (the raw payload).
         let net_in = crate::echo_network_embedded::echo_receiver::EmbeddedNetworkIn {
-            messages: stream::iter(msgs),
+            messages: in_memory(stream::iter(msgs)),
         };
         let mut received = vec![];
         let mut outputs = crate::echo_network_embedded::echo_receiver::EmbeddedOutputs {
-            output: |s: String| received.push(s),
+            output: OutputChannel::new(|s: String| received.push(s))
+                .require_total_order()
+                .require_exactly_once(),
         };
         let mut flow_receiver = crate::echo_network_embedded::echo_receiver(&mut outputs, net_in);
         run_flow(&mut flow_receiver).await;
@@ -340,16 +435,21 @@ mod tests {
         // Sender (process): (membership, input, net_out)
         let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
         let membership = crate::o2m_broadcast::o2m_sender::EmbeddedMembershipStreams {
-            o2m_receiver: stream::iter(vec![(member_id.clone(), MembershipEvent::Joined)]),
+            o2m_receiver: in_memory(stream::iter(vec![(
+                member_id.clone(),
+                MembershipEvent::Joined,
+            )])),
         };
         let mut net_out = crate::o2m_broadcast::o2m_sender::EmbeddedNetworkOut {
-            o2m_data: move |item: (TaglessMemberId, Bytes)| {
+            o2m_data: OutputChannel::new(move |item: (TaglessMemberId, Bytes)| {
                 tx.send(item).unwrap();
-            },
+            }),
         };
         let mut flow_sender = crate::o2m_broadcast::o2m_sender(
             membership,
-            crate::o2m_broadcast::o2m_sender::EmbeddedInputs { input },
+            crate::o2m_broadcast::o2m_sender::EmbeddedInputs {
+                input: in_memory(input),
+            },
             &mut net_out,
         );
         run_flow(&mut flow_sender).await;
@@ -364,11 +464,11 @@ mod tests {
 
         // Receiver (cluster): (self_id, outputs, network_in)
         let net_in = crate::o2m_broadcast::o2m_receiver::EmbeddedNetworkIn {
-            o2m_data: stream::iter(tagged_bytes),
+            o2m_data: in_memory(stream::iter(tagged_bytes)),
         };
         let mut received = vec![];
         let mut outputs = crate::o2m_broadcast::o2m_receiver::EmbeddedOutputs {
-            output: |s: String| received.push(s),
+            output: OutputChannel::new(|s: String| received.push(s)),
         };
         let mut flow_receiver =
             crate::o2m_broadcast::o2m_receiver(&member_id, &mut outputs, net_in);
@@ -393,12 +493,14 @@ mod tests {
         // Sender (process): (input, net_out); the channel carries the raw payload (not `Bytes`).
         let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
         let mut net_out = crate::o2m_demux_embedded::o2m_demux_sender::EmbeddedNetworkOut {
-            demux_data: move |item: (TaglessMemberId, OpaquePayload)| {
+            demux_data: OutputChannel::new(move |item: (TaglessMemberId, OpaquePayload)| {
                 tx.send(item).unwrap();
-            },
+            }),
         };
         let mut flow_sender = crate::o2m_demux_embedded::o2m_demux_sender(
-            crate::o2m_demux_embedded::o2m_demux_sender::EmbeddedInputs { input },
+            crate::o2m_demux_embedded::o2m_demux_sender::EmbeddedInputs {
+                input: in_memory(input),
+            },
             &mut net_out,
         );
         run_flow(&mut flow_sender).await;
@@ -413,11 +515,11 @@ mod tests {
 
         // Receiver (cluster): (self_id, outputs, network_in); raw payloads, no deserialization.
         let net_in = crate::o2m_demux_embedded::o2m_demux_receiver::EmbeddedNetworkIn {
-            demux_data: stream::iter(payloads),
+            demux_data: in_memory(stream::iter(payloads)),
         };
         let mut received = vec![];
         let mut outputs = crate::o2m_demux_embedded::o2m_demux_receiver::EmbeddedOutputs {
-            output: |s: String| received.push(s),
+            output: OutputChannel::new(|s: String| received.push(s)),
         };
         let mut flow_receiver =
             crate::o2m_demux_embedded::o2m_demux_receiver(&member_id, &mut outputs, net_in);
@@ -437,13 +539,15 @@ mod tests {
         // Sender (cluster): (self_id, input, net_out)
         let input = stream::iter(vec!["foo".to_owned(), "bar".to_owned()]);
         let mut net_out = crate::m2o_send::m2o_sender::EmbeddedNetworkOut {
-            m2o_data: move |bytes: Bytes| {
+            m2o_data: OutputChannel::new(move |bytes: Bytes| {
                 tx.send(bytes).unwrap();
-            },
+            }),
         };
         let mut flow_sender = crate::m2o_send::m2o_sender(
             &member_id,
-            crate::m2o_send::m2o_sender::EmbeddedInputs { input },
+            crate::m2o_send::m2o_sender::EmbeddedInputs {
+                input: in_memory(input),
+            },
             &mut net_out,
         );
         run_flow(&mut flow_sender).await;
@@ -458,11 +562,11 @@ mod tests {
 
         // Receiver (process): (outputs, network_in)
         let net_in = crate::m2o_send::m2o_receiver::EmbeddedNetworkIn {
-            m2o_data: stream::iter(tagged_bytes),
+            m2o_data: in_memory(stream::iter(tagged_bytes)),
         };
         let mut received = vec![];
         let mut outputs = crate::m2o_send::m2o_receiver::EmbeddedOutputs {
-            output: |s| received.push(s),
+            output: OutputChannel::new(|s| received.push(s)),
         };
         let mut flow_receiver = crate::m2o_send::m2o_receiver(&mut outputs, net_in);
         run_flow(&mut flow_receiver).await;
@@ -485,17 +589,22 @@ mod tests {
         // Sender (cluster): (self_id, membership, input, net_out)
         let input = stream::iter(vec!["ping".to_owned()]);
         let membership = crate::m2m_broadcast::m2m_sender::EmbeddedMembershipStreams {
-            m2m_receiver: stream::iter(vec![(dst_id.clone(), MembershipEvent::Joined)]),
+            m2m_receiver: in_memory(stream::iter(vec![(
+                dst_id.clone(),
+                MembershipEvent::Joined,
+            )])),
         };
         let mut net_out = crate::m2m_broadcast::m2m_sender::EmbeddedNetworkOut {
-            m2m_data: move |item: (TaglessMemberId, Bytes)| {
+            m2m_data: OutputChannel::new(move |item: (TaglessMemberId, Bytes)| {
                 tx.send(item).unwrap();
-            },
+            }),
         };
         let mut flow_sender = crate::m2m_broadcast::m2m_sender(
             &src_id,
             membership,
-            crate::m2m_broadcast::m2m_sender::EmbeddedInputs { input },
+            crate::m2m_broadcast::m2m_sender::EmbeddedInputs {
+                input: in_memory(input),
+            },
             &mut net_out,
         );
         run_flow(&mut flow_sender).await;
@@ -510,11 +619,11 @@ mod tests {
 
         // Receiver (cluster): (self_id, outputs, network_in)
         let net_in = crate::m2m_broadcast::m2m_receiver::EmbeddedNetworkIn {
-            m2m_data: stream::iter(tagged_bytes),
+            m2m_data: in_memory(stream::iter(tagged_bytes)),
         };
         let mut received = vec![];
         let mut outputs = crate::m2m_broadcast::m2m_receiver::EmbeddedOutputs {
-            output: |s| received.push(s),
+            output: OutputChannel::new(|s| received.push(s)),
         };
         let mut flow_receiver = crate::m2m_broadcast::m2m_receiver(&dst_id, &mut outputs, net_in);
         run_flow(&mut flow_receiver).await;

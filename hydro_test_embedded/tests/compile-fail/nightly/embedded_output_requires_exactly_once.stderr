@@ -1,0 +1,17 @@
+error[E0277]: the input stream must be exactly-once (`ExactlyOnce`), but has retries `hydro_lang::live_collections::stream::AtLeastOnce`
+ --> tests/compile-fail/nightly/embedded_output_requires_exactly_once.rs:9:52
+  |
+9 |         output: OutputChannel::new(|_: String| {}).require_exactly_once(),
+  |                                                    ^^^^^^^^^^^^^^^^^^^^ required here
+  |
+  = help: the trait `IsExactlyOnce` is not implemented for `hydro_lang::live_collections::stream::AtLeastOnce`
+  = note: strengthen the retries guarantee upstream, or consider a different API
+  = note: to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary
+note: required by a bound in `OutputChannel::<M, S>::require_exactly_once`
+ --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+  |
+  |     pub fn require_exactly_once(self) -> Self
+  |            -------------------- required by a bound in this associated function
+  |     where
+  |         M::Retries: IsExactlyOnce,
+  |                     ^^^^^^^^^^^^^ required by this bound in `OutputChannel::<M, S>::require_exactly_once`

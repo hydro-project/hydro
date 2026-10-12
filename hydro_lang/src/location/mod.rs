@@ -695,8 +695,12 @@ pub trait Location<'a>: DynLocation {
     /// Creates an external input stream for embedded deployment mode.
     ///
     /// The `name` parameter specifies the name of the field in the generated `EmbeddedInputs`
-    /// struct that will supply data to this stream at runtime: the host's
-    /// `Stream<Item = T> + Unpin`.
+    /// struct that will supply data to this stream at runtime: a
+    /// [`InputChannel`](crate::compile::embedded_runtime::InputChannel) around the host's
+    /// `Stream<Item = T> + Unpin`. The stream's ordering `O` and retries `R` are what the
+    /// dataflow relies on, so they are what the host must promise: declare only what the
+    /// dataflow relies on (for example `NoOrder` if it does not use the stream's order), and the
+    /// host promises nothing more.
     fn embedded_input<T, O: Ordering, R: Retries>(
         &self,
         name: impl Into<String>,

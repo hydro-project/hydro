@@ -2802,6 +2802,7 @@ name = "hydro_test_embedded"
 version = "0.0.0"
 dependencies = [
  "dfir_rs",
+ "hydro_build_utils",
  "hydro_lang",
  "hydro_test",
  "prettyplease",
