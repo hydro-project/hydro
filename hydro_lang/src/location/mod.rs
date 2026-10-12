@@ -694,9 +694,9 @@ pub trait Location<'a>: DynLocation {
 
     /// Creates an external input stream for embedded deployment mode.
     ///
-    /// The `name` parameter specifies the name of the generated function parameter
-    /// that will supply data to this stream at runtime. The generated function will
-    /// accept an `impl Stream<Item = T> + Unpin` argument with this name.
+    /// The `name` parameter specifies the name of the field in the generated `EmbeddedInputs`
+    /// struct that will supply data to this stream at runtime: the host's
+    /// `Stream<Item = T> + Unpin`.
     fn embedded_input<T>(
         &self,
         name: impl Into<String>,

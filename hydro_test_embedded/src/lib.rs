@@ -114,7 +114,10 @@ mod tests {
         let mut outputs = crate::embedded::capitalize::EmbeddedOutputs {
             output: |s: String| collected.push(s),
         };
-        let mut flow = crate::embedded::capitalize(input, &mut outputs);
+        let mut flow = crate::embedded::capitalize(
+            crate::embedded::capitalize::EmbeddedInputs { input },
+            &mut outputs,
+        );
         run_flow(&mut flow).await;
         drop(flow);
         assert_eq!(collected, vec!["HELLO", "WORLD", "HYDRO"]);
@@ -129,8 +132,13 @@ mod tests {
         let mut outputs = crate::singleton_input::prefix_names::EmbeddedOutputs {
             output: |s: String| collected.push(s),
         };
-        let mut flow =
-            crate::singleton_input::prefix_names("Hello".to_owned(), names, &mut outputs);
+        let mut flow = crate::singleton_input::prefix_names(
+            crate::singleton_input::prefix_names::EmbeddedInputs {
+                names,
+                prefix: "Hello".to_owned(),
+            },
+            &mut outputs,
+        );
         run_flow(&mut flow).await;
         drop(flow);
         assert_eq!(collected, vec!["Hello Alice", "Hello Bob"]);
@@ -150,7 +158,10 @@ mod tests {
                 tx.send(bytes).unwrap();
             },
         };
-        let mut flow_sender = crate::echo_network::echo_sender(input, &mut net_out);
+        let mut flow_sender = crate::echo_network::echo_sender(
+            crate::echo_network::echo_sender::EmbeddedInputs { input },
+            &mut net_out,
+        );
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
 
@@ -188,7 +199,10 @@ mod tests {
                 tx.send(s).unwrap();
             },
         };
-        let mut flow_sender = crate::echo_network_embedded::echo_sender(input, &mut net_out);
+        let mut flow_sender = crate::echo_network_embedded::echo_sender(
+            crate::echo_network_embedded::echo_sender::EmbeddedInputs { input },
+            &mut net_out,
+        );
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
 
@@ -231,7 +245,11 @@ mod tests {
                 tx.send(item).unwrap();
             },
         };
-        let mut flow_sender = crate::o2m_broadcast::o2m_sender(membership, input, &mut net_out);
+        let mut flow_sender = crate::o2m_broadcast::o2m_sender(
+            membership,
+            crate::o2m_broadcast::o2m_sender::EmbeddedInputs { input },
+            &mut net_out,
+        );
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
 
@@ -277,7 +295,10 @@ mod tests {
                 tx.send(item).unwrap();
             },
         };
-        let mut flow_sender = crate::o2m_demux_embedded::o2m_demux_sender(input, &mut net_out);
+        let mut flow_sender = crate::o2m_demux_embedded::o2m_demux_sender(
+            crate::o2m_demux_embedded::o2m_demux_sender::EmbeddedInputs { input },
+            &mut net_out,
+        );
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
 
@@ -318,7 +339,11 @@ mod tests {
                 tx.send(bytes).unwrap();
             },
         };
-        let mut flow_sender = crate::m2o_send::m2o_sender(&member_id, input, &mut net_out);
+        let mut flow_sender = crate::m2o_send::m2o_sender(
+            &member_id,
+            crate::m2o_send::m2o_sender::EmbeddedInputs { input },
+            &mut net_out,
+        );
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
 
@@ -365,8 +390,12 @@ mod tests {
                 tx.send(item).unwrap();
             },
         };
-        let mut flow_sender =
-            crate::m2m_broadcast::m2m_sender(&src_id, membership, input, &mut net_out);
+        let mut flow_sender = crate::m2m_broadcast::m2m_sender(
+            &src_id,
+            membership,
+            crate::m2m_broadcast::m2m_sender::EmbeddedInputs { input },
+            &mut net_out,
+        );
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
 
