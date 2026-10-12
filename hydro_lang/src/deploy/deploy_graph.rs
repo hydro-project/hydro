@@ -34,7 +34,6 @@ use crate::compile::trybuild::generate::{
     HYDRO_RUNTIME_FEATURES, LinkingMode, TrybuildConfig, create_graph_trybuild,
 };
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
 use crate::location::{LocationKey, NetworkHint};
 use crate::staging_util::get_this_crate;
 
@@ -44,9 +43,12 @@ use crate::staging_util::get_this_crate;
 /// an `&mut` reference to [`hydro_deploy::Deployment`] as the deployment context.
 pub enum HydroDeploy {}
 
+/// Hydro numbers each cluster's members with `u32`s.
+impl crate::compile::deploy_provider::SupportsMemberId<u32> for HydroDeploy {}
+
 impl<'a> Deploy<'a> for HydroDeploy {
     /// Map from Cluster location ID to member IDs.
-    type Meta = SparseSecondaryMap<LocationKey, Vec<TaglessMemberId>>;
+    type Meta = SparseSecondaryMap<LocationKey, Vec<u32>>;
     type InstantiateEnv = Deployment;
 
     type Process = DeployNode;
@@ -797,7 +799,7 @@ impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
 impl Node for DeployExternal {
     type Port = String;
     /// Map from Cluster location ID to member IDs.
-    type Meta = SparseSecondaryMap<LocationKey, Vec<TaglessMemberId>>;
+    type Meta = SparseSecondaryMap<LocationKey, Vec<u32>>;
     type InstantiateEnv = Deployment;
 
     fn next_port(&self) -> Self::Port {
@@ -871,7 +873,7 @@ impl DeployCrateWrapper for DeployNode {
 impl Node for DeployNode {
     type Port = String;
     /// Map from Cluster location ID to member IDs.
-    type Meta = SparseSecondaryMap<LocationKey, Vec<TaglessMemberId>>;
+    type Meta = SparseSecondaryMap<LocationKey, Vec<u32>>;
     type InstantiateEnv = Deployment;
 
     fn next_port(&self) -> String {
@@ -961,7 +963,7 @@ impl DeployCluster {
 impl Node for DeployCluster {
     type Port = String;
     /// Map from Cluster location ID to member IDs.
-    type Meta = SparseSecondaryMap<LocationKey, Vec<TaglessMemberId>>;
+    type Meta = SparseSecondaryMap<LocationKey, Vec<u32>>;
     type InstantiateEnv = Deployment;
 
     fn next_port(&self) -> String {
@@ -1042,12 +1044,7 @@ impl Node for DeployCluster {
                 env.add_service(service, host)
             })
             .collect::<Vec<_>>();
-        meta.insert(
-            self.key,
-            (0..(cluster_nodes.len() as u32))
-                .map(TaglessMemberId::from_raw_id)
-                .collect(),
-        );
+        meta.insert(self.key, (0..(cluster_nodes.len() as u32)).collect());
         *self.members.borrow_mut() = cluster_nodes
             .into_iter()
             .map(|n| DeployClusterNode { underlying: n })
@@ -1058,7 +1055,7 @@ impl Node for DeployCluster {
         for (cluster_id, node) in self.members.borrow().iter().enumerate() {
             node.underlying.update_meta(HydroMeta {
                 clusters: meta.clone(),
-                cluster_id: Some(TaglessMemberId::from_raw_id(cluster_id as u32)),
+                cluster_id: Some(cluster_id as u32),
             });
         }
     }

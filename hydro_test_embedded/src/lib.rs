@@ -118,6 +118,17 @@ pub mod echo_network_embedded {
     reason = "generated code"
 )]
 #[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod named_members {
+    include!(concat!(env!("OUT_DIR"), "/named_members.rs"));
+}
+
+#[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
 pub mod o2m_broadcast {
     include!(concat!(env!("OUT_DIR"), "/o2m_broadcast.rs"));
 }
@@ -177,7 +188,6 @@ mod tests {
     };
     use hydro_lang::live_collections::stream::{ExactlyOnce, TotalOrder};
     use hydro_lang::location::MembershipEvent;
-    use hydro_lang::location::member_id::TaglessMemberId;
     use hydro_lang::networking::{EMBEDDED, NetworkingConfig, TCP};
     use hydro_lang::prelude::manual_proof;
 
@@ -537,24 +547,18 @@ mod tests {
     // receiver (cluster): (outputs, network_in)
     #[tokio::test]
     async fn test_o2m_broadcast() {
-        let member_id = TaglessMemberId::from_raw_id(0);
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(TaglessMemberId, Bytes)>();
+        let member_id = 0u32;
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(u32, Bytes)>();
 
         // Sender (process): (membership, input, net_out)
         let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
         let membership = crate::o2m_broadcast::o2m_sender::EmbeddedMembershipStreams {
-            o2m_receiver: in_memory(stream::iter(vec![(
-                member_id.clone(),
-                MembershipEvent::Joined,
-            )])),
+            o2m_receiver: in_memory(stream::iter(vec![(member_id, MembershipEvent::Joined)])),
         };
         let net_out = crate::o2m_broadcast::o2m_sender::EmbeddedNetworkOut {
-            o2m_data: in_memory_send(
-                TCP.fail_stop().bincode(),
-                move |item: (TaglessMemberId, Bytes)| {
-                    tx.send(item).unwrap();
-                },
-            ),
+            o2m_data: in_memory_send(TCP.fail_stop().bincode(), move |item: (u32, Bytes)| {
+                tx.send(item).unwrap();
+            }),
         };
         let mut flow_sender = crate::o2m_broadcast::o2m_sender(
             membership,
@@ -590,6 +594,68 @@ mod tests {
         assert_eq!(received, vec!["HELLO", "WORLD"]);
     }
 
+    // --- named_members (process -> cluster broadcast; the host names members with strings) ---
+    // The generated functions take the host's own identifier type, `String`, for the self ID,
+    // the membership stream, and the destination tag on the sending end.
+    #[tokio::test]
+    async fn test_named_members_use_the_hosts_ids() {
+        let members = ["alpha".to_owned(), "beta".to_owned()];
+        let mut sent: Vec<(String, String)> = vec![];
+
+        let membership = crate::named_members::named_sender::EmbeddedMembershipStreams {
+            named_receiver: in_memory(stream::iter(
+                members
+                    .clone()
+                    .map(|member| (member, MembershipEvent::Joined)),
+            )),
+        };
+        let net_out = crate::named_members::named_sender::EmbeddedNetworkOut {
+            to_members: in_memory_send(
+                EMBEDDED.never_reorders().never_duplicates().never_drops(),
+                |item: (String, String)| sent.push(item),
+            ),
+        };
+        let mut flow_sender = crate::named_members::named_sender(
+            membership,
+            crate::named_members::named_sender::EmbeddedInputs {
+                input: in_memory(stream::iter(vec!["hi".to_owned()])),
+            },
+            net_out,
+        );
+        flow_sender.run_tick().await;
+        drop(flow_sender);
+        sent.sort();
+        assert_eq!(
+            sent,
+            members.clone().map(|member| (member, "hi".to_owned()))
+        );
+
+        for member in &members {
+            let net_in = crate::named_members::named_receiver::EmbeddedNetworkIn {
+                to_members: in_memory_receive(
+                    EMBEDDED.never_reorders().never_duplicates().never_drops(),
+                    stream::iter(vec!["hi".to_owned()]),
+                ),
+            };
+            let mut received = vec![];
+            let outputs = crate::named_members::named_receiver::EmbeddedOutputs {
+                output: EmbeddedOutputChannel::new(
+                    |s: String| received.push(s),
+                    Acknowledgements::new(),
+                ),
+            };
+            let mut flow_receiver =
+                crate::named_members::named_receiver(member.clone(), outputs, net_in);
+            flow_receiver.run_tick().await;
+            drop(flow_receiver);
+            let tag = std::any::type_name::<hydro_test::embedded::named_members::Dst>();
+            assert_eq!(
+                received,
+                vec![format!("MemberId::<{tag}>({member:?}) got hi")]
+            );
+        }
+    }
+
     // --- o2m_demux_embedded (process -> cluster demux, an `EMBEDDED` channel) ---
     // The payload type has no serde derives; the embedded channel moves it in-process
     // (regression test for hydro-project/hydro#3158).
@@ -599,16 +665,15 @@ mod tests {
     async fn test_o2m_demux_embedded() {
         use hydro_test::embedded::o2m_demux_embedded::OpaquePayload;
 
-        let member_id = TaglessMemberId::from_raw_id(0);
-        let (tx, mut rx) =
-            tokio::sync::mpsc::unbounded_channel::<(TaglessMemberId, OpaquePayload)>();
+        let member_id = 0u32;
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(u32, OpaquePayload)>();
 
         // Sender (process): (input, net_out); the channel carries the raw payload (not `Bytes`).
         let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
         let net_out = crate::o2m_demux_embedded::o2m_demux_sender::EmbeddedNetworkOut {
             demux_data: in_memory_send(
                 EMBEDDED.never_reorders().never_duplicates().never_drops(),
-                move |item: (TaglessMemberId, OpaquePayload)| {
+                move |item: (u32, OpaquePayload)| {
                     tx.send(item).unwrap();
                 },
             ),
@@ -653,7 +718,7 @@ mod tests {
     // Order: (self_id, inputs, outputs)
     #[tokio::test]
     async fn test_self_id() {
-        let member_id = TaglessMemberId::from_raw_id(7);
+        let member_id: u32 = 7;
         let mut received = vec![];
         let outputs = crate::self_id::self_id_member::EmbeddedOutputs {
             output: EmbeddedOutputChannel::new(
@@ -680,7 +745,7 @@ mod tests {
     // receiver (process): (outputs, network_in)
     #[tokio::test]
     async fn test_m2o_send() {
-        let member_id = TaglessMemberId::from_raw_id(42);
+        let member_id = 42u32;
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Bytes>();
 
         // Sender (cluster): (input, net_out)
@@ -702,7 +767,7 @@ mod tests {
         let mut tagged_bytes = vec![];
         // Wrap as tagged (simulating transport tagging by member id)
         while let Ok(b) = rx.try_recv() {
-            tagged_bytes.push(Ok((member_id.clone(), BytesMut::from(b.as_ref()))));
+            tagged_bytes.push(Ok((member_id, BytesMut::from(b.as_ref()))));
         }
         assert_eq!(tagged_bytes.len(), 2);
 
@@ -731,25 +796,19 @@ mod tests {
     // receiver (cluster): (outputs, network_in)
     #[tokio::test]
     async fn test_m2m_broadcast() {
-        let src_id = TaglessMemberId::from_raw_id(0);
-        let dst_id = TaglessMemberId::from_raw_id(0);
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(TaglessMemberId, Bytes)>();
+        let src_id = 0u32;
+        let dst_id = 0u32;
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(u32, Bytes)>();
 
         // Sender (cluster): (membership, input, net_out)
         let input = stream::iter(vec!["ping".to_owned()]);
         let membership = crate::m2m_broadcast::m2m_sender::EmbeddedMembershipStreams {
-            m2m_receiver: in_memory(stream::iter(vec![(
-                dst_id.clone(),
-                MembershipEvent::Joined,
-            )])),
+            m2m_receiver: in_memory(stream::iter(vec![(dst_id, MembershipEvent::Joined)])),
         };
         let net_out = crate::m2m_broadcast::m2m_sender::EmbeddedNetworkOut {
-            m2m_data: in_memory_send(
-                TCP.fail_stop().bincode(),
-                move |item: (TaglessMemberId, Bytes)| {
-                    tx.send(item).unwrap();
-                },
-            ),
+            m2m_data: in_memory_send(TCP.fail_stop().bincode(), move |item: (u32, Bytes)| {
+                tx.send(item).unwrap();
+            }),
         };
         let mut flow_sender = crate::m2m_broadcast::m2m_sender(
             membership,
@@ -764,7 +823,7 @@ mod tests {
         let mut tagged_bytes = vec![];
         while let Ok((id, b)) = rx.try_recv() {
             assert_eq!(id, dst_id);
-            tagged_bytes.push(Ok((src_id.clone(), BytesMut::from(b.as_ref()))));
+            tagged_bytes.push(Ok((src_id, BytesMut::from(b.as_ref()))));
         }
         assert_eq!(tagged_bytes.len(), 1);
 

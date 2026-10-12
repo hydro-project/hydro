@@ -11,7 +11,9 @@ use super::compiled::CompiledFlow;
 #[cfg(feature = "build")]
 use super::deploy::{DeployFlow, DeployResult};
 #[cfg(feature = "build")]
-use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
+use super::deploy_provider::{
+    ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, SupportsMemberId,
+};
 #[cfg(feature = "build")]
 use super::ir::HydroIrOpMetadata;
 use super::ir::{HydroNode, HydroRoot};
@@ -162,6 +164,9 @@ pub struct FlowBuilder<'a> {
     locations: SlotMap<LocationKey, LocationType>,
     /// Map from raw location ID to name (including externals).
     location_names: SecondaryMap<LocationKey, String>,
+    /// The member ID type of each cluster.
+    /// Generated code has to name it, and only the `Cluster`'s type parameter knew it.
+    cluster_id_types: SecondaryMap<LocationKey, syn::Type>,
     /// The program version each location belongs to. Every location has an entry (0 unless it is a
     /// `next_version` successor); populated eagerly at location creation.
     #[cfg(feature = "sim")]
@@ -232,6 +237,7 @@ impl<'a> FlowBuilder<'a> {
             })),
             locations: SlotMap::with_key(),
             location_names: SecondaryMap::new(),
+            cluster_id_types: SecondaryMap::new(),
             #[cfg(feature = "sim")]
             location_version: SecondaryMap::new(),
             #[cfg(feature = "sim")]
@@ -266,8 +272,10 @@ impl<'a> FlowBuilder<'a> {
         }
     }
 
-    pub fn cluster<C>(&mut self) -> Cluster<'a, C> {
+    pub fn cluster<C, Id>(&mut self) -> Cluster<'a, C, Id> {
         let key = self.insert_location(LocationType::Cluster, type_name::<C>().to_owned());
+        self.cluster_id_types
+            .insert(key, stageleft::quote_type::<Id>());
         Cluster {
             key,
             flow_state: self.flow_state().clone(),
@@ -310,6 +318,8 @@ impl<'a> FlowBuilder<'a> {
             .filter(|&&r| r == group_root)
             .count() as u32;
         let key = self.insert_location(LocationType::Cluster, type_name::<C>().to_owned());
+        self.cluster_id_types
+            .insert(key, stageleft::quote_type::<u32>());
         self.location_version.insert(key, version);
         self.location_version_group_root.insert(key, group_root);
         Cluster {
@@ -356,6 +366,7 @@ impl<'a> FlowBuilder<'a> {
             ir,
             locations: std::mem::take(&mut self.locations),
             location_names: std::mem::take(&mut self.location_names),
+            cluster_id_types: std::mem::take(&mut self.cluster_id_types),
             sidecars,
             clusters_reading_self_id,
             flow_name: std::mem::take(&mut self.flow_name),
@@ -405,9 +416,9 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize().with_remaining_externals(spec)
     }
 
-    pub fn with_cluster<C, D: Deploy<'a>>(
+    pub fn with_cluster<C, Id, D: Deploy<'a> + SupportsMemberId<Id>>(
         self,
-        cluster: &Cluster<'_, C>,
+        cluster: &Cluster<'_, C, Id>,
         spec: impl ClusterSpec<'a, D>,
     ) -> DeployFlow<'a, D> {
         self.with_default_optimize().with_cluster(cluster, spec)
@@ -450,6 +461,7 @@ impl<'a> FlowBuilder<'a> {
             })),
             locations: built.locations.clone(),
             location_names: built.location_names.clone(),
+            cluster_id_types: built.cluster_id_types.clone(),
             #[cfg(feature = "sim")]
             location_version: built.location_version.clone(),
             #[cfg(feature = "sim")]

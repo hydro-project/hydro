@@ -12,7 +12,7 @@ Like when creating a process, you can pass in a type parameter to a cluster to d
 struct Worker {}
 
 let mut flow = FlowBuilder::new();
-let workers: Cluster<Worker> = flow.cluster::<Worker>();
+let workers: Cluster<Worker> = flow.cluster();
 ```
 
 You can then instantiate a live collection on the cluster using the same APIs as for processes. For example, you can create a stream of integers on the worker cluster. If you launch this program, **each** member of the cluster will create a stream containing the elements 1, 2, 3, and 4:
@@ -21,7 +21,7 @@ You can then instantiate a live collection on the cluster using the same APIs as
 # use hydro_lang::prelude::*;
 # struct Worker {}
 # let mut flow = FlowBuilder::new();
-# let workers: Cluster<Worker> = flow.cluster::<Worker>();
+# let workers: Cluster<Worker> = flow.cluster();
 let numbers = workers.source_iter(q!(vec![1, 2, 3, 4]));
 ```
 
@@ -32,7 +32,7 @@ When sending a live collection from a cluster to another location, **each** memb
 # use hydro_lang::prelude::*;
 # use futures::StreamExt;
 # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
-# let workers: Cluster<()> = flow.cluster::<()>();
+# let workers: Cluster<()> = flow.cluster();
 let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
 numbers.send(&process, TCP.fail_stop().bincode()) // KeyedStream<MemberId<()>, i32, ...>
 # .entries()
@@ -56,7 +56,7 @@ If you do not need to know _which_ member of the cluster the data came from, you
 # use hydro_lang::prelude::*;
 # use futures::StreamExt;
 # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
-# let workers: Cluster<()> = flow.cluster::<()>();
+# let workers: Cluster<()> = flow.cluster();
 let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
 numbers.send(&process, TCP.fail_stop().bincode()).values()
 # }, |mut stream| async move {
@@ -80,7 +80,7 @@ In the reverse direction, when sending a stream _to_ a cluster, the sender must 
 # use futures::StreamExt;
 # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
 # let p1 = flow.process::<()>();
-# let workers: Cluster<()> = flow.cluster::<()>();
+# let workers: Cluster<()> = flow.cluster();
 let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
 let on_worker: Stream<_, Cluster<_>, _> = numbers
     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
@@ -107,7 +107,7 @@ A common pattern in distributed systems is to broadcast data to all members of a
 # use futures::StreamExt;
 # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
 # let p1 = flow.process::<()>();
-# let workers: Cluster<()> = flow.cluster::<()>();
+# let workers: Cluster<()> = flow.cluster();
 let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![123]));
 let on_worker: Stream<_, Cluster<_>, _> = numbers.broadcast(&workers, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */));
 on_worker.send(&p2, TCP.fail_stop().bincode())
@@ -131,7 +131,7 @@ This API requires a [non-determinism guard](../correctness/nondet.md), because t
 # use futures::StreamExt;
 # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
 let p1 = flow.process::<()>();
-let workers: Cluster<()> = flow.cluster::<()>();
+let workers: Cluster<()> = flow.cluster();
 # // do nothing on each worker
 # workers.source_iter(q!(vec![])).for_each(q!(|_: ()| {}));
 let cluster_members = p1.source_cluster_membership_stream(&workers, nondet!(/** late joiners may miss events */));
@@ -151,7 +151,7 @@ let cluster_members = p1.source_cluster_membership_stream(&workers, nondet!(/** 
 ## Self-Identification
 In some programs, it may be necessary for cluster members to know their own ID (for example, to construct a ballot in Paxos). In Hydro, this can be achieved by using the `CLUSTER_SELF_ID` constant, which can be used inside `q!(...)` blocks to get the current cluster member's ID. Note that if used inside a closure, you will need to use the `move` keyword to work around borrow-checking limitations.
 
-Cluster IDs support the `Display` trait to be formatted as strings. In deployments using [Hydro Deploy](../deploy/rust.mdx), you can use `get_raw_id` to get an integer ID, but note that this API is not supported on other deployment backends so should be avoided when possible.
+A `MemberId<Tag, Id>` wraps the cluster's `Id`, the type of its members' IDs. You choose it when you create the cluster with `flow.cluster::<Tag, Id>()`. Each deployment backend supports particular `Id`s: [Hydro Deploy](../deploy/rust.mdx) and the simulator number members with `u32`, the Docker, ECS, and Maelstrom backends name them with `String` (container names, task IDs, or node IDs), and an [embedded](../deploy/embedded.mdx) host may use any type. Deploying a cluster with `with_cluster` to a backend that does not support its `Id` is a compile error. `get_raw_id` returns a member's number, and exists only for `u32` IDs; a program that should run on any backend is generic over `Id` and avoids it.
 
 ```rust
 # use hydro_lang::prelude::*;
@@ -159,7 +159,7 @@ Cluster IDs support the `Display` trait to be formatted as strings. In deploymen
 # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 
-let workers: Cluster<()> = flow.cluster::<()>();
+let workers: Cluster<()> = flow.cluster();
 let self_id_stream = workers.source_iter(q!([CLUSTER_SELF_ID]));
 self_id_stream
     .filter(q!(|x| x.get_raw_id() % 2 == 0))

@@ -1,4 +1,6 @@
 use std::cell::RefCell;
+#[cfg(feature = "tokio")]
+use std::hash::Hash;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -55,17 +57,22 @@ pub struct BenchResult<L> {
 /// # Non-Determinism
 /// Latencies are measured against the wall clock (`use::time`).
 #[cfg(feature = "tokio")]
-pub fn bench_client<'a, Client, Input, Output>(
-    clients: &Cluster<'a, Client>,
-    num_clients_per_node: Singleton<usize, Cluster<'a, Client>, Bounded>,
+pub fn bench_client<'a, Client, Id: Clone + Eq + Hash + 'a, Input, Output>(
+    clients: &Cluster<'a, Client, Id>,
+    num_clients_per_node: Singleton<usize, Cluster<'a, Client, Id>, Bounded>,
     workload_generator: impl FnOnce(
-        KeyedStream<u32, Option<Output>, Cluster<'a, Client>, Unbounded, NoOrder>,
-    )
-        -> KeyedStream<u32, Input, Cluster<'a, Client>, Unbounded, NoOrder>,
+        KeyedStream<u32, Option<Output>, Cluster<'a, Client, Id>, Unbounded, NoOrder>,
+    ) -> KeyedStream<
+        u32,
+        Input,
+        Cluster<'a, Client, Id>,
+        Unbounded,
+        NoOrder,
+    >,
     protocol: impl FnOnce(
-        KeyedStream<u32, Input, Cluster<'a, Client>, Unbounded, NoOrder>,
-    ) -> KeyedStream<u32, Output, Cluster<'a, Client>, Unbounded, NoOrder>,
-) -> KeyedStream<u32, (Output, Duration), Cluster<'a, Client>, Unbounded, NoOrder>
+        KeyedStream<u32, Input, Cluster<'a, Client, Id>, Unbounded, NoOrder>,
+    ) -> KeyedStream<u32, Output, Cluster<'a, Client, Id>, Unbounded, NoOrder>,
+) -> KeyedStream<u32, (Output, Duration), Cluster<'a, Client, Id>, Unbounded, NoOrder>
 where
     Input: Clone,
     Output: 'a + Clone,
@@ -93,7 +100,8 @@ where
     };
 
     let (protocol_outputs_complete, protocol_outputs) =
-        clients.forward_ref::<KeyedStream<u32, Output, Cluster<'a, Client>, Unbounded, NoOrder>>();
+        clients
+            .forward_ref::<KeyedStream<u32, Output, Cluster<'a, Client, Id>, Unbounded, NoOrder>>();
     // Use new payload IDS and previous outputs to generate new payloads
     let protocol_inputs = workload_generator(
         new_payload_ids.merge_unordered(protocol_outputs.map(q!(|payload| Some(payload)))),
@@ -153,12 +161,12 @@ where
 /// # Non-Determinism
 /// This function uses non-deterministic wall-clock windows for measuring throughput.
 #[cfg(feature = "tokio")]
-pub fn compute_throughput_latency<'a, Client: 'a>(
-    clients: &Cluster<'a, Client>,
-    latencies: Stream<Duration, Cluster<'a, Client>, Unbounded, NoOrder>,
+pub fn compute_throughput_latency<'a, Client: 'a, Id: Clone + Eq + Hash + 'a>(
+    clients: &Cluster<'a, Client, Id>,
+    latencies: Stream<Duration, Cluster<'a, Client, Id>, Unbounded, NoOrder>,
     interval_millis: u64,
     nondet_measurement_window: NonDet,
-) -> BenchResult<Cluster<'a, Client>> {
+) -> BenchResult<Cluster<'a, Client, Id>> {
     let punctuation = clients.source_interval(q!(Duration::from_millis(interval_millis)));
 
     let (interval_throughput, interval_latency) = sliced! {
@@ -225,8 +233,8 @@ pub fn compute_throughput_latency<'a, Client: 'a>(
 ///
 /// Note: Inconsistent windowing may result in unexpected outputs unless `output_interval_millis` >> `interval_millis`.
 #[cfg(feature = "tokio")]
-pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
-    results: BenchResult<Cluster<'a, Client>>,
+pub fn aggregate_bench_results<'a, Client: 'a, Id: Clone + Eq + Hash + 'a, Aggregator>(
+    results: BenchResult<Cluster<'a, Client, Id>>,
     aggregator: &Process<'a, Aggregator>,
     output_interval_millis: u64,
 ) -> BenchResult<Process<'a, Aggregator>> {

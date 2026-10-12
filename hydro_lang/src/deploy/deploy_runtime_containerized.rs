@@ -29,7 +29,6 @@ use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 use tracing::{debug, instrument, warn};
 
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
 use crate::location::{LocationKey, MemberId, MembershipEvent};
 
 /// The single well-known port that every node listens on.
@@ -304,14 +303,13 @@ pub fn deploy_containerized_o2o(target: &str, channel_name: &str) -> (syn::Expr,
 pub fn deploy_containerized_o2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
         q!(sinktools::demux_map_lazy::<_, _, _, _>(
-            move |key: &TaglessMemberId| {
+            move |key: &String| {
                 let key = key.clone();
                 let channel_name = channel_name.to_owned();
 
                 LazySink::<_, _, _, bytes::Bytes>::new(move || {
                     Box::pin(async move {
-                        let target =
-                            format!("{}:{}", key.get_container_name(), self::CHANNEL_MUX_PORT);
+                        let target = format!("{}:{}", key.as_str(), self::CHANNEL_MUX_PORT);
                         debug!(name: "connecting", %target, channel_name = %channel_name);
 
                         let stream = self::connect_channel(&target).await?;
@@ -373,12 +371,7 @@ pub fn deploy_containerized_m2o(target_host: &str, channel_name: &str) -> (syn::
 
                         debug!(name: "m2o_channel_connected", %from);
 
-                        Some((
-                            source.map(move |v| {
-                                v.map(|v| (TaglessMemberId::from_container_name(from.clone()), v))
-                            }),
-                            rx,
-                        ))
+                        Some((source.map(move |v| v.map(|v| (from.clone(), v))), rx))
                     })
                 })
                 .flatten_unordered(None),
@@ -391,14 +384,13 @@ pub fn deploy_containerized_m2o(target_host: &str, channel_name: &str) -> (syn::
 pub fn deploy_containerized_m2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
         q!(sinktools::demux_map_lazy::<_, _, _, _>(
-            move |key: &TaglessMemberId| {
+            move |key: &String| {
                 let key = key.clone();
                 let channel_name = channel_name.to_owned();
 
                 LazySink::<_, _, _, bytes::Bytes>::new(move || {
                     Box::pin(async move {
-                        let target =
-                            format!("{}:{}", key.get_container_name(), self::CHANNEL_MUX_PORT);
+                        let target = format!("{}:{}", key.as_str(), self::CHANNEL_MUX_PORT);
                         debug!(name: "connecting", %target, channel_name = %channel_name);
 
                         let stream = self::connect_channel(&target).await?;
@@ -427,12 +419,7 @@ pub fn deploy_containerized_m2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
 
                         debug!(name: "m2m_channel_connected", %from);
 
-                        Some((
-                            source.map(move |v| {
-                                v.map(|v| (TaglessMemberId::from_container_name(from.clone()), v))
-                            }),
-                            rx,
-                        ))
+                        Some((source.map(move |v| v.map(|v| (from.clone(), v))), rx))
                     })
                 })
                 .flatten_unordered(None),
@@ -487,28 +474,25 @@ pub fn deploy_containerized_external_sink_source_ident(socket_ident: syn::Ident)
     .splice_untyped_ctx(&())
 }
 
-pub fn cluster_ids<'a>() -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone {
+pub fn cluster_ids<'a>() -> impl QuotedWithContext<'a, &'a [String], ()> + Clone {
     // unimplemented!(); // this is unused.
 
     // This is a dummy piece of code, since clusters are dynamic when containerized.
-    q!(Box::leak(Box::new([TaglessMemberId::from_container_name(
+    q!(Box::leak(Box::new([String::from(
         "INVALID CONTAINER NAME cluster_ids"
     )]))
     .as_slice())
 }
 
 #[cfg(feature = "docker_runtime")]
-pub fn cluster_self_id<'a>() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
-    q!(TaglessMemberId::from_container_name(
-        std::env::var("CONTAINER_NAME").unwrap()
-    ))
+pub fn cluster_self_id<'a>() -> impl QuotedWithContext<'a, String, ()> + Clone + 'a {
+    q!(std::env::var("CONTAINER_NAME").unwrap())
 }
 
 #[cfg(feature = "docker_runtime")]
 pub fn cluster_membership_stream<'a>(
     location_id: &LocationId,
-) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
-{
+) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (String, MembershipEvent)> + Unpin>, ()> {
     let key = location_id.key();
 
     q!(Box::new(self::docker_membership_stream(
@@ -516,7 +500,7 @@ pub fn cluster_membership_stream<'a>(
         key
     ))
         as Box<
-            dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin,
+            dyn Stream<Item = (String, MembershipEvent)> + Unpin,
         >)
 }
 
@@ -528,7 +512,7 @@ pub fn cluster_membership_stream<'a>(
 fn docker_membership_stream(
     deployment_instance: String,
     location_key: LocationKey,
-) -> impl Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin {
+) -> impl Stream<Item = (String, MembershipEvent)> + Unpin {
     use std::collections::HashSet;
     use std::sync::{Arc, Mutex};
 
@@ -636,7 +620,6 @@ fn docker_membership_stream(
     Box::pin(
         snapshot_stream
             .chain(events_stream)
-            .map(|(k, v)| (TaglessMemberId::from_container_name(k), v))
             .inspect(|(member_id, event)| debug!(name: "membership_event", ?member_id, ?event)),
     )
 }

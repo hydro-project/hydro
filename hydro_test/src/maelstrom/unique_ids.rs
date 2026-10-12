@@ -12,9 +12,9 @@ pub struct GenerateMessage {
 }
 
 pub fn unique_id_server<'a, C: 'a>(
-    input: KeyedStream<String, GenerateMessage, Cluster<'a, C>>,
+    input: KeyedStream<String, GenerateMessage, Cluster<'a, C, String>>,
     nondet_ids: NonDet,
-) -> KeyedStream<String, serde_json::Value, Cluster<'a, C>> {
+) -> KeyedStream<String, serde_json::Value, Cluster<'a, C, String>> {
     input
         .entries()
         .assume_ordering(nondet!(
@@ -55,7 +55,7 @@ mod tests {
     )]
     async fn test_with_maelstrom() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), String>();
 
         let (input, output_handle) = maelstrom_bidi_clients(&cluster);
         output_handle.complete(unique_id_server(

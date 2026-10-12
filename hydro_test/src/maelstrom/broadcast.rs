@@ -37,9 +37,9 @@ pub enum Request {
 }
 
 fn broadcast_core<'a, C: 'a>(
-    cluster: &Cluster<'a, C>,
-    writes: Stream<u32, Cluster<'a, C>, Unbounded, NoOrder>,
-) -> Singleton<HashSet<u32>, Cluster<'a, C>, Unbounded> {
+    cluster: &Cluster<'a, C, String>,
+    writes: Stream<u32, Cluster<'a, C, String>, Unbounded, NoOrder>,
+) -> Singleton<HashSet<u32>, Cluster<'a, C, String>, Unbounded> {
     let (broadcasted_forward, broadcasted) =
         cluster.forward_ref::<Stream<_, _, Unbounded, NoOrder, AtLeastOnce>>();
 
@@ -75,9 +75,9 @@ fn broadcast_core<'a, C: 'a>(
 }
 
 pub fn broadcast_server<'a, C: 'a>(
-    cluster: &Cluster<'a, C>,
-    input: KeyedStream<String, Request, Cluster<'a, C>>,
-) -> KeyedStream<String, serde_json::Value, Cluster<'a, C>, Unbounded, NoOrder> {
+    cluster: &Cluster<'a, C, String>,
+    input: KeyedStream<String, Request, Cluster<'a, C, String>>,
+) -> KeyedStream<String, serde_json::Value, Cluster<'a, C, String>, Unbounded, NoOrder> {
     let broadcast_requests = input.clone().filter_map(q!(|body| {
         if let Request::Broadcast(b) = body {
             Some(b)
@@ -159,7 +159,7 @@ mod tests {
     )]
     async fn broadcast_3a_maelstrom() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), String>();
 
         let (input, output_handle) = maelstrom_bidi_clients(&cluster);
         output_handle
@@ -190,7 +190,7 @@ mod tests {
     )]
     async fn broadcast_3b_maelstrom() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), String>();
 
         let (input, output_handle) = maelstrom_bidi_clients(&cluster);
         output_handle
@@ -221,7 +221,7 @@ mod tests {
     )]
     async fn broadcast_3c_maelstrom() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), String>();
 
         let (input, output_handle) = maelstrom_bidi_clients(&cluster);
         output_handle

@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn sim_gossip_server_write_then_read_v1() {
         let mut flow = FlowBuilder::new();
-        let servers = flow.cluster::<GossipServer>();
+        let servers = flow.cluster::<GossipServer, u32>();
         let (inputter, requests) = servers.sim_input();
 
         let (responses, membership_snapshots) =
@@ -291,7 +291,7 @@ mod tests {
     fn sim_multi_version_gossip() {
         let mut flow = FlowBuilder::new();
 
-        let servers_v1 = flow.cluster::<GossipServer>();
+        let servers_v1 = flow.cluster::<GossipServer, u32>();
         let (inputter, requests_v1) = servers_v1.sim_input();
         let (responses_v1, membership_v1) =
             gossip_server_versioned(GossipVersion::V1, requests_v1, &servers_v1, None);
@@ -366,7 +366,7 @@ mod tests {
     fn sim_multi_version_extra_unrelated_location() {
         let mut flow = FlowBuilder::new();
 
-        let servers_v1 = flow.cluster::<GossipServer>();
+        let servers_v1 = flow.cluster::<GossipServer, u32>();
         let (inputter, requests_v1) = servers_v1.sim_input();
         let (responses_v1, membership_v1) =
             gossip_server_versioned(GossipVersion::V1, requests_v1, &servers_v1, None);
@@ -433,7 +433,7 @@ mod tests {
     fn sim_multi_version_differing_topology() {
         let mut flow = FlowBuilder::new();
 
-        let servers_v1 = flow.cluster::<GossipServer>();
+        let servers_v1 = flow.cluster::<GossipServer, u32>();
         let (inputter, requests_v1) = servers_v1.sim_input();
         let (responses_v1, membership_v1) =
             gossip_server_versioned(GossipVersion::V1, requests_v1, &servers_v1, None);
@@ -453,7 +453,7 @@ mod tests {
 
         // V3 adds a brand-new Logger cluster (different topology).
         let servers_v3 = flow.next_version(&servers_v2);
-        let loggers_v3 = flow.cluster::<Logger>();
+        let loggers_v3 = flow.cluster::<Logger, u32>();
         let (inputter_v3, requests_v3) = servers_v3.sim_input();
         let (responses_v3, membership_v3) = gossip_server_versioned(
             GossipVersion::V3,
@@ -544,7 +544,7 @@ mod tests {
     fn sim_multi_version_basic_echo_no_networking() {
         let mut flow = FlowBuilder::new();
 
-        let servers_v1 = flow.cluster::<GossipServer>();
+        let servers_v1 = flow.cluster::<GossipServer, u32>();
         let (inputter, output) = echo_version(&servers_v1);
 
         let servers_v2 = flow.next_version(&servers_v1);
@@ -595,13 +595,13 @@ mod tests {
         let mut flow = FlowBuilder::new();
 
         // Cluster A: `GossipServer` with two versions. Members are globals 0 (v1) and 1 (v2).
-        let a_v1 = flow.cluster::<GossipServer>();
+        let a_v1 = flow.cluster::<GossipServer, u32>();
         let (a_in_v1, a_out_v1) = echo_version_for(&a_v1);
         let a_v2 = flow.next_version(&a_v1);
         let (a_in_v2, a_out_v2) = echo_version_for(&a_v2);
 
         // Cluster B: `Worker` with three versions. Members are globals 0 (v1), 1 (v2), 2 (v3).
-        let b_v1 = flow.cluster::<Worker>();
+        let b_v1 = flow.cluster::<Worker, u32>();
         let (b_in_v1, b_out_v1) = echo_version_for(&b_v1);
         let b_v2 = flow.next_version(&b_v1);
         let (b_in_v2, b_out_v2) = echo_version_for(&b_v2);
@@ -656,7 +656,7 @@ mod tests {
     fn sim_process_to_cluster_named_channel() {
         let mut flow = FlowBuilder::new();
         let source = flow.process::<()>();
-        let servers = flow.cluster::<GossipServer>();
+        let servers = flow.cluster::<GossipServer, u32>();
         let (inputter, input) = source.sim_input::<usize, TotalOrder, _>();
         let output = broadcast_echo(input, &servers).sim_cluster_output();
 
@@ -691,11 +691,11 @@ mod tests {
     fn sim_same_tag_clusters_single_version_are_independent() {
         let mut flow = FlowBuilder::new();
 
-        let servers_a = flow.cluster::<GossipServer>();
+        let servers_a = flow.cluster::<GossipServer, u32>();
         let (inputter_a, requests_a) = servers_a.sim_input::<usize, _, _>();
         let output_a = echo(requests_a).sim_cluster_output();
 
-        let servers_b = flow.cluster::<GossipServer>();
+        let servers_b = flow.cluster::<GossipServer, u32>();
         let (inputter_b, requests_b) = servers_b.sim_input::<usize, _, _>();
         let output_b = echo(requests_b).sim_cluster_output();
 

@@ -19,19 +19,18 @@ use stageleft::{QuotedWithContext, RuntimeData, q};
 
 use crate::location::cluster::ClusterIds;
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
 use crate::location::{LocationKey, MemberId, MembershipEvent};
 
 #[derive(Default, Serialize, Deserialize)]
 pub(super) struct HydroMeta {
-    pub clusters: SparseSecondaryMap<LocationKey, Vec<TaglessMemberId>>,
-    pub cluster_id: Option<TaglessMemberId>,
+    pub clusters: SparseSecondaryMap<LocationKey, Vec<u32>>,
+    pub cluster_id: Option<u32>,
 }
 
 pub(super) fn cluster_members(
     cli: RuntimeData<&DeployPorts<HydroMeta>>,
     of_cluster: LocationKey,
-) -> impl QuotedWithContext<'_, &[TaglessMemberId], ()> + Clone {
+) -> impl QuotedWithContext<'_, &[u32], ()> + Clone {
     q!(cli
         .meta
         .clusters
@@ -42,22 +41,18 @@ pub(super) fn cluster_members(
 
 pub(super) fn cluster_self_id(
     cli: RuntimeData<&DeployPorts<HydroMeta>>,
-) -> impl QuotedWithContext<'_, TaglessMemberId, ()> + Clone {
+) -> impl QuotedWithContext<'_, u32, ()> + Clone {
     q!(cli
         .meta
         .cluster_id
-        .clone()
         .expect("Tried to read Cluster Self ID on a non-cluster node"))
 }
 
 pub fn cluster_membership_stream<'a>(
     location_id: &LocationId,
-) -> impl QuotedWithContext<
-    'a,
-    Box<dyn futures::Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>,
-    (),
-> {
-    let cluster_ids = ClusterIds {
+) -> impl QuotedWithContext<'a, Box<dyn futures::Stream<Item = (u32, MembershipEvent)> + Unpin>, ()>
+{
+    let cluster_ids = ClusterIds::<u32> {
         key: location_id.key(),
         _phantom: Default::default(),
     };
@@ -69,7 +64,7 @@ pub fn cluster_membership_stream<'a>(
             .map(|member_id| (member_id, MembershipEvent::Joined))
     ))
         as Box<
-            dyn futures::Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin,
+            dyn futures::Stream<Item = (u32, MembershipEvent)> + Unpin,
         >)
 }
 
@@ -93,12 +88,10 @@ pub(super) fn deploy_o2m(
 ) -> (syn::Expr, syn::Expr) {
     (
         {
-            q!(sinktools::map(
-                |(k, v): (TaglessMemberId, Bytes)| { (k.get_raw_id(), v) },
-                env.port(p1_port)
-                    .connect::<ConnectedDemux<ConnectedDirect>>()
-                    .into_sink()
-            ))
+            q!(env
+                .port(p1_port)
+                .connect::<ConnectedDemux<ConnectedDirect>>()
+                .into_sink())
             .splice_untyped_ctx(&())
         },
         {
@@ -115,12 +108,10 @@ pub(super) fn deploy_m2o(
     (
         { q!(env.port(c1_port).connect::<ConnectedDirect>().into_sink()).splice_untyped_ctx(&()) },
         {
-            q!({
-                env.port(p2_port)
-                    .connect::<ConnectedTagged<ConnectedDirect>>()
-                    .into_source()
-                    .map(|v| v.map(|(k, v)| (TaglessMemberId::from_raw_id(k), v)))
-            })
+            q!(env
+                .port(p2_port)
+                .connect::<ConnectedTagged<ConnectedDirect>>()
+                .into_source())
             .splice_untyped_ctx(&())
         },
     )
@@ -133,21 +124,17 @@ pub(super) fn deploy_m2m(
 ) -> (syn::Expr, syn::Expr) {
     (
         {
-            q!(sinktools::map(
-                |(k, v): (TaglessMemberId, Bytes)| { (k.get_raw_id(), v) },
-                env.port(c1_port)
-                    .connect::<ConnectedDemux<ConnectedDirect>>()
-                    .into_sink()
-            ))
+            q!(env
+                .port(c1_port)
+                .connect::<ConnectedDemux<ConnectedDirect>>()
+                .into_sink())
             .splice_untyped_ctx(&())
         },
         {
-            q!({
-                env.port(c2_port)
-                    .connect::<ConnectedTagged<ConnectedDirect>>()
-                    .into_source()
-                    .map(|v| v.map(|(k, v)| (TaglessMemberId::from_raw_id(k), v)))
-            })
+            q!(env
+                .port(c2_port)
+                .connect::<ConnectedTagged<ConnectedDirect>>()
+                .into_source())
             .splice_untyped_ctx(&())
         },
     )

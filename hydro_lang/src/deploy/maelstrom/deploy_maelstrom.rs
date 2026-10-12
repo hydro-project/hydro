@@ -37,6 +37,9 @@ use crate::location::{LocationKey, NetworkHint};
 /// - A single external input channel for client communication
 pub enum MaelstromDeploy {}
 
+/// Maelstrom names each cluster's members with `String`s.
+impl crate::compile::deploy_provider::SupportsMemberId<String> for MaelstromDeploy {}
+
 impl<'a> Deploy<'a> for MaelstromDeploy {
     type Meta = ();
     type InstantiateEnv = MaelstromDeployment;

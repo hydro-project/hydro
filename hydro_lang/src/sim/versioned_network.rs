@@ -123,7 +123,7 @@ mod tests {
     ) {
         let mut flow = FlowBuilder::new();
 
-        let servers0 = flow.cluster::<u8>();
+        let servers0 = flow.cluster::<u8, u32>();
         let (_in0, input0) = servers0.sim_input::<i32, TotalOrder, ExactlyOnce>();
         input0
             .broadcast(

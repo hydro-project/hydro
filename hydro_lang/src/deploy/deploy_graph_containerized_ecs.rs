@@ -446,6 +446,9 @@ fn build_info_from_config(
     }
 }
 
+/// ECS names each cluster's members with `String`s.
+impl crate::compile::deploy_provider::SupportsMemberId<String> for EcsDeploy {}
+
 impl<'a> Deploy<'a> for EcsDeploy {
     type InstantiateEnv = Self;
     type Process = EcsDeployProcess;

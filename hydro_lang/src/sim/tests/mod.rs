@@ -312,7 +312,7 @@ fn sim_embedded_send() {
 #[test]
 fn sim_cluster_e2m_m2e() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
 
     let (in_send, input) = cluster.sim_input::<i32, _, _>();
     let out_recv = input.map(q!(|x| x * 10)).sim_cluster_output();
@@ -336,7 +336,7 @@ fn sim_cluster_unordered_input() {
     use crate::live_collections::stream::NoOrder;
 
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
 
     // Create a cluster input that is semantically unordered, driven directly
     // via `send_many_unordered` without needing to `weaken_ordering` afterwards.
@@ -1550,7 +1550,7 @@ mod custom_codec {
     #[test]
     fn sim_cluster_custom_codec_round_trip() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), u32>();
 
         let (send, input) = cluster.sim_input_with::<RawMessageCodec, _, _, _>();
         let out = input

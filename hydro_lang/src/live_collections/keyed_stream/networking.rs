@@ -1,5 +1,7 @@
 //! Networking APIs for [`KeyedStream`].
 
+use std::hash::Hash;
+
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use stageleft::{q, quote_type};
@@ -8,14 +10,14 @@ use super::KeyedStream;
 use crate::compile::ir::{DebugInstantiate, HydroNode, NetworkRecv, NetworkSend};
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
 use crate::live_collections::stream::{MinOrder, MinRetries, Ordering, Retries, Stream};
-use crate::location::cluster::{Consistency, NoConsistency};
+use crate::location::cluster::Consistency;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::{Cluster, MemberId, Process};
 use crate::networking::{NetworkFor, TCP};
 
-impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
-    KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R>
+impl<'a, T, L, L2, Id2: Clone + Eq + Hash + 'a, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<MemberId<L2, Id2>, T, Process<'a, L>, B, O, R>
 {
     #[deprecated = "use KeyedStream::demux(..., TCP.fail_stop().bincode()) instead"]
     /// Sends each group of this stream to a specific member of a cluster, with the [`MemberId`] key
@@ -33,7 +35,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
@@ -57,8 +59,8 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn demux_bincode(
         self,
-        other: &Cluster<'a, L2>,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, O, R>
+        other: &Cluster<'a, L2, Id2>,
+    ) -> Stream<T, Cluster<'a, L2, Id2>, Unbounded, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -81,7 +83,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
@@ -105,12 +107,12 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn demux<N: NetworkFor<T>>(
         self,
-        to: &Cluster<'a, L2>,
+        to: &Cluster<'a, L2, Id2>,
         via: N,
     ) -> Stream<
         T,
         // NoConsistency because there each replica member may receive different streams
-        Cluster<'a, L2, NoConsistency>,
+        Cluster<'a, L2, Id2>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         <R as MinRetries<N::RetriesGuarantee>>::Min,
@@ -158,7 +160,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: to.new_node_metadata(Stream::<
                     T,
-                    Cluster<'a, L2>,
+                    Cluster<'a, L2, Id2>,
                     Unbounded,
                     <O as MinOrder<N::OrderingGuarantee>>::Min,
                     <R as MinRetries<N::RetriesGuarantee>>::Min,
@@ -168,8 +170,8 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
-    KeyedStream<(MemberId<L2>, K), T, Process<'a, L>, B, O, R>
+impl<'a, K, T, L, L2, Id2: Clone + Eq + Hash + 'a, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<(MemberId<L2, Id2>, K), T, Process<'a, L>, B, O, R>
 {
     #[deprecated = "use KeyedStream::demux(..., TCP.fail_stop().bincode()) instead"]
     /// Sends each group of this stream to a specific member of a cluster. The input stream has a
@@ -184,7 +186,7 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let to_send: KeyedStream<_, _, Process<_>, _> = p1
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
     ///     .map(q!(|x| ((hydro_lang::location::MemberId::from_raw_id(x), x), x + 123)))
@@ -207,8 +209,8 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn demux_bincode(
         self,
-        other: &Cluster<'a, L2>,
-    ) -> KeyedStream<K, T, Cluster<'a, L2>, Unbounded, O, R>
+        other: &Cluster<'a, L2, Id2>,
+    ) -> KeyedStream<K, T, Cluster<'a, L2, Id2>, Unbounded, O, R>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -228,7 +230,7 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let to_send: KeyedStream<_, _, Process<_>, _> = p1
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
     ///     .map(q!(|x| ((hydro_lang::location::MemberId::from_raw_id(x), x), x + 123)))
@@ -251,12 +253,12 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn demux<N: NetworkFor<(K, T)>>(
         self,
-        to: &Cluster<'a, L2>,
+        to: &Cluster<'a, L2, Id2>,
         via: N,
     ) -> KeyedStream<
         K,
         T,
-        Cluster<'a, L2, NoConsistency>,
+        Cluster<'a, L2, Id2>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         <R as MinRetries<N::RetriesGuarantee>>::Min,
@@ -310,7 +312,7 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                 metadata: to.new_node_metadata(KeyedStream::<
                     K,
                     T,
-                    Cluster<'a, L2>,
+                    Cluster<'a, L2, Id2>,
                     Unbounded,
                     <O as MinOrder<N::OrderingGuarantee>>::Min,
                     <R as MinRetries<N::RetriesGuarantee>>::Min,
@@ -320,8 +322,18 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
-    KeyedStream<MemberId<L2>, T, Cluster<'a, L, C>, B, O, R>
+impl<
+    'a,
+    T,
+    L,
+    Id: Clone + Eq + Hash + 'a,
+    L2,
+    Id2: Clone + Eq + Hash + 'a,
+    B: Boundedness,
+    C: Consistency,
+    O: Ordering,
+    R: Retries,
+> KeyedStream<MemberId<L2, Id2>, T, Cluster<'a, L, Id, C>, B, O, R>
 {
     #[deprecated = "use KeyedStream::demux(..., TCP.fail_stop().bincode()) instead"]
     /// Sends each group of this stream at each source member to a specific member of a destination
@@ -344,12 +356,12 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// # type Source = ();
     /// # type Destination = ();
-    /// let source: Cluster<Source> = flow.cluster::<Source>();
+    /// let source: Cluster<Source> = flow.cluster();
     /// let to_send: KeyedStream<_, _, Cluster<_>, _> = source
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
     ///     .into_keyed();
-    /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
+    /// let destination: Cluster<Destination> = flow.cluster();
     /// let all_received = to_send.demux_bincode(&destination); // KeyedStream<MemberId<Source>, i32, ...>
     /// # all_received.entries().send_bincode(&p2).entries()
     /// # }, |mut stream| async move {
@@ -373,8 +385,8 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// ```
     pub fn demux_bincode(
         self,
-        other: &Cluster<'a, L2>,
-    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+        other: &Cluster<'a, L2, Id2>,
+    ) -> KeyedStream<MemberId<L, Id>, T, Cluster<'a, L2, Id2>, Unbounded, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -401,12 +413,12 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// # type Source = ();
     /// # type Destination = ();
-    /// let source: Cluster<Source> = flow.cluster::<Source>();
+    /// let source: Cluster<Source> = flow.cluster();
     /// let to_send: KeyedStream<_, _, Cluster<_>, _> = source
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
     ///     .into_keyed();
-    /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
+    /// let destination: Cluster<Destination> = flow.cluster();
     /// let all_received = to_send.demux(&destination, TCP.fail_stop().bincode()); // KeyedStream<MemberId<Source>, i32, ...>
     /// # all_received.entries().send(&p2, TCP.fail_stop().bincode()).entries()
     /// # }, |mut stream| async move {
@@ -430,12 +442,12 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// ```
     pub fn demux<N: NetworkFor<T>>(
         self,
-        to: &Cluster<'a, L2>,
+        to: &Cluster<'a, L2, Id2>,
         via: N,
     ) -> KeyedStream<
-        MemberId<L>,
+        MemberId<L, Id>,
         T,
-        Cluster<'a, L2, NoConsistency>,
+        Cluster<'a, L2, Id2>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         <R as MinRetries<N::RetriesGuarantee>>::Min,
@@ -482,9 +494,9 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
                 instantiate_fn: DebugInstantiate::Building,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: to.new_node_metadata(KeyedStream::<
-                    MemberId<L>,
+                    MemberId<L, Id>,
                     T,
-                    Cluster<'a, L2>,
+                    Cluster<'a, L2, Id2>,
                     Unbounded,
                     <O as MinOrder<N::OrderingGuarantee>>::Min,
                     <R as MinRetries<N::RetriesGuarantee>>::Min,
@@ -494,8 +506,17 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
-    KeyedStream<K, V, Cluster<'a, L, C>, B, O, R>
+impl<
+    'a,
+    K,
+    V,
+    L,
+    Id: Clone + Eq + Hash + 'a,
+    B: Boundedness,
+    C: Consistency,
+    O: Ordering,
+    R: Retries,
+> KeyedStream<K, V, Cluster<'a, L, Id, C>, B, O, R>
 {
     #[deprecated = "use KeyedStream::send(..., TCP.fail_stop().bincode()) instead"]
     /// "Moves" elements of this keyed stream from a cluster to a process by sending them over the
@@ -511,7 +532,7 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// # type Source = ();
     /// # type Destination = ();
-    /// let source: Cluster<Source> = flow.cluster::<Source>();
+    /// let source: Cluster<Source> = flow.cluster();
     /// let to_send: KeyedStream<_, _, Cluster<_>, _> = source
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
     ///     .map(q!(|x| (x, x + 123)))
@@ -555,7 +576,7 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     pub fn send_bincode<L2>(
         self,
         other: &Process<'a, L2>,
-    ) -> KeyedStream<(MemberId<L>, K), V, Process<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<(MemberId<L, Id>, K), V, Process<'a, L2>, Unbounded, O, R>
     where
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
@@ -576,7 +597,7 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// # type Source = ();
     /// # type Destination = ();
-    /// let source: Cluster<Source> = flow.cluster::<Source>();
+    /// let source: Cluster<Source> = flow.cluster();
     /// let to_send: KeyedStream<_, _, Cluster<_>, _> = source
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
     ///     .map(q!(|x| (x, x + 123)))
@@ -622,7 +643,7 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         to: &Process<'a, L2>,
         via: N,
     ) -> KeyedStream<
-        (MemberId<L>, K),
+        (MemberId<L, Id>, K),
         V,
         Process<'a, L2>,
         Unbounded,
@@ -663,7 +684,7 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
 
         #[expect(clippy::type_complexity, reason = "stream markers")]
         let raw_stream: Stream<
-            (MemberId<L>, (K, V)),
+            (MemberId<L, Id>, (K, V)),
             Process<'a, L2>,
             Unbounded,
             <O as MinOrder<N::OrderingGuarantee>>::Min,
@@ -678,8 +699,8 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
                 instantiate_fn: DebugInstantiate::Building,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: to.new_node_metadata(Stream::<
-                    (MemberId<L>, (K, V)),
-                    Cluster<'a, L2>,
+                    (MemberId<L, Id>, (K, V)),
+                    Process<'a, L2>,
                     Unbounded,
                     <O as MinOrder<N::OrderingGuarantee>>::Min,
                     <R as MinRetries<N::RetriesGuarantee>>::Min,
