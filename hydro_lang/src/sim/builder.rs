@@ -2321,9 +2321,9 @@ impl DfirBuilder for SimBuilder {
                 }
                 _ => todo!("SimBuilder only supports lossy-delayed-forever UDP networking"),
             },
-            // An `EMBEDDED` channel is simulated by the guarantees it declares: ordered and
-            // eventually consistent like a fail-stop TCP channel, or unordered and eventually
-            // consistent like a lossy-delayed-forever one.
+            // An `EMBEDDED` channel is simulated by the guarantees it declares: an eventually
+            // consistent one like a fail-stop TCP channel when ordered, or like a
+            // lossy-delayed-forever one when unordered.
             NetworkingInfo::Embedded {
                 ordering,
                 consistency,
@@ -2332,15 +2332,15 @@ impl DfirBuilder for SimBuilder {
                 (StreamOrder::NoOrder, ClusterConsistency::EventualConsistency) => {
                     assert!(
                         self.test_safety_only,
-                        "Simulating `lossy_delayed_forever` requires `.test_safety_only()` on the \
-                         SimFlow because the simulator models dropped messages as indefinitely \
-                         delayed, which only tests safety (not liveness). Call \
-                         `.sim().test_safety_only()` to opt in."
+                        "Simulating an `EMBEDDED.no_order().eventual_consistency()` channel \
+                         requires `.test_safety_only()` on the SimFlow because the simulator \
+                         models undelivered messages as indefinitely delayed, which only tests \
+                         safety (not liveness). Call `.sim().test_safety_only()` to opt in."
                     );
                 }
                 (_, ClusterConsistency::NoConsistency) => todo!(
                     "SimBuilder only supports eventually consistent EMBEDDED networking \
-                     (`fail_stop()` and `lossy_delayed_forever()`)"
+                     (`.eventual_consistency()`)"
                 ),
             },
         }

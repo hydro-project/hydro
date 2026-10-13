@@ -66,10 +66,6 @@ pub enum NoSer {}
 
 /// A transport backend for network channels.
 #[sealed::sealed]
-#[diagnostic::on_unimplemented(
-    message = "this network config requires a failure policy",
-    note = "for example, `EMBEDDED.fail_stop()` delivers, per sender, an in-order prefix of the messages it sent"
-)]
 pub trait TransportKind {
     /// The ordering guarantee provided by this transport.
     type OrderingGuarantee: Ordering;
@@ -218,53 +214,54 @@ impl<F: TcpFailPolicy> TransportKind for Tcp<F> {
 }
 
 /// Items cross a channel that the host of an embedded program implements however it likes (a
-/// network connection, an in-memory queue, ...), keeping the guarantees of the policy `F`.
-pub struct EmbeddedTransport<F> {
-    _phantom: PhantomData<F>,
+/// network connection, an in-memory queue, ...), keeping the guarantees `O` and `C` the program
+/// declares for it (`()` until declared).
+pub struct EmbeddedTransport<O, C> {
+    _phantom: PhantomData<(O, C)>,
 }
+
+/// An ordering an [`EMBEDDED`] channel can declare: [`TotalOrder`] or [`NoOrder`].
+#[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "this `EMBEDDED` channel does not declare its ordering",
+    note = "add `.total_order()` or `.no_order()` to the network config"
+)]
+pub trait EmbeddedOrdering: Ordering {}
+
+#[sealed::sealed]
+impl EmbeddedOrdering for TotalOrder {}
+
+#[sealed::sealed]
+impl EmbeddedOrdering for NoOrder {}
+
+/// A consistency an [`EMBEDDED`] channel can declare: [`EventualConsistency`] or
+/// [`NoConsistency`].
+#[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "this `EMBEDDED` channel does not declare its consistency",
+    note = "add `.eventual_consistency()` or `.no_consistency(nondet!(..))` to the network config"
+)]
+pub trait EmbeddedConsistency: Consistency {}
+
+#[sealed::sealed]
+impl EmbeddedConsistency for EventualConsistency {}
+
+#[sealed::sealed]
+impl EmbeddedConsistency for NoConsistency {}
 
 /// An [`EMBEDDED`] channel names no transport, so its [`NetworkingInfo`] is just the guarantees
 /// its received stream is declared with, which the host's channel must keep.
-fn embedded_info<K: TransportKind>() -> NetworkingInfo {
-    NetworkingInfo::Embedded {
-        ordering: K::OrderingGuarantee::ORDERING_KIND,
-        consistency: K::ConsistencyGuarantee::consistency(),
-    }
-}
-
-/// For each sender, an in-order prefix of the messages it sent.
 #[sealed::sealed]
-impl TransportKind for EmbeddedTransport<FailStop> {
-    type OrderingGuarantee = TotalOrder;
+impl<O: EmbeddedOrdering, C: EmbeddedConsistency> TransportKind for EmbeddedTransport<O, C> {
+    type OrderingGuarantee = O;
 
-    type ConsistencyGuarantee = EventualConsistency;
+    type ConsistencyGuarantee = C;
 
     fn networking_info() -> NetworkingInfo {
-        embedded_info::<Self>()
-    }
-}
-
-/// Each sender's messages in order, any of which may be dropped.
-#[sealed::sealed]
-impl TransportKind for EmbeddedTransport<Lossy> {
-    type OrderingGuarantee = TotalOrder;
-
-    type ConsistencyGuarantee = NoConsistency;
-
-    fn networking_info() -> NetworkingInfo {
-        embedded_info::<Self>()
-    }
-}
-
-/// Messages in any order; a message never delivered counts as delayed forever.
-#[sealed::sealed]
-impl TransportKind for EmbeddedTransport<LossyDelayedForever> {
-    type OrderingGuarantee = NoOrder;
-
-    type ConsistencyGuarantee = EventualConsistency;
-
-    fn networking_info() -> NetworkingInfo {
-        embedded_info::<Self>()
+        NetworkingInfo::Embedded {
+            ordering: O::ORDERING_KIND,
+            consistency: C::consistency(),
+        }
     }
 }
 
@@ -462,39 +459,57 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     }
 }
 
-impl<S: ?Sized> NetworkingConfig<EmbeddedTransport<()>, S> {
-    /// Requires the host's channel to stop delivering messages after a failure, like
-    /// [`TCP.fail_stop()`](NetworkingConfig::fail_stop): for each sender, an in-order prefix of the
-    /// messages it sent.
+impl<C, S: ?Sized> NetworkingConfig<EmbeddedTransport<(), C>, S> {
+    /// Requires the host's channel to deliver each sender's messages in the order it sent them,
+    /// so the received stream is [`TotalOrder`].
     #[must_use]
-    pub const fn fail_stop(self) -> NetworkingConfig<EmbeddedTransport<FailStop>, S> {
+    pub const fn total_order(self) -> NetworkingConfig<EmbeddedTransport<TotalOrder, C>, S> {
         NetworkingConfig {
             name: self.name,
             _phantom: (PhantomData, PhantomData),
         }
     }
 
-    /// Allows the host's channel to lose messages while delivering each sender's messages in
-    /// order, like [`TCP.lossy()`](NetworkingConfig::lossy).
+    /// Allows the host's channel to deliver messages in any order, so the received stream is
+    /// [`NoOrder`].
+    #[must_use]
+    pub const fn no_order(self) -> NetworkingConfig<EmbeddedTransport<NoOrder, C>, S> {
+        NetworkingConfig {
+            name: self.name,
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
+}
+
+impl<O, S: ?Sized> NetworkingConfig<EmbeddedTransport<O, ()>, S> {
+    /// Requires that a message the host's channel never delivers count as delayed forever, not
+    /// lost, so replicated outputs stay [`EventualConsistency`]: with
+    /// [`total_order()`](NetworkingConfig::total_order), each sender's delivered messages are an
+    /// in-order prefix of what it sent (like [`TCP.fail_stop()`](NetworkingConfig::fail_stop));
+    /// with [`no_order()`](NetworkingConfig::no_order), any of them may be missing (like
+    /// [`TCP.lossy_delayed_forever()`](NetworkingConfig::lossy_delayed_forever)).
+    #[must_use]
+    pub const fn eventual_consistency(
+        self,
+    ) -> NetworkingConfig<EmbeddedTransport<O, EventualConsistency>, S> {
+        NetworkingConfig {
+            name: self.name,
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
+
+    /// Allows the host's channel to lose a message and then deliver later ones from the same
+    /// sender, so replicated outputs may diverge forever ([`NoConsistency`]), like
+    /// [`TCP.lossy()`](NetworkingConfig::lossy).
     ///
     /// # Non-Determinism
     /// A lossy channel will non-deterministically drop messages during execution.
     #[must_use]
-    pub const fn lossy(self, nondet: NonDet) -> NetworkingConfig<EmbeddedTransport<Lossy>, S> {
-        let _ = nondet;
-        NetworkingConfig {
-            name: self.name,
-            _phantom: (PhantomData, PhantomData),
-        }
-    }
-
-    /// Allows the host's channel to deliver messages in any order and treats a message that is
-    /// never delivered as indefinitely delayed, like
-    /// [`TCP.lossy_delayed_forever()`](NetworkingConfig::lossy_delayed_forever).
-    #[must_use]
-    pub const fn lossy_delayed_forever(
+    pub const fn no_consistency(
         self,
-    ) -> NetworkingConfig<EmbeddedTransport<LossyDelayedForever>, S> {
+        nondet: NonDet,
+    ) -> NetworkingConfig<EmbeddedTransport<O, NoConsistency>, S> {
+        let _ = nondet;
         NetworkingConfig {
             name: self.name,
             _phantom: (PhantomData, PhantomData),
@@ -614,13 +629,14 @@ pub const TCP: NetworkingConfig<Tcp<()>, NoSer> = NetworkingConfig {
 
 /// A network channel implemented by the host of an embedded program, which chooses how messages
 /// travel: a network connection, an in-memory queue, or anything else that delivers them with the
-/// guarantees of the chosen failure policy (for example `EMBEDDED.fail_stop().name("messages")`).
+/// guarantees the program declares, its ordering and its consistency (for example
+/// `EMBEDDED.total_order().eventual_consistency().name("messages")`).
 ///
 /// Items cross the channel unserialized: the generated channel ends carry the raw element type,
 /// and the host encodes it if its transport needs to. The program names only the guarantees, not
 /// a transport, so it is only supported by the embedded deployment backend and the Hydro
 /// simulator (which carries the raw values in memory); other backends use [`TCP`] or [`UDP`].
-pub const EMBEDDED: NetworkingConfig<EmbeddedTransport<()>, Embedded> = NetworkingConfig {
+pub const EMBEDDED: NetworkingConfig<EmbeddedTransport<(), ()>, Embedded> = NetworkingConfig {
     name: None,
     _phantom: (PhantomData, PhantomData),
 };
