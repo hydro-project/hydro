@@ -5,10 +5,13 @@
 //! [`ScriptableHook`] impls live alongside them.
 //!
 //! The retry kinds ([`TopLevelNoOrderStreamRetriesHook`], [`TopLevelOrderedStreamRetriesHook`],
-//! [`TopLevelAtLeastOnceOrderHook`]) implement only the scriptable surface, never
-//! [`ObservationHook`]: their decision spaces are infinite (every element admits
-//! arbitrarily many retries), so no autonomous exploration is possible and the builder
-//! requires them to be bound to a sim hook.
+//! [`TopLevelAtLeastOnceOrderHook`]) and the loss kinds ([`TopLevelStreamLossHook`],
+//! [`TopLevelOrderedStreamLossHook`], and the sender-keyed variants) implement only the
+//! scriptable surface, never [`ObservationHook`]: retry decision spaces are infinite
+//! (every element admits arbitrarily many retries), and no exploration of loss
+//! decisions can be fair to programs that need messages delivered (dropping everything
+//! is always a legal schedule), so no autonomous exploration is possible and the
+//! builder requires them to be bound to a sim hook.
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -21,7 +24,7 @@ use dfir_rs::rustc_hash::FxHashMap;
 use dfir_rs::util::unsync::mpsc::Sender;
 
 use super::{
-    HookLocationMeta, ObservationHook, RuntimeHook, ScriptDecision, ScriptableHook,
+    HookLocationMeta, ManualDebug, ObservationHook, RuntimeHook, ScriptDecision, ScriptableHook,
     ScriptableObservationHook, TruncatedLabeledVecDebug, TruncatedVecDebug, abort,
     describe_keyed_pending, keyed_buffer_len, log_release,
 };
@@ -1808,5 +1811,616 @@ where
 
 impl<T> ScriptableObservationHook for TopLevelAtLeastOnceOrderHook<T> where
     T: Clone + serde::Serialize + serde::de::DeserializeOwned + PartialEq
+{
+}
+
+/// Top-level hook for a **lossy network channel** on an unordered transport
+/// (`UDP.lossy`): the point where the simulator injects the message drops the channel's
+/// fault model says the program must tolerate. Each decision names one in-flight
+/// (buffered) message and either **delivers** it downstream or **drops** it, consuming
+/// it either way. The transport provides no ordering, so any buffered message may be
+/// named — delivery order is part of the decision.
+///
+/// There is no autonomous ([`ObservationHook`]) implementation: dropping is a legal
+/// outcome for *every* message, so no autonomous exploration can be fair to programs
+/// that need messages delivered (a schedule that drops everything is always available).
+/// This hook exists only bound to a sim hook handle; the builder rejects an unhooked
+/// lossy channel at build time.
+pub struct TopLevelStreamLossHook<T> {
+    pub input: Rc<RefCell<VecDeque<T>>>,
+    pub staged: Option<LossResolution<T>>,
+    pub output: Sender<T>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+/// Top-level hook for a **lossy network channel** on an order-preserving transport
+/// (`TCP.lossy`): delivered messages keep their send order (only losses are injected),
+/// so each decision observes the **front** of the buffered queue and either delivers or
+/// drops it. Naming a value that is not the front is a permanent error — it can never
+/// rotate forward. See [`TopLevelStreamLossHook`] for why there is no autonomous
+/// implementation.
+pub struct TopLevelOrderedStreamLossHook<T> {
+    pub input: Rc<RefCell<VecDeque<T>>>,
+    pub staged: Option<LossResolution<T>>,
+    pub output: Sender<T>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+/// A staged loss-hook resolution: the consumed message, tagged with its fate.
+pub enum LossResolution<T> {
+    /// The message is released downstream.
+    Deliver(T),
+    /// The message is consumed without releasing anything.
+    Drop(T),
+}
+
+/// The shared [`RuntimeHook`] surface of the two top-level loss kinds (they differ only
+/// in which buffered message a decision may name).
+macro_rules! top_level_loss_runtime_hook {
+    ($hook:ident) => {
+        impl<T> RuntimeHook for $hook<T> {
+            fn has_pending_input(&self) -> bool {
+                !self.input.borrow().is_empty()
+            }
+
+            fn only_one_possible_decision(&self) -> bool {
+                // Even a sole in-flight message admits two decisions (deliver or drop),
+                // so only an empty buffer is unique.
+                self.input.borrow().is_empty()
+            }
+
+            fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
+                if let Some(staged) = self.staged.take() {
+                    let (item, delivered) = match staged {
+                        LossResolution::Deliver(item) => (item, true),
+                        LossResolution::Drop(item) => (item, false),
+                    };
+
+                    if let Some(log_writer) = log_writer {
+                        let HookLocationMeta {
+                            location: channel_location,
+                            line,
+                            caret_indent,
+                        } = self.location;
+                        let (verb, color) = if delivered {
+                            ("delivered", colored::Color::Green)
+                        } else {
+                            ("dropped", colored::Color::Red)
+                        };
+                        let note_str = format!(
+                            "^ lossy channel {} message: {:?}",
+                            verb,
+                            ManualDebug(&item, self.format_item_debug)
+                        );
+
+                        let _ = writeln!(log_writer);
+                        log_release(
+                            log_writer,
+                            channel_location,
+                            line,
+                            caret_indent,
+                            &note_str,
+                            color,
+                        );
+                    }
+
+                    if delivered {
+                        self.output.try_send(item).unwrap();
+                    }
+                } else {
+                    panic!("No decision to release");
+                }
+            }
+
+            fn location_meta(&self) -> HookLocationMeta {
+                self.location
+            }
+        }
+    };
+}
+
+top_level_loss_runtime_hook!(TopLevelStreamLossHook);
+top_level_loss_runtime_hook!(TopLevelOrderedStreamLossHook);
+
+/// A scripted decision for a lossy network channel on an **unordered** transport
+/// (`UDP.lossy`): deliver or drop the named in-flight message (any buffered message may
+/// be named), consuming it either way.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum LossDecision<T> {
+    /// Deliver the buffered message equal to this value.
+    Deliver(T),
+    /// Drop the buffered message equal to this value.
+    Lose(T),
+}
+
+impl<T> ScriptDecision for LossDecision<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            LossDecision::Deliver(_) => "deliver(value)".to_owned(),
+            LossDecision::Lose(_) => "lose(value)".to_owned(),
+        }
+    }
+}
+
+/// A scripted decision for a lossy network channel on an **order-preserving** transport
+/// (`TCP.lossy`): deliver or drop the **front** of the buffered queue, consuming it
+/// either way. The front may be named ([`Self::Deliver`] / [`Self::Lose`], asserting its
+/// value) or resolved positionally ([`Self::DeliverNext`] / [`Self::LoseNext`], whatever
+/// it is).
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum OrderedLossDecision<T> {
+    /// Deliver the front of the queue, which must equal this value.
+    Deliver(T),
+    /// Deliver the front of the queue, whatever it is.
+    DeliverNext,
+    /// Drop the front of the queue, which must equal this value.
+    Lose(T),
+    /// Drop the front of the queue, whatever it is.
+    LoseNext,
+}
+
+impl<T> ScriptDecision for OrderedLossDecision<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            OrderedLossDecision::Deliver(_) => "deliver(value)".to_owned(),
+            OrderedLossDecision::DeliverNext => "deliver_next()".to_owned(),
+            OrderedLossDecision::Lose(_) => "lose(value)".to_owned(),
+            OrderedLossDecision::LoseNext => "lose_next()".to_owned(),
+        }
+    }
+}
+
+impl<T> ScriptableHook for TopLevelStreamLossHook<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = LossDecision<T>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        let (LossDecision::Deliver(expected) | LossDecision::Lose(expected)) = decision;
+        Ok(self.input.borrow().iter().any(|item| item == expected))
+    }
+
+    fn apply(&mut self, decision: Self::Decision) {
+        let (expected, deliver) = match decision {
+            LossDecision::Deliver(expected) => (expected, true),
+            LossDecision::Lose(expected) => (expected, false),
+        };
+        let mut input = self.input.borrow_mut();
+        let index = input.iter().position(|item| item == &expected).unwrap();
+        let item = input.remove(index).unwrap();
+        self.staged = Some(if deliver {
+            LossResolution::Deliver(item)
+        } else {
+            LossResolution::Drop(item)
+        });
+    }
+
+    fn implicit(&mut self) {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        abort!("implicit decision invoked on a top-level loss hook");
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: self.input.borrow().len(),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        (!input.is_empty()).then(|| {
+            format!(
+                "{} in-flight message(s) awaiting a loss decision: {:?}",
+                input.len(),
+                TruncatedVecDebug(RefCell::new(Some(input.iter())), 8, self.format_item_debug)
+            )
+        })
+    }
+}
+
+impl<T> ScriptableObservationHook for TopLevelStreamLossHook<T> where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq
+{
+}
+
+impl<T> ScriptableHook for TopLevelOrderedStreamLossHook<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = OrderedLossDecision<T>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        let expected = match decision {
+            OrderedLossDecision::Deliver(expected) | OrderedLossDecision::Lose(expected) => {
+                Some(expected)
+            }
+            OrderedLossDecision::DeliverNext | OrderedLossDecision::LoseNext => None,
+        };
+        match (self.input.borrow().front(), expected) {
+            (Some(_), None) => Ok(true),
+            (Some(front), Some(expected)) if front == expected => Ok(true),
+            // The transport preserves the order of delivered messages, so a mismatching
+            // front can never be resolved ahead of the named value: the decision is
+            // permanently stuck.
+            (Some(_), Some(_)) => Err(
+                "deliver/lose: the named value did not match the front of the channel's \
+                 buffered queue (the transport preserves the order of delivered messages, \
+                 so in-flight messages are observed in send order)"
+                    .to_owned(),
+            ),
+            (None, _) => Ok(false),
+        }
+    }
+
+    fn apply(&mut self, decision: Self::Decision) {
+        let deliver = matches!(
+            decision,
+            OrderedLossDecision::Deliver(_) | OrderedLossDecision::DeliverNext
+        );
+        let item = self.input.borrow_mut().pop_front().unwrap();
+        self.staged = Some(if deliver {
+            LossResolution::Deliver(item)
+        } else {
+            LossResolution::Drop(item)
+        });
+    }
+
+    fn implicit(&mut self) {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        abort!("implicit decision invoked on a top-level loss hook");
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: self.input.borrow().len(),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        (!input.is_empty()).then(|| {
+            format!(
+                "{} in-flight message(s) awaiting a loss decision: {:?}",
+                input.len(),
+                TruncatedVecDebug(RefCell::new(Some(input.iter())), 8, self.format_item_debug)
+            )
+        })
+    }
+}
+
+impl<T> ScriptableObservationHook for TopLevelOrderedStreamLossHook<T> where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq
+{
+}
+
+/// Sender-keyed variant of [`TopLevelStreamLossHook`] for lossy channels whose **sender
+/// is a cluster** (`UDP.lossy` from a cluster): every in-flight message belongs to a
+/// sender, so each decision names a `(sender_id, value)` pair and either delivers or
+/// drops it. The transport provides no ordering, so any of the named sender's buffered
+/// messages may be resolved.
+///
+/// `M` is the typed member-id the deserialized messages carry (buffered alongside each
+/// payload and released with it); decisions name senders by their raw `u32` id, which
+/// keys the buffer.
+pub struct TopLevelSenderStreamLossHook<M, T> {
+    pub input: Rc<RefCell<FxHashMap<u32, VecDeque<(M, T)>>>>,
+    /// The staged resolution: the sender's raw id plus the consumed message and its fate.
+    pub staged: Option<(u32, LossResolution<(M, T)>)>,
+    pub output: Sender<(M, T)>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+/// Sender-keyed variant of [`TopLevelOrderedStreamLossHook`] for lossy channels whose
+/// **sender is a cluster** (`TCP.lossy` from a cluster): each sender's delivered
+/// messages preserve that sender's send order (every member has its own connection, and
+/// the fault model injects only losses), so each decision resolves the **front** of one
+/// sender's in-flight queue. Naming a value that is not that sender's front is a
+/// permanent error; cross-sender interleaving is part of the decision.
+pub struct TopLevelSenderOrderedStreamLossHook<M, T> {
+    pub input: Rc<RefCell<FxHashMap<u32, VecDeque<(M, T)>>>>,
+    /// The staged resolution: the sender's raw id plus the consumed message and its fate.
+    pub staged: Option<(u32, LossResolution<(M, T)>)>,
+    pub output: Sender<(M, T)>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+/// The shared [`RuntimeHook`] surface of the two sender-keyed loss kinds (they differ
+/// only in which of a sender's buffered messages a decision may name).
+macro_rules! top_level_sender_loss_runtime_hook {
+    ($hook:ident) => {
+        impl<M, T> RuntimeHook for $hook<M, T> {
+            fn has_pending_input(&self) -> bool {
+                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                !self.input.borrow().values().all(|q| q.is_empty())
+            }
+
+            fn only_one_possible_decision(&self) -> bool {
+                // Even a sole in-flight message admits two decisions (deliver or drop),
+                // so only an empty buffer is unique.
+                !self.has_pending_input()
+            }
+
+            fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
+                if let Some((sender, staged)) = self.staged.take() {
+                    let (item, delivered) = match staged {
+                        LossResolution::Deliver(item) => (item, true),
+                        LossResolution::Drop(item) => (item, false),
+                    };
+
+                    if let Some(log_writer) = log_writer {
+                        let HookLocationMeta {
+                            location: channel_location,
+                            line,
+                            caret_indent,
+                        } = self.location;
+                        let (verb, color) = if delivered {
+                            ("delivered", colored::Color::Green)
+                        } else {
+                            ("dropped", colored::Color::Red)
+                        };
+                        let note_str = format!(
+                            "^ lossy channel {} message from sender {}: {:?}",
+                            verb,
+                            sender,
+                            ManualDebug(&item.1, self.format_item_debug)
+                        );
+
+                        let _ = writeln!(log_writer);
+                        log_release(
+                            log_writer,
+                            channel_location,
+                            line,
+                            caret_indent,
+                            &note_str,
+                            color,
+                        );
+                    }
+
+                    if delivered {
+                        self.output.try_send(item).unwrap();
+                    }
+                } else {
+                    panic!("No decision to release");
+                }
+            }
+
+            fn location_meta(&self) -> HookLocationMeta {
+                self.location
+            }
+        }
+    };
+}
+
+top_level_sender_loss_runtime_hook!(TopLevelSenderStreamLossHook);
+top_level_sender_loss_runtime_hook!(TopLevelSenderOrderedStreamLossHook);
+
+/// A scripted decision for a lossy network channel from a cluster on an **unordered**
+/// transport (`UDP.lossy`): deliver or drop the named sender's in-flight message equal
+/// to the named value, consuming it either way.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum SenderLossDecision<T> {
+    /// Deliver the named sender's buffered message equal to this value.
+    Deliver(u32, T),
+    /// Drop the named sender's buffered message equal to this value.
+    Lose(u32, T),
+}
+
+impl<T> ScriptDecision for SenderLossDecision<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            SenderLossDecision::Deliver(sender, _) => format!("deliver({sender}, value)"),
+            SenderLossDecision::Lose(sender, _) => format!("lose({sender}, value)"),
+        }
+    }
+}
+
+/// A scripted decision for a lossy network channel from a cluster on an
+/// **order-preserving** transport (`TCP.lossy`): deliver or drop the **front** of the
+/// named sender's in-flight queue, consuming it either way. The front may be named
+/// ([`Self::Deliver`] / [`Self::Lose`], asserting its value) or resolved positionally
+/// ([`Self::DeliverNext`] / [`Self::LoseNext`], whatever it is).
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum SenderOrderedLossDecision<T> {
+    /// Deliver the front of the named sender's queue, which must equal this value.
+    Deliver(u32, T),
+    /// Deliver the front of the named sender's queue, whatever it is.
+    DeliverNext(u32),
+    /// Drop the front of the named sender's queue, which must equal this value.
+    Lose(u32, T),
+    /// Drop the front of the named sender's queue, whatever it is.
+    LoseNext(u32),
+}
+
+impl<T> ScriptDecision for SenderOrderedLossDecision<T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn describe(&self) -> String {
+        match self {
+            SenderOrderedLossDecision::Deliver(sender, _) => format!("deliver({sender}, value)"),
+            SenderOrderedLossDecision::DeliverNext(sender) => format!("deliver_next({sender})"),
+            SenderOrderedLossDecision::Lose(sender, _) => format!("lose({sender}, value)"),
+            SenderOrderedLossDecision::LoseNext(sender) => format!("lose_next({sender})"),
+        }
+    }
+}
+
+impl<M, T> ScriptableHook for TopLevelSenderStreamLossHook<M, T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = SenderLossDecision<T>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        let (SenderLossDecision::Deliver(sender, expected)
+        | SenderLossDecision::Lose(sender, expected)) = decision;
+        Ok(self
+            .input
+            .borrow()
+            .get(sender)
+            .is_some_and(|queue| queue.iter().any(|(_, item)| item == expected)))
+    }
+
+    fn apply(&mut self, decision: Self::Decision) {
+        let (sender, expected, deliver) = match decision {
+            SenderLossDecision::Deliver(sender, expected) => (sender, expected, true),
+            SenderLossDecision::Lose(sender, expected) => (sender, expected, false),
+        };
+        let mut input = self.input.borrow_mut();
+        let queue = input.get_mut(&sender).unwrap();
+        let index = queue
+            .iter()
+            .position(|(_, item)| item == &expected)
+            .unwrap();
+        let item = queue.remove(index).unwrap();
+        self.staged = Some((
+            sender,
+            if deliver {
+                LossResolution::Deliver(item)
+            } else {
+                LossResolution::Drop(item)
+            },
+        ));
+    }
+
+    fn implicit(&mut self) {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        abort!("implicit decision invoked on a top-level loss hook");
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: keyed_buffer_len(&self.input.borrow()),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        let total = keyed_buffer_len(&input);
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let senders = input.values().filter(|q| !q.is_empty()).count();
+        (total > 0).then(|| {
+            format!(
+                "{} in-flight message(s) across {} sender(s) awaiting a loss decision",
+                total, senders
+            )
+        })
+    }
+}
+
+impl<M, T> ScriptableObservationHook for TopLevelSenderStreamLossHook<M, T> where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq
+{
+}
+
+impl<M, T> ScriptableHook for TopLevelSenderOrderedStreamLossHook<M, T>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
+{
+    type Decision = SenderOrderedLossDecision<T>;
+    type Status = OrderingStatus;
+
+    fn is_honorable(&self, decision: &Self::Decision) -> Result<bool, String> {
+        let (sender, expected) = match decision {
+            SenderOrderedLossDecision::Deliver(sender, expected)
+            | SenderOrderedLossDecision::Lose(sender, expected) => (sender, Some(expected)),
+            SenderOrderedLossDecision::DeliverNext(sender)
+            | SenderOrderedLossDecision::LoseNext(sender) => (sender, None),
+        };
+        match (
+            self.input.borrow().get(sender).and_then(VecDeque::front),
+            expected,
+        ) {
+            (Some(_), None) => Ok(true),
+            (Some((_, front)), Some(expected)) if front == expected => Ok(true),
+            // Each sender's delivered messages preserve that sender's send order, so a
+            // mismatching front can never be resolved ahead of the named value: the
+            // decision is permanently stuck.
+            (Some(_), Some(_)) => Err(
+                "deliver/lose: the named value did not match the front of that sender's \
+                 buffered queue (each sender's delivered messages preserve its send \
+                 order, so a sender's in-flight messages are observed in send order)"
+                    .to_owned(),
+            ),
+            (None, _) => Ok(false),
+        }
+    }
+
+    fn apply(&mut self, decision: Self::Decision) {
+        let (sender, deliver) = match decision {
+            SenderOrderedLossDecision::Deliver(sender, _)
+            | SenderOrderedLossDecision::DeliverNext(sender) => (sender, true),
+            SenderOrderedLossDecision::Lose(sender, _)
+            | SenderOrderedLossDecision::LoseNext(sender) => (sender, false),
+        };
+        let item = self
+            .input
+            .borrow_mut()
+            .get_mut(&sender)
+            .unwrap()
+            .pop_front()
+            .unwrap();
+        self.staged = Some((
+            sender,
+            if deliver {
+                LossResolution::Deliver(item)
+            } else {
+                LossResolution::Drop(item)
+            },
+        ));
+    }
+
+    fn implicit(&mut self) {
+        // Implicit behavior exists for tick hooks whose tick is forced to run by *other*
+        // hooks; a top-level observation consists of exactly this hook, so it can never
+        // be forced to run without a scripted decision.
+        abort!("implicit decision invoked on a top-level loss hook");
+    }
+
+    fn status(&self) -> Self::Status {
+        OrderingStatus {
+            buffered: keyed_buffer_len(&self.input.borrow()),
+        }
+    }
+
+    fn describe_pending(&self) -> Option<String> {
+        let input = self.input.borrow();
+        let total = keyed_buffer_len(&input);
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let senders = input.values().filter(|q| !q.is_empty()).count();
+        (total > 0).then(|| {
+            format!(
+                "{} in-flight message(s) across {} sender(s) awaiting a loss decision",
+                total, senders
+            )
+        })
+    }
+}
+
+impl<M, T> ScriptableObservationHook for TopLevelSenderOrderedStreamLossHook<M, T> where
+    T: serde::Serialize + serde::de::DeserializeOwned + PartialEq
 {
 }
