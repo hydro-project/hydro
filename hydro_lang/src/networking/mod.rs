@@ -80,7 +80,8 @@ pub trait TransportKind {
 
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "TCP transport requires a failure policy. For example, `TCP.fail_stop()` stops sending messages after a failed connection."
+    message = "the TCP transport requires a failure policy",
+    note = "for example, `TCP.fail_stop()` stops delivering messages after a failed connection"
 )]
 /// A failure policy for TCP connections, determining how the transport handles
 /// connection failures and what ordering guarantees the output stream provides.
@@ -155,7 +156,8 @@ impl TcpFailPolicy for LossyDelayedForever {
 
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "UDP transport requires a failure policy. For example, `UDP.lossy_delayed_forever()` treats dropped messages as indefinitely delayed."
+    message = "the UDP transport requires a failure policy",
+    note = "for example, `UDP.lossy_delayed_forever()` treats dropped messages as indefinitely delayed"
 )]
 /// A failure policy for UDP channels, determining how the transport handles
 /// message loss. Because UDP provides no ordering guarantees, all policies
