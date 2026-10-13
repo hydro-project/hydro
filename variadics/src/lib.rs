@@ -601,6 +601,41 @@ impl PartialEqVariadic for () {
     }
 }
 
+/// A variadic where all items implement [`Hash`](core::hash::Hash).
+///
+/// [`Self::hash_ref`] hashes an [`VariadicExt::AsRefVar`] exactly as the owned variadic (or the
+/// `AsRefVar` itself) would be hashed through the [`Hash`](core::hash::Hash) impls for tuples and
+/// references, so the two can be used interchangeably for lookups.
+///
+/// Prefer bounding on this trait rather than on `for<'a> T::AsRefVar<'a>: Hash`: that higher-ranked
+/// bound over a `where Self: 'a` GAT is very expensive for the new trait solver when `T` contains
+/// a region (e.g. `&'static str`), blowing up compile time and memory exponentially in the depth
+/// of generic code that re-proves it (such as the recursive GHT/COLT impls in `lattices`).
+///
+/// This is a sealed trait.
+#[sealed]
+pub trait HashVariadic: VariadicExt {
+    /// Hashes the `AsRefVar` version of `Self`.
+    fn hash_ref<H: core::hash::Hasher>(this: Self::AsRefVar<'_>, state: &mut H);
+}
+#[sealed]
+impl<Item, Rest> HashVariadic for (Item, Rest)
+where
+    Item: core::hash::Hash,
+    Rest: HashVariadic,
+{
+    fn hash_ref<H: core::hash::Hasher>(this: <Self as VariadicExt>::AsRefVar<'_>, state: &mut H) {
+        let var_args!(item, ...rest) = this;
+        item.hash(state);
+        Rest::hash_ref(rest, state);
+    }
+}
+#[sealed]
+impl HashVariadic for () {
+    fn hash_ref<H: core::hash::Hasher>(_this: <Self as VariadicExt>::AsRefVar<'_>, _state: &mut H) {
+    }
+}
+
 /// A variadic where all elements are the same type, `T`.
 ///
 /// This is a sealed trait.

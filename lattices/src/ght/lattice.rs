@@ -433,8 +433,6 @@ where
     StorageA: VariadicSet<Schema = SchemaA>,
     StorageB: VariadicSet<Schema = SchemaB>,
     StorageOut: VariadicSet<Schema = var_type!(...SchemaA, ...ValTypeB)>,
-    for<'x> SchemaA::AsRefVar<'x>: CloneVariadic,
-    for<'x> SchemaB::AsRefVar<'x>: CloneVariadic,
     var_type!(...SchemaA, ...ValTypeB): Eq + Hash,
 {
     type DeepJoinLatticeBimorphism = GhtValTypeProductBimorphism<
