@@ -1248,7 +1248,7 @@ where
         metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         Singleton::new(
             tick.drop_consistency(),
-            HydroNode::Batch {
+            HydroNode::Snapshot {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata,
             },
@@ -1287,7 +1287,7 @@ where
         metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         Singleton::new(
             tick.drop_consistency(),
-            HydroNode::Batch {
+            HydroNode::Snapshot {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata,
             },

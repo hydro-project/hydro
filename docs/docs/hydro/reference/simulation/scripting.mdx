@@ -18,8 +18,8 @@ Handles are small `Copy` values containing no simulator machinery: the same hand
 - **`SnapshotHook<T>`** controls which version of a `Singleton` each `snapshot` reveals
 - **`OrderingHook<T>`** controls the order chosen by an `assume_ordering`
 - **`RetriesHook<T>`** controls how many times each element is observed through an `assume_retries`
-- **`KeyedBatchHook<K, V>`** controls which buffered entries a keyed `batch` releases into each tick
-- **`KeyedSnapshotHook<K, V>`** controls which version of each key's state a `KeyedSingleton` `snapshot` (or `batch`) reveals
+- **`KeyedBatchHook<K, V>`** controls which buffered entries a keyed `batch` releases into each tick (over a `KeyedStream`, or a `KeyedSingleton` whose per-key values are bounded)
+- **`KeyedSnapshotHook<K, V>`** controls which version of each key's state a `KeyedSingleton` `snapshot` reveals
 - **`KeyedOrderingHook<K, V>`** controls the per-key order chosen by a keyed `assume_ordering`
 - **`PartialOrderingHook<K, V>`** controls the cross-key interleaving chosen by `entries_partially_ordered`
 - **`MergeOrderedHook<T>`** controls the interleaving chosen by a `merge_ordered`

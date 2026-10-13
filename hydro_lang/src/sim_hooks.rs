@@ -394,6 +394,10 @@ where
 /// `V`, per-key value ordering `O`, and retry guarantee `R` (mirroring the type of the
 /// keyed stream being batched). `S` is the handle's [scope](self#hook-scopes).
 ///
+/// A `batch` over a keyed singleton with bounded per-key values (where each entry is final
+/// once it appears, so a batch is the set of *new* entries) is controlled by a
+/// `KeyedBatchHook<K, V>` with the default `TotalOrder` / `ExactlyOnce` parameters.
+///
 /// A decision for a keyed batch hook says which buffered `(key, value)` entries form the
 /// next batch released into the tick. See `hydro_lang::sim::hooks` for the decisions
 /// offered.
@@ -441,8 +445,8 @@ where
     }
 }
 
-/// A hook handle controlling a `snapshot` (or `batch`) operator over a keyed singleton
-/// with keys `K` and values `V`. `S` is the handle's [scope](self#hook-scopes).
+/// A hook handle controlling a `snapshot` operator over a keyed singleton with keys `K` and
+/// values `V`. `S` is the handle's [scope](self#hook-scopes).
 ///
 /// A decision for a keyed snapshot hook picks which buffered version of each key's state
 /// the next tick execution observes. See `hydro_lang::sim::hooks` for the decisions

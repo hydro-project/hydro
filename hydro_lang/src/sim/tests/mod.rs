@@ -917,6 +917,80 @@ fn sim_fold_keyed_no_order() {
     });
 }
 
+/// Batching a `BoundedValue` keyed singleton (each key's value is fixed once it appears) is
+/// defined to yield only the entries that are *new* since the previous batch, matching the
+/// deployed `batch_eager()` semantics. The simulator must not model it as a snapshot, which
+/// would re-deliver every previously revealed entry on each tick (and let the batch skip or
+/// withhold "versions" that a `BoundedValue` keyed singleton can never have).
+#[test]
+fn sim_batch_bounded_value_keyed_singleton_yields_each_entry_once() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let (in_send, input) = node.sim_input::<(u32, char), TotalOrder, ExactlyOnce>();
+
+    // `first()` on a keyed stream yields a `BoundedValue` keyed singleton.
+    let firsts = input.into_keyed().first();
+    let out = sliced! {
+        let batch = use::batch(firsts, nondet!(/** test */));
+        batch.entries()
+    }
+    .sim_output();
+
+    flow.sim().exhaustive(async || {
+        in_send.send_many([(1, 'a'), (2, 'b'), (3, 'c')]);
+        // Across all ticks, each finalized entry is delivered exactly once, regardless of
+        // how the entries are split into batches.
+        out.assert_yields_only_unordered([(1, 'a'), (2, 'b'), (3, 'c')])
+            .await;
+    });
+}
+
+/// A fully `Bounded` keyed singleton can be *snapshotted* (as well as batched): every tick
+/// observes all the entries revealed so far, so an entry is never lost once it has been
+/// observed, and the snapshot eventually contains the complete contents.
+#[test]
+fn sim_snapshot_bounded_keyed_singleton_is_cumulative() {
+    use std::collections::BTreeSet;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let (trigger_send, trigger) = node.sim_input::<(), TotalOrder, ExactlyOnce>();
+
+    // `first()` on a bounded keyed stream yields a `Bounded` keyed singleton.
+    let bounded = node
+        .source_iter(q!(vec![(1, 'a'), (2, 'b')]))
+        .into_keyed()
+        .first();
+    let out = sliced! {
+        let trigger = use::batch(trigger, nondet!(/** test */));
+        let snapshot = use::snapshot(bounded, nondet!(/** test */));
+        trigger.cross_singleton(snapshot.entries().sort().collect_vec())
+            .map(q!(|(_, entries)| entries))
+    }
+    .sim_output();
+
+    let mut saw_complete = false;
+    flow.sim().exhaustive(async || {
+        trigger_send.send_many([(), ()]);
+        let per_tick: Vec<Vec<(u32, char)>> = out.collect().await;
+        let mut seen_so_far = BTreeSet::new();
+        for entries in &per_tick {
+            let now: BTreeSet<(u32, char)> = entries.iter().copied().collect();
+            assert!(
+                seen_so_far.is_subset(&now),
+                "a snapshot of a bounded keyed singleton must contain every previously observed entry; \
+                 saw {per_tick:?}"
+            );
+            seen_so_far = now;
+        }
+        saw_complete |= seen_so_far == BTreeSet::from([(1, 'a'), (2, 'b')]);
+    });
+    assert!(
+        saw_complete,
+        "some execution must observe the complete contents of the bounded keyed singleton"
+    );
+}
+
 #[test]
 fn sim_fold_tee_downstream_sees_different_subsets() {
     use std::collections::HashSet;

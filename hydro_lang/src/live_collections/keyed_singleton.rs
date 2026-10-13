@@ -168,6 +168,32 @@ impl IsKeyedMonotonic for BoundedValue {}
 #[diagnostic::do_not_recommend]
 impl<B: IsBounded + KeyedSingletonBound> IsKeyedMonotonic for B {}
 
+#[sealed]
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` keyed singletons cannot be snapshotted: each entry's value is final once it appears, so use `batch` to observe the new entries instead",
+    label = "required here"
+)]
+/// Marker trait for the [`KeyedSingletonBound`] types that support
+/// [`KeyedSingleton::snapshot`]: those whose entries may change over time ([`Unbounded`],
+/// [`MonotonicKeys`], [`MonotonicValue`]) and fully [`Bounded`] keyed singletons (whose
+/// complete contents are observed on every tick).
+///
+/// [`BoundedValue`] is excluded: each of its entries is final once it appears, so it is windowed
+/// into a tick with [`KeyedSingleton::batch`], which observes just the *new* entries.
+pub trait KeyedSingletonSnapshotBound: KeyedSingletonBound {}
+
+#[sealed]
+impl KeyedSingletonSnapshotBound for Unbounded {}
+
+#[sealed]
+impl KeyedSingletonSnapshotBound for MonotonicKeys {}
+
+#[sealed]
+impl KeyedSingletonSnapshotBound for MonotonicValue {}
+
+#[sealed]
+impl KeyedSingletonSnapshotBound for Bounded {}
+
 /// Mapping from keys of type `K` to values of type `V`.
 ///
 /// Keyed Singletons capture an asynchronously updated mapping from keys of the `K` to values of
@@ -1081,21 +1107,25 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
 
                 let result = sliced! {
                     let snapshot = use::snapshot(me, nondet!(/** thresholds are deterministic */));
-                    let thresh_snapshot =
+                    // Each threshold arrives in exactly one batch, so it is held as *pending*
+                    // across ticks until the key's value reaches it. Because the value is
+                    // monotone, a crossed threshold stays crossed forever, so it is dropped from
+                    // the pending set, which also ensures each key is emitted exactly once.
+                    let thresh_batch =
                         use::batch(thresholds, nondet!(/** thresholds are deterministic */));
-                    let mut already_crossed =
-                        use::state_null::<Stream<K, Tick<_>, Bounded, NoOrder>>();
+                    let mut pending_thresholds =
+                        use::state_null::<Stream<(K, V), Tick<_>, Bounded, NoOrder>>();
+                    pending_thresholds = pending_thresholds.chain(thresh_batch.entries());
 
-                    let joined = thresh_snapshot.entries().join(snapshot.entries());
-                    let passed = joined
+                    let crossed = pending_thresholds
+                        .clone()
+                        .join(snapshot.entries())
                         .filter(q!(|(_, (thresh, val))| *val >= *thresh))
                         .map(q!(|(k, (thresh, _))| (k, thresh)));
+                    pending_thresholds =
+                        pending_thresholds.anti_join(crossed.clone().map(q!(|(k, _)| k)));
 
-                    let newly_crossed = passed.anti_join(already_crossed.clone());
-                    already_crossed =
-                        already_crossed.chain(newly_crossed.clone().map(q!(|(k, _)| k)));
-
-                    newly_crossed.into_keyed()
+                    crossed.into_keyed()
                 };
 
                 KeyedStream::new(
@@ -1110,22 +1140,31 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 );
 
                 let result = sliced! {
-                    let snapshot = use::batch(me, nondet!(/** thresholds are deterministic */));
-                    let thresh_snapshot =
+                    // Both the values and the thresholds arrive in exactly one batch each, and a
+                    // key's value and threshold may arrive in different batches, so both sides
+                    // are held as *pending* across ticks until they meet. Once a key has crossed
+                    // its threshold, both its (final) value and threshold are dropped from the
+                    // pending sets, which also ensures each key is emitted exactly once.
+                    let value_batch = use::batch(me, nondet!(/** thresholds are deterministic */));
+                    let thresh_batch =
                         use::batch(thresholds, nondet!(/** thresholds are deterministic */));
-                    let mut already_crossed =
-                        use::state_null::<Stream<K, Tick<_>, Bounded, NoOrder>>();
+                    let mut pending_values =
+                        use::state_null::<Stream<(K, V), Tick<_>, Bounded, NoOrder>>();
+                    let mut pending_thresholds =
+                        use::state_null::<Stream<(K, V), Tick<_>, Bounded, NoOrder>>();
+                    pending_values = pending_values.chain(value_batch.entries());
+                    pending_thresholds = pending_thresholds.chain(thresh_batch.entries());
 
-                    let joined = thresh_snapshot.entries().join(snapshot.entries());
-                    let passed = joined
+                    let crossed = pending_thresholds
+                        .clone()
+                        .join(pending_values.clone())
                         .filter(q!(|(_, (thresh, val))| *val >= *thresh))
                         .map(q!(|(k, (thresh, _))| (k, thresh)));
+                    let crossed_keys = crossed.clone().map(q!(|(k, _)| k));
+                    pending_values = pending_values.anti_join(crossed_keys.clone());
+                    pending_thresholds = pending_thresholds.anti_join(crossed_keys);
 
-                    let newly_crossed = passed.anti_join(already_crossed.clone());
-                    already_crossed =
-                        already_crossed.chain(newly_crossed.clone().map(q!(|(k, _)| k)));
-
-                    newly_crossed.into_keyed()
+                    crossed.into_keyed()
                 };
 
                 KeyedStream::new(
@@ -1766,12 +1805,18 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     }
 }
 
-impl<'a, K, V, L, B: KeyedSingletonBound<ValueBound = Unbounded>> KeyedSingleton<K, V, L, B>
+impl<'a, K, V, L, B: KeyedSingletonSnapshotBound> KeyedSingleton<K, V, L, B>
 where
     L: Location<'a>,
 {
     /// Returns a keyed singleton with a snapshot of each key-value entry at a non-deterministic
-    /// point in time.
+    /// point in time. Every key that has appeared so far is present in each snapshot, so an
+    /// entry that has not changed since the previous snapshot is observed again.
+    ///
+    /// This is available for keyed singletons whose entries may change over time, and for
+    /// fully [`Bounded`] keyed singletons (whose complete contents are observed on every tick
+    /// once they are available). For a [`BoundedValue`] keyed singleton, where each entry is
+    /// final once it appears, use [`KeyedSingleton::batch`] to observe just the *new* entries.
     ///
     /// # Non-Determinism
     /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
@@ -1794,7 +1839,7 @@ where
         metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         KeyedSingleton::new(
             tick.drop_consistency(),
-            HydroNode::Batch {
+            HydroNode::Snapshot {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata,
             },
@@ -1802,7 +1847,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B: KeyedSingletonBound<ValueBound = Unbounded>> KeyedSingleton<K, V, Atomic<L>, B>
+impl<'a, K, V, L, B: KeyedSingletonSnapshotBound> KeyedSingleton<K, V, Atomic<L>, B>
 where
     L: Location<'a>,
 {
@@ -1823,7 +1868,7 @@ where
         );
         KeyedSingleton::new(
             tick.drop_consistency(),
-            HydroNode::Batch {
+            HydroNode::Snapshot {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
                     .new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind()),
@@ -1969,7 +2014,11 @@ where
     }
 
     /// Returns a keyed singleton with entries consisting of _new_ key-value pairs that have
-    /// arrived since the previous batch was released.
+    /// arrived since the previous batch was released. Because each entry's value is final once
+    /// it appears, every entry is released in exactly one batch and never observed again.
+    ///
+    /// To instead observe *every* entry that has appeared so far on each tick, a fully
+    /// [`Bounded`] keyed singleton can use [`KeyedSingleton::snapshot`].
     ///
     /// Currently, there is no `all_ticks` dual on [`KeyedSingleton`], instead you may want to use
     /// [`KeyedSingleton::into_keyed_stream`] then yield with [`KeyedStream::all_ticks`].
@@ -1979,12 +2028,16 @@ where
     /// has a non-deterministic set of key-value pairs.
     ///
     /// In simulation tests, the batching decisions can be scripted by attaching a
-    /// [`KeyedSnapshotHook`](crate::sim_hooks::KeyedSnapshotHook) to the guard via
+    /// [`KeyedBatchHook`](crate::sim_hooks::KeyedBatchHook) to the guard via
     /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
-        mut nondet: NonDet<Option<crate::sim_hooks::KeyedSnapshotHook<K, V, L::SimHookScope>>>,
+        mut nondet: NonDet<
+            Option<
+                crate::sim_hooks::KeyedBatchHook<K, V, TotalOrder, ExactlyOnce, L::SimHookScope>,
+            >,
+        >,
     ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
         assert_eq!(
             Location::id(tick.parent_location()),
