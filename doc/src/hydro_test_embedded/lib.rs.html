@@ -174,7 +174,7 @@
 <a href=#174 id=174 data-nosnippet>174</a>        <span class="macro">assert_eq!</span>(received, <span class="macro">vec!</span>[<span class="string">"HELLO"</span>, <span class="string">"WORLD"</span>]);
 <a href=#175 id=175 data-nosnippet>175</a>    }
 <a href=#176 id=176 data-nosnippet>176</a>
-<a href=#177 id=177 data-nosnippet>177</a>    <span class="comment">// --- echo_network_embedded (o2o, `.embedded()` serialization) ---
+<a href=#177 id=177 data-nosnippet>177</a>    <span class="comment">// --- echo_network_embedded (o2o, an `EMBEDDED` channel) ---
 <a href=#178 id=178 data-nosnippet>178</a>    // Unlike `echo_network`, the network channel exposes the raw `String` payload (not `Bytes`),
 <a href=#179 id=179 data-nosnippet>179</a>    // so serialization is performed by the surrounding (test) code.
 <a href=#180 id=180 data-nosnippet>180</a>    </span><span class="attr">#[tokio::test]
@@ -192,7 +192,7 @@
 <a href=#192 id=192 data-nosnippet>192</a>        run_flow(<span class="kw-2">&amp;mut </span>flow_sender).<span class="kw">await</span>;
 <a href=#193 id=193 data-nosnippet>193</a>        drop(flow_sender);
 <a href=#194 id=194 data-nosnippet>194</a>
-<a href=#195 id=195 data-nosnippet>195</a>        <span class="comment">// The transport delivers raw `String`s (embedded serialization has no transport `Result`).
+<a href=#195 id=195 data-nosnippet>195</a>        <span class="comment">// The transport delivers raw `String`s (an `EMBEDDED` channel has no transport `Result`).
 <a href=#196 id=196 data-nosnippet>196</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>msgs: Vec&lt;String&gt; = <span class="macro">vec!</span>[];
 <a href=#197 id=197 data-nosnippet>197</a>        <span class="kw">while let </span><span class="prelude-val">Ok</span>(s) = rx.try_recv() {
 <a href=#198 id=198 data-nosnippet>198</a>            msgs.push(s);
@@ -257,7 +257,7 @@
 <a href=#257 id=257 data-nosnippet>257</a>        <span class="macro">assert_eq!</span>(received, <span class="macro">vec!</span>[<span class="string">"HELLO"</span>, <span class="string">"WORLD"</span>]);
 <a href=#258 id=258 data-nosnippet>258</a>    }
 <a href=#259 id=259 data-nosnippet>259</a>
-<a href=#260 id=260 data-nosnippet>260</a>    <span class="comment">// --- o2m_demux_embedded (process -&gt; cluster demux, `.embedded()` serialization) ---
+<a href=#260 id=260 data-nosnippet>260</a>    <span class="comment">// --- o2m_demux_embedded (process -&gt; cluster demux, an `EMBEDDED` channel) ---
 <a href=#261 id=261 data-nosnippet>261</a>    // The payload type has no serde derives; the embedded channel moves it in-process
 <a href=#262 id=262 data-nosnippet>262</a>    // (regression test for hydro-project/hydro#3158).
 <a href=#263 id=263 data-nosnippet>263</a>    // sender (process): (inputs, network_out)

@@ -2807,7 +2807,7 @@
 <a href=#2807 id=2807 data-nosnippet>2807</a>    Bounded,
 <a href=#2808 id=2808 data-nosnippet>2808</a>}
 <a href=#2809 id=2809 data-nosnippet>2809</a>
-<a href=#2810 id=2810 data-nosnippet>2810</a><span class="attr">#[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
+<a href=#2810 id=2810 data-nosnippet>2810</a><span class="attr">#[derive(serde::Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 <a href=#2811 id=2811 data-nosnippet>2811</a></span><span class="kw">pub enum </span>StreamOrder {
 <a href=#2812 id=2812 data-nosnippet>2812</a>    NoOrder,
 <a href=#2813 id=2813 data-nosnippet>2813</a>    TotalOrder,
@@ -7080,9 +7080,9 @@
 <a href=#7080 id=7080 data-nosnippet>7080</a>    <span class="kw">if </span>external_types.is_some() {
 <a href=#7081 id=7081 data-nosnippet>7081</a>        <span class="macro">assert!</span>(
 <a href=#7082 id=7082 data-nosnippet>7082</a>            D::SUPPORTS_EXTERNAL_SERIALIZATION,
-<a href=#7083 id=7083 data-nosnippet>7083</a>            <span class="string">"`.embedded()` serialization leaves serialization to code outside of Hydro and is \
-<a href=#7084 id=7084 data-nosnippet>7084</a>             only supported by the embedded deployment backend. Use `.bincode()` (or another \
-<a href=#7085 id=7085 data-nosnippet>7085</a>             supported serialization backend) for this deployment target instead."
+<a href=#7083 id=7083 data-nosnippet>7083</a>            <span class="string">"`EMBEDDED` channels are implemented by the host of an embedded program and are \
+<a href=#7084 id=7084 data-nosnippet>7084</a>             only supported by the embedded deployment backend (and the simulator). Use `TCP` \
+<a href=#7085 id=7085 data-nosnippet>7085</a>             or `UDP` (with `.bincode()`) for this deployment target instead."
 <a href=#7086 id=7086 data-nosnippet>7086</a>        </span>);
 <a href=#7087 id=7087 data-nosnippet>7087</a>    }
 <a href=#7088 id=7088 data-nosnippet>7088</a>
