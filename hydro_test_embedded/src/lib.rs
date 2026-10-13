@@ -174,7 +174,7 @@ mod tests {
         assert_eq!(received, vec!["HELLO", "WORLD"]);
     }
 
-    // --- echo_network_embedded (o2o, `.embedded()` serialization) ---
+    // --- echo_network_embedded (o2o, an `EMBEDDED` channel) ---
     // Unlike `echo_network`, the network channel exposes the raw `String` payload (not `Bytes`),
     // so serialization is performed by the surrounding (test) code.
     #[tokio::test]
@@ -192,7 +192,7 @@ mod tests {
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
 
-        // The transport delivers raw `String`s (embedded serialization has no transport `Result`).
+        // The transport delivers raw `String`s (an `EMBEDDED` channel has no transport `Result`).
         let mut msgs: Vec<String> = vec![];
         while let Ok(s) = rx.try_recv() {
             msgs.push(s);
@@ -257,7 +257,7 @@ mod tests {
         assert_eq!(received, vec!["HELLO", "WORLD"]);
     }
 
-    // --- o2m_demux_embedded (process -> cluster demux, `.embedded()` serialization) ---
+    // --- o2m_demux_embedded (process -> cluster demux, an `EMBEDDED` channel) ---
     // The payload type has no serde derives; the embedded channel moves it in-process
     // (regression test for hydro-project/hydro#3158).
     // sender (process): (inputs, network_out)

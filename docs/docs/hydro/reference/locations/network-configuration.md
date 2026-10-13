@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Network Configuration
 
-When sending data between locations in Hydro (e.g. via `.send()`, `.broadcast()`, or `.demux()`), you must provide a networking configuration that specifies the transport, fault tolerance policy, and serialization format. These are configured by specifying a network protocol and using a builder-style API.
+When sending data between locations in Hydro (e.g. via `.send()`, `.broadcast()`, or `.demux()`), you must provide a networking configuration that specifies the transport, fault tolerance policy, and serialization format (for [`EMBEDDED`](#embedded) channels, the serialization is performed by the host). These are configured by specifying a network protocol and using a builder-style API.
 
 A typical networking configuration looks like:
 
@@ -36,37 +36,34 @@ Serialization configures how data is encoded and decoded when sent over the netw
 
 The `.bincode()` API configures the channel to use the [`bincode`](https://docs.rs/bincode) crate for serialization and deserialization. The types being sent must implement `Serialize` and `DeserializeOwned`. Bincode is currently the only built-in wire format — the one where Hydro performs the encoding and decoding for you — and it works on all deployment backends.
 
-### Embedded
+## EMBEDDED
 
-The `.embedded()` API configures the channel to leave serialization to code **outside of Hydro**. Instead of Hydro serializing elements to bytes, the raw element type `T` is exposed at the network boundary: the generated sender side hands you `T` values directly, and the receiver side accepts a stream of `T` values. You are then responsible for encoding, transporting, and decoding the elements yourself—for example with a custom wire format, a specialized transport like DPDK or shared memory, or an existing messaging layer.
-
-```rust,no_run
-# use hydro_lang::prelude::*;
-let config = TCP.fail_stop().embedded().name("messages");
-```
-
-Embedded serialization works with any transport configuration, including [UDP](#udp):
+`EMBEDDED` is for [embedded deployments](../deploy/embedded.mdx), where the host program that runs the generated code implements every channel itself: over a network connection, through an in-memory queue, with a specialized transport like DPDK or shared memory, or with an existing messaging layer. The config names only the **guarantees** the channel must keep:
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
-let config = UDP.lossy_delayed_forever().embedded().name("messages");
+let config = EMBEDDED.fail_stop().name("messages");
 ```
 
-Note that with embedded serialization, the transport and fault policy describe a **contract** rather than an implementation: since your external code carries the data, *you* must ensure your transport upholds the declared guarantees (e.g. in-order, prefix delivery for `TCP.fail_stop()`; for `UDP` channels, messages may be dropped or reordered, and Hydro's type system will treat the received stream accordingly, as `NoOrder`).
+| Policy | Received stream | The host's channel must |
+|---|---|---|
+| `EMBEDDED.fail_stop()` | `TotalOrder`, `EventualConsistency` | deliver, per sender, an in-order prefix of what it sent, and nothing more once it fails |
+| `EMBEDDED.lossy(nondet!(..))` | `TotalOrder`, `NoConsistency` | deliver each sender's messages in order; any may be dropped |
+| `EMBEDDED.lossy_delayed_forever()` | `NoOrder`, `EventualConsistency` | deliver in any order; a message never delivered counts as delayed forever |
 
-Because there is no transport managed by Hydro, the receiving side gets the raw payload with no transport `Result` to unwrap—your external code decides how to handle serialization and delivery faults before feeding elements into the receiver.
+`EMBEDDED` channels are never serialized by Hydro: the raw element type `T` is exposed at the channel boundary, so the generated sender side hands the host `T` values directly, and the receiver side accepts a stream of `T` values. The host encodes them only if its transport needs to (an in-memory queue never does). Because no transport managed by Hydro is involved, the receiving side gets the raw payload with no transport `Result` to unwrap: the host decides how to handle serialization and delivery faults before feeding elements into the receiver.
 
 :::caution
 
-Embedded serialization is only supported in [embedded deployments](../deploy/embedded.mdx) (where you wire up network channels manually) and the Hydro simulator (where raw values are carried directly through in-memory channels). Attempting to use `.embedded()` with other deployment backends, such as Hydro Deploy or Maelstrom, will panic at compile time; use `.bincode()` there instead.
+`EMBEDDED` is only supported in [embedded deployments](../deploy/embedded.mdx) and the Hydro simulator (where raw values are carried directly through in-memory channels). Other deployment backends, such as Hydro Deploy or Maelstrom, run the transport themselves and panic at compile time on an `EMBEDDED` channel; use [TCP](#tcp) or [UDP](#udp) with `.bincode()` there instead. (Embedded deployments also support `TCP`/`UDP` channels, in which case Hydro serializes to bytes and the host only moves them.)
 
 :::
 
-See [Embedded Mode: Embedded Serialization](../deploy/embedded.mdx#embedded-serialization) for details on the generated code.
+See [Embedded Mode: Host-Implemented Channels](../deploy/embedded.mdx#host-implemented-channels-embedded) for details on the generated code.
 
 ## TCP
 
-TCP is one of two available transport backends (see also [UDP](#udp)). When using `TCP`, you **must** choose a fault tolerance policy before configuring serialization. Calling `TCP.bincode()` directly will result in a compile error—you need to first call `.fail_stop()`, `.lossy_delayed_forever()`, or `.lossy()`.
+TCP is one of two transport backends Hydro runs itself (see also [UDP](#udp), and [EMBEDDED](#embedded) for host-implemented channels). When using `TCP`, you **must** choose a fault tolerance policy before configuring serialization. Calling `TCP.bincode()` directly will result in a compile error—you need to first call `.fail_stop()`, `.lossy_delayed_forever()`, or `.lossy()`.
 
 ### Fail-Stop
 
