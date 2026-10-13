@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/properties/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (080cc2714 2026-10-11)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/properties/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Types for reasoning about algebraic properties for Rust closures.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/properties/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (e9bbadf68 2026-10-12)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/properties/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Types for reasoning about algebraic properties for Rust closures.
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>std::marker::PhantomData;
 <a href=#4 id=4 data-nosnippet>4</a>
@@ -1022,216 +1022,222 @@
 <a href=#1022 id=1022 data-nosnippet>1022</a>/// *intermediate* accumulator values may still differ and must not be observed without
 <a href=#1023 id=1023 data-nosnippet>1023</a>/// a non-determinism annotation.
 <a href=#1024 id=1024 data-nosnippet>1024</a></span><span class="attr">#[diagnostic::on_unimplemented(
-<a href=#1025 id=1025 data-nosnippet>1025</a>    message = <span class="string">"Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation."</span>,
+<a href=#1025 id=1025 data-nosnippet>1025</a>    message = <span class="string">"because the input stream has ordering `{O}`, the closure must demonstrate commutativity"</span>,
 <a href=#1026 id=1026 data-nosnippet>1026</a>    label = <span class="string">"required for this call"</span>,
-<a href=#1027 id=1027 data-nosnippet>1027</a>    note = <span class="string">"To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
-<a href=#1028 id=1028 data-nosnippet>1028</a></span>)]
-<a href=#1029 id=1029 data-nosnippet>1029</a>#[sealed::sealed]
-<a href=#1030 id=1030 data-nosnippet>1030</a></span><span class="kw">pub trait </span>ValidCommutativityFor&lt;O: Ordering&gt; {}
-<a href=#1031 id=1031 data-nosnippet>1031</a><span class="attr">#[sealed::sealed]
-<a href=#1032 id=1032 data-nosnippet>1032</a></span><span class="kw">impl </span>ValidCommutativityFor&lt;TotalOrder&gt; <span class="kw">for </span>NotProved {}
-<a href=#1033 id=1033 data-nosnippet>1033</a><span class="attr">#[sealed::sealed]
-<a href=#1034 id=1034 data-nosnippet>1034</a></span><span class="kw">impl</span>&lt;O: Ordering&gt; ValidCommutativityFor&lt;O&gt; <span class="kw">for </span>Proved {}
-<a href=#1035 id=1035 data-nosnippet>1035</a>
-<a href=#1036 id=1036 data-nosnippet>1036</a><span class="doccomment">/// Marker trait identifying that the idempotence property is valid for the given stream ordering.
-<a href=#1037 id=1037 data-nosnippet>1037</a></span><span class="attr">#[diagnostic::on_unimplemented(
-<a href=#1038 id=1038 data-nosnippet>1038</a>    message = <span class="string">"Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation."</span>,
-<a href=#1039 id=1039 data-nosnippet>1039</a>    label = <span class="string">"required for this call"</span>,
-<a href=#1040 id=1040 data-nosnippet>1040</a>    note = <span class="string">"To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
-<a href=#1041 id=1041 data-nosnippet>1041</a></span>)]
-<a href=#1042 id=1042 data-nosnippet>1042</a>#[sealed::sealed]
-<a href=#1043 id=1043 data-nosnippet>1043</a></span><span class="kw">pub trait </span>ValidIdempotenceFor&lt;R: Retries&gt; {}
-<a href=#1044 id=1044 data-nosnippet>1044</a><span class="attr">#[sealed::sealed]
-<a href=#1045 id=1045 data-nosnippet>1045</a></span><span class="kw">impl </span>ValidIdempotenceFor&lt;ExactlyOnce&gt; <span class="kw">for </span>NotProved {}
+<a href=#1027 id=1027 data-nosnippet>1027</a>    note = <span class="string">"prove it with a `commutative = manual_proof!(/** why the order does not matter */)` annotation on the closure"</span>,
+<a href=#1028 id=1028 data-nosnippet>1028</a>    note = <span class="string">"to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary"
+<a href=#1029 id=1029 data-nosnippet>1029</a></span>)]
+<a href=#1030 id=1030 data-nosnippet>1030</a>#[sealed::sealed]
+<a href=#1031 id=1031 data-nosnippet>1031</a></span><span class="kw">pub trait </span>ValidCommutativityFor&lt;O: Ordering&gt; {}
+<a href=#1032 id=1032 data-nosnippet>1032</a><span class="attr">#[sealed::sealed]
+<a href=#1033 id=1033 data-nosnippet>1033</a></span><span class="kw">impl </span>ValidCommutativityFor&lt;TotalOrder&gt; <span class="kw">for </span>NotProved {}
+<a href=#1034 id=1034 data-nosnippet>1034</a><span class="attr">#[sealed::sealed]
+<a href=#1035 id=1035 data-nosnippet>1035</a></span><span class="kw">impl</span>&lt;O: Ordering&gt; ValidCommutativityFor&lt;O&gt; <span class="kw">for </span>Proved {}
+<a href=#1036 id=1036 data-nosnippet>1036</a>
+<a href=#1037 id=1037 data-nosnippet>1037</a><span class="doccomment">/// Marker trait identifying that the idempotence property is valid for the given stream ordering.
+<a href=#1038 id=1038 data-nosnippet>1038</a></span><span class="attr">#[diagnostic::on_unimplemented(
+<a href=#1039 id=1039 data-nosnippet>1039</a>    message = <span class="string">"because the input stream has retries `{R}`, the closure must demonstrate idempotence"</span>,
+<a href=#1040 id=1040 data-nosnippet>1040</a>    label = <span class="string">"required for this call"</span>,
+<a href=#1041 id=1041 data-nosnippet>1041</a>    note = <span class="string">"prove it with an `idempotent = manual_proof!(/** why a repeat does not matter */)` annotation on the closure"</span>,
+<a href=#1042 id=1042 data-nosnippet>1042</a>    note = <span class="string">"to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary"
+<a href=#1043 id=1043 data-nosnippet>1043</a></span>)]
+<a href=#1044 id=1044 data-nosnippet>1044</a>#[sealed::sealed]
+<a href=#1045 id=1045 data-nosnippet>1045</a></span><span class="kw">pub trait </span>ValidIdempotenceFor&lt;R: Retries&gt; {}
 <a href=#1046 id=1046 data-nosnippet>1046</a><span class="attr">#[sealed::sealed]
-<a href=#1047 id=1047 data-nosnippet>1047</a></span><span class="kw">impl</span>&lt;R: Retries&gt; ValidIdempotenceFor&lt;R&gt; <span class="kw">for </span>Proved {}
-<a href=#1048 id=1048 data-nosnippet>1048</a>
-<a href=#1049 id=1049 data-nosnippet>1049</a><span class="doccomment">/// Marker trait identifying that the commutativity property is valid for the given stream ordering.
-<a href=#1050 id=1050 data-nosnippet>1050</a>///
-<a href=#1051 id=1051 data-nosnippet>1051</a>/// A proof is required when the stream is unordered **and** the closure mutably captures
-<a href=#1052 id=1052 data-nosnippet>1052</a>/// state (`WAS_MUT`). **Definition (owned-item closures, `|item: T| -&gt; Out`, e.g. `map`
-<a href=#1053 id=1053 data-nosnippet>1053</a>/// / `for_each`):** processing any two items in either order must (1) leave the
-<a href=#1054 id=1054 data-nosnippet>1054</a>/// mutably-captured state (e.g. [`Singleton::by_mut`] references) in the same final
-<a href=#1055 id=1055 data-nosnippet>1055</a>/// value, *and* (2) produce the same **multiset of return values**. Condition (2) is
-<a href=#1056 id=1056 data-nosnippet>1056</a>/// required whenever the return value is observable (as in `map`): a closure that
-<a href=#1057 id=1057 data-nosnippet>1057</a>/// emits, say, a running total is **not** commutative even if its state update is. For
-<a href=#1058 id=1058 data-nosnippet>1058</a>/// `()`-returning closures (as in `for_each`), condition (2) is trivial.
-<a href=#1059 id=1059 data-nosnippet>1059</a>///
-<a href=#1060 id=1060 data-nosnippet>1060</a>/// [`Singleton::by_mut`]: crate::live_collections::singleton::Singleton::by_mut
-<a href=#1061 id=1061 data-nosnippet>1061</a></span><span class="attr">#[sealed::sealed]
-<a href=#1062 id=1062 data-nosnippet>1062</a>#[diagnostic::on_unimplemented(
-<a href=#1063 id=1063 data-nosnippet>1063</a>    message = <span class="string">"Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation."</span>,
-<a href=#1064 id=1064 data-nosnippet>1064</a>    label = <span class="string">"required for this call"</span>,
-<a href=#1065 id=1065 data-nosnippet>1065</a>    note = <span class="string">"To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
-<a href=#1066 id=1066 data-nosnippet>1066</a></span>)]
-<a href=#1067 id=1067 data-nosnippet>1067</a></span><span class="kw">pub trait </span>ValidMutCommutativityFor&lt;F: FnMut(In) -&gt; Out, In, Out, O: Ordering, <span class="kw">const </span>WAS_MUT: bool&gt; {}
-<a href=#1068 id=1068 data-nosnippet>1068</a><span class="attr">#[sealed::sealed]
-<a href=#1069 id=1069 data-nosnippet>1069</a></span><span class="kw">impl</span>&lt;In, Out, F: FnMut(In) -&gt; Out&gt; ValidMutCommutativityFor&lt;F, In, Out, TotalOrder, <span class="bool-val">true</span>&gt;
-<a href=#1070 id=1070 data-nosnippet>1070</a>    <span class="kw">for </span>NotProved
-<a href=#1071 id=1071 data-nosnippet>1071</a>{
-<a href=#1072 id=1072 data-nosnippet>1072</a>}
-<a href=#1073 id=1073 data-nosnippet>1073</a><span class="attr">#[sealed::sealed]
-<a href=#1074 id=1074 data-nosnippet>1074</a></span><span class="kw">impl</span>&lt;In, Out, F: Fn(In) -&gt; Out, O: Ordering&gt; ValidMutCommutativityFor&lt;F, In, Out, O, <span class="bool-val">false</span>&gt;
-<a href=#1075 id=1075 data-nosnippet>1075</a>    <span class="kw">for </span>NotProved
-<a href=#1076 id=1076 data-nosnippet>1076</a>{
-<a href=#1077 id=1077 data-nosnippet>1077</a>}
-<a href=#1078 id=1078 data-nosnippet>1078</a><span class="attr">#[sealed::sealed]
-<a href=#1079 id=1079 data-nosnippet>1079</a></span><span class="kw">impl</span>&lt;In, Out, F: FnMut(In) -&gt; Out, O: Ordering&gt; ValidMutCommutativityFor&lt;F, In, Out, O, <span class="bool-val">true</span>&gt;
-<a href=#1080 id=1080 data-nosnippet>1080</a>    <span class="kw">for </span>Proved
-<a href=#1081 id=1081 data-nosnippet>1081</a>{
-<a href=#1082 id=1082 data-nosnippet>1082</a>}
-<a href=#1083 id=1083 data-nosnippet>1083</a><span class="attr">#[sealed::sealed]
-<a href=#1084 id=1084 data-nosnippet>1084</a></span><span class="kw">impl</span>&lt;In, Out, F: Fn(In) -&gt; Out, O: Ordering&gt; ValidMutCommutativityFor&lt;F, In, Out, O, <span class="bool-val">false</span>&gt;
-<a href=#1085 id=1085 data-nosnippet>1085</a>    <span class="kw">for </span>Proved
-<a href=#1086 id=1086 data-nosnippet>1086</a>{
-<a href=#1087 id=1087 data-nosnippet>1087</a>}
-<a href=#1088 id=1088 data-nosnippet>1088</a>
-<a href=#1089 id=1089 data-nosnippet>1089</a><span class="doccomment">/// Marker trait identifying that the idempotence property is valid for the given stream ordering.
-<a href=#1090 id=1090 data-nosnippet>1090</a></span><span class="attr">#[diagnostic::on_unimplemented(
-<a href=#1091 id=1091 data-nosnippet>1091</a>    message = <span class="string">"Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation."</span>,
-<a href=#1092 id=1092 data-nosnippet>1092</a>    label = <span class="string">"required for this call"</span>,
-<a href=#1093 id=1093 data-nosnippet>1093</a>    note = <span class="string">"To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
-<a href=#1094 id=1094 data-nosnippet>1094</a></span>)]
-<a href=#1095 id=1095 data-nosnippet>1095</a>#[sealed::sealed]
-<a href=#1096 id=1096 data-nosnippet>1096</a></span><span class="kw">pub trait </span>ValidMutIdempotenceFor&lt;F: FnMut(In) -&gt; Out, In, Out, R: Retries, <span class="kw">const </span>WAS_MUT: bool&gt; {}
-<a href=#1097 id=1097 data-nosnippet>1097</a><span class="attr">#[sealed::sealed]
-<a href=#1098 id=1098 data-nosnippet>1098</a></span><span class="kw">impl</span>&lt;In, Out, F: FnMut(In) -&gt; Out&gt; ValidMutIdempotenceFor&lt;F, In, Out, ExactlyOnce, <span class="bool-val">true</span>&gt;
-<a href=#1099 id=1099 data-nosnippet>1099</a>    <span class="kw">for </span>NotProved
-<a href=#1100 id=1100 data-nosnippet>1100</a>{
-<a href=#1101 id=1101 data-nosnippet>1101</a>}
-<a href=#1102 id=1102 data-nosnippet>1102</a><span class="attr">#[sealed::sealed]
-<a href=#1103 id=1103 data-nosnippet>1103</a></span><span class="kw">impl</span>&lt;In, Out, F: Fn(In) -&gt; Out, R: Retries&gt; ValidMutIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">false</span>&gt;
-<a href=#1104 id=1104 data-nosnippet>1104</a>    <span class="kw">for </span>NotProved
-<a href=#1105 id=1105 data-nosnippet>1105</a>{
-<a href=#1106 id=1106 data-nosnippet>1106</a>}
-<a href=#1107 id=1107 data-nosnippet>1107</a><span class="attr">#[sealed::sealed]
-<a href=#1108 id=1108 data-nosnippet>1108</a></span><span class="kw">impl</span>&lt;In, Out, F: FnMut(In) -&gt; Out, R: Retries&gt; ValidMutIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">true</span>&gt;
-<a href=#1109 id=1109 data-nosnippet>1109</a>    <span class="kw">for </span>Proved
-<a href=#1110 id=1110 data-nosnippet>1110</a>{
-<a href=#1111 id=1111 data-nosnippet>1111</a>}
-<a href=#1112 id=1112 data-nosnippet>1112</a><span class="attr">#[sealed::sealed]
-<a href=#1113 id=1113 data-nosnippet>1113</a></span><span class="kw">impl</span>&lt;In, Out, F: Fn(In) -&gt; Out, R: Retries&gt; ValidMutIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">false</span>&gt;
-<a href=#1114 id=1114 data-nosnippet>1114</a>    <span class="kw">for </span>Proved
-<a href=#1115 id=1115 data-nosnippet>1115</a>{
-<a href=#1116 id=1116 data-nosnippet>1116</a>}
-<a href=#1117 id=1117 data-nosnippet>1117</a>
-<a href=#1118 id=1118 data-nosnippet>1118</a><span class="doccomment">/// Marker trait for commutativity of closures that borrow their input (`FnMut(&amp;In) -&gt; Out`).
-<a href=#1119 id=1119 data-nosnippet>1119</a>///
-<a href=#1120 id=1120 data-nosnippet>1120</a>/// A proof is required when the stream is unordered **and** the closure mutably captures
-<a href=#1121 id=1121 data-nosnippet>1121</a>/// state (`WAS_MUT`). **Definition (borrowing closures, `|item: &amp;T| -&gt; Out`, e.g.
-<a href=#1122 id=1122 data-nosnippet>1122</a>/// `filter` / `inspect`):** processing any two items in either order must (1) leave the
-<a href=#1123 id=1123 data-nosnippet>1123</a>/// mutably-captured state (e.g. [`Singleton::by_mut`] references) in the same final
-<a href=#1124 id=1124 data-nosnippet>1124</a>/// value, *and* (2) keep the operator's observable output identical as a multiset. For
-<a href=#1125 id=1125 data-nosnippet>1125</a>/// `filter`, the outputs are the **retained elements**, so the predicate's decisions
-<a href=#1126 id=1126 data-nosnippet>1126</a>/// must not depend on the processing order: a stateful predicate like a rate limiter is
-<a href=#1127 id=1127 data-nosnippet>1127</a>/// **not** commutative — its budget converges either way, but *which* element passes
-<a href=#1128 id=1128 data-nosnippet>1128</a>/// depends on the order. For `inspect`, the elements pass through unchanged, so only
-<a href=#1129 id=1129 data-nosnippet>1129</a>/// condition (1) applies.
-<a href=#1130 id=1130 data-nosnippet>1130</a>///
-<a href=#1131 id=1131 data-nosnippet>1131</a>/// [`Singleton::by_mut`]: crate::live_collections::singleton::Singleton::by_mut
-<a href=#1132 id=1132 data-nosnippet>1132</a></span><span class="attr">#[sealed::sealed]
-<a href=#1133 id=1133 data-nosnippet>1133</a>#[diagnostic::on_unimplemented(
-<a href=#1134 id=1134 data-nosnippet>1134</a>    message = <span class="string">"Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation."</span>,
-<a href=#1135 id=1135 data-nosnippet>1135</a>    label = <span class="string">"required for this call"</span>,
-<a href=#1136 id=1136 data-nosnippet>1136</a>    note = <span class="string">"To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
-<a href=#1137 id=1137 data-nosnippet>1137</a></span>)]
-<a href=#1138 id=1138 data-nosnippet>1138</a></span><span class="kw">pub trait </span>ValidMutBorrowCommutativityFor&lt;
-<a href=#1139 id=1139 data-nosnippet>1139</a>    F: FnMut(<span class="kw-2">&amp;</span>In) -&gt; Out,
-<a href=#1140 id=1140 data-nosnippet>1140</a>    In: <span class="question-mark">?</span>Sized,
-<a href=#1141 id=1141 data-nosnippet>1141</a>    Out,
-<a href=#1142 id=1142 data-nosnippet>1142</a>    O: Ordering,
-<a href=#1143 id=1143 data-nosnippet>1143</a>    <span class="kw">const </span>WAS_MUT: bool,
-<a href=#1144 id=1144 data-nosnippet>1144</a>&gt;
-<a href=#1145 id=1145 data-nosnippet>1145</a>{
-<a href=#1146 id=1146 data-nosnippet>1146</a>}
-<a href=#1147 id=1147 data-nosnippet>1147</a><span class="attr">#[sealed::sealed]
-<a href=#1148 id=1148 data-nosnippet>1148</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: FnMut(<span class="kw-2">&amp;</span>In) -&gt; Out&gt;
-<a href=#1149 id=1149 data-nosnippet>1149</a>    ValidMutBorrowCommutativityFor&lt;F, In, Out, TotalOrder, <span class="bool-val">true</span>&gt; <span class="kw">for </span>NotProved
+<a href=#1047 id=1047 data-nosnippet>1047</a></span><span class="kw">impl </span>ValidIdempotenceFor&lt;ExactlyOnce&gt; <span class="kw">for </span>NotProved {}
+<a href=#1048 id=1048 data-nosnippet>1048</a><span class="attr">#[sealed::sealed]
+<a href=#1049 id=1049 data-nosnippet>1049</a></span><span class="kw">impl</span>&lt;R: Retries&gt; ValidIdempotenceFor&lt;R&gt; <span class="kw">for </span>Proved {}
+<a href=#1050 id=1050 data-nosnippet>1050</a>
+<a href=#1051 id=1051 data-nosnippet>1051</a><span class="doccomment">/// Marker trait identifying that the commutativity property is valid for the given stream ordering.
+<a href=#1052 id=1052 data-nosnippet>1052</a>///
+<a href=#1053 id=1053 data-nosnippet>1053</a>/// A proof is required when the stream is unordered **and** the closure mutably captures
+<a href=#1054 id=1054 data-nosnippet>1054</a>/// state (`WAS_MUT`). **Definition (owned-item closures, `|item: T| -&gt; Out`, e.g. `map`
+<a href=#1055 id=1055 data-nosnippet>1055</a>/// / `for_each`):** processing any two items in either order must (1) leave the
+<a href=#1056 id=1056 data-nosnippet>1056</a>/// mutably-captured state (e.g. [`Singleton::by_mut`] references) in the same final
+<a href=#1057 id=1057 data-nosnippet>1057</a>/// value, *and* (2) produce the same **multiset of return values**. Condition (2) is
+<a href=#1058 id=1058 data-nosnippet>1058</a>/// required whenever the return value is observable (as in `map`): a closure that
+<a href=#1059 id=1059 data-nosnippet>1059</a>/// emits, say, a running total is **not** commutative even if its state update is. For
+<a href=#1060 id=1060 data-nosnippet>1060</a>/// `()`-returning closures (as in `for_each`), condition (2) is trivial.
+<a href=#1061 id=1061 data-nosnippet>1061</a>///
+<a href=#1062 id=1062 data-nosnippet>1062</a>/// [`Singleton::by_mut`]: crate::live_collections::singleton::Singleton::by_mut
+<a href=#1063 id=1063 data-nosnippet>1063</a></span><span class="attr">#[sealed::sealed]
+<a href=#1064 id=1064 data-nosnippet>1064</a>#[diagnostic::on_unimplemented(
+<a href=#1065 id=1065 data-nosnippet>1065</a>    message = <span class="string">"because the input stream has ordering `{O}`, the closure must demonstrate commutativity"</span>,
+<a href=#1066 id=1066 data-nosnippet>1066</a>    label = <span class="string">"required for this call"</span>,
+<a href=#1067 id=1067 data-nosnippet>1067</a>    note = <span class="string">"prove it with a `commutative = manual_proof!(/** why the order does not matter */)` annotation on the closure"</span>,
+<a href=#1068 id=1068 data-nosnippet>1068</a>    note = <span class="string">"to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary"
+<a href=#1069 id=1069 data-nosnippet>1069</a></span>)]
+<a href=#1070 id=1070 data-nosnippet>1070</a></span><span class="kw">pub trait </span>ValidMutCommutativityFor&lt;F: FnMut(In) -&gt; Out, In, Out, O: Ordering, <span class="kw">const </span>WAS_MUT: bool&gt; {}
+<a href=#1071 id=1071 data-nosnippet>1071</a><span class="attr">#[sealed::sealed]
+<a href=#1072 id=1072 data-nosnippet>1072</a></span><span class="kw">impl</span>&lt;In, Out, F: FnMut(In) -&gt; Out&gt; ValidMutCommutativityFor&lt;F, In, Out, TotalOrder, <span class="bool-val">true</span>&gt;
+<a href=#1073 id=1073 data-nosnippet>1073</a>    <span class="kw">for </span>NotProved
+<a href=#1074 id=1074 data-nosnippet>1074</a>{
+<a href=#1075 id=1075 data-nosnippet>1075</a>}
+<a href=#1076 id=1076 data-nosnippet>1076</a><span class="attr">#[sealed::sealed]
+<a href=#1077 id=1077 data-nosnippet>1077</a></span><span class="kw">impl</span>&lt;In, Out, F: Fn(In) -&gt; Out, O: Ordering&gt; ValidMutCommutativityFor&lt;F, In, Out, O, <span class="bool-val">false</span>&gt;
+<a href=#1078 id=1078 data-nosnippet>1078</a>    <span class="kw">for </span>NotProved
+<a href=#1079 id=1079 data-nosnippet>1079</a>{
+<a href=#1080 id=1080 data-nosnippet>1080</a>}
+<a href=#1081 id=1081 data-nosnippet>1081</a><span class="attr">#[sealed::sealed]
+<a href=#1082 id=1082 data-nosnippet>1082</a></span><span class="kw">impl</span>&lt;In, Out, F: FnMut(In) -&gt; Out, O: Ordering&gt; ValidMutCommutativityFor&lt;F, In, Out, O, <span class="bool-val">true</span>&gt;
+<a href=#1083 id=1083 data-nosnippet>1083</a>    <span class="kw">for </span>Proved
+<a href=#1084 id=1084 data-nosnippet>1084</a>{
+<a href=#1085 id=1085 data-nosnippet>1085</a>}
+<a href=#1086 id=1086 data-nosnippet>1086</a><span class="attr">#[sealed::sealed]
+<a href=#1087 id=1087 data-nosnippet>1087</a></span><span class="kw">impl</span>&lt;In, Out, F: Fn(In) -&gt; Out, O: Ordering&gt; ValidMutCommutativityFor&lt;F, In, Out, O, <span class="bool-val">false</span>&gt;
+<a href=#1088 id=1088 data-nosnippet>1088</a>    <span class="kw">for </span>Proved
+<a href=#1089 id=1089 data-nosnippet>1089</a>{
+<a href=#1090 id=1090 data-nosnippet>1090</a>}
+<a href=#1091 id=1091 data-nosnippet>1091</a>
+<a href=#1092 id=1092 data-nosnippet>1092</a><span class="doccomment">/// Marker trait identifying that the idempotence property is valid for the given stream ordering.
+<a href=#1093 id=1093 data-nosnippet>1093</a></span><span class="attr">#[diagnostic::on_unimplemented(
+<a href=#1094 id=1094 data-nosnippet>1094</a>    message = <span class="string">"because the input stream has retries `{R}`, the closure must demonstrate idempotence"</span>,
+<a href=#1095 id=1095 data-nosnippet>1095</a>    label = <span class="string">"required for this call"</span>,
+<a href=#1096 id=1096 data-nosnippet>1096</a>    note = <span class="string">"prove it with an `idempotent = manual_proof!(/** why a repeat does not matter */)` annotation on the closure"</span>,
+<a href=#1097 id=1097 data-nosnippet>1097</a>    note = <span class="string">"to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary"
+<a href=#1098 id=1098 data-nosnippet>1098</a></span>)]
+<a href=#1099 id=1099 data-nosnippet>1099</a>#[sealed::sealed]
+<a href=#1100 id=1100 data-nosnippet>1100</a></span><span class="kw">pub trait </span>ValidMutIdempotenceFor&lt;F: FnMut(In) -&gt; Out, In, Out, R: Retries, <span class="kw">const </span>WAS_MUT: bool&gt; {}
+<a href=#1101 id=1101 data-nosnippet>1101</a><span class="attr">#[sealed::sealed]
+<a href=#1102 id=1102 data-nosnippet>1102</a></span><span class="kw">impl</span>&lt;In, Out, F: FnMut(In) -&gt; Out&gt; ValidMutIdempotenceFor&lt;F, In, Out, ExactlyOnce, <span class="bool-val">true</span>&gt;
+<a href=#1103 id=1103 data-nosnippet>1103</a>    <span class="kw">for </span>NotProved
+<a href=#1104 id=1104 data-nosnippet>1104</a>{
+<a href=#1105 id=1105 data-nosnippet>1105</a>}
+<a href=#1106 id=1106 data-nosnippet>1106</a><span class="attr">#[sealed::sealed]
+<a href=#1107 id=1107 data-nosnippet>1107</a></span><span class="kw">impl</span>&lt;In, Out, F: Fn(In) -&gt; Out, R: Retries&gt; ValidMutIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">false</span>&gt;
+<a href=#1108 id=1108 data-nosnippet>1108</a>    <span class="kw">for </span>NotProved
+<a href=#1109 id=1109 data-nosnippet>1109</a>{
+<a href=#1110 id=1110 data-nosnippet>1110</a>}
+<a href=#1111 id=1111 data-nosnippet>1111</a><span class="attr">#[sealed::sealed]
+<a href=#1112 id=1112 data-nosnippet>1112</a></span><span class="kw">impl</span>&lt;In, Out, F: FnMut(In) -&gt; Out, R: Retries&gt; ValidMutIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">true</span>&gt;
+<a href=#1113 id=1113 data-nosnippet>1113</a>    <span class="kw">for </span>Proved
+<a href=#1114 id=1114 data-nosnippet>1114</a>{
+<a href=#1115 id=1115 data-nosnippet>1115</a>}
+<a href=#1116 id=1116 data-nosnippet>1116</a><span class="attr">#[sealed::sealed]
+<a href=#1117 id=1117 data-nosnippet>1117</a></span><span class="kw">impl</span>&lt;In, Out, F: Fn(In) -&gt; Out, R: Retries&gt; ValidMutIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">false</span>&gt;
+<a href=#1118 id=1118 data-nosnippet>1118</a>    <span class="kw">for </span>Proved
+<a href=#1119 id=1119 data-nosnippet>1119</a>{
+<a href=#1120 id=1120 data-nosnippet>1120</a>}
+<a href=#1121 id=1121 data-nosnippet>1121</a>
+<a href=#1122 id=1122 data-nosnippet>1122</a><span class="doccomment">/// Marker trait for commutativity of closures that borrow their input (`FnMut(&amp;In) -&gt; Out`).
+<a href=#1123 id=1123 data-nosnippet>1123</a>///
+<a href=#1124 id=1124 data-nosnippet>1124</a>/// A proof is required when the stream is unordered **and** the closure mutably captures
+<a href=#1125 id=1125 data-nosnippet>1125</a>/// state (`WAS_MUT`). **Definition (borrowing closures, `|item: &amp;T| -&gt; Out`, e.g.
+<a href=#1126 id=1126 data-nosnippet>1126</a>/// `filter` / `inspect`):** processing any two items in either order must (1) leave the
+<a href=#1127 id=1127 data-nosnippet>1127</a>/// mutably-captured state (e.g. [`Singleton::by_mut`] references) in the same final
+<a href=#1128 id=1128 data-nosnippet>1128</a>/// value, *and* (2) keep the operator's observable output identical as a multiset. For
+<a href=#1129 id=1129 data-nosnippet>1129</a>/// `filter`, the outputs are the **retained elements**, so the predicate's decisions
+<a href=#1130 id=1130 data-nosnippet>1130</a>/// must not depend on the processing order: a stateful predicate like a rate limiter is
+<a href=#1131 id=1131 data-nosnippet>1131</a>/// **not** commutative — its budget converges either way, but *which* element passes
+<a href=#1132 id=1132 data-nosnippet>1132</a>/// depends on the order. For `inspect`, the elements pass through unchanged, so only
+<a href=#1133 id=1133 data-nosnippet>1133</a>/// condition (1) applies.
+<a href=#1134 id=1134 data-nosnippet>1134</a>///
+<a href=#1135 id=1135 data-nosnippet>1135</a>/// [`Singleton::by_mut`]: crate::live_collections::singleton::Singleton::by_mut
+<a href=#1136 id=1136 data-nosnippet>1136</a></span><span class="attr">#[sealed::sealed]
+<a href=#1137 id=1137 data-nosnippet>1137</a>#[diagnostic::on_unimplemented(
+<a href=#1138 id=1138 data-nosnippet>1138</a>    message = <span class="string">"because the input stream has ordering `{O}`, the closure must demonstrate commutativity"</span>,
+<a href=#1139 id=1139 data-nosnippet>1139</a>    label = <span class="string">"required for this call"</span>,
+<a href=#1140 id=1140 data-nosnippet>1140</a>    note = <span class="string">"prove it with a `commutative = manual_proof!(/** why the order does not matter */)` annotation on the closure"</span>,
+<a href=#1141 id=1141 data-nosnippet>1141</a>    note = <span class="string">"to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary"
+<a href=#1142 id=1142 data-nosnippet>1142</a></span>)]
+<a href=#1143 id=1143 data-nosnippet>1143</a></span><span class="kw">pub trait </span>ValidMutBorrowCommutativityFor&lt;
+<a href=#1144 id=1144 data-nosnippet>1144</a>    F: FnMut(<span class="kw-2">&amp;</span>In) -&gt; Out,
+<a href=#1145 id=1145 data-nosnippet>1145</a>    In: <span class="question-mark">?</span>Sized,
+<a href=#1146 id=1146 data-nosnippet>1146</a>    Out,
+<a href=#1147 id=1147 data-nosnippet>1147</a>    O: Ordering,
+<a href=#1148 id=1148 data-nosnippet>1148</a>    <span class="kw">const </span>WAS_MUT: bool,
+<a href=#1149 id=1149 data-nosnippet>1149</a>&gt;
 <a href=#1150 id=1150 data-nosnippet>1150</a>{
 <a href=#1151 id=1151 data-nosnippet>1151</a>}
 <a href=#1152 id=1152 data-nosnippet>1152</a><span class="attr">#[sealed::sealed]
-<a href=#1153 id=1153 data-nosnippet>1153</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: Fn(<span class="kw-2">&amp;</span>In) -&gt; Out, O: Ordering&gt;
-<a href=#1154 id=1154 data-nosnippet>1154</a>    ValidMutBorrowCommutativityFor&lt;F, In, Out, O, <span class="bool-val">false</span>&gt; <span class="kw">for </span>NotProved
+<a href=#1153 id=1153 data-nosnippet>1153</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: FnMut(<span class="kw-2">&amp;</span>In) -&gt; Out&gt;
+<a href=#1154 id=1154 data-nosnippet>1154</a>    ValidMutBorrowCommutativityFor&lt;F, In, Out, TotalOrder, <span class="bool-val">true</span>&gt; <span class="kw">for </span>NotProved
 <a href=#1155 id=1155 data-nosnippet>1155</a>{
 <a href=#1156 id=1156 data-nosnippet>1156</a>}
 <a href=#1157 id=1157 data-nosnippet>1157</a><span class="attr">#[sealed::sealed]
-<a href=#1158 id=1158 data-nosnippet>1158</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: FnMut(<span class="kw-2">&amp;</span>In) -&gt; Out, O: Ordering&gt;
-<a href=#1159 id=1159 data-nosnippet>1159</a>    ValidMutBorrowCommutativityFor&lt;F, In, Out, O, <span class="bool-val">true</span>&gt; <span class="kw">for </span>Proved
+<a href=#1158 id=1158 data-nosnippet>1158</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: Fn(<span class="kw-2">&amp;</span>In) -&gt; Out, O: Ordering&gt;
+<a href=#1159 id=1159 data-nosnippet>1159</a>    ValidMutBorrowCommutativityFor&lt;F, In, Out, O, <span class="bool-val">false</span>&gt; <span class="kw">for </span>NotProved
 <a href=#1160 id=1160 data-nosnippet>1160</a>{
 <a href=#1161 id=1161 data-nosnippet>1161</a>}
 <a href=#1162 id=1162 data-nosnippet>1162</a><span class="attr">#[sealed::sealed]
-<a href=#1163 id=1163 data-nosnippet>1163</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: Fn(<span class="kw-2">&amp;</span>In) -&gt; Out, O: Ordering&gt;
-<a href=#1164 id=1164 data-nosnippet>1164</a>    ValidMutBorrowCommutativityFor&lt;F, In, Out, O, <span class="bool-val">false</span>&gt; <span class="kw">for </span>Proved
+<a href=#1163 id=1163 data-nosnippet>1163</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: FnMut(<span class="kw-2">&amp;</span>In) -&gt; Out, O: Ordering&gt;
+<a href=#1164 id=1164 data-nosnippet>1164</a>    ValidMutBorrowCommutativityFor&lt;F, In, Out, O, <span class="bool-val">true</span>&gt; <span class="kw">for </span>Proved
 <a href=#1165 id=1165 data-nosnippet>1165</a>{
 <a href=#1166 id=1166 data-nosnippet>1166</a>}
-<a href=#1167 id=1167 data-nosnippet>1167</a>
-<a href=#1168 id=1168 data-nosnippet>1168</a><span class="doccomment">/// Marker trait for idempotence of closures that borrow their input (`FnMut(&amp;In) -&gt; Out`).
-<a href=#1169 id=1169 data-nosnippet>1169</a></span><span class="attr">#[diagnostic::on_unimplemented(
-<a href=#1170 id=1170 data-nosnippet>1170</a>    message = <span class="string">"Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation."</span>,
-<a href=#1171 id=1171 data-nosnippet>1171</a>    label = <span class="string">"required for this call"</span>,
-<a href=#1172 id=1172 data-nosnippet>1172</a>    note = <span class="string">"To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
-<a href=#1173 id=1173 data-nosnippet>1173</a></span>)]
-<a href=#1174 id=1174 data-nosnippet>1174</a>#[sealed::sealed]
-<a href=#1175 id=1175 data-nosnippet>1175</a></span><span class="kw">pub trait </span>ValidMutBorrowIdempotenceFor&lt;
-<a href=#1176 id=1176 data-nosnippet>1176</a>    F: FnMut(<span class="kw-2">&amp;</span>In) -&gt; Out,
-<a href=#1177 id=1177 data-nosnippet>1177</a>    In: <span class="question-mark">?</span>Sized,
-<a href=#1178 id=1178 data-nosnippet>1178</a>    Out,
-<a href=#1179 id=1179 data-nosnippet>1179</a>    R: Retries,
-<a href=#1180 id=1180 data-nosnippet>1180</a>    <span class="kw">const </span>WAS_MUT: bool,
-<a href=#1181 id=1181 data-nosnippet>1181</a>&gt;
-<a href=#1182 id=1182 data-nosnippet>1182</a>{
-<a href=#1183 id=1183 data-nosnippet>1183</a>}
-<a href=#1184 id=1184 data-nosnippet>1184</a><span class="attr">#[sealed::sealed]
-<a href=#1185 id=1185 data-nosnippet>1185</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: FnMut(<span class="kw-2">&amp;</span>In) -&gt; Out&gt;
-<a href=#1186 id=1186 data-nosnippet>1186</a>    ValidMutBorrowIdempotenceFor&lt;F, In, Out, ExactlyOnce, <span class="bool-val">true</span>&gt; <span class="kw">for </span>NotProved
-<a href=#1187 id=1187 data-nosnippet>1187</a>{
-<a href=#1188 id=1188 data-nosnippet>1188</a>}
-<a href=#1189 id=1189 data-nosnippet>1189</a><span class="attr">#[sealed::sealed]
-<a href=#1190 id=1190 data-nosnippet>1190</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: Fn(<span class="kw-2">&amp;</span>In) -&gt; Out, R: Retries&gt;
-<a href=#1191 id=1191 data-nosnippet>1191</a>    ValidMutBorrowIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">false</span>&gt; <span class="kw">for </span>NotProved
-<a href=#1192 id=1192 data-nosnippet>1192</a>{
-<a href=#1193 id=1193 data-nosnippet>1193</a>}
-<a href=#1194 id=1194 data-nosnippet>1194</a><span class="attr">#[sealed::sealed]
-<a href=#1195 id=1195 data-nosnippet>1195</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: FnMut(<span class="kw-2">&amp;</span>In) -&gt; Out, R: Retries&gt;
-<a href=#1196 id=1196 data-nosnippet>1196</a>    ValidMutBorrowIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">true</span>&gt; <span class="kw">for </span>Proved
-<a href=#1197 id=1197 data-nosnippet>1197</a>{
-<a href=#1198 id=1198 data-nosnippet>1198</a>}
-<a href=#1199 id=1199 data-nosnippet>1199</a><span class="attr">#[sealed::sealed]
-<a href=#1200 id=1200 data-nosnippet>1200</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: Fn(<span class="kw-2">&amp;</span>In) -&gt; Out, R: Retries&gt;
-<a href=#1201 id=1201 data-nosnippet>1201</a>    ValidMutBorrowIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">false</span>&gt; <span class="kw">for </span>Proved
-<a href=#1202 id=1202 data-nosnippet>1202</a>{
-<a href=#1203 id=1203 data-nosnippet>1203</a>}
-<a href=#1204 id=1204 data-nosnippet>1204</a>
-<a href=#1205 id=1205 data-nosnippet>1205</a><span class="doccomment">/// Marker trait identifying the boundedness of a singleton given a monotonicity property of
-<a href=#1206 id=1206 data-nosnippet>1206</a>/// an aggregation on a stream.
-<a href=#1207 id=1207 data-nosnippet>1207</a></span><span class="attr">#[sealed::sealed]
-<a href=#1208 id=1208 data-nosnippet>1208</a></span><span class="kw">pub trait </span>ApplyMonotoneStream&lt;P, B2: SingletonBound&gt; {}
-<a href=#1209 id=1209 data-nosnippet>1209</a>
-<a href=#1210 id=1210 data-nosnippet>1210</a><span class="attr">#[sealed::sealed]
-<a href=#1211 id=1211 data-nosnippet>1211</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneStream&lt;NotProved, B&gt; <span class="kw">for </span>B {}
-<a href=#1212 id=1212 data-nosnippet>1212</a>
-<a href=#1213 id=1213 data-nosnippet>1213</a><span class="attr">#[sealed::sealed]
-<a href=#1214 id=1214 data-nosnippet>1214</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneStream&lt;Proved, B::StreamToMonotone&gt; <span class="kw">for </span>B {}
+<a href=#1167 id=1167 data-nosnippet>1167</a><span class="attr">#[sealed::sealed]
+<a href=#1168 id=1168 data-nosnippet>1168</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: Fn(<span class="kw-2">&amp;</span>In) -&gt; Out, O: Ordering&gt;
+<a href=#1169 id=1169 data-nosnippet>1169</a>    ValidMutBorrowCommutativityFor&lt;F, In, Out, O, <span class="bool-val">false</span>&gt; <span class="kw">for </span>Proved
+<a href=#1170 id=1170 data-nosnippet>1170</a>{
+<a href=#1171 id=1171 data-nosnippet>1171</a>}
+<a href=#1172 id=1172 data-nosnippet>1172</a>
+<a href=#1173 id=1173 data-nosnippet>1173</a><span class="doccomment">/// Marker trait for idempotence of closures that borrow their input (`FnMut(&amp;In) -&gt; Out`).
+<a href=#1174 id=1174 data-nosnippet>1174</a></span><span class="attr">#[diagnostic::on_unimplemented(
+<a href=#1175 id=1175 data-nosnippet>1175</a>    message = <span class="string">"because the input stream has retries `{R}`, the closure must demonstrate idempotence"</span>,
+<a href=#1176 id=1176 data-nosnippet>1176</a>    label = <span class="string">"required for this call"</span>,
+<a href=#1177 id=1177 data-nosnippet>1177</a>    note = <span class="string">"prove it with an `idempotent = manual_proof!(/** why a repeat does not matter */)` annotation on the closure"</span>,
+<a href=#1178 id=1178 data-nosnippet>1178</a>    note = <span class="string">"to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary"
+<a href=#1179 id=1179 data-nosnippet>1179</a></span>)]
+<a href=#1180 id=1180 data-nosnippet>1180</a>#[sealed::sealed]
+<a href=#1181 id=1181 data-nosnippet>1181</a></span><span class="kw">pub trait </span>ValidMutBorrowIdempotenceFor&lt;
+<a href=#1182 id=1182 data-nosnippet>1182</a>    F: FnMut(<span class="kw-2">&amp;</span>In) -&gt; Out,
+<a href=#1183 id=1183 data-nosnippet>1183</a>    In: <span class="question-mark">?</span>Sized,
+<a href=#1184 id=1184 data-nosnippet>1184</a>    Out,
+<a href=#1185 id=1185 data-nosnippet>1185</a>    R: Retries,
+<a href=#1186 id=1186 data-nosnippet>1186</a>    <span class="kw">const </span>WAS_MUT: bool,
+<a href=#1187 id=1187 data-nosnippet>1187</a>&gt;
+<a href=#1188 id=1188 data-nosnippet>1188</a>{
+<a href=#1189 id=1189 data-nosnippet>1189</a>}
+<a href=#1190 id=1190 data-nosnippet>1190</a><span class="attr">#[sealed::sealed]
+<a href=#1191 id=1191 data-nosnippet>1191</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: FnMut(<span class="kw-2">&amp;</span>In) -&gt; Out&gt;
+<a href=#1192 id=1192 data-nosnippet>1192</a>    ValidMutBorrowIdempotenceFor&lt;F, In, Out, ExactlyOnce, <span class="bool-val">true</span>&gt; <span class="kw">for </span>NotProved
+<a href=#1193 id=1193 data-nosnippet>1193</a>{
+<a href=#1194 id=1194 data-nosnippet>1194</a>}
+<a href=#1195 id=1195 data-nosnippet>1195</a><span class="attr">#[sealed::sealed]
+<a href=#1196 id=1196 data-nosnippet>1196</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: Fn(<span class="kw-2">&amp;</span>In) -&gt; Out, R: Retries&gt;
+<a href=#1197 id=1197 data-nosnippet>1197</a>    ValidMutBorrowIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">false</span>&gt; <span class="kw">for </span>NotProved
+<a href=#1198 id=1198 data-nosnippet>1198</a>{
+<a href=#1199 id=1199 data-nosnippet>1199</a>}
+<a href=#1200 id=1200 data-nosnippet>1200</a><span class="attr">#[sealed::sealed]
+<a href=#1201 id=1201 data-nosnippet>1201</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: FnMut(<span class="kw-2">&amp;</span>In) -&gt; Out, R: Retries&gt;
+<a href=#1202 id=1202 data-nosnippet>1202</a>    ValidMutBorrowIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">true</span>&gt; <span class="kw">for </span>Proved
+<a href=#1203 id=1203 data-nosnippet>1203</a>{
+<a href=#1204 id=1204 data-nosnippet>1204</a>}
+<a href=#1205 id=1205 data-nosnippet>1205</a><span class="attr">#[sealed::sealed]
+<a href=#1206 id=1206 data-nosnippet>1206</a></span><span class="kw">impl</span>&lt;In: <span class="question-mark">?</span>Sized, Out, F: Fn(<span class="kw-2">&amp;</span>In) -&gt; Out, R: Retries&gt;
+<a href=#1207 id=1207 data-nosnippet>1207</a>    ValidMutBorrowIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">false</span>&gt; <span class="kw">for </span>Proved
+<a href=#1208 id=1208 data-nosnippet>1208</a>{
+<a href=#1209 id=1209 data-nosnippet>1209</a>}
+<a href=#1210 id=1210 data-nosnippet>1210</a>
+<a href=#1211 id=1211 data-nosnippet>1211</a><span class="doccomment">/// Marker trait identifying the boundedness of a singleton given a monotonicity property of
+<a href=#1212 id=1212 data-nosnippet>1212</a>/// an aggregation on a stream.
+<a href=#1213 id=1213 data-nosnippet>1213</a></span><span class="attr">#[sealed::sealed]
+<a href=#1214 id=1214 data-nosnippet>1214</a></span><span class="kw">pub trait </span>ApplyMonotoneStream&lt;P, B2: SingletonBound&gt; {}
 <a href=#1215 id=1215 data-nosnippet>1215</a>
-<a href=#1216 id=1216 data-nosnippet>1216</a><span class="doccomment">/// Marker trait identifying the boundedness of a singleton given a monotonicity property of
-<a href=#1217 id=1217 data-nosnippet>1217</a>/// an aggregation on a keyed stream.
-<a href=#1218 id=1218 data-nosnippet>1218</a></span><span class="attr">#[sealed::sealed]
-<a href=#1219 id=1219 data-nosnippet>1219</a></span><span class="kw">pub trait </span>ApplyMonotoneKeyedStream&lt;P, B2: KeyedSingletonBound&gt; {}
-<a href=#1220 id=1220 data-nosnippet>1220</a>
-<a href=#1221 id=1221 data-nosnippet>1221</a><span class="attr">#[sealed::sealed]
-<a href=#1222 id=1222 data-nosnippet>1222</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneKeyedStream&lt;NotProved, B::KeyedStreamToNonMonotone&gt; <span class="kw">for </span>B {}
-<a href=#1223 id=1223 data-nosnippet>1223</a>
-<a href=#1224 id=1224 data-nosnippet>1224</a><span class="attr">#[sealed::sealed]
-<a href=#1225 id=1225 data-nosnippet>1225</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneKeyedStream&lt;Proved, B::KeyedStreamToMonotone&gt; <span class="kw">for </span>B {}
+<a href=#1216 id=1216 data-nosnippet>1216</a><span class="attr">#[sealed::sealed]
+<a href=#1217 id=1217 data-nosnippet>1217</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneStream&lt;NotProved, B&gt; <span class="kw">for </span>B {}
+<a href=#1218 id=1218 data-nosnippet>1218</a>
+<a href=#1219 id=1219 data-nosnippet>1219</a><span class="attr">#[sealed::sealed]
+<a href=#1220 id=1220 data-nosnippet>1220</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneStream&lt;Proved, B::StreamToMonotone&gt; <span class="kw">for </span>B {}
+<a href=#1221 id=1221 data-nosnippet>1221</a>
+<a href=#1222 id=1222 data-nosnippet>1222</a><span class="doccomment">/// Marker trait identifying the boundedness of a singleton given a monotonicity property of
+<a href=#1223 id=1223 data-nosnippet>1223</a>/// an aggregation on a keyed stream.
+<a href=#1224 id=1224 data-nosnippet>1224</a></span><span class="attr">#[sealed::sealed]
+<a href=#1225 id=1225 data-nosnippet>1225</a></span><span class="kw">pub trait </span>ApplyMonotoneKeyedStream&lt;P, B2: KeyedSingletonBound&gt; {}
 <a href=#1226 id=1226 data-nosnippet>1226</a>
-<a href=#1227 id=1227 data-nosnippet>1227</a><span class="doccomment">/// Marker trait identifying the boundedness of a singleton after a map operation,
-<a href=#1228 id=1228 data-nosnippet>1228</a>/// given an order-preserving property.
-<a href=#1229 id=1229 data-nosnippet>1229</a></span><span class="attr">#[sealed::sealed]
-<a href=#1230 id=1230 data-nosnippet>1230</a></span><span class="kw">pub trait </span>ApplyOrderPreservingSingleton&lt;P, B2: SingletonBound&gt; {}
-<a href=#1231 id=1231 data-nosnippet>1231</a>
-<a href=#1232 id=1232 data-nosnippet>1232</a><span class="attr">#[sealed::sealed]
-<a href=#1233 id=1233 data-nosnippet>1233</a></span><span class="kw">impl</span>&lt;B: SingletonBound&gt; ApplyOrderPreservingSingleton&lt;NotProved, B::UnderlyingBound&gt; <span class="kw">for </span>B {}
-<a href=#1234 id=1234 data-nosnippet>1234</a>
-<a href=#1235 id=1235 data-nosnippet>1235</a><span class="attr">#[sealed::sealed]
-<a href=#1236 id=1236 data-nosnippet>1236</a></span><span class="kw">impl</span>&lt;B: SingletonBound&gt; ApplyOrderPreservingSingleton&lt;Proved, B&gt; <span class="kw">for </span>B {}
+<a href=#1227 id=1227 data-nosnippet>1227</a><span class="attr">#[sealed::sealed]
+<a href=#1228 id=1228 data-nosnippet>1228</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneKeyedStream&lt;NotProved, B::KeyedStreamToNonMonotone&gt; <span class="kw">for </span>B {}
+<a href=#1229 id=1229 data-nosnippet>1229</a>
+<a href=#1230 id=1230 data-nosnippet>1230</a><span class="attr">#[sealed::sealed]
+<a href=#1231 id=1231 data-nosnippet>1231</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneKeyedStream&lt;Proved, B::KeyedStreamToMonotone&gt; <span class="kw">for </span>B {}
+<a href=#1232 id=1232 data-nosnippet>1232</a>
+<a href=#1233 id=1233 data-nosnippet>1233</a><span class="doccomment">/// Marker trait identifying the boundedness of a singleton after a map operation,
+<a href=#1234 id=1234 data-nosnippet>1234</a>/// given an order-preserving property.
+<a href=#1235 id=1235 data-nosnippet>1235</a></span><span class="attr">#[sealed::sealed]
+<a href=#1236 id=1236 data-nosnippet>1236</a></span><span class="kw">pub trait </span>ApplyOrderPreservingSingleton&lt;P, B2: SingletonBound&gt; {}
+<a href=#1237 id=1237 data-nosnippet>1237</a>
+<a href=#1238 id=1238 data-nosnippet>1238</a><span class="attr">#[sealed::sealed]
+<a href=#1239 id=1239 data-nosnippet>1239</a></span><span class="kw">impl</span>&lt;B: SingletonBound&gt; ApplyOrderPreservingSingleton&lt;NotProved, B::UnderlyingBound&gt; <span class="kw">for </span>B {}
+<a href=#1240 id=1240 data-nosnippet>1240</a>
+<a href=#1241 id=1241 data-nosnippet>1241</a><span class="attr">#[sealed::sealed]
+<a href=#1242 id=1242 data-nosnippet>1242</a></span><span class="kw">impl</span>&lt;B: SingletonBound&gt; ApplyOrderPreservingSingleton&lt;Proved, B&gt; <span class="kw">for </span>B {}
 </code></pre></div></section></main></body></html>
