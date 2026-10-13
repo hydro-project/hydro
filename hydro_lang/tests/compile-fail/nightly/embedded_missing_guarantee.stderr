@@ -1,0 +1,151 @@
+error[E0277]: this `EMBEDDED` channel does not declare its retries
+  --> tests/compile-fail/nightly/embedded_missing_guarantee.rs:13:19
+   |
+13 |         .send(p2, EMBEDDED.total_order().fail_stop().name("no_retries"));
+   |          ----     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `EmbeddedRetries` is not implemented for `()`
+   |          |
+   |          required by a bound introduced by this call
+   |
+   = note: add `.exactly_once()` or `.at_least_once()` to the network config
+help: the following other types implement trait `EmbeddedRetries`
+  --> src/networking/mod.rs
+   |
+   | impl EmbeddedRetries for ExactlyOnce {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::live_collections::stream::ExactlyOnce`
+...
+   | impl EmbeddedRetries for AtLeastOnce {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::live_collections::stream::AtLeastOnce`
+   = note: required for `EmbeddedTransport<(), hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::FailStop>` to implement `TransportKind`
+   = note: required for `NetworkingConfig<EmbeddedTransport<(), hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::FailStop>, hydro_lang::networking::Embedded, String>` to implement `NetworkFor<{integer}>`
+note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<T, hydro_lang::prelude::Process<'a, L>, B, O, R>>::send`
+  --> src/live_collections/stream/networking.rs
+   |
+   |     pub fn send<L2, N: NetworkFor<T>>(
+   |                        ^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R>>::send`
+
+error[E0277]: this `EMBEDDED` channel does not declare its retries
+  --> tests/compile-fail/nightly/embedded_missing_guarantee.rs:11:13
+   |
+11 |       let _ = p1
+   |  _____________^
+12 | |         .source_iter(q!(vec![1, 2, 3]))
+13 | |         .send(p2, EMBEDDED.total_order().fail_stop().name("no_retries"));
+   | |________________________________________________________________________^ the trait `EmbeddedRetries` is not implemented for `()`
+   |
+   = note: add `.exactly_once()` or `.at_least_once()` to the network config
+help: the following other types implement trait `EmbeddedRetries`
+  --> src/networking/mod.rs
+   |
+   | impl EmbeddedRetries for ExactlyOnce {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::live_collections::stream::ExactlyOnce`
+...
+   | impl EmbeddedRetries for AtLeastOnce {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::live_collections::stream::AtLeastOnce`
+   = note: required for `EmbeddedTransport<(), hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::FailStop>` to implement `TransportKind`
+   = note: required for `NetworkingConfig<EmbeddedTransport<(), hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::FailStop>, hydro_lang::networking::Embedded, String>` to implement `NetworkFor<{integer}>`
+
+error[E0277]: this `EMBEDDED` channel does not declare its ordering
+  --> tests/compile-fail/nightly/embedded_missing_guarantee.rs:19:19
+   |
+19 |         .send(p2, EMBEDDED.exactly_once().fail_stop().name("no_ordering"));
+   |          ----     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `EmbeddedOrdering` is not implemented for `()`
+   |          |
+   |          required by a bound introduced by this call
+   |
+   = note: add `.total_order()` or `.no_order()` to the network config
+help: the following other types implement trait `EmbeddedOrdering`
+  --> src/networking/mod.rs
+   |
+   | impl EmbeddedOrdering for TotalOrder {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::live_collections::stream::TotalOrder`
+...
+   | impl EmbeddedOrdering for NoOrder {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::live_collections::stream::NoOrder`
+   = note: required for `EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, (), hydro_lang::networking::FailStop>` to implement `TransportKind`
+   = note: required for `NetworkingConfig<EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, (), hydro_lang::networking::FailStop>, hydro_lang::networking::Embedded, String>` to implement `NetworkFor<{integer}>`
+note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<T, hydro_lang::prelude::Process<'a, L>, B, O, R>>::send`
+  --> src/live_collections/stream/networking.rs
+   |
+   |     pub fn send<L2, N: NetworkFor<T>>(
+   |                        ^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R>>::send`
+
+error[E0277]: this `EMBEDDED` channel does not declare its ordering
+  --> tests/compile-fail/nightly/embedded_missing_guarantee.rs:17:13
+   |
+17 |       let _ = p1
+   |  _____________^
+18 | |         .source_iter(q!(vec![1, 2, 3]))
+19 | |         .send(p2, EMBEDDED.exactly_once().fail_stop().name("no_ordering"));
+   | |__________________________________________________________________________^ the trait `EmbeddedOrdering` is not implemented for `()`
+   |
+   = note: add `.total_order()` or `.no_order()` to the network config
+help: the following other types implement trait `EmbeddedOrdering`
+  --> src/networking/mod.rs
+   |
+   | impl EmbeddedOrdering for TotalOrder {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::live_collections::stream::TotalOrder`
+...
+   | impl EmbeddedOrdering for NoOrder {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::live_collections::stream::NoOrder`
+   = note: required for `EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, (), hydro_lang::networking::FailStop>` to implement `TransportKind`
+   = note: required for `NetworkingConfig<EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, (), hydro_lang::networking::FailStop>, hydro_lang::networking::Embedded, String>` to implement `NetworkFor<{integer}>`
+
+error[E0277]: this `EMBEDDED` channel does not declare its failure policy
+  --> tests/compile-fail/nightly/embedded_missing_guarantee.rs:25:9
+   |
+23 |       let _ = p1.source_iter(q!(vec![1, 2, 3])).send(
+   |                                                 ---- required by a bound introduced by this call
+24 |           p2,
+25 | /         EMBEDDED
+26 | |             .exactly_once()
+27 | |             .total_order()
+28 | |             .name("no_failure_policy"),
+   | |______________________________________^ the trait `EmbeddedFailPolicy` is not implemented for `()`
+   |
+   = note: add `.fail_stop()`, `.lossy(nondet!(..))`, or `.lossy_delayed_forever()` to the network config
+help: the following other types implement trait `EmbeddedFailPolicy`
+  --> src/networking/mod.rs
+   |
+   | impl EmbeddedFailPolicy for FailStop {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::networking::FailStop`
+...
+   | impl EmbeddedFailPolicy for Lossy {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::networking::Lossy`
+...
+   | impl EmbeddedFailPolicy for LossyDelayedForever {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::networking::LossyDelayedForever`
+   = note: required for `EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, ()>` to implement `TransportKind`
+   = note: required for `NetworkingConfig<EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, ()>, hydro_lang::networking::Embedded, String>` to implement `NetworkFor<{integer}>`
+note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<T, hydro_lang::prelude::Process<'a, L>, B, O, R>>::send`
+  --> src/live_collections/stream/networking.rs
+   |
+   |     pub fn send<L2, N: NetworkFor<T>>(
+   |                        ^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R>>::send`
+
+error[E0277]: this `EMBEDDED` channel does not declare its failure policy
+  --> tests/compile-fail/nightly/embedded_missing_guarantee.rs:23:13
+   |
+23 |       let _ = p1.source_iter(q!(vec![1, 2, 3])).send(
+   |  _____________^
+24 | |         p2,
+25 | |         EMBEDDED
+26 | |             .exactly_once()
+27 | |             .total_order()
+28 | |             .name("no_failure_policy"),
+29 | |     );
+   | |_____^ the trait `EmbeddedFailPolicy` is not implemented for `()`
+   |
+   = note: add `.fail_stop()`, `.lossy(nondet!(..))`, or `.lossy_delayed_forever()` to the network config
+help: the following other types implement trait `EmbeddedFailPolicy`
+  --> src/networking/mod.rs
+   |
+   | impl EmbeddedFailPolicy for FailStop {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::networking::FailStop`
+...
+   | impl EmbeddedFailPolicy for Lossy {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::networking::Lossy`
+...
+   | impl EmbeddedFailPolicy for LossyDelayedForever {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::networking::LossyDelayedForever`
+   = note: required for `EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, ()>` to implement `TransportKind`
+   = note: required for `NetworkingConfig<EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, ()>, hydro_lang::networking::Embedded, String>` to implement `NetworkFor<{integer}>`
