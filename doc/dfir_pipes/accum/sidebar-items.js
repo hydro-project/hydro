@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["FoldState","ReduceState","SortState"],"trait":["AccumState"]};

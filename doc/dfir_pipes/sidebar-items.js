@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Either","EitherOrBoth"],"mod":["pull","push"],"struct":["Yes"],"trait":["Context","FusedStream","Sink","Stream","Toggle"],"type":["No"]};
+window.SIDEBAR_ITEMS = {"enum":["Either","EitherOrBoth"],"mod":["accum","pull","push"],"struct":["Yes"],"trait":["Context","FusedStream","Sink","Stream","Toggle"],"type":["No"]};
