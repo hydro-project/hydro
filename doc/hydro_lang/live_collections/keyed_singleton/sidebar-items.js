@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["BoundedValue","MonotonicKeys","MonotonicValue"],"struct":["KeyedSingleton"],"trait":["IsKeyedMonotonic","KeyedSingletonBound"]};
+window.SIDEBAR_ITEMS = {"enum":["BoundedValue","MonotonicKeys","MonotonicValue"],"struct":["KeyedSingleton"],"trait":["IsKeyedMonotonic","KeyedSingletonBound","KeyedSingletonSnapshotBound"]};
