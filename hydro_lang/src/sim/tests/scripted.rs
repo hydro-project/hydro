@@ -1917,6 +1917,34 @@ fn scripted_keyed_batch_release_values_unordered() {
     });
 }
 
+/// A `batch` over a keyed singleton with bounded per-key values is a keyed *batch* (each
+/// finalized entry is released exactly once), so it is scripted with a `KeyedBatchHook`
+/// naming the entries each batch contains.
+#[test]
+fn scripted_keyed_singleton_batch_release_values() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), TotalOrder, ExactlyOnce>();
+    // `first()` yields a `BoundedValue` keyed singleton: each key's value is fixed once it appears.
+    let firsts = input.into_keyed().first();
+    let output = sliced! {
+        let b = use::batch(firsts, nondet!(/** scripted */ hook = batch_hook));
+        b.entries().sort().collect_vec().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 'a'), (2, 'x'), (1, 'z'), (3, 'q')]);
+        // (1, 'z') is not a new entry (key 1 is already final), so it never appears.
+        batch_hook.release_values([(1, 'a'), (3, 'q')]).await;
+        batch_hook.release_values([(2, 'x')]).await;
+        output
+            .assert_yields_only([vec![(1, 'a'), (3, 'q')], vec![(2, 'x')]])
+            .await;
+    });
+}
+
 /// A keyed snapshot is scripted with `reveal`, naming the version each key observes:
 /// one decision can advance several keys at once, and unnamed keys observe their
 /// previously revealed version again.

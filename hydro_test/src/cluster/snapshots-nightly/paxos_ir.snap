@@ -178,7 +178,7 @@ expression: built.ir()
                     },
                 },
                 right: Cast {
-                    inner: Batch {
+                    inner: Snapshot {
                         inner: SingletonSource {
                             value: { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: tests :: * ; { 100usize } },
                             first_tick_only: false,
@@ -270,13 +270,13 @@ expression: built.ir()
                 input: Cast {
                     inner: CrossSingleton {
                         left: Tee {
-                            inner: <shared 2>: Batch {
+                            inner: <shared 2>: Snapshot {
                                 inner: YieldConcat {
-                                    inner: Batch {
+                                    inner: Snapshot {
                                         inner: Cast {
                                             inner: YieldConcat {
                                                 inner: ChainFirst {
-                                                    first: Batch {
+                                                    first: Snapshot {
                                                         inner: Reduce {
                                                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| curr , new | { if new > * curr { * curr = new ; } }]) }),
                                                             input: ObserveNonDet {
@@ -383,7 +383,7 @@ expression: built.ir()
                                                             },
                                                         },
                                                     },
-                                                    second: Batch {
+                                                    second: Snapshot {
                                                         inner: Cast {
                                                             inner: UnboundSingleton {
                                                                 inner: SingletonSource {
@@ -604,7 +604,7 @@ expression: built.ir()
                                                 inner: Cast {
                                                     inner: Filter {
                                                         f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , bool) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL ! ([f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| b | * b]) }) ,] [{ let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) }]) }),
-                                                        input: Batch {
+                                                        input: Snapshot {
                                                             inner: FoldKeyed {
                                                                 init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| | false]) }),
                                                                 acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } }]) }),
@@ -723,13 +723,13 @@ expression: built.ir()
                                                     inner: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , bool) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_LINE_COL ! ([] [| (d , _) | d]) }),
                                                         input: CrossSingleton {
-                                                            left: Batch {
+                                                            left: Snapshot {
                                                                 inner: YieldConcat {
                                                                     inner: Map {
                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , bool) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_singleton_rs_LINE_COL ! ([] [| (d , _) | d]) }),
                                                                         input: CrossSingleton {
                                                                             left: Tee {
-                                                                                inner: <shared 4>: Batch {
+                                                                                inner: <shared 4>: Snapshot {
                                                                                     inner: YieldConcat {
                                                                                         inner: Tee {
                                                                                             inner: <shared 5>: Map {
@@ -1208,7 +1208,7 @@ expression: built.ir()
                                                                                                             inner: Cast {
                                                                                                                 inner: Filter {
                                                                                                                     f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , bool) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL ! ([f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| b | * b]) }) ,] [{ let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) }]) }),
-                                                                                                                    input: Batch {
+                                                                                                                    input: Snapshot {
                                                                                                                         inner: FoldKeyed {
                                                                                                                             init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| | false]) }),
                                                                                                                             acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } }]) }),
@@ -1355,11 +1355,11 @@ expression: built.ir()
                                                                                                                                                             input: Map {
                                                                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (() , bool) , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_LINE_COL ! ([] [| (d , _) | d]) }),
                                                                                                                                                                 input: CrossSingleton {
-                                                                                                                                                                    left: Batch {
+                                                                                                                                                                    left: Snapshot {
                                                                                                                                                                         inner: YieldConcat {
                                                                                                                                                                             inner: FilterMap {
                                                                                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < hydro_test :: __staged :: __deps :: tokio :: time :: Instant > , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([duration__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; crate :: __staged :: __stageleft_quote_src_cluster_paxos_rs_LINE_COL ! ([i_am_leader_check_timeout__free = 10u64 ,] [Duration :: from_secs (i_am_leader_check_timeout__free)]) } ,] [move | latest_received | { if let Some (latest_received) = latest_received { if Instant :: now () . duration_since (latest_received) > duration__free { Some (()) } else { None } } else { Some (()) } }]) }),
-                                                                                                                                                                                input: Batch {
+                                                                                                                                                                                input: Snapshot {
                                                                                                                                                                                     inner: Fold {
                                                                                                                                                                                         init: stageleft :: runtime_support :: fn0_type_hint :: < core :: option :: Option < hydro_test :: __staged :: __deps :: tokio :: time :: Instant > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| | None]) }),
                                                                                                                                                                                         acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < core :: option :: Option < hydro_test :: __staged :: __deps :: tokio :: time :: Instant > , hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| latest , _ | { * latest = Some (Instant :: now ()) ; }]) }),
@@ -1836,7 +1836,7 @@ expression: built.ir()
                                                                     inner: Tee {
                                                                         inner: <shared 10>: Cast {
                                                                             inner: ChainFirst {
-                                                                                first: Batch {
+                                                                                first: Snapshot {
                                                                                     inner: Reduce {
                                                                                         f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| curr , new | { if new > * curr { * curr = new ; } }]) }),
                                                                                         input: ObserveNonDet {
@@ -2329,7 +2329,7 @@ expression: built.ir()
                                                 inner: <shared 14>: FilterMap {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: cluster :: paxos :: Ballot , std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) >) , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) > > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; crate :: __staged :: __stageleft_quote_src_cluster_paxos_rs_LINE_COL ! ([] [move | ((quorum_ballot , quorum_accepted) , my_ballot) | if quorum_ballot == my_ballot { Some (quorum_accepted) } else { None }]) }),
                                                     input: CrossSingleton {
-                                                        left: Batch {
+                                                        left: Snapshot {
                                                             inner: Reduce {
                                                                 f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) >) , (hydro_test :: __staged :: cluster :: paxos :: Ballot , std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) >) , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL ! ([] [move | curr , new | { if new . 0 > curr . 0 { * curr = new ; } }]) }),
                                                                 input: ObserveNonDet {
@@ -2686,7 +2686,7 @@ expression: built.ir()
                                 },
                             },
                         },
-                        right: Batch {
+                        right: Snapshot {
                             inner: YieldConcat {
                                 inner: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; crate :: __staged :: __stageleft_quote_src_cluster_paxos_rs_LINE_COL ! ([] [| (received_max_ballot , cur_ballot) | received_max_ballot <= cur_ballot]) }),
@@ -3049,7 +3049,7 @@ expression: built.ir()
                                     input: Map {
                                         f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_LINE_COL ! ([] [| _ | ()]) }),
                                         input: Tee {
-                                            inner: <shared 17>: Batch {
+                                            inner: <shared 17>: Snapshot {
                                                 inner: Map {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; crate :: __staged :: __stageleft_quote_src_cluster_paxos_rs_LINE_COL ! ([] [| ballot | ballot . proposer_id]) }),
                                                     input: Reduce {
@@ -3086,7 +3086,7 @@ expression: built.ir()
                                                                                                     inner: Cast {
                                                                                                         inner: Filter {
                                                                                                             f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , bool) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL ! ([f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| b | * b]) }) ,] [{ let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) }]) }),
-                                                                                                            input: Batch {
+                                                                                                            input: Snapshot {
                                                                                                                 inner: FoldKeyed {
                                                                                                                     init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| | false]) }),
                                                                                                                     acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } }]) }),
@@ -3868,7 +3868,7 @@ expression: built.ir()
                                                 inner: ChainFirst {
                                                     first: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < usize , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; crate :: __staged :: __stageleft_quote_src_cluster_paxos_rs_LINE_COL ! ([] [| s | s + 1]) }),
-                                                        input: Batch {
+                                                        input: Snapshot {
                                                             inner: YieldConcat {
                                                                 inner: Tee {
                                                                     inner: <shared 21>: Reduce {
@@ -4336,7 +4336,7 @@ expression: built.ir()
                                                                                                     inner: Cast {
                                                                                                         inner: Filter {
                                                                                                             f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , bool) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL ! ([f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| b | * b]) }) ,] [{ let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) }]) }),
-                                                                                                            input: Batch {
+                                                                                                            input: Snapshot {
                                                                                                                 inner: FoldKeyed {
                                                                                                                     init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| | false]) }),
                                                                                                                     acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } }]) }),
@@ -5637,7 +5637,7 @@ expression: built.ir()
         cycle_id: CycleId(
             4,
         ),
-        input: Batch {
+        input: Snapshot {
             inner: YieldConcat {
                 inner: Cast {
                     inner: CrossSingleton {
@@ -5646,7 +5646,7 @@ expression: built.ir()
                                 first: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_LINE_COL ! ([] [| v | Some (v)]) }),
                                     input: Tee {
-                                        inner: <shared 34>: Batch {
+                                        inner: <shared 34>: Snapshot {
                                             inner: CycleSource {
                                                 cycle_id: CycleId(
                                                     2,
@@ -5724,7 +5724,7 @@ expression: built.ir()
                             acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > > , (usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; crate :: __staged :: __stageleft_quote_src_cluster_paxos_rs_LINE_COL ! ([] [| map , (slot , entry) | { map . insert (slot , entry) ; }]) }),
                             input: Cast {
                                 inner: Cast {
-                                    inner: Batch {
+                                    inner: Snapshot {
                                         inner: ReduceKeyedWatermark {
                                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; crate :: __staged :: __stageleft_quote_src_cluster_paxos_rs_LINE_COL ! ([] [| prev_entry , entry | { if entry . ballot > prev_entry . ballot { * prev_entry = LogValue { ballot : entry . ballot , value : entry . value , } ; } }]) }),
                                             input: ObserveNonDet {
@@ -6070,7 +6070,7 @@ expression: built.ir()
                                                                                 inner: Cast {
                                                                                     inner: Filter {
                                                                                         f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , bool) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL ! ([f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| b | * b]) }) ,] [{ let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) }]) }),
-                                                                                        input: Batch {
+                                                                                        input: Snapshot {
                                                                                             inner: FoldKeyed {
                                                                                                 init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| | false]) }),
                                                                                                 acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } }]) }),
@@ -6570,7 +6570,7 @@ expression: built.ir()
         input: Tee {
             inner: <shared 37>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , usize) , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; crate :: __staged :: __stageleft_quote_src_cluster_kv_replica_mod_rs_LINE_COL ! ([] [| (_kv_store , next_slot) | next_slot]) }),
-                input: Batch {
+                input: Snapshot {
                     inner: Fold {
                         init: stageleft :: runtime_support :: fn0_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , usize) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; crate :: __staged :: __stageleft_quote_src_cluster_kv_replica_mod_rs_LINE_COL ! ([] [| | (HashMap :: new () , 0)]) }),
                         acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , usize) , hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; crate :: __staged :: __stageleft_quote_src_cluster_kv_replica_mod_rs_LINE_COL ! ([] [| (kv_store , next_slot) , payload | { if let Some (kv) = payload . kv { kv_store . insert (kv . key , kv . value) ; } * next_slot = payload . seq + 1 ; }]) }),
@@ -6709,7 +6709,7 @@ expression: built.ir()
                             inner: ChainFirst {
                                 first: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; hydro_lang :: __stageleft_quote_src_live_collections_optional_rs_LINE_COL ! ([] [| v | Some (v)]) }),
-                                    input: Batch {
+                                    input: Snapshot {
                                         inner: Reduce {
                                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| curr , new | { if new > * curr { * curr = new ; } }]) }),
                                             input: YieldConcat {
@@ -6931,7 +6931,7 @@ expression: built.ir()
                                 left: Cast {
                                     inner: Cast {
                                         inner: Tee {
-                                            inner: <shared 40>: Batch {
+                                            inner: <shared 40>: Snapshot {
                                                 inner: ReduceKeyed {
                                                     f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; crate :: __staged :: __stageleft_quote_src_cluster_paxos_bench_rs_LINE_COL ! ([] [| curr_seq , seq | { if seq > * curr_seq { * curr_seq = seq ; } }]) }),
                                                     input: Network {
@@ -6960,7 +6960,7 @@ expression: built.ir()
                                                                                 inner: Cast {
                                                                                     inner: Filter {
                                                                                         f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , bool) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; hydro_lang :: __stageleft_quote_src_live_collections_keyed_singleton_rs_LINE_COL ! ([f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| b | * b]) }) ,] [{ let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) }]) }),
-                                                                                        input: Batch {
+                                                                                        input: Snapshot {
                                                                                             inner: FoldKeyed {
                                                                                                 init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| | false]) }),
                                                                                                 acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([] [| present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } }]) }),
@@ -7769,7 +7769,7 @@ expression: built.ir()
                                                                             left: Cast {
                                                                                 inner: Cast {
                                                                                     inner: DeferTick {
-                                                                                        input: Batch {
+                                                                                        input: Snapshot {
                                                                                             inner: FoldKeyed {
                                                                                                 init: stageleft :: runtime_support :: fn0_type_hint :: < std :: time :: Instant > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; hydro_std :: __stageleft_quote_src_bench_client_mod_rs_LINE_COL ! ([] [| | Instant :: now ()]) }),
                                                                                                 acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < std :: time :: Instant , i32 , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; hydro_std :: __stageleft_quote_src_bench_client_mod_rs_LINE_COL ! ([] [| curr , _new | { * curr = Instant :: now () ; }]) }),

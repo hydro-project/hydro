@@ -527,8 +527,33 @@ pub trait DfirBuilder {
         quote!('static)
     }
 
+    /// Lowers a [`HydroNode::Batch`]: windows a stream-like collection (`in_kind` must be a
+    /// stream, a keyed stream, or a keyed singleton with bounded per-key values) into the tick
+    /// at `out_location`, so that each firing observes just the elements that arrived since
+    /// the previous batch.
+    ///
+    /// Implementations must reject singleton-like `in_kind`s, which are windowed with
+    /// [`DfirBuilder::snapshot`] instead.
     #[expect(clippy::too_many_arguments, reason = "TODO")]
     fn batch(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        out_location: &LocationId,
+        op_meta: &HydroIrOpMetadata,
+        fold_hooked_idents: &HashSet<String>,
+    );
+
+    /// Lowers a [`HydroNode::Snapshot`]: windows a singleton-like collection (`in_kind` must be
+    /// a singleton, an optional, or a keyed singleton whose per-key values may change) into the
+    /// tick at `out_location`, so that each firing observes the collection's current value.
+    ///
+    /// Implementations must reject stream-like `in_kind`s, which are windowed with
+    /// [`DfirBuilder::batch`] instead.
+    #[expect(clippy::too_many_arguments, reason = "TODO")]
+    fn snapshot(
         &mut self,
         in_ident: syn::Ident,
         in_location: &LocationId,
@@ -833,6 +858,84 @@ impl DfirBuilder for ProdDfirBuilder {
                     in_tick, out_tick,
                     "batch between distinct ticks should have been unified"
                 );
+                self.add_dfir_in(
+                    out_location,
+                    parse_quote! {
+                        #out_ident = #in_ident;
+                    },
+                    None,
+                );
+            }
+            (None, Some(_)) => {
+                // Entering the tick's loop from the top level: emit a windowing operator.
+                // `batch_eager()` preserves the pre-loop tick semantics: the loop fires on every
+                // tick even when the windowed input is empty.
+                match in_kind {
+                    // Streams and keyed streams are plain event feeds: a batch is simply the
+                    // new events. Keyed singletons with bounded per-key values keep the plain
+                    // `(K, V)` entry feed, where each entry's value arrives exactly once, and a
+                    // batch is defined to contain just the *new* finalized entries.
+                    CollectionKind::Stream { .. }
+                    | CollectionKind::KeyedStream { .. }
+                    | CollectionKind::KeyedSingleton {
+                        bound:
+                            KeyedSingletonBoundKind::BoundedValue | KeyedSingletonBoundKind::Bounded,
+                        ..
+                    } => {
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #in_ident -> batch_eager();
+                            },
+                            None,
+                        );
+                    }
+
+                    CollectionKind::Singleton { .. }
+                    | CollectionKind::Optional { .. }
+                    | CollectionKind::KeyedSingleton {
+                        bound:
+                            KeyedSingletonBoundKind::Unbounded
+                            | KeyedSingletonBoundKind::MonotonicKeys
+                            | KeyedSingletonBoundKind::MonotonicValue,
+                        ..
+                    } => {
+                        panic!(
+                            "`Batch` is only defined for stream-like collections (streams, keyed \
+                             streams, and keyed singletons with bounded per-key values), but was \
+                             applied to a singleton-like collection {in_kind:?}; use `Snapshot` \
+                             instead"
+                        );
+                    }
+                }
+            }
+            (Some(_) | None, None) => {
+                unreachable!("batch must target a tick location");
+            }
+        }
+    }
+
+    fn snapshot(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        out_location: &LocationId,
+        _op_meta: &HydroIrOpMetadata,
+        _fold_hooked_idents: &HashSet<String>,
+    ) {
+        match (
+            tick_location_of(in_location),
+            tick_location_of(out_location),
+        ) {
+            (Some(in_tick), Some(out_tick)) => {
+                // Within the same (unified) tick, e.g. entering the tick from its associated
+                // atomic region: both sides live in the same loop.
+                assert_eq!(
+                    in_tick, out_tick,
+                    "snapshot between distinct ticks should have been unified"
+                );
                 // NOTE(#2902): a bounded singleton-like value produced once inside the
                 // loop (e.g. by `fold_no_replay` in an atomic region) needs to be held across
                 // firings. Operators in atomic regions have `'static` lifetimes so they should
@@ -998,20 +1101,14 @@ impl DfirBuilder for ProdDfirBuilder {
                         );
                     }
 
-                    // Streams and keyed streams are plain event feeds: a batch is simply the
-                    // new events. The remaining keyed-singleton kinds never remove keys, so
-                    // they keep the plain `(K, V)` entry feed: for the value-unbounded kinds
-                    // (`MonotonicKeys`/`MonotonicValue`), upstream keyed aggregations re-emit
-                    // an entry's current value eagerly whenever it changes; for
-                    // `BoundedValue`, each entry's value arrives exactly once, and a batch is
-                    // defined to contain just the *new* finalized entries.
-                    CollectionKind::Stream { .. }
-                    | CollectionKind::KeyedStream { .. }
-                    | CollectionKind::KeyedSingleton {
+                    // The value-unbounded keyed-singleton kinds that never remove keys
+                    // (`MonotonicKeys`/`MonotonicValue`) keep the plain `(K, V)` entry feed:
+                    // upstream keyed aggregations re-emit an entry's current value eagerly
+                    // whenever it changes, so the snapshot is the feed of changed entries.
+                    CollectionKind::KeyedSingleton {
                         bound:
                             KeyedSingletonBoundKind::MonotonicKeys
-                            | KeyedSingletonBoundKind::MonotonicValue
-                            | KeyedSingletonBoundKind::BoundedValue,
+                            | KeyedSingletonBoundKind::MonotonicValue,
                         ..
                     } => {
                         self.add_dfir_in(
@@ -1022,10 +1119,24 @@ impl DfirBuilder for ProdDfirBuilder {
                             None,
                         );
                     }
+
+                    CollectionKind::Stream { .. }
+                    | CollectionKind::KeyedStream { .. }
+                    | CollectionKind::KeyedSingleton {
+                        bound: KeyedSingletonBoundKind::BoundedValue,
+                        ..
+                    } => {
+                        panic!(
+                            "`Snapshot` is only defined for singleton-like collections \
+                             (singletons, optionals, and keyed singletons whose per-key values \
+                             may change), but was applied to a stream-like collection \
+                             {in_kind:?}; use `Batch` instead"
+                        );
+                    }
                 }
             }
             (Some(_) | None, None) => {
-                unreachable!("batch must target a tick location");
+                unreachable!("snapshot must target a tick location");
             }
         }
     }
@@ -2447,7 +2558,7 @@ fn uf_union(parent: &mut HashMap<ClockId, ClockId>, a: ClockId, b: ClockId) {
 }
 
 /// Traverse the IR to build a union-find that unifies tick IDs connected
-/// through `Batch` and `YieldConcat` nodes at atomic boundaries, then
+/// through `Batch`, `Snapshot`, and `YieldConcat` nodes at atomic boundaries, then
 /// rewrite all `LocationId`s to use the representative tick ID.
 #[cfg(feature = "build")]
 pub fn unify_atomic_ticks(ir: &mut [HydroRoot]) {
@@ -2458,7 +2569,9 @@ pub fn unify_atomic_ticks(ir: &mut [HydroRoot]) {
         ir,
         &mut |_| {},
         &mut |node: &mut HydroNode| match node {
-            HydroNode::Batch { inner, metadata } | HydroNode::YieldConcat { inner, metadata } => {
+            HydroNode::Batch { inner, metadata }
+            | HydroNode::Snapshot { inner, metadata }
+            | HydroNode::YieldConcat { inner, metadata } => {
                 if let (Some(a), Some(b)) = (
                     tick_of(&inner.metadata().location_id),
                     tick_of(&metadata.location_id),
@@ -3262,7 +3375,25 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
+    /// Windows a stream-like collection (a stream, a keyed stream, or a keyed singleton whose
+    /// per-key values are bounded) into a tick. Each firing of the tick observes a *batch* of
+    /// the elements (or finalized entries) that have arrived since the previous batch, and
+    /// never sees an element twice.
+    ///
+    /// The simulator fuzzes how the arriving elements are split into batches.
     Batch {
+        inner: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
+    /// Windows a singleton-like collection (a singleton, an optional, or a keyed singleton
+    /// whose per-key values may change, as well as a fully bounded keyed singleton) into a
+    /// tick. Each firing of the tick observes a *snapshot* of the collection's current value,
+    /// so a value that has not changed since the previous firing is observed again.
+    ///
+    /// The simulator fuzzes which of the collection's intermediate states each snapshot
+    /// observes.
+    Snapshot {
         inner: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
@@ -3638,6 +3769,7 @@ impl HydroNode {
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
             | HydroNode::Batch { inner, .. }
+            | HydroNode::Snapshot { inner, .. }
             | HydroNode::YieldConcat { inner, .. }
             | HydroNode::UnboundSingleton { inner, .. }
             | HydroNode::AssertIsConsistent { inner, .. } => {
@@ -3864,6 +3996,10 @@ impl HydroNode {
                 metadata: metadata.clone(),
             },
             HydroNode::Batch { inner, metadata } => HydroNode::Batch {
+                inner: Box::new(inner.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::Snapshot { inner, metadata } => HydroNode::Snapshot {
                 inner: Box::new(inner.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -4465,6 +4601,35 @@ impl HydroNode {
                         }
 
                         ident_stack.push(batch_ident);
+                    }
+
+                    HydroNode::Snapshot {
+                        inner, metadata, ..
+                    } => {
+                        let inner_ident = ident_stack.pop().unwrap();
+
+                        let stmt_id = next_stmt_id.get_and_increment();
+                        let snapshot_ident =
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                graph_builders.snapshot(
+                                    inner_ident,
+                                    &inner.metadata().location_id,
+                                    &inner.metadata().collection_kind,
+                                    &snapshot_ident,
+                                    &out_location,
+                                    &metadata.op,
+                                    fold_hooked_idents,
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        ident_stack.push(snapshot_ident);
                     }
 
                     HydroNode::YieldConcat {
@@ -6650,6 +6815,7 @@ impl HydroNode {
             | HydroNode::BeginAtomic { .. }
             | HydroNode::EndAtomic { .. }
             | HydroNode::Batch { .. }
+            | HydroNode::Snapshot { .. }
             | HydroNode::Chain { .. }
             | HydroNode::MergeOrdered { .. }
             | HydroNode::ChainFirst { .. }
@@ -6743,6 +6909,7 @@ impl HydroNode {
             | HydroNode::BeginAtomic { metadata, .. }
             | HydroNode::EndAtomic { metadata, .. }
             | HydroNode::Batch { metadata, .. }
+            | HydroNode::Snapshot { metadata, .. }
             | HydroNode::Chain { metadata, .. }
             | HydroNode::MergeOrdered { metadata, .. }
             | HydroNode::ChainFirst { metadata, .. }
@@ -6804,6 +6971,7 @@ impl HydroNode {
             | HydroNode::BeginAtomic { metadata, .. }
             | HydroNode::EndAtomic { metadata, .. }
             | HydroNode::Batch { metadata, .. }
+            | HydroNode::Snapshot { metadata, .. }
             | HydroNode::Chain { metadata, .. }
             | HydroNode::MergeOrdered { metadata, .. }
             | HydroNode::ChainFirst { metadata, .. }
@@ -6861,6 +7029,7 @@ impl HydroNode {
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
             | HydroNode::Batch { inner, .. }
+            | HydroNode::Snapshot { inner, .. }
             | HydroNode::UnboundSingleton { inner, .. }
             | HydroNode::AssertIsConsistent { inner, .. } => {
                 vec![inner]
@@ -6974,6 +7143,7 @@ impl HydroNode {
             HydroNode::BeginAtomic { .. } => "BeginAtomic()".to_owned(),
             HydroNode::EndAtomic { .. } => "EndAtomic()".to_owned(),
             HydroNode::Batch { .. } => "Batch()".to_owned(),
+            HydroNode::Snapshot { .. } => "Snapshot()".to_owned(),
             HydroNode::Chain { first, second, .. } => {
                 format!("Chain({}, {})", first.print_root(), second.print_root())
             }

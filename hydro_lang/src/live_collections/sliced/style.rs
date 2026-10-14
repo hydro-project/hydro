@@ -11,10 +11,12 @@ use super::Slicable;
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
 use crate::forward_handle::{TickCycle, TickCycleHandle};
 use crate::live_collections::boundedness::{Bounded, Boundedness, Unbounded};
-use crate::live_collections::keyed_singleton::{BoundedValue, KeyedSingletonBound};
+use crate::live_collections::keyed_singleton::{
+    BoundedValue, KeyedSingletonBound, KeyedSingletonSnapshotBound,
+};
 use crate::live_collections::optional::OptionalBound;
 use crate::live_collections::singleton::SingletonBound;
-use crate::live_collections::stream::{Ordering, Retries};
+use crate::live_collections::stream::{ExactlyOnce, Ordering, Retries, TotalOrder};
 use crate::location::Location;
 use crate::location::tick::{DeferTick, Tick};
 use crate::nondet::{NonDet, nondet};
@@ -282,7 +284,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>>
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonSnapshotBound<ValueBound = Unbounded>>
     Slicable<'a, L::DropConsistency>
     for Default<crate::live_collections::KeyedSingleton<K, V, L, B>>
 {
@@ -371,10 +373,11 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
+    Slicable<'a, L::DropConsistency>
     for Batch<
-        crate::live_collections::KeyedSingleton<K, V, L, BoundedValue>,
-        Option<crate::sim_hooks::KeyedSnapshotHook<K, V, L::SimHookScope>>,
+        crate::live_collections::KeyedSingleton<K, V, L, B>,
+        Option<crate::sim_hooks::KeyedBatchHook<K, V, TotalOrder, ExactlyOnce, L::SimHookScope>>,
     >
 {
     type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;
@@ -432,8 +435,7 @@ impl<'a, T, L: Location<'a>, B: OptionalBound> Slicable<'a, L::DropConsistency>
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>>
-    Slicable<'a, L::DropConsistency>
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonSnapshotBound> Slicable<'a, L::DropConsistency>
     for Snapshot<
         crate::live_collections::KeyedSingleton<K, V, L, B>,
         Option<crate::sim_hooks::KeyedSnapshotHook<K, V, L::SimHookScope>>,
@@ -531,7 +533,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>>
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonSnapshotBound<ValueBound = Unbounded>>
     Slicable<'a, L::DropConsistency>
     for Atomic<crate::live_collections::KeyedSingleton<K, V, crate::location::Atomic<L>, B>>
 {
