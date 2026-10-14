@@ -38,18 +38,19 @@ The `.bincode()` API configures the channel to use the [`bincode`](https://docs.
 
 ## EMBEDDED
 
-`EMBEDDED` is for [embedded deployments](../deploy/embedded.mdx), where the host program that runs the generated code implements every channel itself: over a network connection, through an in-memory queue, with a specialized transport like DPDK or shared memory, or with an existing messaging layer. The config names only the **guarantees** the channel must keep:
+`EMBEDDED` is for [embedded deployments](../deploy/embedded.mdx), where the host program that runs the generated code implements every channel itself: over a network connection, through an in-memory queue, with a specialized transport like DPDK or shared memory, or with an existing messaging layer. Since there is no transport to name, the config names only the **guarantees** the channel must keep, in the same vocabulary as Hydro's streams: an ordering (`total_order()` or `no_order()`) and a consistency (`eventual_consistency()` or `no_consistency(nondet!(..))`), both required, in either order:
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
-let config = EMBEDDED.fail_stop().name("messages");
+let config = EMBEDDED.total_order().eventual_consistency().name("messages");
 ```
 
-| Policy | Received stream | The host's channel must |
-|---|---|---|
-| `EMBEDDED.fail_stop()` | `TotalOrder`, `EventualConsistency` | deliver, per sender, an in-order prefix of what it sent, and nothing more once it fails |
-| `EMBEDDED.lossy(nondet!(..))` | `TotalOrder`, `NoConsistency` | deliver each sender's messages in order; any may be dropped |
-| `EMBEDDED.lossy_delayed_forever()` | `NoOrder`, `EventualConsistency` | deliver in any order; a message never delivered counts as delayed forever |
+| Guarantees | Received stream | The host's channel must | Like |
+|---|---|---|---|
+| `.total_order().eventual_consistency()` | `TotalOrder`, `EventualConsistency` | deliver, per sender, an in-order prefix of what it sent | `TCP.fail_stop()` |
+| `.total_order().no_consistency(nondet!(..))` | `TotalOrder`, `NoConsistency` | deliver each sender's messages in order; any may be dropped | `TCP.lossy(..)` |
+| `.no_order().eventual_consistency()` | `NoOrder`, `EventualConsistency` | deliver in any order; a message never delivered counts as delayed forever | `TCP.lossy_delayed_forever()` |
+| `.no_order().no_consistency(nondet!(..))` | `NoOrder`, `NoConsistency` | deliver in any order; any may be dropped | `UDP.lossy(..)` |
 
 `EMBEDDED` channels are never serialized by Hydro: the raw element type `T` is exposed at the channel boundary, so the generated sender side hands the host `T` values directly, and the receiver side accepts a stream of `T` values. The host encodes them only if its transport needs to (an in-memory queue never does). Because no transport managed by Hydro is involved, the receiving side gets the raw payload with no transport `Result` to unwrap: the host decides how to handle serialization and delivery faults before feeding elements into the receiver.
 

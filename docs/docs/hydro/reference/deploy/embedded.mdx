@@ -249,7 +249,7 @@ let code = flow
 
 ## Networking
 
-When your Hydro program uses [`.send()`](rust:hydro_lang::live_collections::Stream::send) between locations, the generated functions get extra parameters so you can wire up the transport yourself. By default (with [`.bincode()`](rust:hydro_lang::networking::NetworkingConfig::bincode) serialization), Hydro automatically handles serialization — just shuttle the raw bytes between sender and receiver. Alternatively, an [`EMBEDDED` channel](#host-implemented-channels-embedded) exposes the raw element type instead of bytes, so you implement (and, if you need to, serialize) the channel however you like. In either case, you must ensure that you are preserving any guarantees of the network config specified in the Hydro program. For example, if the channel uses `TCP.fail_stop()` or `EMBEDDED.fail_stop()`, you must ensure that your networking mechanism delivers, per sender, an in-order prefix of the messages sent.
+When your Hydro program uses [`.send()`](rust:hydro_lang::live_collections::Stream::send) between locations, the generated functions get extra parameters so you can wire up the transport yourself. By default (with [`.bincode()`](rust:hydro_lang::networking::NetworkingConfig::bincode) serialization), Hydro automatically handles serialization — just shuttle the raw bytes between sender and receiver. Alternatively, an [`EMBEDDED` channel](#host-implemented-channels-embedded) exposes the raw element type instead of bytes, so you implement (and, if you need to, serialize) the channel however you like. In either case, you must ensure that you are preserving any guarantees of the network config specified in the Hydro program. For example, if the channel uses `TCP.fail_stop()` or `EMBEDDED.total_order().eventual_consistency()`, you must ensure that your networking mechanism delivers, per sender, an in-order prefix of the messages sent.
 
 Network channels in embedded mode **must be named**. Use [`.name()`](rust:hydro_lang::networking::NetworkingConfig::name) on the networking config:
 
@@ -372,7 +372,7 @@ Your transport layer must handle both directions: route outgoing `(target_id, by
 By default, network channels use [`.bincode()`](rust:hydro_lang::networking::NetworkingConfig::bincode) serialization: Hydro serializes each element to `Bytes` before handing it to your transport, and deserializes the `BytesMut` your transport delivers on the other side. If you want to control how messages travel yourself — for example to use a zero-copy encoding, integrate with an existing protocol, hand off to a transport that carries typed messages, or connect two locations with an in-memory queue — declare the channel [`EMBEDDED`](../locations/network-configuration.md#embedded) instead, naming only the guarantees it must keep:
 
 ```rust,ignore
-input.send(receiver, EMBEDDED.fail_stop().name("messages"))
+input.send(receiver, EMBEDDED.total_order().eventual_consistency().name("messages"))
 ```
 
 An `EMBEDDED` channel is unserialized, so the generated network parameters expose the **raw element type** `T` instead of bytes:
@@ -406,7 +406,7 @@ pub mod echo_receiver {
 }
 ```
 
-`EMBEDDED` offers the same fault policies as `TCP`: `fail_stop()` requires your channel to deliver an in-order prefix of the sent elements, `lossy(nondet!(..))` allows drops but keeps order, and `lossy_delayed_forever()` permits reordering (the received stream is typed as [`NoOrder`](rust:hydro_lang::live_collections::stream::NoOrder) accordingly).
+An `EMBEDDED` channel declares its guarantees directly, one ordering and one consistency: `total_order()` requires your channel to deliver each sender's messages in order, while `no_order()` permits reordering (the received stream is typed as [`NoOrder`](rust:hydro_lang::live_collections::stream::NoOrder) accordingly); `eventual_consistency()` requires that a message your channel never delivers count as delayed forever (with `total_order()`, an in-order prefix of the sent elements), while `no_consistency(nondet!(..))` allows a message to be lost and later ones delivered. See [Network Configuration](../locations/network-configuration.md#embedded) for the four combinations.
 
 :::note
 
