@@ -48,7 +48,6 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
-                   work_fn,
                    work_fn_async,
                    ident,
                    inputs,
@@ -62,16 +61,20 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
 
         let singleton_output_ident = wc.make_ident("singleton_output");
 
-        let write_prologue = quote_spanned! {op_span=>
-            let mut #singleton_output_ident = ::std::option::Option::None;
-        };
-
-        let write_tick_end = match persistence {
-            Persistence::Tick => quote_spanned! {op_span=>
-                #singleton_output_ident = ::std::option::Option::None;
+        // For `'static` the accumulator state lives in the prologue, persisting across ticks.
+        // For `'tick` the accumulator is created fresh each tick (within `write_iterator`), so it
+        // can be moved (not cloned) into the output.
+        let write_prologue = match persistence {
+            Persistence::Static => quote_spanned! {op_span=>
+                let mut #singleton_output_ident = ::std::option::Option::None;
             },
-            _ => Default::default(),
+            Persistence::Tick => Default::default(),
         };
+        let make_tick_state = matches!(persistence, Persistence::Tick).then(|| {
+            quote_spanned! {op_span=>
+                let mut #singleton_output_ident = ::std::option::Option::None;
+            }
+        });
 
         let func = &arguments[0];
         let accumulator_ident = wc.make_ident("accumulator");
@@ -100,42 +103,64 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = if is_pull {
             let input = &inputs[0];
-            quote_spanned! {op_span=>
-                #assign_accum_ident
-
-                // Eagerly consume input to ensure updated state.
-                {
-                    let __fut = #root::dfir_pipes::pull::Pull::for_each(#input, |#item_ident| {
-                        #foreach_body
-                    });
-                    let () = #work_fn_async(__fut).await;
-                }
-
-                let #ident = #work_fn(
-                    || #root::dfir_pipes::pull::iter(
-                        // 1 or 0 items (`Some` or `None`).
-                        ::std::clone::Clone::clone(&*#accumulator_ident)
-                    )
-                );
+            match persistence {
+                // `'tick`: owned-mode reduce. The accumulator is created fresh this tick and the
+                // output pull emits it by move (not cloned); 1 or 0 items (`Some` or `None`).
+                Persistence::Tick => quote_spanned! {op_span=>
+                    // Eagerly consumes the input to ensure updated state.
+                    let #ident = #work_fn_async(
+                        #root::dfir_pipes::pull::Pull::reduce(#input, #func)
+                    ).await;
+                },
+                // `'static`: borrowed-mode reduce. The accumulator persists in the prologue state,
+                // and the output pull emits a clone of its current value; 1 or 0 items (`Some` or
+                // `None`).
+                Persistence::Static => quote_spanned! {op_span=>
+                    let #ident = {
+                        // Eagerly consumes the input to ensure updated state.
+                        let __accumulated = #work_fn_async(
+                            #root::dfir_pipes::pull::Pull::reduce_ref(
+                                #input,
+                                &mut #singleton_output_ident,
+                                #func,
+                            )
+                        ).await;
+                        #root::dfir_pipes::pull::Pull::map(
+                            __accumulated,
+                            |__val: &mut _| ::std::clone::Clone::clone(&*__val),
+                        )
+                    };
+                },
             }
         } else if outputs.is_empty() {
             // Terminal push: reduce is a singleton reference target with no downstream.
             quote_spanned! {op_span=>
+                #make_tick_state
                 let #ident = #root::dfir_pipes::push::for_each(|#item_ident| {
                     #assign_accum_ident
 
                     #foreach_body
                 });
             }
+        } else if Persistence::Tick == persistence {
+            // `'tick`: owned-mode reduce. The accumulator is created fresh each tick and moved
+            // (not cloned) into the output on finalize.
+            let output = &outputs[0];
+            quote_spanned! {op_span=>
+                let #ident = #root::dfir_pipes::push::reduce(
+                    ::std::option::Option::None,
+                    #func,
+                    #output,
+                );
+            }
         } else {
+            // `'static`: borrowed-mode reduce. The accumulator persists in the prologue state, so
+            // emit a clone of its current value on finalize.
             let output = &outputs[0];
             quote_spanned! {op_span=>
                 let #ident = #root::dfir_pipes::push::reduce_ref(
                     &mut #singleton_output_ident,
-                    |#accumulator_ident: &mut _, #item_ident| {
-                        #[allow(clippy::redundant_closure_call)]
-                        (#func)(#accumulator_ident, #item_ident);
-                    },
+                    #func,
                     #root::dfir_pipes::push::map(
                         |__val: &mut _| ::std::clone::Clone::clone(&*__val),
                         #output,
@@ -147,8 +172,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
-            write_iterator_after: Default::default(),
-            write_tick_end,
+            ..Default::default()
         })
     },
 };

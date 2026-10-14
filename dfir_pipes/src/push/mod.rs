@@ -9,7 +9,6 @@ use core::task::Waker;
 
 use crate::{Context, Toggle};
 
-mod accum_state;
 mod accumulate;
 mod fanout;
 mod filter;
@@ -52,11 +51,7 @@ pub(crate) mod test_utils;
 #[cfg_attr(docsrs, doc(cfg(feature = "variadics")))]
 pub mod demux_var;
 
-#[cfg(feature = "alloc")]
-#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-pub use accum_state::SortState;
-pub use accum_state::{FoldState, ReduceState};
-pub use accumulate::{AccumState, Accumulate};
+pub use accumulate::Accumulate;
 #[cfg(feature = "variadics")]
 #[cfg_attr(docsrs, doc(cfg(feature = "variadics")))]
 pub use demux_var::{DemuxVar, PushVariadic, demux_var};
@@ -94,6 +89,13 @@ pub use unzip::Unzip;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use vec_push::VecPush;
+
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+#[doc(inline)]
+pub use crate::accum::SortState;
+#[doc(inline)]
+pub use crate::accum::{AccumState, FoldState, ReduceState};
 
 /// The result of pushing an item into a [`Push`].
 ///

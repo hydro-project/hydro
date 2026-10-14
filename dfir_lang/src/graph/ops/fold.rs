@@ -50,7 +50,6 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
-                   work_fn,
                    work_fn_async,
                    ident,
                    is_pull,
@@ -75,21 +74,26 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
         let accumulator_ident = wc.make_ident("accumulator");
         let item_ident = wc.make_ident("item");
 
-        let write_prologue = quote_spanned! {op_span=>
+        // The initializer closure is evaluated once, in the prologue.
+        let mut write_prologue = quote_spanned! {op_span=>
             #[allow(unused_mut, reason = "for if `Fn` instead of `FnMut`.")]
             let mut #initializer_func_ident = #init_fn;
-
-            #[allow(clippy::redundant_closure_call)]
-            let mut #singleton_output_ident = #init;
         };
-
-        let write_tick_end = match persistence {
-            Persistence::Tick => quote_spanned! {op_span=>
+        // For `'static` the accumulator state lives in the prologue, persisting across ticks.
+        // For `'tick` the accumulator is created fresh each tick (within `write_iterator`), so it
+        // can be moved (not cloned) into the output.
+        if Persistence::Static == persistence {
+            write_prologue.extend(quote_spanned! {op_span=>
                 #[allow(clippy::redundant_closure_call)]
-                { #singleton_output_ident = #init; }
-            },
-            _ => Default::default(),
-        };
+                let mut #singleton_output_ident = #init;
+            });
+        }
+        let make_tick_state = matches!(persistence, Persistence::Tick).then(|| {
+            quote_spanned! {op_span=>
+                #[allow(clippy::redundant_closure_call)]
+                let mut #singleton_output_ident = #init;
+            }
+        });
 
         let assign_accum_ident = quote_spanned! {op_span=>
             #[allow(unused_mut)]
@@ -109,33 +113,83 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
         };
 
         let write_iterator = if is_pull {
-            quote_spanned! {op_span=>
-                #assign_accum_ident
-
-                // Eagerly consume input to ensure updated state.
-                {
-                    let __fut = #root::dfir_pipes::pull::Pull::for_each(#input, |#item_ident| {
-                        #foreach_body
-                    });
-                    let () = #work_fn_async(__fut).await;
-                }
-
-                let #ident = #work_fn(
-                    || #root::dfir_pipes::pull::once(
-                        ::std::clone::Clone::clone(&*#accumulator_ident)
-                    )
-                );
+            match persistence {
+                // `'tick`: owned-mode fold. The accumulator is created fresh this tick and the
+                // output pull emits it by move (not cloned).
+                Persistence::Tick => quote_spanned! {op_span=>
+                    #[allow(clippy::redundant_closure_call)]
+                    let #singleton_output_ident = #init;
+                    // Eagerly consumes the input to ensure updated state.
+                    let #ident = #work_fn_async(
+                        #root::dfir_pipes::pull::Pull::fold(
+                            #input,
+                            #singleton_output_ident,
+                            #func,
+                        )
+                    ).await;
+                },
+                // `'static`: borrowed-mode fold. The accumulator persists in the prologue state,
+                // and the output pull emits a clone of its current value.
+                Persistence::Static => quote_spanned! {op_span=>
+                    let #ident = {
+                        // Eagerly consumes the input to ensure updated state.
+                        let __accumulated = #work_fn_async(
+                            #root::dfir_pipes::pull::Pull::fold_ref(
+                                #input,
+                                &mut #singleton_output_ident,
+                                #func,
+                            )
+                        ).await;
+                        #root::dfir_pipes::pull::Pull::map(
+                            __accumulated,
+                            |__val: &mut _| ::std::clone::Clone::clone(&*__val),
+                        )
+                    };
+                },
             }
         } else if outputs.is_empty() {
             // Terminal push: fold is a singleton reference target with no downstream.
             quote_spanned! {op_span=>
+                #make_tick_state
                 let #ident = #root::dfir_pipes::push::for_each(|#item_ident| {
                     #assign_accum_ident
 
                     #foreach_body
                 });
             }
+        } else if Persistence::Tick == persistence {
+            // `'tick`: owned-mode fold. The accumulator is created fresh each tick and moved
+            // (not cloned) into the output on finalize.
+            let output = &outputs[0];
+            quote_spanned! {op_span=>
+                let #ident = {
+                    #[inline(always)]
+                    fn __push_fold_owned<Acc, Item, CombFn, Next>(
+                        acc: Acc,
+                        comb_fn: CombFn,
+                        next: Next,
+                    ) -> #root::dfir_pipes::push::Accumulate<
+                        #root::dfir_pipes::push::FoldState<Acc, CombFn, Acc, Item>,
+                        Next,
+                    >
+                    where
+                        CombFn: ::std::ops::FnMut(&mut Acc, Item),
+                        Next: #root::dfir_pipes::push::Push<Acc, ()>,
+                    {
+                        #root::dfir_pipes::push::fold(acc, comb_fn, next)
+                    }
+                    #[allow(clippy::redundant_closure_call)]
+                    let #singleton_output_ident = #init;
+                    __push_fold_owned(
+                        #singleton_output_ident,
+                        #func,
+                        #output,
+                    )
+                };
+            }
         } else {
+            // `'static`: borrowed-mode fold. The accumulator persists in the prologue state, so
+            // emit a clone of its current value on finalize.
             let output = &outputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
@@ -156,7 +210,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                     }
                     __push_fold(
                         &mut #singleton_output_ident,
-                        |#accumulator_ident: &mut _, #item_ident| { #foreach_body },
+                        #func,
                         #root::dfir_pipes::push::map(
                             |__val: &mut _| ::std::clone::Clone::clone(&*__val),
                             #output,
@@ -169,8 +223,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
-            write_iterator_after: Default::default(),
-            write_tick_end,
+            ..Default::default()
         })
     },
 };
