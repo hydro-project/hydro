@@ -710,15 +710,8 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 });
             }
 
-            // Embedded inputs (Stream sources).
-            let input_params: Vec<proc_macro2::TokenStream> = loc_inputs
-                .iter()
-                .map(|(ident, element_type)| {
-                    quote! { #ident: impl __root_dfir_rs::futures::Stream<Item = #element_type> + Unpin + 'a }
-                })
-                .collect();
-
-            // Embedded singleton inputs (plain value parameters).
+            // Embedded inputs, passed by value in one struct with a named field per input: a
+            // `Stream` for each stream input and a plain value for each singleton input.
             let mut loc_singleton_inputs = env
                 .singleton_inputs
                 .get(location_key)
@@ -726,12 +719,57 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 .unwrap_or_default();
             loc_singleton_inputs.sort_by(|a, b| a.0.cmp(&b.0));
 
-            let singleton_input_params: Vec<proc_macro2::TokenStream> = loc_singleton_inputs
-                .iter()
-                .map(|(ident, element_type)| {
-                    quote! { #ident: #element_type }
-                })
-                .collect();
+            let mut input_params: Vec<proc_macro2::TokenStream> = Vec::new();
+            if !loc_inputs.is_empty() || !loc_singleton_inputs.is_empty() {
+                let input_struct_ident = syn::Ident::new("EmbeddedInputs", Span::call_site());
+
+                let input_generic_idents: Vec<syn::Ident> = loc_inputs
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| quote::format_ident!("__In{}", i))
+                    .collect();
+
+                let struct_fields: Vec<proc_macro2::TokenStream> = loc_inputs
+                    .iter()
+                    .zip(input_generic_idents.iter())
+                    .map(|((ident, _), generic)| quote! { pub #ident: #generic })
+                    .chain(
+                        loc_singleton_inputs
+                            .iter()
+                            .map(|(ident, element_type)| quote! { pub #ident: #element_type }),
+                    )
+                    .collect();
+
+                let struct_generics: Vec<proc_macro2::TokenStream> = loc_inputs
+                    .iter()
+                    .zip(input_generic_idents.iter())
+                    .map(|((_, element_type), generic)| {
+                        quote! { #generic: __root_dfir_rs::futures::Stream<Item = #element_type> + Unpin }
+                    })
+                    .collect();
+
+                for ((_, element_type), generic) in
+                    loc_inputs.iter().zip(input_generic_idents.iter())
+                {
+                    extra_fn_generics.push(
+                        quote! { #generic: __root_dfir_rs::futures::Stream<Item = #element_type> + Unpin + 'a },
+                    );
+                }
+
+                input_params.push(quote! {
+                    __inputs: #fn_ident::#input_struct_ident<#(#input_generic_idents),*>
+                });
+
+                for (ident, _) in loc_inputs.iter().chain(&loc_singleton_inputs) {
+                    extra_destructure.push(quote! { let #ident = __inputs.#ident; });
+                }
+
+                mod_items.push(quote! {
+                    pub struct #input_struct_ident<#(#struct_generics),*> {
+                        #(#struct_fields),*
+                    }
+                });
+            }
 
             // Embedded outputs (FnMut callbacks).
             if !loc_outputs.is_empty() {
@@ -961,7 +999,6 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             // Build the function.
             let all_params: Vec<proc_macro2::TokenStream> = cluster_params
                 .into_iter()
-                .chain(singleton_input_params)
                 .chain(input_params)
                 .chain(output_params)
                 .chain(net_in_params)

@@ -37,7 +37,7 @@ pub fn capitalize<'a>(input: Stream<String, Process<'a, ()>>) {
 }
 ```
 
-[`embedded_input`](rust:hydro_lang::location::Location::embedded_input) creates a stream parameter on the generated function — the name you pass (`"input"`) becomes the parameter name. Similarly, [`embedded_output`](rust:hydro_lang::live_collections::Stream::embedded_output) creates a field on a generated `EmbeddedOutputs` struct — the name (`"output"`) becomes the field name. The output field accepts an `impl FnMut(T)` closure that will be called for each emitted element.
+[`embedded_input`](rust:hydro_lang::location::Location::embedded_input) creates a field on a generated `EmbeddedInputs` struct — the name you pass (`"input"`) becomes the field name. Similarly, [`embedded_output`](rust:hydro_lang::live_collections::Stream::embedded_output) creates a field on a generated `EmbeddedOutputs` struct — the name (`"output"`) becomes the field name. The output field accepts an `impl FnMut(T)` closure that will be called for each emitted element.
 
 Your base crate also needs to declare an empty `stageleft_macro_entrypoint` feature. This is required by the Stageleft code generation machinery to set up the correct re-exports:
 
@@ -129,7 +129,8 @@ async fn run() {
     };
 
     // Build and run the dataflow.
-    let mut flow = embedded::capitalize(input, &mut outputs);
+    let inputs = embedded::capitalize::EmbeddedInputs { input };
+    let mut flow = embedded::capitalize(inputs, &mut outputs);
     tokio::task::LocalSet::new()
         .run_until(flow.run_available())
         .await;
@@ -139,12 +140,12 @@ async fn run() {
 }
 ```
 
-The generated function accepts your input streams as `impl Stream<Item = T> + Unpin` parameters and a mutable reference to the `EmbeddedOutputs` struct. It returns a [`Dfir`](rust:dfir_rs::scheduled::context::Dfir) graph that you run with [`run_available()`](rust:dfir_rs::scheduled::context::Dfir::run_available) (or tick manually).
+The generated function accepts an `EmbeddedInputs` struct, with one named field per input (each stream input is any `Stream<Item = T> + Unpin`), and a mutable reference to the `EmbeddedOutputs` struct. It returns a [`Dfir`](rust:dfir_rs::scheduled::context::Dfir) graph that you run with [`run_available()`](rust:dfir_rs::scheduled::context::Dfir::run_available) (or tick manually).
 
 
 ## Singleton Inputs
 
-In addition to stream inputs, you can pass singleton values into embedded mode. A **singleton input** becomes a plain `T` parameter on the generated function — no stream wrapping needed. This is useful for configuration values, thresholds, or any fixed data that the dataflow needs.
+In addition to stream inputs, you can pass singleton values into embedded mode. A **singleton input** becomes a plain `T` field of `EmbeddedInputs` — no stream wrapping needed. This is useful for configuration values, thresholds, or any fixed data that the dataflow needs.
 
 Use [`Location::embedded_singleton_input`](rust:hydro_lang::location::Location::embedded_singleton_input) instead of `embedded_input`:
 
@@ -172,13 +173,19 @@ my_hydro_crate::greet(
 );
 ```
 
-The generated function will accept `greeting` as a plain `String` parameter:
+The generated `EmbeddedInputs` struct holds `greeting` as a plain `String`:
 
 ```rust,ignore
-pub fn greet<'a, F: FnMut(String) + 'a>(
-    greeting: String,
-    names: impl Stream<Item = String> + Unpin + 'a,
-    __outputs: &'a mut greet::EmbeddedOutputs<F>,
+pub mod greet {
+    pub struct EmbeddedInputs<In0: Stream<Item = String> + Unpin> {
+        pub names: In0,
+        pub greeting: String,
+    }
+}
+
+pub fn greet<'a, In0: Stream<Item = String> + Unpin + 'a, ...>(
+    __inputs: greet::EmbeddedInputs<In0>,
+    __outputs: &'a mut greet::EmbeddedOutputs<...>,
 ) -> Dfir<'a> { ... }
 ```
 
@@ -190,10 +197,13 @@ let mut results = vec![];
 let mut outputs = embedded::greet::EmbeddedOutputs {
     output: |s: String| results.push(s),
 };
-let mut flow = embedded::greet("Hello".to_owned(), input, &mut outputs);
+let inputs = embedded::greet::EmbeddedInputs {
+    names: input,
+    greeting: "Hello".to_owned(),
+};
+let mut flow = embedded::greet(inputs, &mut outputs);
 ```
 
-Singleton inputs appear before stream inputs in the generated function signature.
 
 ## Clusters
 
@@ -204,7 +214,7 @@ A function generated for a cluster location receives a `__cluster_self_id` param
 
 ```rust,ignore
 let member_id = TaglessMemberId::from_raw_id(0);
-let mut flow = my_cluster_fn(&member_id, input, &mut outputs);
+let mut flow = my_cluster_fn(&member_id, my_cluster_fn::EmbeddedInputs { input }, &mut outputs);
 ```
 
 ### Membership Streams
@@ -228,13 +238,13 @@ let member_id = TaglessMemberId::from_raw_id(0);
 let membership = my_sender::EmbeddedMembershipStreams {
     my_receiver: futures::stream::iter(vec![(member_id.clone(), MembershipEvent::Joined)]),
 };
-let mut flow = my_sender(membership, input, &mut net_out);
+let mut flow = my_sender(membership, my_sender::EmbeddedInputs { input }, &mut net_out);
 ```
 
 A cluster that sends to another cluster receives both `__cluster_self_id` and the membership struct:
 
 ```rust,ignore
-let mut flow = m2m_sender(&src_id, membership, input, &mut net_out);
+let mut flow = m2m_sender(&src_id, membership, m2m_sender::EmbeddedInputs { input }, &mut net_out);
 ```
 
 In `build.rs`, use `with_cluster` instead of `with_process` to register cluster locations:
@@ -270,8 +280,8 @@ pub mod echo_sender {
     }
 }
 
-pub fn echo_sender<'a, F: FnMut(Bytes) + 'a>(
-    input: impl Stream<Item = String> + Unpin + 'a,
+pub fn echo_sender<'a, In0: Stream<Item = String> + Unpin + 'a, F: FnMut(Bytes) + 'a>(
+    __inputs: echo_sender::EmbeddedInputs<In0>,
     __network_out: &'a mut echo_sender::EmbeddedNetworkOut<F>,
 ) -> Dfir<'a> { ... }
 ```
