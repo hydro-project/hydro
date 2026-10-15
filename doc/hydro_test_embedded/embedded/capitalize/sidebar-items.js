@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["EmbeddedOutputs"]};
+window.SIDEBAR_ITEMS = {"struct":["EmbeddedInputs","EmbeddedOutputs"]};
