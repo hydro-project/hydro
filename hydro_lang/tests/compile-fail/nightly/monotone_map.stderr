@@ -10,8 +10,9 @@ error[E0277]: the input singleton must be monotonic (`Monotonic`) or bounded (`B
 note: required by a bound in `hydro_lang::prelude::Singleton::<T, L, B>::threshold_greater_or_equal`
   --> src/live_collections/singleton.rs
    |
+   | impl<'a, T, L, B: SingletonBound> Singleton<T, L, B>
+...
    |     pub fn threshold_greater_or_equal<B2: IsBounded>(
-   |            -------------------------- required by a bound in this associated function
 ...
    |         B: IsMonotonic,
    |            ^^^^^^^^^^^ required by this bound in `Singleton::<T, L, B>::threshold_greater_or_equal`

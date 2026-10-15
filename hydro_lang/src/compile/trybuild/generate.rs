@@ -11,6 +11,7 @@ use sha2::{Digest, Sha256};
 use stageleft::internal::quote;
 use trybuild_internals_api::cargo::{self, Metadata};
 use trybuild_internals_api::env::Update;
+use trybuild_internals_api::normalize::Normalization;
 use trybuild_internals_api::run::{PathDependency, Project};
 use trybuild_internals_api::{Runner, dependencies, features, path};
 
@@ -92,6 +93,9 @@ fn clean_bin_name_prefix(bin_name_prefix: &str) -> String {
 pub struct TrybuildConfig {
     pub project_dir: PathBuf,
     pub target_dir: PathBuf,
+    /// The cargo package name of the generated project's `dylib` crate, which the dynamically
+    /// linked examples (sim and localhost deploys) load at runtime.
+    pub dylib_package_name: String,
     pub features: Option<Vec<String>>,
     #[cfg(any(feature = "deploy", feature = "maelstrom"))]
     // Only the deploy backends read this field; Maelstrom-only builds derive the
@@ -150,7 +154,8 @@ pub fn create_graph_trybuild(
         hash
     };
 
-    let (project_dir, target_dir, mut cur_bin_enabled_features) = create_trybuild().unwrap();
+    let (project_dir, target_dir, dylib_package_name, mut cur_bin_enabled_features) =
+        create_trybuild().unwrap();
 
     // Determine which crate's examples folder to use based on linking mode
     let examples_dir = match linking_mode {
@@ -190,6 +195,7 @@ pub fn create_graph_trybuild(
         TrybuildConfig {
             project_dir,
             target_dir,
+            dylib_package_name,
             features: cur_bin_enabled_features,
             #[cfg(any(feature = "deploy", feature = "maelstrom"))]
             linking_mode,
@@ -644,16 +650,28 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<BuiltA
     command.arg("--");
 
     if cfg!(any(target_os = "linux", target_os = "macos")) {
-        let debug_path = if let Ok(target) = std::env::var("CARGO_BUILD_TARGET") {
-            path!(final_target_dir / target / "debug")
-        } else {
-            path!(final_target_dir / "debug")
-        };
+        let (debug_path, shared_debug_path) =
+            if let Ok(target) = std::env::var("CARGO_BUILD_TARGET") {
+                (
+                    path!(final_target_dir / target / "debug"),
+                    path!(trybuild.target_dir / target / "debug"),
+                )
+            } else {
+                (
+                    path!(final_target_dir / "debug"),
+                    path!(trybuild.target_dir / "debug"),
+                )
+            };
 
         // The built example links the trybuild dylib dynamically. Bake rpath entries for
-        // where cargo places it (debug/ and debug/deps/) and for the toolchain's shared
-        // libstd, so the artifact can be loaded/run without LD_LIBRARY_PATH.
-        let mut rpaths = vec![debug_path.clone(), path!(debug_path / "deps")];
+        // where cargo places it (which depends on the build-dir layout, see
+        // `hydro_concurrent_cargo::dylib_search_dirs`) and for the toolchain's shared libstd,
+        // so the artifact can be loaded/run without LD_LIBRARY_PATH.
+        let mut rpaths = hydro_concurrent_cargo::dylib_search_dirs(
+            &trybuild.dylib_package_name,
+            &debug_path,
+            &shared_debug_path,
+        );
         if let Some(libdir) = rustc_target_libdir() {
             rpaths.push(PathBuf::from(libdir));
         }
@@ -914,7 +932,7 @@ pub(crate) fn write_staged_source_cached(source_dir: &Path, crate_name: &str, pr
 }
 
 pub fn create_trybuild()
--> Result<(PathBuf, PathBuf, Option<Vec<String>>), trybuild_internals_api::error::Error> {
+-> Result<(PathBuf, PathBuf, String, Option<Vec<String>>), trybuild_internals_api::error::Error> {
     let _span = tracing::debug_span!(target: "hydro_build", "create_trybuild").entered();
     let Metadata {
         target_directory: target_dir,
@@ -969,6 +987,7 @@ pub fn create_trybuild()
                 Some(PathDependency {
                     name: name.clone(),
                     normalized_path: path.canonicalize().ok()?,
+                    normalization: Normalization::PathDependencies,
                 })
             }
         })
@@ -979,6 +998,7 @@ pub fn create_trybuild()
     fs::create_dir_all(&project_dir)?;
 
     let project_name = format!("{}-hydro-trybuild", crate_name);
+    let dylib_package_name = format!("{project_name}-dylib");
     let mut manifest = Runner::make_manifest(
         &workspace,
         &project_name,
@@ -1120,7 +1140,6 @@ pub fn create_trybuild()
         // the manifest has now; a fresh project gets this configuration's name. The package
         // name (and so `Cargo.lock`) never changes, and generated code never names the target
         // — it reaches the dylib through the `dylib-examples` dependency rename below.
-        let dylib_package_name = format!("{project_name}-dylib");
         let dylib_lib_name = hydro_concurrent_cargo::current_dylib_lib_name(project.dir.as_ref())
             .unwrap_or_else(|| {
                 hydro_concurrent_cargo::dylib_lib_name(&dylib_package_name, ENCODED_RUSTFLAGS)
@@ -1331,6 +1350,7 @@ members = ["dylib", "dylib-examples"]
     Ok((
         project.dir.as_ref().into(),
         project.target_dir.as_ref().into(),
+        dylib_package_name,
         project.features,
     ))
 }

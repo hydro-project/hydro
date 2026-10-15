@@ -28,6 +28,8 @@ help: the trait `Serialize` is not implemented for `OpaquePayload`
 note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<(MemberId<L2>, T), hydro_lang::prelude::Process<'a, L>, B, O, R>>::demux`
   --> src/live_collections/stream/networking.rs
    |
+   | impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
+...
    |     pub fn demux<N: NetworkFor<T>>(
    |                     ^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R>>::demux`
 

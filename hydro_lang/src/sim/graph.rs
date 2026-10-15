@@ -491,7 +491,8 @@ pub(super) fn create_sim_graph_trybuild(
 
     let bin_name = hash;
 
-    let (project_dir, target_dir, mut cur_bin_enabled_features) = create_trybuild().unwrap();
+    let (project_dir, target_dir, dylib_package_name, mut cur_bin_enabled_features) =
+        create_trybuild().unwrap();
 
     let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
 
@@ -535,6 +536,7 @@ pub(super) fn create_sim_graph_trybuild(
         TrybuildConfig {
             project_dir,
             target_dir,
+            dylib_package_name,
             features: cur_bin_enabled_features,
             #[cfg(any(feature = "deploy", feature = "maelstrom"))]
             linking_mode: LinkingMode::Dynamic,
