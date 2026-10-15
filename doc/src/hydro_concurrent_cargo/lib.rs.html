@@ -3,537 +3,816 @@
 <a href=#3 id=3 data-nosnippet>3</a>//! This crate provides the coordination primitives for running multiple cargo
 <a href=#4 id=4 data-nosnippet>4</a>//! builds concurrently against a shared target directory using per-job symlinked
 <a href=#5 id=5 data-nosnippet>5</a>//! directories.
-<a href=#6 id=6 data-nosnippet>6</a>
-<a href=#7 id=7 data-nosnippet>7</a></span><span class="kw">use </span>std::collections::HashMap;
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>std::fs;
-<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>std::hash::{DefaultHasher, Hash, Hasher};
-<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>std::io::Write <span class="kw">as _</span>;
-<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>std::path::{Path, PathBuf};
-<a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>std::sync::{LazyLock, Mutex};
-<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span>std::time::SystemTime;
-<a href=#14 id=14 data-nosnippet>14</a>
-<a href=#15 id=15 data-nosnippet>15</a><span class="comment">// ---------------------------------------------------------------------------
-<a href=#16 id=16 data-nosnippet>16</a>// Logging
-<a href=#17 id=17 data-nosnippet>17</a>// ---------------------------------------------------------------------------
-<a href=#18 id=18 data-nosnippet>18</a>
-<a href=#19 id=19 data-nosnippet>19</a></span><span class="doccomment">/// Log a timestamped message to the build coordination log.
-<a href=#20 id=20 data-nosnippet>20</a></span><span class="kw">pub fn </span>log_build_event(project_dir: <span class="kw-2">&amp;</span>Path, msg: <span class="kw-2">&amp;</span>str) {
-<a href=#21 id=21 data-nosnippet>21</a>    <span class="kw">let </span>log_path = project_dir.join(<span class="string">"build-coordination.log"</span>);
-<a href=#22 id=22 data-nosnippet>22</a>    <span class="kw">let </span><span class="kw-2">mut </span>file = fs::OpenOptions::new()
-<a href=#23 id=23 data-nosnippet>23</a>        .create(<span class="bool-val">true</span>)
-<a href=#24 id=24 data-nosnippet>24</a>        .append(<span class="bool-val">true</span>)
-<a href=#25 id=25 data-nosnippet>25</a>        .open(log_path)
-<a href=#26 id=26 data-nosnippet>26</a>        .unwrap();
-<a href=#27 id=27 data-nosnippet>27</a>    <span class="kw">let </span>now = SystemTime::now()
-<a href=#28 id=28 data-nosnippet>28</a>        .duration_since(std::time::UNIX_EPOCH)
-<a href=#29 id=29 data-nosnippet>29</a>        .unwrap()
-<a href=#30 id=30 data-nosnippet>30</a>        .as_millis();
-<a href=#31 id=31 data-nosnippet>31</a>    <span class="kw">let </span>thread_id = std::thread::current().id();
-<a href=#32 id=32 data-nosnippet>32</a>    <span class="kw">let _ </span>= <span class="macro">writeln!</span>(file, <span class="string">"[{now}ms] [{thread_id:?}] {msg}"</span>);
-<a href=#33 id=33 data-nosnippet>33</a>}
-<a href=#34 id=34 data-nosnippet>34</a>
-<a href=#35 id=35 data-nosnippet>35</a><span class="comment">// ---------------------------------------------------------------------------
-<a href=#36 id=36 data-nosnippet>36</a>// In-process RwLocks
-<a href=#37 id=37 data-nosnippet>37</a>// ---------------------------------------------------------------------------
-<a href=#38 id=38 data-nosnippet>38</a>
-<a href=#39 id=39 data-nosnippet>39</a></span><span class="doccomment">/// Global prebuild serialization lock (in-process).
-<a href=#40 id=40 data-nosnippet>40</a></span><span class="kw">static </span>GLOBAL_PREBUILD_LOCK: parking_lot::RwLock&lt;()&gt; = parking_lot::RwLock::new(());
-<a href=#41 id=41 data-nosnippet>41</a>
-<a href=#42 id=42 data-nosnippet>42</a><span class="doccomment">/// Per-key in-process prebuild locks, mirroring the per-key lock files (see [`run_prebuild`]).
-<a href=#43 id=43 data-nosnippet>43</a></span><span class="kw">static </span>DEP_BUILD_LOCKS_PER_KEY: LazyLock&lt;Mutex&lt;HashMap&lt;String, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>parking_lot::RwLock&lt;()&gt;&gt;&gt;&gt; =
-<a href=#44 id=44 data-nosnippet>44</a>    LazyLock::new(|| Mutex::new(HashMap::new()));
-<a href=#45 id=45 data-nosnippet>45</a>
-<a href=#46 id=46 data-nosnippet>46</a><span class="kw">fn </span>get_dep_lock(key: <span class="kw-2">&amp;</span>str) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>parking_lot::RwLock&lt;()&gt; {
-<a href=#47 id=47 data-nosnippet>47</a>    <span class="kw">let </span><span class="kw-2">mut </span>map = DEP_BUILD_LOCKS_PER_KEY.lock().unwrap();
-<a href=#48 id=48 data-nosnippet>48</a>    map.entry(key.to_owned())
-<a href=#49 id=49 data-nosnippet>49</a>        .or_insert_with(|| Box::leak(Box::new(parking_lot::RwLock::new(()))))
-<a href=#50 id=50 data-nosnippet>50</a>}
-<a href=#51 id=51 data-nosnippet>51</a>
-<a href=#52 id=52 data-nosnippet>52</a><span class="doccomment">/// Per-job-dir mutexes for serializing job dir setup/population within a process.
-<a href=#53 id=53 data-nosnippet>53</a></span><span class="kw">static </span>JOB_DIR_LOCKS: LazyLock&lt;Mutex&lt;HashMap&lt;PathBuf, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>Mutex&lt;()&gt;&gt;&gt;&gt; =
-<a href=#54 id=54 data-nosnippet>54</a>    LazyLock::new(|| Mutex::new(HashMap::new()));
-<a href=#55 id=55 data-nosnippet>55</a>
-<a href=#56 id=56 data-nosnippet>56</a><span class="kw">fn </span>get_job_dir_lock(job_dir: <span class="kw-2">&amp;</span>Path) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>Mutex&lt;()&gt; {
-<a href=#57 id=57 data-nosnippet>57</a>    <span class="kw">let </span><span class="kw-2">mut </span>map = JOB_DIR_LOCKS.lock().unwrap();
-<a href=#58 id=58 data-nosnippet>58</a>    map.entry(job_dir.to_owned())
-<a href=#59 id=59 data-nosnippet>59</a>        .or_insert_with(|| Box::leak(Box::new(Mutex::new(()))))
-<a href=#60 id=60 data-nosnippet>60</a>}
-<a href=#61 id=61 data-nosnippet>61</a>
-<a href=#62 id=62 data-nosnippet>62</a><span class="comment">// ---------------------------------------------------------------------------
-<a href=#63 id=63 data-nosnippet>63</a>// CargoBuildLock
-<a href=#64 id=64 data-nosnippet>64</a>// ---------------------------------------------------------------------------
-<a href=#65 id=65 data-nosnippet>65</a>
-<a href=#66 id=66 data-nosnippet>66</a></span><span class="doccomment">/// Guard holding the cargo build directory file lock (shared).
-<a href=#67 id=67 data-nosnippet>67</a></span><span class="kw">pub struct </span>CargoBuildLock {
-<a href=#68 id=68 data-nosnippet>68</a>    _file: fs::File,
-<a href=#69 id=69 data-nosnippet>69</a>}
-<a href=#70 id=70 data-nosnippet>70</a>
-<a href=#71 id=71 data-nosnippet>71</a><span class="kw">impl </span>CargoBuildLock {
-<a href=#72 id=72 data-nosnippet>72</a>    <span class="kw">pub fn </span>lock_shared(lock_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="self">Self </span>{
-<a href=#73 id=73 data-nosnippet>73</a>        <span class="kw">let </span>file = fs::OpenOptions::new()
-<a href=#74 id=74 data-nosnippet>74</a>            .read(<span class="bool-val">true</span>)
-<a href=#75 id=75 data-nosnippet>75</a>            .write(<span class="bool-val">true</span>)
-<a href=#76 id=76 data-nosnippet>76</a>            .create(<span class="bool-val">true</span>)
-<a href=#77 id=77 data-nosnippet>77</a>            .truncate(<span class="bool-val">false</span>)
-<a href=#78 id=78 data-nosnippet>78</a>            .open(lock_path)
-<a href=#79 id=79 data-nosnippet>79</a>            .unwrap();
-<a href=#80 id=80 data-nosnippet>80</a>        file.lock_shared().unwrap();
-<a href=#81 id=81 data-nosnippet>81</a>        CargoBuildLock { _file: file }
-<a href=#82 id=82 data-nosnippet>82</a>    }
-<a href=#83 id=83 data-nosnippet>83</a>}
-<a href=#84 id=84 data-nosnippet>84</a>
-<a href=#85 id=85 data-nosnippet>85</a><span class="comment">// ---------------------------------------------------------------------------
-<a href=#86 id=86 data-nosnippet>86</a>// PrebuildGuard
-<a href=#87 id=87 data-nosnippet>87</a>// ---------------------------------------------------------------------------
-<a href=#88 id=88 data-nosnippet>88</a>
-<a href=#89 id=89 data-nosnippet>89</a></span><span class="doccomment">/// Guard holding both in-process and file locks for prebuild coordination.
-<a href=#90 id=90 data-nosnippet>90</a></span><span class="kw">pub struct </span>PrebuildGuard {
-<a href=#91 id=91 data-nosnippet>91</a>    _rw_guard: RwGuard,
-<a href=#92 id=92 data-nosnippet>92</a>    _global_guard: <span class="prelude-ty">Option</span>&lt;parking_lot::RwLockWriteGuard&lt;<span class="lifetime">'static</span>, ()&gt;&gt;,
-<a href=#93 id=93 data-nosnippet>93</a>    _global_file: <span class="prelude-ty">Option</span>&lt;fs::File&gt;,
-<a href=#94 id=94 data-nosnippet>94</a>    _file: fs::File,
-<a href=#95 id=95 data-nosnippet>95</a>    lock_dir: PathBuf,
-<a href=#96 id=96 data-nosnippet>96</a>}
-<a href=#97 id=97 data-nosnippet>97</a>
-<a href=#98 id=98 data-nosnippet>98</a><span class="attr">#[expect(
-<a href=#99 id=99 data-nosnippet>99</a>    dead_code,
-<a href=#100 id=100 data-nosnippet>100</a>    reason = <span class="string">"variants hold lock guards that are released on drop"
-<a href=#101 id=101 data-nosnippet>101</a></span>)]
-<a href=#102 id=102 data-nosnippet>102</a></span><span class="kw">enum </span>RwGuard {
-<a href=#103 id=103 data-nosnippet>103</a>    Read(parking_lot::RwLockReadGuard&lt;<span class="lifetime">'static</span>, ()&gt;),
-<a href=#104 id=104 data-nosnippet>104</a>    Upgradable(parking_lot::RwLockUpgradableReadGuard&lt;<span class="lifetime">'static</span>, ()&gt;),
-<a href=#105 id=105 data-nosnippet>105</a>    Write(parking_lot::RwLockWriteGuard&lt;<span class="lifetime">'static</span>, ()&gt;),
-<a href=#106 id=106 data-nosnippet>106</a>}
-<a href=#107 id=107 data-nosnippet>107</a>
-<a href=#108 id=108 data-nosnippet>108</a><span class="kw">impl </span>PrebuildGuard {
-<a href=#109 id=109 data-nosnippet>109</a>    <span class="doccomment">/// Acquire an upgradable lock (in-process upgradable read + file shared). `key` selects
-<a href=#110 id=110 data-nosnippet>110</a>    /// the in-process lock and should identify `lock_path`.
-<a href=#111 id=111 data-nosnippet>111</a>    </span><span class="kw">pub fn </span>lock_upgradable(lock_path: <span class="kw-2">&amp;</span>Path, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
-<a href=#112 id=112 data-nosnippet>112</a>        <span class="kw">let </span>rw_guard = get_dep_lock(key).upgradable_read();
-<a href=#113 id=113 data-nosnippet>113</a>        <span class="kw">let </span>lock_dir = lock_path.parent().unwrap().to_owned();
-<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span>file = fs::OpenOptions::new()
-<a href=#115 id=115 data-nosnippet>115</a>            .read(<span class="bool-val">true</span>)
-<a href=#116 id=116 data-nosnippet>116</a>            .write(<span class="bool-val">true</span>)
-<a href=#117 id=117 data-nosnippet>117</a>            .create(<span class="bool-val">true</span>)
-<a href=#118 id=118 data-nosnippet>118</a>            .truncate(<span class="bool-val">false</span>)
-<a href=#119 id=119 data-nosnippet>119</a>            .open(lock_path)
-<a href=#120 id=120 data-nosnippet>120</a>            .unwrap();
-<a href=#121 id=121 data-nosnippet>121</a>        file.lock_shared().unwrap();
-<a href=#122 id=122 data-nosnippet>122</a>        PrebuildGuard {
-<a href=#123 id=123 data-nosnippet>123</a>            _rw_guard: RwGuard::Upgradable(rw_guard),
-<a href=#124 id=124 data-nosnippet>124</a>            _global_guard: <span class="prelude-val">None</span>,
-<a href=#125 id=125 data-nosnippet>125</a>            _global_file: <span class="prelude-val">None</span>,
-<a href=#126 id=126 data-nosnippet>126</a>            _file: file,
-<a href=#127 id=127 data-nosnippet>127</a>            lock_dir,
-<a href=#128 id=128 data-nosnippet>128</a>        }
-<a href=#129 id=129 data-nosnippet>129</a>    }
-<a href=#130 id=130 data-nosnippet>130</a>
-<a href=#131 id=131 data-nosnippet>131</a>    <span class="doccomment">/// Upgrade to exclusive (in-process write + file exclusive + global locks).
-<a href=#132 id=132 data-nosnippet>132</a>    </span><span class="kw">pub fn </span>upgrade(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
-<a href=#133 id=133 data-nosnippet>133</a>        <span class="kw">let </span>file = <span class="self">self</span>._file;
-<a href=#134 id=134 data-nosnippet>134</a>        <span class="kw">let </span>rw_guard = <span class="kw">match </span><span class="self">self</span>._rw_guard {
-<a href=#135 id=135 data-nosnippet>135</a>            RwGuard::Upgradable(u) =&gt; parking_lot::RwLockUpgradableReadGuard::upgrade(u),
-<a href=#136 id=136 data-nosnippet>136</a>            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"can only upgrade from upgradable"</span>),
-<a href=#137 id=137 data-nosnippet>137</a>        };
-<a href=#138 id=138 data-nosnippet>138</a>        <span class="comment">// Release per-key shared lock before acquiring global exclusive
-<a href=#139 id=139 data-nosnippet>139</a>        // to avoid deadlock (other processes hold per-key shared and wait for global).
-<a href=#140 id=140 data-nosnippet>140</a>        </span>file.unlock().unwrap();
-<a href=#141 id=141 data-nosnippet>141</a>        <span class="kw">let </span>global_guard = GLOBAL_PREBUILD_LOCK.write();
-<a href=#142 id=142 data-nosnippet>142</a>        <span class="kw">let </span>global_file = fs::OpenOptions::new()
-<a href=#143 id=143 data-nosnippet>143</a>            .read(<span class="bool-val">true</span>)
-<a href=#144 id=144 data-nosnippet>144</a>            .write(<span class="bool-val">true</span>)
-<a href=#145 id=145 data-nosnippet>145</a>            .create(<span class="bool-val">true</span>)
-<a href=#146 id=146 data-nosnippet>146</a>            .truncate(<span class="bool-val">false</span>)
-<a href=#147 id=147 data-nosnippet>147</a>            .open(<span class="self">self</span>.lock_dir.join(<span class="string">".global-prebuild.lock"</span>))
-<a href=#148 id=148 data-nosnippet>148</a>            .unwrap();
-<a href=#149 id=149 data-nosnippet>149</a>        global_file.lock().unwrap();
-<a href=#150 id=150 data-nosnippet>150</a>        file.lock().unwrap();
-<a href=#151 id=151 data-nosnippet>151</a>        PrebuildGuard {
-<a href=#152 id=152 data-nosnippet>152</a>            _rw_guard: RwGuard::Write(rw_guard),
-<a href=#153 id=153 data-nosnippet>153</a>            _global_guard: <span class="prelude-val">Some</span>(global_guard),
-<a href=#154 id=154 data-nosnippet>154</a>            _global_file: <span class="prelude-val">Some</span>(global_file),
-<a href=#155 id=155 data-nosnippet>155</a>            _file: file,
-<a href=#156 id=156 data-nosnippet>156</a>            lock_dir: <span class="self">self</span>.lock_dir,
-<a href=#157 id=157 data-nosnippet>157</a>        }
-<a href=#158 id=158 data-nosnippet>158</a>    }
-<a href=#159 id=159 data-nosnippet>159</a>
-<a href=#160 id=160 data-nosnippet>160</a>    <span class="doccomment">/// Downgrade from exclusive to shared (releases global lock).
-<a href=#161 id=161 data-nosnippet>161</a>    </span><span class="kw">pub fn </span>downgrade(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
-<a href=#162 id=162 data-nosnippet>162</a>        <span class="kw">let </span>file = <span class="self">self</span>._file;
-<a href=#163 id=163 data-nosnippet>163</a>        file.lock_shared().unwrap();
-<a href=#164 id=164 data-nosnippet>164</a>        <span class="kw">let </span>rw_guard = <span class="kw">match </span><span class="self">self</span>._rw_guard {
-<a href=#165 id=165 data-nosnippet>165</a>            RwGuard::Write(w) =&gt; RwGuard::Read(parking_lot::RwLockWriteGuard::downgrade(w)),
-<a href=#166 id=166 data-nosnippet>166</a>            RwGuard::Upgradable(u) =&gt; {
-<a href=#167 id=167 data-nosnippet>167</a>                RwGuard::Read(parking_lot::RwLockUpgradableReadGuard::downgrade(u))
-<a href=#168 id=168 data-nosnippet>168</a>            }
-<a href=#169 id=169 data-nosnippet>169</a>            r @ RwGuard::Read(<span class="kw">_</span>) =&gt; r,
-<a href=#170 id=170 data-nosnippet>170</a>        };
-<a href=#171 id=171 data-nosnippet>171</a>        PrebuildGuard {
-<a href=#172 id=172 data-nosnippet>172</a>            _rw_guard: rw_guard,
-<a href=#173 id=173 data-nosnippet>173</a>            _global_guard: <span class="prelude-val">None</span>,
-<a href=#174 id=174 data-nosnippet>174</a>            _global_file: <span class="prelude-val">None</span>,
-<a href=#175 id=175 data-nosnippet>175</a>            _file: file,
-<a href=#176 id=176 data-nosnippet>176</a>            lock_dir: <span class="self">self</span>.lock_dir,
-<a href=#177 id=177 data-nosnippet>177</a>        }
-<a href=#178 id=178 data-nosnippet>178</a>    }
-<a href=#179 id=179 data-nosnippet>179</a>
-<a href=#180 id=180 data-nosnippet>180</a>    <span class="doccomment">/// Get mutable access to the underlying file (for writing timestamps).
-<a href=#181 id=181 data-nosnippet>181</a>    </span><span class="kw">pub fn </span>file_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>fs::File {
-<a href=#182 id=182 data-nosnippet>182</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>._file
-<a href=#183 id=183 data-nosnippet>183</a>    }
-<a href=#184 id=184 data-nosnippet>184</a>}
-<a href=#185 id=185 data-nosnippet>185</a>
-<a href=#186 id=186 data-nosnippet>186</a><span class="comment">// ---------------------------------------------------------------------------
-<a href=#187 id=187 data-nosnippet>187</a>// Job directory setup
-<a href=#188 id=188 data-nosnippet>188</a>// ---------------------------------------------------------------------------
+<a href=#6 id=6 data-nosnippet>6</a>//!
+<a href=#7 id=7 data-nosnippet>7</a>//! # Why
+<a href=#8 id=8 data-nosnippet>8</a>//!
+<a href=#9 id=9 data-nosnippet>9</a>//! Hydro compiles each generated program (one per deployed process, sim test, ...)
+<a href=#10 id=10 data-nosnippet>10</a>//! as an example of a generated trybuild project. Cargo allows a single build per
+<a href=#11 id=11 data-nosnippet>11</a>//! target directory (it takes an exclusive lock on it), so compiling those programs
+<a href=#12 id=12 data-nosnippet>12</a>//! concurrently through cargo directly would serialize them. At the same time they
+<a href=#13 id=13 data-nosnippet>13</a>//! all share the same, expensive dependency graph, so giving each its own target
+<a href=#14 id=14 data-nosnippet>14</a>//! directory would recompile everything per program.
+<a href=#15 id=15 data-nosnippet>15</a>//!
+<a href=#16 id=16 data-nosnippet>16</a>//! # The trick: prebuild once, then share the artifacts without cargo's lock
+<a href=#17 id=17 data-nosnippet>17</a>//!
+<a href=#18 id=18 data-nosnippet>18</a>//! Builds run in two phases, coordinated by this crate's own locks:
+<a href=#19 id=19 data-nosnippet>19</a>//!
+<a href=#20 id=20 data-nosnippet>20</a>//! 1. **Prebuild** (exclusive `.prebuild.lock`): one cargo build compiles every
+<a href=#21 id=21 data-nosnippet>21</a>//!    dependency — including the trybuild dylib that the generated programs link
+<a href=#22 id=22 data-nosnippet>22</a>//!    against — into the *shared* target dir. While it runs, no final build is in
+<a href=#23 id=23 data-nosnippet>23</a>//!    flight, so it may freely write shared state.
+<a href=#24 id=24 data-nosnippet>24</a>//! 2. **Final builds** (shared `.prebuild.lock`): many cargo builds run
+<a href=#25 id=25 data-nosnippet>25</a>//!    concurrently, each with its *own* target-dir root under `jobs/&lt;JOB&gt;/`, so
+<a href=#26 id=26 data-nosnippet>26</a>//!    cargo's locks are per job and never contend. The shared, prebuilt state is
+<a href=#27 id=27 data-nosnippet>27</a>//!    made visible inside each job dir via symlinks. This is safe without cargo's
+<a href=#28 id=28 data-nosnippet>28</a>//!    lock only because of an invariant the two phases establish: **a final build
+<a href=#29 id=29 data-nosnippet>29</a>//!    reads shared state but never writes it** — everything it reads is fresh (the
+<a href=#30 id=30 data-nosnippet>30</a>//!    prebuild just built it, with identical features/rustflags, so cargo finds the
+<a href=#31 id=31 data-nosnippet>31</a>//!    fingerprints up to date), and everything it creates (its own example unit,
+<a href=#32 id=32 data-nosnippet>32</a>//!    its uplifted artifacts) has a job-unique path. Switching configuration
+<a href=#33 id=33 data-nosnippet>33</a>//!    (features, rustflags, toolchain) takes the lock exclusive again, draining all
+<a href=#34 id=34 data-nosnippet>34</a>//!    in-flight final builds before the prebuild rewrites shared state.
+<a href=#35 id=35 data-nosnippet>35</a>//!
+<a href=#36 id=36 data-nosnippet>36</a>//! Unrelated cargo processes building in the shared target dir (a developer's
+<a href=#37 id=37 data-nosnippet>37</a>//! `cargo build`, an IDE) are kept out the same way cargo keeps itself out: this
+<a href=#38 id=38 data-nosnippet>38</a>//! crate holds the shared target dir's own `.cargo-build-lock` **shared** for the
+<a href=#39 id=39 data-nosnippet>39</a>//! whole prebuild + final build, and cargo takes that file **exclusive** for any
+<a href=#40 id=40 data-nosnippet>40</a>//! build there, so the two mutually exclude ("Blocking waiting for file lock on
+<a href=#41 id=41 data-nosnippet>41</a>//! build directory"). This is also why *every* cargo spawned by this crate —
+<a href=#42 id=42 data-nosnippet>42</a>//! prebuild included — gets a `jobs/*` root rather than the shared dir: a child
+<a href=#43 id=43 data-nosnippet>43</a>//! cargo using the shared dir would wait forever on the lock its own parent holds.
+<a href=#44 id=44 data-nosnippet>44</a>//!
+<a href=#45 id=45 data-nosnippet>45</a>//! # Configurations and the `__CARGO_DEFAULT_LIB_METADATA` optimization
+<a href=#46 id=46 data-nosnippet>46</a>//!
+<a href=#47 id=47 data-nosnippet>47</a>//! A *configuration* is a (crate, features, rustflags, compiler) tuple. Cargo hashes
+<a href=#48 id=48 data-nosnippet>48</a>//! all of these into the filenames of rlibs, so artifacts of different
+<a href=#49 id=49 data-nosnippet>49</a>//! configurations coexist in the shared `deps/` and are cached side by side — with
+<a href=#50 id=50 data-nosnippet>50</a>//! one exception: the filename of a path package's **dylib** carries no hash
+<a href=#51 id=51 data-nosnippet>51</a>//! (`libX_dylib.so`), so every configuration would want to write the same file.
+<a href=#52 id=52 data-nosnippet>52</a>//! The trybuild dylib is thus the single shared resource configurations fight
+<a href=#53 id=53 data-nosnippet>53</a>//! over, and the design has two modes (see [`run_prebuild`], [`dylib_lib_name`]):
+<a href=#54 id=54 data-nosnippet>54</a>//!
+<a href=#55 id=55 data-nosnippet>55</a>//! - **Default**: the fingerprint of rustflags + compiler version
+<a href=#56 id=56 data-nosnippet>56</a>//!   ([`toolchain_fingerprint`]) is baked into the dylib's `[lib] name`, so
+<a href=#57 id=57 data-nosnippet>57</a>//!   different toolchains/rustflags get distinct files. Features are not part of
+<a href=#58 id=58 data-nosnippet>58</a>//!   the name, so switching features *replaces* the dylib: there is a single
+<a href=#59 id=59 data-nosnippet>59</a>//!   `.prebuild.lock`, every build holds it shared through its final build, and a
+<a href=#60 id=60 data-nosnippet>60</a>//!   configuration switch takes it exclusive — draining all in-flight builds
+<a href=#61 id=61 data-nosnippet>61</a>//!   before the prebuild renames the manifest and rebuilds. Concurrency is
+<a href=#62 id=62 data-nosnippet>62</a>//!   therefore limited to builds of **one configuration at a time**: while test
+<a href=#63 id=63 data-nosnippet>63</a>//!   binary A (features `{sim}`) has final builds in flight, test binary B
+<a href=#64 id=64 data-nosnippet>64</a>//!   (features `{sim, deploy}`) blocks until they finish, then rebuilds the dylib,
+<a href=#65 id=65 data-nosnippet>65</a>//!   then A blocks on B — alternating binaries ping-pong the shared dylib.
+<a href=#66 id=66 data-nosnippet>66</a>//! - **`__CARGO_DEFAULT_LIB_METADATA=1`** (set in CI): this undocumented cargo
+<a href=#67 id=67 data-nosnippet>67</a>//!   variable (used by rust-lang/rust's bootstrap) makes cargo hash dylib filenames
+<a href=#68 id=68 data-nosnippet>68</a>//!   too (`libX_dylib-&lt;hash&gt;.so`), so every configuration's dylib is a distinct
+<a href=#69 id=69 data-nosnippet>69</a>//!   file and the manifest never changes. Shared state becomes append-only across
+<a href=#70 id=70 data-nosnippet>70</a>//!   configurations — nothing one configuration writes is ever read by another —
+<a href=#71 id=71 data-nosnippet>71</a>//!   so the lock can be split per configuration: one `.prebuild-&lt;key&gt;.lock` each,
+<a href=#72 id=72 data-nosnippet>72</a>//!   with the cross-configuration `.global-prebuild.lock` taken only around a
+<a href=#73 id=73 data-nosnippet>73</a>//!   prebuild's actual `cargo build` so two prebuilds never write `deps/` at the
+<a href=#74 id=74 data-nosnippet>74</a>//!   same time. The concurrency this unlocks: **final builds of different
+<a href=#75 id=75 data-nosnippet>75</a>//!   configurations run simultaneously**, and a prebuild for one configuration
+<a href=#76 id=76 data-nosnippet>76</a>//!   runs while another configuration's final builds are in flight. For nextest,
+<a href=#77 id=77 data-nosnippet>77</a>//!   which runs many test binaries with differing feature sets at once, that is
+<a href=#78 id=78 data-nosnippet>78</a>//!   the difference between the binaries serializing on each other and all of them
+<a href=#79 id=79 data-nosnippet>79</a>//!   proceeding in parallel — and every configuration's dylib stays cached instead
+<a href=#80 id=80 data-nosnippet>80</a>//!   of being rebuilt on each switch.
+<a href=#81 id=81 data-nosnippet>81</a>//!
+<a href=#82 id=82 data-nosnippet>82</a>//! Why a prebuild for configuration B may overlap configuration A's final builds:
+<a href=#83 id=83 data-nosnippet>83</a>//! cargo only writes a unit's files when the unit is *dirty* (fresh units are not
+<a href=#84 id=84 data-nosnippet>84</a>//! touched at all; the legacy-layout `build-script-build` re-link rewrites only the
+<a href=#85 id=85 data-nosnippet>85</a>//! job-local uplift). B's prebuild therefore writes B-specific units, which have
+<a href=#86 id=86 data-nosnippet>86</a>//! B's hashes and are never read by A, plus any unit *shared* with A that is dirty.
+<a href=#87 id=87 data-nosnippet>87</a>//! A's final builds read only units A's own prebuild completed, so a shared unit is
+<a href=#88 id=88 data-nosnippet>88</a>//! fresh for B — unless its inputs changed since A's prebuild. That is the
+<a href=#89 id=89 data-nosnippet>89</a>//! precondition: all concurrent builds must come from one source state. Within a
+<a href=#90 id=90 data-nosnippet>90</a>//! test run it holds (test binaries are built before any runs, and the prebuild
+<a href=#91 id=91 data-nosnippet>91</a>//! stamp is keyed on the binary's mtime); running test processes from two
+<a href=#92 id=92 data-nosnippet>92</a>//! different source states at once is unsupported in either mode (in default mode
+<a href=#93 id=93 data-nosnippet>93</a>//! A's `--frozen` final builds would panic with "unexpected recompilation"). The
+<a href=#94 id=94 data-nosnippet>94</a>//! prebuild-vs-prebuild case is different — two configurations can both be dirty
+<a href=#95 id=95 data-nosnippet>95</a>//! on the same not-yet-built shared unit — which is exactly what
+<a href=#96 id=96 data-nosnippet>96</a>//! `.global-prebuild.lock` serializes.
+<a href=#97 id=97 data-nosnippet>97</a>//!
+<a href=#98 id=98 data-nosnippet>98</a>//! Mixing builds with and without the variable against one target dir is
+<a href=#99 id=99 data-nosnippet>99</a>//! unsupported: they would rename the shared manifest under different locks.
+<a href=#100 id=100 data-nosnippet>100</a>//! Because the hashed dylib name is what the final artifacts link against
+<a href=#101 id=101 data-nosnippet>101</a>//! (`DT_NEEDED`), loader search paths must include wherever that hashed file
+<a href=#102 id=102 data-nosnippet>102</a>//! lives; see [`dylib_search_dirs`].
+<a href=#103 id=103 data-nosnippet>103</a>//!
+<a href=#104 id=104 data-nosnippet>104</a>//! # Layouts
+<a href=#105 id=105 data-nosnippet>105</a>//!
+<a href=#106 id=106 data-nosnippet>106</a>//! Cargo's new build-dir layout (`-Zbuild-dir-new-layout`, default on current
+<a href=#107 id=107 data-nosnippet>107</a>//! nightly) moves everything under `build/&lt;pkg&gt;/&lt;unit-hash&gt;/`; see
+<a href=#108 id=108 data-nosnippet>108</a>//! [`BuildDirLayout`] (detected at compile time by `build.rs`). The same job-dir
+<a href=#109 id=109 data-nosnippet>109</a>//! structure works for both layouts: the job's `build/` is a real directory two
+<a href=#110 id=110 data-nosnippet>110</a>//! levels deep whose children are symlinks, so writes cargo makes at that level
+<a href=#111 id=111 data-nosnippet>111</a>//! (legacy: re-linking `build-script-build`; new: the job's own example unit, which
+<a href=#112 id=112 data-nosnippet>112</a>//! for the simulator is the *same* cargo unit in every job) stay job-local.
+<a href=#113 id=113 data-nosnippet>113</a>//!
+<a href=#114 id=114 data-nosnippet>114</a>//! ```text
+<a href=#115 id=115 data-nosnippet>115</a>//! LEGACY LAYOUT (stable)                                       NEW LAYOUT (nightly -Zbuild-dir-new-layout)
+<a href=#116 id=116 data-nosnippet>116</a>//!
+<a href=#117 id=117 data-nosnippet>117</a>//! target/                                                      target/
+<a href=#118 id=118 data-nosnippet>118</a>//! ├── .prebuild.lock       hydro's own lock (see above)        ├── .prebuild.lock
+<a href=#119 id=119 data-nosnippet>119</a>//! ├── debug/               &lt;-- SHARED prebuilt state           ├── debug/               &lt;-- SHARED prebuilt state
+<a href=#120 id=120 data-nosnippet>120</a>//! │   ├── .cargo-build-lock   hydro holds SHARED;              │   ├── .cargo-build-lock   (same: excludes unrelated cargo)
+<a href=#121 id=121 data-nosnippet>121</a>//! │   │                       unrelated cargo takes EXCLUSIVE  │   ├── (no .fingerprint/, no deps/)
+<a href=#122 id=122 data-nosnippet>122</a>//! │   ├── .fingerprint/                                        │   ├── build/
+<a href=#123 id=123 data-nosnippet>123</a>//! │   │   └── &lt;unit&gt;-&lt;h&gt;/     one dir per unit                 │   │   └── &lt;pkg&gt;/          one dir per package
+<a href=#124 id=124 data-nosnippet>124</a>//! │   ├── deps/               rlibs + dylibs, hashed names     │   │       └── &lt;h&gt;/        one dir per unit
+<a href=#125 id=125 data-nosnippet>125</a>//! │   │   ├── libfoo-&lt;h&gt;.rlib                                  │   │           ├── fingerprint/
+<a href=#126 id=126 data-nosnippet>126</a>//! │   │   └── libX_dylib-&lt;h&gt;.so   SHARED prebuilt dylib        │   │           ├── out/    rlibs, dylibs, .o
+<a href=#127 id=127 data-nosnippet>127</a>//! │   └── build/              build scripts + OUT_DIR          │   │           │   └── libX_dylib-&lt;h&gt;.so   SHARED prebuilt dylib
+<a href=#128 id=128 data-nosnippet>128</a>//! │       └── &lt;pkg&gt;-&lt;h&gt;/                                       │   │           └── run/    build script runs
+<a href=#129 id=129 data-nosnippet>129</a>//! │           ├── build-script-build                           │   └── libX_dylib.so       uplift, UNHASHED name
+<a href=#130 id=130 data-nosnippet>130</a>//! │           ├── out/                                         │
+<a href=#131 id=131 data-nosnippet>131</a>//! │           └── output                                       ├── jobs/
+<a href=#132 id=132 data-nosnippet>132</a>//! │                                                            │   ├── prebuild/           (hydro's exclusive lock held)
+<a href=#133 id=133 data-nosnippet>133</a>//! ├── jobs/                                                    │   │   └── debug/
+<a href=#134 id=134 data-nosnippet>134</a>//! │   ├── prebuild/           (hydro's exclusive lock held)    │   │       ├── .cargo-lock, .cargo-build-lock   (job-local)
+<a href=#135 id=135 data-nosnippet>135</a>//! │   │   └── debug/                                           │   │       ├── .fingerprint -&gt; target/debug/.fingerprint  (unused)
+<a href=#136 id=136 data-nosnippet>136</a>//! │   │       ├── .cargo-lock                   (job-local)    │   │       ├── deps         -&gt; target/debug/deps          (unused)
+<a href=#137 id=137 data-nosnippet>137</a>//! │   │       ├── .fingerprint -&gt; target/debug/.fingerprint    │   │       └── build        -&gt; target/debug/build    writes through
+<a href=#138 id=138 data-nosnippet>138</a>//! │   │       ├── deps         -&gt; target/debug/deps            │   │
+<a href=#139 id=139 data-nosnippet>139</a>//! │   │       └── build        -&gt; target/debug/build           │   └── &lt;JOB&gt;/              (one per generated program)
+<a href=#140 id=140 data-nosnippet>140</a>//! │   │                           (whole dir, writes through)  │       └── debug/
+<a href=#141 id=141 data-nosnippet>141</a>//! │   │                                                        │           ├── .cargo-lock, .cargo-build-lock   (job-local)
+<a href=#142 id=142 data-nosnippet>142</a>//! │   └── &lt;JOB&gt;/              (one per generated program)      │           ├── .fingerprint -&gt; ...              (unused)
+<a href=#143 id=143 data-nosnippet>143</a>//! │       └── debug/                                           │           ├── deps         -&gt; ...              (unused)
+<a href=#144 id=144 data-nosnippet>144</a>//! │           ├── .cargo-lock                   (job-local)    │           ├── build/                           REAL dir
+<a href=#145 id=145 data-nosnippet>145</a>//! │           ├── .fingerprint -&gt; target/debug/.fingerprint    │           │   └── &lt;pkg&gt;/                       REAL dir
+<a href=#146 id=146 data-nosnippet>146</a>//! │           ├── deps         -&gt; target/debug/deps            │           │       ├── &lt;h1&gt; -&gt; target/debug/build/&lt;pkg&gt;/&lt;h1&gt;  prebuilt
+<a href=#147 id=147 data-nosnippet>147</a>//! │           ├── build/                        REAL dir       │           │       └── &lt;h2&gt;/                    REAL: this job's
+<a href=#148 id=148 data-nosnippet>148</a>//! │           │   └── &lt;pkg&gt;-&lt;h&gt;/                REAL dir       │           │           └── out/libsim_dylib-&lt;h2&gt;.so    own example
+<a href=#149 id=149 data-nosnippet>149</a>//! │           │       ├── build-script-build -&gt; shared         │           ├── libX_dylib.so       job's uplift of the SHARED dylib
+<a href=#150 id=150 data-nosnippet>150</a>//! │           │       ├── out                -&gt; shared         │           └── examples/&lt;JOB&gt;      FINAL artifact
+<a href=#151 id=151 data-nosnippet>151</a>//! │           │       └── output             -&gt; shared         │
+<a href=#152 id=152 data-nosnippet>152</a>//! │           └── examples/&lt;JOB&gt;      FINAL artifact           │
+<a href=#153 id=153 data-nosnippet>153</a>//! ```
+<a href=#154 id=154 data-nosnippet>154</a>//!
+<a href=#155 id=155 data-nosnippet>155</a>//! `libX_dylib` is the *shared* trybuild dylib (the user crate + `hydro_lang` built
+<a href=#156 id=156 data-nosnippet>156</a>//! once by the prebuild) that every final artifact links against; `libsim_dylib` is
+<a href=#157 id=157 data-nosnippet>157</a>//! a *final* per-job artifact (the simulator's `cdylib`) that links against it.
+<a href=#158 id=158 data-nosnippet>158</a>//!
+<a href=#159 id=159 data-nosnippet>159</a>//! Loader search paths (rpath / `LD_LIBRARY_PATH`) for `libX_dylib` are computed by
+<a href=#160 id=160 data-nosnippet>160</a>//! [`dylib_search_dirs`] and only ever name state that outlives the build: the
+<a href=#161 id=161 data-nosnippet>161</a>//! job's `debug/` and the shared location (`deps/` on legacy, the shared unit `out/`
+<a href=#162 id=162 data-nosnippet>162</a>//! dirs on new) — never `jobs/&lt;JOB&gt;/debug/build/`, which is repopulated on every
+<a href=#163 id=163 data-nosnippet>163</a>//! build (and job dirs are shared by tests whose generated programs are identical).
+<a href=#164 id=164 data-nosnippet>164</a>
+<a href=#165 id=165 data-nosnippet>165</a></span><span class="kw">use </span>std::collections::HashMap;
+<a href=#166 id=166 data-nosnippet>166</a><span class="kw">use </span>std::fs;
+<a href=#167 id=167 data-nosnippet>167</a><span class="kw">use </span>std::hash::{DefaultHasher, Hash, Hasher};
+<a href=#168 id=168 data-nosnippet>168</a><span class="kw">use </span>std::io::Write <span class="kw">as _</span>;
+<a href=#169 id=169 data-nosnippet>169</a><span class="kw">use </span>std::path::{Path, PathBuf};
+<a href=#170 id=170 data-nosnippet>170</a><span class="kw">use </span>std::sync::{LazyLock, Mutex};
+<a href=#171 id=171 data-nosnippet>171</a><span class="kw">use </span>std::time::SystemTime;
+<a href=#172 id=172 data-nosnippet>172</a>
+<a href=#173 id=173 data-nosnippet>173</a><span class="doccomment">/// The filesystem layout cargo uses for intermediate build artifacts.
+<a href=#174 id=174 data-nosnippet>174</a>///
+<a href=#175 id=175 data-nosnippet>175</a>/// Detected at compile time by this crate's build script, which inspects the
+<a href=#176 id=176 data-nosnippet>176</a>/// shape of its own `OUT_DIR` (see `build.rs`). Use [`build_dir_layout`] to
+<a href=#177 id=177 data-nosnippet>177</a>/// query it.
+<a href=#178 id=178 data-nosnippet>178</a></span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+<a href=#179 id=179 data-nosnippet>179</a></span><span class="kw">pub enum </span>BuildDirLayout {
+<a href=#180 id=180 data-nosnippet>180</a>    <span class="doccomment">/// The stable layout: `debug/{.fingerprint,deps,build,...}`, with final
+<a href=#181 id=181 data-nosnippet>181</a>    /// artifacts uplifted into `debug/` and dependency dylibs in `debug/deps/`.
+<a href=#182 id=182 data-nosnippet>182</a>    </span>Legacy,
+<a href=#183 id=183 data-nosnippet>183</a>    <span class="doccomment">/// The layout behind `-Zbuild-dir-new-layout` (default on current nightly):
+<a href=#184 id=184 data-nosnippet>184</a>    /// all intermediates (fingerprints, rlibs, build script outputs) live under
+<a href=#185 id=185 data-nosnippet>185</a>    /// `debug/build/&lt;pkg&gt;/&lt;hash&gt;/{fingerprint,out,run}/`, and final artifacts
+<a href=#186 id=186 data-nosnippet>186</a>    /// — including dependency dylibs — are uplifted into `debug/`.
+<a href=#187 id=187 data-nosnippet>187</a>    </span>New,
+<a href=#188 id=188 data-nosnippet>188</a>}
 <a href=#189 id=189 data-nosnippet>189</a>
-<a href=#190 id=190 data-nosnippet>190</a></span><span class="doccomment">/// Set up a job directory with symlinked .fingerprint and deps subdirs.
-<a href=#191 id=191 data-nosnippet>191</a>/// Does NOT set up build/ — use `populate_job_build_dir` for final builds
-<a href=#192 id=192 data-nosnippet>192</a>/// or manually symlink for prebuild.
-<a href=#193 id=193 data-nosnippet>193</a></span><span class="kw">pub fn </span>setup_job_dir(jobs_dir: <span class="kw-2">&amp;</span>Path, name: <span class="kw-2">&amp;</span>str, shared_debug: <span class="kw-2">&amp;</span>Path) -&gt; PathBuf {
-<a href=#194 id=194 data-nosnippet>194</a>    <span class="kw">let </span>job = jobs_dir.join(name);
-<a href=#195 id=195 data-nosnippet>195</a>    <span class="kw">let </span>_lock = get_job_dir_lock(<span class="kw-2">&amp;</span>job);
-<a href=#196 id=196 data-nosnippet>196</a>    <span class="kw">let </span>_lock = _lock.lock().unwrap();
-<a href=#197 id=197 data-nosnippet>197</a>
-<a href=#198 id=198 data-nosnippet>198</a>    <span class="comment">// File lock for cross-process serialization on the same job dir.
-<a href=#199 id=199 data-nosnippet>199</a>    </span>fs::create_dir_all(<span class="kw-2">&amp;</span>job).unwrap();
-<a href=#200 id=200 data-nosnippet>200</a>    <span class="kw">let </span>job_lock_file = fs::OpenOptions::new()
-<a href=#201 id=201 data-nosnippet>201</a>        .read(<span class="bool-val">true</span>)
-<a href=#202 id=202 data-nosnippet>202</a>        .write(<span class="bool-val">true</span>)
-<a href=#203 id=203 data-nosnippet>203</a>        .create(<span class="bool-val">true</span>)
-<a href=#204 id=204 data-nosnippet>204</a>        .truncate(<span class="bool-val">false</span>)
-<a href=#205 id=205 data-nosnippet>205</a>        .open(job.join(<span class="string">".job.lock"</span>))
-<a href=#206 id=206 data-nosnippet>206</a>        .unwrap();
-<a href=#207 id=207 data-nosnippet>207</a>    job_lock_file.lock().unwrap();
-<a href=#208 id=208 data-nosnippet>208</a>
-<a href=#209 id=209 data-nosnippet>209</a>    <span class="kw">let </span>job_debug = job.join(<span class="string">"debug"</span>);
-<a href=#210 id=210 data-nosnippet>210</a>    fs::create_dir_all(<span class="kw-2">&amp;</span>job_debug).unwrap();
-<a href=#211 id=211 data-nosnippet>211</a>    <span class="kw">for </span>subdir <span class="kw">in </span>[<span class="string">".fingerprint"</span>, <span class="string">"deps"</span>] {
-<a href=#212 id=212 data-nosnippet>212</a>        <span class="kw">let </span>link = job_debug.join(subdir);
-<a href=#213 id=213 data-nosnippet>213</a>        <span class="kw">if </span>!link.exists() {
-<a href=#214 id=214 data-nosnippet>214</a>            <span class="kw">let </span>target = shared_debug.join(subdir);
-<a href=#215 id=215 data-nosnippet>215</a>            fs::create_dir_all(<span class="kw-2">&amp;</span>target).unwrap();
-<a href=#216 id=216 data-nosnippet>216</a>            <span class="attr">#[cfg(unix)]
-<a href=#217 id=217 data-nosnippet>217</a>            </span>std::os::unix::fs::symlink(<span class="kw-2">&amp;</span>target, <span class="kw-2">&amp;</span>link).unwrap();
-<a href=#218 id=218 data-nosnippet>218</a>            <span class="attr">#[cfg(windows)]
-<a href=#219 id=219 data-nosnippet>219</a>            </span>std::os::windows::fs::symlink_dir(<span class="kw-2">&amp;</span>target, <span class="kw-2">&amp;</span>link).unwrap();
-<a href=#220 id=220 data-nosnippet>220</a>        }
-<a href=#221 id=221 data-nosnippet>221</a>    }
-<a href=#222 id=222 data-nosnippet>222</a>    job
-<a href=#223 id=223 data-nosnippet>223</a>}
-<a href=#224 id=224 data-nosnippet>224</a>
-<a href=#225 id=225 data-nosnippet>225</a><span class="doccomment">/// Symlink the build/ directory for prebuild jobs (writes through to shared).
-<a href=#226 id=226 data-nosnippet>226</a></span><span class="kw">pub fn </span>symlink_prebuild_build_dir(prebuild_target: <span class="kw-2">&amp;</span>Path, shared_debug: <span class="kw-2">&amp;</span>Path) {
-<a href=#227 id=227 data-nosnippet>227</a>    <span class="kw">let </span>link = prebuild_target.join(<span class="string">"debug"</span>).join(<span class="string">"build"</span>);
-<a href=#228 id=228 data-nosnippet>228</a>    <span class="kw">if </span>!link.exists() {
-<a href=#229 id=229 data-nosnippet>229</a>        <span class="kw">let </span>target = shared_debug.join(<span class="string">"build"</span>);
-<a href=#230 id=230 data-nosnippet>230</a>        fs::create_dir_all(<span class="kw-2">&amp;</span>target).unwrap();
-<a href=#231 id=231 data-nosnippet>231</a>        <span class="attr">#[cfg(unix)]
-<a href=#232 id=232 data-nosnippet>232</a>        </span>std::os::unix::fs::symlink(<span class="kw-2">&amp;</span>target, <span class="kw-2">&amp;</span>link).unwrap();
-<a href=#233 id=233 data-nosnippet>233</a>        <span class="attr">#[cfg(windows)]
-<a href=#234 id=234 data-nosnippet>234</a>        </span>std::os::windows::fs::symlink_dir(<span class="kw-2">&amp;</span>target, <span class="kw-2">&amp;</span>link).unwrap();
-<a href=#235 id=235 data-nosnippet>235</a>    }
-<a href=#236 id=236 data-nosnippet>236</a>}
-<a href=#237 id=237 data-nosnippet>237</a>
-<a href=#238 id=238 data-nosnippet>238</a><span class="doccomment">/// Guard that holds the job directory lock for the duration of a build.
-<a href=#239 id=239 data-nosnippet>239</a></span><span class="kw">pub struct </span>JobBuildGuard {
-<a href=#240 id=240 data-nosnippet>240</a>    _mutex_guard: std::sync::MutexGuard&lt;<span class="lifetime">'static</span>, ()&gt;,
-<a href=#241 id=241 data-nosnippet>241</a>    _file: fs::File,
-<a href=#242 id=242 data-nosnippet>242</a>}
-<a href=#243 id=243 data-nosnippet>243</a>
-<a href=#244 id=244 data-nosnippet>244</a><span class="doccomment">/// Populate the per-job build/ directory from the shared build/ directory.
-<a href=#245 id=245 data-nosnippet>245</a>/// Returns a guard that holds the job lock — keep alive for the entire final build.
-<a href=#246 id=246 data-nosnippet>246</a>/// This prevents races from cargo's `link_or_copy` on build script binaries.
-<a href=#247 id=247 data-nosnippet>247</a></span><span class="kw">pub fn </span>populate_job_build_dir(job_debug: <span class="kw-2">&amp;</span>Path, shared_debug: <span class="kw-2">&amp;</span>Path) -&gt; JobBuildGuard {
-<a href=#248 id=248 data-nosnippet>248</a>    <span class="kw">let </span>shared_build = shared_debug.join(<span class="string">"build"</span>);
-<a href=#249 id=249 data-nosnippet>249</a>    <span class="kw">let </span>job_build = job_debug.join(<span class="string">"build"</span>);
+<a href=#190 id=190 data-nosnippet>190</a><span class="doccomment">/// The [`BuildDirLayout`] used by the toolchain that compiled this crate.
+<a href=#191 id=191 data-nosnippet>191</a>///
+<a href=#192 id=192 data-nosnippet>192</a>/// The runtime cargo invocations coordinated by this crate use the same
+<a href=#193 id=193 data-nosnippet>193</a>/// toolchain (rustup pins the toolchain for the whole process tree), so the
+<a href=#194 id=194 data-nosnippet>194</a>/// compile-time verdict matches the layout of the builds we coordinate;
+<a href=#195 id=195 data-nosnippet>195</a>/// switching toolchains recompiles this crate and re-runs the detection.
+<a href=#196 id=196 data-nosnippet>196</a></span><span class="kw">pub fn </span>build_dir_layout() -&gt; BuildDirLayout {
+<a href=#197 id=197 data-nosnippet>197</a>    <span class="kw">if </span><span class="macro">cfg!</span>(new_build_dir_layout) {
+<a href=#198 id=198 data-nosnippet>198</a>        BuildDirLayout::New
+<a href=#199 id=199 data-nosnippet>199</a>    } <span class="kw">else </span>{
+<a href=#200 id=200 data-nosnippet>200</a>        BuildDirLayout::Legacy
+<a href=#201 id=201 data-nosnippet>201</a>    }
+<a href=#202 id=202 data-nosnippet>202</a>}
+<a href=#203 id=203 data-nosnippet>203</a>
+<a href=#204 id=204 data-nosnippet>204</a><span class="comment">// ---------------------------------------------------------------------------
+<a href=#205 id=205 data-nosnippet>205</a>// Logging
+<a href=#206 id=206 data-nosnippet>206</a>// ---------------------------------------------------------------------------
+<a href=#207 id=207 data-nosnippet>207</a>
+<a href=#208 id=208 data-nosnippet>208</a></span><span class="doccomment">/// Log a timestamped message to the build coordination log.
+<a href=#209 id=209 data-nosnippet>209</a></span><span class="kw">pub fn </span>log_build_event(project_dir: <span class="kw-2">&amp;</span>Path, msg: <span class="kw-2">&amp;</span>str) {
+<a href=#210 id=210 data-nosnippet>210</a>    <span class="kw">let </span>log_path = project_dir.join(<span class="string">"build-coordination.log"</span>);
+<a href=#211 id=211 data-nosnippet>211</a>    <span class="kw">let </span><span class="kw-2">mut </span>file = fs::OpenOptions::new()
+<a href=#212 id=212 data-nosnippet>212</a>        .create(<span class="bool-val">true</span>)
+<a href=#213 id=213 data-nosnippet>213</a>        .append(<span class="bool-val">true</span>)
+<a href=#214 id=214 data-nosnippet>214</a>        .open(log_path)
+<a href=#215 id=215 data-nosnippet>215</a>        .unwrap();
+<a href=#216 id=216 data-nosnippet>216</a>    <span class="kw">let </span>now = SystemTime::now()
+<a href=#217 id=217 data-nosnippet>217</a>        .duration_since(std::time::UNIX_EPOCH)
+<a href=#218 id=218 data-nosnippet>218</a>        .unwrap()
+<a href=#219 id=219 data-nosnippet>219</a>        .as_millis();
+<a href=#220 id=220 data-nosnippet>220</a>    <span class="kw">let </span>thread_id = std::thread::current().id();
+<a href=#221 id=221 data-nosnippet>221</a>    <span class="kw">let _ </span>= <span class="macro">writeln!</span>(file, <span class="string">"[{now}ms] [{thread_id:?}] {msg}"</span>);
+<a href=#222 id=222 data-nosnippet>222</a>}
+<a href=#223 id=223 data-nosnippet>223</a>
+<a href=#224 id=224 data-nosnippet>224</a><span class="comment">// ---------------------------------------------------------------------------
+<a href=#225 id=225 data-nosnippet>225</a>// In-process RwLocks
+<a href=#226 id=226 data-nosnippet>226</a>// ---------------------------------------------------------------------------
+<a href=#227 id=227 data-nosnippet>227</a>
+<a href=#228 id=228 data-nosnippet>228</a></span><span class="doccomment">/// Global prebuild serialization lock (in-process).
+<a href=#229 id=229 data-nosnippet>229</a></span><span class="kw">static </span>GLOBAL_PREBUILD_LOCK: parking_lot::RwLock&lt;()&gt; = parking_lot::RwLock::new(());
+<a href=#230 id=230 data-nosnippet>230</a>
+<a href=#231 id=231 data-nosnippet>231</a><span class="doccomment">/// Per-key in-process prebuild locks, mirroring the per-key lock files (see [`run_prebuild`]).
+<a href=#232 id=232 data-nosnippet>232</a></span><span class="kw">static </span>DEP_BUILD_LOCKS_PER_KEY: LazyLock&lt;Mutex&lt;HashMap&lt;String, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>parking_lot::RwLock&lt;()&gt;&gt;&gt;&gt; =
+<a href=#233 id=233 data-nosnippet>233</a>    LazyLock::new(|| Mutex::new(HashMap::new()));
+<a href=#234 id=234 data-nosnippet>234</a>
+<a href=#235 id=235 data-nosnippet>235</a><span class="kw">fn </span>get_dep_lock(key: <span class="kw-2">&amp;</span>str) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>parking_lot::RwLock&lt;()&gt; {
+<a href=#236 id=236 data-nosnippet>236</a>    <span class="kw">let </span><span class="kw-2">mut </span>map = DEP_BUILD_LOCKS_PER_KEY.lock().unwrap();
+<a href=#237 id=237 data-nosnippet>237</a>    map.entry(key.to_owned())
+<a href=#238 id=238 data-nosnippet>238</a>        .or_insert_with(|| Box::leak(Box::new(parking_lot::RwLock::new(()))))
+<a href=#239 id=239 data-nosnippet>239</a>}
+<a href=#240 id=240 data-nosnippet>240</a>
+<a href=#241 id=241 data-nosnippet>241</a><span class="doccomment">/// Per-job-dir mutexes for serializing job dir setup/population within a process.
+<a href=#242 id=242 data-nosnippet>242</a></span><span class="kw">static </span>JOB_DIR_LOCKS: LazyLock&lt;Mutex&lt;HashMap&lt;PathBuf, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>Mutex&lt;()&gt;&gt;&gt;&gt; =
+<a href=#243 id=243 data-nosnippet>243</a>    LazyLock::new(|| Mutex::new(HashMap::new()));
+<a href=#244 id=244 data-nosnippet>244</a>
+<a href=#245 id=245 data-nosnippet>245</a><span class="kw">fn </span>get_job_dir_lock(job_dir: <span class="kw-2">&amp;</span>Path) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>Mutex&lt;()&gt; {
+<a href=#246 id=246 data-nosnippet>246</a>    <span class="kw">let </span><span class="kw-2">mut </span>map = JOB_DIR_LOCKS.lock().unwrap();
+<a href=#247 id=247 data-nosnippet>247</a>    map.entry(job_dir.to_owned())
+<a href=#248 id=248 data-nosnippet>248</a>        .or_insert_with(|| Box::leak(Box::new(Mutex::new(()))))
+<a href=#249 id=249 data-nosnippet>249</a>}
 <a href=#250 id=250 data-nosnippet>250</a>
-<a href=#251 id=251 data-nosnippet>251</a>    <span class="kw">let </span>job_dir = job_debug.parent().unwrap();
-<a href=#252 id=252 data-nosnippet>252</a>    <span class="kw">let </span>mutex_guard = get_job_dir_lock(job_dir);
-<a href=#253 id=253 data-nosnippet>253</a>    <span class="kw">let </span>mutex_guard = mutex_guard.lock().unwrap();
+<a href=#251 id=251 data-nosnippet>251</a><span class="comment">// ---------------------------------------------------------------------------
+<a href=#252 id=252 data-nosnippet>252</a>// CargoBuildLock
+<a href=#253 id=253 data-nosnippet>253</a>// ---------------------------------------------------------------------------
 <a href=#254 id=254 data-nosnippet>254</a>
-<a href=#255 id=255 data-nosnippet>255</a>    <span class="comment">// Also hold a file lock for cross-process serialization on the same job dir.
-<a href=#256 id=256 data-nosnippet>256</a>    </span><span class="kw">let </span>job_lock_path = job_dir.join(<span class="string">".job.lock"</span>);
-<a href=#257 id=257 data-nosnippet>257</a>    <span class="kw">let </span>job_lock_file = fs::OpenOptions::new()
-<a href=#258 id=258 data-nosnippet>258</a>        .read(<span class="bool-val">true</span>)
-<a href=#259 id=259 data-nosnippet>259</a>        .write(<span class="bool-val">true</span>)
-<a href=#260 id=260 data-nosnippet>260</a>        .create(<span class="bool-val">true</span>)
-<a href=#261 id=261 data-nosnippet>261</a>        .truncate(<span class="bool-val">false</span>)
-<a href=#262 id=262 data-nosnippet>262</a>        .open(<span class="kw-2">&amp;</span>job_lock_path)
-<a href=#263 id=263 data-nosnippet>263</a>        .unwrap();
-<a href=#264 id=264 data-nosnippet>264</a>    job_lock_file.lock().unwrap();
-<a href=#265 id=265 data-nosnippet>265</a>
-<a href=#266 id=266 data-nosnippet>266</a>    <span class="kw">let _ </span>= fs::remove_dir_all(<span class="kw-2">&amp;</span>job_build);
-<a href=#267 id=267 data-nosnippet>267</a>    fs::create_dir_all(<span class="kw-2">&amp;</span>job_build).unwrap();
-<a href=#268 id=268 data-nosnippet>268</a>    <span class="kw">if </span>shared_build.exists() {
-<a href=#269 id=269 data-nosnippet>269</a>        <span class="kw">for </span>entry <span class="kw">in </span>fs::read_dir(<span class="kw-2">&amp;</span>shared_build).unwrap() {
-<a href=#270 id=270 data-nosnippet>270</a>            <span class="kw">let </span>entry = entry.unwrap();
-<a href=#271 id=271 data-nosnippet>271</a>            <span class="kw">if </span>!entry.file_type().unwrap().is_dir() {
-<a href=#272 id=272 data-nosnippet>272</a>                <span class="kw">continue</span>;
-<a href=#273 id=273 data-nosnippet>273</a>            }
-<a href=#274 id=274 data-nosnippet>274</a>            <span class="kw">let </span>dest = job_build.join(entry.file_name());
-<a href=#275 id=275 data-nosnippet>275</a>            <span class="comment">// Create dir and symlink each child individually so cargo can
-<a href=#276 id=276 data-nosnippet>276</a>            // safely remove+relink build-script-build without racing other jobs.
-<a href=#277 id=277 data-nosnippet>277</a>            </span>fs::create_dir_all(<span class="kw-2">&amp;</span>dest).unwrap();
-<a href=#278 id=278 data-nosnippet>278</a>            <span class="kw">for </span>file <span class="kw">in </span>fs::read_dir(entry.path()).unwrap() {
-<a href=#279 id=279 data-nosnippet>279</a>                <span class="kw">let </span>file = file.unwrap();
-<a href=#280 id=280 data-nosnippet>280</a>                <span class="kw">let </span>file_dest = dest.join(file.file_name());
-<a href=#281 id=281 data-nosnippet>281</a>                <span class="attr">#[cfg(unix)]
-<a href=#282 id=282 data-nosnippet>282</a>                </span>std::os::unix::fs::symlink(file.path(), <span class="kw-2">&amp;</span>file_dest).unwrap();
-<a href=#283 id=283 data-nosnippet>283</a>                <span class="attr">#[cfg(windows)]
-<a href=#284 id=284 data-nosnippet>284</a>                </span>{
-<a href=#285 id=285 data-nosnippet>285</a>                    <span class="kw">if </span>file.file_type().unwrap().is_dir() {
-<a href=#286 id=286 data-nosnippet>286</a>                        std::os::windows::fs::symlink_dir(file.path(), <span class="kw-2">&amp;</span>file_dest).unwrap();
-<a href=#287 id=287 data-nosnippet>287</a>                    } <span class="kw">else </span>{
-<a href=#288 id=288 data-nosnippet>288</a>                        std::os::windows::fs::symlink_file(file.path(), <span class="kw-2">&amp;</span>file_dest).unwrap();
-<a href=#289 id=289 data-nosnippet>289</a>                    }
-<a href=#290 id=290 data-nosnippet>290</a>                }
-<a href=#291 id=291 data-nosnippet>291</a>            }
-<a href=#292 id=292 data-nosnippet>292</a>        }
-<a href=#293 id=293 data-nosnippet>293</a>    }
-<a href=#294 id=294 data-nosnippet>294</a>
-<a href=#295 id=295 data-nosnippet>295</a>    JobBuildGuard {
-<a href=#296 id=296 data-nosnippet>296</a>        _mutex_guard: mutex_guard,
-<a href=#297 id=297 data-nosnippet>297</a>        _file: job_lock_file,
-<a href=#298 id=298 data-nosnippet>298</a>    }
-<a href=#299 id=299 data-nosnippet>299</a>}
-<a href=#300 id=300 data-nosnippet>300</a>
-<a href=#301 id=301 data-nosnippet>301</a><span class="comment">// ---------------------------------------------------------------------------
-<a href=#302 id=302 data-nosnippet>302</a>// Prebuild orchestration
-<a href=#303 id=303 data-nosnippet>303</a>// ---------------------------------------------------------------------------
-<a href=#304 id=304 data-nosnippet>304</a>
-<a href=#305 id=305 data-nosnippet>305</a></span><span class="doccomment">/// The verbose version (`rustc -vV`) of the compiler child `cargo` invocations will use,
-<a href=#306 id=306 data-nosnippet>306</a>/// honoring the `RUSTC` override like cargo does.
-<a href=#307 id=307 data-nosnippet>307</a></span><span class="kw">static </span>RUSTC_VERBOSE_VERSION: LazyLock&lt;String&gt; = LazyLock::new(|| {
-<a href=#308 id=308 data-nosnippet>308</a>    <span class="kw">let </span>rustc = std::env::var_os(<span class="string">"RUSTC"</span>).unwrap_or_else(|| <span class="string">"rustc"</span>.into());
-<a href=#309 id=309 data-nosnippet>309</a>    <span class="kw">let </span>output = std::process::Command::new(rustc)
-<a href=#310 id=310 data-nosnippet>310</a>        .arg(<span class="string">"-vV"</span>)
-<a href=#311 id=311 data-nosnippet>311</a>        .output()
-<a href=#312 id=312 data-nosnippet>312</a>        .expect(<span class="string">"failed to run `rustc -vV`"</span>);
-<a href=#313 id=313 data-nosnippet>313</a>    <span class="macro">assert!</span>(output.status.success(), <span class="string">"`rustc -vV` failed"</span>);
-<a href=#314 id=314 data-nosnippet>314</a>    String::from_utf8(output.stdout).unwrap()
-<a href=#315 id=315 data-nosnippet>315</a>});
-<a href=#316 id=316 data-nosnippet>316</a>
-<a href=#317 id=317 data-nosnippet>317</a><span class="kw">fn </span>hash_hex(hash: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>DefaultHasher)) -&gt; String {
-<a href=#318 id=318 data-nosnippet>318</a>    <span class="kw">let </span><span class="kw-2">mut </span>hasher = DefaultHasher::new();
-<a href=#319 id=319 data-nosnippet>319</a>    hash(<span class="kw-2">&amp;mut </span>hasher);
-<a href=#320 id=320 data-nosnippet>320</a>    <span class="macro">format!</span>(<span class="string">"{:016x}"</span>, hasher.finish())
-<a href=#321 id=321 data-nosnippet>321</a>}
-<a href=#322 id=322 data-nosnippet>322</a>
-<a href=#323 id=323 data-nosnippet>323</a><span class="doccomment">/// Fingerprint of the compilation *environment* a child build runs under: the rustflags (in
-<a href=#324 id=324 data-nosnippet>324</a>/// any stable encoding) and the compiler's verbose version.
-<a href=#325 id=325 data-nosnippet>325</a>///
-<a href=#326 id=326 data-nosnippet>326</a>/// Cargo keys the filenames of rlibs on both of these, so different fingerprints never
-<a href=#327 id=327 data-nosnippet>327</a>/// collide in the shared `deps/` and can be cached side by side. It strips that key from
-<a href=#328 id=328 data-nosnippet>328</a>/// dylib filenames unless `__CARGO_DEFAULT_LIB_METADATA` is set, so without that variable the
-<a href=#329 id=329 data-nosnippet>329</a>/// trybuild dylib bakes this fingerprint into its target name instead (see [`dylib_lib_name`]).
-<a href=#330 id=330 data-nosnippet>330</a></span><span class="kw">pub fn </span>toolchain_fingerprint(rustflags: <span class="kw-2">&amp;</span>str) -&gt; String {
-<a href=#331 id=331 data-nosnippet>331</a>    hash_hex(|h| {
-<a href=#332 id=332 data-nosnippet>332</a>        rustflags.hash(h);
-<a href=#333 id=333 data-nosnippet>333</a>        RUSTC_VERBOSE_VERSION.hash(h);
-<a href=#334 id=334 data-nosnippet>334</a>    })
-<a href=#335 id=335 data-nosnippet>335</a>}
-<a href=#336 id=336 data-nosnippet>336</a>
-<a href=#337 id=337 data-nosnippet>337</a><span class="doccomment">/// Whether cargo hashes the filenames of path-package dylibs. Cargo normally keeps those
-<a href=#338 id=338 data-nosnippet>338</a>/// stable (`libfoo.so`) so executables can embed them; the undocumented
-<a href=#339 id=339 data-nosnippet>339</a>/// `__CARGO_DEFAULT_LIB_METADATA` variable — which rust-lang/rust's bootstrap uses to build
-<a href=#340 id=340 data-nosnippet>340</a>/// libstd — forces the metadata hash onto them too, making every configuration's dylib a
-<a href=#341 id=341 data-nosnippet>341</a>/// distinct file.
-<a href=#342 id=342 data-nosnippet>342</a></span><span class="kw">fn </span>lib_metadata_enabled() -&gt; bool {
-<a href=#343 id=343 data-nosnippet>343</a>    std::env::var_os(<span class="string">"__CARGO_DEFAULT_LIB_METADATA"</span>).is_some()
-<a href=#344 id=344 data-nosnippet>344</a>}
-<a href=#345 id=345 data-nosnippet>345</a>
-<a href=#346 id=346 data-nosnippet>346</a><span class="doccomment">/// The `[lib] name` of the trybuild dylib package `package_name` when built under `rustflags`.
-<a href=#347 id=347 data-nosnippet>347</a>///
-<a href=#348 id=348 data-nosnippet>348</a>/// With `__CARGO_DEFAULT_LIB_METADATA` set this is cargo's default (the package name with
-<a href=#349 id=349 data-nosnippet>349</a>/// `-` replaced by `_`): cargo already hashes the filename per configuration, so the manifest
-<a href=#350 id=350 data-nosnippet>350</a>/// never needs to change. Without it the [`toolchain_fingerprint`] is appended so that
-<a href=#351 id=351 data-nosnippet>351</a>/// configurations get distinct `lib{name}.so` files and cache side by side instead of
-<a href=#352 id=352 data-nosnippet>352</a>/// clobbering one another. Features are not part of the name: they vary per build against one
-<a href=#353 id=353 data-nosnippet>353</a>/// shared manifest, and the prebuild lock already serializes feature switches.
-<a href=#354 id=354 data-nosnippet>354</a></span><span class="kw">pub fn </span>dylib_lib_name(package_name: <span class="kw-2">&amp;</span>str, rustflags: <span class="kw-2">&amp;</span>str) -&gt; String {
-<a href=#355 id=355 data-nosnippet>355</a>    <span class="kw">let </span>default = package_name.replace(<span class="string">'-'</span>, <span class="string">"_"</span>);
-<a href=#356 id=356 data-nosnippet>356</a>    <span class="kw">if </span>lib_metadata_enabled() {
-<a href=#357 id=357 data-nosnippet>357</a>        default
-<a href=#358 id=358 data-nosnippet>358</a>    } <span class="kw">else </span>{
-<a href=#359 id=359 data-nosnippet>359</a>        <span class="macro">format!</span>(<span class="string">"{default}_{}"</span>, toolchain_fingerprint(rustflags))
-<a href=#360 id=360 data-nosnippet>360</a>    }
-<a href=#361 id=361 data-nosnippet>361</a>}
-<a href=#362 id=362 data-nosnippet>362</a>
-<a href=#363 id=363 data-nosnippet>363</a><span class="doccomment">/// Exclusive file lock on a trybuild project's `.hydro-trybuild-lock`, serializing all writes
-<a href=#364 id=364 data-nosnippet>364</a>/// to the project's generated files (manifests, sources) across processes. Released on drop.
-<a href=#365 id=365 data-nosnippet>365</a></span><span class="kw">pub fn </span>lock_project(project_dir: <span class="kw-2">&amp;</span>Path) -&gt; fs::File {
-<a href=#366 id=366 data-nosnippet>366</a>    <span class="kw">let </span>file = fs::File::create(project_dir.join(<span class="string">".hydro-trybuild-lock"</span>)).unwrap();
-<a href=#367 id=367 data-nosnippet>367</a>    file.lock().unwrap();
-<a href=#368 id=368 data-nosnippet>368</a>    file
-<a href=#369 id=369 data-nosnippet>369</a>}
-<a href=#370 id=370 data-nosnippet>370</a>
-<a href=#371 id=371 data-nosnippet>371</a><span class="kw">fn </span>dylib_manifest_path(project_dir: <span class="kw-2">&amp;</span>Path) -&gt; PathBuf {
-<a href=#372 id=372 data-nosnippet>372</a>    project_dir.join(<span class="string">"dylib"</span>).join(<span class="string">"Cargo.toml"</span>)
-<a href=#373 id=373 data-nosnippet>373</a>}
-<a href=#374 id=374 data-nosnippet>374</a>
-<a href=#375 id=375 data-nosnippet>375</a><span class="kw">fn </span>read_manifest(path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Option</span>&lt;toml_edit::DocumentMut&gt; {
-<a href=#376 id=376 data-nosnippet>376</a>    fs::read_to_string(path).ok()<span class="question-mark">?</span>.parse().ok()
-<a href=#377 id=377 data-nosnippet>377</a>}
-<a href=#378 id=378 data-nosnippet>378</a>
-<a href=#379 id=379 data-nosnippet>379</a><span class="kw">fn </span>manifest_lib_name(doc: <span class="kw-2">&amp;</span>toml_edit::DocumentMut) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
-<a href=#380 id=380 data-nosnippet>380</a>    doc.get(<span class="string">"lib"</span>)<span class="question-mark">?</span>.get(<span class="string">"name"</span>)<span class="question-mark">?</span>.as_str()
-<a href=#381 id=381 data-nosnippet>381</a>}
-<a href=#382 id=382 data-nosnippet>382</a>
-<a href=#383 id=383 data-nosnippet>383</a><span class="doccomment">/// The `[lib] name` currently in the dylib manifest of the trybuild project at `project_dir`,
-<a href=#384 id=384 data-nosnippet>384</a>/// if it has one. Call with [`lock_project`] held and write the manifest under the same lock.
-<a href=#385 id=385 data-nosnippet>385</a>///
-<a href=#386 id=386 data-nosnippet>386</a>/// Manifest generation must reuse this rather than compute a fresh name: the name only ever
-<a href=#387 id=387 data-nosnippet>387</a>/// changes under the exclusive prebuild lock (see [`run_prebuild`]), which is what guarantees
-<a href=#388 id=388 data-nosnippet>388</a>/// no in-flight final build links against a dylib named for another configuration.
-<a href=#389 id=389 data-nosnippet>389</a></span><span class="kw">pub fn </span>current_dylib_lib_name(project_dir: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-<a href=#390 id=390 data-nosnippet>390</a>    <span class="kw">let </span>doc = read_manifest(<span class="kw-2">&amp;</span>dylib_manifest_path(project_dir))<span class="question-mark">?</span>;
-<a href=#391 id=391 data-nosnippet>391</a>    manifest_lib_name(<span class="kw-2">&amp;</span>doc).map(str::to_owned)
-<a href=#392 id=392 data-nosnippet>392</a>}
-<a href=#393 id=393 data-nosnippet>393</a>
-<a href=#394 id=394 data-nosnippet>394</a><span class="doccomment">/// Point the project's dylib manifest at the [`dylib_lib_name`] for `rustflags`.
-<a href=#395 id=395 data-nosnippet>395</a>///
-<a href=#396 id=396 data-nosnippet>396</a>/// Dylib builds call this first thing in their [`run_prebuild`] `build_fn`, i.e. under the
-<a href=#397 id=397 data-nosnippet>397</a>/// exclusive prebuild lock, once no in-flight final build links the old name. It takes
-<a href=#398 id=398 data-nosnippet>398</a>/// [`lock_project`] so a concurrent manifest regeneration cannot read the old name and write it
-<a href=#399 id=399 data-nosnippet>399</a>/// back over the new one.
-<a href=#400 id=400 data-nosnippet>400</a></span><span class="kw">pub fn </span>set_dylib_lib_name(project_dir: <span class="kw-2">&amp;</span>Path, rustflags: <span class="kw-2">&amp;</span>str) {
-<a href=#401 id=401 data-nosnippet>401</a>    <span class="kw">let </span>_project_lock = lock_project(project_dir);
-<a href=#402 id=402 data-nosnippet>402</a>    <span class="kw">let </span>manifest = dylib_manifest_path(project_dir);
-<a href=#403 id=403 data-nosnippet>403</a>    <span class="kw">let </span><span class="kw-2">mut </span>doc = read_manifest(<span class="kw-2">&amp;</span>manifest).expect(<span class="string">"dylib manifest must exist before prebuild"</span>);
-<a href=#404 id=404 data-nosnippet>404</a>    <span class="kw">let </span>package_name = doc[<span class="string">"package"</span>][<span class="string">"name"</span>].as_str().unwrap();
-<a href=#405 id=405 data-nosnippet>405</a>    <span class="kw">let </span>lib_name = dylib_lib_name(package_name, rustflags);
-<a href=#406 id=406 data-nosnippet>406</a>    <span class="kw">if </span>manifest_lib_name(<span class="kw-2">&amp;</span>doc) != <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>lib_name) {
-<a href=#407 id=407 data-nosnippet>407</a>        doc[<span class="string">"lib"</span>][<span class="string">"name"</span>] = toml_edit::value(lib_name);
-<a href=#408 id=408 data-nosnippet>408</a>        fs::write(<span class="kw-2">&amp;</span>manifest, doc.to_string()).unwrap();
-<a href=#409 id=409 data-nosnippet>409</a>    }
-<a href=#410 id=410 data-nosnippet>410</a>}
-<a href=#411 id=411 data-nosnippet>411</a>
-<a href=#412 id=412 data-nosnippet>412</a><span class="doccomment">/// Run the prebuild phase with proper locking and freshness checking.
-<a href=#413 id=413 data-nosnippet>413</a>///
-<a href=#414 id=414 data-nosnippet>414</a>/// - `target_dir`: the shared target directory (e.g. `target/`)
-<a href=#415 id=415 data-nosnippet>415</a>/// - `crate_name`: unique identifier for the crate being built (included in hash)
-<a href=#416 id=416 data-nosnippet>416</a>/// - `features`: list of features for hashing
-<a href=#417 id=417 data-nosnippet>417</a>/// - `rustflags`: the rustflags the prebuild (and the final builds sharing its artifacts) are
-<a href=#418 id=418 data-nosnippet>418</a>///   compiled with; see [`toolchain_fingerprint`]
-<a href=#419 id=419 data-nosnippet>419</a>/// - `staged_paths`: paths to check mtime against for freshness
-<a href=#420 id=420 data-nosnippet>420</a>/// - `build_fn`: closure called with `prebuild_target` path under the exclusive lock; should
-<a href=#421 id=421 data-nosnippet>421</a>///   run cargo build(s), and for dylib projects first call [`set_dylib_lib_name`]
-<a href=#422 id=422 data-nosnippet>422</a>///
-<a href=#423 id=423 data-nosnippet>423</a>/// Returns `(PrebuildGuard, CargoBuildLock)` both held in shared mode.
-<a href=#424 id=424 data-nosnippet>424</a>/// Caller should keep both alive during the final build.
-<a href=#425 id=425 data-nosnippet>425</a>///
-<a href=#426 id=426 data-nosnippet>426</a>/// # Locking and freshness
-<a href=#427 id=427 data-nosnippet>427</a>///
-<a href=#428 id=428 data-nosnippet>428</a>/// Cargo itself supports one build per target dir; the per-job target dirs sidestep that, so
-<a href=#429 id=429 data-nosnippet>429</a>/// concurrent builds are safe only while everything they both write has a distinct filename.
-<a href=#430 id=430 data-nosnippet>430</a>/// Cargo hashes rustflags, compiler version and features into every filename except a path
-<a href=#431 id=431 data-nosnippet>431</a>/// package's dylib (unless `__CARGO_DEFAULT_LIB_METADATA` is set), so the dylib and the
-<a href=#432 id=432 data-nosnippet>432</a>/// manifest naming it are the one shared resource:
-<a href=#433 id=433 data-nosnippet>433</a>///
-<a href=#434 id=434 data-nosnippet>434</a>/// - Without `__CARGO_DEFAULT_LIB_METADATA` there is a single `.prebuild.lock`. Every build
-<a href=#435 id=435 data-nosnippet>435</a>///   holds it shared through its final build; switching configuration takes it exclusive,
-<a href=#436 id=436 data-nosnippet>436</a>///   which waits for all in-flight builds to finish before `build_fn` renames the manifest and
-<a href=#437 id=437 data-nosnippet>437</a>///   rebuilds the prebuild. A fresh stamp therefore implies the manifest names this
-<a href=#438 id=438 data-nosnippet>438</a>///   configuration's dylib.
-<a href=#439 id=439 data-nosnippet>439</a>/// - With it, cargo names every configuration's files distinctly and the manifest is constant,
-<a href=#440 id=440 data-nosnippet>440</a>///   so builds only need to serialize with others of the same `(crate, features, fingerprint)`
-<a href=#441 id=441 data-nosnippet>441</a>///   — one `.prebuild-&lt;key&gt;.lock` each — and configurations never wait on one another.
-<a href=#442 id=442 data-nosnippet>442</a>///
-<a href=#443 id=443 data-nosnippet>443</a>/// Running builds with and without the variable against one target dir is unsupported: they
-<a href=#444 id=444 data-nosnippet>444</a>/// would rename the shared manifest under different locks.
-<a href=#445 id=445 data-nosnippet>445</a>///
-<a href=#446 id=446 data-nosnippet>446</a>/// The freshness stamp stored in the lock file covers crate, features and fingerprint, so a
-<a href=#447 id=447 data-nosnippet>447</a>/// prebuild for a different configuration is never mistaken for fresh.
-<a href=#448 id=448 data-nosnippet>448</a></span><span class="kw">pub fn </span>run_prebuild(
-<a href=#449 id=449 data-nosnippet>449</a>    target_dir: <span class="kw-2">&amp;</span>Path,
-<a href=#450 id=450 data-nosnippet>450</a>    crate_name: <span class="kw-2">&amp;</span>str,
-<a href=#451 id=451 data-nosnippet>451</a>    features: <span class="kw-2">&amp;</span>[String],
-<a href=#452 id=452 data-nosnippet>452</a>    rustflags: <span class="kw-2">&amp;</span>str,
-<a href=#453 id=453 data-nosnippet>453</a>    staged_paths: <span class="kw-2">&amp;</span>[PathBuf],
-<a href=#454 id=454 data-nosnippet>454</a>    build_fn: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;</span>Path),
-<a href=#455 id=455 data-nosnippet>455</a>) -&gt; (PrebuildGuard, CargoBuildLock) {
-<a href=#456 id=456 data-nosnippet>456</a>    <span class="comment">// Acquire cargo build lock shared for the entire prebuild + final build duration.
-<a href=#457 id=457 data-nosnippet>457</a>    </span><span class="kw">let </span>shared_debug = target_dir.join(<span class="string">"debug"</span>);
-<a href=#458 id=458 data-nosnippet>458</a>    fs::create_dir_all(<span class="kw-2">&amp;</span>shared_debug).ok();
-<a href=#459 id=459 data-nosnippet>459</a>    <span class="kw">let </span>cargo_lock = CargoBuildLock::lock_shared(<span class="kw-2">&amp;</span>shared_debug.join(<span class="string">".cargo-build-lock"</span>));
-<a href=#460 id=460 data-nosnippet>460</a>
-<a href=#461 id=461 data-nosnippet>461</a>    <span class="kw">let </span>toolchain = toolchain_fingerprint(rustflags);
-<a href=#462 id=462 data-nosnippet>462</a>    <span class="kw">let </span>fingerprint = hash_hex(|h| {
-<a href=#463 id=463 data-nosnippet>463</a>        crate_name.hash(h);
-<a href=#464 id=464 data-nosnippet>464</a>        <span class="kw">let </span><span class="kw-2">mut </span>sorted = features.to_vec();
-<a href=#465 id=465 data-nosnippet>465</a>        sorted.sort();
-<a href=#466 id=466 data-nosnippet>466</a>        sorted.hash(h);
-<a href=#467 id=467 data-nosnippet>467</a>        toolchain.hash(h);
-<a href=#468 id=468 data-nosnippet>468</a>    });
-<a href=#469 id=469 data-nosnippet>469</a>
-<a href=#470 id=470 data-nosnippet>470</a>    <span class="comment">// Without `__CARGO_DEFAULT_LIB_METADATA` every configuration shares one fixed key, so this
-<a href=#471 id=471 data-nosnippet>471</a>    // lock doubles as the global one: a configuration switch (exclusive) drains every in-flight
-<a href=#472 id=472 data-nosnippet>472</a>    // build, not just those of the same configuration. `.global-prebuild.lock` (taken in
-<a href=#473 id=473 data-nosnippet>473</a>    // `upgrade`) only adds anything in the per-key case, where it keeps two configurations from
-<a href=#474 id=474 data-nosnippet>474</a>    // running their `cargo build`s into the shared `deps/` at the same time.
-<a href=#475 id=475 data-nosnippet>475</a>    </span><span class="kw">let </span>lock_key = <span class="kw">if </span>lib_metadata_enabled() {
-<a href=#476 id=476 data-nosnippet>476</a>        <span class="macro">format!</span>(<span class="string">"prebuild-{fingerprint}"</span>)
-<a href=#477 id=477 data-nosnippet>477</a>    } <span class="kw">else </span>{
-<a href=#478 id=478 data-nosnippet>478</a>        <span class="string">"prebuild"</span>.to_owned()
-<a href=#479 id=479 data-nosnippet>479</a>    };
-<a href=#480 id=480 data-nosnippet>480</a>    <span class="kw">let </span>lock_path = target_dir.join(<span class="macro">format!</span>(<span class="string">".{lock_key}.lock"</span>));
-<a href=#481 id=481 data-nosnippet>481</a>
-<a href=#482 id=482 data-nosnippet>482</a>    <span class="kw">let </span>staged_mtime = staged_paths
-<a href=#483 id=483 data-nosnippet>483</a>        .iter()
-<a href=#484 id=484 data-nosnippet>484</a>        .filter_map(|p| fs::metadata(p).and_then(|m| m.modified()).ok())
-<a href=#485 id=485 data-nosnippet>485</a>        .max()
-<a href=#486 id=486 data-nosnippet>486</a>        .unwrap_or(SystemTime::UNIX_EPOCH);
-<a href=#487 id=487 data-nosnippet>487</a>
-<a href=#488 id=488 data-nosnippet>488</a>    <span class="kw">let </span>prebuild_is_fresh = |path: <span class="kw-2">&amp;</span>Path, expected_hash: <span class="kw-2">&amp;</span>str| -&gt; bool {
-<a href=#489 id=489 data-nosnippet>489</a>        fs::read_to_string(path)
-<a href=#490 id=490 data-nosnippet>490</a>            .ok()
-<a href=#491 id=491 data-nosnippet>491</a>            .and_then(|s| {
-<a href=#492 id=492 data-nosnippet>492</a>                <span class="kw">let </span><span class="kw-2">mut </span>parts = s.trim().splitn(<span class="number">2</span>, <span class="string">':'</span>);
-<a href=#493 id=493 data-nosnippet>493</a>                <span class="kw">let </span>hash = parts.next()<span class="question-mark">?</span>;
-<a href=#494 id=494 data-nosnippet>494</a>                <span class="kw">let </span>nanos = parts.next()<span class="question-mark">?</span>.parse::&lt;u128&gt;().ok()<span class="question-mark">?</span>;
-<a href=#495 id=495 data-nosnippet>495</a>                <span class="kw">let </span>ts = SystemTime::UNIX_EPOCH
-<a href=#496 id=496 data-nosnippet>496</a>                    .checked_add(std::time::Duration::from_nanos(nanos <span class="kw">as </span>u64))<span class="question-mark">?</span>;
-<a href=#497 id=497 data-nosnippet>497</a>                <span class="prelude-val">Some</span>((hash.to_owned(), ts))
-<a href=#498 id=498 data-nosnippet>498</a>            })
-<a href=#499 id=499 data-nosnippet>499</a>            .is_some_and(|(hash, ts)| hash == expected_hash &amp;&amp; ts &gt;= staged_mtime)
-<a href=#500 id=500 data-nosnippet>500</a>    };
-<a href=#501 id=501 data-nosnippet>501</a>
-<a href=#502 id=502 data-nosnippet>502</a>    log_build_event(
-<a href=#503 id=503 data-nosnippet>503</a>        target_dir,
-<a href=#504 id=504 data-nosnippet>504</a>        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"prebuild: lock_upgradable, lock_key={lock_key}, fingerprint={fingerprint}"</span>),
-<a href=#505 id=505 data-nosnippet>505</a>    );
-<a href=#506 id=506 data-nosnippet>506</a>    <span class="kw">let </span>guard = PrebuildGuard::lock_upgradable(<span class="kw-2">&amp;</span>lock_path, <span class="kw-2">&amp;</span>lock_key);
-<a href=#507 id=507 data-nosnippet>507</a>    <span class="kw">if </span>prebuild_is_fresh(<span class="kw-2">&amp;</span>lock_path, <span class="kw-2">&amp;</span>fingerprint) {
-<a href=#508 id=508 data-nosnippet>508</a>        log_build_event(target_dir, <span class="string">"prebuild: fresh, downgrading to shared"</span>);
-<a href=#509 id=509 data-nosnippet>509</a>        <span class="kw">return </span>(guard.downgrade(), cargo_lock);
-<a href=#510 id=510 data-nosnippet>510</a>    }
-<a href=#511 id=511 data-nosnippet>511</a>
-<a href=#512 id=512 data-nosnippet>512</a>    log_build_event(target_dir, <span class="string">"prebuild: not fresh, upgrading to exclusive"</span>);
-<a href=#513 id=513 data-nosnippet>513</a>    <span class="kw">let </span><span class="kw-2">mut </span>guard = guard.upgrade();
-<a href=#514 id=514 data-nosnippet>514</a>    log_build_event(target_dir, <span class="string">"prebuild: exclusive acquired"</span>);
-<a href=#515 id=515 data-nosnippet>515</a>
-<a href=#516 id=516 data-nosnippet>516</a>    <span class="comment">// Re-check after acquiring exclusive.
-<a href=#517 id=517 data-nosnippet>517</a>    </span><span class="kw">if </span>!prebuild_is_fresh(<span class="kw-2">&amp;</span>lock_path, <span class="kw-2">&amp;</span>fingerprint) {
-<a href=#518 id=518 data-nosnippet>518</a>        <span class="kw">let </span>shared_debug = target_dir.join(<span class="string">"debug"</span>);
-<a href=#519 id=519 data-nosnippet>519</a>        <span class="kw">let </span>jobs_dir = target_dir.join(<span class="string">"jobs"</span>);
-<a href=#520 id=520 data-nosnippet>520</a>        <span class="kw">let </span>prebuild_target = setup_job_dir(<span class="kw-2">&amp;</span>jobs_dir, <span class="string">"prebuild"</span>, <span class="kw-2">&amp;</span>shared_debug);
-<a href=#521 id=521 data-nosnippet>521</a>        symlink_prebuild_build_dir(<span class="kw-2">&amp;</span>prebuild_target, <span class="kw-2">&amp;</span>shared_debug);
+<a href=#255 id=255 data-nosnippet>255</a></span><span class="doccomment">/// Guard holding the shared target dir's `.cargo-build-lock` **shared**.
+<a href=#256 id=256 data-nosnippet>256</a>///
+<a href=#257 id=257 data-nosnippet>257</a>/// Cargo takes this same file **exclusive** for the duration of any build in that target dir
+<a href=#258 id=258 data-nosnippet>258</a>/// (the "build directory" lock, cargo ≥ 1.98 and nightly), so holding it shared for the whole
+<a href=#259 id=259 data-nosnippet>259</a>/// prebuild + final build mutually excludes us from unrelated cargo processes building there
+<a href=#260 id=260 data-nosnippet>260</a>/// — which would otherwise race our symlinked writes into `deps/`, `.fingerprint/` and
+<a href=#261 id=261 data-nosnippet>261</a>/// `build/` without any lock between us. Concurrent hydro builds all hold it shared and so
+<a href=#262 id=262 data-nosnippet>262</a>/// proceed together.
+<a href=#263 id=263 data-nosnippet>263</a>///
+<a href=#264 id=264 data-nosnippet>264</a>/// Consequence: no cargo spawned while this is held may use the shared target dir as its
+<a href=#265 id=265 data-nosnippet>265</a>/// `--target-dir` — it would block forever on the lock its own parent holds. Every cargo we
+<a href=#266 id=266 data-nosnippet>266</a>/// spawn (prebuild included) therefore gets its own root under `jobs/`, with the shared
+<a href=#267 id=267 data-nosnippet>267</a>/// state reached through symlinks.
+<a href=#268 id=268 data-nosnippet>268</a></span><span class="kw">pub struct </span>CargoBuildLock {
+<a href=#269 id=269 data-nosnippet>269</a>    _file: fs::File,
+<a href=#270 id=270 data-nosnippet>270</a>}
+<a href=#271 id=271 data-nosnippet>271</a>
+<a href=#272 id=272 data-nosnippet>272</a><span class="kw">impl </span>CargoBuildLock {
+<a href=#273 id=273 data-nosnippet>273</a>    <span class="kw">pub fn </span>lock_shared(lock_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="self">Self </span>{
+<a href=#274 id=274 data-nosnippet>274</a>        <span class="kw">let </span>file = fs::OpenOptions::new()
+<a href=#275 id=275 data-nosnippet>275</a>            .read(<span class="bool-val">true</span>)
+<a href=#276 id=276 data-nosnippet>276</a>            .write(<span class="bool-val">true</span>)
+<a href=#277 id=277 data-nosnippet>277</a>            .create(<span class="bool-val">true</span>)
+<a href=#278 id=278 data-nosnippet>278</a>            .truncate(<span class="bool-val">false</span>)
+<a href=#279 id=279 data-nosnippet>279</a>            .open(lock_path)
+<a href=#280 id=280 data-nosnippet>280</a>            .unwrap();
+<a href=#281 id=281 data-nosnippet>281</a>        file.lock_shared().unwrap();
+<a href=#282 id=282 data-nosnippet>282</a>        CargoBuildLock { _file: file }
+<a href=#283 id=283 data-nosnippet>283</a>    }
+<a href=#284 id=284 data-nosnippet>284</a>}
+<a href=#285 id=285 data-nosnippet>285</a>
+<a href=#286 id=286 data-nosnippet>286</a><span class="comment">// ---------------------------------------------------------------------------
+<a href=#287 id=287 data-nosnippet>287</a>// PrebuildGuard
+<a href=#288 id=288 data-nosnippet>288</a>// ---------------------------------------------------------------------------
+<a href=#289 id=289 data-nosnippet>289</a>
+<a href=#290 id=290 data-nosnippet>290</a></span><span class="doccomment">/// Guard holding both in-process and file locks for prebuild coordination.
+<a href=#291 id=291 data-nosnippet>291</a></span><span class="kw">pub struct </span>PrebuildGuard {
+<a href=#292 id=292 data-nosnippet>292</a>    _rw_guard: RwGuard,
+<a href=#293 id=293 data-nosnippet>293</a>    _global_guard: <span class="prelude-ty">Option</span>&lt;parking_lot::RwLockWriteGuard&lt;<span class="lifetime">'static</span>, ()&gt;&gt;,
+<a href=#294 id=294 data-nosnippet>294</a>    _global_file: <span class="prelude-ty">Option</span>&lt;fs::File&gt;,
+<a href=#295 id=295 data-nosnippet>295</a>    _file: fs::File,
+<a href=#296 id=296 data-nosnippet>296</a>    lock_dir: PathBuf,
+<a href=#297 id=297 data-nosnippet>297</a>}
+<a href=#298 id=298 data-nosnippet>298</a>
+<a href=#299 id=299 data-nosnippet>299</a><span class="attr">#[expect(
+<a href=#300 id=300 data-nosnippet>300</a>    dead_code,
+<a href=#301 id=301 data-nosnippet>301</a>    reason = <span class="string">"variants hold lock guards that are released on drop"
+<a href=#302 id=302 data-nosnippet>302</a></span>)]
+<a href=#303 id=303 data-nosnippet>303</a></span><span class="kw">enum </span>RwGuard {
+<a href=#304 id=304 data-nosnippet>304</a>    Read(parking_lot::RwLockReadGuard&lt;<span class="lifetime">'static</span>, ()&gt;),
+<a href=#305 id=305 data-nosnippet>305</a>    Upgradable(parking_lot::RwLockUpgradableReadGuard&lt;<span class="lifetime">'static</span>, ()&gt;),
+<a href=#306 id=306 data-nosnippet>306</a>    Write(parking_lot::RwLockWriteGuard&lt;<span class="lifetime">'static</span>, ()&gt;),
+<a href=#307 id=307 data-nosnippet>307</a>}
+<a href=#308 id=308 data-nosnippet>308</a>
+<a href=#309 id=309 data-nosnippet>309</a><span class="kw">impl </span>PrebuildGuard {
+<a href=#310 id=310 data-nosnippet>310</a>    <span class="doccomment">/// Acquire an upgradable lock (in-process upgradable read + file shared). `key` selects
+<a href=#311 id=311 data-nosnippet>311</a>    /// the in-process lock and should identify `lock_path`.
+<a href=#312 id=312 data-nosnippet>312</a>    </span><span class="kw">pub fn </span>lock_upgradable(lock_path: <span class="kw-2">&amp;</span>Path, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+<a href=#313 id=313 data-nosnippet>313</a>        <span class="kw">let </span>rw_guard = get_dep_lock(key).upgradable_read();
+<a href=#314 id=314 data-nosnippet>314</a>        <span class="kw">let </span>lock_dir = lock_path.parent().unwrap().to_owned();
+<a href=#315 id=315 data-nosnippet>315</a>        <span class="kw">let </span>file = fs::OpenOptions::new()
+<a href=#316 id=316 data-nosnippet>316</a>            .read(<span class="bool-val">true</span>)
+<a href=#317 id=317 data-nosnippet>317</a>            .write(<span class="bool-val">true</span>)
+<a href=#318 id=318 data-nosnippet>318</a>            .create(<span class="bool-val">true</span>)
+<a href=#319 id=319 data-nosnippet>319</a>            .truncate(<span class="bool-val">false</span>)
+<a href=#320 id=320 data-nosnippet>320</a>            .open(lock_path)
+<a href=#321 id=321 data-nosnippet>321</a>            .unwrap();
+<a href=#322 id=322 data-nosnippet>322</a>        file.lock_shared().unwrap();
+<a href=#323 id=323 data-nosnippet>323</a>        PrebuildGuard {
+<a href=#324 id=324 data-nosnippet>324</a>            _rw_guard: RwGuard::Upgradable(rw_guard),
+<a href=#325 id=325 data-nosnippet>325</a>            _global_guard: <span class="prelude-val">None</span>,
+<a href=#326 id=326 data-nosnippet>326</a>            _global_file: <span class="prelude-val">None</span>,
+<a href=#327 id=327 data-nosnippet>327</a>            _file: file,
+<a href=#328 id=328 data-nosnippet>328</a>            lock_dir,
+<a href=#329 id=329 data-nosnippet>329</a>        }
+<a href=#330 id=330 data-nosnippet>330</a>    }
+<a href=#331 id=331 data-nosnippet>331</a>
+<a href=#332 id=332 data-nosnippet>332</a>    <span class="doccomment">/// Upgrade to exclusive (in-process write + file exclusive + global locks).
+<a href=#333 id=333 data-nosnippet>333</a>    </span><span class="kw">pub fn </span>upgrade(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
+<a href=#334 id=334 data-nosnippet>334</a>        <span class="kw">let </span>file = <span class="self">self</span>._file;
+<a href=#335 id=335 data-nosnippet>335</a>        <span class="kw">let </span>rw_guard = <span class="kw">match </span><span class="self">self</span>._rw_guard {
+<a href=#336 id=336 data-nosnippet>336</a>            RwGuard::Upgradable(u) =&gt; parking_lot::RwLockUpgradableReadGuard::upgrade(u),
+<a href=#337 id=337 data-nosnippet>337</a>            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"can only upgrade from upgradable"</span>),
+<a href=#338 id=338 data-nosnippet>338</a>        };
+<a href=#339 id=339 data-nosnippet>339</a>        <span class="comment">// Release per-key shared lock before acquiring global exclusive
+<a href=#340 id=340 data-nosnippet>340</a>        // to avoid deadlock (other processes hold per-key shared and wait for global).
+<a href=#341 id=341 data-nosnippet>341</a>        </span>file.unlock().unwrap();
+<a href=#342 id=342 data-nosnippet>342</a>        <span class="kw">let </span>global_guard = GLOBAL_PREBUILD_LOCK.write();
+<a href=#343 id=343 data-nosnippet>343</a>        <span class="kw">let </span>global_file = fs::OpenOptions::new()
+<a href=#344 id=344 data-nosnippet>344</a>            .read(<span class="bool-val">true</span>)
+<a href=#345 id=345 data-nosnippet>345</a>            .write(<span class="bool-val">true</span>)
+<a href=#346 id=346 data-nosnippet>346</a>            .create(<span class="bool-val">true</span>)
+<a href=#347 id=347 data-nosnippet>347</a>            .truncate(<span class="bool-val">false</span>)
+<a href=#348 id=348 data-nosnippet>348</a>            .open(<span class="self">self</span>.lock_dir.join(<span class="string">".global-prebuild.lock"</span>))
+<a href=#349 id=349 data-nosnippet>349</a>            .unwrap();
+<a href=#350 id=350 data-nosnippet>350</a>        global_file.lock().unwrap();
+<a href=#351 id=351 data-nosnippet>351</a>        file.lock().unwrap();
+<a href=#352 id=352 data-nosnippet>352</a>        PrebuildGuard {
+<a href=#353 id=353 data-nosnippet>353</a>            _rw_guard: RwGuard::Write(rw_guard),
+<a href=#354 id=354 data-nosnippet>354</a>            _global_guard: <span class="prelude-val">Some</span>(global_guard),
+<a href=#355 id=355 data-nosnippet>355</a>            _global_file: <span class="prelude-val">Some</span>(global_file),
+<a href=#356 id=356 data-nosnippet>356</a>            _file: file,
+<a href=#357 id=357 data-nosnippet>357</a>            lock_dir: <span class="self">self</span>.lock_dir,
+<a href=#358 id=358 data-nosnippet>358</a>        }
+<a href=#359 id=359 data-nosnippet>359</a>    }
+<a href=#360 id=360 data-nosnippet>360</a>
+<a href=#361 id=361 data-nosnippet>361</a>    <span class="doccomment">/// Downgrade from exclusive to shared (releases global lock).
+<a href=#362 id=362 data-nosnippet>362</a>    </span><span class="kw">pub fn </span>downgrade(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
+<a href=#363 id=363 data-nosnippet>363</a>        <span class="kw">let </span>file = <span class="self">self</span>._file;
+<a href=#364 id=364 data-nosnippet>364</a>        file.lock_shared().unwrap();
+<a href=#365 id=365 data-nosnippet>365</a>        <span class="kw">let </span>rw_guard = <span class="kw">match </span><span class="self">self</span>._rw_guard {
+<a href=#366 id=366 data-nosnippet>366</a>            RwGuard::Write(w) =&gt; RwGuard::Read(parking_lot::RwLockWriteGuard::downgrade(w)),
+<a href=#367 id=367 data-nosnippet>367</a>            RwGuard::Upgradable(u) =&gt; {
+<a href=#368 id=368 data-nosnippet>368</a>                RwGuard::Read(parking_lot::RwLockUpgradableReadGuard::downgrade(u))
+<a href=#369 id=369 data-nosnippet>369</a>            }
+<a href=#370 id=370 data-nosnippet>370</a>            r @ RwGuard::Read(<span class="kw">_</span>) =&gt; r,
+<a href=#371 id=371 data-nosnippet>371</a>        };
+<a href=#372 id=372 data-nosnippet>372</a>        PrebuildGuard {
+<a href=#373 id=373 data-nosnippet>373</a>            _rw_guard: rw_guard,
+<a href=#374 id=374 data-nosnippet>374</a>            _global_guard: <span class="prelude-val">None</span>,
+<a href=#375 id=375 data-nosnippet>375</a>            _global_file: <span class="prelude-val">None</span>,
+<a href=#376 id=376 data-nosnippet>376</a>            _file: file,
+<a href=#377 id=377 data-nosnippet>377</a>            lock_dir: <span class="self">self</span>.lock_dir,
+<a href=#378 id=378 data-nosnippet>378</a>        }
+<a href=#379 id=379 data-nosnippet>379</a>    }
+<a href=#380 id=380 data-nosnippet>380</a>
+<a href=#381 id=381 data-nosnippet>381</a>    <span class="doccomment">/// Get mutable access to the underlying file (for writing timestamps).
+<a href=#382 id=382 data-nosnippet>382</a>    </span><span class="kw">pub fn </span>file_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>fs::File {
+<a href=#383 id=383 data-nosnippet>383</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>._file
+<a href=#384 id=384 data-nosnippet>384</a>    }
+<a href=#385 id=385 data-nosnippet>385</a>}
+<a href=#386 id=386 data-nosnippet>386</a>
+<a href=#387 id=387 data-nosnippet>387</a><span class="comment">// ---------------------------------------------------------------------------
+<a href=#388 id=388 data-nosnippet>388</a>// Job directory setup
+<a href=#389 id=389 data-nosnippet>389</a>// ---------------------------------------------------------------------------
+<a href=#390 id=390 data-nosnippet>390</a>
+<a href=#391 id=391 data-nosnippet>391</a></span><span class="doccomment">/// Set up a job directory with symlinked .fingerprint and deps subdirs.
+<a href=#392 id=392 data-nosnippet>392</a>/// Does NOT set up build/ — use `populate_job_build_dir` for final builds
+<a href=#393 id=393 data-nosnippet>393</a>/// or manually symlink for prebuild.
+<a href=#394 id=394 data-nosnippet>394</a>///
+<a href=#395 id=395 data-nosnippet>395</a>/// The `.fingerprint` and `deps` symlinks are what shares prebuilt state under
+<a href=#396 id=396 data-nosnippet>396</a>/// the [`BuildDirLayout::Legacy`] layout. Under [`BuildDirLayout::New`] cargo
+<a href=#397 id=397 data-nosnippet>397</a>/// ignores both directories (everything lives under `build/`), so the symlinks
+<a href=#398 id=398 data-nosnippet>398</a>/// are harmless; they are created unconditionally because the layout is not
+<a href=#399 id=399 data-nosnippet>399</a>/// yet known when job dirs are set up (detection happens during the prebuild).
+<a href=#400 id=400 data-nosnippet>400</a></span><span class="kw">pub fn </span>setup_job_dir(jobs_dir: <span class="kw-2">&amp;</span>Path, name: <span class="kw-2">&amp;</span>str, shared_debug: <span class="kw-2">&amp;</span>Path) -&gt; PathBuf {
+<a href=#401 id=401 data-nosnippet>401</a>    <span class="kw">let </span>job = jobs_dir.join(name);
+<a href=#402 id=402 data-nosnippet>402</a>    <span class="kw">let </span>_lock = get_job_dir_lock(<span class="kw-2">&amp;</span>job);
+<a href=#403 id=403 data-nosnippet>403</a>    <span class="kw">let </span>_lock = _lock.lock().unwrap();
+<a href=#404 id=404 data-nosnippet>404</a>
+<a href=#405 id=405 data-nosnippet>405</a>    <span class="comment">// File lock for cross-process serialization on the same job dir.
+<a href=#406 id=406 data-nosnippet>406</a>    </span>fs::create_dir_all(<span class="kw-2">&amp;</span>job).unwrap();
+<a href=#407 id=407 data-nosnippet>407</a>    <span class="kw">let </span>job_lock_file = fs::OpenOptions::new()
+<a href=#408 id=408 data-nosnippet>408</a>        .read(<span class="bool-val">true</span>)
+<a href=#409 id=409 data-nosnippet>409</a>        .write(<span class="bool-val">true</span>)
+<a href=#410 id=410 data-nosnippet>410</a>        .create(<span class="bool-val">true</span>)
+<a href=#411 id=411 data-nosnippet>411</a>        .truncate(<span class="bool-val">false</span>)
+<a href=#412 id=412 data-nosnippet>412</a>        .open(job.join(<span class="string">".job.lock"</span>))
+<a href=#413 id=413 data-nosnippet>413</a>        .unwrap();
+<a href=#414 id=414 data-nosnippet>414</a>    job_lock_file.lock().unwrap();
+<a href=#415 id=415 data-nosnippet>415</a>
+<a href=#416 id=416 data-nosnippet>416</a>    <span class="kw">let </span>job_debug = job.join(<span class="string">"debug"</span>);
+<a href=#417 id=417 data-nosnippet>417</a>    fs::create_dir_all(<span class="kw-2">&amp;</span>job_debug).unwrap();
+<a href=#418 id=418 data-nosnippet>418</a>    <span class="kw">for </span>subdir <span class="kw">in </span>[<span class="string">".fingerprint"</span>, <span class="string">"deps"</span>] {
+<a href=#419 id=419 data-nosnippet>419</a>        <span class="kw">let </span>link = job_debug.join(subdir);
+<a href=#420 id=420 data-nosnippet>420</a>        <span class="kw">if </span>!link.exists() {
+<a href=#421 id=421 data-nosnippet>421</a>            <span class="kw">let </span>target = shared_debug.join(subdir);
+<a href=#422 id=422 data-nosnippet>422</a>            fs::create_dir_all(<span class="kw-2">&amp;</span>target).unwrap();
+<a href=#423 id=423 data-nosnippet>423</a>            <span class="attr">#[cfg(unix)]
+<a href=#424 id=424 data-nosnippet>424</a>            </span>std::os::unix::fs::symlink(<span class="kw-2">&amp;</span>target, <span class="kw-2">&amp;</span>link).unwrap();
+<a href=#425 id=425 data-nosnippet>425</a>            <span class="attr">#[cfg(windows)]
+<a href=#426 id=426 data-nosnippet>426</a>            </span>std::os::windows::fs::symlink_dir(<span class="kw-2">&amp;</span>target, <span class="kw-2">&amp;</span>link).unwrap();
+<a href=#427 id=427 data-nosnippet>427</a>        }
+<a href=#428 id=428 data-nosnippet>428</a>    }
+<a href=#429 id=429 data-nosnippet>429</a>    job
+<a href=#430 id=430 data-nosnippet>430</a>}
+<a href=#431 id=431 data-nosnippet>431</a>
+<a href=#432 id=432 data-nosnippet>432</a><span class="doccomment">/// Symlink the build/ directory for prebuild jobs (writes through to shared).
+<a href=#433 id=433 data-nosnippet>433</a></span><span class="kw">pub fn </span>symlink_prebuild_build_dir(prebuild_target: <span class="kw-2">&amp;</span>Path, shared_debug: <span class="kw-2">&amp;</span>Path) {
+<a href=#434 id=434 data-nosnippet>434</a>    <span class="kw">let </span>link = prebuild_target.join(<span class="string">"debug"</span>).join(<span class="string">"build"</span>);
+<a href=#435 id=435 data-nosnippet>435</a>    <span class="kw">if </span>!link.exists() {
+<a href=#436 id=436 data-nosnippet>436</a>        <span class="kw">let </span>target = shared_debug.join(<span class="string">"build"</span>);
+<a href=#437 id=437 data-nosnippet>437</a>        fs::create_dir_all(<span class="kw-2">&amp;</span>target).unwrap();
+<a href=#438 id=438 data-nosnippet>438</a>        <span class="attr">#[cfg(unix)]
+<a href=#439 id=439 data-nosnippet>439</a>        </span>std::os::unix::fs::symlink(<span class="kw-2">&amp;</span>target, <span class="kw-2">&amp;</span>link).unwrap();
+<a href=#440 id=440 data-nosnippet>440</a>        <span class="attr">#[cfg(windows)]
+<a href=#441 id=441 data-nosnippet>441</a>        </span>std::os::windows::fs::symlink_dir(<span class="kw-2">&amp;</span>target, <span class="kw-2">&amp;</span>link).unwrap();
+<a href=#442 id=442 data-nosnippet>442</a>    }
+<a href=#443 id=443 data-nosnippet>443</a>}
+<a href=#444 id=444 data-nosnippet>444</a>
+<a href=#445 id=445 data-nosnippet>445</a><span class="doccomment">/// Guard that holds the job directory lock for the duration of a build.
+<a href=#446 id=446 data-nosnippet>446</a></span><span class="kw">pub struct </span>JobBuildGuard {
+<a href=#447 id=447 data-nosnippet>447</a>    _mutex_guard: std::sync::MutexGuard&lt;<span class="lifetime">'static</span>, ()&gt;,
+<a href=#448 id=448 data-nosnippet>448</a>    _file: fs::File,
+<a href=#449 id=449 data-nosnippet>449</a>}
+<a href=#450 id=450 data-nosnippet>450</a>
+<a href=#451 id=451 data-nosnippet>451</a><span class="doccomment">/// Populate the per-job build/ directory from the shared build/ directory.
+<a href=#452 id=452 data-nosnippet>452</a>/// Returns a guard that holds the job lock — keep alive for the entire final build.
+<a href=#453 id=453 data-nosnippet>453</a>/// This prevents races between processes building the same job concurrently.
+<a href=#454 id=454 data-nosnippet>454</a>///
+<a href=#455 id=455 data-nosnippet>455</a>/// The shared `build/` is mirrored two levels deep: each top-level directory is
+<a href=#456 id=456 data-nosnippet>456</a>/// recreated job-locally and its *children* are symlinked to the shared copies.
+<a href=#457 id=457 data-nosnippet>457</a>/// Anything the final build reads is the prebuilt, immutable shared state;
+<a href=#458 id=458 data-nosnippet>458</a>/// anything it *creates or replaces* lands in the job-local directory instead
+<a href=#459 id=459 data-nosnippet>459</a>/// of racing other jobs. This is the same structure under both layouts:
+<a href=#460 id=460 data-nosnippet>460</a>///
+<a href=#461 id=461 data-nosnippet>461</a>/// - **Legacy** (`build/&lt;pkg&gt;-&lt;hash&gt;/{build-script-build,out,output,...}`):
+<a href=#462 id=462 data-nosnippet>462</a>///   cargo re-links `build-script-build` even on fresh builds; with per-child
+<a href=#463 id=463 data-nosnippet>463</a>///   symlinks that replaces the job-local link, not the shared file.
+<a href=#464 id=464 data-nosnippet>464</a>/// - **New** (`build/&lt;pkg&gt;/&lt;unit-hash&gt;/{fingerprint,out,run}`): the final
+<a href=#465 id=465 data-nosnippet>465</a>///   build's own example unit is created job-locally. This matters because
+<a href=#466 id=466 data-nosnippet>466</a>///   concurrent jobs can compile the *same* cargo unit — the simulator builds
+<a href=#467 id=467 data-nosnippet>467</a>///   the fixed `sim-dylib` example in every job (varied only via
+<a href=#468 id=468 data-nosnippet>468</a>///   `include!(env!(..))`, which affects freshness but not the unit hash) — so
+<a href=#469 id=469 data-nosnippet>469</a>///   sharing `build/` wholesale would have them write, and uplift, the same
+<a href=#470 id=470 data-nosnippet>470</a>///   `out/` files.
+<a href=#471 id=471 data-nosnippet>471</a></span><span class="kw">pub fn </span>populate_job_build_dir(job_debug: <span class="kw-2">&amp;</span>Path, shared_debug: <span class="kw-2">&amp;</span>Path) -&gt; JobBuildGuard {
+<a href=#472 id=472 data-nosnippet>472</a>    <span class="kw">let </span>shared_build = shared_debug.join(<span class="string">"build"</span>);
+<a href=#473 id=473 data-nosnippet>473</a>    <span class="kw">let </span>job_build = job_debug.join(<span class="string">"build"</span>);
+<a href=#474 id=474 data-nosnippet>474</a>
+<a href=#475 id=475 data-nosnippet>475</a>    <span class="kw">let </span>job_dir = job_debug.parent().unwrap();
+<a href=#476 id=476 data-nosnippet>476</a>    <span class="kw">let </span>mutex_guard = get_job_dir_lock(job_dir);
+<a href=#477 id=477 data-nosnippet>477</a>    <span class="kw">let </span>mutex_guard = mutex_guard.lock().unwrap();
+<a href=#478 id=478 data-nosnippet>478</a>
+<a href=#479 id=479 data-nosnippet>479</a>    <span class="comment">// Also hold a file lock for cross-process serialization on the same job dir.
+<a href=#480 id=480 data-nosnippet>480</a>    </span><span class="kw">let </span>job_lock_path = job_dir.join(<span class="string">".job.lock"</span>);
+<a href=#481 id=481 data-nosnippet>481</a>    <span class="kw">let </span>job_lock_file = fs::OpenOptions::new()
+<a href=#482 id=482 data-nosnippet>482</a>        .read(<span class="bool-val">true</span>)
+<a href=#483 id=483 data-nosnippet>483</a>        .write(<span class="bool-val">true</span>)
+<a href=#484 id=484 data-nosnippet>484</a>        .create(<span class="bool-val">true</span>)
+<a href=#485 id=485 data-nosnippet>485</a>        .truncate(<span class="bool-val">false</span>)
+<a href=#486 id=486 data-nosnippet>486</a>        .open(<span class="kw-2">&amp;</span>job_lock_path)
+<a href=#487 id=487 data-nosnippet>487</a>        .unwrap();
+<a href=#488 id=488 data-nosnippet>488</a>    job_lock_file.lock().unwrap();
+<a href=#489 id=489 data-nosnippet>489</a>
+<a href=#490 id=490 data-nosnippet>490</a>    <span class="comment">// A stale symlink may be left over from an earlier version that shared
+<a href=#491 id=491 data-nosnippet>491</a>    // `build/` wholesale; `remove_dir_all` would follow it into the shared dir.
+<a href=#492 id=492 data-nosnippet>492</a>    </span><span class="kw">if </span>job_build.symlink_metadata().is_ok_and(|m| m.is_symlink()) {
+<a href=#493 id=493 data-nosnippet>493</a>        <span class="kw">let _ </span>= fs::remove_file(<span class="kw-2">&amp;</span>job_build);
+<a href=#494 id=494 data-nosnippet>494</a>    } <span class="kw">else </span>{
+<a href=#495 id=495 data-nosnippet>495</a>        <span class="kw">let _ </span>= fs::remove_dir_all(<span class="kw-2">&amp;</span>job_build);
+<a href=#496 id=496 data-nosnippet>496</a>    }
+<a href=#497 id=497 data-nosnippet>497</a>    fs::create_dir_all(<span class="kw-2">&amp;</span>job_build).unwrap();
+<a href=#498 id=498 data-nosnippet>498</a>    <span class="kw">if </span>shared_build.exists() {
+<a href=#499 id=499 data-nosnippet>499</a>        <span class="kw">for </span>entry <span class="kw">in </span>fs::read_dir(<span class="kw-2">&amp;</span>shared_build).unwrap() {
+<a href=#500 id=500 data-nosnippet>500</a>            <span class="kw">let </span>entry = entry.unwrap();
+<a href=#501 id=501 data-nosnippet>501</a>            <span class="kw">if </span>!entry.file_type().unwrap().is_dir() {
+<a href=#502 id=502 data-nosnippet>502</a>                <span class="kw">continue</span>;
+<a href=#503 id=503 data-nosnippet>503</a>            }
+<a href=#504 id=504 data-nosnippet>504</a>            <span class="kw">let </span>dest = job_build.join(entry.file_name());
+<a href=#505 id=505 data-nosnippet>505</a>            fs::create_dir_all(<span class="kw-2">&amp;</span>dest).unwrap();
+<a href=#506 id=506 data-nosnippet>506</a>            <span class="kw">for </span>file <span class="kw">in </span>fs::read_dir(entry.path()).unwrap() {
+<a href=#507 id=507 data-nosnippet>507</a>                <span class="kw">let </span>file = file.unwrap();
+<a href=#508 id=508 data-nosnippet>508</a>                <span class="kw">let </span>file_dest = dest.join(file.file_name());
+<a href=#509 id=509 data-nosnippet>509</a>                <span class="attr">#[cfg(unix)]
+<a href=#510 id=510 data-nosnippet>510</a>                </span>std::os::unix::fs::symlink(file.path(), <span class="kw-2">&amp;</span>file_dest).unwrap();
+<a href=#511 id=511 data-nosnippet>511</a>                <span class="attr">#[cfg(windows)]
+<a href=#512 id=512 data-nosnippet>512</a>                </span>{
+<a href=#513 id=513 data-nosnippet>513</a>                    <span class="kw">if </span>file.file_type().unwrap().is_dir() {
+<a href=#514 id=514 data-nosnippet>514</a>                        std::os::windows::fs::symlink_dir(file.path(), <span class="kw-2">&amp;</span>file_dest).unwrap();
+<a href=#515 id=515 data-nosnippet>515</a>                    } <span class="kw">else </span>{
+<a href=#516 id=516 data-nosnippet>516</a>                        std::os::windows::fs::symlink_file(file.path(), <span class="kw-2">&amp;</span>file_dest).unwrap();
+<a href=#517 id=517 data-nosnippet>517</a>                    }
+<a href=#518 id=518 data-nosnippet>518</a>                }
+<a href=#519 id=519 data-nosnippet>519</a>            }
+<a href=#520 id=520 data-nosnippet>520</a>        }
+<a href=#521 id=521 data-nosnippet>521</a>    }
 <a href=#522 id=522 data-nosnippet>522</a>
-<a href=#523 id=523 data-nosnippet>523</a>        build_fn(<span class="kw-2">&amp;</span>prebuild_target);
-<a href=#524 id=524 data-nosnippet>524</a>
-<a href=#525 id=525 data-nosnippet>525</a>        <span class="comment">// Write fingerprint:timestamp.
-<a href=#526 id=526 data-nosnippet>526</a>        </span><span class="kw">use </span>std::io::Seek;
-<a href=#527 id=527 data-nosnippet>527</a>        <span class="kw">let </span>now_nanos = SystemTime::now()
-<a href=#528 id=528 data-nosnippet>528</a>            .duration_since(SystemTime::UNIX_EPOCH)
-<a href=#529 id=529 data-nosnippet>529</a>            .unwrap()
-<a href=#530 id=530 data-nosnippet>530</a>            .as_nanos();
-<a href=#531 id=531 data-nosnippet>531</a>        <span class="kw">let </span>file = guard.file_mut();
-<a href=#532 id=532 data-nosnippet>532</a>        file.set_len(<span class="number">0</span>).unwrap();
-<a href=#533 id=533 data-nosnippet>533</a>        file.seek(std::io::SeekFrom::Start(<span class="number">0</span>)).unwrap();
-<a href=#534 id=534 data-nosnippet>534</a>        <span class="macro">write!</span>(file, <span class="string">"{}:{}"</span>, fingerprint, now_nanos).unwrap();
-<a href=#535 id=535 data-nosnippet>535</a>    }
-<a href=#536 id=536 data-nosnippet>536</a>
-<a href=#537 id=537 data-nosnippet>537</a>    (guard.downgrade(), cargo_lock)
-<a href=#538 id=538 data-nosnippet>538</a>}
+<a href=#523 id=523 data-nosnippet>523</a>    JobBuildGuard {
+<a href=#524 id=524 data-nosnippet>524</a>        _mutex_guard: mutex_guard,
+<a href=#525 id=525 data-nosnippet>525</a>        _file: job_lock_file,
+<a href=#526 id=526 data-nosnippet>526</a>    }
+<a href=#527 id=527 data-nosnippet>527</a>}
+<a href=#528 id=528 data-nosnippet>528</a>
+<a href=#529 id=529 data-nosnippet>529</a><span class="comment">// ---------------------------------------------------------------------------
+<a href=#530 id=530 data-nosnippet>530</a>// Prebuild orchestration
+<a href=#531 id=531 data-nosnippet>531</a>// ---------------------------------------------------------------------------
+<a href=#532 id=532 data-nosnippet>532</a>
+<a href=#533 id=533 data-nosnippet>533</a></span><span class="doccomment">/// The verbose version (`rustc -vV`) of the compiler child `cargo` invocations will use,
+<a href=#534 id=534 data-nosnippet>534</a>/// honoring the `RUSTC` override like cargo does.
+<a href=#535 id=535 data-nosnippet>535</a></span><span class="kw">static </span>RUSTC_VERBOSE_VERSION: LazyLock&lt;String&gt; = LazyLock::new(|| {
+<a href=#536 id=536 data-nosnippet>536</a>    <span class="kw">let </span>rustc = std::env::var_os(<span class="string">"RUSTC"</span>).unwrap_or_else(|| <span class="string">"rustc"</span>.into());
+<a href=#537 id=537 data-nosnippet>537</a>    <span class="kw">let </span>output = std::process::Command::new(rustc)
+<a href=#538 id=538 data-nosnippet>538</a>        .arg(<span class="string">"-vV"</span>)
+<a href=#539 id=539 data-nosnippet>539</a>        .output()
+<a href=#540 id=540 data-nosnippet>540</a>        .expect(<span class="string">"failed to run `rustc -vV`"</span>);
+<a href=#541 id=541 data-nosnippet>541</a>    <span class="macro">assert!</span>(output.status.success(), <span class="string">"`rustc -vV` failed"</span>);
+<a href=#542 id=542 data-nosnippet>542</a>    String::from_utf8(output.stdout).unwrap()
+<a href=#543 id=543 data-nosnippet>543</a>});
+<a href=#544 id=544 data-nosnippet>544</a>
+<a href=#545 id=545 data-nosnippet>545</a><span class="kw">fn </span>hash_hex(hash: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>DefaultHasher)) -&gt; String {
+<a href=#546 id=546 data-nosnippet>546</a>    <span class="kw">let </span><span class="kw-2">mut </span>hasher = DefaultHasher::new();
+<a href=#547 id=547 data-nosnippet>547</a>    hash(<span class="kw-2">&amp;mut </span>hasher);
+<a href=#548 id=548 data-nosnippet>548</a>    <span class="macro">format!</span>(<span class="string">"{:016x}"</span>, hasher.finish())
+<a href=#549 id=549 data-nosnippet>549</a>}
+<a href=#550 id=550 data-nosnippet>550</a>
+<a href=#551 id=551 data-nosnippet>551</a><span class="doccomment">/// Fingerprint of the compilation *environment* a child build runs under: the rustflags (in
+<a href=#552 id=552 data-nosnippet>552</a>/// any stable encoding) and the compiler's verbose version.
+<a href=#553 id=553 data-nosnippet>553</a>///
+<a href=#554 id=554 data-nosnippet>554</a>/// Cargo keys the filenames of rlibs on both of these, so different fingerprints never
+<a href=#555 id=555 data-nosnippet>555</a>/// collide in the shared `deps/` and can be cached side by side. It strips that key from
+<a href=#556 id=556 data-nosnippet>556</a>/// dylib filenames unless `__CARGO_DEFAULT_LIB_METADATA` is set, so without that variable the
+<a href=#557 id=557 data-nosnippet>557</a>/// trybuild dylib bakes this fingerprint into its target name instead (see [`dylib_lib_name`]).
+<a href=#558 id=558 data-nosnippet>558</a></span><span class="kw">pub fn </span>toolchain_fingerprint(rustflags: <span class="kw-2">&amp;</span>str) -&gt; String {
+<a href=#559 id=559 data-nosnippet>559</a>    hash_hex(|h| {
+<a href=#560 id=560 data-nosnippet>560</a>        rustflags.hash(h);
+<a href=#561 id=561 data-nosnippet>561</a>        RUSTC_VERBOSE_VERSION.hash(h);
+<a href=#562 id=562 data-nosnippet>562</a>    })
+<a href=#563 id=563 data-nosnippet>563</a>}
+<a href=#564 id=564 data-nosnippet>564</a>
+<a href=#565 id=565 data-nosnippet>565</a><span class="doccomment">/// Whether cargo hashes the filenames of path-package dylibs. Cargo normally keeps those
+<a href=#566 id=566 data-nosnippet>566</a>/// stable (`libfoo.so`) so executables can embed them; the undocumented
+<a href=#567 id=567 data-nosnippet>567</a>/// `__CARGO_DEFAULT_LIB_METADATA` variable — which rust-lang/rust's bootstrap uses to build
+<a href=#568 id=568 data-nosnippet>568</a>/// libstd — forces the metadata hash onto them too, making every configuration's dylib a
+<a href=#569 id=569 data-nosnippet>569</a>/// distinct file.
+<a href=#570 id=570 data-nosnippet>570</a></span><span class="kw">fn </span>lib_metadata_enabled() -&gt; bool {
+<a href=#571 id=571 data-nosnippet>571</a>    std::env::var_os(<span class="string">"__CARGO_DEFAULT_LIB_METADATA"</span>).is_some()
+<a href=#572 id=572 data-nosnippet>572</a>}
+<a href=#573 id=573 data-nosnippet>573</a>
+<a href=#574 id=574 data-nosnippet>574</a><span class="doccomment">/// The `[lib] name` of the trybuild dylib package `package_name` when built under `rustflags`.
+<a href=#575 id=575 data-nosnippet>575</a>///
+<a href=#576 id=576 data-nosnippet>576</a>/// With `__CARGO_DEFAULT_LIB_METADATA` set this is cargo's default (the package name with
+<a href=#577 id=577 data-nosnippet>577</a>/// `-` replaced by `_`): cargo already hashes the filename per configuration, so the manifest
+<a href=#578 id=578 data-nosnippet>578</a>/// never needs to change. Without it the [`toolchain_fingerprint`] is appended so that
+<a href=#579 id=579 data-nosnippet>579</a>/// configurations get distinct `lib{name}.so` files and cache side by side instead of
+<a href=#580 id=580 data-nosnippet>580</a>/// clobbering one another. Features are not part of the name: they vary per build against one
+<a href=#581 id=581 data-nosnippet>581</a>/// shared manifest, and the prebuild lock already serializes feature switches.
+<a href=#582 id=582 data-nosnippet>582</a></span><span class="kw">pub fn </span>dylib_lib_name(package_name: <span class="kw-2">&amp;</span>str, rustflags: <span class="kw-2">&amp;</span>str) -&gt; String {
+<a href=#583 id=583 data-nosnippet>583</a>    <span class="kw">let </span>default = package_name.replace(<span class="string">'-'</span>, <span class="string">"_"</span>);
+<a href=#584 id=584 data-nosnippet>584</a>    <span class="kw">if </span>lib_metadata_enabled() {
+<a href=#585 id=585 data-nosnippet>585</a>        default
+<a href=#586 id=586 data-nosnippet>586</a>    } <span class="kw">else </span>{
+<a href=#587 id=587 data-nosnippet>587</a>        <span class="macro">format!</span>(<span class="string">"{default}_{}"</span>, toolchain_fingerprint(rustflags))
+<a href=#588 id=588 data-nosnippet>588</a>    }
+<a href=#589 id=589 data-nosnippet>589</a>}
+<a href=#590 id=590 data-nosnippet>590</a>
+<a href=#591 id=591 data-nosnippet>591</a><span class="doccomment">/// Exclusive file lock on a trybuild project's `.hydro-trybuild-lock`, serializing all writes
+<a href=#592 id=592 data-nosnippet>592</a>/// to the project's generated files (manifests, sources) across processes. Released on drop.
+<a href=#593 id=593 data-nosnippet>593</a></span><span class="kw">pub fn </span>lock_project(project_dir: <span class="kw-2">&amp;</span>Path) -&gt; fs::File {
+<a href=#594 id=594 data-nosnippet>594</a>    <span class="kw">let </span>file = fs::File::create(project_dir.join(<span class="string">".hydro-trybuild-lock"</span>)).unwrap();
+<a href=#595 id=595 data-nosnippet>595</a>    file.lock().unwrap();
+<a href=#596 id=596 data-nosnippet>596</a>    file
+<a href=#597 id=597 data-nosnippet>597</a>}
+<a href=#598 id=598 data-nosnippet>598</a>
+<a href=#599 id=599 data-nosnippet>599</a><span class="kw">fn </span>dylib_manifest_path(project_dir: <span class="kw-2">&amp;</span>Path) -&gt; PathBuf {
+<a href=#600 id=600 data-nosnippet>600</a>    project_dir.join(<span class="string">"dylib"</span>).join(<span class="string">"Cargo.toml"</span>)
+<a href=#601 id=601 data-nosnippet>601</a>}
+<a href=#602 id=602 data-nosnippet>602</a>
+<a href=#603 id=603 data-nosnippet>603</a><span class="kw">fn </span>read_manifest(path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Option</span>&lt;toml_edit::DocumentMut&gt; {
+<a href=#604 id=604 data-nosnippet>604</a>    fs::read_to_string(path).ok()<span class="question-mark">?</span>.parse().ok()
+<a href=#605 id=605 data-nosnippet>605</a>}
+<a href=#606 id=606 data-nosnippet>606</a>
+<a href=#607 id=607 data-nosnippet>607</a><span class="kw">fn </span>manifest_lib_name(doc: <span class="kw-2">&amp;</span>toml_edit::DocumentMut) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+<a href=#608 id=608 data-nosnippet>608</a>    doc.get(<span class="string">"lib"</span>)<span class="question-mark">?</span>.get(<span class="string">"name"</span>)<span class="question-mark">?</span>.as_str()
+<a href=#609 id=609 data-nosnippet>609</a>}
+<a href=#610 id=610 data-nosnippet>610</a>
+<a href=#611 id=611 data-nosnippet>611</a><span class="doccomment">/// Directories that a dynamically linked artifact built into the per-job artifact dir
+<a href=#612 id=612 data-nosnippet>612</a>/// `job_debug` (e.g. `jobs/&lt;name&gt;/debug`) needs on its library search path (rpath or
+<a href=#613 id=613 data-nosnippet>613</a>/// `LD_LIBRARY_PATH`) to load the trybuild dylib whose cargo package is `dylib_package_name`.
+<a href=#614 id=614 data-nosnippet>614</a>/// `shared_debug` is the shared target's `debug/` that the job mirrors.
+<a href=#615 id=615 data-nosnippet>615</a>///
+<a href=#616 id=616 data-nosnippet>616</a>/// Every returned path must stay valid for the artifact's whole lifetime, which outlives the
+<a href=#617 id=617 data-nosnippet>617</a>/// build (the binary is exec'd by the deployment later; the simulator `dlopen`s its cdylib after
+<a href=#618 id=618 data-nosnippet>618</a>/// the build returns). Job dirs are keyed by generated-source hash, so tests whose programs are
+<a href=#619 id=619 data-nosnippet>619</a>/// identical share one; a later build in the same job dir repopulates its `build/` (see
+<a href=#620 id=620 data-nosnippet>620</a>/// [`populate_job_build_dir`]), so nothing under `job_debug/build/` may be referenced. The
+<a href=#621 id=621 data-nosnippet>621</a>/// dylib's home is instead the shared prebuilt state, which only changes under the exclusive
+<a href=#622 id=622 data-nosnippet>622</a>/// prebuild lock.
+<a href=#623 id=623 data-nosnippet>623</a>///
+<a href=#624 id=624 data-nosnippet>624</a>/// Cargo uplifts the dylib into `job_debug` under its unhashed `lib&lt;name&gt;.so` filename, which
+<a href=#625 id=625 data-nosnippet>625</a>/// satisfies the loader whenever the artifact links against that name. With
+<a href=#626 id=626 data-nosnippet>626</a>/// `__CARGO_DEFAULT_LIB_METADATA` set, however, the artifact links against the hash-suffixed
+<a href=#627 id=627 data-nosnippet>627</a>/// `lib&lt;name&gt;-&lt;hash&gt;.so`:
+<a href=#628 id=628 data-nosnippet>628</a>///
+<a href=#629 id=629 data-nosnippet>629</a>/// - under the legacy layout every variant, hashed or not, lives in `deps/`, which
+<a href=#630 id=630 data-nosnippet>630</a>///   `job_debug/deps` symlinks to once at job setup;
+<a href=#631 id=631 data-nosnippet>631</a>/// - under the new layout `deps/` no longer exists and the uplift is *renamed* to the unhashed
+<a href=#632 id=632 data-nosnippet>632</a>///   name, so the hashed file only exists in the dylib unit's
+<a href=#633 id=633 data-nosnippet>633</a>///   `&lt;shared_debug&gt;/build/&lt;dylib_package_name&gt;/&lt;hash&gt;/out/` dir. Every such unit dir is
+<a href=#634 id=634 data-nosnippet>634</a>///   included; hashed names are unique per unit so this is unambiguous, and unhashed names
+<a href=#635 id=635 data-nosnippet>635</a>///   resolve from `job_debug` (listed first) before any unit dir.
+<a href=#636 id=636 data-nosnippet>636</a></span><span class="kw">pub fn </span>dylib_search_dirs(
+<a href=#637 id=637 data-nosnippet>637</a>    dylib_package_name: <span class="kw-2">&amp;</span>str,
+<a href=#638 id=638 data-nosnippet>638</a>    job_debug: <span class="kw-2">&amp;</span>Path,
+<a href=#639 id=639 data-nosnippet>639</a>    shared_debug: <span class="kw-2">&amp;</span>Path,
+<a href=#640 id=640 data-nosnippet>640</a>) -&gt; Vec&lt;PathBuf&gt; {
+<a href=#641 id=641 data-nosnippet>641</a>    <span class="kw">let </span><span class="kw-2">mut </span>dirs = <span class="macro">vec!</span>[job_debug.to_owned()];
+<a href=#642 id=642 data-nosnippet>642</a>    <span class="kw">match </span>build_dir_layout() {
+<a href=#643 id=643 data-nosnippet>643</a>        BuildDirLayout::Legacy =&gt; dirs.push(job_debug.join(<span class="string">"deps"</span>)),
+<a href=#644 id=644 data-nosnippet>644</a>        BuildDirLayout::New =&gt; {
+<a href=#645 id=645 data-nosnippet>645</a>            <span class="kw">if let </span><span class="prelude-val">Ok</span>(units) = fs::read_dir(shared_debug.join(<span class="string">"build"</span>).join(dylib_package_name)) {
+<a href=#646 id=646 data-nosnippet>646</a>                <span class="kw">let </span><span class="kw-2">mut </span>out_dirs: Vec&lt;PathBuf&gt; = units
+<a href=#647 id=647 data-nosnippet>647</a>                    .flatten()
+<a href=#648 id=648 data-nosnippet>648</a>                    .map(|unit| unit.path().join(<span class="string">"out"</span>))
+<a href=#649 id=649 data-nosnippet>649</a>                    .filter(|out| out.is_dir())
+<a href=#650 id=650 data-nosnippet>650</a>                    .collect();
+<a href=#651 id=651 data-nosnippet>651</a>                out_dirs.sort();
+<a href=#652 id=652 data-nosnippet>652</a>                dirs.extend(out_dirs);
+<a href=#653 id=653 data-nosnippet>653</a>            }
+<a href=#654 id=654 data-nosnippet>654</a>        }
+<a href=#655 id=655 data-nosnippet>655</a>    }
+<a href=#656 id=656 data-nosnippet>656</a>    dirs
+<a href=#657 id=657 data-nosnippet>657</a>}
+<a href=#658 id=658 data-nosnippet>658</a>
+<a href=#659 id=659 data-nosnippet>659</a><span class="doccomment">/// The `[lib] name` currently in the dylib manifest of the trybuild project at `project_dir`,
+<a href=#660 id=660 data-nosnippet>660</a>/// if it has one. Call with [`lock_project`] held and write the manifest under the same lock.
+<a href=#661 id=661 data-nosnippet>661</a>///
+<a href=#662 id=662 data-nosnippet>662</a>/// Manifest generation must reuse this rather than compute a fresh name: the name only ever
+<a href=#663 id=663 data-nosnippet>663</a>/// changes under the exclusive prebuild lock (see [`run_prebuild`]), which is what guarantees
+<a href=#664 id=664 data-nosnippet>664</a>/// no in-flight final build links against a dylib named for another configuration.
+<a href=#665 id=665 data-nosnippet>665</a></span><span class="kw">pub fn </span>current_dylib_lib_name(project_dir: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+<a href=#666 id=666 data-nosnippet>666</a>    <span class="kw">let </span>doc = read_manifest(<span class="kw-2">&amp;</span>dylib_manifest_path(project_dir))<span class="question-mark">?</span>;
+<a href=#667 id=667 data-nosnippet>667</a>    manifest_lib_name(<span class="kw-2">&amp;</span>doc).map(str::to_owned)
+<a href=#668 id=668 data-nosnippet>668</a>}
+<a href=#669 id=669 data-nosnippet>669</a>
+<a href=#670 id=670 data-nosnippet>670</a><span class="doccomment">/// Point the project's dylib manifest at the [`dylib_lib_name`] for `rustflags`.
+<a href=#671 id=671 data-nosnippet>671</a>///
+<a href=#672 id=672 data-nosnippet>672</a>/// Dylib builds call this first thing in their [`run_prebuild`] `build_fn`, i.e. under the
+<a href=#673 id=673 data-nosnippet>673</a>/// exclusive prebuild lock, once no in-flight final build links the old name. It takes
+<a href=#674 id=674 data-nosnippet>674</a>/// [`lock_project`] so a concurrent manifest regeneration cannot read the old name and write it
+<a href=#675 id=675 data-nosnippet>675</a>/// back over the new one.
+<a href=#676 id=676 data-nosnippet>676</a></span><span class="kw">pub fn </span>set_dylib_lib_name(project_dir: <span class="kw-2">&amp;</span>Path, rustflags: <span class="kw-2">&amp;</span>str) {
+<a href=#677 id=677 data-nosnippet>677</a>    <span class="kw">let </span>_project_lock = lock_project(project_dir);
+<a href=#678 id=678 data-nosnippet>678</a>    <span class="kw">let </span>manifest = dylib_manifest_path(project_dir);
+<a href=#679 id=679 data-nosnippet>679</a>    <span class="kw">let </span><span class="kw-2">mut </span>doc = read_manifest(<span class="kw-2">&amp;</span>manifest).expect(<span class="string">"dylib manifest must exist before prebuild"</span>);
+<a href=#680 id=680 data-nosnippet>680</a>    <span class="kw">let </span>package_name = doc[<span class="string">"package"</span>][<span class="string">"name"</span>].as_str().unwrap();
+<a href=#681 id=681 data-nosnippet>681</a>    <span class="kw">let </span>lib_name = dylib_lib_name(package_name, rustflags);
+<a href=#682 id=682 data-nosnippet>682</a>    <span class="kw">if </span>manifest_lib_name(<span class="kw-2">&amp;</span>doc) != <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>lib_name) {
+<a href=#683 id=683 data-nosnippet>683</a>        doc[<span class="string">"lib"</span>][<span class="string">"name"</span>] = toml_edit::value(lib_name);
+<a href=#684 id=684 data-nosnippet>684</a>        fs::write(<span class="kw-2">&amp;</span>manifest, doc.to_string()).unwrap();
+<a href=#685 id=685 data-nosnippet>685</a>    }
+<a href=#686 id=686 data-nosnippet>686</a>}
+<a href=#687 id=687 data-nosnippet>687</a>
+<a href=#688 id=688 data-nosnippet>688</a><span class="doccomment">/// Run the prebuild phase with proper locking and freshness checking.
+<a href=#689 id=689 data-nosnippet>689</a>///
+<a href=#690 id=690 data-nosnippet>690</a>/// - `target_dir`: the shared target directory (e.g. `target/`)
+<a href=#691 id=691 data-nosnippet>691</a>/// - `crate_name`: unique identifier for the crate being built (included in hash)
+<a href=#692 id=692 data-nosnippet>692</a>/// - `features`: list of features for hashing
+<a href=#693 id=693 data-nosnippet>693</a>/// - `rustflags`: the rustflags the prebuild (and the final builds sharing its artifacts) are
+<a href=#694 id=694 data-nosnippet>694</a>///   compiled with; see [`toolchain_fingerprint`]
+<a href=#695 id=695 data-nosnippet>695</a>/// - `staged_paths`: paths to check mtime against for freshness
+<a href=#696 id=696 data-nosnippet>696</a>/// - `build_fn`: closure called with `prebuild_target` path under the exclusive lock; should
+<a href=#697 id=697 data-nosnippet>697</a>///   run cargo build(s), and for dylib projects first call [`set_dylib_lib_name`]
+<a href=#698 id=698 data-nosnippet>698</a>///
+<a href=#699 id=699 data-nosnippet>699</a>/// Returns `(PrebuildGuard, CargoBuildLock)` both held in shared mode.
+<a href=#700 id=700 data-nosnippet>700</a>/// Caller should keep both alive during the final build.
+<a href=#701 id=701 data-nosnippet>701</a>///
+<a href=#702 id=702 data-nosnippet>702</a>/// # Locking and freshness
+<a href=#703 id=703 data-nosnippet>703</a>///
+<a href=#704 id=704 data-nosnippet>704</a>/// Cargo itself supports one build per target dir; the per-job target dirs sidestep that, so
+<a href=#705 id=705 data-nosnippet>705</a>/// concurrent builds are safe only while everything they both write has a distinct filename.
+<a href=#706 id=706 data-nosnippet>706</a>/// Cargo hashes rustflags, compiler version and features into every filename except a path
+<a href=#707 id=707 data-nosnippet>707</a>/// package's dylib (unless `__CARGO_DEFAULT_LIB_METADATA` is set), so the dylib and the
+<a href=#708 id=708 data-nosnippet>708</a>/// manifest naming it are the one shared resource:
+<a href=#709 id=709 data-nosnippet>709</a>///
+<a href=#710 id=710 data-nosnippet>710</a>/// - Without `__CARGO_DEFAULT_LIB_METADATA` there is a single `.prebuild.lock`. Every build
+<a href=#711 id=711 data-nosnippet>711</a>///   holds it shared through its final build; switching configuration takes it exclusive,
+<a href=#712 id=712 data-nosnippet>712</a>///   which waits for all in-flight builds to finish before `build_fn` renames the manifest and
+<a href=#713 id=713 data-nosnippet>713</a>///   rebuilds the prebuild. A fresh stamp therefore implies the manifest names this
+<a href=#714 id=714 data-nosnippet>714</a>///   configuration's dylib.
+<a href=#715 id=715 data-nosnippet>715</a>/// - With it, cargo names every configuration's files distinctly and the manifest is constant,
+<a href=#716 id=716 data-nosnippet>716</a>///   so builds only need to serialize with others of the same `(crate, features, fingerprint)`
+<a href=#717 id=717 data-nosnippet>717</a>///   — one `.prebuild-&lt;key&gt;.lock` each — and configurations never wait on one another.
+<a href=#718 id=718 data-nosnippet>718</a>///
+<a href=#719 id=719 data-nosnippet>719</a>/// Running builds with and without the variable against one target dir is unsupported: they
+<a href=#720 id=720 data-nosnippet>720</a>/// would rename the shared manifest under different locks.
+<a href=#721 id=721 data-nosnippet>721</a>///
+<a href=#722 id=722 data-nosnippet>722</a>/// The freshness stamp stored in the lock file covers crate, features and fingerprint, so a
+<a href=#723 id=723 data-nosnippet>723</a>/// prebuild for a different configuration is never mistaken for fresh.
+<a href=#724 id=724 data-nosnippet>724</a></span><span class="kw">pub fn </span>run_prebuild(
+<a href=#725 id=725 data-nosnippet>725</a>    target_dir: <span class="kw-2">&amp;</span>Path,
+<a href=#726 id=726 data-nosnippet>726</a>    crate_name: <span class="kw-2">&amp;</span>str,
+<a href=#727 id=727 data-nosnippet>727</a>    features: <span class="kw-2">&amp;</span>[String],
+<a href=#728 id=728 data-nosnippet>728</a>    rustflags: <span class="kw-2">&amp;</span>str,
+<a href=#729 id=729 data-nosnippet>729</a>    staged_paths: <span class="kw-2">&amp;</span>[PathBuf],
+<a href=#730 id=730 data-nosnippet>730</a>    build_fn: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;</span>Path),
+<a href=#731 id=731 data-nosnippet>731</a>) -&gt; (PrebuildGuard, CargoBuildLock) {
+<a href=#732 id=732 data-nosnippet>732</a>    <span class="comment">// Acquire cargo build lock shared for the entire prebuild + final build duration.
+<a href=#733 id=733 data-nosnippet>733</a>    </span><span class="kw">let </span>shared_debug = target_dir.join(<span class="string">"debug"</span>);
+<a href=#734 id=734 data-nosnippet>734</a>    fs::create_dir_all(<span class="kw-2">&amp;</span>shared_debug).ok();
+<a href=#735 id=735 data-nosnippet>735</a>    <span class="kw">let </span>cargo_lock = CargoBuildLock::lock_shared(<span class="kw-2">&amp;</span>shared_debug.join(<span class="string">".cargo-build-lock"</span>));
+<a href=#736 id=736 data-nosnippet>736</a>
+<a href=#737 id=737 data-nosnippet>737</a>    <span class="kw">let </span>toolchain = toolchain_fingerprint(rustflags);
+<a href=#738 id=738 data-nosnippet>738</a>    <span class="kw">let </span>fingerprint = hash_hex(|h| {
+<a href=#739 id=739 data-nosnippet>739</a>        crate_name.hash(h);
+<a href=#740 id=740 data-nosnippet>740</a>        <span class="kw">let </span><span class="kw-2">mut </span>sorted = features.to_vec();
+<a href=#741 id=741 data-nosnippet>741</a>        sorted.sort();
+<a href=#742 id=742 data-nosnippet>742</a>        sorted.hash(h);
+<a href=#743 id=743 data-nosnippet>743</a>        toolchain.hash(h);
+<a href=#744 id=744 data-nosnippet>744</a>    });
+<a href=#745 id=745 data-nosnippet>745</a>
+<a href=#746 id=746 data-nosnippet>746</a>    <span class="comment">// Without `__CARGO_DEFAULT_LIB_METADATA` every configuration shares one fixed key, so this
+<a href=#747 id=747 data-nosnippet>747</a>    // lock doubles as the global one: a configuration switch (exclusive) drains every in-flight
+<a href=#748 id=748 data-nosnippet>748</a>    // build, not just those of the same configuration. `.global-prebuild.lock` (taken in
+<a href=#749 id=749 data-nosnippet>749</a>    // `upgrade`) only adds anything in the per-key case, where it keeps two configurations from
+<a href=#750 id=750 data-nosnippet>750</a>    // running their `cargo build`s into the shared `deps/` at the same time.
+<a href=#751 id=751 data-nosnippet>751</a>    </span><span class="kw">let </span>lock_key = <span class="kw">if </span>lib_metadata_enabled() {
+<a href=#752 id=752 data-nosnippet>752</a>        <span class="macro">format!</span>(<span class="string">"prebuild-{fingerprint}"</span>)
+<a href=#753 id=753 data-nosnippet>753</a>    } <span class="kw">else </span>{
+<a href=#754 id=754 data-nosnippet>754</a>        <span class="string">"prebuild"</span>.to_owned()
+<a href=#755 id=755 data-nosnippet>755</a>    };
+<a href=#756 id=756 data-nosnippet>756</a>    <span class="kw">let </span>lock_path = target_dir.join(<span class="macro">format!</span>(<span class="string">".{lock_key}.lock"</span>));
+<a href=#757 id=757 data-nosnippet>757</a>
+<a href=#758 id=758 data-nosnippet>758</a>    <span class="kw">let </span>staged_mtime = staged_paths
+<a href=#759 id=759 data-nosnippet>759</a>        .iter()
+<a href=#760 id=760 data-nosnippet>760</a>        .filter_map(|p| fs::metadata(p).and_then(|m| m.modified()).ok())
+<a href=#761 id=761 data-nosnippet>761</a>        .max()
+<a href=#762 id=762 data-nosnippet>762</a>        .unwrap_or(SystemTime::UNIX_EPOCH);
+<a href=#763 id=763 data-nosnippet>763</a>
+<a href=#764 id=764 data-nosnippet>764</a>    <span class="comment">// The stamp's freshness also covers the build-dir layout: layout changes
+<a href=#765 id=765 data-nosnippet>765</a>    // require a toolchain change, which also changes the mtime of
+<a href=#766 id=766 data-nosnippet>766</a>    // `current_exe`, which callers include in `staged_paths`.
+<a href=#767 id=767 data-nosnippet>767</a>    </span><span class="kw">let </span>prebuild_is_fresh = |path: <span class="kw-2">&amp;</span>Path, expected_hash: <span class="kw-2">&amp;</span>str| -&gt; bool {
+<a href=#768 id=768 data-nosnippet>768</a>        fs::read_to_string(path)
+<a href=#769 id=769 data-nosnippet>769</a>            .ok()
+<a href=#770 id=770 data-nosnippet>770</a>            .and_then(|s| {
+<a href=#771 id=771 data-nosnippet>771</a>                <span class="kw">let </span><span class="kw-2">mut </span>parts = s.trim().splitn(<span class="number">2</span>, <span class="string">':'</span>);
+<a href=#772 id=772 data-nosnippet>772</a>                <span class="kw">let </span>hash = parts.next()<span class="question-mark">?</span>;
+<a href=#773 id=773 data-nosnippet>773</a>                <span class="kw">let </span>nanos = parts.next()<span class="question-mark">?</span>.parse::&lt;u128&gt;().ok()<span class="question-mark">?</span>;
+<a href=#774 id=774 data-nosnippet>774</a>                <span class="kw">let </span>ts = SystemTime::UNIX_EPOCH
+<a href=#775 id=775 data-nosnippet>775</a>                    .checked_add(std::time::Duration::from_nanos(nanos <span class="kw">as </span>u64))<span class="question-mark">?</span>;
+<a href=#776 id=776 data-nosnippet>776</a>                <span class="prelude-val">Some</span>((hash.to_owned(), ts))
+<a href=#777 id=777 data-nosnippet>777</a>            })
+<a href=#778 id=778 data-nosnippet>778</a>            .is_some_and(|(hash, ts)| hash == expected_hash &amp;&amp; ts &gt;= staged_mtime)
+<a href=#779 id=779 data-nosnippet>779</a>    };
+<a href=#780 id=780 data-nosnippet>780</a>
+<a href=#781 id=781 data-nosnippet>781</a>    log_build_event(
+<a href=#782 id=782 data-nosnippet>782</a>        target_dir,
+<a href=#783 id=783 data-nosnippet>783</a>        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"prebuild: lock_upgradable, lock_key={lock_key}, fingerprint={fingerprint}"</span>),
+<a href=#784 id=784 data-nosnippet>784</a>    );
+<a href=#785 id=785 data-nosnippet>785</a>    <span class="kw">let </span>guard = PrebuildGuard::lock_upgradable(<span class="kw-2">&amp;</span>lock_path, <span class="kw-2">&amp;</span>lock_key);
+<a href=#786 id=786 data-nosnippet>786</a>    <span class="kw">if </span>prebuild_is_fresh(<span class="kw-2">&amp;</span>lock_path, <span class="kw-2">&amp;</span>fingerprint) {
+<a href=#787 id=787 data-nosnippet>787</a>        log_build_event(target_dir, <span class="string">"prebuild: fresh, downgrading to shared"</span>);
+<a href=#788 id=788 data-nosnippet>788</a>        <span class="kw">return </span>(guard.downgrade(), cargo_lock);
+<a href=#789 id=789 data-nosnippet>789</a>    }
+<a href=#790 id=790 data-nosnippet>790</a>
+<a href=#791 id=791 data-nosnippet>791</a>    log_build_event(target_dir, <span class="string">"prebuild: not fresh, upgrading to exclusive"</span>);
+<a href=#792 id=792 data-nosnippet>792</a>    <span class="kw">let </span><span class="kw-2">mut </span>guard = guard.upgrade();
+<a href=#793 id=793 data-nosnippet>793</a>    log_build_event(target_dir, <span class="string">"prebuild: exclusive acquired"</span>);
+<a href=#794 id=794 data-nosnippet>794</a>
+<a href=#795 id=795 data-nosnippet>795</a>    <span class="comment">// Re-check after acquiring exclusive.
+<a href=#796 id=796 data-nosnippet>796</a>    </span><span class="kw">if </span>!prebuild_is_fresh(<span class="kw-2">&amp;</span>lock_path, <span class="kw-2">&amp;</span>fingerprint) {
+<a href=#797 id=797 data-nosnippet>797</a>        <span class="kw">let </span>shared_debug = target_dir.join(<span class="string">"debug"</span>);
+<a href=#798 id=798 data-nosnippet>798</a>        <span class="kw">let </span>jobs_dir = target_dir.join(<span class="string">"jobs"</span>);
+<a href=#799 id=799 data-nosnippet>799</a>        <span class="kw">let </span>prebuild_target = setup_job_dir(<span class="kw-2">&amp;</span>jobs_dir, <span class="string">"prebuild"</span>, <span class="kw-2">&amp;</span>shared_debug);
+<a href=#800 id=800 data-nosnippet>800</a>        symlink_prebuild_build_dir(<span class="kw-2">&amp;</span>prebuild_target, <span class="kw-2">&amp;</span>shared_debug);
+<a href=#801 id=801 data-nosnippet>801</a>
+<a href=#802 id=802 data-nosnippet>802</a>        build_fn(<span class="kw-2">&amp;</span>prebuild_target);
+<a href=#803 id=803 data-nosnippet>803</a>
+<a href=#804 id=804 data-nosnippet>804</a>        <span class="comment">// Write fingerprint:timestamp.
+<a href=#805 id=805 data-nosnippet>805</a>        </span><span class="kw">use </span>std::io::Seek;
+<a href=#806 id=806 data-nosnippet>806</a>        <span class="kw">let </span>now_nanos = SystemTime::now()
+<a href=#807 id=807 data-nosnippet>807</a>            .duration_since(SystemTime::UNIX_EPOCH)
+<a href=#808 id=808 data-nosnippet>808</a>            .unwrap()
+<a href=#809 id=809 data-nosnippet>809</a>            .as_nanos();
+<a href=#810 id=810 data-nosnippet>810</a>        <span class="kw">let </span>file = guard.file_mut();
+<a href=#811 id=811 data-nosnippet>811</a>        file.set_len(<span class="number">0</span>).unwrap();
+<a href=#812 id=812 data-nosnippet>812</a>        file.seek(std::io::SeekFrom::Start(<span class="number">0</span>)).unwrap();
+<a href=#813 id=813 data-nosnippet>813</a>        <span class="macro">write!</span>(file, <span class="string">"{}:{}"</span>, fingerprint, now_nanos).unwrap();
+<a href=#814 id=814 data-nosnippet>814</a>    }
+<a href=#815 id=815 data-nosnippet>815</a>
+<a href=#816 id=816 data-nosnippet>816</a>    (guard.downgrade(), cargo_lock)
+<a href=#817 id=817 data-nosnippet>817</a>}
 </code></pre></div></section></main></body></html>
