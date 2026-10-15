@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1791969023119,
+  "lastUpdate": 1792054156991,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -316886,6 +316886,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 361360,
             "range": "± 14704.91",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mingwei Samuel",
+            "username": "MingweiSamuel",
+            "email": "mingwei.samuel@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "c2b7d16123bbd06006185bbf53f13f96350f1cba",
+          "message": "perf(dfir_lang)!: move instead of clone the accumulator out of `fold::<'tick>`/`reduce::<'tick>` #3219 (#3221)\n\nAddresses part 2 of #3219: tick-scoped `fold`/`reduce` cloned the\naccumulator into the output on every tick, so their types needed `Clone`\neven when nothing was ever copied. In `hydro_lang` this hits\n`Stream::last()` and the sim shuffle / `assume_ordering` hooks, which\nbuffer each batch with `fold::<'tick>`.\n\n## `dfir_lang`: fold/reduce codegen (`fold.rs`, `reduce.rs`)\n\n- **`'tick`**: the accumulator is created fresh inside each tick and\n**moved** into the output, not cloned. It is no longer a prologue\nvariable reset at tick end, and `write_tick_end` is gone for both\noperators. As a result, `init` runs once per tick, instead of once at\nstartup plus once at every tick end.\n- *Pull path*: one awaited `Pull::fold` / `Pull::reduce` (owned mode,\nemits by move).\n- *Push path*: the owned mode of the `dfir_pipes` push combinators:\n`push::fold` with `FoldState<Acc, _, Acc, _>`, through a\n`__push_fold_owned` inference helper, and `push::reduce(None, ..)` with\n`ReduceState<Option<T>, _, T>`. There is no `map(clone)` stage.\n- **`'static`**: semantics are unchanged. State persists across ticks,\nand the current value is cloned into the output once per tick:\n`Pull::fold_ref` / `Pull::reduce_ref` + `map(clone)` on pull, and\nborrowed-mode `push::fold` / `push::reduce_ref` + `map(clone)` on push.\n- The user closure is passed to the combinators directly instead of\nthrough an immediately-invoked closure, so it gets the `FnMut(&mut Acc,\nItem)` expected signature. Without that, `reduce(|a, b| *a = max(*a,\nb))` fails inference when the item type is only known from a later\nsubgraph. `call_comb_type` / `foreach_body` remain only for the\nterminal-push branch, which has no output.\n- `fold_no_replay` / `reduce_no_replay` are unchanged. Hydro emits them\nonly with `'static`, where the clone is needed because the value\npersists.\n\n## `dfir_pipes`: pull-side accumulation\n\n- **New `pull::Accumulate<Prev, State>`**: a future that eagerly drains\na pull into an `AccumState` and resolves to an `Iter` pull over the\nresult. It is a future, not a lazy adapter, so state is fully updated\nonce awaited even if downstream never exhausts the output (e.g. `zip`\nwith a shorter side). `'static` accumulation depends on that.\n- **New `Pull` methods**, mirroring the push-side constructors:\n  - `accumulate(state)` is the general entry point.\n- `fold(acc, f)` / `reduce(f)` are owned: they emit by move and need no\n`Clone`.\n- `fold_ref(&mut acc, f)` / `reduce_ref(&mut opt, f)` are borrowed: they\nemit `&mut`, and state lives outside the pull.\n- **New crate-level `accum` module**: `AccumState`, `FoldState`,\n`ReduceState` and `SortState` move there from `push/accumulate.rs` and\n`push/accum_state.rs`, since they apply to either direction. The\n`push::{AccumState, FoldState, ReduceState, SortState}` re-exports keep\nexisting paths working.\n- `SortState` is gated on `cfg(any(test, feature = \"alloc\"))`, so `cargo\ntest -p dfir_pipes --no-default-features` compiles. That was broken\nbefore but hidden by workspace feature unification.\n\n## Tests\n\n- `dfir_rs`: `test_fold_tick_no_clone`, `test_fold_tick_push_no_clone`\n(`tee` forces the push path), `test_reduce_tick_no_clone`,\n`test_reduce_tick_push_no_clone` (`unzip` forces push without `Clone`\nitems). Each uses a non-`Clone` type, so the compiler checks that\n`'tick` fold/reduce no longer need `Clone`.\n- `dfir_pipes`: 11 unit tests covering:\n  - owned and borrowed fold/reduce, and moves of non-`Clone` values;\n  - state updating even when the output isn't consumed;\n  - replay of prior state;\n  - resuming after `Pending`.\n- 4 stable trybuild `.stderr` snapshots are re-blessed. Only the type\nnames in rustc's \"other impls\" help list change, because the types\nmoved.\n\n## Verification\n\nOn `main` @ c7fe48ab (#3230), Rust 1.98.1:\n- `cargo test -p dfir_pipes -p dfir_lang -p dfir_rs`: 493 passed.\n- `cargo test -p hydro_lang --features deploy,sim --lib`: 309 passed, 2\nignored.\n- `cargo clippy -p dfir_pipes -p dfir_lang -p dfir_rs -p hydro_lang\n--all-targets --features hydro_lang/sim -- -D warnings`: clean.\n- `cargo +nightly fmt --all --check`: clean.\n\nBREAKING CHANGE: the closure passed to `reduce` must now return `()` in\nevery position. A `reduce` whose output is pushed (e.g. downstream of a\n`tee()`) previously also accepted a closure returning another value,\nsuch as `|acc, x| { *acc += x; true }`; it is now a type error (E0308),\nas it already was for `fold` and for pulled `reduce`.\n\n---------\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-10-14T22:56:38Z",
+          "url": "https://github.com/hydro-project/hydro/commit/c2b7d16123bbd06006185bbf53f13f96350f1cba"
+        },
+        "date": 1792054156922,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 229785,
+            "range": "± 4633",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 3819255,
+            "range": "± 61159",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 4130476,
+            "range": "± 62674",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 44124,
+            "range": "± 2623",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 12149219,
+            "range": "± 58512",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1315847,
+            "range": "± 37334",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1367989,
+            "range": "± 19040",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 48869823,
+            "range": "± 602865",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 4094864,
+            "range": "± 152638",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 18870291,
+            "range": "± 2354234",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 3509584,
+            "range": "± 28438",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 4277928,
+            "range": "± 198546",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 44527923,
+            "range": "± 1368285",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 4743,
+            "range": "± 178",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22488,
+            "range": "± 231",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 5668,
+            "range": "± 148",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 7370,
+            "range": "± 83",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 478240,
+            "range": "± 6318",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55621,
+            "range": "± 857",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 40224,
+            "range": "± 663",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 39307,
+            "range": "± 972",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 5680,
+            "range": "± 89",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1383,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 77330,
+            "range": "± 1712",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 85793,
+            "range": "± 830",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 6898,
+            "range": "± 107",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 17969,
+            "range": "± 236",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 18096,
+            "range": "± 256",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 5728,
+            "range": "± 117",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 236740,
+            "range": "± 8142.14",
             "unit": "ops/s"
           }
         ]
