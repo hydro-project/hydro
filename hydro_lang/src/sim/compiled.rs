@@ -94,8 +94,9 @@ use libloading::Library;
 use tokio::sync::{Mutex, Notify};
 
 use super::runtime::{
-    Hooks, InlineHooks, ObservationHooks, ScriptTarget, ScriptedHookControl, ScriptedHookRegistry,
-    ScriptedInlineHooks, ScriptedObservationHooks, ScriptedTickHooks, SimLocation,
+    Hooks, InlineHooks, ObservationHooks, RetryBudget, ScriptTarget, ScriptedHookControl,
+    ScriptedHookRegistry, ScriptedInlineHooks, ScriptedObservationHooks, ScriptedTickHooks,
+    SimLocation,
 };
 use super::{SimClusterReceiver, SimClusterSender, SimReceiver, SimSender};
 use crate::compile::builder::ExternalPortId;
@@ -773,6 +774,11 @@ pub struct CompiledSim {
     pub(super) lib: Library,
     pub(super) externals_port_registry: SimExternalPortRegistry,
     pub(super) unit_test_fuzz_iterations: usize,
+    pub(super) fuzz_max_len: usize,
+    /// See [`SimFlow::retries_depth`](super::flow::SimFlow::retries_depth).
+    pub(super) retries_depth: Option<usize>,
+    /// At-least-once operators not bound to a sim hook, rendered for error messages.
+    pub(super) unhooked_at_least_once: Vec<String>,
 }
 
 #[sealed::sealed]
@@ -808,6 +814,7 @@ type SimLoaded<'a> = libloading::Symbol<
         cluster_external_in: &mut HashMap<usize, HashMap<u32, UnsyncSender<Bytes>>>,
         println_handler: fn(fmt::Arguments<'_>),
         eprintln_handler: fn(fmt::Arguments<'_>),
+        retry_budget: RetryBudget,
     ) -> (
         Vec<(LocationId, Option<u32>, DfirErased<()>)>,
         Vec<(LocationId, Option<u32>, DfirErased<()>)>,
@@ -841,6 +848,7 @@ impl CompiledSim {
     ) -> T {
         let func: SimLoaded<'_> = unsafe { self.lib.get(b"__hydro_runtime").unwrap() };
         let log = always_log || std::env::var("HYDRO_SIM_LOG").is_ok_and(|v| v == "1");
+        let retry_budget = self.fuzz_retry_budget();
         thunk(
             &(|| CompiledSimInstance {
                 func: func.clone(),
@@ -849,8 +857,33 @@ impl CompiledSim {
                 log,
                 exhaustive: false,
                 deterministic: false,
+                retry_budget,
             }),
         )
+    }
+
+    fn fuzz_retry_budget(&self) -> RetryBudget {
+        match self.retries_depth {
+            Some(depth) => RetryBudget::Bounded(depth),
+            None => RetryBudget::Unbounded,
+        }
+    }
+
+    fn exhaustive_retry_budget(&self) -> RetryBudget {
+        match self.retries_depth {
+            Some(depth) => RetryBudget::Bounded(depth),
+            None if self.unhooked_at_least_once.is_empty() => RetryBudget::Bounded(0),
+            None => {
+                let points = self.unhooked_at_least_once.join("\n");
+                panic!(
+                    "exhaustive simulation needs a bound on the number of retries, but these \
+                     at-least-once operators are not bound to a sim hook:\n{points}\nhelp: call \
+                     `.retries_depth(n)` on the `SimFlow` to allow at most `n` retries per \
+                     operator, or bind sim hooks to these operators (`nondet!(... hook = \
+                     handle)`) and script their decisions"
+                );
+            }
+        }
     }
 
     /// Uses a fuzzing strategy to explore possible executions of the simulation. The provided
@@ -918,6 +951,7 @@ impl CompiledSim {
                         item_path: "<unknown>::__bolero_item_path__",
                         test_name: None,
                     })
+                    .with_max_len(self.fuzz_max_len)
                     .run_with_replay(move |is_replay| {
                         let mut instance = instantiator();
 
@@ -963,6 +997,7 @@ impl CompiledSim {
                         item_path: "<unknown>::__bolero_item_path__",
                         test_name: None,
                     })
+                    .with_max_len(self.fuzz_max_len)
                     .with_iterations(self.unit_test_fuzz_iterations)
                     .run_with_replay(move |is_replay| {
                         let mut instance = instantiator();
@@ -1053,6 +1088,8 @@ impl CompiledSim {
             std::process::abort();
         }
 
+        let retry_budget = self.exhaustive_retry_budget();
+
         let mut count = 0;
         let count_mut = &mut count;
 
@@ -1075,6 +1112,7 @@ impl CompiledSim {
 
                     let mut instance = instantiator();
                     instance.exhaustive = true;
+                    instance.retry_budget = retry_budget;
                     if instance.log {
                         eprintln!(
                             "{}",
@@ -1110,8 +1148,19 @@ impl CompiledSim {
     /// tie-breaking policy because at most one tick is ever runnable: scripted decisions
     /// activate one group at a time, so the *script* is the schedule.
     pub fn deterministic(&self, thunk: impl AsyncFnOnce() + RefUnwindSafe) {
+        // no fuzzer to draw retries from, regardless of `retries_depth`
+        assert!(
+            self.unhooked_at_least_once.is_empty(),
+            "deterministic simulation requires every at-least-once operator to be bound to a \
+             sim hook, but these are not:\n{}\nhelp: bind a sim hook to each of these \
+             operators (`nondet!(... hook = handle)`) and script its decisions, or run under \
+             `fuzz` / `exhaustive` instead",
+            self.unhooked_at_least_once.join("\n")
+        );
         self.with_instance(|mut instance| {
             instance.deterministic = true;
+            // unused, every at-least-once hook is scripted
+            instance.retry_budget = RetryBudget::Bounded(0);
 
             // Deliberately do not install a Bolero entropy scope. Deterministic execution
             // must never draw entropy; Bolero's unset thread-local scope makes any accidental
@@ -1146,6 +1195,7 @@ pub struct CompiledSimInstance<'a> {
     log: bool,
     exhaustive: bool,
     deterministic: bool,
+    retry_budget: RetryBudget,
 }
 
 impl<'a> CompiledSimInstance<'a> {
@@ -1184,6 +1234,7 @@ impl<'a> CompiledSimInstance<'a> {
                 } else {
                     null_handler
                 },
+                self.retry_budget,
             )
         };
 
@@ -2362,9 +2413,9 @@ impl SimObservation {
     /// Whether the scheduler can resolve this observation's hook right now.
     fn can_run(&self) -> bool {
         match &self.hook {
-            // Running an observation *is* releasing, so any pending input makes an
-            // unscripted observation runnable.
-            ObservationSlot::Unscripted { hook } => hook.has_pending_input(),
+            // Running an observation *is* releasing, so it is runnable whenever its hook
+            // can release something.
+            ObservationSlot::Unscripted { hook } => hook.can_release(),
             ObservationSlot::Scripted { hook, .. } => hook.borrow().can_fire(),
         }
     }

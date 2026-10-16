@@ -20,6 +20,9 @@ use crate::prelude::Cluster;
 use crate::sim::graph::SimExternalPortRegistry;
 use crate::staging_util::Invariant;
 
+pub(crate) const DEFAULT_FUZZ_MAX_LEN: usize = 4096;
+pub(crate) const DEFAULT_UNIT_FUZZ_ITERATIONS: usize = 8192;
+
 /// A not-yet-compiled simulator for a Hydro program.
 pub struct SimFlow<'a> {
     pub(crate) ir: Vec<HydroRoot>,
@@ -55,6 +58,12 @@ pub struct SimFlow<'a> {
 
     /// Number of iterations to use for fuzzing, defaults to 8192
     pub(crate) unit_test_fuzz_iterations: usize,
+
+    /// See [`Self::fuzz_max_len`].
+    pub(crate) fuzz_max_len: usize,
+
+    /// See [`Self::retries_depth`].
+    pub(crate) retries_depth: Option<usize>,
 
     pub(crate) _phantom: Invariant<'a>,
 }
@@ -92,10 +101,38 @@ impl<'a> SimFlow<'a> {
     }
 
     /// Sets the number of fuzz iterations for this test. Overrides the
-    /// the default value of 8192
+    /// the default value of 8192.
     #[must_use]
     pub fn unit_test_fuzz_iterations(mut self, iterations: usize) -> Self {
         self.unit_test_fuzz_iterations = iterations;
+        self
+    }
+
+    /// Limits how many bytes of random input each fuzz iteration may consume when a fuzz
+    /// test runs. Once the limit is reached, every remaining decision gets the driver's
+    /// fallback value. Defaults to 4096 (the default for bolero / libfuzzer).
+    #[must_use]
+    pub fn fuzz_max_len(mut self, max_len: usize) -> Self {
+        self.fuzz_max_len = max_len;
+        self
+    }
+
+    /// Bounds the number of retries the simulator generates at at-least-once operators
+    /// (`assume_retries`, and `assume_ordering` / `batch` on an `AtLeastOnce` stream) that
+    /// are not bound to a sim hook, to `depth` per operator. So `retries_depth(0)` delivers
+    /// every element exactly once.
+    ///
+    /// Required by [`exhaustive`](Self::exhaustive) when there are such operators. Under
+    /// [`fuzz`](Self::fuzz), retries are unbounded unless this is set.
+    /// [`deterministic`](Self::deterministic) ignores it, since every at-least-once operator
+    /// must be scripted there.
+    ///
+    /// The budget is per operator (and per cluster member). Operators inside a tick get a
+    /// fresh budget on every tick execution. Each top-level operator consumes its budget
+    /// across ticks with no refreshes.
+    #[must_use]
+    pub fn retries_depth(mut self, depth: usize) -> Self {
+        self.retries_depth = Some(depth);
         self
     }
 
@@ -158,6 +195,7 @@ impl<'a> SimFlow<'a> {
             next_hoff_id: crate::Counter::default(),
             test_safety_only: self.test_safety_only,
             skip_consistency_assertions: self.skip_consistency_assertions,
+            unhooked_at_least_once: vec![],
             channel_tables: BTreeMap::new(),
             bound_sim_hooks: HashMap::new(),
         };
@@ -257,6 +295,7 @@ impl<'a> SimFlow<'a> {
             sim_emit.extra_stmts_cluster,
         );
 
+        let unhooked_at_least_once = std::mem::take(&mut sim_emit.unhooked_at_least_once);
         let out = compile_sim(bin, trybuild).unwrap();
         let lib = {
             let _span = tracing::debug_span!(target: "hydro_build", "load_dylib").entered();
@@ -268,6 +307,9 @@ impl<'a> SimFlow<'a> {
             lib,
             externals_port_registry: self.externals_port_registry.take(),
             unit_test_fuzz_iterations: self.unit_test_fuzz_iterations,
+            fuzz_max_len: self.fuzz_max_len,
+            retries_depth: self.retries_depth,
+            unhooked_at_least_once,
         }
     }
 

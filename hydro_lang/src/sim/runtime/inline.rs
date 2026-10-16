@@ -5,10 +5,8 @@
 //! [`ScriptableInlineHook`] impls live alongside them.
 //!
 //! The retry kinds ([`NoOrderStreamRetriesHook`], [`OrderedStreamRetriesHook`],
-//! [`AtLeastOnceStreamOrderHook`]) implement only the scriptable surface, never
-//! [`InlineHook`]: their decision spaces are infinite (every element admits arbitrarily
-//! many retries), so no autonomous exploration is possible and the builder requires them
-//! to be bound to a sim hook.
+//! [`AtLeastOnceStreamOrderHook`]) are only explored autonomously within their
+//! [`RetryBudget`], which is reset on every tick execution.
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -21,8 +19,9 @@ use dfir_rs::rustc_hash::{FxHashMap, FxHashSet};
 use dfir_rs::util::unsync::mpsc::Sender;
 
 use super::{
-    HookLocationMeta, InlineHook, ManualDebug, MergeStatus, OrderingStatus, RuntimeHook,
-    ScriptDecision, ScriptableInlineHook, TruncatedLabeledVecDebug, TruncatedVecDebug, log_release,
+    HookLocationMeta, InlineHook, ManualDebug, MergeStatus, OrderingStatus, RetryBudget,
+    RuntimeHook, ScriptDecision, ScriptableInlineHook, TruncatedLabeledVecDebug, TruncatedVecDebug,
+    draw_boolean_false_if_exhausted, log_release,
 };
 
 pub struct StreamOrderHook<T> {
@@ -1150,11 +1149,12 @@ where
 /// value may appear that was not received. The scripted order is irrelevant — the output
 /// is `NoOrder`.
 ///
-/// There is no autonomous ([`InlineHook`]) implementation: cardinalities make the
-/// decision space infinite, so this hook exists only bound to a sim hook handle.
+/// An autonomous decision adds extra copies of some elements, within the budget.
 pub struct NoOrderStreamRetriesHook<T> {
     input: Rc<RefCell<Option<Vec<T>>>>,
     to_release: Option<Vec<T>>,
+    /// Unused when scripted.
+    budget: RetryBudget,
     output: Sender<Vec<T>>,
     batch_location: HookLocationMeta,
     format_debug: fn(&T) -> Option<String>,
@@ -1166,10 +1166,12 @@ impl<T> NoOrderStreamRetriesHook<T> {
         output: Sender<Vec<T>>,
         batch_location: HookLocationMeta,
         format_debug: fn(&T) -> Option<String>,
+        budget: RetryBudget,
     ) -> Self {
         Self {
             input,
             to_release: None,
+            budget,
             output,
             batch_location,
             format_debug,
@@ -1183,11 +1185,12 @@ impl<T> NoOrderStreamRetriesHook<T> {
 /// (`n >= 1` copies per slot) — see [`TopLevelOrderedStreamRetriesHook`](super::TopLevelOrderedStreamRetriesHook)
 /// for why delayed redeliveries are not this observation's dimension.
 ///
-/// There is no autonomous ([`InlineHook`]) implementation: cardinalities make the
-/// decision space infinite, so this hook exists only bound to a sim hook handle.
+/// An autonomous decision adds extra copies of some elements, within the budget.
 pub struct OrderedStreamRetriesHook<T> {
     input: Rc<RefCell<Option<Vec<T>>>>,
     to_release: Option<Vec<T>>,
+    /// Unused when scripted.
+    budget: RetryBudget,
     output: Sender<Vec<T>>,
     batch_location: HookLocationMeta,
     format_debug: fn(&T) -> Option<String>,
@@ -1199,10 +1202,12 @@ impl<T> OrderedStreamRetriesHook<T> {
         output: Sender<Vec<T>>,
         batch_location: HookLocationMeta,
         format_debug: fn(&T) -> Option<String>,
+        budget: RetryBudget,
     ) -> Self {
         Self {
             input,
             to_release: None,
+            budget,
             output,
             batch_location,
             format_debug,
@@ -1223,11 +1228,13 @@ impl<T> OrderedStreamRetriesHook<T> {
 /// redundant — the adjacent duplicate denotes the same at-least-once collection, and
 /// per-slot cardinality belongs to the downstream `assume_retries` observation.
 ///
-/// There is no autonomous ([`InlineHook`]) implementation: re-emission makes the
-/// decision space infinite, so this hook exists only bound to a sim hook handle.
+/// An autonomous decision emits every element at least once, and may emit elements again
+/// (never twice in a row) within the budget.
 pub struct AtLeastOnceStreamOrderHook<T> {
     input: Rc<RefCell<Option<Vec<T>>>>,
     to_release: Option<Vec<T>>,
+    /// Unused when scripted.
+    budget: RetryBudget,
     output: Sender<Vec<T>>,
     batch_location: HookLocationMeta,
     format_debug: fn(&T) -> Option<String>,
@@ -1239,10 +1246,12 @@ impl<T> AtLeastOnceStreamOrderHook<T> {
         output: Sender<Vec<T>>,
         batch_location: HookLocationMeta,
         format_debug: fn(&T) -> Option<String>,
+        budget: RetryBudget,
     ) -> Self {
         Self {
             input,
             to_release: None,
+            budget,
             output,
             batch_location,
             format_debug,
@@ -1322,6 +1331,85 @@ inline_retries_runtime_hook!(
     AtLeastOnceStreamOrderHook,
     "observed non-deterministic order"
 );
+
+/// Returns `input` with each element followed by some number of extra copies, drawn
+/// from `budget`.
+fn with_extra_copies<T: Clone>(
+    input: Vec<T>,
+    mut budget: RetryBudget,
+    driver: &mut Borrowed<'_>,
+) -> Vec<T> {
+    let mut out = Vec::with_capacity(input.len());
+    for item in input {
+        for _ in 0..budget.draw_extra(driver) {
+            out.push(item.clone());
+        }
+        out.push(item);
+    }
+    out
+}
+
+// the budget is per tick, so these copy `self.budget` instead of spending it
+
+impl<T: Clone> InlineHook for NoOrderStreamRetriesHook<T> {
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let input = self.input.borrow_mut().take().unwrap();
+        // the output is unordered, so where the copies go doesn't matter, only how many
+        self.to_release = Some(with_extra_copies(input, self.budget, driver));
+    }
+}
+
+impl<T: Clone> InlineHook for OrderedStreamRetriesHook<T> {
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let input = self.input.borrow_mut().take().unwrap();
+        self.to_release = Some(with_extra_copies(input, self.budget, driver));
+    }
+}
+
+impl<T: Clone> InlineHook for AtLeastOnceStreamOrderHook<T> {
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let input = self.input.borrow_mut().take().unwrap();
+        let mut budget = self.budget;
+
+        let mut count_per_element = vec![0usize; input.len()];
+        let mut previous: Option<usize> = None;
+        let mut order: Vec<usize> = Vec::with_capacity(input.len());
+        loop {
+            // never the same element twice in a row (adjacent copies are the downstream
+            // `assume_retries`'s job)
+            let re_emittable: Vec<usize> = (0..input.len())
+                .filter(|&index| count_per_element[index] > 0 && Some(index) != previous)
+                .collect();
+            // re-emissions only happen through this draw, so once the driver is out of
+            // entropy the rest are emitted once each and the loop stops
+            let index = if !re_emittable.is_empty()
+                && budget.allows_retry()
+                && draw_boolean_false_if_exhausted(driver)
+            {
+                budget.spend(1);
+                re_emittable[(0..re_emittable.len()).generate(driver).unwrap()]
+            } else {
+                let unemitted: Vec<usize> = (0..input.len())
+                    .filter(|&index| count_per_element[index] == 0)
+                    .collect();
+                if unemitted.is_empty() {
+                    break;
+                }
+                unemitted[(0..unemitted.len()).generate(driver).unwrap()]
+            };
+            count_per_element[index] += 1;
+            previous = Some(index);
+            order.push(index);
+        }
+
+        self.to_release = Some(
+            order
+                .into_iter()
+                .map(|index| input[index].clone())
+                .collect(),
+        );
+    }
+}
 
 /// Renders a list of values for the retry validators' error messages.
 fn fmt_values<T>(items: &[&T], format_debug: fn(&T) -> Option<String>) -> String {

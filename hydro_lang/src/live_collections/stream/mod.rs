@@ -2376,6 +2376,9 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
+    ///
+    /// In simulation tests, the order chosen can be scripted by attaching an
+    /// [`OrderingHook`](crate::sim_hooks::OrderingHook) to `nondet`.
     pub fn assume_ordering<O2: Ordering>(
         self,
         mut nondet: NonDet<Option<crate::sim_hooks::OrderingHook<T, B, R, L::SimHookScope>>>,
@@ -2495,9 +2498,7 @@ where
     /// In simulation tests, the retry decisions (how many times each element is
     /// observed) can be scripted by attaching a
     /// [`RetriesHook`](crate::sim_hooks::RetriesHook) to the guard via
-    /// `nondet!(/** reason */ hook = my_hook)`. Because every element admits arbitrarily
-    /// many retries, this non-determinism cannot be explored autonomously: simulating a
-    /// program containing a strengthening `assume_retries` **requires** a bound hook.
+    /// `nondet!(/** reason */ hook = my_hook)`.
     pub fn assume_retries<R2: Retries>(
         self,
         mut nondet: NonDet<Option<crate::sim_hooks::RetriesHook<T, O, B, L::SimHookScope>>>,

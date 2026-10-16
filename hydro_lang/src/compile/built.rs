@@ -189,7 +189,9 @@ impl<'a> BuiltFlow<'a> {
             location_version_group_root: self.location_version_group_root,
             test_safety_only: false,
             skip_consistency_assertions: false,
-            unit_test_fuzz_iterations: 8192,
+            unit_test_fuzz_iterations: crate::sim::flow::DEFAULT_UNIT_FUZZ_ITERATIONS,
+            fuzz_max_len: crate::sim::flow::DEFAULT_FUZZ_MAX_LEN,
+            retries_depth: None,
             _phantom: PhantomData,
         }
     }
