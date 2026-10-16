@@ -63,11 +63,12 @@ pub mod prelude {
     pub use crate::networking::{EMBEDDED, TCP, UDP};
     pub use crate::nondet::{NonDet, nondet};
     pub use crate::properties::{
-        ConsistencyProof, ManualProof, VerusCommutativeProof, VerusIdempotentProof, manual_proof,
-        verus_panic, verus_proof_commutative_effect, verus_proof_commutative_filter,
+        ConsistencyProof, ManualProof, VerusCommutativeProof, VerusIdempotentProof,
+        VerusMonotoneProof, VerusOrderPreservingProof, manual_proof, verus_panic,
+        verus_proof_commutative_effect, verus_proof_commutative_filter,
         verus_proof_commutative_fold, verus_proof_commutative_map, verus_proof_idempotent_effect,
         verus_proof_idempotent_filter, verus_proof_idempotent_fold, verus_proof_idempotent_map,
-        verus_proof_idempotent_reduce,
+        verus_proof_idempotent_reduce, verus_proof_monotone_fold, verus_proof_order_preserving_map,
     };
 
     #[cfg(feature = "trybuild")]

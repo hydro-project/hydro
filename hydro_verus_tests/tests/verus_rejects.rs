@@ -32,6 +32,11 @@ const REJECT_FEATURES: &[&str] = &[
     "reject_is_new_map",
     "reject_keep_retries_filter",
     "reject_toggle_effect",
+    "reject_overwrite_monotone_fold",
+    "reject_wrapping_sum_monotone_fold",
+    "reject_overflowing_monotone_fold",
+    "reject_reversing_map",
+    "reject_wrapping_double_map",
 ];
 
 fn workspace_root() -> PathBuf {
