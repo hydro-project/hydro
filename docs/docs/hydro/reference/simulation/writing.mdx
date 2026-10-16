@@ -137,3 +137,34 @@ let count_snapshot = use::snapshot(current_count, nondet!(/** ... */));
 If the count has progressed through values 0 → 1 → 2, the simulator might snapshot any of these values. It can also re-release the same snapshot multiple times, simulating the case where state updates haven't propagated yet.
 
 For unordered streams, the simulator has additional freedom. When batching elements from an unordered stream, it selects *which* elements to include but doesn't need to simulate all possible orderings *within* the batch. Since the batch is also unordered, testing different internal orderings would be redundant. Such optimizations are key to making exhaustive testing tractable.
+
+### Retries on `AtLeastOnce` Streams
+
+An `AtLeastOnce` stream may deliver each element more than once. The operators that observe this (`assume_retries::<ExactlyOnce>`, and `assume_ordering` or `batch` applied to an `AtLeastOnce` stream) are decision points like any other: the simulator decides how many times each element is delivered (`assume_retries`), whether a redelivery lands after other elements (`assume_ordering`), or whether an element shows up again in a later batch (`batch`). Unlike batching and snapshotting, this decision space is infinite, since every element admits arbitrarily many duplicates. The two exploration modes treat it differently:
+
+- `fuzz()` explores it **unbounded**: retry counts are drawn from the fuzzer, so [coverage-guided fuzzing](./fuzzing.mdx) can reach bugs that only appear after many redeliveries of one message.
+- `exhaustive()` cannot enumerate an infinite space, so it **requires a bound**: call `.retries_depth(depth)` on the `SimFlow`. The depth gives every such operator a budget of `depth - 1` retries (it bounds `fuzz()` too, if set). `retries_depth(1)` generates no retries at all, so the at-least-once operators behave like their exactly-once counterparts; `retries_depth(2)` allows one extra delivery, and so on.
+
+The budget belongs to each operator instance (one per cluster member for operators on a cluster). A **top-level** operator spends it over the whole run: each unit is an in-place duplicate (`assume_retries`), a delayed redelivery (`assume_ordering`), or an element delivered again in a later batch (`batch`). An operator **inside a tick** gets a fresh budget on every tick execution, injecting at most `depth - 1` extra copies or slots into each tick's input.
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::stream::{AtLeastOnce, ExactlyOnce, NoOrder};
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+let (input_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+let output = input
+    .weaken_retries::<AtLeastOnce>()
+    .assume_retries::<ExactlyOnce>(nondet!(/** explored by the simulator */))
+    .sim_output();
+
+flow.sim().retries_depth(2).exhaustive(async || {
+    input_send.send_many_unordered([1, 2]);
+    let all: Vec<u32> = output.collect_sorted().await;
+    // Every element is delivered at least once, and at most one is delivered twice.
+    assert!(all.contains(&1) && all.contains(&2));
+    assert!(all.len() <= 3);
+});
+```
+
+Operators bound to a [simulator hook](./scripting.mdx#retries-hooks) are unaffected by the depth: their scripts remain the sole source of decisions. [Deterministic mode](./deterministic.mdx) has no fuzzer to draw from at all, so it requires every at-least-once operator to be hooked.

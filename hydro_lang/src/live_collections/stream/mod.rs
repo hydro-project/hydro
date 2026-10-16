@@ -2278,7 +2278,10 @@ where
     ///
     /// In simulation tests, the batching decisions can be scripted by attaching a
     /// [`BatchHook`](crate::sim_hooks::BatchHook) to the guard via
-    /// `nondet!(/** reason */ hook = my_hook)`.
+    /// `nondet!(/** reason */ hook = my_hook)`. For an `AtLeastOnce` stream, batching also
+    /// decides whether an element is delivered again in a later batch, an infinite decision
+    /// space: `fuzz` explores it unbounded, `exhaustive` requires a bound
+    /// (`SimFlow::retries_depth`), and `deterministic` requires a bound hook.
     pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         tick: &Tick<L2>,
@@ -2353,6 +2356,14 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
+    ///
+    /// In simulation tests, the order chosen can be scripted by attaching an
+    /// [`OrderingHook`](crate::sim_hooks::OrderingHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`. On an `AtLeastOnce` stream, ordering also
+    /// decides which slots each element's retries occupy (an element may be emitted again
+    /// after other elements), an infinite decision space: `fuzz` explores it unbounded,
+    /// `exhaustive` requires a bound (`SimFlow::retries_depth`), and `deterministic`
+    /// requires a bound hook.
     pub fn assume_ordering<O2: Ordering>(
         self,
         mut nondet: NonDet<Option<crate::sim_hooks::OrderingHook<T, B, R, L::SimHookScope>>>,
@@ -2473,8 +2484,10 @@ where
     /// observed) can be scripted by attaching a
     /// [`RetriesHook`](crate::sim_hooks::RetriesHook) to the guard via
     /// `nondet!(/** reason */ hook = my_hook)`. Because every element admits arbitrarily
-    /// many retries, this non-determinism cannot be explored autonomously: simulating a
-    /// program containing a strengthening `assume_retries` **requires** a bound hook.
+    /// many retries, the decision space is infinite: `fuzz` explores a strengthening
+    /// `assume_retries` unbounded, `exhaustive` requires a bound (`SimFlow::retries_depth`,
+    /// which caps the number of generated retries), and `deterministic` **requires** a
+    /// bound hook.
     pub fn assume_retries<R2: Retries>(
         self,
         mut nondet: NonDet<Option<crate::sim_hooks::RetriesHook<T, O, B, L::SimHookScope>>>,
