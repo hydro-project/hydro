@@ -234,10 +234,32 @@ jobs:
           path: ${{ runner.temp }}/nightly-snapshots/
           if-no-files-found: error
 
+      # On nightly runs the test steps use `continue-on-error` (and `INSTA_FORCE_PASS`) so that
+      # updated snapshots can be packaged above. Now that the artifacts have been uploaded, fail
+      # the job if any tests failed or any snapshots changed, so the run doesn't show as passing.
+      - name: Fail if tests failed or snapshots changed (nightly only)
+        if: ${{ !cancelled() && matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+        run: |
+          failed=0
+          if [[ "${{ steps.nextest.outcome }}" == "failure" ]]; then
+            echo "::error::cargo nextest failed"
+            failed=1
+          fi
+          if [[ "${{ steps.doctests.outcome }}" == "failure" ]]; then
+            echo "::error::Doctests failed"
+            failed=1
+          fi
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "::error::Snapshots changed (insta/trybuild outputs were updated)"
+            git status --porcelain
+            failed=1
+          fi
+          exit $failed
+
   nightly-snapshot-pr:
     name: Create combined nightly snapshot update PR
-    # Use always() so this still runs if some `test` matrix legs failed (e.g. the stable legs);
-    # the nightly legs use continue-on-error for the test steps themselves.
+    # Use always() so this still runs when `test` matrix legs fail. The nightly legs upload their
+    # snapshot artifacts before deliberately failing on test failures or snapshot changes.
     if: ${{ always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     timeout-minutes: 20
     needs: test
