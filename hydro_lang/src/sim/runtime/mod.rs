@@ -57,6 +57,73 @@ pub fn parse_location(serialized: &str) -> LocationId {
     serde_json::from_str(serialized).unwrap()
 }
 
+/// How many retries an autonomous at-least-once hook (`assume_retries`, or
+/// `assume_ordering` / `batch` on an `AtLeastOnce` stream) may still generate. Chosen per
+/// run by the simulation mode, see `SimFlow::retries_depth`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RetryBudget {
+    Bounded(usize),
+    /// Counts are drawn from the fuzzer, usually small but with no upper limit.
+    Unbounded,
+}
+
+impl RetryBudget {
+    pub(crate) fn allows_retry(self) -> bool {
+        self != RetryBudget::Bounded(0)
+    }
+
+    /// `None` when unbounded.
+    pub(crate) fn remaining(self) -> Option<usize> {
+        match self {
+            RetryBudget::Bounded(remaining) => Some(remaining),
+            RetryBudget::Unbounded => None,
+        }
+    }
+
+    pub(crate) fn spend(&mut self, retries: usize) {
+        if let RetryBudget::Bounded(remaining) = self {
+            *remaining = remaining
+                .checked_sub(retries)
+                .unwrap_or_else(|| abort!("at-least-once hook overspent its retry budget"));
+        }
+    }
+
+    /// Draws and spends a number of extra copies.
+    pub(crate) fn draw_extra(&mut self, driver: &mut Borrowed<'_>) -> usize {
+        use bolero::ValueGenerator;
+        let extra = match *self {
+            RetryBudget::Bounded(remaining) => (0..=remaining).generate(driver).unwrap(),
+            RetryBudget::Unbounded => draw_unbounded_extra(driver),
+        };
+        self.spend(extra);
+        extra
+    }
+}
+
+/// Draws a count that is usually small but unbounded: a sum of `u8` chunks, where `255`
+/// means "keep going". Each extra chunk is new coverage, so a coverage-guided fuzzer can
+/// climb to large counts that random inputs essentially never reach. Returns 0 once the
+/// driver is out of entropy.
+pub(crate) fn draw_unbounded_extra(driver: &mut Borrowed<'_>) -> usize {
+    use bolero::ValueGenerator;
+    let mut total = 0;
+    loop {
+        let chunk: u8 = (0..=u8::MAX).generate(driver).unwrap();
+        total += usize::from(chunk);
+        if chunk < u8::MAX {
+            return total;
+        }
+    }
+}
+
+/// A boolean draw that is `false` once the driver is out of entropy (plain `bool` draws
+/// fall back to `true` or `false` depending on the driver). Use it for every "generate
+/// another retry?" choice, so an unbounded budget still terminates.
+pub(crate) fn draw_boolean_false_if_exhausted(driver: &mut Borrowed<'_>) -> bool {
+    use bolero::ValueGenerator;
+    (0..=1u8).generate(driver).unwrap() == 1
+}
+
 pub type Hooks = HashMap<SimLocation, Vec<Box<dyn TickInputHook>>>;
 pub type ObservationHooks = HashMap<SimLocation, Vec<Box<dyn ObservationHook>>>;
 pub type InlineHooks = HashMap<SimLocation, Vec<Box<dyn InlineHook>>>;
@@ -105,7 +172,7 @@ macro_rules! __maybe_debug__ {
 
 /// The shared, type-erased surface of every hook — refined by [`TickInputHook`],
 /// [`ObservationHook`], and [`InlineHook`]: querying and releasing decisions, and
-/// attributing errors. Implemented once per collection kind ([`StreamHook`],
+/// attributing errors. Implemented once per collection kind ([`StreamBatchHook`],
 /// [`SingletonHook`], the keyed, top-level, and in-tick variants); each unsafe operator
 /// instance gets one hook object of the matching kind. A hook bound to a test-side
 /// handle is wrapped in [`Scripted<H>`] (or [`ScriptedInline<H>`]), which adds the
@@ -166,9 +233,16 @@ pub trait TickInputHook: RuntimeHook {
 /// *is* releasing data. There is consequently no `force` parameter here: an observation
 /// is only ever scheduled when it can release, and its autonomous decision must release.
 pub trait ObservationHook: RuntimeHook {
+    /// Whether the scheduler may run this observation. Only differs from
+    /// [`RuntimeHook::has_pending_input`] for hooks with buffered input they are not
+    /// allowed to release yet.
+    fn can_release(&self) -> bool {
+        self.has_pending_input()
+    }
+
     /// Make an autonomous decision from fuzzer entropy. Must stage a releasing decision:
-    /// the scheduler only runs an observation that reported pending input
-    /// ([`RuntimeHook::has_pending_input`]).
+    /// the scheduler only runs an observation that reported releasable input
+    /// ([`Self::can_release`]).
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>);
 }
 

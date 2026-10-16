@@ -186,6 +186,8 @@ impl<'a> BuiltFlow<'a> {
             test_safety_only: false,
             skip_consistency_assertions: false,
             unit_test_fuzz_iterations: 8192,
+            unit_test_fuzz_max_len: None,
+            retries_depth: None,
             _phantom: PhantomData,
         }
     }

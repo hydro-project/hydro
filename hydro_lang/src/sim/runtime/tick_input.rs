@@ -1,6 +1,6 @@
 //! Tick-input hooks ([`TickInputHook`]): the per-kind hook types that buffer input for
 //! a tick across scheduling boundaries and decide, when the tick runs, what to release
-//! into that execution — batch hooks ([`StreamHook`], [`KeyedStreamHook`]) and snapshot
+//! into that execution: batch hooks ([`StreamBatchHook`], [`KeyedStreamBatchHook`]) and snapshot
 //! hooks ([`SingletonHook`], [`KeyedSingletonHook`], and the choice-free
 //! [`PassthroughSingletonHook`]). Their scripted decision/status types and
 //! [`ScriptableHook`] impls live alongside them.
@@ -8,6 +8,7 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::hash::Hash;
+use std::marker::PhantomData;
 use std::rc::Rc;
 
 use bolero::generator::bolero_generator::driver::object::Borrowed;
@@ -16,22 +17,176 @@ use dfir_rs::rustc_hash::{FxHashMap, FxHashSet};
 use dfir_rs::util::unsync::mpsc::Sender;
 
 use super::{
-    HookLocationMeta, ManualDebug, RuntimeHook, ScriptDecision, ScriptableHook,
+    HookLocationMeta, ManualDebug, RetryBudget, RuntimeHook, ScriptDecision, ScriptableHook,
     ScriptableTickInputHook, TickInputHook, TruncatedVecDebug, abort, describe_keyed_pending,
-    keyed_buffer_len, log_release,
+    draw_boolean_false_if_exhausted, keyed_buffer_len, log_release,
 };
-use crate::live_collections::stream::{NoOrder, Ordering, TotalOrder};
+use crate::compile::ir::{StreamOrder, StreamRetry};
+use crate::live_collections::stream::{
+    AtLeastOnce, ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder,
+};
 
-pub struct StreamHook<T, Order: Ordering> {
-    pub input: Rc<RefCell<VecDeque<T>>>,
-    pub to_release: Option<Vec<T>>,
-    pub output: Sender<T>,
-    pub batch_location: HookLocationMeta,
-    pub format_item_debug: fn(&T) -> Option<String>,
-    pub _order: std::marker::PhantomData<Order>,
+/// Whether a batch hook may keep a released element buffered for redelivery in a later
+/// batch. Lets exactly-once hooks skip the keep draw entirely and not require `T: Clone`.
+trait BatchRetries<T>: Retries {
+    /// The copy to release if `item` is kept.
+    fn autonomous_keep(budget: &mut RetryBudget, item: &T, driver: &mut Borrowed<'_>) -> Option<T>;
+
+    fn scripted_keep(item: &T) -> T;
 }
 
-impl<T> RuntimeHook for StreamHook<T, TotalOrder> {
+impl<T> BatchRetries<T> for ExactlyOnce {
+    fn autonomous_keep(_: &mut RetryBudget, _: &T, _: &mut Borrowed<'_>) -> Option<T> {
+        None
+    }
+
+    fn scripted_keep(_: &T) -> T {
+        // rejected by `is_honorable`
+        abort!("a keep decision was applied to an exactly-once batch hook")
+    }
+}
+
+impl<T: Clone> BatchRetries<T> for AtLeastOnce {
+    fn autonomous_keep(budget: &mut RetryBudget, item: &T, driver: &mut Borrowed<'_>) -> Option<T> {
+        if budget.allows_retry() && draw_boolean_false_if_exhausted(driver) {
+            budget.spend(1);
+            Some(item.clone())
+        } else {
+            None
+        }
+    }
+
+    fn scripted_keep(item: &T) -> T {
+        item.clone()
+    }
+}
+
+/// Exactly-once handles can't construct keep decisions, this is just a safety net.
+fn check_keep_allowed<R: Retries>(method: &str) -> Result<(), String> {
+    if R::RETRIES_KIND == StreamRetry::ExactlyOnce {
+        Err(format!(
+            "{method}: only an at-least-once stream may keep released elements for redelivery"
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn order_label<O: Ordering>() -> &'static str {
+    match O::ORDERING_KIND {
+        StreamOrder::TotalOrder => "",
+        StreamOrder::NoOrder => "unordered ",
+    }
+}
+
+/// Shared [`RuntimeHook::release_decision`] of the batch hooks.
+fn release_batch<T>(
+    to_release: Option<Vec<T>>,
+    kept: usize,
+    label: &str,
+    batch_location: HookLocationMeta,
+    format_item_debug: fn(&T) -> Option<String>,
+    output: &Sender<T>,
+    log_writer: Option<&mut dyn std::fmt::Write>,
+) {
+    let Some(to_release) = to_release else {
+        panic!("No decision to release");
+    };
+    if let Some(log_writer) = log_writer {
+        let HookLocationMeta {
+            location,
+            line,
+            caret_indent,
+        } = batch_location;
+        let note_str = if to_release.is_empty() {
+            "^ releasing no items".to_owned()
+        } else {
+            format!(
+                "^ releasing {}items: {:?}{}",
+                label,
+                TruncatedVecDebug(RefCell::new(Some(to_release.iter())), 8, format_item_debug),
+                if kept > 0 {
+                    format!(" ({} kept for redelivery)", kept)
+                } else {
+                    String::new()
+                }
+            )
+        };
+
+        log_release(
+            log_writer,
+            location,
+            line,
+            caret_indent,
+            &note_str,
+            colored::Color::Green,
+        );
+    }
+
+    for item in to_release {
+        output.try_send(item).unwrap();
+    }
+}
+
+/// For an `AtLeastOnce` stream, a release may also *keep* released elements buffered, so
+/// they are delivered again in a later batch (each spends one unit of the budget when
+/// autonomous). On a `TotalOrder` stream only the last element of the batch may be kept,
+/// so the redelivery is adjacent to the original delivery.
+pub struct StreamBatchHook<T, Order: Ordering, R: Retries> {
+    input: Rc<RefCell<VecDeque<T>>>,
+    to_release: Option<Vec<T>>,
+    /// Only used for logging.
+    kept_in_release: usize,
+    /// Unused for exactly-once streams and when scripted.
+    budget: RetryBudget,
+    output: Sender<T>,
+    batch_location: HookLocationMeta,
+    format_item_debug: fn(&T) -> Option<String>,
+    _marker: PhantomData<(Order, R)>,
+}
+
+impl<T, Order: Ordering> StreamBatchHook<T, Order, ExactlyOnce> {
+    pub fn new(
+        input: Rc<RefCell<VecDeque<T>>>,
+        output: Sender<T>,
+        batch_location: HookLocationMeta,
+        format_item_debug: fn(&T) -> Option<String>,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            kept_in_release: 0,
+            budget: RetryBudget::Bounded(0),
+            output,
+            batch_location,
+            format_item_debug,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<T, Order: Ordering> StreamBatchHook<T, Order, AtLeastOnce> {
+    pub fn new(
+        input: Rc<RefCell<VecDeque<T>>>,
+        output: Sender<T>,
+        batch_location: HookLocationMeta,
+        format_item_debug: fn(&T) -> Option<String>,
+        budget: RetryBudget,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            kept_in_release: 0,
+            budget,
+            output,
+            batch_location,
+            format_item_debug,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<T, Order: Ordering, R: Retries> RuntimeHook for StreamBatchHook<T, Order, R> {
     fn has_pending_input(&self) -> bool {
         !self.input.borrow().is_empty()
     }
@@ -42,42 +197,15 @@ impl<T> RuntimeHook for StreamHook<T, TotalOrder> {
     }
 
     fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
-        if let Some(to_release) = self.to_release.take() {
-            if let Some(log_writer) = log_writer {
-                let HookLocationMeta {
-                    location: batch_location,
-                    line,
-                    caret_indent,
-                } = self.batch_location;
-                let note_str = if to_release.is_empty() {
-                    "^ releasing no items".to_owned()
-                } else {
-                    format!(
-                        "^ releasing items: {:?}",
-                        TruncatedVecDebug(
-                            RefCell::new(Some(to_release.iter())),
-                            8,
-                            self.format_item_debug
-                        )
-                    )
-                };
-
-                log_release(
-                    log_writer,
-                    batch_location,
-                    line,
-                    caret_indent,
-                    &note_str,
-                    colored::Color::Green,
-                );
-            }
-
-            for item in to_release {
-                self.output.try_send(item).unwrap();
-            }
-        } else {
-            panic!("No decision to release");
-        }
+        release_batch(
+            self.to_release.take(),
+            std::mem::take(&mut self.kept_in_release),
+            order_label::<Order>(),
+            self.batch_location,
+            self.format_item_debug,
+            &self.output,
+            log_writer,
+        );
     }
 
     fn location_meta(&self) -> HookLocationMeta {
@@ -85,112 +213,71 @@ impl<T> RuntimeHook for StreamHook<T, TotalOrder> {
     }
 }
 
-impl<T> TickInputHook for StreamHook<T, TotalOrder> {
+impl<T, R: BatchRetries<T>> TickInputHook for StreamBatchHook<T, TotalOrder, R> {
     fn can_trigger_tick(&self) -> bool {
         !self.input.borrow().is_empty()
     }
 
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool {
-        let mut current_input = self.input.borrow_mut();
-        let count = (usize::from(force_trigger)..=current_input.len())
+        let mut input = self.input.borrow_mut();
+        let count = (usize::from(force_trigger)..=input.len())
             .generate(driver)
             .unwrap();
 
-        self.to_release = Some(current_input.drain(0..count).collect());
+        let mut out: Vec<T> = input.drain(0..count.saturating_sub(1)).collect();
+        if count > 0 {
+            match R::autonomous_keep(&mut self.budget, input.front().unwrap(), driver) {
+                Some(copy) => {
+                    out.push(copy);
+                    self.kept_in_release = 1;
+                }
+                None => out.push(input.pop_front().unwrap()),
+            }
+        }
+        self.to_release = Some(out);
         count > 0
     }
 }
 
-impl<T> RuntimeHook for StreamHook<T, NoOrder> {
-    fn has_pending_input(&self) -> bool {
-        !self.input.borrow().is_empty()
-    }
-
-    fn only_one_possible_decision(&self) -> bool {
-        // One buffered element is still a real choice: release it or not.
-        self.input.borrow().is_empty()
-    }
-
-    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
-        if let Some(to_release) = self.to_release.take() {
-            if let Some(log_writer) = log_writer {
-                let HookLocationMeta {
-                    location: batch_location,
-                    line,
-                    caret_indent,
-                } = self.batch_location;
-                let note_str = if to_release.is_empty() {
-                    "^ releasing no items".to_owned()
-                } else {
-                    format!(
-                        "^ releasing unordered items: {:?}",
-                        TruncatedVecDebug(
-                            RefCell::new(Some(to_release.iter())),
-                            8,
-                            self.format_item_debug
-                        )
-                    )
-                };
-
-                log_release(
-                    log_writer,
-                    batch_location,
-                    line,
-                    caret_indent,
-                    &note_str,
-                    colored::Color::Green,
-                );
-            }
-
-            for item in to_release {
-                self.output.try_send(item).unwrap();
-            }
-        } else {
-            panic!("No decision to release");
-        }
-    }
-
-    fn location_meta(&self) -> HookLocationMeta {
-        self.batch_location
-    }
-}
-
-impl<T> TickInputHook for StreamHook<T, NoOrder> {
+impl<T, R: BatchRetries<T>> TickInputHook for StreamBatchHook<T, NoOrder, R> {
     fn can_trigger_tick(&self) -> bool {
         !self.input.borrow().is_empty()
     }
 
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool {
-        let mut current_input = self.input.borrow_mut();
+        let mut input = self.input.borrow_mut();
         let mut out = vec![];
+        let mut kept = 0;
         let mut min_index = 0;
-        while !current_input.is_empty() {
+        while min_index < input.len() {
             let must_release = force_trigger && out.is_empty();
             if !must_release && produce().generate(driver).unwrap() {
                 break;
             }
 
-            let idx = (min_index..current_input.len()).generate(driver).unwrap();
-            let item = current_input.remove(idx).unwrap();
-            out.push(item);
-
-            min_index = idx;
-            // Next time, only consider items at or after this index. The reason this is safe is
-            // because batching a `NoOrder` streams results in batches with a `NoOrder` guarantee.
-            // Therefore, simulating different order of elements _within_ a batch is redundant.
-
-            if min_index == current_input.len() {
-                break;
+            // only pick at or after the previous pick, since the order within an unordered
+            // batch is irrelevant
+            let idx = (min_index..input.len()).generate(driver).unwrap();
+            // a kept element stays in the buffer, so skip past it
+            if let Some(copy) = R::autonomous_keep(&mut self.budget, &input[idx], driver) {
+                out.push(copy);
+                kept += 1;
+                min_index = idx + 1;
+            } else {
+                out.push(input.remove(idx).unwrap());
+                min_index = idx;
             }
         }
 
+        self.kept_in_release = kept;
         let triggered = !out.is_empty();
         self.to_release = Some(out);
         triggered
     }
 }
 
-/// A scripted decision for a totally ordered batch hook.
+/// A scripted decision for a totally ordered batch hook. The `KeepLast` forms are only
+/// valid for `AtLeastOnce` streams.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum BatchDecision<T> {
     /// Release the next `n` buffered elements.
@@ -199,6 +286,10 @@ pub enum BatchDecision<T> {
     Values(Vec<T>),
     /// Release everything that has arrived by the time the tick fires.
     All,
+    /// Like [`Self::Prefix`], but the last element stays buffered.
+    PrefixKeepLast(usize),
+    /// Like [`Self::Values`], but the last element stays buffered.
+    ValuesKeepLast(Vec<T>),
 }
 
 impl<T> ScriptDecision for BatchDecision<T>
@@ -212,17 +303,25 @@ where
                 format!("release_values({} value(s))", values.len())
             }
             BatchDecision::All => "release_all()".to_owned(),
+            BatchDecision::PrefixKeepLast(n) => format!("release_keep_last({})", n),
+            BatchDecision::ValuesKeepLast(values) => {
+                format!("release_values_keep_last({} value(s))", values.len())
+            }
         }
     }
 }
 
-/// A scripted decision for an unordered batch hook.
+/// A scripted decision for an unordered batch hook. `ValuesKeep` is only valid for
+/// `AtLeastOnce` streams.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum UnorderedBatchDecision<T> {
     /// Release this multiset of values. Duplicate values name duplicate buffered items.
     Values(Vec<T>),
     /// Release everything that has arrived by the time the tick fires.
     All,
+    /// Like [`Self::Values`], but the elements matching the second multiset (a subset of
+    /// the first) stay buffered.
+    ValuesKeep(Vec<T>, Vec<T>),
 }
 
 impl<T> ScriptDecision for UnorderedBatchDecision<T>
@@ -235,6 +334,11 @@ where
                 format!("release_values({} value(s))", values.len())
             }
             UnorderedBatchDecision::All => "release_all()".to_owned(),
+            UnorderedBatchDecision::ValuesKeep(values, keep) => format!(
+                "release_values_keep({} value(s), {} kept)",
+                values.len(),
+                keep.len()
+            ),
         }
     }
 }
@@ -247,7 +351,40 @@ pub struct BatchStatus {
     pub buffered: usize,
 }
 
-impl<T> ScriptableHook for StreamHook<T, TotalOrder>
+/// `Ok(false)` while the prefix has not fully arrived yet.
+fn ordered_prefix_honorable<T: PartialEq>(
+    input: &VecDeque<T>,
+    values: &[T],
+    method: &str,
+) -> Result<bool, String> {
+    if let Some(idx) = input
+        .iter()
+        .zip(values)
+        .position(|(buffered, expected)| buffered != expected)
+    {
+        Err(format!(
+            "{}: buffered item at prefix position {} did not match the expected value",
+            method, idx
+        ))
+    } else {
+        Ok(input.len() >= values.len())
+    }
+}
+
+fn multiset_included<'a, T: PartialEq + 'a>(
+    requested: &[T],
+    available: impl Iterator<Item = &'a T>,
+) -> bool {
+    let mut unmatched: Vec<&T> = requested.iter().collect();
+    for item in available {
+        if let Some(idx) = unmatched.iter().position(|r| *r == item) {
+            unmatched.swap_remove(idx);
+        }
+    }
+    unmatched.is_empty()
+}
+
+impl<T, R: BatchRetries<T>> ScriptableHook for StreamBatchHook<T, TotalOrder, R>
 where
     T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
 {
@@ -259,31 +396,52 @@ where
         match decision {
             BatchDecision::Prefix(n) => Ok(input.len() >= *n),
             BatchDecision::Values(values) => {
-                if let Some(idx) = input
-                    .iter()
-                    .zip(values)
-                    .position(|(buffered, expected)| buffered != expected)
-                {
-                    Err(format!(
-                        "release_values: buffered item at prefix position {} did not match the expected value",
-                        idx
-                    ))
-                } else {
-                    Ok(input.len() >= values.len())
-                }
+                ordered_prefix_honorable(&input, values, "release_values")
             }
             BatchDecision::All => Ok(true),
+            BatchDecision::PrefixKeepLast(n) => {
+                check_keep_allowed::<R>("release_keep_last")?;
+                if *n == 0 {
+                    return Err(
+                        "release_keep_last: at least one element must be released to keep its last"
+                            .to_owned(),
+                    );
+                }
+                Ok(input.len() >= *n)
+            }
+            BatchDecision::ValuesKeepLast(values) => {
+                check_keep_allowed::<R>("release_values_keep_last")?;
+                if values.is_empty() {
+                    return Err(
+                        "release_values_keep_last: at least one value must be released to keep its last"
+                            .to_owned(),
+                    );
+                }
+                ordered_prefix_honorable(&input, values, "release_values_keep_last")
+            }
         }
     }
 
     fn apply(&mut self, decision: BatchDecision<T>) {
         let mut input = self.input.borrow_mut();
-        let out: Vec<T> = match decision {
-            BatchDecision::Prefix(n) => input.drain(0..n).collect(),
-            BatchDecision::Values(values) => input.drain(0..values.len()).collect(),
-            BatchDecision::All => input.drain(..).collect(),
+        let keep_last = matches!(
+            decision,
+            BatchDecision::PrefixKeepLast(_) | BatchDecision::ValuesKeepLast(_)
+        );
+        let count = match decision {
+            BatchDecision::Prefix(n) | BatchDecision::PrefixKeepLast(n) => n,
+            BatchDecision::Values(values) | BatchDecision::ValuesKeepLast(values) => values.len(),
+            BatchDecision::All => input.len(),
         };
-
+        let mut out: Vec<T> = input.drain(0..count.saturating_sub(1)).collect();
+        if count > 0 {
+            if keep_last {
+                out.push(R::scripted_keep(input.front().unwrap()));
+                self.kept_in_release = 1;
+            } else {
+                out.push(input.pop_front().unwrap());
+            }
+        }
         self.to_release = Some(out);
     }
 
@@ -309,20 +467,22 @@ where
     }
 }
 
-impl<T> ScriptableTickInputHook for StreamHook<T, TotalOrder>
+impl<T, R: BatchRetries<T>> ScriptableTickInputHook for StreamBatchHook<T, TotalOrder, R>
 where
     T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
 {
     fn decision_triggers_tick(&self, decision: &BatchDecision<T>) -> bool {
         match decision {
-            BatchDecision::Prefix(n) => *n > 0,
-            BatchDecision::Values(values) => !values.is_empty(),
+            BatchDecision::Prefix(n) | BatchDecision::PrefixKeepLast(n) => *n > 0,
+            BatchDecision::Values(values) | BatchDecision::ValuesKeepLast(values) => {
+                !values.is_empty()
+            }
             BatchDecision::All => !self.input.borrow().is_empty(),
         }
     }
 }
 
-impl<T> ScriptableHook for StreamHook<T, NoOrder>
+impl<T, R: BatchRetries<T>> ScriptableHook for StreamBatchHook<T, NoOrder, R>
 where
     T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
 {
@@ -330,47 +490,59 @@ where
     type Status = BatchStatus;
 
     fn is_honorable(&self, decision: &UnorderedBatchDecision<T>) -> Result<bool, String> {
-        Ok(match decision {
+        match decision {
             UnorderedBatchDecision::Values(values) => {
-                let mut unmatched: Vec<&T> = values.iter().collect();
-                for buffered in self.input.borrow().iter() {
-                    if let Some(idx) = unmatched
-                        .iter()
-                        .position(|requested| *requested == buffered)
-                    {
-                        unmatched.swap_remove(idx);
-                    }
-                }
-                unmatched.is_empty()
+                Ok(multiset_included(values, self.input.borrow().iter()))
             }
-            UnorderedBatchDecision::All => true,
-        })
+            UnorderedBatchDecision::All => Ok(true),
+            UnorderedBatchDecision::ValuesKeep(values, keep) => {
+                check_keep_allowed::<R>("release_values_keep")?;
+                if !multiset_included(keep, values.iter()) {
+                    return Err(
+                        "release_values_keep: every kept value must be among the released values"
+                            .to_owned(),
+                    );
+                }
+                Ok(multiset_included(values, self.input.borrow().iter()))
+            }
+        }
     }
 
     fn apply(&mut self, decision: UnorderedBatchDecision<T>) {
         let mut input = self.input.borrow_mut();
-        let out: Vec<T> = match decision {
-            UnorderedBatchDecision::Values(mut values) => {
-                let (selected, remaining): (Vec<_>, Vec<_>) =
-                    input.drain(..).partition(|buffered| {
-                        values
-                            .iter()
-                            .position(|requested| requested == buffered)
-                            .is_some_and(|idx| {
-                                values.swap_remove(idx);
-                                true
-                            })
-                    });
-                assert!(
-                    values.is_empty(),
-                    "scripted unordered batch decision was not honorable"
-                );
-                *input = remaining.into();
-                selected
+        let (mut values, mut keep) = match decision {
+            UnorderedBatchDecision::All => {
+                self.to_release = Some(input.drain(..).collect());
+                return;
             }
-            UnorderedBatchDecision::All => input.drain(..).collect(),
+            UnorderedBatchDecision::Values(values) => (values, vec![]),
+            UnorderedBatchDecision::ValuesKeep(values, keep) => (values, keep),
         };
 
+        // a matched element that is also in `keep` is copied and left in the buffer
+        let mut out = vec![];
+        let mut remaining = VecDeque::with_capacity(input.len());
+        let mut kept = 0;
+        for buffered in input.drain(..) {
+            if let Some(idx) = values.iter().position(|requested| *requested == buffered) {
+                values.swap_remove(idx);
+                if let Some(keep_idx) = keep.iter().position(|k| *k == buffered) {
+                    keep.swap_remove(keep_idx);
+                    kept += 1;
+                    out.push(R::scripted_keep(&buffered));
+                    remaining.push_back(buffered);
+                } else {
+                    out.push(buffered);
+                }
+            } else {
+                remaining.push_back(buffered);
+            }
+        }
+        if !(values.is_empty() && keep.is_empty()) {
+            abort!("scripted unordered batch decision was not honorable");
+        }
+        *input = remaining;
+        self.kept_in_release = kept;
         self.to_release = Some(out);
     }
 
@@ -396,76 +568,96 @@ where
     }
 }
 
-impl<T> ScriptableTickInputHook for StreamHook<T, NoOrder>
+impl<T, R: BatchRetries<T>> ScriptableTickInputHook for StreamBatchHook<T, NoOrder, R>
 where
     T: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
 {
     fn decision_triggers_tick(&self, decision: &UnorderedBatchDecision<T>) -> bool {
         match decision {
-            UnorderedBatchDecision::Values(values) => !values.is_empty(),
+            UnorderedBatchDecision::Values(values)
+            | UnorderedBatchDecision::ValuesKeep(values, _) => !values.is_empty(),
             UnorderedBatchDecision::All => !self.input.borrow().is_empty(),
         }
     }
 }
 
-pub struct KeyedStreamHook<K: Hash + Eq + Clone, V, Order: Ordering> {
-    pub input: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>, // FxHasher is deterministic
-    pub to_release: Option<Vec<(K, V)>>,
-    pub output: Sender<(K, V)>,
-    pub batch_location: HookLocationMeta,
-    pub format_item_debug: fn(&(K, V)) -> Option<String>,
-    pub _order: std::marker::PhantomData<Order>,
+/// Keyed version of [`StreamBatchHook`], with keeping applied per key.
+pub struct KeyedStreamBatchHook<K: Hash + Eq + Clone, V, Order: Ordering, R: Retries> {
+    input: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>, // FxHasher is deterministic
+    to_release: Option<Vec<(K, V)>>,
+    /// Only used for logging.
+    kept_in_release: usize,
+    /// Unused for exactly-once streams and when scripted.
+    budget: RetryBudget,
+    output: Sender<(K, V)>,
+    batch_location: HookLocationMeta,
+    format_item_debug: fn(&(K, V)) -> Option<String>,
+    _marker: PhantomData<(Order, R)>,
 }
 
-impl<K: Hash + Eq + Clone, V> RuntimeHook for KeyedStreamHook<K, V, TotalOrder> {
+impl<K: Hash + Eq + Clone, V, Order: Ordering> KeyedStreamBatchHook<K, V, Order, ExactlyOnce> {
+    pub fn new(
+        input: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>,
+        output: Sender<(K, V)>,
+        batch_location: HookLocationMeta,
+        format_item_debug: fn(&(K, V)) -> Option<String>,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            kept_in_release: 0,
+            budget: RetryBudget::Bounded(0),
+            output,
+            batch_location,
+            format_item_debug,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<K: Hash + Eq + Clone, V, Order: Ordering> KeyedStreamBatchHook<K, V, Order, AtLeastOnce> {
+    pub fn new(
+        input: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>,
+        output: Sender<(K, V)>,
+        batch_location: HookLocationMeta,
+        format_item_debug: fn(&(K, V)) -> Option<String>,
+        budget: RetryBudget,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            kept_in_release: 0,
+            budget,
+            output,
+            batch_location,
+            format_item_debug,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<K: Hash + Eq + Clone, V, Order: Ordering, R: Retries> RuntimeHook
+    for KeyedStreamBatchHook<K, V, Order, R>
+{
     fn has_pending_input(&self) -> bool {
-        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-        !self.input.borrow().values().all(|q| q.is_empty())
+        keyed_buffer_len(&self.input.borrow()) > 0
     }
 
     fn only_one_possible_decision(&self) -> bool {
         // One buffered element is still a real choice: release it or not.
-        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-        self.input.borrow().values().all(|q| q.is_empty())
+        keyed_buffer_len(&self.input.borrow()) == 0
     }
 
     fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
-        if let Some(to_release) = self.to_release.take() {
-            if let Some(log_writer) = log_writer {
-                let HookLocationMeta {
-                    location: batch_location,
-                    line,
-                    caret_indent,
-                } = self.batch_location;
-                let note_str = if to_release.is_empty() {
-                    "^ releasing no items".to_owned()
-                } else {
-                    format!(
-                        "^ releasing items: {:?}",
-                        TruncatedVecDebug(
-                            RefCell::new(Some(to_release.iter())),
-                            8,
-                            self.format_item_debug
-                        )
-                    )
-                };
-
-                log_release(
-                    log_writer,
-                    batch_location,
-                    line,
-                    caret_indent,
-                    &note_str,
-                    colored::Color::Green,
-                );
-            }
-
-            for item in to_release {
-                self.output.try_send(item).unwrap();
-            }
-        } else {
-            panic!("No decision to release");
-        }
+        release_batch(
+            self.to_release.take(),
+            std::mem::take(&mut self.kept_in_release),
+            order_label::<Order>(),
+            self.batch_location,
+            self.format_item_debug,
+            &self.output,
+            log_writer,
+        );
     }
 
     fn location_meta(&self) -> HookLocationMeta {
@@ -473,10 +665,11 @@ impl<K: Hash + Eq + Clone, V> RuntimeHook for KeyedStreamHook<K, V, TotalOrder> 
     }
 }
 
-impl<K: Hash + Eq + Clone, V> TickInputHook for KeyedStreamHook<K, V, TotalOrder> {
+impl<K: Hash + Eq + Clone, V, R: BatchRetries<V>> TickInputHook
+    for KeyedStreamBatchHook<K, V, TotalOrder, R>
+{
     fn can_trigger_tick(&self) -> bool {
-        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-        !self.input.borrow().values().all(|q| q.is_empty())
+        keyed_buffer_len(&self.input.borrow()) > 0
     }
 
     fn autonomous_decision<'a>(
@@ -485,7 +678,8 @@ impl<K: Hash + Eq + Clone, V> TickInputHook for KeyedStreamHook<K, V, TotalOrder
         mut force_trigger: bool,
     ) -> bool {
         let mut current_input = self.input.borrow_mut();
-        self.to_release = Some(vec![]);
+        let mut out = vec![];
+        let mut kept = 0;
         #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         let nonempty_key_count = current_input.values().filter(|q| !q.is_empty()).count();
 
@@ -503,78 +697,35 @@ impl<K: Hash + Eq + Clone, V> TickInputHook for KeyedStreamHook<K, V, TotalOrder
                 .generate(driver)
                 .unwrap();
 
-            let items: Vec<(K, V)> = queue.drain(0..count).map(|v| (key.clone(), v)).collect();
-            self.to_release.as_mut().unwrap().extend(items);
-
+            out.extend(
+                queue
+                    .drain(0..count.saturating_sub(1))
+                    .map(|v| (key.clone(), v)),
+            );
             if count > 0 {
+                match R::autonomous_keep(&mut self.budget, queue.front().unwrap(), driver) {
+                    Some(copy) => {
+                        out.push((key.clone(), copy));
+                        kept += 1;
+                    }
+                    None => out.push((key.clone(), queue.pop_front().unwrap())),
+                }
                 force_trigger = false;
             }
         }
 
-        !self.to_release.as_ref().unwrap().is_empty()
+        self.kept_in_release = kept;
+        let triggered = !out.is_empty();
+        self.to_release = Some(out);
+        triggered
     }
 }
 
-impl<K: Hash + Eq + Clone, V> RuntimeHook for KeyedStreamHook<K, V, NoOrder> {
-    fn has_pending_input(&self) -> bool {
-        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-        !self.input.borrow().values().all(|q| q.is_empty())
-    }
-
-    fn only_one_possible_decision(&self) -> bool {
-        // One buffered element is still a real choice: release it or not.
-        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-        self.input.borrow().values().all(|q| q.is_empty())
-    }
-
-    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
-        if let Some(to_release) = self.to_release.take() {
-            if let Some(log_writer) = log_writer {
-                let HookLocationMeta {
-                    location: batch_location,
-                    line,
-                    caret_indent,
-                } = self.batch_location;
-                let note_str = if to_release.is_empty() {
-                    "^ releasing no items".to_owned()
-                } else {
-                    format!(
-                        "^ releasing unordered items: {:?}",
-                        TruncatedVecDebug(
-                            RefCell::new(Some(to_release.iter())),
-                            8,
-                            self.format_item_debug
-                        )
-                    )
-                };
-
-                log_release(
-                    log_writer,
-                    batch_location,
-                    line,
-                    caret_indent,
-                    &note_str,
-                    colored::Color::Green,
-                );
-            }
-
-            for item in to_release {
-                self.output.try_send(item).unwrap();
-            }
-        } else {
-            panic!("No decision to release");
-        }
-    }
-
-    fn location_meta(&self) -> HookLocationMeta {
-        self.batch_location
-    }
-}
-
-impl<K: Hash + Eq + Clone, V> TickInputHook for KeyedStreamHook<K, V, NoOrder> {
+impl<K: Hash + Eq + Clone, V, R: BatchRetries<V>> TickInputHook
+    for KeyedStreamBatchHook<K, V, NoOrder, R>
+{
     fn can_trigger_tick(&self) -> bool {
-        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-        !self.input.borrow().values().all(|q| q.is_empty())
+        keyed_buffer_len(&self.input.borrow()) > 0
     }
 
     fn autonomous_decision<'a>(
@@ -583,7 +734,8 @@ impl<K: Hash + Eq + Clone, V> TickInputHook for KeyedStreamHook<K, V, NoOrder> {
         mut force_trigger: bool,
     ) -> bool {
         let mut current_input = self.input.borrow_mut();
-        self.to_release = Some(vec![]);
+        let mut out = vec![];
+        let mut kept = 0;
         #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         let nonempty_key_count = current_input.values().filter(|q| !q.is_empty()).count();
 
@@ -596,35 +748,37 @@ impl<K: Hash + Eq + Clone, V> TickInputHook for KeyedStreamHook<K, V, NoOrder> {
 
             remaining_nonempty_keys -= 1;
 
+            // same per-key subset enumeration as `StreamBatchHook<T, NoOrder, R>`
             let mut min_index = 0;
-            while !queue.is_empty() {
+            while min_index < queue.len() {
                 let must_release = force_trigger && remaining_nonempty_keys == 0;
                 if !must_release && produce().generate(driver).unwrap() {
                     break;
                 }
 
                 let idx = (min_index..queue.len()).generate(driver).unwrap();
-                let item = queue.remove(idx).unwrap();
-                self.to_release.as_mut().unwrap().push((key.clone(), item));
-                force_trigger = false;
-
-                min_index = idx;
-                // Next time, only consider items at or after this index. The reason this is safe is
-                // because batching a `NoOrder` stream results in batches with a `NoOrder` guarantee.
-                // Therefore, simulating different order of elements _within_ a batch is redundant.
-
-                if min_index == queue.len() {
-                    break;
+                if let Some(copy) = R::autonomous_keep(&mut self.budget, &queue[idx], driver) {
+                    out.push((key.clone(), copy));
+                    kept += 1;
+                    min_index = idx + 1;
+                } else {
+                    out.push((key.clone(), queue.remove(idx).unwrap()));
+                    min_index = idx;
                 }
+                force_trigger = false;
             }
         }
 
-        !self.to_release.as_ref().unwrap().is_empty()
+        self.kept_in_release = kept;
+        let triggered = !out.is_empty();
+        self.to_release = Some(out);
+        triggered
     }
 }
 
 /// A scripted decision for a keyed batch hook over totally ordered values. Named values
-/// are matched against each key's buffered prefix in order.
+/// are matched against each key's buffered prefix in order. The `KeepLast` forms are only
+/// valid for `AtLeastOnce` values.
 ///
 /// Per-key payloads are `Vec`s rather than maps: the scripted entry order is preserved
 /// (map iteration would make the release and log order nondeterministic), and the
@@ -639,6 +793,10 @@ pub enum KeyedBatchDecision<K, V> {
     Values(Vec<(K, V)>),
     /// Release everything that has arrived by the time the tick fires.
     All,
+    /// Like [`Self::Prefixes`], but each key's last released value stays buffered.
+    PrefixesKeepLast(Vec<(K, usize)>),
+    /// Like [`Self::Values`], but each key's last released value stays buffered.
+    ValuesKeepLast(Vec<(K, V)>),
 }
 
 impl<K, V> ScriptDecision for KeyedBatchDecision<K, V>
@@ -655,18 +813,27 @@ where
                 format!("release_values({} entr(ies))", values.len())
             }
             KeyedBatchDecision::All => "release_all()".to_owned(),
+            KeyedBatchDecision::PrefixesKeepLast(counts) => {
+                format!("release_keep_last({} per-key count(s))", counts.len())
+            }
+            KeyedBatchDecision::ValuesKeepLast(values) => {
+                format!("release_values_keep_last({} entr(ies))", values.len())
+            }
         }
     }
 }
 
 /// A scripted decision for a keyed batch hook over unordered values. Named values are
-/// matched per key as multisets.
+/// matched per key as multisets. `ValuesKeep` is only valid for `AtLeastOnce` values.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum UnorderedKeyedBatchDecision<K, V> {
     /// Release exactly these `(key, value)` entries.
     Values(Vec<(K, V)>),
     /// Release everything that has arrived by the time the tick fires.
     All,
+    /// Like [`Self::Values`], but the entries matching the second list (a subset of the
+    /// first) stay buffered.
+    ValuesKeep(Vec<(K, V)>, Vec<(K, V)>),
 }
 
 impl<K, V> ScriptDecision for UnorderedKeyedBatchDecision<K, V>
@@ -680,11 +847,72 @@ where
                 format!("release_values({} entr(ies))", values.len())
             }
             UnorderedKeyedBatchDecision::All => "release_all()".to_owned(),
+            UnorderedKeyedBatchDecision::ValuesKeep(values, keep) => format!(
+                "release_values_keep({} entr(ies), {} kept)",
+                values.len(),
+                keep.len()
+            ),
         }
     }
 }
 
-impl<K, V> ScriptableHook for KeyedStreamHook<K, V, TotalOrder>
+fn keyed_prefixes_honorable<K: Hash + Eq, V>(
+    input: &FxHashMap<K, VecDeque<V>>,
+    counts: &[(K, usize)],
+) -> bool {
+    counts
+        .iter()
+        .all(|(key, count)| input.get(key).is_some_and(|queue| queue.len() >= *count))
+}
+
+/// Each key's values must match that key's buffered prefix; the interleaving of keys is
+/// irrelevant. `Ok(false)` while some prefix has not fully arrived yet.
+fn keyed_values_honorable<K: Hash + Eq, V: PartialEq>(
+    input: &FxHashMap<K, VecDeque<V>>,
+    values: &[(K, V)],
+    method: &str,
+) -> Result<bool, String> {
+    let mut consumed: FxHashMap<&K, usize> = FxHashMap::default();
+    for (position, (key, expected)) in values.iter().enumerate() {
+        let offset = consumed.entry(key).or_insert(0);
+        match input.get(key).and_then(|queue| queue.get(*offset)) {
+            Some(buffered) if buffered == expected => {}
+            Some(_) => {
+                return Err(format!(
+                    "{}: buffered item at per-key prefix position {} did not match the expected value (scripted entry {})",
+                    method, *offset, position
+                ));
+            }
+            None => return Ok(false),
+        }
+        *offset += 1;
+    }
+    Ok(true)
+}
+
+fn keyed_multiset_included<'a, K: Hash + Eq + 'a, V: PartialEq + 'a>(
+    requested: &[(K, V)],
+    available: impl Iterator<Item = (&'a K, &'a V)>,
+) -> bool {
+    let mut unmatched: Vec<(&K, &V)> = requested.iter().map(|(k, v)| (k, v)).collect();
+    for (key, value) in available {
+        if let Some(idx) = unmatched.iter().position(|(k, v)| *k == key && *v == value) {
+            unmatched.swap_remove(idx);
+        }
+    }
+    unmatched.is_empty()
+}
+
+fn drain_all_keyed<K: Clone, V>(input: &mut FxHashMap<K, VecDeque<V>>) -> Vec<(K, V)> {
+    let mut out = vec![];
+    #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+    for (key, queue) in input.iter_mut() {
+        out.extend(queue.drain(..).map(|v| (key.clone(), v)));
+    }
+    out
+}
+
+impl<K, V, R: BatchRetries<V>> ScriptableHook for KeyedStreamBatchHook<K, V, TotalOrder, R>
 where
     K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
     V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
@@ -695,71 +923,93 @@ where
     fn is_honorable(&self, decision: &KeyedBatchDecision<K, V>) -> Result<bool, String> {
         let input = self.input.borrow();
         match decision {
-            KeyedBatchDecision::Prefixes(counts) => {
-                // Wait until every named key (keys are distinct by the decision's
-                // invariant) has buffered at least the requested number of values.
-                for (key, count) in counts {
-                    if input.get(key).is_none_or(|queue| queue.len() < *count) {
-                        return Ok(false);
-                    }
-                }
-                Ok(true)
-            }
+            KeyedBatchDecision::Prefixes(counts) => Ok(keyed_prefixes_honorable(&input, counts)),
             KeyedBatchDecision::Values(values) => {
-                // Each key's scripted values must match that key's buffered prefix in
-                // order (cross-key interleaving in the script is irrelevant).
-                let mut consumed: FxHashMap<&K, usize> = FxHashMap::default();
-                for (position, (key, expected)) in values.iter().enumerate() {
-                    let offset = consumed.entry(key).or_insert(0);
-                    match input.get(key).and_then(|queue| queue.get(*offset)) {
-                        Some(buffered) if buffered == expected => {}
-                        Some(_) => {
-                            return Err(format!(
-                                "release_values: buffered item at per-key prefix position {} did not match the expected value (scripted entry {})",
-                                *offset, position
-                            ));
-                        }
-                        None => return Ok(false),
-                    }
-                    *offset += 1;
-                }
-                Ok(true)
+                keyed_values_honorable(&input, values, "release_values")
             }
             KeyedBatchDecision::All => Ok(true),
+            KeyedBatchDecision::PrefixesKeepLast(counts) => {
+                check_keep_allowed::<R>("release_keep_last")?;
+                if counts.iter().any(|(_, count)| *count == 0) {
+                    return Err(
+                        "release_keep_last: every named key must release at least one value to keep its last"
+                            .to_owned(),
+                    );
+                }
+                Ok(keyed_prefixes_honorable(&input, counts))
+            }
+            KeyedBatchDecision::ValuesKeepLast(values) => {
+                check_keep_allowed::<R>("release_values_keep_last")?;
+                if values.is_empty() {
+                    return Err(
+                        "release_values_keep_last: at least one entry must be released to keep its last"
+                            .to_owned(),
+                    );
+                }
+                keyed_values_honorable(&input, values, "release_values_keep_last")
+            }
         }
     }
 
     fn apply(&mut self, decision: KeyedBatchDecision<K, V>) {
         let mut input = self.input.borrow_mut();
+        let keep_last = matches!(
+            decision,
+            KeyedBatchDecision::PrefixesKeepLast(_) | KeyedBatchDecision::ValuesKeepLast(_)
+        );
+        let mut kept = 0;
         let out: Vec<(K, V)> = match decision {
-            KeyedBatchDecision::Prefixes(counts) => {
+            KeyedBatchDecision::Prefixes(counts) | KeyedBatchDecision::PrefixesKeepLast(counts) => {
                 let mut out = vec![];
                 for (key, count) in counts {
                     let queue = input.get_mut(&key).unwrap();
-                    out.extend(queue.drain(0..count).map(|v| (key.clone(), v)));
+                    out.extend(
+                        queue
+                            .drain(0..count.saturating_sub(1))
+                            .map(|v| (key.clone(), v)),
+                    );
+                    if count > 0 {
+                        if keep_last {
+                            out.push((key.clone(), R::scripted_keep(queue.front().unwrap())));
+                            kept += 1;
+                        } else {
+                            out.push((key.clone(), queue.pop_front().unwrap()));
+                        }
+                    }
                 }
                 out
             }
-            KeyedBatchDecision::Values(values) => values
-                .into_iter()
-                .map(|(key, _expected)| {
-                    // `is_honorable` verified each key's scripted values match that
-                    // key's buffered prefix, so popping fronts in script order releases
-                    // exactly the named items.
-                    let item = input.get_mut(&key).unwrap().pop_front().unwrap();
-                    (key, item)
-                })
-                .collect(),
-            KeyedBatchDecision::All => {
-                let mut out = vec![];
-                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-                for (key, queue) in input.iter_mut() {
-                    out.extend(queue.drain(..).map(|v| (key.clone(), v)));
+            KeyedBatchDecision::Values(values) | KeyedBatchDecision::ValuesKeepLast(values) => {
+                // `is_honorable` checked that each key's values are its buffered prefix,
+                // so popping fronts releases exactly them. when keeping, the key's last
+                // value is copied instead of popped.
+                let mut remaining_per_key: FxHashMap<&K, usize> = FxHashMap::default();
+                if keep_last {
+                    for (key, _) in &values {
+                        *remaining_per_key.entry(key).or_insert(0) += 1;
+                    }
+                }
+                let mut out = Vec::with_capacity(values.len());
+                for (key, _expected) in &values {
+                    let queue = input.get_mut(key).unwrap();
+                    let is_kept_last = keep_last && {
+                        let remaining = remaining_per_key.get_mut(key).unwrap();
+                        *remaining -= 1;
+                        *remaining == 0
+                    };
+                    if is_kept_last {
+                        out.push((key.clone(), R::scripted_keep(queue.front().unwrap())));
+                        kept += 1;
+                    } else {
+                        out.push((key.clone(), queue.pop_front().unwrap()));
+                    }
                 }
                 out
             }
+            KeyedBatchDecision::All => drain_all_keyed(&mut input),
         };
 
+        self.kept_in_release = kept;
         self.to_release = Some(out);
     }
 
@@ -778,21 +1028,25 @@ where
     }
 }
 
-impl<K, V> ScriptableTickInputHook for KeyedStreamHook<K, V, TotalOrder>
+impl<K, V, R: BatchRetries<V>> ScriptableTickInputHook for KeyedStreamBatchHook<K, V, TotalOrder, R>
 where
     K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
     V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
 {
     fn decision_triggers_tick(&self, decision: &KeyedBatchDecision<K, V>) -> bool {
         match decision {
-            KeyedBatchDecision::Prefixes(counts) => counts.iter().any(|(_, count)| *count > 0),
-            KeyedBatchDecision::Values(values) => !values.is_empty(),
+            KeyedBatchDecision::Prefixes(counts) | KeyedBatchDecision::PrefixesKeepLast(counts) => {
+                counts.iter().any(|(_, count)| *count > 0)
+            }
+            KeyedBatchDecision::Values(values) | KeyedBatchDecision::ValuesKeepLast(values) => {
+                !values.is_empty()
+            }
             KeyedBatchDecision::All => keyed_buffer_len(&self.input.borrow()) > 0,
         }
     }
 }
 
-impl<K, V> ScriptableHook for KeyedStreamHook<K, V, NoOrder>
+impl<K, V, R: BatchRetries<V>> ScriptableHook for KeyedStreamBatchHook<K, V, NoOrder, R>
 where
     K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
     V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
@@ -801,51 +1055,61 @@ where
     type Status = BatchStatus;
 
     fn is_honorable(&self, decision: &UnorderedKeyedBatchDecision<K, V>) -> Result<bool, String> {
-        Ok(match decision {
+        let input = self.input.borrow();
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let buffered = || {
+            input
+                .iter()
+                .flat_map(|(key, queue)| queue.iter().map(move |value| (key, value)))
+        };
+        match decision {
             UnorderedKeyedBatchDecision::Values(values) => {
-                // Values are matched per key as multisets: duplicates request the
-                // corresponding number of equal buffered items under that key.
-                let input = self.input.borrow();
-                let mut unmatched: Vec<(&K, &V)> = values.iter().map(|(k, v)| (k, v)).collect();
-                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-                for (key, queue) in input.iter() {
-                    for buffered in queue {
-                        if let Some(idx) = unmatched
-                            .iter()
-                            .position(|(k, v)| *k == key && *v == buffered)
-                        {
-                            unmatched.swap_remove(idx);
-                        }
-                    }
-                }
-                unmatched.is_empty()
+                Ok(keyed_multiset_included(values, buffered()))
             }
-            UnorderedKeyedBatchDecision::All => true,
-        })
+            UnorderedKeyedBatchDecision::All => Ok(true),
+            UnorderedKeyedBatchDecision::ValuesKeep(values, keep) => {
+                check_keep_allowed::<R>("release_values_keep")?;
+                if !keyed_multiset_included(keep, values.iter().map(|(k, v)| (k, v))) {
+                    return Err(
+                        "release_values_keep: every kept entry must be among the released entries"
+                            .to_owned(),
+                    );
+                }
+                Ok(keyed_multiset_included(values, buffered()))
+            }
+        }
     }
 
     fn apply(&mut self, decision: UnorderedKeyedBatchDecision<K, V>) {
         let mut input = self.input.borrow_mut();
-        let out: Vec<(K, V)> = match decision {
-            UnorderedKeyedBatchDecision::Values(values) => values
-                .into_iter()
-                .map(|(key, expected)| {
-                    let queue = input.get_mut(&key).unwrap();
-                    let idx = queue.iter().position(|item| *item == expected).unwrap();
-                    let item = queue.remove(idx).unwrap();
-                    (key, item)
-                })
-                .collect(),
+        let (values, mut keep) = match decision {
             UnorderedKeyedBatchDecision::All => {
-                let mut out = vec![];
-                #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-                for (key, queue) in input.iter_mut() {
-                    out.extend(queue.drain(..).map(|v| (key.clone(), v)));
-                }
-                out
+                self.to_release = Some(drain_all_keyed(&mut input));
+                return;
             }
+            UnorderedKeyedBatchDecision::Values(values) => (values, vec![]),
+            UnorderedKeyedBatchDecision::ValuesKeep(values, keep) => (values, keep),
         };
 
+        // a matched entry that is also in `keep` is copied and left in the buffer
+        let mut kept = 0;
+        let mut out = Vec::with_capacity(values.len());
+        for (key, expected) in values {
+            let queue = input.get_mut(&key).unwrap();
+            let idx = queue.iter().position(|item| *item == expected).unwrap();
+            if let Some(keep_idx) = keep.iter().position(|(k, v)| *k == key && *v == expected) {
+                keep.swap_remove(keep_idx);
+                kept += 1;
+                out.push((key, R::scripted_keep(&queue[idx])));
+            } else {
+                out.push((key, queue.remove(idx).unwrap()));
+            }
+        }
+        if !keep.is_empty() {
+            abort!("scripted unordered keyed batch decision was not honorable");
+        }
+
+        self.kept_in_release = kept;
         self.to_release = Some(out);
     }
 
@@ -864,14 +1128,15 @@ where
     }
 }
 
-impl<K, V> ScriptableTickInputHook for KeyedStreamHook<K, V, NoOrder>
+impl<K, V, R: BatchRetries<V>> ScriptableTickInputHook for KeyedStreamBatchHook<K, V, NoOrder, R>
 where
     K: Hash + Eq + Clone + serde::Serialize + serde::de::DeserializeOwned,
     V: serde::Serialize + serde::de::DeserializeOwned + PartialEq,
 {
     fn decision_triggers_tick(&self, decision: &UnorderedKeyedBatchDecision<K, V>) -> bool {
         match decision {
-            UnorderedKeyedBatchDecision::Values(values) => !values.is_empty(),
+            UnorderedKeyedBatchDecision::Values(values)
+            | UnorderedKeyedBatchDecision::ValuesKeep(values, _) => !values.is_empty(),
             UnorderedKeyedBatchDecision::All => keyed_buffer_len(&self.input.borrow()) > 0,
         }
     }
