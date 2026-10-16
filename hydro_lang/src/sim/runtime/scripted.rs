@@ -36,7 +36,7 @@ pub trait ScriptDecision: serde::Serialize + serde::de::DeserializeOwned {
 }
 
 /// The per-kind decision semantics of a hook that can be driven by a test-side handle,
-/// implemented directly on the ordinary hook types ([`StreamHook`](super::StreamHook),
+/// implemented directly on the ordinary hook types ([`StreamBatchHook`](super::StreamBatchHook),
 /// [`SingletonHook`](super::SingletonHook)).
 /// The generic [`Scripted<H>`] shell turns any implementor into a scripted hook.
 pub trait ScriptableHook: RuntimeHook {

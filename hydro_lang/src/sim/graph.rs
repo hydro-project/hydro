@@ -715,6 +715,7 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
             __hydro_panic_handler: #root::sim::panic_guard::PanicHandler,
+            __hydro_retry_budget: #root::sim::runtime::RetryBudget,
         ) -> (
             Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased<()>)>,
             Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased<()>)>,
@@ -796,6 +797,7 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
             __hydro_panic_handler: #root::sim::panic_guard::PanicHandler,
+            __hydro_retry_budget: #root::sim::runtime::RetryBudget,
         ) -> (
             Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased<()>)>,
             Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased<()>)>,
@@ -809,7 +811,7 @@ fn compile_sim_graph_trybuild(
         ) {
             #root::runtime_support::colored::control::set_override(should_color);
             #root::sim::panic_guard::guard_runtime(__hydro_panic_handler, || {
-                __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __hydro_cluster_external_out, __hydro_cluster_external_in, __println_handler, __eprintln_handler, __hydro_panic_handler)
+                __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __hydro_cluster_external_out, __hydro_cluster_external_in, __println_handler, __eprintln_handler, __hydro_panic_handler, __hydro_retry_budget)
             })
         }
     };
