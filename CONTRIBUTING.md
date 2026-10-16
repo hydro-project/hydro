@@ -90,6 +90,14 @@ parts of the code (see `./precheck.bash --help` for info). Note that this will o
 changed snapshot tests instead of failing-- you should double-check that the snapshot diff matches
 what you expect.
 
+### Documentation
+
+If your PR adds or renames a user-facing public API in `hydro_lang` (e.g. methods on live
+collections, locations, or the flow builder), update the relevant page under
+`docs/docs/hydro/quick-reference/` to include it, or note in the PR description why it doesn't
+belong there. Renamed or removed APIs are caught automatically by the docs build (rustdoc link
+validation), but newly added APIs are not, so this is a manual review step.
+
 ## Snapshot Testing
 
 Hydro uses two types of snapshot testing: [`insta`](https://insta.rs/) and [`trybuild`](https://github.com/dtolnay/trybuild).
