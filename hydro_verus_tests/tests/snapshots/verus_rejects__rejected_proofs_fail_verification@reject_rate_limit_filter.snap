@@ -2,15 +2,15 @@
 source: hydro_verus_tests/tests/verus_rejects.rs
 expression: "format!(\"{}\\n{}\", verification_results(&stdout), verus_diagnostics(&stderr))"
 ---
-verification results:: 11 verified, 1 errors
+verification results:: 25 verified, 1 errors
 error: assertion failed
-   --> hydro_verus_tests/src/lib.rs:389:35
+   --> hydro_verus_tests/src/lib.rs:570:35
     |
-389 |                       commutative = verus_proof_commutative_filter!(
+570 |                       commutative = verus_proof_commutative_filter!(
     |  ___________________________________^
-390 | |                         item = &u32,
-391 | |                         captures_mut = |budget_mut: u32|
-392 | |                     )
+571 | |                         item = &u32,
+572 | |                         captures_mut = |budget_mut: u32|
+573 | |                     )
     | |_____________________^ assertion failed
     |
     = note: this error originates in the macro `verus_proof_commutative_filter` (in Nightly builds, run with -Z macro-backtrace for more info)
