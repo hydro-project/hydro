@@ -94,8 +94,9 @@ use libloading::Library;
 use tokio::sync::{Mutex, Notify};
 
 use super::runtime::{
-    Hooks, InlineHooks, ObservationHooks, ScriptTarget, ScriptedHookControl, ScriptedHookRegistry,
-    ScriptedInlineHooks, ScriptedObservationHooks, ScriptedTickHooks, SimLocation,
+    Hooks, InlineHooks, ObservationHooks, RetryBudget, ScriptTarget, ScriptedHookControl,
+    ScriptedHookRegistry, ScriptedInlineHooks, ScriptedObservationHooks, ScriptedTickHooks,
+    SimLocation,
 };
 use super::{SimClusterReceiver, SimClusterSender, SimReceiver, SimSender};
 use crate::compile::builder::ExternalPortId;
@@ -775,6 +776,14 @@ pub struct CompiledSim {
     pub(super) lib: Library,
     pub(super) externals_port_registry: SimExternalPortRegistry,
     pub(super) unit_test_fuzz_iterations: usize,
+    /// The configured retries depth (see [`SimFlow::retries_depth`](super::flow::SimFlow::retries_depth)),
+    /// bounding the autonomous at-least-once hooks to `depth - 1` retries in every mode.
+    pub(super) retries_depth: Option<usize>,
+    /// The at-least-once observation points that are not bound to a sim hook, as rendered
+    /// for error messages. Fuzzing explores them unbounded, `exhaustive` refuses to run
+    /// without a retries depth while any exist, and `deterministic` refuses to run at all
+    /// (every at-least-once point must be scripted).
+    pub(super) unhooked_at_least_once: Vec<String>,
 }
 
 #[sealed::sealed]
@@ -810,6 +819,7 @@ type SimLoaded<'a> = libloading::Symbol<
         cluster_external_in: &mut HashMap<usize, HashMap<u32, UnsyncSender<Bytes>>>,
         println_handler: fn(fmt::Arguments<'_>),
         eprintln_handler: fn(fmt::Arguments<'_>),
+        retry_budget: RetryBudget,
     ) -> (
         Vec<(LocationId, Option<u32>, DfirErased)>,
         Vec<(LocationId, Option<u32>, DfirErased)>,
@@ -843,6 +853,7 @@ impl CompiledSim {
     ) -> T {
         let func: SimLoaded<'_> = unsafe { self.lib.get(b"__hydro_runtime").unwrap() };
         let log = always_log || std::env::var("HYDRO_SIM_LOG").is_ok_and(|v| v == "1");
+        let retry_budget = self.fuzz_retry_budget();
         thunk(
             &(|| CompiledSimInstance {
                 func: func.clone(),
@@ -851,8 +862,40 @@ impl CompiledSim {
                 log,
                 exhaustive: false,
                 deterministic: false,
+                retry_budget,
             }),
         )
+    }
+
+    /// The retry budget for the fuzzing modes (`fuzz`, `fuzz_repro`, `with_instance`):
+    /// bounded by the configured retries depth, otherwise **unbounded**: the fuzzer draws
+    /// retry counts freely, so it can reach bugs that need many duplicates.
+    fn fuzz_retry_budget(&self) -> RetryBudget {
+        match self.retries_depth {
+            Some(depth) => RetryBudget::Bounded(depth - 1),
+            None => RetryBudget::Unbounded,
+        }
+    }
+
+    /// The retry budget for `exhaustive`, which cannot enumerate an unbounded decision
+    /// space: the configured retries depth, required when the program has unhooked
+    /// at-least-once observation points.
+    fn exhaustive_retry_budget(&self) -> RetryBudget {
+        match self.retries_depth {
+            Some(depth) => RetryBudget::Bounded(depth - 1),
+            None if self.unhooked_at_least_once.is_empty() => RetryBudget::Bounded(0),
+            None => {
+                let points = self.unhooked_at_least_once.join("\n");
+                panic!(
+                    "exhaustive simulation cannot explore at-least-once non-determinism without \
+                     a bound (every element admits arbitrarily many retries), but the program \
+                     observes it at operators not bound to a sim hook:\n{points}\nhelp: call \
+                     `.retries_depth(n)` on the `SimFlow` to explore at most `n - 1` generated \
+                     retries per operator, or bind sim hooks to these operators (`nondet!(... \
+                     hook = handle)`) and script their decisions"
+                );
+            }
+        }
     }
 
     /// Uses a fuzzing strategy to explore possible executions of the simulation. The provided
@@ -1055,6 +1098,8 @@ impl CompiledSim {
             std::process::abort();
         }
 
+        let retry_budget = self.exhaustive_retry_budget();
+
         let mut count = 0;
         let count_mut = &mut count;
 
@@ -1077,6 +1122,7 @@ impl CompiledSim {
 
                     let mut instance = instantiator();
                     instance.exhaustive = true;
+                    instance.retry_budget = retry_budget;
                     if instance.log {
                         eprintln!(
                             "{}",
@@ -1112,8 +1158,21 @@ impl CompiledSim {
     /// tie-breaking policy because at most one tick is ever runnable: scripted decisions
     /// activate one group at a time, so the *script* is the schedule.
     pub fn deterministic(&self, thunk: impl AsyncFnOnce() + RefUnwindSafe) {
+        // A retries depth is meaningless here: with no fuzzer there is nothing to draw retry
+        // decisions from, so every at-least-once point must be scripted.
+        assert!(
+            self.unhooked_at_least_once.is_empty(),
+            "deterministic simulation requires every at-least-once operator (`assume_retries`, \
+             or `assume_ordering` / `batch` on an `AtLeastOnce` stream) to be bound to a sim \
+             hook and scripted, but the program observes at-least-once non-determinism at:\n{}\n\
+             help: bind a sim hook to each of these operators (`nondet!(... hook = handle)`) \
+             and script its decisions, or run under `fuzz` / `exhaustive` instead",
+            self.unhooked_at_least_once.join("\n")
+        );
         self.with_instance(|mut instance| {
             instance.deterministic = true;
+            // Never consulted: every at-least-once hook is scripted.
+            instance.retry_budget = RetryBudget::Bounded(0);
 
             // Deliberately do not install a Bolero entropy scope. Deterministic execution
             // must never draw entropy; Bolero's unset thread-local scope makes any accidental
@@ -1148,6 +1207,8 @@ pub struct CompiledSimInstance<'a> {
     log: bool,
     exhaustive: bool,
     deterministic: bool,
+    /// How the autonomous at-least-once hooks decide their retries in this run.
+    retry_budget: RetryBudget,
 }
 
 impl<'a> CompiledSimInstance<'a> {
@@ -1186,6 +1247,7 @@ impl<'a> CompiledSimInstance<'a> {
                 } else {
                     null_handler
                 },
+                self.retry_budget,
             )
         };
 
@@ -2364,9 +2426,9 @@ impl SimObservation {
     /// Whether the scheduler can resolve this observation's hook right now.
     fn can_run(&self) -> bool {
         match &self.hook {
-            // Running an observation *is* releasing, so any pending input makes an
-            // unscripted observation runnable.
-            ObservationSlot::Unscripted { hook } => hook.has_pending_input(),
+            // Running an observation *is* releasing, so an unscripted observation is
+            // runnable whenever its hook can stage a release.
+            ObservationSlot::Unscripted { hook } => hook.can_release(),
             ObservationSlot::Scripted { hook, .. } => hook.borrow().can_fire(),
         }
     }

@@ -1552,6 +1552,7 @@ fn sim_generated_code_sees_root_rustflags() {
     });
 }
 
+mod retries_depth;
 mod scripted;
 
 mod custom_codec {

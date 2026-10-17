@@ -3299,11 +3299,13 @@ fn scripted_inline_alo_ordering_shared_value_adjacent_slots() {
 }
 
 /// Retry non-determinism has an infinite decision space (every element admits
-/// arbitrarily many retries), so an `assume_retries` that is not bound to a sim hook is
-/// a build-time error under simulation rather than an autonomously explored dimension.
+/// arbitrarily many retries), so a deterministic simulation of an `assume_retries` that is
+/// neither bound to a sim hook nor bounded by a retries depth is an error.
 #[test]
-#[should_panic(expected = "observing retries (`assume_retries`) has an infinite decision space")]
-fn unhooked_assume_retries_panics_at_build() {
+#[should_panic(
+    expected = "deterministic simulation requires every at-least-once operator (`assume_retries`, or `assume_ordering` / `batch` on an `AtLeastOnce` stream) to be bound to a sim hook"
+)]
+fn unhooked_assume_retries_panics_in_deterministic() {
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
     let (_in_send, input) = node.sim_input::<u32, NoOrder, AtLeastOnce>();
@@ -3314,11 +3316,12 @@ fn unhooked_assume_retries_panics_at_build() {
     flow.sim().deterministic(async || {});
 }
 
-/// Ordering an at-least-once stream also decides retry slots, so an unhooked
-/// `assume_ordering` on an `AtLeastOnce` stream is likewise a build-time error.
+/// Ordering an at-least-once stream also decides retry slots, so an unhooked, unbounded
+/// `assume_ordering` on an `AtLeastOnce` stream is likewise rejected; the error names the
+/// operator.
 #[test]
-#[should_panic(expected = "observing the order of an at-least-once stream")]
-fn unhooked_alo_assume_ordering_panics_at_build() {
+#[should_panic(expected = "the order of an at-least-once stream")]
+fn unhooked_alo_assume_ordering_panics_in_deterministic() {
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
     let (_in_send, input) = node.sim_input::<u32, NoOrder, AtLeastOnce>();
@@ -3327,4 +3330,365 @@ fn unhooked_alo_assume_ordering_panics_at_build() {
         .sim_output();
 
     flow.sim().deterministic(async || {});
+}
+
+/// Batching an ordered at-least-once stream: `release_values_keep_last` delivers a prefix
+/// but keeps its last element buffered, so it is delivered again as the first element of
+/// a later batch (a cross-tick redelivery). The in-tick stream is still `AtLeastOnce`, so
+/// a scripted in-tick `assume_retries` passes each batch through unchanged.
+#[test]
+fn scripted_alo_batch_ordered_keep_last_redelivers_in_next_batch() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32, TotalOrder, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<u32, TotalOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input.weaken_retries::<AtLeastOnce>(), nondet!(/** scripted */ hook = batch_hook));
+        b.assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+            .fold(q!(|| Vec::new()), q!(|acc, v| acc.push(v)))
+            .into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1, 2, 3]);
+        batch_hook.release_values_keep_last([1, 2]).await;
+        retries.release([1, 2]).await;
+        batch_hook.release_values([2, 3]).await;
+        retries.release([2, 3]).await;
+        output.assert_yields_only([vec![1, 2], vec![2, 3]]).await;
+    });
+}
+
+/// The positional `release_keep_last(n)` keeps the `n`-th buffered element without naming
+/// it; the kept element may be kept again by a later batch.
+#[test]
+fn scripted_alo_batch_ordered_release_keep_last_positional() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32, TotalOrder, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<u32, TotalOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input.weaken_retries::<AtLeastOnce>(), nondet!(/** scripted */ hook = batch_hook));
+        b.assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+            .fold(q!(|| Vec::new()), q!(|acc, v| acc.push(v)))
+            .into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1, 2]);
+        batch_hook.release_keep_last(1).await;
+        retries.release([1]).await;
+        batch_hook.release_keep_last(1).await;
+        retries.release([1]).await;
+        batch_hook.release(2).await;
+        retries.release([1, 2]).await;
+        output
+            .assert_yields_only([vec![1], vec![1], vec![1, 2]])
+            .await;
+    });
+}
+
+/// `release_keep_last(0)` is rejected at the scripting call site: there is no last
+/// element to keep.
+#[test]
+#[should_panic(expected = "at least one element must be released to keep its last")]
+fn scripted_alo_batch_ordered_keep_last_zero_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32, TotalOrder, AtLeastOnce> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let b = use::batch(input.weaken_retries::<AtLeastOnce>(), nondet!(/** scripted */ hook = batch_hook));
+        b.first().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1]);
+        batch_hook.release_keep_last(0).await;
+    });
+}
+
+/// A kept element is ordinary pending input: a script that never releases it again (nor
+/// pauses) is reported by the forgotten-hook check.
+#[test]
+#[should_panic(expected = "scripted hook has buffered input but no decision")]
+fn scripted_alo_batch_kept_element_is_forgotten() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32, TotalOrder, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<u32, TotalOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input.weaken_retries::<AtLeastOnce>(), nondet!(/** scripted */ hook = batch_hook));
+        b.assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+            .fold(q!(|| Vec::new()), q!(|acc, v| acc.push(v)))
+            .into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([1]);
+        batch_hook.release_values_keep_last([1]).await;
+        retries.release([1]).await;
+        output.assert_yields_only([vec![1]]).await;
+    });
+}
+
+/// Batching an unordered at-least-once stream: `release_values_keep(values, keep)` delivers
+/// `values` and keeps the elements matching `keep` buffered for a later batch.
+#[test]
+fn scripted_alo_batch_unordered_keep_redelivers_in_later_batch() {
+    use crate::properties::manual_proof;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32, NoOrder, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<u32, NoOrder, Bounded> = flow.sim_hook();
+    let ordering: OrderingHook<u32, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(input.weaken_retries::<AtLeastOnce>(), nondet!(/** scripted */ hook = batch_hook));
+        b.assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+            .fold(
+                q!(|| Vec::new()),
+                q!(
+                    |acc: &mut Vec<u32>, v| {
+                        acc.push(v);
+                        acc.sort();
+                    },
+                    commutative = manual_proof!(/** sorted */ hook = ordering)
+                ),
+            )
+            .into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1, 2, 3]);
+        batch_hook.release_values_keep([1, 2], [2]).await;
+        retries.release([1, 2]).await;
+        ordering.order([1, 2]).await;
+        batch_hook.release_values([2, 3]).await;
+        retries.release([2, 3]).await;
+        ordering.order([2, 3]).await;
+        output.assert_yields_only([vec![1, 2], vec![2, 3]]).await;
+    });
+}
+
+/// A kept value must be among the released values: the mis-stated script fails loudly.
+#[test]
+#[should_panic(expected = "every kept value must be among the released values")]
+fn scripted_alo_batch_unordered_keep_not_released_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: BatchHook<u32, NoOrder, AtLeastOnce> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let b = use::batch(input.weaken_retries::<AtLeastOnce>(), nondet!(/** scripted */ hook = batch_hook));
+        b.min().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([1, 2]);
+        batch_hook.release_values_keep([1], [2]).await;
+    });
+}
+
+/// Batching a keyed stream with ordered at-least-once values: `release_values_keep_last`
+/// delivers each named key's prefix but keeps that key's last value buffered, so it is
+/// delivered again as the key's first value in a later batch (a cross-tick redelivery).
+/// The in-tick entries are still `AtLeastOnce`, so a scripted in-tick `assume_retries`
+/// passes each batch through unchanged.
+#[test]
+fn scripted_alo_keyed_batch_ordered_keep_last_redelivers_in_next_batch() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char, TotalOrder, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<(u32, char), NoOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), TotalOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(
+            input.into_keyed().weaken_retries::<AtLeastOnce>(),
+            nondet!(/** scripted */ hook = batch_hook)
+        );
+        b.entries()
+            .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+            .sort()
+            .collect_vec()
+            .into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 'a'), (2, 'x'), (1, 'b')]);
+        batch_hook
+            .release_values_keep_last([(1, 'a'), (2, 'x')])
+            .await;
+        retries.release([(1, 'a'), (2, 'x')]).await;
+        // Both kept values are redelivered first within their keys.
+        batch_hook
+            .release_values([(1, 'a'), (1, 'b'), (2, 'x')])
+            .await;
+        retries.release([(1, 'a'), (1, 'b'), (2, 'x')]).await;
+        output
+            .assert_yields_only([vec![(1, 'a'), (2, 'x')], vec![(1, 'a'), (1, 'b'), (2, 'x')]])
+            .await;
+    });
+}
+
+/// The positional `release_keep_last(counts)` keeps each named key's trailing value
+/// without naming it; keys not named contribute nothing to the batch.
+#[test]
+fn scripted_alo_keyed_batch_ordered_release_keep_last_positional() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char, TotalOrder, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<(u32, char), NoOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), TotalOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(
+            input.into_keyed().weaken_retries::<AtLeastOnce>(),
+            nondet!(/** scripted */ hook = batch_hook)
+        );
+        b.entries()
+            .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+            .sort()
+            .collect_vec()
+            .into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        batch_hook.auto_pause();
+        in_send.send_many([(1, 'a'), (1, 'b'), (2, 'x')]);
+        batch_hook.release_keep_last([(1, 2)]).await; // key 2 is untouched
+        retries.release([(1, 'a'), (1, 'b')]).await;
+        batch_hook.release([(1, 1), (2, 1)]).await; // (1, 'b') redelivered
+        retries.release([(1, 'b'), (2, 'x')]).await;
+        output
+            .assert_yields_only([vec![(1, 'a'), (1, 'b')], vec![(1, 'b'), (2, 'x')]])
+            .await;
+    });
+}
+
+/// `release_keep_last` with a zero count is rejected at the scripting call site: that key
+/// would have no last value to keep.
+#[test]
+#[should_panic(expected = "every named key must release at least one value to keep its last")]
+fn scripted_alo_keyed_batch_ordered_keep_last_zero_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char, TotalOrder, AtLeastOnce> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), TotalOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let b = use::batch(
+            input.into_keyed().weaken_retries::<AtLeastOnce>(),
+            nondet!(/** scripted */ hook = batch_hook)
+        );
+        b.entries().min().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 'a')]);
+        batch_hook.release_keep_last([(1, 0)]).await;
+    });
+}
+
+/// A kept keyed value is ordinary pending input: a script that never releases it again
+/// (nor pauses) is reported by the forgotten-hook check.
+#[test]
+#[should_panic(expected = "scripted hook has buffered input but no decision")]
+fn scripted_alo_keyed_batch_kept_value_is_forgotten() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char, TotalOrder, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<(u32, char), NoOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), TotalOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(
+            input.into_keyed().weaken_retries::<AtLeastOnce>(),
+            nondet!(/** scripted */ hook = batch_hook)
+        );
+        b.entries()
+            .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+            .sort()
+            .collect_vec()
+            .into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 'a')]);
+        batch_hook.release_values_keep_last([(1, 'a')]).await;
+        retries.release([(1, 'a')]).await;
+        output.assert_yields_only([vec![(1, 'a')]]).await;
+    });
+}
+
+/// Batching a keyed stream with unordered at-least-once values:
+/// `release_values_keep(entries, keep)` delivers `entries` and keeps those matching `keep`
+/// buffered for a later batch.
+#[test]
+fn scripted_alo_keyed_batch_unordered_keep_redelivers_in_later_batch() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char, NoOrder, AtLeastOnce> = flow.sim_hook();
+    let retries: RetriesHook<(u32, char), NoOrder, Bounded> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), NoOrder, ExactlyOnce>();
+    let output = sliced! {
+        let b = use::batch(
+            input.into_keyed().weaken_retries::<AtLeastOnce>(),
+            nondet!(/** scripted */ hook = batch_hook)
+        );
+        b.entries()
+            .assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+            .sort()
+            .collect_vec()
+            .into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([(1, 'a'), (1, 'b'), (2, 'x')]);
+        batch_hook
+            .release_values_keep([(1, 'b'), (2, 'x')], [(2, 'x')])
+            .await;
+        retries.release([(1, 'b'), (2, 'x')]).await;
+        batch_hook.release_values([(1, 'a'), (2, 'x')]).await;
+        retries.release([(1, 'a'), (2, 'x')]).await;
+        output
+            .assert_yields_only([vec![(1, 'b'), (2, 'x')], vec![(1, 'a'), (2, 'x')]])
+            .await;
+    });
+}
+
+/// A kept keyed entry must be among the released entries: the mis-stated script fails
+/// loudly.
+#[test]
+#[should_panic(expected = "every kept entry must be among the released entries")]
+fn scripted_alo_keyed_batch_unordered_keep_not_released_panics() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char, NoOrder, AtLeastOnce> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), NoOrder, ExactlyOnce>();
+    let _output = sliced! {
+        let b = use::batch(
+            input.into_keyed().weaken_retries::<AtLeastOnce>(),
+            nondet!(/** scripted */ hook = batch_hook)
+        );
+        b.entries().min().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many_unordered([(1, 'a'), (2, 'x')]);
+        batch_hook.release_values_keep([(1, 'a')], [(2, 'x')]).await;
+    });
 }
