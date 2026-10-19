@@ -446,17 +446,18 @@ def lower (C : CoStream T n α ord ret) {T' : Nat} (h : T' ≤ T) :
   wf := C.wf
   cpl := fun hwf i => C.cpl_le hwf h i
 
-variable (body : CoStream T n α ord ret → CoStream T n α ord ret)
+variable (p : Fin n → Nat → Bool) (body : CoStream T n α ord ret → CoStream T n α ord ret)
 
 /-- The machine-side body. -/
 def sbody (x : Fin n → StepHist α) : Fin n → StepHist α :=
   (body (schedEmbed x)).sr
 
 /-- The knot's machine leg: the frozen diagonal of the machine body's
-shift-iterates (the `SchedSem` fix semantics, verbatim). -/
+shift-iterates at the members' tick skeletons `p` (the `SchedSem` fix
+semantics, verbatim). -/
 def fixSr : Fin n → StepHist α :=
   famHist (fun t i =>
-    ((iterate (fun x j => ((sbody body x) j).shift)
+    ((iterate (fun x j => ((sbody body x) j).shift (p j))
       (fun _ => StepHist.bot) (t + 1)) i).view t)
 
 /-- The reader-side body at the knot's own machine diagonal: sites
@@ -464,7 +465,7 @@ inside the loop derive their decisions from the same machine wire the
 closed knot presents to the rest of the program. -/
 def vbody (v : MemberMap n (PoolCarrier α ord ret)) :
     MemberMap n (PoolCarrier α ord ret) :=
-  (body (probe2 (fixSr body) v)).rr
+  (body (probe2 (fixSr p body) v)).rr
 
 end CoStream
 
@@ -526,24 +527,23 @@ def lower (C : CoTickSing T n σ) {T' : Nat} (h : T' ≤ T) :
   cpl := fun hwf k hk i => C.cpl hwf k (hk.trans h) i
   mono := C.mono
 
-variable (body : CoTickSing T n σ →
+variable (p : Fin n → Nat → Bool) (body : CoTickSing T n σ →
   CoTickSing T n σ)
 
 def sbody (x : Fin n → Nat → Trace σ) : Fin n → Nat → Trace σ :=
   (body (schedEmbed x)).sr
 
-/-- The machine-side body with the tick shift. -/
+/-- The machine-side body with the tick shift (gated by the members'
+tick skeletons `p`). -/
 def sshift (x : Fin n → Nat → Trace σ) : Fin n → Nat → Trace σ :=
-  fun j u => match u with
-    | 0 => ([] : Trace σ)
-    | u + 1 => (sbody body x) j u
+  fun j => gateView (p j) ((sbody body x) j)
 
 /-- The knot's machine leg: the raw tick diagonal. -/
 def fixSr : Fin n → Nat → Trace σ :=
-  fun i t => (iterate (sshift body) (fun _ _ => ([] : Trace σ)) (t + 1)) i t
+  fun i t => (iterate (sshift p body) (fun _ _ => ([] : Trace σ)) (t + 1)) i t
 
 def vbody (v : TickV n σ) : TickV n σ :=
-  (body (probe2 (fixSr body) v)).rr
+  (body (probe2 (fixSr p body) v)).rr
 
 end CoTickSing
 
@@ -591,7 +591,7 @@ private theorem co_famFreeze_eq_of_ascending {m : Nat} {β : Type}
     exact List.all_eq_true.mpr (fun i _ =>
       List.isPrefixOf_iff_prefix.mpr (hasc t (Nat.lt_succ_self t) i))
 
-variable
+variable (p : Fin n → Nat → Bool)
   (hcaus : ∀ (h : Nat) (x y : Fin n → StepHist α), SAgree h x y →
     SAgree h (CoStream.sbody body x) (CoStream.sbody body y))
 
@@ -599,71 +599,81 @@ include hcaus
 
 /-- The raw diagonal ascends step by step (causality). -/
 theorem co_diag_ascent : ∀ (t : Nat) (i : Fin n),
-    ((iterate (fun x j => ((CoStream.sbody body x) j).shift)
+    ((iterate (fun x j => ((CoStream.sbody body x) j).shift (p j))
       (fun _ => StepHist.bot) (t + 1)) i).view t
-    <+: ((iterate (fun x j => ((CoStream.sbody body x) j).shift)
+    <+: ((iterate (fun x j => ((CoStream.sbody body x) j).shift (p j))
       (fun _ => StepHist.bot) (t + 2)) i).view (t + 1) := by
   intro t i
-  calc ((iterate (fun x j => ((CoStream.sbody body x) j).shift)
+  calc ((iterate (fun x j => ((CoStream.sbody body x) j).shift (p j))
         (fun _ => StepHist.bot) (t + 1)) i).view t
-      = ((iterate (fun x j => ((CoStream.sbody body x) j).shift)
+      = ((iterate (fun x j => ((CoStream.sbody body x) j).shift (p j))
         (fun _ => StepHist.bot) (t + 2)) i).view t :=
-      stab_iterate_shift (h := t)
+      stab_iterate_shift (h := t) p
         (fun h' _hh' x y hxy => hcaus h' x y hxy)
         t (t + 1) (t + 2) (Nat.le_refl _)
         (Nat.lt_succ_self _) (by omega) i
-    _ <+: _ := ((iterate (fun x j => ((CoStream.sbody body x) j).shift)
+    _ <+: _ := ((iterate (fun x j => ((CoStream.sbody body x) j).shift (p j))
         (fun _ => StepHist.bot) (t + 2)) i).mono t
 
 /-- The frozen diagonal *is* the raw diagonal (causality ⇒ ascent ⇒
 transparency). -/
 theorem co_fix_view (t : Nat) (i : Fin n) :
-    (CoStream.fixSr body i).view t
-      = ((iterate (fun x j => ((CoStream.sbody body x) j).shift)
+    (CoStream.fixSr p body i).view t
+      = ((iterate (fun x j => ((CoStream.sbody body x) j).shift (p j))
         (fun _ => StepHist.bot) (t + 1)) i).view t := by
   show famFreeze (fun t' j =>
-      ((iterate (fun x j' => ((CoStream.sbody body x) j').shift)
+      ((iterate (fun x j' => ((CoStream.sbody body x) j').shift (p j'))
         (fun _ => StepHist.bot) (t' + 1)) j).view t') t i = _
   rw [co_famFreeze_eq_of_ascending _ t
-    (fun t' _ht' j => co_diag_ascent body hcaus t' j)]
+    (fun t' _ht' j => co_diag_ascent body p hcaus t' j)]
 
-/-- **The machine fixpoint equation**: one more body application on
-the diagonal shows the diagonal's next view. -/
-theorem co_fix_view_succ (t : Nat) (i : Fin n) :
-    (CoStream.fixSr body i).view (t + 1)
-      = ((CoStream.sbody body (CoStream.fixSr body)) i).view t := by
-  rw [co_fix_view body hcaus (t + 1) i]
-  show ((CoStream.sbody body
-      (iterate (fun x j => ((CoStream.sbody body x) j).shift)
-        (fun _ => StepHist.bot) (t + 1)) i).shift).view (t + 1) = _
-  show ((CoStream.sbody body
-      (iterate (fun x j => ((CoStream.sbody body x) j).shift)
-        (fun _ => StepHist.bot) (t + 1))) i).view t = _
+/-- The stage-`t+1` body output at `t` is the body's output at the closed knot. -/
+theorem co_fix_stage_eq (t : Nat) (i : Fin n) :
+    ((CoStream.sbody body
+      (iterate (fun x j => ((CoStream.sbody body x) j).shift (p j))
+        (fun _ => StepHist.bot) (t + 1))) i).view t
+    = ((CoStream.sbody body (CoStream.fixSr p body)) i).view t := by
   refine hcaus t _ _ (fun j t' ht' => ?_) i t (Nat.le_refl _)
-  rw [co_fix_view body hcaus t' j]
-  exact stab_iterate_shift (h := t')
+  rw [co_fix_view body p hcaus t' j]
+  exact stab_iterate_shift (h := t') p
     (fun h' _hh' x y hxy => hcaus h' x y hxy)
     t' (t + 1) (t' + 1) (Nat.le_refl _)
     (by omega) (Nat.lt_succ_self _) j
+
+/-- **The machine fixpoint inequation**: the knot's next view is a prefix
+of the body's view at the closed knot (equal at a ticking step; at a
+non-ticking step the knot holds its previous view, itself such a
+prefix). -/
+theorem co_fix_view_succ (t : Nat) (i : Fin n) :
+    (CoStream.fixSr p body i).view (t + 1)
+      <+: ((CoStream.sbody body (CoStream.fixSr p body)) i).view t := by
+  rw [co_fix_view body p hcaus (t + 1) i]
+  show gateView (p i) (CoStream.sbody body
+      (iterate (fun x j => ((CoStream.sbody body x) j).shift (p j))
+        (fun _ => StepHist.bot) (t + 1)) i).view (t + 1) <+: _
+  rw [← co_fix_stage_eq body p hcaus t i, gateView_succ]
+  split
+  · exact List.prefix_refl _
+  · exact gateView_prefix (p i) _ (fun u => (CoStream.sbody body _ i).mono u) t
 
 /-- **The knot coupling**, by induction on the horizon. -/
 theorem co_fix_cpl
     (hcplj : ∀ j, j ≤ T → ∀ (x : Fin n → StepHist α),
       (∀ t, t ≤ j → ∀ i, ListLe ord ret ((x i).view t)
-        (iterate (CoStream.vbody body) (.mk' fun _ => PoolBot ord ret) (j + 1) i)) →
+        (iterate (CoStream.vbody p body) (.mk' fun _ => PoolBot ord ret) (j + 1) i)) →
       ∀ i, ListLe ord ret ((CoStream.sbody body x i).view j)
         ((body (CoStream.probe2 x
-          (iterate (CoStream.vbody body) (.mk' fun _ => PoolBot ord ret) (j + 1)))).rr i)) :
-    ∀ j, j ≤ T → ∀ i, ListLe ord ret ((CoStream.fixSr body i).view j)
-      (iterate (CoStream.vbody body)
+          (iterate (CoStream.vbody p body) (.mk' fun _ => PoolBot ord ret) (j + 1)))).rr i)) :
+    ∀ j, j ≤ T → ∀ i, ListLe ord ret ((CoStream.fixSr p body i).view j)
+      (iterate (CoStream.vbody p body)
         (.mk' fun _ => PoolBot ord ret) (j + 1) i)
   | 0, _hj, i => by
-    rw [co_fix_view body hcaus 0 i]
+    rw [co_fix_view body p hcaus 0 i]
     exact ListLe.nil _ _ _
   | j + 1, hj, i => by
-    rw [co_fix_view_succ body hcaus j i]
+    refine ListLe.of_prefix (co_fix_view_succ body p hcaus j i) ?_
     refine hcplj j (by omega) _ (fun t ht i' => ?_) i
-    refine ListLe.of_prefix ((CoStream.fixSr body i').mono_le ht) ?_
+    refine ListLe.of_prefix ((CoStream.fixSr p body i').mono_le ht) ?_
     exact co_fix_cpl hcplj j (by omega) i'
 
 end KnotCpl
@@ -672,26 +682,22 @@ end KnotCpl
 
 section TickKnotCpl
 
-variable {T : Nat} {n : Nat} {σ : Type}
+variable {T : Nat} {n : Nat} {σ : Type} (p : Fin n → Nat → Bool)
   (body : CoTickSing T n σ → CoTickSing T n σ)
   (hcaus : ∀ (h : Nat) (x y : Fin n → Nat → Trace σ), TAgree h x y →
     TAgree h (CoTickSing.sbody body x) (CoTickSing.sbody body y))
 
 include hcaus
 
-/-- The tick fixpoint equation (raw diagonal, no freeze). -/
-theorem co_tick_fix_succ (t : Nat) (i : Fin n) :
-    CoTickSing.fixSr body i (t + 1)
-      = CoTickSing.sbody body (CoTickSing.fixSr body) i t := by
-  show (iterate (CoTickSing.sshift body)
-      (fun _ _ => ([] : Trace σ)) (t + 2)) i (t + 1) = _
-  show CoTickSing.sbody body
-      (iterate (CoTickSing.sshift body)
-        (fun _ _ => ([] : Trace σ)) (t + 1)) i t = _
+/-- The stage-`t+1` body entry at `t` is the body's entry at the closed knot. -/
+theorem co_tick_fix_stage_eq (t : Nat) (i : Fin n) :
+    CoTickSing.sbody body
+      (iterate (CoTickSing.sshift p body) (fun _ _ => ([] : Trace σ)) (t + 1)) i t
+    = CoTickSing.sbody body (CoTickSing.fixSr p body) i t := by
   refine hcaus t _ _ (fun j t' ht' => ?_) i t (Nat.le_refl _)
-  show (iterate (CoTickSing.sshift body)
-      (fun _ _ => ([] : Trace σ)) (t + 1)) j t' = CoTickSing.fixSr body j t'
-  exact stab_iterate_tick (h := t')
+  show (iterate (CoTickSing.sshift p body)
+      (fun _ _ => ([] : Trace σ)) (t + 1)) j t' = CoTickSing.fixSr p body j t'
+  exact stab_iterate_tick (h := t') p
     (fun h' _hh' x y hxy => hcaus h' x y hxy)
     t' (t + 1) (t' + 1) (Nat.le_refl _)
     (by omega) (Nat.lt_succ_self _) j
@@ -700,8 +706,22 @@ theorem co_tick_fix_succ (t : Nat) (i : Fin n) :
 monotonicity (W4; `tmono_fix_tick` on the raw diagonal). -/
 theorem co_tick_fix_mono
     (hmono : ∀ x, TMono x → TMono (CoTickSing.sbody body x)) :
-    TMono (CoTickSing.fixSr body) :=
-  tmono_tick_diag (A := CoTickSing.sbody body) hcaus hmono
+    TMono (CoTickSing.fixSr p body) :=
+  tmono_tick_diag (A := CoTickSing.sbody body) p hcaus hmono
+
+/-- The tick fixpoint inequation (raw diagonal, no freeze): the knot's
+next entry is a prefix of the body's entry at the closed knot. -/
+theorem co_tick_fix_succ (hmono : ∀ x, TMono x → TMono (CoTickSing.sbody body x))
+    (t : Nat) (i : Fin n) :
+    CoTickSing.fixSr p body i (t + 1)
+      <+: CoTickSing.sbody body (CoTickSing.fixSr p body) i t := by
+  show gateView (p i) (CoTickSing.sbody body
+      (iterate (CoTickSing.sshift p body) (fun _ _ => ([] : Trace σ)) (t + 1)) i) (t + 1) <+: _
+  rw [← co_tick_fix_stage_eq p body hcaus t i, gateView_succ]
+  split
+  · exact List.prefix_refl _
+  · have hm := hmono _ (TMono.tickshift p (A := CoTickSing.sbody body) hmono (t + 1))
+    exact gateView_prefix (p i) _ (fun u => hm i u (u + 1) (Nat.le_succ u)) t
 
 /-- The tick knot coupling (the ascent hypothesis chains earlier
 horizons' couplings up to the current iterate — tick entries are not
@@ -710,31 +730,31 @@ views of one history, so the chain is explicit). The graded coupling
 is the diagonal, `co_tick_fix_mono`). -/
 theorem co_tick_fix_cpl
     (hchain : ∀ m i,
-      (iterate (CoTickSing.vbody body)
+      (iterate (CoTickSing.vbody p body)
         (.mk' fun _ => ([] : Trace σ)) m i)
-      <+: (iterate (CoTickSing.vbody body)
+      <+: (iterate (CoTickSing.vbody p body)
         (.mk' fun _ => ([] : Trace σ)) (m + 1) i))
     (hcplj : ∀ j, j ≤ T → ∀ (x : Fin n → Nat → Trace σ),
       (∀ t, t ≤ j → ∀ i, x i t
-        <+: iterate (CoTickSing.vbody body) (.mk' fun _ => ([] : Trace σ)) (j + 1) i) →
+        <+: iterate (CoTickSing.vbody p body) (.mk' fun _ => ([] : Trace σ)) (j + 1) i) →
       TMono x →
       ∀ i, CoTickSing.sbody body x i j
         <+: (body (CoTickSing.probe2 x
-          (iterate (CoTickSing.vbody body) (.mk' fun _ => ([] : Trace σ)) (j + 1)))).rr i)
+          (iterate (CoTickSing.vbody p body) (.mk' fun _ => ([] : Trace σ)) (j + 1)))).rr i)
     (hmono : ∀ x, TMono x → TMono (CoTickSing.sbody body x)) :
-    ∀ j, j ≤ T → ∀ i, CoTickSing.fixSr body i j
-      <+: (iterate (CoTickSing.vbody body)
+    ∀ j, j ≤ T → ∀ i, CoTickSing.fixSr p body i j
+      <+: (iterate (CoTickSing.vbody p body)
         (.mk' fun _ => ([] : Trace σ)) (j + 1) i)
   | 0, _hj, i => by
-    show (iterate (CoTickSing.sshift body)
+    show (iterate (CoTickSing.sshift p body)
       (fun _ _ => ([] : Trace σ)) 1) i 0 <+: _
     exact List.nil_prefix
   | j + 1, hj, i => by
-    rw [co_tick_fix_succ body hcaus j i]
-    refine hcplj j (by omega) _ (fun t ht i' => ?_) (co_tick_fix_mono body hcaus hmono) i
+    refine (co_tick_fix_succ p body hcaus hmono j i).trans ?_
+    refine hcplj j (by omega) _ (fun t ht i' => ?_) (co_tick_fix_mono p body hcaus hmono) i
     refine (co_tick_fix_cpl hchain hcplj hmono t (by omega) i').trans ?_
     refine trace_chain_glue (f := fun m =>
-      iterate (CoTickSing.vbody body)
+      iterate (CoTickSing.vbody p body)
         (.mk' fun _ => ([] : Trace σ)) m i')
       (a := t + 1) (b := j + 1) (by omega) ?_
     intro m _hm _hmb
@@ -752,13 +772,17 @@ conjunctively and only `fix` populates it. -/
 its source is below (delivered views are takes of earlier source
 views). -/
 theorem deliver_view_cpl {α : Type} [DecidableEq α] {ord : StrOrd}
-    {ret : Retries} (x : StepHist α) (cur : Nat → Nat)
+    {ret : Retries} (x : StepHist α) (p : Nat → Bool) (cur : Nat → Nat)
     {v : PoolCarrier α ord ret} :
     ∀ T, ListLe ord ret (x.view T) v →
-      ListLe ord ret ((x.deliver cur).view T) v
+      ListLe ord ret ((x.deliver p cur).view T) v
   | 0, _ => ListLe.nil _ _ _
-  | u + 1, hsrc =>
-    ListLe.take _ (ListLe.of_prefix (x.mono_le (Nat.le_succ u)) hsrc)
+  | u + 1, hsrc => by
+    show ListLe ord ret (gateView p _ (u + 1)) v
+    rw [gateView_succ]
+    split
+    · exact ListLe.take _ (ListLe.of_prefix (x.mono_le (Nat.le_succ u)) hsrc)
+    · exact deliver_view_cpl x p cur u (ListLe.of_prefix (x.mono_le (Nat.le_succ u)) hsrc)
 
 /-! ## Tick shapes at the corner (D60)
 
@@ -1118,7 +1142,7 @@ def scanWf {ℓ : L} (sts ins outs : TickShape)
     ∧ W1 sts ins outs g ∧ W2 sts ins outs g ∧ W3 sts ins outs g
 
 /-- The coupling of the two legs' tick formers, under `scanWf`. -/
-theorem scan_cpl (pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool) {ℓ : L}
+theorem scan_cpl (pacing : Pacing L mem) {ℓ : L}
     (sts ins outs : TickShape) (x : AtomicOf (Tk Tc mem) (TS Tc mem) (TKS Tc mem) ℓ ins)
     (g : Fin (mem ℓ) → BoundedOf CoBSing CoBounded CoBKSing sts → BoundedOf CoBSing CoBounded CoBKSing ins →
       BoundedOf CoBSing CoBounded CoBKSing sts × BoundedOf CoBSing CoBounded CoBKSing outs)
@@ -1140,7 +1164,7 @@ theorem scan_cpl (pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool) {ℓ : 
 
 /-- The tick former at the corner: the machine's former on the `sr`
 legs, the denotation's on the `rr` legs, coupled under `scanWf`. -/
-def scan (pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool) {ℓ : L}
+def scan (pacing : Pacing L mem) {ℓ : L}
     (sts ins outs : TickShape) (x : AtomicOf (Tk Tc mem) (TS Tc mem) (TKS Tc mem) ℓ ins)
     (g : Fin (mem ℓ) → BoundedOf CoBSing CoBounded CoBKSing sts → BoundedOf CoBSing CoBounded CoBKSing ins →
       BoundedOf CoBSing CoBounded CoBKSing sts × BoundedOf CoBSing CoBounded CoBKSing outs)
@@ -1340,7 +1364,7 @@ set_option warn.classDefReducibility false in
 `(T, T)`; the knots' graded couplings re-instantiate their generic
 bodies at lowered couple horizons `(j, T)`. -/
 def CoupleSem (L : Type) (mem : L → Nat)
-    (pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool)
+    (pacing : Pacing L mem)
     (Tc Td : Nat) (hjT : Tc ≤ Td) : HydroSem L mem where
   Stream ℓ α _ ord ret := CoStream Tc (mem ℓ) α ord ret
   KeyedStream ℓ K V _ _ ord ret := CoKStream Tc (mem ℓ) K V ord ret
@@ -1380,21 +1404,21 @@ def CoupleSem (L : Type) (mem : L → Nat)
       rr := (Values L mem).filterMap s.rr f
       wf := s.wf
       cpl := fun hwf i => ListLe.filterMap_eo (f i) (s.cpl hwf i) }
-  broadcast_closed dt s :=
-    { sr := fun i => mergeN (fun j => ((s.sr j).deliver (dt i j)).map (fun v => (j, v)))
+  broadcast_closed {_c p _α _ _ord _ret} dt s :=
+    { sr := fun i => mergeN (fun j => ((s.sr j).deliver (pacing.active p i) (dt i j)).map (fun v => (j, v)))
       rr := (Values L mem).broadcast_closed () s.rr
       wf := s.wf
       cpl := fun hwf i =>
-        corr_transport (fun j => deliver_view_cpl (s.sr j) (dt i j) Tc (s.cpl hwf j)) }
-  demux dt s addr :=
+        corr_transport (fun j => deliver_view_cpl (s.sr j) (pacing.active p i) (dt i j) Tc (s.cpl hwf j)) }
+  demux {_c p _α _ _ord} dt s addr :=
     { sr := fun i => mergeN (fun j => (((s.sr j).filterMap
           (fun dx => if dx.1 = addr i then some dx.2 else none)).deliver
-          (dt i j)).map (fun v => (j, v)))
+          (pacing.active p i) (dt i j)).map (fun v => (j, v)))
       rr := (Values L mem).demux () s.rr addr
       wf := s.wf
       cpl := fun hwf i =>
         corr_transport (fun j =>
-          deliver_view_cpl ((s.sr j).filterMap _) (dt i j) Tc
+          deliver_view_cpl ((s.sr j).filterMap _) (pacing.active p i) (dt i j) Tc
             (by
               refine ListLe.of_prefix (List.prefix_refl _) ?_
               exact ListLe.filterMap_eo _ (s.cpl hwf j))) }
@@ -1495,64 +1519,64 @@ def CoupleSem (L : Type) (mem : L → Nat)
            (fun w hw => ListLe.of_prefix (hpre w hw) (s.cpl hwf i)) (PoolPairwise_true _ _ _),
          fun i _d _d' h => snapTrace_mono_dec _ g init ok (s.rr i) h⟩ }
   snapshot {ℓ _α _σ _ ord ret b} s _cutd :=
-    { sr := fun i t => (tickSteps (pacing ℓ i) t).map (fun st => s.sr i st)
+    { sr := fun i t => (tickSteps (pacing.ticks ℓ i) t).map (fun st => s.sr i st)
       rr := (Values L mem).snapshot (ret := ret) s.rr
-        (snapDerive ord ret (pacing ℓ) Td s.src)
+        (snapDerive ord ret (pacing.ticks ℓ) Td s.src)
       wf := s.wf
       cpl := fun hwf k hk i => by
         obtain ⟨rd, hval, hagree, hmono⟩ := s.cpl hwf
-        have hws : (tickSteps (pacing ℓ i) k).map (fun st => s.sr i st)
-            = ((tickSteps (pacing ℓ i) k).map (fun st => (s.src i).view st)).map (rd i) := by
+        have hws : (tickSteps (pacing.ticks ℓ i) k).map (fun st => s.sr i st)
+            = ((tickSteps (pacing.ticks ℓ i) k).map (fun st => (s.src i).view st)).map (rd i) := by
           rw [List.map_map]
           exact List.map_congr_left (fun st _ => hval i st)
-        have heq := hagree i ((tickSteps (pacing ℓ i) k).map (fun st => (s.src i).view st))
-          (viewsChain _ (tickSteps_pairwise (pacing ℓ i) k))
+        have heq := hagree i ((tickSteps (pacing.ticks ℓ i) k).map (fun st => (s.src i).view st))
+          (viewsChain _ (tickSteps_pairwise (pacing.ticks ℓ i) k))
           (fun w hw => by
             obtain ⟨st, hst, rfl⟩ := List.mem_map.mp hw
             exact (s.src i).mono_le ((tickSteps_le hst).trans hk))
         have hext := hmono i _ _
-          (snapDerive_mono ord ret (pacing ℓ) (hk.trans hjT) s.src i)
+          (snapDerive_mono ord ret (pacing.ticks ℓ) (hk.trans hjT) s.src i)
         show _ <+: ((Values L mem).snapshot (ℓ := ℓ)
           (ord := ord) (ret := ret) s.rr
-          (snapDerive ord ret (pacing ℓ) Td s.src)) i
+          (snapDerive ord ret (pacing.ticks ℓ) Td s.src)) i
         rw [tickVals_snapshot, hws, heq]
         exact hext
       mono := fun _ i _k _k' hk => List.IsPrefix.map _ (tickSteps_le_steps hk) }
   batch {ℓ _α _} s _cutd :=
     { sr := fun i t => batchesFrom ((s.sr i).view)
-        (tickSteps (pacing ℓ i) t) 0
-      rr := (Values L mem).batch s.rr (batchDerive (pacing ℓ) Td s.sr)
+        (tickSteps (pacing.ticks ℓ i) t) 0
+      rr := (Values L mem).batch s.rr (batchDerive (pacing.ticks ℓ) Td s.sr)
       wf := s.wf
       cpl := fun hwf k hk i => by
-        show (batchesFrom ((s.sr i).view) (tickSteps (pacing ℓ i) k)
+        show (batchesFrom ((s.sr i).view) (tickSteps (pacing.ticks ℓ i) k)
             0).map (fun b => Multiset.ofList b)
-          <+: batchCuts (s.rr i) 0 (batchDerive (pacing ℓ) Td s.sr i)
+          <+: batchCuts (s.rr i) 0 (batchDerive (pacing.ticks ℓ) Td s.sr i)
         have hreal : batchCuts (s.rr i) 0
-            (batchDerive (pacing ℓ) k s.sr i)
-            = batchDerive (pacing ℓ) k s.sr i :=
-          corr_batch (pacing ℓ) k s.sr (fun j => s.rr j)
+            (batchDerive (pacing.ticks ℓ) k s.sr i)
+            = batchDerive (pacing.ticks ℓ) k s.sr i :=
+          corr_batch (pacing.ticks ℓ) k s.sr (fun j => s.rr j)
             (fun j => s.cpl_le hwf hk j) i
         have hmono := batchCuts_mono_dec (pool := s.rr i)
-          (c := 0) (batchDerive_mono (pacing ℓ) (hk.trans hjT) s.sr i)
+          (c := 0) (batchDerive_mono (pacing.ticks ℓ) (hk.trans hjT) s.sr i)
         rw [hreal] at hmono
         exact hmono
       mono := fun _ => tmono_batch (pacing := pacing) s.sr () }
   batch_ordered {ℓ _α _} s _cutd :=
     { sr := fun i t => batchesFrom ((s.sr i).view)
-        (tickSteps (pacing ℓ i) t) 0
+        (tickSteps (pacing.ticks ℓ i) t) 0
       rr := (Values L mem).batch_ordered s.rr
-        (batchOrdDerive (pacing ℓ) Td s.sr)
+        (batchOrdDerive (pacing.ticks ℓ) Td s.sr)
       wf := s.wf
       cpl := fun hwf k hk i => by
-        show batchesFrom ((s.sr i).view) (tickSteps (pacing ℓ i) k) 0
-          <+: sliceCuts (s.rr i) 0 (batchOrdDerive (pacing ℓ) Td s.sr i)
+        show batchesFrom ((s.sr i).view) (tickSteps (pacing.ticks ℓ i) k) 0
+          <+: sliceCuts (s.rr i) 0 (batchOrdDerive (pacing.ticks ℓ) Td s.sr i)
         have hreal : sliceCuts (s.rr i) 0
-            (batchOrdDerive (pacing ℓ) k s.sr i)
-            = batchesFrom ((s.sr i).view) (tickSteps (pacing ℓ i) k) 0 :=
-          corr_batch_ordered (pacing ℓ) k s.sr (fun j => s.rr j)
+            (batchOrdDerive (pacing.ticks ℓ) k s.sr i)
+            = batchesFrom ((s.sr i).view) (tickSteps (pacing.ticks ℓ i) k) 0 :=
+          corr_batch_ordered (pacing.ticks ℓ) k s.sr (fun j => s.rr j)
             (fun j => s.cpl_le hwf hk j) i
         have hmono := sliceCuts_mono_dec (pool := s.rr i)
-          (c := 0) (batchOrdDerive_mono (pacing ℓ) (hk.trans hjT) s.sr i)
+          (c := 0) (batchOrdDerive_mono (pacing.ticks ℓ) (hk.trans hjT) s.sr i)
         rw [hreal] at hmono
         exact hmono
       mono := fun _ => tmono_batch_ordered (pacing := pacing) s.sr () }
@@ -1570,12 +1594,16 @@ def CoupleSem (L : Type) (mem : L → Nat)
       cpl := fun hwf k hk i =>
         zip_prefix (a.cpl hwf.1 k hk i) (b.cpl hwf.2 k hk i)
       mono := fun hwf => tmono_zipTick (pacing := pacing) (a.mono hwf.1) (b.mono hwf.2) }
-  defer_tick init t :=
-    { sr := fun i step => init :: t.sr i step
+  defer_tick {ℓ _σ} init t :=
+    { sr := fun i step =>
+        if (tickSteps (pacing.ticks ℓ i) step).isEmpty then [] else init :: t.sr i step
       rr := (Values L mem).defer_tick init t.rr
       wf := t.wf
-      cpl := fun hwf k hk i =>
-        List.cons_prefix_cons.mpr ⟨rfl, t.cpl hwf k hk i⟩
+      cpl := fun hwf k hk i => by
+        show (if (tickSteps (pacing.ticks ℓ i) k).isEmpty then [] else init :: t.sr i k) <+: init :: t.rr i
+        split
+        · exact List.nil_prefix
+        · exact List.cons_prefix_cons.mpr ⟨rfl, t.cpl hwf k hk i⟩
       mono := fun hwf => tmono_defer_tick (pacing := pacing) init (t.mono hwf) }
   sample_every t times :=
     { sr := famHist (fun step i => sampleAtOpt (t.sr i step)
@@ -1594,7 +1622,7 @@ def CoupleSem (L : Type) (mem : L → Nat)
           (sampleAtOpt_prefix (t.cpl hwf k hk i) (times i)) }
   timeout_snapshot {ℓ _α _ _ord _ret} s verd :=
     { sr := fun i step => (verd i).take
-        (tickSteps (pacing ℓ i) step).length
+        (tickSteps (pacing.ticks ℓ i) step).length
       rr := (Values L mem).timeout_snapshot s.rr verd
       wf := True
       cpl := fun _hwf _k _hk i => List.take_prefix _ _
@@ -1602,7 +1630,7 @@ def CoupleSem (L : Type) (mem : L → Nat)
         List.take_prefix_take_left (tickSteps_le_steps hk).length_le }
   source_interval_batch {ℓ} pulses :=
     { sr := fun i step => (pulses i).take
-        (tickSteps (pacing ℓ i) step).length
+        (tickSteps (pacing.ticks ℓ i) step).length
       rr := (Values L mem).source_interval_batch pulses
       wf := True
       cpl := fun _hwf _k _hk i => List.take_prefix _ _
@@ -1644,69 +1672,69 @@ def CoupleSem (L : Type) (mem : L → Nat)
           rw [hview]
           exact flatten_le_sum (bs.cpl hwf k hk i) }
   fix_stream {ℓ α _ ord ret} _df body :=
-    { sr := CoStream.fixSr body
-      rr := iterate (CoStream.vbody body)
+    { sr := CoStream.fixSr (fun j => pacing.active ℓ j) body
+      rr := iterate (CoStream.vbody (fun j => pacing.active ℓ j) body)
         (.mk' fun _i => PoolBot ord ret) (Td + 1)
       wf := (∀ (h : Nat) (x y : Fin (mem ℓ) → StepHist α),
               SAgree h x y →
               SAgree h (CoStream.sbody body x) (CoStream.sbody body y))
           ∧ (∀ m i, PoolLe ord ret
-              (iterate (CoStream.vbody body)
+              (iterate (CoStream.vbody (fun j => pacing.active ℓ j) body)
                 (.mk' fun _ => PoolBot ord ret) m i)
-              (iterate (CoStream.vbody body)
+              (iterate (CoStream.vbody (fun j => pacing.active ℓ j) body)
                 (.mk' fun _ => PoolBot ord ret) (m + 1) i))
           -- the graded coupling, at the Kleene STAGE `j + 1` (the only
           -- denotation `co_fix_cpl` ever probes — so a body may use what
           -- the stage chain proves of its loop input: D71's knot `requires`)
           ∧ (∀ j, j ≤ Tc → ∀ (x : Fin (mem ℓ) → StepHist α),
               (∀ t, t ≤ j → ∀ i, ListLe ord ret ((x i).view t)
-                (iterate (CoStream.vbody body) (.mk' fun _ => PoolBot ord ret) (j + 1) i)) →
+                (iterate (CoStream.vbody (fun j => pacing.active ℓ j) body) (.mk' fun _ => PoolBot ord ret) (j + 1) i)) →
               ∀ i, ListLe ord ret ((CoStream.sbody body x i).view j)
                 ((body (CoStream.probe2 x
-                  (iterate (CoStream.vbody body) (.mk' fun _ => PoolBot ord ret) (j + 1)))).rr i))
+                  (iterate (CoStream.vbody (fun j => pacing.active ℓ j) body) (.mk' fun _ => PoolBot ord ret) (j + 1)))).rr i))
       cpl := fun hwf i => by
         obtain ⟨hcaus, hchain, hcplj⟩ := hwf
         refine ListLe.trans_pool
-          (co_fix_cpl body hcaus hcplj Tc (Nat.le_refl _) i) ?_
+          (co_fix_cpl body (fun j => pacing.active ℓ j) hcaus hcplj Tc (Nat.le_refl _) i) ?_
         refine pool_chain_glue (f := fun m =>
-          iterate (CoStream.vbody body)
+          iterate (CoStream.vbody (fun j => pacing.active ℓ j) body)
             (.mk' fun _ => PoolBot ord ret) m i)
           (a := Tc + 1) (b := Td + 1) (by omega) ?_
         intro m _hm _hmb
         exact hchain m i }
   fix_tick {ℓ σ} _df body :=
-    { sr := CoTickSing.fixSr body
-      rr := iterate (CoTickSing.vbody body)
+    { sr := CoTickSing.fixSr (fun j => pacing.active ℓ j) body
+      rr := iterate (CoTickSing.vbody (fun j => pacing.active ℓ j) body)
         (.mk' fun _i => ([] : Trace σ)) (Td + 1)
       wf := (∀ (h : Nat) (x y : Fin (mem ℓ) → Nat → Trace σ),
               TAgree h x y →
               TAgree h (CoTickSing.sbody body x)
                 (CoTickSing.sbody body y))
           ∧ (∀ m i,
-              (iterate (CoTickSing.vbody body)
+              (iterate (CoTickSing.vbody (fun j => pacing.active ℓ j) body)
                 (.mk' fun _ => ([] : Trace σ)) m i)
-              <+: (iterate (CoTickSing.vbody body)
+              <+: (iterate (CoTickSing.vbody (fun j => pacing.active ℓ j) body)
                 (.mk' fun _ => ([] : Trace σ)) (m + 1) i))
           ∧ (∀ j, j ≤ Tc → ∀ (x : Fin (mem ℓ) → Nat → Trace σ),
               (∀ t, t ≤ j → ∀ i, x i t
-                <+: iterate (CoTickSing.vbody body) (.mk' fun _ => ([] : Trace σ)) (j + 1) i) →
+                <+: iterate (CoTickSing.vbody (fun j => pacing.active ℓ j) body) (.mk' fun _ => ([] : Trace σ)) (j + 1) i) →
               TMono x →
               ∀ i, CoTickSing.sbody body x i j
                 <+: (body (CoTickSing.probe2 x
-                  (iterate (CoTickSing.vbody body) (.mk' fun _ => ([] : Trace σ)) (j + 1)))).rr i)
+                  (iterate (CoTickSing.vbody (fun j => pacing.active ℓ j) body) (.mk' fun _ => ([] : Trace σ)) (j + 1)))).rr i)
           -- W4 (D71): the machine body preserves step-monotonicity, so
           -- the knot's diagonal is step-monotone (`co_tick_fix_mono`)
           ∧ (∀ (x : Fin (mem ℓ) → Nat → Trace σ), TMono x → TMono (CoTickSing.sbody body x))
       cpl := fun hwf k hk i => by
         obtain ⟨hcaus, hchain, hcplj, hmono⟩ := hwf
-        refine (co_tick_fix_cpl body hcaus hchain hcplj hmono k hk i).trans ?_
+        refine (co_tick_fix_cpl (fun j => pacing.active ℓ j) body hcaus hchain hcplj hmono k hk i).trans ?_
         refine trace_chain_glue (f := fun m =>
-          iterate (CoTickSing.vbody body)
+          iterate (CoTickSing.vbody (fun j => pacing.active ℓ j) body)
             (.mk' fun _ => ([] : Trace σ)) m i)
           (a := k + 1) (b := Td + 1) (by omega) ?_
         intro m _hm _hmb
         exact hchain m i
-      mono := fun hwf => co_tick_fix_mono body hwf.1 hwf.2.2.2 }
+      mono := fun hwf => co_tick_fix_mono (fun j => pacing.active ℓ j) body hwf.1 hwf.2.2.2 }
 
   tinto_keyed {_ℓ _K _V _ _ ord} x :=
     { sr := x.sr
@@ -1737,7 +1765,7 @@ def CoupleSem (L : Type) (mem : L → Nat)
   -- the conditional reduce: the corner's `wf` carries the pairwise fact
   -- over the denotation leg's ACCUMULATED content (hereditary to every
   -- prefix the machine has realized)
-  reduce_watermark {_ℓ _K _V _ _ _ ord} ks wm f Pre _ ok :=
+  reduce_watermark {_ℓ _K _V _ _ _ _ ord} ks wm f Pre _ ok :=
     { sr := fun i t => scanAcrossTicksTrace (reduceWatermarkEager f) (SchedKMap.empty, none)
         (Trace.zip (ks.sr i t) (wm.sr i t))
       rr := (Values L mem).reduce_watermark ks.rr wm.rr f Pre ok
@@ -1833,7 +1861,7 @@ def CoupleSem (L : Type) (mem : L → Nat)
   binto_keyed b :=
     { sr := b.sr, rr := (Values L mem).binto_keyed b.rr, wf := b.wf
       cpl := fun h => CoupledBatch.intoKeyed (b.cpl h) }
-  bkfold {_K _V _A _ _ _ _ord ret} g init Pre _ ok ks :=
+  bkfold {_K _V _A _ _ _ _ _ord ret} g init Pre _ ok ks :=
     { sr := keyedFoldAssoc g init ks.sr
       rr := (Values L mem).bkfold g init Pre ok ks.rr
       wf := ks.wf ∧ ret = .exactlyOnce ∧ ks.rr.Pairwise Pre

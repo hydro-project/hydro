@@ -63,7 +63,7 @@ def cpE3 : HE.Stream .prop Nat .totalOrder .exactlyOnce :=
   .mk' fun i => if i.val = 0 then [99] else [xv, yv]
 
 /-- Acceptor 0's log after `99`: the one-entry view proposer 1 recovers. -/
-def b2cL0 : ALog Nat 2 := (none, [(0, ⟨bA, some 99⟩)])
+def b2cL0 : ALog Nat 2 := (none, HMap.ofList [(0, ⟨bA, some 99⟩)])
 /-- Proposer 0's `99` at slot 0. -/
 def b2cP99 : P2a Nat 2 := ⟨0, bA, 0, some 99⟩
 /-- Proposer 1's recommit of the recovered entry. -/
@@ -95,15 +95,15 @@ def b2cDec (ySlot : Nat) :
         else [{bB}, {}, {}]
       p1b := { cqwr := fun i =>
                  if i.val = 0 then
-                   [{}, {(bA, .ok (none, [])), (bA, .ok (none, []))}]
-                 else [{}, {(bB, .ok b2cL0), (bB, .ok (none, []))}, {}]
+                   [{}, {(bA, .ok (none, HMap.ofList [])), (bA, .ok (none, HMap.ofList []))}]
+                 else [{}, {(bB, .ok b2cL0), (bB, .ok (none, HMap.ofList []))}, {}]
                order := fun i =>
-                 if i.val = 0 then [(bA, (none, [])), (bA, (none, []))]
-                 else [(bB, b2cL0), (bB, (none, []))]
+                 if i.val = 0 then [(bA, (none, HMap.ofList [])), (bA, (none, HMap.ofList []))]
+                 else [(bB, b2cL0), (bB, (none, HMap.ofList []))]
                -- proposer 1's two P1bs are read on BOTH leader ticks
                snap := fun i =>
-                 if i.val = 0 then [{}, {(bA, (none, [])), (bA, (none, []))}]
-                 else [{}, {(bB, b2cL0), (bB, (none, []))}, {}] }
+                 if i.val = 0 then [{}, {(bA, (none, HMap.ofList [])), (bA, (none, HMap.ofList []))}]
+                 else [{}, {(bB, b2cL0), (bB, (none, HMap.ofList []))}, {}] }
       fuelFail := (1 : UnfoldFuel)
       fuelIAL := (1 : UnfoldFuel)
       fuelLead := (3 : UnfoldFuel) }

@@ -17,7 +17,7 @@ components.
 namespace Hydro
 
 variable {L : Type} {mem : L → Nat}
-  {pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool} {Tc Td : Nat}
+  {pacing : Pacing L mem} {Tc Td : Nat}
   {hjT : Tc ≤ Td} {ℓ : L}
 
 /-! ## Boundary constructors (instance-projected types)
@@ -620,21 +620,21 @@ theorem co_tassume_ordering_wf {α : Type} [DecidableEq α]
     (sel : (CoupleSem L mem pacing Tc Td hjT).TickOrderSelDec (mem ℓ) α) :
     ((CoupleSem L mem pacing Tc Td hjT).tassume_ordering u sel).wf = u.wf := rfl
 
-theorem co_reduce_watermark_rr {K V : Type} [DecidableEq K] [DecidableEq V] [LinearOrder K]
+theorem co_reduce_watermark_rr {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V] [LinearOrder K]
     {ord : StrOrd}
     (ks : (CoupleSem L mem pacing Tc Td hjT).AtomicKeyedStream ℓ K V ord .exactlyOnce)
     (wm : (CoupleSem L mem pacing Tc Td hjT).Atomic ℓ (Option K)) (f : V → V → V)
     (Pre : V → V → Prop) [DecidableRel Pre] (ok : FoldOk ord .exactlyOnce Pre (reduceStep f)) :
     ((CoupleSem L mem pacing Tc Td hjT).reduce_watermark ks wm f Pre ok).rr
       = (Values L mem).reduce_watermark ks.rr wm.rr f Pre ok := rfl
-theorem co_reduce_watermark_sr {K V : Type} [DecidableEq K] [DecidableEq V] [LinearOrder K]
+theorem co_reduce_watermark_sr {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V] [LinearOrder K]
     {ord : StrOrd}
     (ks : (CoupleSem L mem pacing Tc Td hjT).AtomicKeyedStream ℓ K V ord .exactlyOnce)
     (wm : (CoupleSem L mem pacing Tc Td hjT).Atomic ℓ (Option K)) (f : V → V → V)
     (Pre : V → V → Prop) [DecidableRel Pre] (ok : FoldOk ord .exactlyOnce Pre (reduceStep f)) :
     ((CoupleSem L mem pacing Tc Td hjT).reduce_watermark ks wm f Pre ok).sr
       = (SchedSem L mem pacing).reduce_watermark (ℓ := ℓ) ks.sr wm.sr f Pre ok := rfl
-theorem co_reduce_watermark_wf {K V : Type} [DecidableEq K] [DecidableEq V] [LinearOrder K]
+theorem co_reduce_watermark_wf {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V] [LinearOrder K]
     {ord : StrOrd}
     (ks : (CoupleSem L mem pacing Tc Td hjT).AtomicKeyedStream ℓ K V ord .exactlyOnce)
     (wm : (CoupleSem L mem pacing Tc Td hjT).Atomic ℓ (Option K)) (f : V → V → V)
@@ -758,7 +758,7 @@ theorem co_snapshot_rr {α σ : Type} [DecidableEq α] {ord : StrOrd}
     (cutd : (CoupleSem L mem pacing Tc Td hjT).SnapDec (mem ℓ) α ord) :
     ((CoupleSem L mem pacing Tc Td hjT).snapshot s cutd).rr
       = (Values L mem).snapshot (ret := ret) s.rr
-          (snapDerive ord ret (pacing ℓ) Td s.src) := rfl
+          (snapDerive ord ret (pacing.ticks ℓ) Td s.src) := rfl
 
 theorem co_snapshot_sr {α σ : Type} [DecidableEq α] {ord : StrOrd}
     {ret : Retries} {b : SingBound σ}
@@ -778,7 +778,7 @@ theorem co_batch_rr {α : Type} [DecidableEq α]
     (s : (CoupleSem L mem pacing Tc Td hjT).Stream ℓ α .noOrder .exactlyOnce)
     (cutd : (CoupleSem L mem pacing Tc Td hjT).BatchDec (mem ℓ) α) :
     ((CoupleSem L mem pacing Tc Td hjT).batch s cutd).rr
-      = (Values L mem).batch s.rr (batchDerive (pacing ℓ) Td s.sr)
+      = (Values L mem).batch s.rr (batchDerive (pacing.ticks ℓ) Td s.sr)
     := rfl
 
 theorem co_batch_sr {α : Type} [DecidableEq α]
@@ -798,7 +798,7 @@ theorem co_batch_ordered_rr {α : Type} [DecidableEq α]
     (cutd : (CoupleSem L mem pacing Tc Td hjT).OrdBatchDec (mem ℓ)) :
     ((CoupleSem L mem pacing Tc Td hjT).batch_ordered s cutd).rr
       = (Values L mem).batch_ordered s.rr
-          (batchOrdDerive (pacing ℓ) Td s.sr) := rfl
+          (batchOrdDerive (pacing.ticks ℓ) Td s.sr) := rfl
 
 theorem co_batch_ordered_sr {α : Type} [DecidableEq α]
     (s : (CoupleSem L mem pacing Tc Td hjT).Stream ℓ α .totalOrder
@@ -989,17 +989,17 @@ theorem co_binto_keyed_wf {K V : Type} [DecidableEq K] [DecidableEq V]
     (b : (CoupleSem L mem pacing Tc Td hjT).BoundedStream (K × V) ord .exactlyOnce) :
     ((CoupleSem L mem pacing Tc Td hjT).binto_keyed b).wf = b.wf := rfl
 
-theorem co_bkfold_rr {K V A : Type} [DecidableEq K] [DecidableEq V] [DecidableEq A]
+theorem co_bkfold_rr {K V A : Type} [DecidableEq K] [Hashable K] [DecidableEq V] [DecidableEq A]
     (g : A → V → A) (init : A) (Pre : V → V → Prop) [DecidableRel Pre] (ok : FoldOk ord ret Pre g)
     (ks : (CoupleSem L mem pacing Tc Td hjT).BoundedKeyedStream K V ord ret) :
     ((CoupleSem L mem pacing Tc Td hjT).bkfold g init Pre ok ks).rr
       = (Values L mem).bkfold g init Pre ok ks.rr := rfl
-theorem co_bkfold_sr {K V A : Type} [DecidableEq K] [DecidableEq V] [DecidableEq A]
+theorem co_bkfold_sr {K V A : Type} [DecidableEq K] [Hashable K] [DecidableEq V] [DecidableEq A]
     (g : A → V → A) (init : A) (Pre : V → V → Prop) [DecidableRel Pre] (ok : FoldOk ord ret Pre g)
     (ks : (CoupleSem L mem pacing Tc Td hjT).BoundedKeyedStream K V ord ret) :
     ((CoupleSem L mem pacing Tc Td hjT).bkfold g init Pre ok ks).sr
       = (SchedSem L mem pacing).bkfold (ord := ord) (ret := ret) g init Pre ok ks.sr := rfl
-theorem co_bkfold_wf {K V A : Type} [DecidableEq K] [DecidableEq V] [DecidableEq A]
+theorem co_bkfold_wf {K V A : Type} [DecidableEq K] [Hashable K] [DecidableEq V] [DecidableEq A]
     (g : A → V → A) (init : A) (Pre : V → V → Prop) [DecidableRel Pre] (ok : FoldOk ord ret Pre g)
     (ks : (CoupleSem L mem pacing Tc Td hjT).BoundedKeyedStream K V ord ret) :
     ((CoupleSem L mem pacing Tc Td hjT).bkfold g init Pre ok ks).wf
@@ -1055,39 +1055,39 @@ theorem co_bksEntries_rr_pairwise_key {K V : Type} [DecidableEq K] [DecidableEq 
       ((CoupleSem L mem pacing Tc Td hjT).bksEntries m).rr :=
   KeyedMap.entries_pairwise_key m.rr
 
-theorem co_bjoin_rr {K V W : Type} [DecidableEq K] [DecidableEq V] [DecidableEq W] {ord' : StrOrd}
+theorem co_bjoin_rr {K V W : Type} [DecidableEq K] [Hashable K] [DecidableEq V] [DecidableEq W] {ord' : StrOrd}
     (a : (CoupleSem L mem pacing Tc Td hjT).BoundedStream (K × V) ord .exactlyOnce)
     (b : (CoupleSem L mem pacing Tc Td hjT).BoundedStream (K × W) ord' .exactlyOnce) :
     ((CoupleSem L mem pacing Tc Td hjT).bjoin a b).rr = (Values L mem).bjoin a.rr b.rr := rfl
-theorem co_bjoin_sr {K V W : Type} [DecidableEq K] [DecidableEq V] [DecidableEq W] {ord' : StrOrd}
+theorem co_bjoin_sr {K V W : Type} [DecidableEq K] [Hashable K] [DecidableEq V] [DecidableEq W] {ord' : StrOrd}
     (a : (CoupleSem L mem pacing Tc Td hjT).BoundedStream (K × V) ord .exactlyOnce)
     (b : (CoupleSem L mem pacing Tc Td hjT).BoundedStream (K × W) ord' .exactlyOnce) :
     ((CoupleSem L mem pacing Tc Td hjT).bjoin a b).sr = (SchedSem L mem pacing).bjoin (ord := ord) (ord' := ord') a.sr b.sr := rfl
-theorem co_bjoin_wf {K V W : Type} [DecidableEq K] [DecidableEq V] [DecidableEq W] {ord' : StrOrd}
+theorem co_bjoin_wf {K V W : Type} [DecidableEq K] [Hashable K] [DecidableEq V] [DecidableEq W] {ord' : StrOrd}
     (a : (CoupleSem L mem pacing Tc Td hjT).BoundedStream (K × V) ord .exactlyOnce)
     (b : (CoupleSem L mem pacing Tc Td hjT).BoundedStream (K × W) ord' .exactlyOnce) :
     ((CoupleSem L mem pacing Tc Td hjT).bjoin a b).wf = (a.wf ∧ b.wf) := rfl
 
-theorem co_bantiJoin_rr {K V : Type} [DecidableEq K] [DecidableEq V] {ord' : StrOrd}
+theorem co_bantiJoin_rr {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V] {ord' : StrOrd}
     (a : (CoupleSem L mem pacing Tc Td hjT).BoundedStream (K × V) ord .exactlyOnce)
     (ks : (CoupleSem L mem pacing Tc Td hjT).BoundedStream K ord' .exactlyOnce) :
     ((CoupleSem L mem pacing Tc Td hjT).bantiJoin a ks).rr = (Values L mem).bantiJoin a.rr ks.rr := rfl
-theorem co_bantiJoin_sr {K V : Type} [DecidableEq K] [DecidableEq V] {ord' : StrOrd}
+theorem co_bantiJoin_sr {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V] {ord' : StrOrd}
     (a : (CoupleSem L mem pacing Tc Td hjT).BoundedStream (K × V) ord .exactlyOnce)
     (ks : (CoupleSem L mem pacing Tc Td hjT).BoundedStream K ord' .exactlyOnce) :
     ((CoupleSem L mem pacing Tc Td hjT).bantiJoin a ks).sr = (SchedSem L mem pacing).bantiJoin (ord := ord) (ord' := ord') a.sr ks.sr := rfl
-theorem co_bantiJoin_wf {K V : Type} [DecidableEq K] [DecidableEq V] {ord' : StrOrd}
+theorem co_bantiJoin_wf {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V] {ord' : StrOrd}
     (a : (CoupleSem L mem pacing Tc Td hjT).BoundedStream (K × V) ord .exactlyOnce)
     (ks : (CoupleSem L mem pacing Tc Td hjT).BoundedStream K ord' .exactlyOnce) :
     ((CoupleSem L mem pacing Tc Td hjT).bantiJoin a ks).wf = (a.wf ∧ ks.wf) := rfl
 
-theorem co_bfilterNotIn_rr {ord' : StrOrd}
+theorem co_bfilterNotIn_rr [Hashable α] {ord' : StrOrd}
     (a : (CoupleSem L mem pacing Tc Td hjT).BoundedStream α ord .exactlyOnce) (o : (CoupleSem L mem pacing Tc Td hjT).BoundedStream α ord' .exactlyOnce) :
     ((CoupleSem L mem pacing Tc Td hjT).bfilterNotIn a o).rr = (Values L mem).bfilterNotIn a.rr o.rr := rfl
-theorem co_bfilterNotIn_sr {ord' : StrOrd}
+theorem co_bfilterNotIn_sr [Hashable α] {ord' : StrOrd}
     (a : (CoupleSem L mem pacing Tc Td hjT).BoundedStream α ord .exactlyOnce) (o : (CoupleSem L mem pacing Tc Td hjT).BoundedStream α ord' .exactlyOnce) :
     ((CoupleSem L mem pacing Tc Td hjT).bfilterNotIn a o).sr = (SchedSem L mem pacing).bfilterNotIn (ord := ord) (ord' := ord') a.sr o.sr := rfl
-theorem co_bfilterNotIn_wf {ord' : StrOrd}
+theorem co_bfilterNotIn_wf [Hashable α] {ord' : StrOrd}
     (a : (CoupleSem L mem pacing Tc Td hjT).BoundedStream α ord .exactlyOnce) (o : (CoupleSem L mem pacing Tc Td hjT).BoundedStream α ord' .exactlyOnce) :
     ((CoupleSem L mem pacing Tc Td hjT).bfilterNotIn a o).wf = (a.wf ∧ o.wf) := rfl
 

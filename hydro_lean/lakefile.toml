@@ -26,3 +26,7 @@ root = "PaxosDemo"
 [[lean_exe]]
 name = "twopc"
 root = "TwoPCDemo"
+
+[[lean_exe]]
+name = "wired"
+root = "WiredDemo"

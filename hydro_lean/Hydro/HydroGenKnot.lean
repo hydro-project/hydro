@@ -62,7 +62,10 @@ def proveByTacOpen (goal : Expr) (tac : String) : TermElabM Expr :=
   let stx ← match Parser.runParserCategory env `tactic tac with
     | .ok s => pure s
     | .error e => throwError "HydroGen: tactic parse error: {e}\n{tac}"
-  Term.withoutErrToSorry do
+  -- same linter/info-tree suppression as `proveByTac` (generated simp sets
+  -- are over-approximate by design)
+  Term.withoutErrToSorry <| withEnableInfoTree false <|
+      withOptions (fun o => Lean.Elab.Tactic.linter.unusedSimpArgs.set o false) do
     let mvar ← mkFreshExprSyntheticOpaqueMVar goal
     let remaining ← Tactic.run mvar.mvarId! <| Tactic.withoutRecover do
       Tactic.evalTactic stx; Tactic.pruneSolvedGoals
@@ -609,6 +612,21 @@ def extractFix2 (mc : ModCtx) : TermElabM (Option (Bool × Expr × Expr × Expr)
   if let some app' ← whnfUntil app ``HydroSem.fixTick then
     return ← pick app' true
   pure none
+
+/-- The knot's members' activity skeletons, `fun j => pacing.active ℓ j` for the
+knot's location `ℓ` (read off the loop type `H.Stream ℓ …`/`H.Atomic ℓ …`): the
+first argument of `CoStream.fixSr`/`vbody` and their tick twins. -/
+def KnotCtx.tickOf (kc : KnotCtx) : TermElabM Expr := do
+  let ty ← instantiateMVars kc.loopTy
+  let ty ← if ty.isAppOf ``HydroSem.Stream || ty.isAppOf ``HydroSem.Atomic then pure ty
+    else whnfR ty
+  let args := ty.getAppArgs
+  unless (ty.isAppOf ``HydroSem.Stream || ty.isAppOf ``HydroSem.Atomic) && args.size ≥ 4 do
+    throwError "HydroGen: {kc.mc.mName}: knot loop type is not a stream/atomic wire:{indentExpr ty}"
+  let ℓ := args[3]!
+  let finTy := mkApp (mkConst ``Fin) (mkApp kc.mc.memE ℓ)
+  withLocalDecl `j .default finTy fun j => do
+    mkLambdaFVars #[j] (← mkAppM ``Pacing.active #[kc.mc.pacing, ℓ, j])
 
 /-- Open knot `K`'s context: module telescope, fix extraction, body
 parse (the loop fvar stays in scope for `k`). -/
@@ -1732,7 +1750,7 @@ def loopInvAtStage (kc : KnotCtx) (vbodyB seedV jE : Expr) :
   -- the knot's binders at `Values` (the stages' argument list: context,
   -- then every non-plain arg projected — wires `.rr`, decisions as the
   -- mono leg spells them)
-  let fixSrB ← mkAppM kc.gad.fixSr #[kc.B]
+  let fixSrB ← mkAppM kc.gad.fixSr #[← kc.tickOf, kc.B]
   let mut vargs : Array Expr := #[]
   for i in [0:mc.args.size] do
     match mc.kinds[i]! with
@@ -1834,8 +1852,9 @@ def genKnotWf (kc : KnotCtx) : TermElabM Name := do
       m := m.insert d.1 hyp
     pure m
   let B := kc.B
-  let vbodyB ← mkAppM gad.vbody #[B]
-  let fixSrB ← mkAppM gad.fixSr #[B]
+  let pE ← kc.tickOf
+  let vbodyB ← mkAppM gad.vbody #[pE, B]
+  let fixSrB ← mkAppM gad.fixSr #[pE, B]
   let loopTy := kc.loopTy
   let domX := reinterp mc.corner mc.sched loopTy
   let domV := reinterp mc.corner mc.values loopTy

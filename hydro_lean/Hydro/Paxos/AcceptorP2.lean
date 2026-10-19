@@ -275,7 +275,7 @@ hydro def acceptor_p2 {ckα : Type} [DecidableEq ckα]
   -- closes it)
   -- a_checkpoint.into_singleton().zip(a_log_snapshot).latest_atomic()
   tick (input lg := a_log) (input ck := a_checkpoint_tick) :=
-    let a_log_snapshot := H.bfold insertSorted [] NoKeyOverlap insertSorted_foldOk
+    let a_log_snapshot := H.bfold HMap.insert HMap.empty NoKeyOverlap HMap.insert_foldOk
       (H.bksEntries lg)
     emit (a_log_wc := H.bsZip ck a_log_snapshot);
   -- the qualified entries consumed through tick `t`, and the per-slot
@@ -343,11 +343,10 @@ hydro def acceptor_p2 {ckα : Type} [DecidableEq ckα]
     obtain rfl : c' = c := Trace.read_inj hc' hc
     rw [hwm j t _ hc']
     refine ⟨q, c', hq, hc', rfl, fun slot e => ?_⟩
-    show (slot, e) ∈ Multiset.foldlOn NoKeyOverlap insertSorted [] insertSorted_foldOk
+    show (slot, e) ∈ Multiset.foldlOn NoKeyOverlap HMap.insert HMap.empty HMap.insert_foldOk
       (KeyedMap.gcBelow c' (KeyedMap.ofReduce logMerge LogTie logMerge_comm
         (KeyedPool.ofMultiset (((a_p2as_to_place_in_log j).take (t + 1)).sum)))).entries ↔ _
-    rw [mem_foldlOn_insertSorted _ (KeyedMap.entries_pairwise_key _), KeyedMap.mem_entries_iff]
-    simp only [List.not_mem_nil, false_or]
+    rw [HMap.mem_foldlOn_insert_empty _ (KeyedMap.entries_pairwise_key _), KeyedMap.mem_entries_iff]
   -- a tick with a qualified batch and a checkpoint read publishes a log
   ghost have hlog_exists : ∀ (j : Fin (mem acc)) {t : Nat}
       {q : Multiset (Nat × LogValue P (mem prop))} {c : Option Nat},
@@ -628,7 +627,7 @@ def ckStep {ckα : Type} [DecidableEq ckα] {ckord : StrOrd} {ckret : Retries} (
      fun _ => [0]⟩
     .triv).1 0
   = [((none : Option Nat),
-      [(0, (⟨Ballot.mk 1 0, some 42⟩ : LogValue Nat 1))])]
+      HMap.ofList [(0, (⟨Ballot.mk 1 0, some 42⟩ : LogValue Nat 1))])]
 
 #guard_eval (acceptor_p2 (Values PaxLoc (paxMem 1 1)) .acc .prop
     (ckα := Nat) (ckord := .totalOrder) (ckret := .exactlyOnce)
@@ -653,8 +652,8 @@ def ckStep {ckα : Type} [DecidableEq ckα] {ckord : StrOrd} {ckret : Retries} (
      fun _ => [0, 0]⟩
     .triv).1 0
   = [((none : Option Nat),
-      [(0, (⟨Ballot.mk 1 0, some 42⟩ : LogValue Nat 1)), (1, ⟨Ballot.mk 1 0, some 7⟩)]),
-     (some 1, [(1, ⟨Ballot.mk 1 0, some 7⟩)])]
+      HMap.ofList [(0, (⟨Ballot.mk 1 0, some 42⟩ : LogValue Nat 1)), (1, ⟨Ballot.mk 1 0, some 7⟩)]),
+     (some 1, HMap.ofList [(1, ⟨Ballot.mk 1 0, some 7⟩)])]
 
 -- The refused merge (the `assume`, visible): two same-slot same-ballot
 -- entries with different values — the pool violates the `requires`, the
@@ -668,7 +667,7 @@ def ckStep {ckα : Type} [DecidableEq ckα] {ckord : StrOrd} {ckret : Retries} (
     ⟨fun _ => [{⟨0, Ballot.mk 1 0, 0, some 42⟩, ⟨0, Ballot.mk 1 0, 0, some 7⟩}],
      fun _ => [0]⟩
     .triv).1 0
-  = [((none : Option Nat), [])]
+  = [((none : Option Nat), HMap.ofList [])]
 
 #nondet_census acceptor_p2 (nondets := 2) (scheds := 1) (fuels := 0)
 

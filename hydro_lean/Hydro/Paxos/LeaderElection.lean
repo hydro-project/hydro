@@ -730,9 +730,9 @@ private def leDec : LEDec (Values PaxLoc (paxMem 1 1)) 1 1 Nat :=
             interval := fun _ => [true, true] }   -- trigger pulses
     p1aBatch := fun _ => [{Ballot.mk 0 0}, {}]    -- p1a batch cuts
     p1b := { cqwr := fun _ =>
-               [{(Ballot.mk 0 0, Except.ok (none, []))}, {}]
-             order := fun _ => [(Ballot.mk 0 0, (none, []))]
-             snap := fun _ => [{}, {(Ballot.mk 0 0, (none, []))}] }
+               [{(Ballot.mk 0 0, Except.ok (none, HMap.ofList []))}, {}]
+             order := fun _ => [(Ballot.mk 0 0, (none, HMap.ofList []))]
+             snap := fun _ => [{}, {(Ballot.mk 0 0, (none, HMap.ofList []))}] }
                                                -- p1b snapshot increments
     fuelFail := (1 : UnfoldFuel), fuelIAL := (1 : UnfoldFuel)
     fuelLead := (3 : UnfoldFuel) }
@@ -741,7 +741,7 @@ private def leScenario :=
   (leader_election (Values PaxLoc (paxMem 1 1)) .guarded .prop .acc 1 1
     leDec LESched.triv
     (.mk' fun _ => (0 : Multiset (Ballot 1)))  -- no p2b feedback
-    (.mk' fun _ => [(none, []), (none, [])]))  -- a_log wire
+    (.mk' fun _ => [(none, HMap.ofList []), (none, HMap.ofList [])]))  -- a_log wire
 
 #nondet_census leader_election (nondets := 8) (scheds := 3) (fuels := 3)
 

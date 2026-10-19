@@ -296,7 +296,7 @@ theorem vmono_tassume_ordering {α : Type} [DecidableEq α]
       <+: ((Values L mem).tassume_ordering (ℓ := ℓ) b d i) :=
   fun i => realizeTicks_prefix_left (h i) (d i)
 
-theorem vmono_reduce_watermark {K V : Type} [DecidableEq K] [DecidableEq V] [LinearOrder K]
+theorem vmono_reduce_watermark {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V] [LinearOrder K]
     {ord : StrOrd}
     {a b : (Values L mem).AtomicKeyedStream ℓ K V ord .exactlyOnce}
     {w w' : (Values L mem).Atomic ℓ (Option K)}

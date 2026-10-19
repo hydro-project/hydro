@@ -46,7 +46,7 @@ def yv : Nat := 20
 def xv : Nat := 10
 
 /-- The log acceptors 1/2 carry once P1's `x` is written at slot 0. -/
-def logX : Option Nat × LogMap Nat 2 := (none, [(0, ⟨bB, some xv⟩)])
+def logX : Option Nat × LogMap Nat 2 := (none, HMap.ofList [(0, ⟨bB, some xv⟩)])
 
 def p2aX : P2a Nat 2 := ⟨1, bB, 0, some xv⟩
 /-- P0's fresh `y` at slot 0 @ `bC` (the poisoned emission, if tick 2
@@ -79,19 +79,19 @@ def ndDec : PaxosCoreDec HX 2 3 Nat Nat .totalOrder where
                -- (ACAUSAL — replies to tick 3's solicitation)
                cqwr := fun i =>
                  if i.val = 0 then
-                   [{}, {(bA, .ok (none, [])), (bA, .ok (none, []))},
+                   [{}, {(bA, .ok (none, HMap.ofList [])), (bA, .ok (none, HMap.ofList []))},
                     {(bC, .ok logX), (bC, .ok logX)}, {}]
                  else
-                   [{}, {(bB, .ok (none, [])), (bB, .ok (none, []))}]
+                   [{}, {(bB, .ok (none, HMap.ofList [])), (bB, .ok (none, HMap.ofList []))}]
                order := fun i =>
                  if i.val = 0 then
-                   [(bA, (none, [])), (bA, (none, [])),
+                   [(bA, (none, HMap.ofList [])), (bA, (none, HMap.ofList [])),
                     (bC, logX), (bC, logX)]
-                 else [(bB, (none, [])), (bB, (none, []))]
+                 else [(bB, (none, HMap.ofList [])), (bB, (none, HMap.ofList []))]
                snap := fun i =>
                  if i.val = 0 then
-                   [{}, {(bA, (none, [])), (bA, (none, []))}, {(bC, logX), (bC, logX)}, {}]
-                 else [{}, {(bB, (none, [])), (bB, (none, []))}] }
+                   [{}, {(bA, (none, HMap.ofList [])), (bA, (none, HMap.ofList []))}, {(bC, logX), (bC, logX)}, {}]
+                 else [{}, {(bB, (none, HMap.ofList [])), (bB, (none, HMap.ofList []))}] }
       fuelFail := (1 : UnfoldFuel)
       fuelIAL := (1 : UnfoldFuel)
       fuelLead := (5 : UnfoldFuel) }
@@ -145,19 +145,19 @@ def ndCausalDec : PaxosCoreDec HX 2 3 Nat Nat .totalOrder where
         else [{bA}, {bB}, {}, {bC}, {}, {}, {}]
       p1b := { cqwr := fun i =>
                  if i.val = 0 then
-                   [{}, {(bA, .ok (none, [])), (bA, .ok (none, []))},
+                   [{}, {(bA, .ok (none, HMap.ofList [])), (bA, .ok (none, HMap.ofList []))},
                     {}, {(bC, .ok logX), (bC, .ok logX)}, {}]
                  else
-                   [{}, {(bB, .ok (none, [])), (bB, .ok (none, []))}]
+                   [{}, {(bB, .ok (none, HMap.ofList [])), (bB, .ok (none, HMap.ofList []))}]
                order := fun i =>
                  if i.val = 0 then
-                   [(bA, (none, [])), (bA, (none, [])),
+                   [(bA, (none, HMap.ofList [])), (bA, (none, HMap.ofList [])),
                     (bC, logX), (bC, logX)]
-                 else [(bB, (none, [])), (bB, (none, []))]
+                 else [(bB, (none, HMap.ofList [])), (bB, (none, HMap.ofList []))]
                snap := fun i =>
                  if i.val = 0 then
-                   [{}, {(bA, (none, [])), (bA, (none, []))}, {}, {(bC, logX), (bC, logX)}, {}]
-                 else [{}, {(bB, (none, [])), (bB, (none, []))}] }
+                   [{}, {(bA, (none, HMap.ofList [])), (bA, (none, HMap.ofList []))}, {}, {(bC, logX), (bC, logX)}, {}]
+                 else [{}, {(bB, (none, HMap.ofList [])), (bB, (none, HMap.ofList []))}] }
       fuelFail := (1 : UnfoldFuel)
       fuelIAL := (1 : UnfoldFuel)
       fuelLead := (6 : UnfoldFuel) }

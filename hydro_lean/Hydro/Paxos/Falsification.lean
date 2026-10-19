@@ -84,15 +84,15 @@ def b1Dec : PaxosCoreDec HB1 2 3 Nat Nat .totalOrder where
                -- acceptor 1's log-carrying reply unconsumed
                cqwr := fun i =>
                  if i.val = 0 then
-                   [{}, {(bA, .ok (none, [])), (bA, .ok (none, []))}]
+                   [{}, {(bA, .ok (none, HMap.ofList [])), (bA, .ok (none, HMap.ofList []))}]
                  else
-                   [{}, {}, {(bB, .ok (none, [])), (bB, .ok (none, []))}]
+                   [{}, {}, {(bB, .ok (none, HMap.ofList [])), (bB, .ok (none, HMap.ofList []))}]
                order := fun i =>
-                 if i.val = 0 then [(bA, (none, [])), (bA, (none, []))]
-                 else [(bB, (none, [])), (bB, (none, []))]
+                 if i.val = 0 then [(bA, (none, HMap.ofList [])), (bA, (none, HMap.ofList []))]
+                 else [(bB, (none, HMap.ofList [])), (bB, (none, HMap.ofList []))]
                snap := fun i =>
-                 if i.val = 0 then [{}, {(bA, (none, [])), (bA, (none, []))}]
-                 else [{}, {}, {(bB, (none, [])), (bB, (none, []))}] }
+                 if i.val = 0 then [{}, {(bA, (none, HMap.ofList [])), (bA, (none, HMap.ofList []))}]
+                 else [{}, {}, {(bB, (none, HMap.ofList [])), (bB, (none, HMap.ofList []))}] }
       fuelFail := (1 : UnfoldFuel)
       fuelIAL := (1 : UnfoldFuel)
       fuelLead := (3 : UnfoldFuel) }
@@ -152,7 +152,7 @@ knots is prohibitive). -/
 
 /-- A one-entry recovered log (accepted at ballot `(0,0)` by one
 acceptor), re-presented on two consecutive leader ticks. -/
-def b2View : Multiset (ALog Nat 1) := {(none, [(0, ⟨⟨0, 0⟩, some 99⟩)])}
+def b2View : Multiset (ALog Nat 1) := {(none, HMap.ofList [(0, ⟨⟨0, 0⟩, some 99⟩)])}
 
 /-- The reign's ballot. -/
 def b2B : Ballot 1 := ⟨1, 0⟩
@@ -210,7 +210,7 @@ def disagreesWithin (a : Multiset (Nat × Option Nat)) : Bool :=
 `sequence_payload` (two proposers, one acceptor, `f = 0`) over two reigns.
 Proposer 0 leads reign `b₀` and commits `x` at slot 0; the acceptor's
 checkpoint then advances to 1 and `reduce_watermark` collects slot 0, so
-the acceptor's published view is `(some 1, [])`. Proposer 1 — a leader
+the acceptor's published view is `(some 1, HMap.ofList [])`. Proposer 1 — a leader
 that never led before (its `index_payloads` register still reads 0) —
 takes reign `b₁` over that view: nothing to recommit,
 `p_p1b_max_checkpoint = some 1`, and — faithful — `p_max_slot =
@@ -251,8 +251,8 @@ def b4Run (variant : PaxosVariant) : Multiset (Nat × Option Nat) :=
     (ckStep (mem := paxMem 2 1) .acc 1)               -- a_checkpoint: none, then 1
     (.mk' (b4At [b4B0, b4B0] [b4B1, b4B1]))           -- p_ballot
     (.mk' (b4At [true, false] [false, true]))         -- p_is_leader
-    (.mk' (b4At [{((none : Option Nat), [])}, {}]
-          [{}, {((some 1 : Option Nat), [])}]))       -- the views
+    (.mk' (b4At [{((none : Option Nat), HMap.ofList [])}, {}]
+          [{}, {((some 1 : Option Nat), HMap.ofList [])}]))       -- the views
     0
     (.mk' fun _ => [some b4B0, some b4B1])            -- a_max
     ⟨b4At [1, 0] [0, 1],                              -- payload batches

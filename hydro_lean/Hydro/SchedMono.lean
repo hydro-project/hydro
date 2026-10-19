@@ -61,7 +61,7 @@ from its hypothesis — this is the stream wires' placeholder, as
 def TMonoTriv {τ : Sort _} (_x : τ) : Prop := True
 theorem TMonoTriv.intro {τ : Sort _} (x : τ) : TMonoTriv x := trivial
 
-variable {L : Type} {mem : L → Nat} {pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool}
+variable {L : Type} {mem : L → Nat} {pacing : Pacing L mem}
 
 /-! ## The stream → tick boundaries: the tick steps only grow -/
 
@@ -83,40 +83,40 @@ theorem tmono_snapshot {ℓ : L} {α σ : Type} [DecidableEq α]
     (s : (SchedSem L mem pacing).Singleton ℓ α σ ord ret b) (d : Unit) :
     TMono ((SchedSem L mem pacing).snapshot s d) := by
   intro i k k' hk
-  show (tickSteps (pacing ℓ i) k).map (fun st => s i st)
-    <+: (tickSteps (pacing ℓ i) k').map (fun st => s i st)
+  show (tickSteps (pacing.ticks ℓ i) k).map (fun st => s i st)
+    <+: (tickSteps (pacing.ticks ℓ i) k').map (fun st => s i st)
   exact List.IsPrefix.map _ (tickSteps_le_steps hk)
 
 theorem tmono_batch {ℓ : L} {α : Type} [DecidableEq α]
     (s : (SchedSem L mem pacing).Stream ℓ α .noOrder .exactlyOnce) (d : Unit) :
     TMono ((SchedSem L mem pacing).batch s d) := by
   intro i k k' hk
-  show batchesFrom ((s i).view) (tickSteps (pacing ℓ i) k) 0
-    <+: batchesFrom ((s i).view) (tickSteps (pacing ℓ i) k') 0
+  show batchesFrom ((s i).view) (tickSteps (pacing.ticks ℓ i) k) 0
+    <+: batchesFrom ((s i).view) (tickSteps (pacing.ticks ℓ i) k') 0
   exact batchesFrom_prefix _ (tickSteps_le_steps hk) 0
 
 theorem tmono_batch_ordered {ℓ : L} {α : Type} [DecidableEq α]
     (s : (SchedSem L mem pacing).Stream ℓ α .totalOrder .exactlyOnce) (d : Unit) :
     TMono ((SchedSem L mem pacing).batch_ordered s d) := by
   intro i k k' hk
-  show batchesFrom ((s i).view) (tickSteps (pacing ℓ i) k) 0
-    <+: batchesFrom ((s i).view) (tickSteps (pacing ℓ i) k') 0
+  show batchesFrom ((s i).view) (tickSteps (pacing.ticks ℓ i) k) 0
+    <+: batchesFrom ((s i).view) (tickSteps (pacing.ticks ℓ i) k') 0
   exact batchesFrom_prefix _ (tickSteps_le_steps hk) 0
 
 theorem tmono_timeout_snapshot {ℓ : L} {α : Type} [DecidableEq α] {ord : StrOrd} {ret : Retries}
     (s : (SchedSem L mem pacing).Stream ℓ α ord ret) (d : (SchedSem L mem pacing).TimerDec (mem ℓ)) :
     TMono ((SchedSem L mem pacing).timeout_snapshot s d) := by
   intro i k k' hk
-  show (d i).take (tickSteps (pacing ℓ i) k).length
-    <+: (d i).take (tickSteps (pacing ℓ i) k').length
+  show (d i).take (tickSteps (pacing.ticks ℓ i) k).length
+    <+: (d i).take (tickSteps (pacing.ticks ℓ i) k').length
   exact List.take_prefix_take_left (tickSteps_le_steps hk).length_le
 
 theorem tmono_source_interval_batch {ℓ : L}
     (d : (SchedSem L mem pacing).PulseDec (mem ℓ)) :
     TMono ((SchedSem L mem pacing).source_interval_batch (ℓ := ℓ) d) := by
   intro i k k' hk
-  show (d i).take (tickSteps (pacing ℓ i) k).length
-    <+: (d i).take (tickSteps (pacing ℓ i) k').length
+  show (d i).take (tickSteps (pacing.ticks ℓ i) k).length
+    <+: (d i).take (tickSteps (pacing.ticks ℓ i) k').length
   exact List.take_prefix_take_left (tickSteps_le_steps hk).length_le
 
 /-! ## The tick-to-tick operators -/
@@ -139,8 +139,13 @@ theorem tmono_defer_tick {ℓ : L} {σ : Type} (init : σ)
     {t : (SchedSem L mem pacing).Atomic ℓ σ} (ht : TMono t) :
     TMono ((SchedSem L mem pacing).defer_tick init t) := by
   intro i k k' hk
-  show init :: t i k <+: init :: t i k'
-  exact List.cons_prefix_cons.mpr ⟨rfl, ht i k k' hk⟩
+  show (if (tickSteps (pacing.ticks ℓ i) k).isEmpty then [] else init :: t i k)
+    <+: (if (tickSteps (pacing.ticks ℓ i) k').isEmpty then [] else init :: t i k')
+  split
+  · exact List.nil_prefix
+  · rename_i hne
+    rw [if_neg (fun he => hne (tickSteps_isEmpty_of_le _ hk he))]
+    exact List.cons_prefix_cons.mpr ⟨rfl, ht i k k' hk⟩
 
 theorem tmono_flattenOrdered {ℓ : L} {α : Type} [DecidableEq α]
     {t : (SchedSem L mem pacing).Atomic ℓ (List α)} (ht : TMono t) :
@@ -159,7 +164,7 @@ theorem tmono_tassume_ordering {ℓ : L} {α : Type} [DecidableEq α]
     (d : Unit) (hu : TMono u) :
     TMono ((SchedSem L mem pacing).tassume_ordering u d) := hu
 
-theorem tmono_reduce_watermark {ℓ : L} {K V : Type} [DecidableEq K] [DecidableEq V]
+theorem tmono_reduce_watermark {ℓ : L} {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V]
     [LinearOrder K] {ord : StrOrd}
     {ks : (SchedSem L mem pacing).AtomicKeyedStream ℓ K V ord .exactlyOnce}
     {wm : (SchedSem L mem pacing).Atomic ℓ (Option K)}
@@ -222,49 +227,38 @@ diagonal at `t` is stage `t'+1`'s entry at `t`, a prefix of its entry
 at `t'`. -/
 
 theorem TMono.tickshift {n : Nat} {σ : Type}
-    {A : (Fin n → Nat → Trace σ) → (Fin n → Nat → Trace σ)}
+    {A : (Fin n → Nat → Trace σ) → (Fin n → Nat → Trace σ)} (p : Fin n → Nat → Bool)
     (hA : ∀ x, TMono x → TMono (A x)) :
     ∀ m, TMono (iterate (τ := Fin n → Nat → Trace σ)
-      (fun x j u => match u with
-        | 0 => ([] : Trace σ)
-        | u + 1 => (A x) j u)
+      (fun x j => gateView (p j) ((A x) j))
       (fun _ _ => ([] : Trace σ)) m)
   | 0 => TMono.bot
   | m + 1 => by
     intro i k k' hk
-    have hm := hA _ (TMono.tickshift hA m)
-    cases k with
-    | zero => exact List.nil_prefix
-    | succ u =>
-      cases k' with
-      | zero => exact absurd hk (by omega)
-      | succ u' => exact hm i u u' (Nat.le_of_succ_le_succ hk)
+    have hm := hA _ (TMono.tickshift p hA m)
+    exact gateView_mono_le (p i) _ (fun u => hm i u (u + 1) (Nat.le_succ u)) hk
 
 /-- The raw tick diagonal of a causal, monotonicity-preserving body is
 step-monotone. -/
 theorem tmono_tick_diag {n : Nat} {σ : Type}
-    {A : (Fin n → Nat → Trace σ) → (Fin n → Nat → Trace σ)}
+    {A : (Fin n → Nat → Trace σ) → (Fin n → Nat → Trace σ)} (p : Fin n → Nat → Bool)
     (hcaus : ∀ h' (x y : Fin n → Nat → Trace σ), TAgree h' x y → TAgree h' (A x) (A y))
     (hmono : ∀ x, TMono x → TMono (A x)) :
     TMono (fun i t => (iterate (τ := Fin n → Nat → Trace σ)
-      (fun x j u => match u with
-        | 0 => ([] : Trace σ)
-        | u + 1 => (A x) j u)
+      (fun x j => gateView (p j) ((A x) j))
       (fun _ _ => ([] : Trace σ)) (t + 1)) i t) := by
   intro i t t' ht
   -- the stages, spelled once
   let X : Nat → Fin n → Nat → Trace σ := iterate (τ := Fin n → Nat → Trace σ)
-    (fun x j u => match u with
-      | 0 => ([] : Trace σ)
-      | u + 1 => (A x) j u) (fun _ _ => ([] : Trace σ))
+    (fun x j => gateView (p j) ((A x) j)) (fun _ _ => ([] : Trace σ))
   show X (t + 1) i t <+: X (t' + 1) i t'
   -- stage `t+1`'s entry at `t` is stage `t'+1`'s entry at `t` (stabilization)
   have hstab : X (t + 1) i t = X (t' + 1) i t :=
-    stab_iterate_tick (h := t) (A := A) (A' := A)
+    stab_iterate_tick (h := t) (A := A) (A' := A) p
       (fun h' _ x y hxy => hcaus h' x y hxy) t (t + 1) (t' + 1) (Nat.le_refl _)
       (Nat.lt_succ_self _) (by omega) i
   -- and stage `t'+1` is a monotone trace
-  have hm : X (t' + 1) i t <+: X (t' + 1) i t' := TMono.tickshift hmono (t' + 1) i t t' ht
+  have hm : X (t' + 1) i t <+: X (t' + 1) i t' := TMono.tickshift p hmono (t' + 1) i t t' ht
   rw [hstab]
   exact hm
 
@@ -274,6 +268,6 @@ theorem tmono_fix_tick {ℓ : L} {σ : Type} (d : Unit)
       TAgree h' x y → TAgree h' (body x) (body y))
     (hmono : ∀ x, TMono x → TMono (body x)) :
     TMono ((SchedSem L mem pacing).fix_tick d body) :=
-  tmono_tick_diag (A := body) hcaus hmono
+  tmono_tick_diag (A := body) (fun j => pacing.active ℓ j) hcaus hmono
 
 end Hydro

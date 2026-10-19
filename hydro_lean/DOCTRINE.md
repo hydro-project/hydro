@@ -102,11 +102,15 @@ before they are built, toys first (`HydroTickCheck.lean`, `HydroGenCheck.lean`).
 D63, D64.)
 
 **R7 — Every headline has an executable or structural witness.** `#guard_eval` smoke
-tests per module at `Values`, the four executables — the `Values` programs themselves,
-with one compiled seam (`MemberMap.mk'` → `mkImpl`, authorized by the `@[csimp]` equation
-`MemberMap.mk'_eq_mkImpl` — a kernel-checked proof is the only thing that lets the
-compiler substitute; `implemented_by`, `extern`, `unsafe` and `native_decide` are not
-used in `Hydro/`) tying what runs to what is proven — and the falsifiers showing the premises bite. A theorem whose
+tests per module at `Values`, the five executables — the `Values` programs themselves
+and, for `wired`, the per-process `Dag.locStep` over the elaborator-compiled graph —
+with nine compiled seams (`MemberMap.mk'` → `mkImpl`, the `memoBox*` tables, and the
+D75 hash-backed keyed operators `dedupH`/`listFilterNotIn`/`listAntiJoin`/`listJoinH`/
+`keyedFoldAssocH`/`reduceWatermarkEagerH` → their `…Impl`, each authorized by its
+`@[csimp]` equation — a kernel-checked proof is the only thing that lets the compiler
+substitute;
+`implemented_by`, `extern`, `unsafe` and `native_decide` are not used in `Hydro/`)
+tying what runs to what is proven — and the falsifiers showing the premises bite. A theorem whose
 premises can silently conflict is vacuous until shown otherwise — the D37 lesson
 (`paxos_safe_sched`'s `hsat` was unsatisfiable for nested knots; the theorem was
 true and empty for a year). (D15, D37.)
@@ -127,6 +131,51 @@ whole-program defeq is the recurring failure class (D40, D44).
 `…Ensures` faces that other modules consume keep their statements byte-identical
 unless a change is ratified at a checkpoint with the consumers listed. Internal faces
 may be reshaped (consumer-shaped faces are encouraged, R3).
+
+**R11 — Type-class bounds sit where the Rust puts them (D75).** `K: Hash` is demanded by
+`fold_keyed`/`join`/`anti_join`/`filter_not_in`/`reduce_watermark`, not by `KeyedStream`;
+so `[Hashable K]` is on those `HydroSem` methods and on the programs that call them
+generically, never on the keyed carriers or the IR kinds. The machine's semantics stays
+the list; the hash map is a `@[csimp]`-checked implementation of the per-tick batch.
+A Rust `HashMap` carried as a *value* is `Std.ExtHashMap` (`Hydro.HMap`), the extensional
+one — never a sorted list standing in for it.
+
+**R12 — A member that is not active is inert; an active member ticks or stutters
+(D76).** A member's pace at a step is `idle`, `stutter` or `tick` (`Pace`, `Pacing`).
+`SchedSem` moves content across steps on its own in exactly three places — network
+delivery (`StepHist.deliver`), the knot feedback wire (`StepHist.shift`, `fix_tick`'s
+implicit defer) and `defer_tick`'s seed — and each is gated by the receiving member's
+*activity* (`gateView`, `pacing.active`): an active step sees the source as of the
+previous step (the `+1` floor stays), an idle step repeats. Tick bodies (`batch`,
+`snapshot`, timers, `defer_tick`) fire only at `tick` steps (`pacing.ticks`). Every
+other operator is pointwise in its inputs' views and inherits inertness. A **stutter**
+is an active step without a tick: the member's asynchronous dataflow progresses —
+deliveries land, knot feedback propagates, stream operators fire — and no `Tick`
+location fires. The model may never need a tick nothing in production triggers: a
+forward_ref knot closed through the network needs the feedback to propagate one step,
+and DFIR does that inside one tick (stratum order); the model does it as a stutter. **One
+DFIR tick = stutters, then a tick** at one member (every `Tick` location of that member at
+once — DFIR runs them on one counter). A process that is not running is an idle member
+of the lock-step machine, and the wired correspondence (`Dag.step_wired`,
+`Interleaving.outputs`) holds for **every**
+interleaving — no settling, quiescence, feasibility, cursor-stillness or initial-prefix
+hypothesis. Idleness is irrelevant to safety; a semantics in which it mattered was an
+artifact. The only state condition left, `Dag.Drained` (multi-input tick cells hold no
+complete item), is true of every state the machine produces and is a theorem, not a
+premise.
+
+**R10 — Processes are a compilation of the program, not an interpretation of it
+(D74).** The distributed executable is the elaborator's compilation of each module body
+into a typed dataflow graph (`M.dag`), related to the program by a per-module
+denotation theorem (`M.dag_denote`, over `SchedSem`) — never a fifth tagless-final
+instance: an instance sees applications, not the body's `let`-sharing, and cannot step
+a `fix` body once per global step (observable sharing). The graph is stepped per
+process at its own members only (`Dag.locStep`), and the headline for a network of
+processes (`paxos_safe_wired`) is proved by implication through the lock-step machine
+(`Dag.step_wired` → `Interleaving.outputs` → `Dag.run_spec` → `M.dag_denote` →
+`paxos_safe_sched'`), the `Values` side untouched. The execution model inherits no
+scheduling constraint: a member that is not active is inert (R12), so a process that is
+not running leaves the lock-step machine's cells exactly where it left them.
 
 ## Layout (`E10`, D64)
 

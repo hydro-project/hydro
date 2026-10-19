@@ -1,5 +1,7 @@
 import Hydro.Sem
 import Hydro.Trace
+import Hydro.Wire
+import Hydro.HMap
 import Mathlib.Data.Prod.Lex
 import Mathlib.Order.MinMax
 import Mathlib.Order.Basic
@@ -51,7 +53,7 @@ def PaxosVariant.rebaseAboveCheckpoint : PaxosVariant → Bool
 structure Ballot (nP : Nat) where
   num : Nat
   proposerId : Fin nP
-deriving DecidableEq, Repr
+deriving DecidableEq, Repr, Hashable, Lean.ToJson, Lean.FromJson
 
 namespace Ballot
 
@@ -313,10 +315,11 @@ end Ballot
 structure LogValue (P : Type) (nP : Nat) where
   ballot : Ballot nP
   value : Option P
-deriving DecidableEq, Repr
+deriving DecidableEq, Repr, Lean.ToJson, Lean.FromJson
 
-/-- The acceptor log: slot-keyed, unique keys by construction. -/
-abbrev LogMap (P : Type) (nP : Nat) := List (Nat × LogValue P nP)
+/-- The acceptor log snapshot, Rust `HashMap<usize, LogValue<P>>`
+(paxos.rs:890–897): the extensional hash map (`Hydro.HMap`, D75). -/
+abbrev LogMap (P : Type) (nP : Nat) := HMap Nat (LogValue P nP)
 
 /-- `Some(&p2a.ballot) >= max_ballot` (paxos.rs:841): a P2a qualifies
 for the log iff its ballot is not behind the acceptor max. -/
@@ -596,7 +599,7 @@ def LogCovers {P : Type} [DecidableEq P] {nP : Nat} (log : LogMap P nP)
 structure P1b (P : Type) (nP : Nat) where
   ballot : Ballot nP
   res : Except (Option (Ballot nP)) (Option Nat × LogMap P nP)
-deriving DecidableEq, Repr
+deriving DecidableEq, Repr, Lean.ToJson, Lean.FromJson
 
 /-- Rust `P2a { sender, ballot, slot, value }` (paxos.rs:64–70). -/
 structure P2a (P : Type) (nP : Nat) where
@@ -604,7 +607,7 @@ structure P2a (P : Type) (nP : Nat) where
   ballot : Ballot nP
   slot : Nat
   value : Option P
-deriving DecidableEq, Repr
+deriving DecidableEq, Repr, Lean.ToJson, Lean.FromJson
 
 /-- The p2b ack (paxos.rs:875–890): key `(slot, ballot)`, `Ok` iff the
 ballot is the acceptor's current max. -/
@@ -612,7 +615,7 @@ structure P2b (nP : Nat) where
   slot : Nat
   ballot : Ballot nP
   res : Except (Option (Ballot nP)) Unit
-deriving DecidableEq, Repr
+deriving DecidableEq, Repr, Lean.ToJson, Lean.FromJson
 
 /-- The two clusters. -/
 inductive PaxLoc | prop | acc
@@ -639,7 +642,7 @@ abbrev LogCoversOrGC {P : Type} [DecidableEq P] {nP : Nat} (lg : ALog P nP)
 recovered view in. -/
 def rcEntries {P : Type} [DecidableEq P] {nP : Nat} (logs : Multiset (ALog P nP)) :
     Multiset (Nat × LogValue P nP) :=
-  logs.bind (fun lg => Multiset.ofList lg.2)
+  logs.bind (fun lg => lg.2.entries)
 
 /-- The running `.max()` dominates its seed. -/
 theorem Multiset.foldl_maxStep_dom {α : Type _} [LinearOrder α] (m : Multiset α) :

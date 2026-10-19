@@ -26,7 +26,7 @@ namespace Hydro
 section CoupleCheck
 
 variable {L : Type} {mem : L → Nat}
-  {pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool} {ℓ : L}
+  {pacing : Pacing L mem} {ℓ : L}
 
 /-- The blueprint body, generic over the interpretation (captures: the
 batch decision and the external input). -/
@@ -119,7 +119,7 @@ theorem cc_wf : (ccRun (pacing := pacing) T h v hc).wf := by
     -- the graded coupling is probed at the Kleene stage (D71): name it
     intro j hj x hxv i
     replace hxv : ∀ t ≤ j, ∀ i, ListLe .noOrder .exactlyOnce ((x i).view t)
-        (iterate (CoStream.vbody (fun s =>
+        (iterate (CoStream.vbody (fun j => pacing.active ℓ j) (fun s =>
           ccBody (CoupleSem L mem pacing T T (Nat.le_refl T))
             (CoDec.batch Nat, CoStream.inputC h v hc) s))
           (.mk' fun _ => PoolBot .noOrder .exactlyOnce) (j + 1) i) := hxv
@@ -128,11 +128,11 @@ theorem cc_wf : (ccRun (pacing := pacing) T h v hc).wf := by
         (CoDec.batch Nat, CoStream.inputC h v hc) s) x i).view j)
       (((fun s => ccBody (CoupleSem L mem pacing T T (Nat.le_refl T))
           (CoDec.batch Nat, CoStream.inputC h v hc) s)
-        (CoStream.probe2 x (iterate (CoStream.vbody (fun s =>
+        (CoStream.probe2 x (iterate (CoStream.vbody (fun j => pacing.active ℓ j) (fun s =>
           ccBody (CoupleSem L mem pacing T T (Nat.le_refl T))
             (CoDec.batch Nat, CoStream.inputC h v hc) s))
           (.mk' fun _ => PoolBot .noOrder .exactlyOnce) (j + 1)))).rr i)
-    generalize hv' : iterate (CoStream.vbody (fun s =>
+    generalize hv' : iterate (CoStream.vbody (fun j => pacing.active ℓ j) (fun s =>
         ccBody (CoupleSem L mem pacing T T (Nat.le_refl T))
           (CoDec.batch Nat, CoStream.inputC h v hc) s))
         (.mk' fun _ => PoolBot .noOrder .exactlyOnce) (j + 1) = v' at hxv ⊢

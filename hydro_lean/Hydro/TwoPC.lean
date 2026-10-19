@@ -112,7 +112,7 @@ structure TPCEnsures {nC : Nat} (n : Nat) (vote : Fin n → P → Bool)
 
 /-- **two_pc.rs:14–69 `two_pc`**: one Rust fn, one Lean def. Returns
 `c_all_commit`. -/
-hydro def two_pc (H : HydroSem L mem) (coord part : L)
+hydro def two_pc [Hashable P] (H : HydroSem L mem) (coord part : L)
     (num_participants : Nat) (vote : Fin (mem part) → P → Bool)
     (payloads : H.Stream coord P .noOrder .exactlyOnce)
     (dec : TwoPCDec H (mem coord) (mem part) P)
@@ -322,7 +322,7 @@ witness. -/
 
 section TwoPCSafe
 
-variable (pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool) (coord part : L)
+variable [Hashable P] (pacing : Pacing L mem) (coord part : L)
   (T : Nat) (vote : Fin (mem part) → P → Bool)
   (cpS : (SchedSem L mem pacing).Stream coord P .noOrder .exactlyOnce)
   (cpV : (Values L mem).Stream coord P .noOrder .exactlyOnce)

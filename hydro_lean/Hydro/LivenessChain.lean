@@ -195,7 +195,7 @@ theorem IsCutChain.consumed_persists {v : Multiset α}
 Schedule-free, decision-quantified: the quorum crossing argument is
 consumed **only** through the colocated contract (`emit_count`). -/
 
-variable {K E : Type} [DecidableEq K] [DecidableEq E]
+variable {K E : Type} [DecidableEq K] [Hashable K] [DecidableEq E]
 
 /-- **The point lemma (V)**: at any *complete* cut decision — one
 whose consumed pool is the whole pool — a key with a quorum of `Ok`
@@ -347,14 +347,14 @@ tightness kit rung 2 generalizes (FINDINGS D65). -/
 
 /-- **Tightness for `collect_quorum`**: the machine output at `T`, read
 as a multiset, is the `Values` output at the derived chain point. -/
-theorem collect_quorum_tight {pacing : Unit → Fin 1 → Nat → Bool}
+theorem collect_quorum_tight {pacing : Pacing Unit (fun _ => 1)}
     (h : Fin 1 → StepHist (K × Except E Unit)) {T₀ : Nat}
     (hstab : StabilizesAt (h 0) T₀) (mn mx : Nat) (T : Nat) :
     Multiset.ofList (((collect_quorum (SchedSem Unit (fun _ => 1) pacing) ()
         h mn mx ()).1 0).view T)
       = (collect_quorum (Values Unit (fun _ => 1)) ()
           (.mk' fun _ => Multiset.ofList ((h 0).view T₀)) mn mx
-          (fun i => cqDerivedChain (h i) (pacing () i) T)).1 0 := by
+          (fun i => cqDerivedChain (h i) (pacing.ticks () i) T)).1 0 := by
   -- every view of the (one) member sits below the stabilized pool
   have hc : ∀ (T' : Nat) (i : Fin 1),
       Multiset.ofList ((h i).view T')
@@ -383,7 +383,7 @@ theorem collect_quorum_tight {pacing : Unit → Fin 1 → Nat → Bool}
         (CoDec.batch _)).1.rr
       = (collect_quorum (Values Unit (fun _ => 1)) ()
           (.mk' fun _ => Multiset.ofList ((h 0).view T₀)) mn mx
-          (fun i => cqDerivedChain (h i) (pacing () i) T)).1 := by
+          (fun i => cqDerivedChain (h i) (pacing.ticks () i) T)).1 := by
     co_transfer [collect_quorum]
   rw [← hsr, ← hrr]
   -- the machine leg: the machine former on the realized batches, per
@@ -398,7 +398,7 @@ theorem collect_quorum_tight {pacing : Unit → Fin 1 → Nat → Bool}
           (.stream K inferInstance .noOrder .exactlyOnce) _ i)
         (SchedTick.seed (.pair (.stream (K × Except E Unit) inferInstance .noOrder .exactlyOnce)
             (.stream K inferInstance .noOrder .exactlyOnce)) ((), ()))
-        (batchesFrom ((h i).view) (tickSteps (pacing () i) t) 0)).flatten) T 0)
+        (batchesFrom ((h i).view) (tickSteps (pacing.ticks () i) t) 0)).flatten) T 0)
     = (scanAcrossTicksTrace
         (CoTick.gR (L := Unit) (mem := fun _ => 1) (ℓ := ())
           (.pair (.stream (K × Except E Unit) inferInstance .noOrder .exactlyOnce)
@@ -408,14 +408,14 @@ theorem collect_quorum_tight {pacing : Unit → Fin 1 → Nat → Bool}
         (ValuesTick.seed (.pair (.stream (K × Except E Unit) inferInstance .noOrder .exactlyOnce)
             (.stream K inferInstance .noOrder .exactlyOnce)) ((), ()))
         (batchCuts (Multiset.ofList ((h 0).view T₀)) 0
-          (cqDerivedChain (h 0) (pacing () 0) T))).sum
-  rw [famFreeze_of_mono, ofList_flatten, (cqDerivedChain_isCutChain hstab (pacing () 0)).legal T]
+          (cqDerivedChain (h 0) (pacing.ticks () 0) T))).sum
+  rw [famFreeze_of_mono, ofList_flatten, (cqDerivedChain_isCutChain hstab (pacing.ticks () 0)).legal T]
   swap
   · exact fun t i => flatten_prefix (scanAcrossTicksTrace_prefix _ _
       (batchesFrom_prefix _ (tickSteps_prefix _ t) 0))
   congr 1
   have := CoTick.scan_comm _ _ _ _ heoS heoO h1 h2 h3 0
-    (batchesFrom ((h 0).view) (tickSteps (pacing () 0) T) 0) (SchedTick.seed _ ((), ()))
+    (batchesFrom ((h 0).view) (tickSteps (pacing.ticks () 0) T) 0) (SchedTick.seed _ ((), ()))
   rw [CoTick.coerce_seed] at this
   exact this
 
@@ -430,14 +430,14 @@ hand mirror `cqTickS`) is gone with the mirror (D65). -/
 /-- `collect_quorum` liveness: `Values` point lemma (`cq_complete_mem`)
 ∘ chain-fairness transfer (`cqDerivedChain_complete_at`) ∘ tightness
 (`collect_quorum_tight`). -/
-theorem cq_live {pacing : Unit → Fin 1 → Nat → Bool}
+theorem cq_live {pacing : Pacing Unit (fun _ => 1)}
     (h : Fin 1 → StepHist (K × Except E Unit)) {T₀ : Nat}
     (hstab : StabilizesAt (h 0) T₀)
     (mn mx : Nat) (k : K)
     (h1 : 1 ≤ mn) (hmm : mn ≤ mx)
     (hcap : cqKeyCount (Multiset.ofList ((h 0).view T₀)) k ≤ mx)
     (hq : mn ≤ cqOkCount (Multiset.ofList ((h 0).view T₀)) k)
-    (hsupply : ∃ Tw, T₀ ≤ Tw ∧ pacing () 0 Tw = true) :
+    (hsupply : ∃ Tw, T₀ ≤ Tw ∧ pacing.ticks () 0 Tw = true) :
     ∃ T, k ∈ ((collect_quorum (SchedSem Unit (fun _ => 1) pacing) ()
       h mn mx ()).1 0).view T := by
   obtain ⟨Tw, hT₀Tw, hpTw⟩ := hsupply
@@ -445,21 +445,21 @@ theorem cq_live {pacing : Unit → Fin 1 → Nat → Bool}
   -- (V): the `Values` run at the (complete) derived chain point has `k`.
   have hval := cq_complete_mem
     (.mk' fun _ => Multiset.ofList ((h 0).view T₀))
-    (fun i => cqDerivedChain (h i) (pacing () i) Tw) mn mx k h1 hmm
+    (fun i => cqDerivedChain (h i) (pacing.ticks () i) Tw) mn mx k h1 hmm
     (cqDerivedChain_complete_at hstab hT₀Tw hpTw) hcap hq
   -- (tightness): that run IS the machine's wire at `Tw`.
   rw [← collect_quorum_tight h hstab mn mx Tw] at hval
   exact Multiset.mem_coe.mp hval
 
 /-- The chain-factored name (D50) — the same theorem. -/
-theorem cq_live_chain {pacing : Unit → Fin 1 → Nat → Bool}
+theorem cq_live_chain {pacing : Pacing Unit (fun _ => 1)}
     (h : Fin 1 → StepHist (K × Except E Unit)) {T₀ : Nat}
     (hstab : StabilizesAt (h 0) T₀)
     (mn mx : Nat) (k : K)
     (h1 : 1 ≤ mn) (hmm : mn ≤ mx)
     (hcap : cqKeyCount (Multiset.ofList ((h 0).view T₀)) k ≤ mx)
     (hq : mn ≤ cqOkCount (Multiset.ofList ((h 0).view T₀)) k)
-    (hsupply : ∃ Tw, T₀ ≤ Tw ∧ pacing () 0 Tw = true) :
+    (hsupply : ∃ Tw, T₀ ≤ Tw ∧ pacing.ticks () 0 Tw = true) :
     ∃ T, k ∈ ((collect_quorum (SchedSem Unit (fun _ => 1) pacing) ()
       h mn mx ()).1 0).view T :=
   cq_live h hstab mn mx k h1 hmm hcap hq hsupply
@@ -475,7 +475,7 @@ private def wResp : Fin 1 → StepHist (Nat × Except Nat Unit) :=
   fun _ => StepHist.const [(7, .ok ()), (7, .ok ())]
 
 private def wOut : StepHist Nat :=
-  (collect_quorum (SchedSem Unit (fun _ => 1) wOdd) ()
+  (collect_quorum (SchedSem Unit (fun _ => 1) (Pacing.ofTicks wOdd)) ()
     wResp 2 2 ()).1 0
 
 -- before the first tick: nothing on the wire
@@ -495,7 +495,7 @@ private def wOut : StepHist Nat :=
 
 /-- The premises of `cq_live` are jointly satisfiable on the witness. -/
 example : ∃ T, 7 ∈ ((collect_quorum
-    (SchedSem Unit (fun _ => 1) wOdd) () wResp 2 2 ()).1 0).view T :=
+    (SchedSem Unit (fun _ => 1) (Pacing.ofTicks wOdd)) () wResp 2 2 ()).1 0).view T :=
   cq_live (T₀ := 0) wResp (fun _ => rfl) 2 2 7
     (by decide) (by decide) (by decide) (by decide)
     ⟨1, Nat.zero_le _, by decide⟩

@@ -22,7 +22,7 @@ namespace Hydro
 open HydroSem
 
 variable {L : Type} {mem : L → Nat}
-  {pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool} {Tc Td : Nat}
+  {pacing : Pacing L mem} {Tc Td : Nat}
   {hjT : Tc ≤ Td}
 
 /-! ## Corner-gadget projections (syntactic collapse for the machine

@@ -1,5 +1,6 @@
 import Hydro.HydroGenKnot
 import Hydro.HydroParam
+import Hydro.HydroGenProject
 
 /-!
 # `hydro def`: the single program-module annotation
@@ -88,6 +89,8 @@ def runPipeline (mName : Name) (hints : Array Name) :
   if (← IO.getEnv "HYDRO_PHASE_DIAG").isSome then
     IO.eprintln s!"[phase] {mName} param: {(← IO.monoMsNow) - t0}ms"
   logInfo m!"hydro_param {mName}: {names.size} lemmas"
+  -- the production graph and its denotation lemma (D74)
+  phase "project" <| Project.genProject mName
 
 end HydroGen
 

@@ -6070,3 +6070,542 @@ two engine limitations (post-`complete` `let` capture in a `fix` chain;
 glue decision mis-extraction with overlapping records); the generator's
 unused-simp-arg warnings; residual `]'` reads in `SequencePayload`; the
 upstream report list (`SCHED_AUDIT.md`).
+
+### D74 — `Project`: the program compiled to a typed dataflow graph, run as processes over TCP, and proved all the way to `paxos_safe_wired`; three compiler eta-expansions found in the IR
+
+**Directive (user).** "Project" = a production interpreter: per-location functions
+executable by wiring network in/out, stateful, with a correspondence proof (automatic
+per module) that `k` concurrent projections wired with channels correspond to
+`SchedSem`, `Values` by implication through the corner. Ruling: *grind until the whole
+thing is pulled off against Paxos — correspondence proved all the way through, and 2
+proposers + 3 acceptors actually executing over local TCP — then wait for review.* The
+user was "not 100% confident in this approach" and accepted the observable-sharing
+argument below as the reason it is a compilation.
+
+**Why a compilation and not a fifth interpretation (ratified).** A tagless-final
+instance of `HydroSem` sees operator applications; it cannot see the body's
+`let`-sharing (it would duplicate a shared wire per consumer) and cannot step the body
+of a `fix` once per global step — the knot's one-step delay is a property of the graph,
+not of any operator. So `Project` is a phase of the `hydro def` pipeline
+(`HydroGenProject.lean`, after `_param`), `HydroSem` is unchanged, and the relation to
+the program is a theorem per module.
+
+**What was built (all proven, standard axioms, zero sorries).**
+
+- *IR* (`Project/IR.lean`): `Kind` (eight wire kinds), `Var Γ κ`, `HList` (reducible,
+  nested products), `Node Γ κs` (32 constructors: each `HydroSem` method once, `call`,
+  `fixN`), `Dag Γ outs` (`letN`/`ret`), `Dag.denote` in `SchedSem` with knots as
+  `bekic`/`knotFix`.
+- *The `_project` phase*: per module `M.dag`, **`M.dag_denote : ∀ binders env,
+  Dag.denote pacing (M.dag …) env = (M (SchedSem …) … (env.get v₀) …).1 …`** and
+  `M.wireCodecs : Dag.Codecs (M.dag …)` (a JSON codec per network node, synthesized
+  from `ToJson`/`FromJson` of the message types — `Wire.lean`; `Ballot`/`LogValue`/
+  `P1b`/`P2a`/`P2b` derive them, Rust's `#[derive(Serialize, Deserialize)]`). 44
+  modules. Proof routes: leaf modules (27) by **kernel-judged `Eq.refl`**
+  (`HydroGen.addThmByKernelRfl`: `Kernel.isDefEqGuarded` pre-check then `addThm` —
+  `Meta.isDefEq` was 50× slower, a Meta `rfl` on the LE wrapper took 108 s); modules
+  with callees/knots (17) in two hops — `M.dag_denote_graphs` (kernel; callee
+  applications opened to component tuples of their own `Dag.denote`, knot groups as
+  `bekic` cascades: `graphsTerm`/`openCallees`/`hlistComponent`/`schedTuple`) then
+  `Meta.simp` with the callees' `dag_denote` (bodies opaque) and a closing kernel
+  `Eq.refl`, assembled as `Eq.trans (Eq.trans hG hS) (Eq.refl T')`. The statement is
+  over an ARBITRARY `env`: a literal `HList.cons` env put `Kind.sched`-reduced carrier
+  types into the DiscrTree keys and the simp lemma never matched. Timings: hop 1 LE
+  wrapper 4.5 s, `paxos_core` 3.5 s (the kernel re-evaluates the body a few times —
+  queued), hop 2 ≤ 6.6 s. `proveByTac` runs under `linter.unusedSimpArgs false` and
+  `withEnableInfoTree false` (zero generator warnings); `HYDRO_PHASE_DIAG=1` prints the
+  per-module phase breakdown.
+- *The lock-step machine* (`Project/Step.lean`; spec `ProjectCausal/Knot/StepSpec/
+  StepOps1–5/StepMain`): `Node.step`/`Dag.step`/`Dag.run` with cells (`ChanCell` =
+  pending queue + delivered count per network edge, deliver then enqueue; `PendingOf`
+  for `tick_scan`; `sampleAdvance` for `sample_every`), **`Dag.run_spec`**: the run's
+  per-step output increments are `envIncAt (Dag.denote …) k` — the graph's baked
+  decisions are the delivery oracle.
+- *The wired machine* (`Project/Wired.lean`, spec `Project/WiredSpec`, theorems
+  `ProjectWiredMain/Inv/Run`, now `Project/Wired*`): `Sel L mem` (hosted members), `Dag.LocState sel d`
+  (hosted cells; network cells at the receiver, one queue per sender), `Dag.Oracle`
+  (cursor per hosted receiver per sender), `Dag.Sends`, `restrict`/`override`/
+  `enqueue`/`enqueueLoc`, **`Dag.locStep`** (one process's step), predicates
+  `OracleAt`/`Inv`/`ChanMono`/`Feasible`/`CursorsStill`/`Quiet`/`KnotsIdle`.
+  **`Dag.step_wired`** (all 32 constructors; under `IdleEnv`, `OracleAt`, `Inv`,
+  `KnotsIdle` the global step restricted to `sel` is `locStep`, the rest = `enqueue`
+  of its sends, non-hosted increments idle), **`Dag.inv_step`** (`Inv`/`ChanMono`/
+  `KnotsIdle` carry), **`Topology`/`Interleaving`** with `ValidAt` (idle others,
+  feasible cursors, `CursorsStill`, *switch only when quiet*), `SettledAt`,
+  **`view_active`/`view_idle`/`outputs`**. **`paxos_safe_wired`**
+  (`Paxos/WiredSafety.lean`): processes running `paxos_core.dag (pacingOf ticks)
+  .guarded …` under a valid interleaving from a settled `t₀` never commit two values
+  at one slot — `outputs` + `paxos_core.dag_denote` + `StepHist.mono_le` +
+  `paxos_safe_sched'`.
+- *The wire* (`Project/Wire.lean`): `Dag.Codecs`, `WireMsg := Nat × Nat × Json`,
+  `wireEncode`/`wireDecode` (network nodes numbered in graph order, callee graphs
+  inline), `oracleAll` (deliver everything arrived), `quietLoc`.
+- *The witness* (`WiredDemo.lean`, `lake exe wired`): five processes on
+  `127.0.0.1:9400+p`, newline-framed JSON, dedicated tasks, one lock serializing
+  activations (the run IS an interleaving), each activation = drain inbox →
+  `enqueueLoc` → one tick step → settle until `quietLoc` (fuel 64); proposers inject
+  their payload once they see themselves elected (the `ballots` output; a payload
+  injected before election is dropped — the Rust semantics). Proposer 0 wins ballot
+  0 and commits `(0, some 42)`; the log is slot-functional across processes, every
+  switch was at a quiet process, and a single-threaded replay through the same pure
+  `activate` reproduces every output. **60 activations in ≈ 0.5 s wall.**
+
+**Design facts the model forced.** (1) Knot feedback is one global step late, so a
+process must settle its own feedback before another is activated — `ValidAt`'s
+`sel (k+1) = sel k ∨ Quiet`; the harness loops tick-less `locStep`s until `quietLoc`.
+(2) The decisions baked into the graph are the oracle; a process's cursors must equal
+what the run realized (`OracleAt`) and be feasible — the demo's oracle "deliver all
+arrived" is one of the oracles the theorem quantifies over. (3) The initial state is
+not in `Inv` (`defer_tick` fires its seed at step 0 for every member): processes start
+from a settled lock-step prefix each computes for itself (`S0`). (4) Singleton wires
+have no empty increment (an idle member re-emits its value) — `IdleEnv` constrains
+list-like kinds only.
+
+**The runtime leak, found three times in the IR.** The first run: a proposer
+activation 3.3 s, acceptors 174 ms, the sixth activation never finished — call-by-name
+over the graph's per-member closures (`Hosted sel ℓ → X`), D73's `n^depth` again.
+`memo`/`memo2` (identity in the logic, a table in compiled code via `@[csimp]`) took
+three rounds, each diagnosed from `.lake/build/ir/Hydro/Project/Wired.c` and a `gdb -p`
+`thread apply all bt` of the hung binary (the work runs on a helper thread; `perf`
+without call graphs only named the hot leaves — `Node.step` lambdas, `readShapeDelta`,
+`PendingOf.push` — which first pointed at the wrong suspect, the global `S0`):
+(i) **LCNF eta-expands local functions too** (`Simp/Main.lean` `FunDecl.etaExpand`;
+ToLCNF "cases produces a function → local fun decl, eta-expanded"): `fun i => memoFin
+(s i)` became `fun i j => (build table) j`, the inner table rebuilt per read — the
+two-level `memo2` builds inner tables as array *elements*; (ii) the D73 trivial-
+structure erasure: a one-field `MemoBox` was the function — `tag : Unit := ()`;
+(iii) **a `match` arm whose type reduces to a function type is eta-expanded**:
+`Node.memoState`'s `| .fold .., s => memo s` arm became `fun s i => (memoBoxImpl
+s).fn i` — the arms return a two-field `StateBox` and `Node.memoState` projects outside
+the match (`memoEnv` never had the problem: its arms return a product). The csimp
+replacement runs after `macro_inline` (`ToDecl.lean`), which is why `memo` is a
+`@[macro_inline]` projection of the box. After: a process step 0–1 ms; the TCP run
+535 ms for 60 activations (the demo was tuned to a `prof` exe measuring per-node cell
+forcing with `IO.monoNanosNow`, removed).
+
+**Gotchas.** `Kernel.isDefEqGuarded` is pure — time with `IO.lazyPure`; "heartbeat
+timeout at whnf" can come from the kernel; `simp` refuses goals not type-correct under
+reducible transparency (`Node.State n` applied as a function) → `rw`/`congr`; `subst`
+on `sel' = sel` eliminated the wrong variable → `rw`; `omit … in` not allowed inside
+`mutual`; `Array.get!`/`[i]!` need `Inhabited` → an `idx` helper in IO; `IO.asTask`
+for blocking socket loops needs `(prio := .dedicated)` (thread-pool exhaustion
+deadlocks); `tick`/`state`/`complete` are Hydro keywords and cannot name binders;
+`$!` after `cmd &` in the sandbox shell captured the wrong PID — `pgrep -x`; a
+structure must be declared outside a `mutual` block of defs; stdout of a killed
+binary is lost — `eprintln` for diagnostics.
+
+**Per-file.** `Project/WiredMain` 66 s (the 32-constructor `step_wired` mutual block),
+`Project/WiredRun` 12 s, `Project/WiredSpec` 3 s, `Project/Wired` 4 s, `Project/Wire` 4 s,
+`HydroGenProject` 4 s, `Paxos/WiredSafety` 2 s; `LeaderElection` 83 s, `SequencePayload`
+44 s, `HydroTickCheck` 42 s, `PaxosCore` 41 s; full build 3m31s / 843 jobs (D73: 3m12s /
+823). New library code ≈ 7.4k lines (`Project*.lean` 5.9k, `HydroGenProject.lean` 1.0k,
+`Wire.lean`, `Paxos/WiredSafety.lean`), harness 353 lines.
+
+**Gate.** `lake build` 843 jobs green; zero sorries; no `implemented_by`/`extern`/
+`unsafe`/`native_decide` in `Hydro/`; exactly three `@[csimp]` seams (`mk'_eq_mkImpl`,
+`memoBox_eq_memoBoxImpl`, `memoBox2_eq_memoBox2Impl`), each kernel-checked; `AxCheck`
+standard-three subsets, `sorryAx` 0, `ofReduceBool` 0 (new entries: `Dag.step_wired`,
+`Dag.inv_step`, `Interleaving.view_active/view_idle/outputs`, `paxos_safe_wired`, the two
+memo equations); `falsify` ALL PASSED, `explore` true+true, `paxos` OK, `twopc` OK,
+**`wired` OK**; all twelve program censuses unchanged and six toys. Docs: `ARCHITECTURE`
+§7b + module map + §9, `DOCTRINE` R7 (three seams, five exes) + new R10, `CORRESPONDENCE`
+(the wired chain table; not-proven list; trust base), `SCHED_AUDIT` follow-up 4 (Project
+is the vehicle for the production comparison), `ENGINE_NOTES` "Runtime" (the memo
+tables), `GATE` (exe, envelope, AxCheck list, seam grep), `README`, `docs/06` + index.
+
+**Queue after D74.** The hop-1 kernel re-evaluation of knot-wrapper bodies (make the
+graphs term's `fixN` closure match the dag's inner shape, or a generic
+`Dag.denote_call_ret` lemma); the remaining slow generated declarations (`body_co_rr_ex`
+7 s, `_param_all` 5 s, `sequence_payload_co_wf₁` 7.6 s, knot wf kernel time) and LE's
+600k override; a lock-step replay of the wired log (reconstruct the baked cursors from
+the recorded deliveries — the `OracleAt` side of the demo as a check rather than an
+argument); `SchedSem` against production DFIR with the graph as the replay vehicle
+(`SCHED_AUDIT.md` follow-up 4); liveness rung 2; the decision-record validity
+diagnostic; the `.boundedValue` keyed-singleton batch operator; `lake check` once the
+toolchain is ≥ 4.35, the kernel-trust `decide` witness for 1×1 `paxos_core`, exe roots
+into `Exe/`; the two engine limitations (post-`complete` `let` capture in a `fix`
+chain; glue decision mis-extraction); residual `]'` reads in `SequencePayload`; the
+upstream report list. Lint debt in the new files: unused-variable warnings in
+`Project/Step`/`Project/StepOps2`/`Project/Causal` (three never-executed tactics at
+`Project/Causal.lean:53,121`).
+
+### D75 — Paxos throughput: independent machines, the acceptor log as Rust's `HashMap` (`Std.ExtHashMap`), and `K: Hash` at the operators — 2.3k → 31k commits/s
+
+**The question (user).** "What is paxos throughput?" — and two corrections on the way
+that reshaped the demo and the mirror: the D74 harness serialized activations under a
+global lock ("why would we round robin — the whole point of paxos is there's no
+coordinator, they are separate machines"), and the acceptor's log snapshot was a sorted
+association list where the Rust has a `HashMap` ("I'm confused why you are using a
+sorted list where the rust code uses hashmap").
+
+**Independent machines (`WiredDemo.lean`).** Each process now loops on its own: drain
+whatever arrived on its sockets, tick, settle, then flush this activation's sends (the
+DFIR discipline — a tick runs to completion before outputs leave; it is also what makes
+every concurrent run linearizable into an `Interleaving`: a step reads only its own cells
+and inbox, so steps of different machines commute). An idle machine ticks on a local 1 ms
+timer (the proposers' timeouts are timer-driven in the Rust too). The only shared state
+is the harness's stop flag and a linearization counter read AFTER the drain, used by the
+replay check — nothing blocks a machine. The leader (the proposer that saw itself elected
+on the `ballots` output) injects client payloads; `--bench total batch` injects `batch`
+fresh payloads per activation until `total` are in flight and stops when the leader has
+seen them all committed. Every run is checked slot-functional across processes, settled
+before every flush, and replayed single-threaded through the same pure `activate`.
+
+**The log snapshot is a hash map (`Hydro/HMap.lean`).** `a_log.entries()
+.fold(HashMap::new(), insert)` (paxos.rs:890) had been mirrored as
+`bfold insertSorted []` — a canonical sorted assoc list standing in for `HashMap`
+because a singleton's *value* needs decidable equality and extensionality, which
+`Std.HashMap` lacks (bucket layout leaks into `=`). The toolchain has the right type:
+**`Std.ExtHashMap`**, the quotient by contents (`ext_getElem?`, `DecidableEq`, the
+`insert/erase/filter/map` API with lemmas; `toList`/`fold` deliberately absent). `HMap K V`
+wraps it with the proofs' vocabulary — `(slot, e) ∈ m` membership, `entries : Multiset`
+(a `Quotient.lift` of `Const.toList` via `Equiv.constToList_perm`), `mem_insert`,
+`eq_of_mem_of_key`, `insert_foldOk` (the `NoKeyOverlap` fold obligation),
+`mem_foldlOn_insert_empty`, and `toList` (slots ascending — unique keys make the sort
+canonical: `List.Perm.eq_of_pairwise` on `a.1 < b.1`, so it is a function of the quotient)
+for the wire (`ToJson`), `Repr`, and the one place the Rust orders it anyway
+(`recommit`'s `flatten_unordered` → `bofList log.toList`, under the existing
+`tassume_ordering` decision). `LogMap P nP := HMap Nat (LogValue P nP)`; `rcEntries` reads
+`lg.2.entries`; the four `foldlOn_insertSorted` proof sites re-pointed; `#guard_eval`
+literals use `HMap.ofList`. Per-tick acceptor cost O(n²) → O(n), like the Rust.
+
+**`K: Hash` at the operators (`Hydro/KeyedHash.lean`).** Profiling the free-running
+leader showed `collect_quorum`'s per-tick `fold_keyed` over the pending pool at
+O(keys × pool): the machine's `keyedFoldAssoc` is `dedup` + a per-key `filter`. Rust's
+`fold_keyed`/`join`/`anti_join`/`filter_not_in`/`reduce_watermark` demand `K: Eq + Hash`
+*at the operator* (the keyed types carry no bound) — ratified, mirrored exactly:
+`[Hashable K]` on `HydroSem.bkfold/bjoin/bantiJoin/bfilterNotIn/reduce_watermark` (nothing
+on the carriers or the IR kinds), on `collect_quorum`/`collect_quorum_with_response`/
+`join_responses` (Rust: `K: Clone + Eq + Hash`) and `two_pc` (Rust: `Payload: Hash`),
+`Ballot` derives `Hashable`; `cq_safe_sched'`, `two_pc_safe_sched'`, `two_pc_once_sched'`
+and `cq_live*` gain the hypothesis (statement-shape change, ratified in this exchange).
+The machine's list definitions stay the semantics — every `Keyed.lean` proof untouched;
+`…H` wrappers carry the instance and `@[csimp]` equations (kernel-checked) swap in
+`Std.HashMap`/`HashSet` implementations: `dedupImpl` (last occurrence, one pass from
+the right), `listFilterNotInImpl`/`listAntiJoinImpl` (a `HashSet` of the other side),
+`listJoinImpl` (`groupRev`: the right side grouped by key, values in arrival order),
+`keyedFoldAssocImpl` (`foldAcc`: accumulators per key + the dedup'd key list), and
+`reduceWatermarkEagerImpl` — the per-tick payload batch of DFIR's `ReduceKeyedWatermark`
+as one pass: group the kept arrivals by key, update every existing key, append the new
+keys first-arrival-first (`fdGo`). Its equation `payloadsImpl_eq` goes through
+**`assoc_ext`** (an association list with distinct keys is its key list and its
+lookups) with `keys_foldl_payload` (the appended keys are `fdGo (keys m) (kept keys)`)
+and the existing `lookup_foldl_payload`. The IR constructor `Node.reduce_watermark` gains
+`iH` right after `iK` (the generator maps the field's arguments positionally, instances
+explicit); ~15 `Project` pattern sites gain one `_`; `Node.step`/`locStep` call the `H`
+wrapper. `kfold_early_stop`'s cell (`KFESCell`) now carries the unique-keys invariant and
+emits with one `filterMap` (`kfesOutMap`) instead of re-`dedup`ing every key ever seen
+(`kfesOut_spec` restated; `step_wired`/`run_spec` unchanged).
+
+**Measured (2 proposers + 3 acceptors, independent machines, loopback TCP; every run
+slot-functional and replay-reproducible).**
+
+| payloads × batch | lock-step harness (start) | machines + `HMap` | + in-tick `Hash` | + `reduce_watermark` `Hash` |
+|---|---|---|---|---|
+| 1000 × 50 | 7.3k/s | 8.7k/s | 10.1k/s | **10.1k/s** |
+| 4000 × 50 | 2.3k/s | 5.3k/s | 9.0k/s | **10.8k/s** |
+| 10000 × 100 | 0.9k/s | — | 4.7k/s | **22.3k/s** |
+| 20000 × 200 | — | — | — | **30.9k/s** |
+
+Single-payload commit latency ≈ 3 ms (two round trips + the idle timer); election
+≈ 15 ms; batch 1 is latency-bound at ≈ 350 commits/s. Leader step 1.3 → 3.6 ms over
+20k slots (proportional to inbox size); acceptor step 0.8 → 12 ms at 20k slots × batch
+200 — the remaining list costs are `gcBelow`/`filterEntries` and the snapshot's per-tick
+O(log) re-fold (the Rust pays the latter too); bounding the log is the checkpoint path,
+queued next. Not measured: real network latency; all five processes share one Lean
+runtime.
+
+**Method.** `perf record` named the hot leaves (`insertSorted@recommit…` 33% +
+refcounting; later `List.find?`/`insertReduceList`; the Lean binary has symbols, no call
+graphs); a per-node timer inside a throwaway `prof` exe (`stepDagT`, the `locStep`
+recursion with `IO.monoNanosNow` per node) showed the Dag step itself at 0.3 ms with 97
+nodes — the cost was proportional to the *inbox* (≈100 µs per inbound message), which
+pointed at the pool fold. Three dead ends worth recording: `Std.HashMap` is not
+extensional but `ExtHashMap` is (D75's first draft argued the sorted list was forced);
+`List.dedup` keeps the LAST occurrence (`dedup_cons_of_mem`), so the machine's key order is
+last-arrival — `fdGo` is first-arrival and the two meet only through `fdGo_congr`; and
+`List.nodup_append`'s third conjunct is `∀ a ∈ l₁, ∀ b ∈ l₂, a ≠ b` in this toolchain, not
+`Disjoint`.
+
+**Gate.** `lake build` 845 jobs green (3m33s); zero sorries; no `implemented_by`/`extern`/
+`unsafe`/`native_decide`; nine `@[csimp]` seams (`mk'_eq_mkImpl`, `memoBox*`,
+`dedupH`, `listFilterNotIn`, `listAntiJoin`, `listJoinH`, `keyedFoldAssocH`,
+`reduceWatermarkEagerH`), each kernel-checked; `AxCheck` 61 reports all standard-three
+subsets, `sorryAx` 0, `ofReduceBool` 0; `falsify` ALL PASSED, `explore` true+true,
+`paxos` OK, `twopc` OK, `wired` OK; all twelve program censuses unchanged.
+
+**Checkpoints (`--bench total batch ckFreq`).** Wired as `paxos_bench.rs` wires them:
+the harness's replica (colocated with the leader — `kv_replica.rs:81–104`) applies the
+committed prefix and every `ckFreq` slots sends `next_slot` to the acceptors on the
+existing sockets (`Line.ckpt`); an acceptor reduces the replicas' checkpoints by max
+(`paxos_bench.rs:72–78`) and reads the result as `paxos_core`'s `a_checkpoint` input
+each activation; `reduce_watermark` collects the log below it — the GC path the proofs
+already cover (`LogCoversOrGC`, B4). The replay records the checkpoint read per
+activation. With `ckFreq = 1000` the acceptor step is flat over the run: 10000 × 100 →
+22.4k/s (acceptor 0.76 → 1.09 ms, was 0.6 → 6.5 without), 20000 × 200 → 34.5k/s
+(1.16 → 1.24 ms, was 0.8 → 11.4), **40000 × 200 → 36.5k/s** (acceptor 1.19 → 1.31 ms,
+leader 2.3 → 2.6 ms). Steady state.
+
+**Where the bottleneck is now (`perf`, 40000 × 200 with checkpoints).** After making the
+harness's post-run slot-functionality check linear (it was 42% of the profile — an
+O(n²) `List.all` over 40k commits) and sending each batch encoded once and only to the
+processes hosting a receiver (`Dag.wireReceivers`, the routing table; was 4 encodings
+and 4 sends per batch): **46k commits/s** at batch 200, 32k at batch 100, 17k at batch
+50. The profile is flat: ≈45% Lean runtime allocation/refcount churn (`lean_dec_ref_cold`
+15%, `lean_del_core_other` 10%, `mi_malloc`/`mi_free` ≈17%, `lean_mark_mt` — the small
+lists/pairs/closures a step builds and drops, objects crossing threads); ≈10% JSON on the
+wire (`Json.compress`, UTF-8, the parser, `DTreeMap.insert`); ≈6% `lean_apply_*`; ≈3%
+`List.reverseAux`/`Array.ofFn`; **the Dag interpreter proper ≈2%** (`locStep`,
+`memoState`, `HList.get`); nothing grows with the log or the run. The leader is the
+critical path (step 2.8 ms vs acceptors' 1.3 ms per 200-slot batch; cycle ≈4.2 ms).
+The next levers are a binary codec (`Codec` is abstract; the Rust uses bincode for the
+same reason) and `Array`-backed increments inside the machine (a representation change
+in `SchedSem`/`Project`, proof-touching).
+
+**The headline, slimmed (user: "very hard to read and make sure it isn't accidentally
+vacuous").** `paxos_safe_wired` carried five Values-side objects (`cpV hcp ckSrc ckV
+hck` — the corner's pools, inherited from `paxos_safe_sched'`), the machine inputs
+twice (`cpS`/`ckS` and `hinp : I.inp = envIncAt …`), and the ticks twice. Now: the
+environment is recovered from the interleaving's increments (`envOfInc`,
+`Project/EnvOfInc.lean` — every per-step increment sequence is the increments of the
+environment whose history is their concatenation; `envIncAt_envOfInc`,
+`HTMono_envOfInc`), and a machine-only **`paxos_safe_sched`** builds the pools inside
+the proof: inputs truncated at the horizon `T` are their own finite pools (`hcp` by
+`mono_le`), the checkpoint register is the running `optMax` fold of its own value list
+(`foldl_optMax_ckList`, needs the register monotone; `snapTrace_ascending` gives the
+Values singleton's ascent for free since `optMax` is inflationary), and the commits of
+the untruncated run are those of the truncated one at `T` by causality through the graph
+(`paxos_core.dag_denote` + `Dag.denote_causal`). This closes SCHED_AUDIT F2 for Paxos.
+The wired statement's hypotheses were then: `hnA`, the interleaving, `hI : I.pacing =
+pacing`, `CkMono` (the checkpoint wire's own `Monotonic` typing — satisfiable by the
+constant `none`; without it the acceptor's GC is unsound, B4), `SettledAt`/`ValidAt`
+from `t₀`, and the two commits. Standard axioms. (D76 removes `hI`, `t₀`, `SettledAt`
+and `ValidAt`.)
+
+**Queue after D75.** Apply the `paxos_safe_sched` recipe to `cq_safe_sched'`/`two_pc_*`
+(F2 fully closed); a binary `Codec` for the wire; `Array` increments; `gcBelow`/
+`filterEntries` as one pass (they already are O(n); the constant); a `--bench` latency
+histogram; then the D74 queue (lock-step replay of the wired log, the hop-1
+kernel re-evaluation, the slow generated declarations, `SchedSem` against production
+DFIR with the graph as the replay vehicle).
+
+### D76 — A member that is not active is inert: `SchedSem`'s delivery, knot feedback and `defer_tick` gated by the member's pace (idle / stutter / tick); `paxos_safe_wired` for every interleaving, no settling
+
+**The question (user).** Reading the D75 headline binder by binder: "why is `top`
+arbitrary — shouldn't `hnA` restrict it?", "why do we need `SettledAt`?", "why does
+being settled even matter for safety? even if there's pending stuff it should satisfy
+safety", "I don't want more hypotheses of this form", "whenever a machine takes a step
+all its ticks step too, does that help?", "defer_tick is lazy, it does not trigger
+another tick on its own", "I'm confused why idle-ness is even relevant to a safety
+argument". The first has a clean answer (`hnA` constrains `mem acc`, the cluster size,
+a parameter of the program; a `Topology` was only a *placement* of members onto
+processes and cannot change how many acceptors exist). The others exposed an artifact.
+`Topology` itself was then dropped (user: "there should be one cluster member per process
+during runtime … can we drop the extra generality?"): a process **is** a member,
+`Member L mem := (ℓ : L) × Fin (mem ℓ)` (a cluster and an index; a Hydro `Process` is a
+cluster of size 1), `Sel.single m` the process hosting exactly `m`, and `Interleaving L
+mem Γ` says which member runs at each step. `Hosted (I.sel k) prop` in the headline is
+then "a proposer index `i` with `I.who k = ⟨prop, i⟩`".
+
+**Diagnosis.** The wired proof is a transfer: safety is proven once at `SchedSem`
+(`paxos_safe_sched`), and `Dag.step_wired` identified a clocked step with the active
+process's `locStep`, the other processes' cells untouched. That identification needs the
+lock-step machine to have *nothing to do* at a sleeping process's members. It did not:
+three `SchedSem` primitives moved content at a member regardless of whether it ticked —
+`StepHist.deliver` (the cursor delivered whether or not the receiver ran),
+`StepHist.shift` at `fix_stream` and the implicit step shift at `fix_tick` (knot
+feedback advanced one *clocked* step, the "event-loop pass", though a sleeping process
+makes no passes), and `defer_tick`'s seed (emitted at step 0 at every member, not at the
+member's first tick). Every hypothesis of the D74/D75 wired theorem beyond `hnA` and
+`CkMono` — `IdleEnv`, `OracleAt`, `Feasible`, `CursorsStill`, `Quiet` before a switch,
+`Inv`/`KnotsIdle`/`ChanMono` (`SettledAt`), the settled prefix `S0` — was scaffolding
+for that gap, and `SettledAt 0` was in fact false at `Dag.init` (`defer_tick`'s cell
+starts unfired), so the base case `(t₀, hs)` was an assumption nothing in the tree
+discharged. Morally the asleep run was always safe (a longer knot delay is latency), but
+`SchedSem` had no run describing it, because knot propagation was governed by neither
+pacing nor decisions.
+
+**The change — inertness as the semantic principle.** `Sched.lean` gains `gateView p f`
+(`0 ↦ []`, `t+1 ↦ if p (t+1) then f t else gateView p f t`): a ticking step sees the
+source one step late (the `+1` floor stays), a non-ticking step repeats. The ungated
+primitives are the special case `p = fun _ => true` (`gateView_true`). Then
+`StepHist.deliver h p c` gates on the receiver's skeleton (`broadcast_closed`/`demux`
+pass `pacing p i`), `StepHist.shift h p` and `fix_tick`'s iterate gate on the knot
+member's (`fix_stream`/`fix_tick` pass `pacing ℓ j`), and `defer_tick init t i step =
+if (tickSteps (pacing ℓ i) step).isEmpty then [] else init :: t i step` (the seed at the
+first tick — positional tick consumers cannot tell; the `allTicks`/`sample_every`
+boundary emits at tick time, which is Hydro's behaviour). Lemmas: `gateView_prefix`,
+`gateView_mono(_le)`, `gateView_congr` (agreement below a horizon from agreement
+strictly below it), `gateView_stable`. The two uncertain pieces — the operator
+couplings in the transfer — went through on exactly the abstract properties they
+already used: `deliver_view_cpl` ("a delivered view is a `take` of an earlier source
+view": the gated view is either that or the previous delivered view, inductively such a
+take), and the knot coupling, where the old *fixpoint equation* `fixSr.view (t+1) =
+(sbody fixSr).view t` became the **fixpoint inequation** `co_fix_view_succ : fixSr.view
+(t+1) <+: (sbody fixSr).view t` (equal at a ticking step; at a non-ticking step the knot
+holds its previous view, itself such a prefix — `co_fix_stage_eq`), which is all
+`co_fix_cpl` needs (`ListLe.of_prefix`); same for the tick knot
+(`co_tick_fix_succ`, needs `TMono` of the body, already a `wf` conjunct). Causality
+(`iterate_shift_congr`, `stab_iterate_shift/tick` — now by strong induction on the step
+since the non-ticking branch recurses on the same iterate), monotonicity
+(`TMono.tickshift`, `tmono_defer_tick` via `tickSteps_isEmpty_of_le`) and the liveness
+kit (`deliver_fair_attains` now also needs `FairTicks` of the receiver — the right
+fairness for liveness; `StabilizesAt.deliver_id` is the generous-skeleton special case)
+were mechanical. The `hydro def` elaborator passes the knot's skeleton `fun j => pacing
+ℓ j` to `CoStream.fixSr`/`vbody` and the tick twins (`KnotCtx.tickOf`, read off the loop
+type's location). **The Paxos-specific argument was untouched** — `ensures.slot_functional`
+lives at `Values`, and the sixty-odd lemma sites touched are all per-operator.
+
+**The machine.** `Node.step` mirrors the gating: channels `ChanCell.stepG tick c sends`
+(deliver per cursor if the receiver ticks, else `enqueue` only); `fixN` keeps *pending*
+feedback (`knotFeed` releases it at ticking members and nothing elsewhere, `knotKeep`
+holds a non-ticking member's and appends the body's new output); `defer_tick`'s cell is
+`Bool × List σ` (fired?, buffered input while unfired — fires at the member's first
+tick with the buffer). `Project/Knot`'s feedback equations are the gated ones
+(`KnotKind.delayed pacing`), `Project/StepMain` carries `knotPendingAt`/`knotPrevPending`
+with `delayed_feed`/`delayed_keep` (needs the knot's view to be a prefix of the body's,
+`delayed_prefix`), `chanCellAt h p c t` reads the delivered count off the gated view.
+`Dag.step_spec`/`Dag.run_spec` unchanged in statement.
+
+**The wired layer, shrunk.** `Dag.locStep sel d ora Δ s` — no `tick` argument: a
+process's step ticks the member it hosts — every `Tick` location of that member at once
+(user: "whenever a machine takes a step all its
+ticks step too"). `Dag.step_wired` (`Project/WiredMain.lean`, 5 → 4 hypotheses, 4 → 3
+conclusions): `ctx.tick = sel`, `IdleEnv`, `OracleAt`, and **`Dag.Drained`** — the
+multi-input tick cells (`zipTick`/`reduce_watermark` pair with an empty side,
+`tick_scan` with no complete tuple, `sample_every` at its greedy position) hold no
+complete item, the one condition on the state, and a *theorem* about every state the
+machine produces (`Dag.step_drained` for any step from any state, `Dag.init_drained`).
+`Inv`, `ChanMono`, `Feasible`, `CursorsStill`, `Quiet`, `KnotsIdle`, `inv_step` and
+`ProjectWiredInv.lean` are gone. `Dag.cursorsAt sel d t` is the oracle reading the
+graph's own cursors (`cursorsAt_oracleAt`), so the interleaving carries no oracle.
+**`Interleaving top Γ`** is `who : Nat → Fin n` and `inp`; `I.pacing ℓ i k := top.sel
+(I.who k) ℓ i`, `I.env k := envMask (I.sel k) (I.inp k)` (inputs at non-hosted members
+masked, not assumed empty — a sleeping process cannot consume them; singletons
+unchanged, they are read only at ticks), and `view_active`/`view_idle`/`outputs` hold
+with **no hypotheses**. The headline:
+
+    theorem paxos_safe_wired (hnA : mem acc ≤ 2 * f + 1)
+        (I : Interleaving top (PaxosCtx prop acc))
+        (sdec : PaxosCoreDec (SchedSem L mem I.pacing) …) (ssched : PaxosCoreSched (SchedSem L mem I.pacing) …)
+        (hck : I.CkMono prop acc) {k k'} {i : Hosted (I.sel k) prop} {j : Hosted (I.sel k') prop} {s w w'}
+        (hw : (s, w) ∈ (I.active (paxosDag prop acc f I sdec ssched) k).2.1.get Var.zero.succ i)
+        (hw' : (s, w') ∈ (I.active (paxosDag …) k').2.1.get Var.zero.succ j) : w = w'
+
+every binder commented in the source. `sdec` at `SchedSem` is all-`Unit` except the
+heartbeat timing (`le.hb`: timer/pulse verdicts) — the user's question "why do we need
+`sdec`? dec on sched is just unit" is right in spirit; reclassifying the timing family
+(`SampleDec`/`TimerDec`/`PulseDec`) from the content bundle to the schedule bundle
+would make `sdec` vanish from the statement and is queued.
+
+**The harness.** An activation is **one tick**; no settle loop, no `quiet`, no `S0`
+prefix (processes start from `Dag.init`; each fires its own `defer_tick`s at its first
+tick). A knot's pending feedback is state the next tick consumes, and the next tick
+comes with the next arrival — user: "won't all knots be over the network and thus you
+don't need to immediately re-run until you get something from the network?" — or the
+idle timer. `quietLoc` remains as a throughput hint only (stream knots; a tick knot's
+pending is this tick's entry, present after every tick). The D74/D75 linearization
+counter, activation log and single-threaded replay check are gone (user: "why do you
+have a counter? each should be its own thread. I don't care about reconstructing a
+linearization") — each process is its own thread sharing nothing but its sockets, keeps
+its own commit record, and the harness reads the records after the stop flag; that the
+run is an interleaving is the read-before-send argument of the DFIR audit, not a
+check. `wired: OK`; `--bench 40000 200 1000`: **50k commits/s** (46k before).
+
+**Gate.** Full build green (845 jobs); exes falsify/explore/paxos/twopc/wired all pass;
+standard axioms only (`AxCheck` now lists `Dag.step_drained`, `Interleaving.step_wired`
+in place of `inv_step`); the nine `@[csimp]` theorems unchanged; censuses unchanged.
+Doctrine R12 ("a member that does not tick is inert"), ARCHITECTURE §7b,
+CORRESPONDENCE, SCHED_AUDIT, GATE, README, docs/06 updated.
+
+**DFIR audit of the inertness model (user: "does this overconstrain in a way that will
+miss real executions? read dfir — it does not allow fixpoint within a tick anymore").**
+Read against `dfir_rs/src/scheduled/context.rs` (the runner: one generated async tick
+closure per process, `run_tick`/`run_available`/`run`), `dfir_lang/src/graph/meta_graph.rs`
+(the closure: every subgraph once in stratum order, then the `defer_tick` double-buffer
+swap, then `__end_tick`), `flat_to_partitioned.rs:187` ("Cyclical dataflow within a tick
+is not supported" — intra-tick cycles are rejected at partition time; no fixpoint
+iteration) and `hydro_lang/src/compile/ir/mod.rs` (`DeferTick` → `defer_tick_lazy()`,
+never schedules a tick by itself; `CycleSink` → `identity()`, so a `forward_ref` cycle
+closes through the network or not at all; all `Tick` locations of a process land in the
+root location's one graph, `graph_mut` keys by `location.root()`, so they tick together).
+Verdicts: *exact* — a runtime process **is** one cluster member, and its step ticks
+every `Tick` location of that member at once (`Member`/`Sel.single` — co-location is no
+longer expressible); knot feedback
+consumed at the member's next tick and held while it sleeps (`defer_tick_lazy`'s back
+buffer); `defer_tick` seed at the member's first tick (`__dfir_work_done` pre-set so the
+first tick runs); inputs at a non-ticking member ignored (`source_stream` is polled inside
+the tick); the `+1` floor — the deployed binary is `tokio::main(flavor = "current_thread")`
++ a `LocalSet` (`trybuild/generate.rs:234–242`), reader tasks run only between ticks, the
+tick closure never awaits (`run_tick_sync` panics if it does), sinks push to the sink
+task's channel, so a tick sees exactly what arrived before it began and nothing it sent;
+one process per clocked step (each tick reads before it sends, so concurrent ticks
+linearize losslessly); FIFO per pair (TCP `fail_stop`). *Model ⊇ runtime* — delivery
+cursors (the runtime delivers everything arrived; the model any prefix), pacing (the
+runtime ticks on arrivals/timers; the model whenever). Nothing the deployed runtime does
+is outside the model. The one load-bearing assumption is the floor: a multi-threaded
+executor or a tick that awaits mid-way could produce a same-tick round trip the model
+excludes — not possible as compiled today; noted in `SCHED_AUDIT.md`. Semantics vs
+runtime: Hydro's semantic model lets independent `Tick` locations batch independently;
+`SchedSem`'s per-member pacing (unchanged by D76) is DFIR's special case — restricts
+nothing for real executions.
+
+**Stutter steps (`Pace`) — the over-constraint the DFIR audit found, and the fix (user:
+"I like stutter steps").** The first D76 cut fused *clocked step* with *tick*: a member
+either ticked (deliveries landed, knot feedback moved one step, tick bodies fired) or was
+inert. Apply the user's stall test — "one model tick must have exactly the consequences
+of one DFIR tick; the model may never need a tick nothing in production triggers" — to a
+`forward_ref` knot closed through the network (every Paxos knot: `sequencing_max_ballot`,
+`a_log`, `p1b_fail`, `i_am_leader`, `p_is_leader`). In DFIR the fed-back value is
+consumed inside the *same* tick (the `CycleSink` is `identity()`, the subgraphs run in
+stratum order); in the fused model the knot's one-step shift needed a *second tick* of
+the member, which production never triggers (`defer_tick_lazy` schedules nothing, and
+a member with nothing arriving does not tick). A real over-constraint: executions in
+which the fed-back value is used before the next tick were outside the model.
+
+The fix separates the two: a member's pace at a clocked step is `Pace.idle`,
+`Pace.stutter` or `Pace.tick` (`Sched.lean`; `Pacing L mem := (ℓ : L) → Fin (mem ℓ) →
+Nat → Pace`, with `pacing.active` / `pacing.ticks` the two Bool projections and
+`Pacing.ofTicks` for the tick-only tests). `SchedSem`'s delivery (`StepHist.deliver`),
+knot shift (`StepHist.shift`, `fix_tick`'s `gateView`) are gated by `active`; `tickSteps`
+and `defer_tick`'s seed by `ticks`. `StepCtx` is `⟨t, tick, act⟩`; `Node.step` gates
+channel delivery and knot feed/keep on `act`, `defer_tick` on `tick`. `Dag.locStep sel
+tk`: the hosted members are active, and tick iff `tk` (`tk = false`: `snapshot`,
+`batch`/`batch_ordered`, timers and `defer_tick` keep their state and emit nothing;
+channels, knots and every stream operator fire). `Dag.step_wired ctx sel tk (hact : ctx.act
+= sel) (htick : ctx.tick = fun ℓ i => sel ℓ i && tk)`. `Interleaving` gains `tick : Nat →
+Bool`; `I.pacing ℓ i k` is `tick`/`stutter` at the running member per `I.tick k`, `idle`
+elsewhere (`ctx_act`, `ctx_tick`); `I.active d k := locStep (I.sel k) (I.tick k) …`. The
+wired headline's binders are unchanged except that `I` now says whether each step ticks.
+
+What a DFIR tick is in this model: **stutters until the member's asynchronous dataflow
+is quiet, then a tick** — exactly the stratum-ordered sweep followed by the `defer_tick`
+swap and `__end_tick`. `WiredDemo` takes one `locStep … true` per activation (every
+Paxos knot closes over the network, so within a process the feedback is consumed at the
+next activation either way; the stutters matter for the *theorem's* coverage, not the
+harness's throughput). Stutters also make the model what Hydro's semantics says and DFIR
+specializes: asynchronous streams progress independently of any tick. The `+1` floor is
+untouched.
+
+Queued (user agreed): a *linearized* per-process `Project` — forward refs reordered after
+their producers, network nodes split into receive/send halves, no knot cell, one pass per
+tick — and a bridge theorem "one linear tick = stutters-until-quiet, then a tick" in this
+model, so the executable process is the DFIR shape and the lock-step model stays the
+proof's.
+
+**`paxos_safe_sched` moved home.** The machine-only headline (the Values pools built
+inside the proof from the inputs truncated at the horizon; `CkInput`, `CkMono`,
+`StepHist.truncate`, `optMax`, `ckList`, `foldl_optMax_ckList`) had been parked in
+`Paxos/WiredSafety.lean` since D75. It is the statement to read — `paxos_safe_sched'`'s
+`cpV`/`hcp`/`ckV`/`hck` are the coupling's shape leaking into a theorem, not facts about
+a run — so it now sits directly after `paxos_safe_sched'` in `Paxos/CoupleWf.lean`, the
+primed one is documented as the transfer lemma, and CORRESPONDENCE / docs/06 / README /
+ARCHITECTURE quote the unprimed statement. `WiredSafety.lean` holds the wired headline
+only.
+
+**Queue after D76.** The linearized `Project` and its bridge theorem (above). Move `SampleDec`/`TimerDec`/`PulseDec` into the schedule bundle
+(then `PaxosCoreDec (SchedSem …)` is `Unit` and leaves the wired statement; the Values
+side's sched bundle carries exactly the timing); the D75 queue (`cq_safe_sched'`/
+`two_pc_*` by the `paxos_safe_sched` recipe, binary codec, `Array` increments); the D74
+queue (lock-step replay of the wired log constructing an `Interleaving` value, the hop-1
+kernel re-evaluation, `Dag.prune` per location).

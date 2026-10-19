@@ -12,7 +12,7 @@ you can re-check it, and links into the reference docs at the root
 | [03 Contracts](03-contracts.md) | `ensures` faces over outputs, and how a consumer (`two_pc`) composes by contract alone |
 | [04 Ghosts and proofs](04-ghosts-and-proofs.md) | where proofs live in a program: `ghost have`, `prove`, loop invariants, the construct's readers — `OnceInv` end to end |
 | [05 Knots](05-knots.md) | `fix … complete`, the generated Kleene chain, and K4 — `paxos_core`'s invariant read line by line |
-| [06 The machine and the corner](06-the-machine-and-the-corner.md) | `SchedSem`, pacing, cursors; what `paxos_safe_sched'` actually says and why it has no premise |
+| [06 The machine and the corner](06-the-machine-and-the-corner.md) | `SchedSem`, pacing, cursors; what `paxos_safe_sched'` actually says and why it has no premise; how the run becomes processes over TCP (`paxos_safe_wired`, `lake exe wired`) |
 | [07 Liveness as chains](07-liveness-chains.md) | `cq_live_chain`: fairness in decision vocabulary |
 | [08 Adding a module](08-adding-a-module.md) | the checklist, start to gate |
 | [09 Extending the engine](09-extending-the-engine.md) | when a new operator is justified and what it costs |

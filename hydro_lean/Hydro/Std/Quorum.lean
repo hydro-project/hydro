@@ -750,7 +750,7 @@ below-quorum responses across arbitrary batching), and surface every
 error. Returns (`just_reached_quorum`, `fails`).
 
 Rust `nondet!` tally: 1 (the `use::batch`). -/
-hydro def collect_quorum (H : HydroSem L mem) (ℓ : L)
+hydro def collect_quorum [Hashable K] (H : HydroSem L mem) (ℓ : L)
     (responses : H.Stream ℓ (K × Except E Unit) .noOrder .exactlyOnce)
     (min max : Nat)
     (dec : H.BatchDec (mem ℓ) (K × Except E Unit)) :
@@ -994,7 +994,7 @@ hydro def collect_quorum (H : HydroSem L mem) (ℓ : L)
 accumulated `Ok` **responses**. Returns (`quorums`, `fails`).
 
 Rust `nondet!` tally: 1 (the `use::batch`). -/
-hydro def collect_quorum_with_response (H : HydroSem L mem) (ℓ : L)
+hydro def collect_quorum_with_response [Hashable K] (H : HydroSem L mem) (ℓ : L)
     (responses : H.Stream ℓ (K × Except E V) .noOrder .exactlyOnce)
     (min max : Nat)
     (dec : H.BatchDec (mem ℓ) (K × Except E V)) :
@@ -1470,11 +1470,11 @@ private abbrev oneLoc : Unit → Nat := fun _ => 1
 
 section CQSafe
 
-variable {K E : Type} [DecidableEq K] [DecidableEq E]
+variable {K E : Type} [DecidableEq K] [Hashable K] [DecidableEq E]
 
 /-- Machine-run quorum safety, premise-free — assembled from the
 generated artifacts above (the D41 pattern at the smallest scale). -/
-theorem cq_safe_sched' {pacing : Unit → Fin 1 → Nat → Bool}
+theorem cq_safe_sched' {pacing : Pacing Unit (fun _ => 1)}
     (h : Fin 1 → StepHist (K × Except E Unit))
     (v : Fin 1 → Multiset (K × Except E Unit))
     (hc : ∀ T i, Multiset.ofList ((h i).view T) ≤ v i)

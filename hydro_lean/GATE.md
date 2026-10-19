@@ -7,20 +7,22 @@ one at a time — concurrent `lake exe` invocations race on the build directory.
 ## 1. Build
 
 ```bash
-lake build          # the `Hydro` library + the four exes; expect ≈ 826 jobs, ≈ 3 min (16 cores)
+lake build          # the `Hydro` library + the five exes; expect ≈ 843 jobs, ≈ 3¼ min (16 cores)
 ```
 
 Green means: every `#guard`/`#eval` passed, every `#nondet_census` matched, every
 `hydro def` pipeline generated its artifacts. Per-file envelope (report anything above):
 `LeaderElection` ≤ ~90 s, `SequencePayload` ≤ ~60 s, `HydroTickCheck` ≤ ~50 s,
-`PaxosCore` ≤ ~45 s, no other file above 30 s. A new file above 15 s is reported with
+`PaxosCore` ≤ ~45 s, `Project/WiredMain` ≤ ~75 s (D74: the 32-constructor `step_wired`
+mutual block), no other file above 30 s. A new file above 15 s is reported with
 its `trace.profiler` breakdown and `scripts/heartbeat_table.sh` (D72: two thirds of
 `LeaderElection`'s old 320 s was three `#guard_eval`s interpreting a call-by-name `Values`
 run; the rest was a failing `apply` paying ~1.7× per shared projection level in every
 walk. D73: the guards run at `Values` in milliseconds — member carriers are `MemberMap`s
 with a forcing compiled constructor). Executables: each binary runs its scenario in
-well under a second (`paxos`/`twopc`/`explore`/`falsify` ≤ 40 ms wall); a program that
-takes seconds is a sharing bug to find (`ENGINE_NOTES.md` "Runtime"), not a cost.
+well under a second (`paxos`/`twopc`/`explore`/`falsify` ≤ 40 ms wall, `wired` ≤ ~1 s
+including socket setup and 60 activations); a program that takes seconds is a sharing
+bug to find (`ENGINE_NOTES.md` "Runtime"), not a cost.
 
 ## 2. Zero sorries
 
@@ -35,8 +37,11 @@ code is a failure).
 
 `Hydro/AxCheck.lean` is the sole axiom oracle. It `#print axioms` every headline
 (`paxos_core`, `paxos_core.a_log.inv`, `collect_quorum`, `collect_quorum_with_response`,
-`join_responses`, `paxos_co_wf`, `paxos_co_cpl`, `paxos_safe_sched'`, `cq_safe_sched'`,
-`MemberMap.mkImpl_eq`/`mk'_eq_mkImpl` (the executable-witness seam), the corner's
+`join_responses`, `paxos_co_wf`, `paxos_co_cpl`, `paxos_safe_sched'`, `paxos_safe_sched`, `cq_safe_sched'`,
+`MemberMap.mkImpl_eq`/`mk'_eq_mkImpl`, `memoBox_eq_memoBoxImpl`/`memoBox2_eq_memoBox2Impl`
+(the executable-witness seams), `paxos_core.dag_denote`/`two_pc.dag_denote`/
+`collect_quorum.dag_denote`, `Dag.run_spec`, `Dag.step_wired`, `Dag.step_drained`, `Interleaving.step_wired`,
+`Interleaving.view_active`/`view_idle`/`outputs`, `paxos_safe_wired` (D74), the corner's
 `co_fix_cpl`/`co_tick_fix_cpl`/`cc_*`, `paxos_co_sr`/`_rr`, the generated `_co_*`,
 `_param` classes, `paxos_core.a_log.inv`, `toy_safe_sched`, `monoLaws`/`causalLaws`).
 Every report must be a subset of `[propext, Classical.choice, Quot.sound]`; `sorryAx`
@@ -56,16 +61,23 @@ lake exe falsify   # last line: "All falsification checks PASSED."
 lake exe explore   # "acausal script agreement: true" and "causal control agreement: true"
 lake exe paxos     # last line: "paxos: OK"
 lake exe twopc     # last line: "twopc: OK"
+lake exe wired     # last line: "wired: OK" (five independent TCP processes on 127.0.0.1:9400–9404; the ports must be free)
+lake exe wired -- --bench 10000 100 1000   # throughput with checkpoints every 1000 slots: expect ≥ 20k commits/s on a 16-core box, "slot-functional … true"
 ```
 
 `falsify` is the proof that the premises bite: the *faithful* paxos.rs variants commit
 two values at one slot (B1 at `paxos.rs:311–317`, B2 the per-tick rebase — at module
 scope on `sequence_payload`'s output and at whole-program scope on `paxos_core`), the
 *guarded* variants do not. `paxos`/`twopc` are the D15 non-vacuity witnesses — the
-`Values` programs run directly (what they print is the denotation; the one compiled
-seam is `MemberMap.mkImpl`, authorized by the `@[csimp]` theorem `mk'_eq_mkImpl`).
-Nothing unverified stands between a program and its binary: `grep -rn "implemented_by\|@\[extern\|native_decide\|^unsafe" Hydro/ *.lean` must return only `MemberMap.lean`'s
-doc comment saying so. (Queued: once the toolchain is ≥ 4.35, `lake check` — core's
+`Values` programs run directly (what they print is the denotation; the compiled seams
+are `MemberMap.mkImpl` and the D74 memo tables `memoBoxImpl`/`memoBox2Impl`, each
+authorized by its `@[csimp]` theorem). `wired` is the D74 witness: `paxos_core` as two
+proposers and three acceptors over real TCP, each process stepping only its own cells
+(`Dag.locStep` — what `paxos_safe_wired` is about), each on its own thread; it prints
+the commit `(0, some 1000)` and checks slot-functionality across processes. Nothing unverified stands between a program and its binary:
+`grep -rn "implemented_by\|@\[extern\|native_decide\|^unsafe" Hydro/ *.lean` must return only `MemberMap.lean`'s
+doc comment saying so, and `grep -rn "@\[csimp\]" Hydro/` exactly the nine equations
+(`MemberMap`, the two memo tables, the six hash-backed keyed operators of D75). (Queued: once the toolchain is ≥ 4.35, `lake check` — core's
 Comparator — replays the headlines through the kernel with statement identity and the
 permitted-axiom list, replacing `AxCheck.lean` and the R9 diff rule.)
 

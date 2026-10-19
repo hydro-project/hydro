@@ -406,9 +406,9 @@ a generated step as the plain term of its Rust lines without the
   bksMap m f := m.map f
   bksKeys m := m.keysMS
   bksEntries m := m.entries
-  bjoin {_K _V _W _ _ _ ord ord'} a b := poolJoin (ord := ord) (ord' := ord') a b
-  bantiJoin {_K _V _ _ ord ord'} a ks := poolAntiJoin (ord := ord) (ord' := ord') a ks
-  bfilterNotIn {_α _ ord ord'} a o := poolFilterNotIn (ord := ord) (ord' := ord') a o
+  bjoin {_K _V _W _ _ _ _ ord ord'} a b := poolJoin (ord := ord) (ord' := ord') a b
+  bantiJoin {_K _V _ _ _ ord ord'} a ks := poolAntiJoin (ord := ord) (ord' := ord') a ks
+  bfilterNotIn {_α _ _ ord ord'} a o := poolFilterNotIn (ord := ord) (ord' := ord') a o
   bmax {_α _ _ ord} b := poolMax (ord := ord) b
   bfilterIf b flag := poolFilterIf b flag
   bsPure v := v
@@ -699,7 +699,7 @@ in some sender's destuttered sequence. -/
 @[den] theorem values_tinto_keyed {K V : Type} [DecidableEq K] [DecidableEq V]
     {ord : StrOrd} (x : (Values L mem).AtomicStream ℓ (K × V) ord .exactlyOnce) (i : Fin (mem ℓ)) :
     (Values L mem).tinto_keyed x i = (x i).map (KeyedPool.ofPool (ord := ord)) := rfl
-@[den] theorem values_reduce_watermark {K V : Type} [DecidableEq K] [DecidableEq V]
+@[den] theorem values_reduce_watermark {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V]
     [LinearOrder K] {ord : StrOrd}
     (ks : (Values L mem).AtomicKeyedStream ℓ K V ord .exactlyOnce)
     (wm : (Values L mem).Atomic ℓ (Option K))
@@ -789,7 +789,7 @@ variable {α β σ : Type} [DecidableEq α] [DecidableEq β] {ord : StrOrd}
 @[den] theorem KeyedPool.ofPool_totalOrder {K V : Type} [DecidableEq K] [DecidableEq V]
     (l : List (K × V)) : KeyedPool.ofPool (ord := .totalOrder) l = KeyedPool.ofList l := rfl
 @[den] theorem values_bkfold {K V A : Type} [DecidableEq K] [DecidableEq V]
-    [DecidableEq A] {ret : Retries} (g : A → V → A) (init : A)
+    [DecidableEq A] [Hashable K] {ret : Retries} (g : A → V → A) (init : A)
     (Pre : V → V → Prop) [DecidableRel Pre] (ok : FoldOk ord ret Pre g)
     (ks : (Values L mem).BoundedKeyedStream K V ord ret) :
     (Values L mem).bkfold g init Pre ok ks = KeyedMap.ofFold g init Pre ok ks := rfl
@@ -805,16 +805,16 @@ variable {α β σ : Type} [DecidableEq α] [DecidableEq β] {ord : StrOrd}
 @[den] theorem values_bksEntries {K V : Type} [DecidableEq K] [DecidableEq V]
     (m : (Values L mem).BoundedKeyedSingleton K V) :
     (Values L mem).bksEntries m = m.entries := rfl
-@[den] theorem values_bjoin {K V W : Type} [DecidableEq K] [DecidableEq V]
+@[den] theorem values_bjoin {K V W : Type} [DecidableEq K] [Hashable K] [DecidableEq V]
     [DecidableEq W] {ord' : StrOrd}
     (a : (Values L mem).BoundedStream (K × V) ord .exactlyOnce)
     (b : (Values L mem).BoundedStream (K × W) ord' .exactlyOnce) :
     (Values L mem).bjoin a b = poolJoin (ord := ord) (ord' := ord') a b := rfl
-@[den] theorem values_bantiJoin {K V : Type} [DecidableEq K] [DecidableEq V]
+@[den] theorem values_bantiJoin {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V]
     {ord' : StrOrd} (a : (Values L mem).BoundedStream (K × V) ord .exactlyOnce)
     (ks : (Values L mem).BoundedStream K ord' .exactlyOnce) :
     (Values L mem).bantiJoin a ks = poolAntiJoin (ord := ord) (ord' := ord') a ks := rfl
-@[den] theorem values_bfilterNotIn {ord' : StrOrd}
+@[den] theorem values_bfilterNotIn [Hashable α] {ord' : StrOrd}
     (a : (Values L mem).BoundedStream α ord .exactlyOnce)
     (o : (Values L mem).BoundedStream α ord' .exactlyOnce) :
     (Values L mem).bfilterNotIn a o = poolFilterNotIn (ord := ord) (ord' := ord') a o := rfl

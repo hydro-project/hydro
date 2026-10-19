@@ -51,21 +51,31 @@ skew).
 ## The headline, and what it quantifies over
 
 ```lean
--- Hydro/Paxos/CoupleWf.lean:85–92
-theorem paxos_safe_sched' (hnA : mem acc ≤ 2 * f + 1)
+-- Hydro/Paxos/CoupleWf.lean
+theorem paxos_safe_sched (T : Nat) (hnA : mem acc ≤ 2 * f + 1)
+    (cpS : (SchedSem L mem pacing).Stream prop P .totalOrder .exactlyOnce)
+    (ckS : CkInput pacing acc) (hck : CkMono pacing acc ckS)
+    (sdec : PaxosCoreDec (SchedSem L mem pacing) (mem prop) (mem acc) P (Option Nat) .totalOrder)
+    (ssched : PaxosCoreSched (SchedSem L mem pacing) (mem prop) (mem acc) P)
     (i j : Fin (mem prop)) (s : Nat) (w w' : Option P)
-    (hw : (s, w) ∈ ((paxos_core (SchedSem L mem pacing) .guarded prop
-      acc f cpS ckS sdec ssched).2 i).view T)
-    (hw' : (s, w') ∈ ((paxos_core (SchedSem L mem pacing) .guarded prop
-      acc f cpS ckS sdec ssched).2 j).view T) :
-    w = w' := by
+    (hw : (s, w) ∈ ((paxos_core (SchedSem L mem pacing) .guarded prop acc f cpS ckS sdec ssched).2 i).view T)
+    (hw' : (s, w') ∈ ((paxos_core (SchedSem L mem pacing) .guarded prop acc f cpS ckS sdec ssched).2 j).view T) :
+    w = w'
 ```
 
-Section variables: `pacing` — **any** per-member tick skeleton; `sdec`/`ssched` — **any**
-timing and delivery schedule; `T` — **any** horizon; `cpS`/`ckS` the machine inputs with
-abstract pools `cpV`/`ckV` they are coupled to (`hcp`/`hck`: the machine's view at every
-horizon is a prefix of the pool — the one premise, discussed as `SCHED_AUDIT.md` F2).
-Conclusion: two commits the *step machine's* `paxos_core` has emitted at one slot agree.
+`pacing` — **any** per-member pace (idle / stutter / tick at each step); `sdec`/`ssched` —
+**any** timing and delivery cursors; `T` — **any** horizon; `cpS` — **any** client stream;
+`ckS` — **any** checkpoint register that only grows (`CkMono`, the wire's own `Monotonic`
+typing). Conclusion: two commits the *step machine's* `paxos_core` has emitted at one
+slot agree.
+
+It is proved through the transfer lemma `paxos_safe_sched'` (same file), whose
+statement still carries the coupling's shape — Values pools `cpV`/`ckV` above the inputs
+with `hcp`/`hck` — as hypotheses. `paxos_safe_sched` builds those from the inputs
+themselves: truncated at `T`, the view is its own pool and the register is the
+`optMax`-fold of its own history; causality (`Dag.denote_causal` through
+`paxos_core.dag_denote`) carries the commits back to the untruncated run. This is what
+closes `SCHED_AUDIT.md` F2.
 
 Absent: a decision argument, a satisfiability hypothesis. The theorem's predecessor had
 one (`hsat : δ T d`) and it turned out to be **unsatisfiable for nested knots** — the
@@ -74,7 +84,7 @@ headline was vacuously true for a year in a zero-sorry tree (D37;
 
 ## The corner
 
-The proof is four names and one contract application (`CoupleWf.lean:93–108`):
+The transfer lemma's proof is four names and one contract application (`CoupleWf.lean`):
 
 ```lean
   have hens := (paxos_core.ensures .guarded prop acc f cpV ckV
@@ -130,3 +140,29 @@ in-tick operator is implemented twice and **coupled per operator** (`CoBounded`,
 quotient agree up to the grade's relation. The `tick` block's `wf` is exactly this body
 coupling (`CoTick.scanWf`), which is why a Rust `NoOrder` body cannot observe the
 schedule's order — and why no "emission linearization" decision exists anymore (D61).
+
+## From the machine to processes (D74)
+
+`SchedSem` is one closed run. `Project` (`../ARCHITECTURE.md` §7b) is how that run
+becomes **processes**: `hydro def` also compiles the body into a typed dataflow graph,
+`paxos_core.dag`, with a theorem that stepping the graph denotes the `SchedSem` run
+(`paxos_core.dag_denote`, generated — kernel `rfl` for leaf modules, callee lemmas by
+`simp` for the rest). A process is `Dag.locStep` over the graph at *its own members'*
+cells (`Hydro/Project/Wired.lean`): it reads what arrived on its queues, ticks — or
+*stutters*: lets deliveries land and knot feedback propagate without firing any tick
+body (`locStep sel tk`) — and emits `Sends`. `Dag.step_wired` (`Project/WiredMain.lean`) says that when nobody else is
+active, the global step cut to this process IS `locStep` and the others only receive;
+`Interleaving.outputs` (`Project/WiredRun.lean`) lifts this to a whole interleaving (any
+"who goes now", and whether it ticks or stutters — nothing else: a member that is not
+active is inert, D76; one DFIR tick is stutters-then-tick);
+`paxos_safe_wired` (`Paxos/WiredSafety.lean`) then is the headline for a network:
+
+```
+theorem paxos_safe_wired (hnA : mem acc ≤ 2 * f + 1) (I : Interleaving L mem (PaxosCtx prop acc)) (sdec ssched) (hck : I.CkMono …) … :
+    (slot, some v) ∈ commits of process p at step k → (slot, some v') ∈ commits of process q at step k' → v = v'
+```
+
+`lake exe wired` runs it: two proposers and three acceptors on `127.0.0.1:9400–9404`,
+JSON lines on the wire (`paxos_core.wireCodecs`, derived from the message types'
+`ToJson`), proposer 0 commits `42` at slot 0, and the recorded interleaving replays
+single-threaded through the same pure step — the TCP run is one `Interleaving`.

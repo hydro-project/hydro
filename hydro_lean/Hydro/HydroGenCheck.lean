@@ -63,7 +63,7 @@ generated namings, and the colocated `Values` contract. -/
 
 theorem toy_safe_sched
     {L : Type} {mem : L → Nat}
-    {pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool} (ℓ : L)
+    {pacing : Pacing L mem} (ℓ : L)
     (h : (SchedSem L mem pacing).Stream ℓ Nat .noOrder .exactlyOnce)
     (v : (Values L mem).Stream ℓ Nat .noOrder .exactlyOnce)
     (hc : ∀ t i, ListLe .noOrder .exactlyOnce ((h i).view t) (v i))

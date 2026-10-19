@@ -157,7 +157,7 @@ theorem famFreeze_congr_le {n : Nat} {β : Type} [DecidableEq β]
 section Ops
 
 variable {L : Type} {mem : L → Nat}
-  {pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool}
+  {pacing : Pacing L mem}
 
 theorem causal_map {ℓ : L} {α β : Type} [DecidableEq α] [DecidableEq β]
     {ord : StrOrd} {h : Nat}
@@ -182,15 +182,12 @@ theorem causal_filterMap {ℓ : L} {α β : Type} [DecidableEq α]
 /-- A delivered, sender-tagged wire agrees below the horizon when the
 sender's wire does. -/
 theorem VAgree.deliver_tag {α β : Type} {h : Nat} {s s' : StepHist α}
-    (hs : VAgree h s s') (c : Nat → Nat) (f : α → β) :
-    VAgree h ((s.deliver c).map f) ((s'.deliver c).map f) := by
+    (hs : VAgree h s s') (p : Nat → Bool) (c : Nat → Nat) (f : α → β) :
+    VAgree h ((s.deliver p c).map f) ((s'.deliver p c).map f) := by
   intro t ht
-  match t with
-  | 0 => rfl
-  | t + 1 =>
-    show ((s.view t).take (cumMax c (t + 1))).map f
-      = ((s'.view t).take (cumMax c (t + 1))).map f
-    rw [hs t (Nat.le_of_succ_le ht)]
+  show (gateView p (fun t => (s.view t).take (cumMax c (t + 1))) t).map f
+    = (gateView p (fun t => (s'.view t).take (cumMax c (t + 1))) t).map f
+  rw [gateView_congr p _ _ h (fun t' ht' => by rw [hs t' (Nat.le_of_lt ht')]) t ht]
 
 theorem causal_broadcast_closed {c p : L} {α : Type} [DecidableEq α]
     {ord : StrOrd} {ret : Retries} {h : Nat}
@@ -200,9 +197,9 @@ theorem causal_broadcast_closed {c p : L} {α : Type} [DecidableEq α]
     SAgree h ((SchedSem L mem pacing).broadcast_closed d s)
       ((SchedSem L mem pacing).broadcast_closed d s') := by
   intro i t ht
-  show mergeNView (fun j => ((s j).deliver (d i j)).map (fun v => (j, v))) t
-    = mergeNView (fun j => ((s' j).deliver (d i j)).map (fun v => (j, v))) t
-  exact mergeNView_congr (fun j => (hs j).deliver_tag _ _) t ht
+  show mergeNView (fun j => ((s j).deliver (pacing.active p i) (d i j)).map (fun v => (j, v))) t
+    = mergeNView (fun j => ((s' j).deliver (pacing.active p i) (d i j)).map (fun v => (j, v))) t
+  exact mergeNView_congr (fun j => (hs j).deliver_tag _ _ _) t ht
 
 theorem causal_demux {c p : L} {α : Type} [DecidableEq α]
     {ord : StrOrd} {h : Nat}
@@ -212,9 +209,9 @@ theorem causal_demux {c p : L} {α : Type} [DecidableEq α]
     SAgree h ((SchedSem L mem pacing).demux d s addr)
       ((SchedSem L mem pacing).demux d s' addr) := by
   intro i t ht
-  show mergeNView (fun j => (((s j).filterMap _).deliver (d i j)).map (fun v => (j, v))) t
-    = mergeNView (fun j => (((s' j).filterMap _).deliver (d i j)).map (fun v => (j, v))) t
-  refine mergeNView_congr (fun j => VAgree.deliver_tag ?_ _ _) t ht
+  show mergeNView (fun j => (((s j).filterMap _).deliver (pacing.active p i) (d i j)).map (fun v => (j, v))) t
+    = mergeNView (fun j => (((s' j).filterMap _).deliver (pacing.active p i) (d i j)).map (fun v => (j, v))) t
+  refine mergeNView_congr (fun j => VAgree.deliver_tag ?_ _ _ _) t ht
   intro t' ht'
   show ((s j).view t').filterMap _ = ((s' j).view t').filterMap _
   rw [hs j t' ht']
@@ -319,7 +316,7 @@ end Ops
 section TickOps
 
 variable {L : Type} {mem : L → Nat}
-  {pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool}
+  {pacing : Pacing L mem}
 
 theorem causal_snapshot {ℓ : L} {α σ : Type} [DecidableEq α]
     {ord : StrOrd} {ret : Retries} {b : SingBound σ} {h : Nat}
@@ -328,8 +325,8 @@ theorem causal_snapshot {ℓ : L} {α σ : Type} [DecidableEq α]
     TAgree h ((SchedSem L mem pacing).snapshot s d)
       ((SchedSem L mem pacing).snapshot s' d) := by
   intro i t ht
-  show (tickSteps (pacing ℓ i) t).map (fun st => s i st)
-    = (tickSteps (pacing ℓ i) t).map (fun st => s' i st)
+  show (tickSteps (pacing.ticks ℓ i) t).map (fun st => s i st)
+    = (tickSteps (pacing.ticks ℓ i) t).map (fun st => s' i st)
   refine List.map_congr_left (fun st hst => ?_)
   exact hs i st ((tickSteps_mem_le hst).trans ht)
 
@@ -339,8 +336,8 @@ theorem causal_batch {ℓ : L} {α : Type} [DecidableEq α] {h : Nat}
     TAgree h ((SchedSem L mem pacing).batch s d)
       ((SchedSem L mem pacing).batch s' d) := by
   intro i t ht
-  show batchesFrom ((s i).view) (tickSteps (pacing ℓ i) t) 0
-    = batchesFrom ((s' i).view) (tickSteps (pacing ℓ i) t) 0
+  show batchesFrom ((s i).view) (tickSteps (pacing.ticks ℓ i) t) 0
+    = batchesFrom ((s' i).view) (tickSteps (pacing.ticks ℓ i) t) 0
   exact batchesFrom_congr _
     (fun st hst => hs i st ((tickSteps_mem_le hst).trans ht)) 0
 
@@ -351,8 +348,8 @@ theorem causal_batch_ordered {ℓ : L} {α : Type} [DecidableEq α]
     TAgree h ((SchedSem L mem pacing).batch_ordered s d)
       ((SchedSem L mem pacing).batch_ordered s' d) := by
   intro i t ht
-  show batchesFrom ((s i).view) (tickSteps (pacing ℓ i) t) 0
-    = batchesFrom ((s' i).view) (tickSteps (pacing ℓ i) t) 0
+  show batchesFrom ((s i).view) (tickSteps (pacing.ticks ℓ i) t) 0
+    = batchesFrom ((s' i).view) (tickSteps (pacing.ticks ℓ i) t) 0
   exact batchesFrom_congr _
     (fun st hst => hs i st ((tickSteps_mem_le hst).trans ht)) 0
 
@@ -381,7 +378,8 @@ theorem causal_defer_tick {ℓ : L} {σ : Type} {h : Nat} (init : σ)
     TAgree h ((SchedSem L mem pacing).defer_tick init t)
       ((SchedSem L mem pacing).defer_tick init t') := by
   intro i u hu
-  show init :: t i u = init :: t' i u
+  show (if (tickSteps (pacing.ticks ℓ i) u).isEmpty then [] else init :: t i u)
+    = (if (tickSteps (pacing.ticks ℓ i) u).isEmpty then [] else init :: t' i u)
   rw [ht i u hu]
 
 theorem causal_flattenOrdered {ℓ : L} {β : Type} [DecidableEq β] {h : Nat}
@@ -476,7 +474,7 @@ end TickOps
 section KnotOps
 
 variable {L : Type} {mem : L → Nat}
-  {pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool}
+  {pacing : Pacing L mem}
 
 theorem causal_sample_every {ℓ : L} {α : Type} [DecidableEq α] {h : Nat}
     {t t' : (SchedSem L mem pacing).Atomic ℓ (Option α)}
@@ -515,7 +513,7 @@ theorem causal_tassume_ordering {ℓ : L} {α : Type} [DecidableEq α]
     TAgree h ((SchedSem L mem pacing).tassume_ordering u d)
       ((SchedSem L mem pacing).tassume_ordering u' d) := hu
 
-theorem causal_reduce_watermark {ℓ : L} {K V : Type} [DecidableEq K] [DecidableEq V]
+theorem causal_reduce_watermark {ℓ : L} {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V]
     [LinearOrder K] {ord : StrOrd} {h : Nat}
     {ks ks' : (SchedSem L mem pacing).AtomicKeyedStream ℓ K V ord .exactlyOnce}
     {wm wm' : (SchedSem L mem pacing).Atomic ℓ (Option K)}
@@ -532,21 +530,18 @@ theorem causal_reduce_watermark {ℓ : L} {K V : Type} [DecidableEq K] [Decidabl
 /-- Shift-iterates of two causally-related step functions agree below
 the horizon (both sides at the same iterate count). -/
 theorem iterate_shift_congr {n : Nat} {α : Type} {h : Nat}
-    {A B : (Fin n → StepHist α) → (Fin n → StepHist α)}
+    {A B : (Fin n → StepHist α) → (Fin n → StepHist α)} (p : Fin n → Nat → Bool)
     (hAB : ∀ h', h' ≤ h → ∀ (x y : Fin n → StepHist α), SAgree h' x y →
       SAgree h' (A x) (B y)) :
     ∀ m, SAgree h
-      (iterate (fun x j => ((A x) j).shift) (fun _ => StepHist.bot) m)
-      (iterate (fun x j => ((B x) j).shift) (fun _ => StepHist.bot) m)
+      (iterate (fun x j => ((A x) j).shift (p j)) (fun _ => StepHist.bot) m)
+      (iterate (fun x j => ((B x) j).shift (p j)) (fun _ => StepHist.bot) m)
   | 0 => SAgree.refl h _
   | m + 1 => by
     intro i t ht
-    match t with
-    | 0 => rfl
-    | t + 1 =>
-      show (A (iterate _ _ m) i).view t = (B (iterate _ _ m) i).view t
-      exact hAB h (Nat.le_refl _) _ _ (iterate_shift_congr hAB m) i t
-        (Nat.le_of_succ_le ht)
+    show gateView (p i) (A (iterate _ _ m) i).view t = gateView (p i) (B (iterate _ _ m) i).view t
+    exact gateView_congr (p i) _ _ h
+      (fun t' ht' => hAB h (Nat.le_refl _) _ _ (iterate_shift_congr p hAB m) i t' (Nat.le_of_lt ht')) t ht
 
 /-- Knot causality (stream): the diagonal of a knot is causal in the
 wires its body captures — stated as body-level heterogeneity. -/
@@ -561,38 +556,31 @@ theorem causal_fix_stream {ℓ : L} {α : Type} [DecidableEq α]
       ((SchedSem L mem pacing).fix_stream d body') := by
   intro i u hu
   show famFreeze (fun t j =>
-      ((iterate (fun x j' => ((body x) j').shift)
+      ((iterate (fun x j' => ((body x) j').shift (pacing.active ℓ j'))
         (fun _ => StepHist.bot) (t + 1)) j).view t) u i
     = famFreeze (fun t j =>
-      ((iterate (fun x j' => ((body' x) j').shift)
+      ((iterate (fun x j' => ((body' x) j').shift (pacing.active ℓ j'))
         (fun _ => StepHist.bot) (t + 1)) j).view t) u i
   exact congrFun (famFreeze_congr_le u (fun u' hu' => funext fun j =>
-    iterate_shift_congr
+    iterate_shift_congr (fun j' => pacing.active ℓ j')
       (fun h'' hh'' x y hxy => hb h'' (hh''.trans (hu'.trans hu)) x y hxy)
       (u' + 1) j u' (Nat.le_refl _))) i
 
 /-- Tick-iterates of two causally-related step functions agree below
 the horizon. -/
 theorem iterate_tickshift_congr {n : Nat} {σ : Type} {h : Nat}
-    {A B : (Fin n → Nat → Trace σ) → (Fin n → Nat → Trace σ)}
+    {A B : (Fin n → Nat → Trace σ) → (Fin n → Nat → Trace σ)} (p : Fin n → Nat → Bool)
     (hAB : ∀ h', h' ≤ h → ∀ (x y : Fin n → Nat → Trace σ),
       TAgree h' x y → TAgree h' (A x) (B y)) :
     ∀ m, TAgree h
-      (iterate (fun x j u => match u with
-        | 0 => ([] : Trace σ)
-        | u + 1 => (A x) j u) (fun _ _ => []) m)
-      (iterate (fun x j u => match u with
-        | 0 => ([] : Trace σ)
-        | u + 1 => (B x) j u) (fun _ _ => []) m)
+      (iterate (fun x j => gateView (p j) ((A x) j)) (fun _ _ => []) m)
+      (iterate (fun x j => gateView (p j) ((B x) j)) (fun _ _ => []) m)
   | 0 => TAgree.refl h _
   | m + 1 => by
     intro i t ht
-    match t with
-    | 0 => rfl
-    | t + 1 =>
-      show (A (iterate _ _ m)) i t = (B (iterate _ _ m)) i t
-      exact hAB h (Nat.le_refl _) _ _ (iterate_tickshift_congr hAB m) i t
-        (Nat.le_of_succ_le ht)
+    show gateView (p i) ((A (iterate _ _ m)) i) t = gateView (p i) ((B (iterate _ _ m)) i) t
+    exact gateView_congr (p i) _ _ h
+      (fun t' ht' => hAB h (Nat.le_refl _) _ _ (iterate_tickshift_congr p hAB m) i t' (Nat.le_of_lt ht')) t ht
 
 /-- Knot causality (tick). -/
 theorem causal_fix_tick {ℓ : L} {σ : Type} {h : Nat} (d : Unit)
@@ -604,13 +592,9 @@ theorem causal_fix_tick {ℓ : L} {σ : Type} {h : Nat} (d : Unit)
     TAgree h ((SchedSem L mem pacing).fix_tick d body)
       ((SchedSem L mem pacing).fix_tick d body') := by
   intro i u hu
-  show (iterate (fun x j u' => match u' with
-      | 0 => ([] : Trace σ)
-      | u' + 1 => (body x) j u') (fun _ _ => []) (u + 1)) i u
-    = (iterate (fun x j u' => match u' with
-      | 0 => ([] : Trace σ)
-      | u' + 1 => (body' x) j u') (fun _ _ => []) (u + 1)) i u
-  exact iterate_tickshift_congr
+  show (iterate (fun x j => gateView (pacing.active ℓ j) ((body x) j)) (fun _ _ => []) (u + 1)) i u
+    = (iterate (fun x j => gateView (pacing.active ℓ j) ((body' x) j)) (fun _ _ => []) (u + 1)) i u
+  exact iterate_tickshift_congr (fun j => pacing.active ℓ j)
     (fun h'' hh'' x y hxy => hb h'' (hh''.trans hu) x y hxy)
     (u + 1) i u (Nat.le_refl _)
 
@@ -626,65 +610,75 @@ stands on. -/
 
 /-- Stream root: views below both iterate counts agree. -/
 theorem stab_iterate_shift {n : Nat} {α : Type} {h : Nat}
-    {A A' : (Fin n → StepHist α) → (Fin n → StepHist α)}
+    {A A' : (Fin n → StepHist α) → (Fin n → StepHist α)} (p : Fin n → Nat → Bool)
     (hAB : ∀ h', h' ≤ h → ∀ (x y : Fin n → StepHist α),
       SAgree h' x y → SAgree h' (A x) (A' y)) :
     ∀ (t m m' : Nat), t ≤ h → t < m → t < m' → ∀ i,
-      ((iterate (fun x j => ((A x) j).shift)
+      ((iterate (fun x j => ((A x) j).shift (p j))
         (fun _ => StepHist.bot) m) i).view t
-      = ((iterate (fun x j => ((A' x) j).shift)
-        (fun _ => StepHist.bot) m') i).view t
-  | t, m + 1, m' + 1, hth, hm, hm', i => by
-    match t, hth, hm, hm' with
-    | 0, _, _, _ => rfl
-    | t + 1, hth, hm, hm' =>
-      show (A (iterate _ _ m) i).view t = (A' (iterate _ _ m') i).view t
-      exact hAB t (Nat.le_of_succ_le hth) _ _
-        (fun i' t' ht' => stab_iterate_shift hAB t' m m'
-          ((ht'.trans (Nat.le_of_lt_succ (Nat.lt_succ_of_le
-            (Nat.le_refl t)))).trans (Nat.le_of_succ_le hth))
-          (Nat.lt_of_le_of_lt ht' (Nat.lt_of_succ_lt_succ hm))
-          (Nat.lt_of_le_of_lt ht' (Nat.lt_of_succ_lt_succ hm')) i')
-        i t (Nat.le_refl _)
-  termination_by t _ _ _ => t
-
-/-- Tick root: entries below both iterate counts agree. -/
-theorem stab_iterate_tick {n : Nat} {σ : Type} {h : Nat}
-    {A A' : (Fin n → Nat → Trace σ) → (Fin n → Nat → Trace σ)}
-    (hAB : ∀ h', h' ≤ h → ∀ (x y : Fin n → Nat → Trace σ),
-      TAgree h' x y → TAgree h' (A x) (A' y)) :
-    ∀ (t m m' : Nat), t ≤ h → t < m → t < m' → ∀ i,
-      (iterate (τ := Fin n → Nat → Trace σ)
-        (fun x j u => match u with
-        | 0 => ([] : Trace σ)
-        | u + 1 => (A x) j u)
-        (fun _ _ => ([] : Trace σ)) m) i t
-      = (iterate (τ := Fin n → Nat → Trace σ)
-        (fun x j u => match u with
-        | 0 => ([] : Trace σ)
-        | u + 1 => (A' x) j u)
-        (fun _ _ => ([] : Trace σ)) m') i t
-  | t, m + 1, m' + 1, hth, hm, hm', i => by
-    match t, hth, hm, hm' with
-    | 0, _, _, _ => rfl
-    | t + 1, hth, hm, hm' =>
-      show (A (iterate (τ := Fin n → Nat → Trace σ)
-          (fun x j u => match u with
-          | 0 => ([] : Trace σ)
-          | u + 1 => (A x) j u)
-          (fun _ _ => ([] : Trace σ)) m)) i t
-        = (A' (iterate (τ := Fin n → Nat → Trace σ)
-          (fun x j u => match u with
-          | 0 => ([] : Trace σ)
-          | u + 1 => (A' x) j u)
-          (fun _ _ => ([] : Trace σ)) m')) i t
-      exact hAB t (Nat.le_of_succ_le hth) _ _
-        (fun i' t' ht' => stab_iterate_tick hAB t' m m'
+      = ((iterate (fun x j => ((A' x) j).shift (p j))
+        (fun _ => StepHist.bot) m') i).view t := by
+  intro t
+  induction t using Nat.strongRecOn with
+  | _ t ih =>
+  intro m m' hth hm hm' i
+  cases m with
+  | zero => exact absurd hm (Nat.not_lt_zero _)
+  | succ m =>
+  cases m' with
+  | zero => exact absurd hm' (Nat.not_lt_zero _)
+  | succ m' =>
+  cases t with
+  | zero => rfl
+  | succ t =>
+    show gateView (p i) (A (iterate _ _ m) i).view (t + 1)
+      = gateView (p i) (A' (iterate _ _ m') i).view (t + 1)
+    rw [gateView_succ, gateView_succ]
+    split
+    · exact hAB t (Nat.le_of_succ_le hth) _ _
+        (fun i' t' ht' => ih t' (Nat.lt_succ_of_le ht') m m'
           (ht'.trans (Nat.le_of_succ_le hth))
           (Nat.lt_of_le_of_lt ht' (Nat.lt_of_succ_lt_succ hm))
           (Nat.lt_of_le_of_lt ht' (Nat.lt_of_succ_lt_succ hm')) i')
         i t (Nat.le_refl _)
-  termination_by t _ _ _ => t
+    · exact ih t (Nat.lt_succ_self t) (m + 1) (m' + 1) (Nat.le_of_succ_le hth)
+        (Nat.lt_of_succ_lt hm) (Nat.lt_of_succ_lt hm') i
+
+/-- Tick root: entries below both iterate counts agree. -/
+theorem stab_iterate_tick {n : Nat} {σ : Type} {h : Nat}
+    {A A' : (Fin n → Nat → Trace σ) → (Fin n → Nat → Trace σ)} (p : Fin n → Nat → Bool)
+    (hAB : ∀ h', h' ≤ h → ∀ (x y : Fin n → Nat → Trace σ),
+      TAgree h' x y → TAgree h' (A x) (A' y)) :
+    ∀ (t m m' : Nat), t ≤ h → t < m → t < m' → ∀ i,
+      (iterate (τ := Fin n → Nat → Trace σ)
+        (fun x j => gateView (p j) ((A x) j)) (fun _ _ => ([] : Trace σ)) m) i t
+      = (iterate (τ := Fin n → Nat → Trace σ)
+        (fun x j => gateView (p j) ((A' x) j)) (fun _ _ => ([] : Trace σ)) m') i t := by
+  intro t
+  induction t using Nat.strongRecOn with
+  | _ t ih =>
+  intro m m' hth hm hm' i
+  cases m with
+  | zero => exact absurd hm (Nat.not_lt_zero _)
+  | succ m =>
+  cases m' with
+  | zero => exact absurd hm' (Nat.not_lt_zero _)
+  | succ m' =>
+  cases t with
+  | zero => rfl
+  | succ t =>
+    show gateView (p i) ((A (iterate _ _ m)) i) (t + 1)
+      = gateView (p i) ((A' (iterate _ _ m')) i) (t + 1)
+    rw [gateView_succ, gateView_succ]
+    split
+    · exact hAB t (Nat.le_of_succ_le hth) _ _
+        (fun i' t' ht' => ih t' (Nat.lt_succ_of_le ht') m m'
+          (ht'.trans (Nat.le_of_succ_le hth))
+          (Nat.lt_of_le_of_lt ht' (Nat.lt_of_succ_lt_succ hm))
+          (Nat.lt_of_le_of_lt ht' (Nat.lt_of_succ_lt_succ hm')) i')
+        i t (Nat.le_refl _)
+    · exact ih t (Nat.lt_succ_self t) (m + 1) (m' + 1) (Nat.le_of_succ_le hth)
+        (Nat.lt_of_succ_lt hm) (Nat.lt_of_succ_lt hm') i
 
 /-! ## The head-dispatch causality walker (`causal_step`)
 

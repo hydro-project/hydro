@@ -32,9 +32,9 @@ def pcDec : PaxosCoreDec (Values PaxLoc (paxMem 1 1)) 1 1 Nat
                     interval := fun _ => [true, true] }
             p1aBatch := fun _ => [{Ballot.mk 0 0}, {}]
             p1b := { cqwr := fun _ =>
-                       [{(Ballot.mk 0 0, .ok (none, []))}, {}]
-                     order := fun _ => [(Ballot.mk 0 0, (none, []))]
-                     snap := fun _ => [{}, {(Ballot.mk 0 0, (none, []))}] }
+                       [{(Ballot.mk 0 0, .ok (none, HMap.ofList []))}, {}]
+                     order := fun _ => [(Ballot.mk 0 0, (none, HMap.ofList []))]
+                     snap := fun _ => [{}, {(Ballot.mk 0 0, (none, HMap.ofList []))}] }
             fuelFail := (1 : UnfoldFuel)
             fuelIAL := (1 : UnfoldFuel)
             fuelLead := (3 : UnfoldFuel) }
@@ -53,7 +53,7 @@ def leRunE :=
   (leader_election HVE .guarded .prop .acc 1 1
     pcDec.le PaxosCoreSched.triv.le
     (.mk' fun _ => (0 : Multiset (Ballot 1)))
-    (.mk' fun _ => [(none, []), (none, [])]))
+    (.mk' fun _ => [(none, HMap.ofList []), (none, HMap.ofList [])]))
 
 /-- The full run — the program applied to the record. -/
 def pcRunE :=

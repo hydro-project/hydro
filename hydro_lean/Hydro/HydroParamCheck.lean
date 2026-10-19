@@ -57,7 +57,7 @@ example {ckα : Type} [DecidableEq ckα] {ckord : StrOrd}
     (fun _ _ => rfl)
     () le_rfl
 
-variable {pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool}
+variable {pacing : Pacing L mem}
 
 /-- **Whole-program step causality for free**: `paxos_core`'s machine
 run below any horizon depends only on the inputs below it —

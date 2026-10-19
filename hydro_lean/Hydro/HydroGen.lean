@@ -475,7 +475,13 @@ def proveByTac (goal : Expr) (tac : String) (label : String := "") : TermElabM E
   -- budget problem
   -- recovery OFF (Lean's own knob): a failing alternative is an exception,
   -- never an admitted goal
-  let val ← withLCtx {} {} <| Term.withoutErrToSorry do
+  -- generated simp sets are deliberately over-approximate (one list per phase
+  -- serves every module shape), so the unused-simp-arg linter is noise here;
+  -- it has two entry points (tactic-time option read, and the command-level
+  -- info-tree pass), so disable the option AND skip the info tree — a
+  -- generated proof has nothing to hover over
+  let val ← withLCtx {} {} <| Term.withoutErrToSorry <| withEnableInfoTree false <|
+      withOptions (fun o => Lean.Elab.Tactic.linter.unusedSimpArgs.set o false) do
     let mvar ← mkFreshExprSyntheticOpaqueMVar goal
     let remaining ← Tactic.run mvar.mvarId! <| Tactic.withoutRecover do
       Tactic.evalTactic stx; Tactic.pruneSolvedGoals
@@ -496,6 +502,27 @@ def addThm (name : Name) (stmt : Expr) (val : Expr) : TermElabM Unit := do
   let stmt ← instantiateMVars stmt
   let val ← instantiateMVars val
   addDecl (.thmDecl { name, levelParams := [], type := stmt, value := val })
+
+/-- Prove a closed `∀ …, lhs = rhs` by `Eq.refl`, judged by the KERNEL directly.
+
+`Meta.isDefEq` (what `rfl`/`simp` run) re-traverses unshared subterms and can be
+50× slower than the kernel on large typed-IR terms (every `Node Γ κs` carries its
+context); the kernel is the trusted judge of every proof anyway, so routing the
+check straight to it loses nothing. The pre-check with `Kernel.isDefEqGuarded`
+exists only so a refusal returns `false` cleanly (a failed `addDecl` would leave
+the name behind as an axiom) and the caller can fall back to a tactic script
+with a readable error. -/
+def addThmByKernelRfl (name : Name) (stmt : Expr) : TermElabM Bool := do
+  let stmt ← instantiateMVars stmt
+  let ok ← forallTelescope stmt fun _ body => do
+    let some (_, lhs, rhs) := body.eq? | return false
+    return Kernel.isDefEqGuarded (← getEnv) (← getLCtx) lhs rhs
+  unless ok do return false
+  let prf ← forallTelescope stmt fun xs body => do
+    let some (ty, lhs, _) := body.eq? | throwError "addThmByKernelRfl: not an equation"
+    mkLambdaFVars xs (mkApp2 (mkConst ``Eq.refl [← getLevel ty]) ty lhs)
+  addThm name stmt prf
+  return true
 
 def addThmByTac (name : Name) (stmt : Expr) (tac : String) :
     TermElabM Unit := do
@@ -580,7 +607,7 @@ def withModCtx (M : Name) (k : ModCtx → TermElabM α)
   let Lstx ← exprToSyntax L
   let memStx ← exprToSyntax memE
   let pacingTy ← elabType
-    (← `((ℓ : $Lstx) → Fin ($memStx ℓ) → Nat → Bool))
+    (← `(Pacing $Lstx $memStx))
   withLocalDecl `pacing .implicit pacingTy fun pacing => do
   withLocalDecl `Tc .implicit (mkConst ``Nat) fun Tc => do
   withLocalDecl `Td .implicit (mkConst ``Nat) fun Td => do

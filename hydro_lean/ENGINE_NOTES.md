@@ -305,6 +305,59 @@ sharing of a run lives or dies on four compiler facts, each learned the hard way
   A 2-op toy with `set_option trace.Compiler.result true` shows the moved call as
   `_x.overap := mkImpl n _f` inside the cell lambda.
 
+### The wired interpreter's memo tables (D74)
+
+`Dag.locStep`'s cells and increments are per-member functions
+(`Hosted sel ℓ → X`); without materialization a run is call-by-name over the graph
+(the D73 leak again — a proposer activation took 3.3 s and the sixth never finished).
+`memo`/`memo2` (`Project/Wired.lean`) are the identity in the logic and build a table in
+compiled code (`@[csimp]`). Getting the table to be built ONCE took three rounds, each
+diagnosed from the IR (`.lake/build/ir/Hydro/Project/Wired.c`) and a `gdb -p` backtrace
+of the hung binary (`thread apply all bt`; the work is on a helper thread, `perf`
+without call graphs only names the hot leaf functions):
+
+- the D73 fact #1 applies to **local** functions too (`Simp/Main.lean`
+  `decl.isEtaExpandCandidate → etaExpand` for `FunDecl`s, and ToLCNF's "cases
+  produces a function → local fun decl, eta-expanded"): `fun i => memoFin (s i)`
+  became `fun i j => (build table) j`;
+- the D73 fact #2 again: a `MemoBox` with the one field `fn` was the function itself
+  — hence `tag : Unit := ()`;
+- **a `match` arm whose type reduces to a function type is eta-expanded as well**:
+  `Node.memoState`'s `| .fold .., s => memo s` arm has type `(Hosted → σ) → Hosted → σ`
+  after the constructor is known, so the arm became `fun s i => (memoBoxImpl s).fn i`
+  and the table was rebuilt per read. The arms return a `StateBox` (two relevant
+  fields) and `Node.memoState` projects OUTSIDE the match. `memoEnv` never had the
+  problem because its arms return a product.
+
+After: a `paxos_core` process step is 0–1 ms, the whole 60-activation TCP run ≈ 0.5 s.
+The csimp replacement happens AFTER `macro_inline` (`ToDecl.lean`: eta-expand the body
+→ `macroInline` → `toLCNF` with `CSimp.replaceConstant`), which is why `memo` is a
+`@[macro_inline]` projection of the (never eta-expanded) box: the use site compiles to
+"build the box, project the closure". `Kernel.isDefEqGuarded` is pure — time it with
+`IO.lazyPure`; `IO.asTask` for a blocking socket loop needs `(prio := .dedicated)`
+(thread-pool exhaustion deadlocks otherwise); `tick`, `state`, `complete` are Hydro
+keywords and cannot name binders in files that import the surface.
+
+### Hash maps (D75)
+
+- `Std.HashMap` is **not** extensional (bucket layout is part of `=`); `Std.ExtHashMap` is
+  the quotient by contents, has `DecidableEq`/`ext_getElem?`, and is a real hash map at
+  runtime. A Rust `HashMap` that travels as a *value* is an `ExtHashMap` (`Hydro.HMap`),
+  never a sorted association list; an order is forced only at the wire (`toList`, slots
+  ascending — unique keys make it a function of the quotient, `List.Perm.eq_of_pairwise`).
+- The machine's keyed operators keep their list definitions as the semantics; the
+  `@[csimp]` route needs a constant to hook, so each operator has an `…H` wrapper carrying
+  `[Hashable K]` (the Rust's bound, at the operator) whose `…Impl` is the hash-backed
+  computation. Equations are proved on lists; for `reduce_watermark`'s batch the tool is
+  `assoc_ext` (same key list + same lookups ⇒ equal lists) with `keys_foldl_payload` and
+  `lookup_foldl_payload`.
+- `List.dedup` keeps the LAST occurrence (`dedup_cons_of_mem`) — the machine's key order
+  is last-arrival; first-arrival order is `fdGo`, and `List.nodup_append`'s disjointness
+  conjunct is `∀ a ∈ l₁, ∀ b ∈ l₂, a ≠ b` here.
+- The leader's cost was proportional to the inbox, not the log: profile per *node*
+  (`stepDagT`-style timing inside the `locStep` recursion) before touching a
+  representation; `perf` names leaves only.
+
 ## Workflow
 
 - Where does a slow file's time go? `set_option profiler true` at the TOP of the file

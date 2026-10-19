@@ -20,7 +20,7 @@ variable {L : Type} {mem : L → Nat} {P : Type} [DecidableEq P]
 
 section CoupleSafety
 
-variable (pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool) (prop acc : L)
+variable (pacing : Pacing L mem) (prop acc : L)
   (T : Nat)
 variable {ckα : Type} [DecidableEq ckα] {ckord : StrOrd}
   {ckret : Retries}

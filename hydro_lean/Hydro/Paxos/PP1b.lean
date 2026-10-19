@@ -556,18 +556,18 @@ hydro [p1bPairDecEq] def p_p1b (H : HydroSem L mem) (prop : L)
 -- One proposer, quorum of 1: the Ok p1b at my ballot elects; the
 -- accepted batch carries its log; the Err feeds the fail stream.
 #guard_eval (p_p1b (Values PaxLoc (paxMem 1 1)) .prop
-    (.mk' fun _ => ({⟨Ballot.mk 0 0, .ok (none, [])⟩} : Multiset (P1b Nat 1)))
+    (.mk' fun _ => ({⟨Ballot.mk 0 0, .ok (none, HMap.ofList [])⟩} : Multiset (P1b Nat 1)))
     (.mk' fun _ => [Ballot.mk 0 0]) (.mk' fun _ => [true]) 1 1
-    ⟨fun _ => [{(Ballot.mk 0 0, .ok (none, []))}],
-     fun _ => [(Ballot.mk 0 0, (none, []))], fun _ => [{(Ballot.mk 0 0, (none, []))}]⟩).1 0
+    ⟨fun _ => [{(Ballot.mk 0 0, .ok (none, HMap.ofList []))}],
+     fun _ => [(Ballot.mk 0 0, (none, HMap.ofList []))], fun _ => [{(Ballot.mk 0 0, (none, HMap.ofList []))}]⟩).1 0
   = [true]
 
 #guard_eval (p_p1b (Values PaxLoc (paxMem 1 1)) .prop
-    (.mk' fun _ => ({⟨Ballot.mk 0 0, .ok (none, [])⟩} : Multiset (P1b Nat 1)))
+    (.mk' fun _ => ({⟨Ballot.mk 0 0, .ok (none, HMap.ofList [])⟩} : Multiset (P1b Nat 1)))
     (.mk' fun _ => [Ballot.mk 0 0]) (.mk' fun _ => [true]) 1 1
-    ⟨fun _ => [{(Ballot.mk 0 0, .ok (none, []))}],
-     fun _ => [(Ballot.mk 0 0, (none, []))], fun _ => [{(Ballot.mk 0 0, (none, []))}]⟩).2.1 0
-  = [({((none : Option Nat), ([] : LogMap Nat 1))} : Multiset (ALog Nat 1))]
+    ⟨fun _ => [{(Ballot.mk 0 0, .ok (none, HMap.ofList []))}],
+     fun _ => [(Ballot.mk 0 0, (none, HMap.ofList []))], fun _ => [{(Ballot.mk 0 0, (none, HMap.ofList []))}]⟩).2.1 0
+  = [({((none : Option Nat), (HMap.ofList [] : LogMap Nat 1))} : Multiset (ALog Nat 1))]
 
 #guard_eval (p_p1b (Values PaxLoc (paxMem 1 1)) .prop
     (.mk' fun _ => ({⟨Ballot.mk 0 0, .error (some (Ballot.mk 5 0))⟩}
@@ -578,10 +578,10 @@ hydro [p1bPairDecEq] def p_p1b (H : HydroSem L mem) (prop : L)
 
 -- A stale ballot's quorum does not elect (quorum for someone else).
 #guard_eval (p_p1b (Values PaxLoc (paxMem 1 1)) .prop
-    (.mk' fun _ => ({⟨Ballot.mk 7 0, .ok (none, [])⟩} : Multiset (P1b Nat 1)))
+    (.mk' fun _ => ({⟨Ballot.mk 7 0, .ok (none, HMap.ofList [])⟩} : Multiset (P1b Nat 1)))
     (.mk' fun _ => [Ballot.mk 0 0]) (.mk' fun _ => [true]) 1 1
-    ⟨fun _ => [{(Ballot.mk 7 0, .ok (none, []))}],
-     fun _ => [(Ballot.mk 7 0, (none, []))], fun _ => [{(Ballot.mk 7 0, (none, []))}]⟩).1 0
+    ⟨fun _ => [{(Ballot.mk 7 0, .ok (none, HMap.ofList []))}],
+     fun _ => [(Ballot.mk 7 0, (none, HMap.ofList []))], fun _ => [{(Ballot.mk 7 0, (none, HMap.ofList []))}]⟩).1 0
   = [false]
 
 #nondet_census p_p1b (nondets := 3) (scheds := 0) (fuels := 0)

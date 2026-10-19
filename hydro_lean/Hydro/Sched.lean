@@ -1,4 +1,5 @@
 import Hydro.Sem
+import Hydro.KeyedHash
 
 /-!
 # Hydro · the step machine (`SchedSem`)
@@ -26,14 +27,17 @@ WLOG — the adversary can split arrivals across steps).
   (`TCP.fail_stop` preserves the grade): `AtLeastOnce` duplicates are
   content born at sampling sites and ride the wire.
 - concrete timing (`SampleDec`/`TimerDec`/`PulseDec`, as in `Values`).
-- **tick pacing** — the per-member tick skeleton
-  `pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool` (which steps each
-  member of each location ticks at), an ambient parameter of the
-  instance. Tick presence is independent across cluster members: one
-  member may tick with content at a step where a sibling has no tick
-  entry at all. Its irreducible content is the presence/absence of
-  stutter ticks; batch partitioning is jointly covered with delivery
-  bursts.
+- **pacing** — the per-member skeleton
+  `pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Pace` (what each member of
+  each location does at each step: `idle` — inert, nothing moves;
+  `stutter` — active, its asynchronous dataflow makes progress
+  (deliveries land, knot feedback propagates) but its tick bodies do not
+  run; `tick` — active and its tick bodies run), an ambient parameter of
+  the instance. Pacing is independent across cluster members. The
+  irreducible content is the presence/absence of ticks and of progress
+  between them (D76: a DFIR tick is "stutters, then a tick"; a sleeping
+  process is `idle`); batch partitioning is jointly covered with
+  delivery bursts.
 
 Content sites (`batch`/`snapshot`/`assume_ordering`/…) take `Unit`: the
 machine consumes its buffers in arrival order — a tick consumes
@@ -142,37 +146,189 @@ theorem prefix_take_prefix {α : Type _} {l l' : List α} (n : Nat)
   rw [List.prefix_iff_eq_take.mp h, List.take_take]
   exact take_prefix_take (Nat.min_le_left _ _)
 
-/-- Deliver a prefix of a wire per a step cursor: what the network has
-handed the receiver by each step. **Delivery takes at least one step**
-(no same-instant network hop: at step `t` the receiver sees a cursor
-prefix of the sender's wire *as of `t - 1`*; step 0 sees nothing).
-The floor is structural — the cursor keeps all its freedom above it —
-and it is what makes every cycle through the network advance the step
-clock, so knot stabilization-in-depth is program-independent. -/
-def StepHist.deliver {α : Type} (h : StepHist α) (c : Nat → Nat) :
-    StepHist α where
-  view
-    | 0 => []
-    | t + 1 => (h.view t).take (cumMax c (t + 1))
-  mono t := by
-    cases t with
-    | zero => exact List.nil_prefix
-    | succ t =>
-      exact (prefix_take_prefix _ (h.mono t)).trans
-        (take_prefix_take (cumMax_mono c (t + 1)))
+/-! ### Pacing
 
-/-- Delay a wire by one step (the event-loop pass of a `forward_ref`
-knot: the feedback wire presents the body's output shifted by one
-step). Structural, so *every* cycle — network-free local loops
+What a member does at a clocked step. -/
+
+/-- `idle`: inert (a sleeping process — nothing it holds changes).
+`stutter`: active without a tick — its asynchronous dataflow progresses
+(network delivery lands, knot feedback propagates) but no tick body runs.
+`tick`: active, and its tick bodies run. -/
+inductive Pace
+  | idle
+  | stutter
+  | tick
+  deriving DecidableEq, Repr
+
+namespace Pace
+
+/-- Does anything move at this member this step? -/
+def active : Pace → Bool
+  | .idle => false
+  | .stutter => true
+  | .tick => true
+
+/-- Do the tick bodies run? -/
+def ticks : Pace → Bool
+  | .tick => true
+  | _ => false
+
+/-- The always-active skeleton from a tick skeleton. -/
+def ofBool : Bool → Pace
+  | true => .tick
+  | false => .stutter
+
+@[simp] theorem ticks_ofBool (b : Bool) : (ofBool b).ticks = b := by cases b <;> rfl
+@[simp] theorem active_ofBool (b : Bool) : (ofBool b).active = true := by cases b <;> rfl
+@[simp] theorem active_idle : active .idle = false := rfl
+@[simp] theorem active_stutter : active .stutter = true := rfl
+@[simp] theorem active_tick : active .tick = true := rfl
+@[simp] theorem ticks_idle : ticks .idle = false := rfl
+@[simp] theorem ticks_stutter : ticks .stutter = false := rfl
+@[simp] theorem ticks_tick : ticks .tick = true := rfl
+
+end Pace
+
+/-- The per-member skeletons of a run. -/
+abbrev Pacing (L : Type) (mem : L → Nat) := (ℓ : L) → Fin (mem ℓ) → Nat → Pace
+
+namespace Pacing
+
+variable {L : Type} {mem : L → Nat}
+
+/-- The member's tick skeleton. -/
+def ticks (pacing : Pacing L mem) (ℓ : L) (i : Fin (mem ℓ)) : Nat → Bool := fun t => (pacing ℓ i t).ticks
+
+/-- The member's activity skeleton. -/
+def active (pacing : Pacing L mem) (ℓ : L) (i : Fin (mem ℓ)) : Nat → Bool := fun t => (pacing ℓ i t).active
+
+/-- An always-active pacing from a tick skeleton. -/
+def ofTicks (p : (ℓ : L) → Fin (mem ℓ) → Nat → Bool) : Pacing L mem := fun ℓ i t => .ofBool (p ℓ i t)
+
+@[simp] theorem ticks_ofTicks (p : (ℓ : L) → Fin (mem ℓ) → Nat → Bool) (ℓ : L) (i : Fin (mem ℓ)) :
+    (ofTicks p).ticks ℓ i = p ℓ i := funext fun t => Pace.ticks_ofBool _
+
+@[simp] theorem active_ofTicks (p : (ℓ : L) → Fin (mem ℓ) → Nat → Bool) (ℓ : L) (i : Fin (mem ℓ)) :
+    (ofTicks p).active ℓ i = fun _ => true := funext fun t => Pace.active_ofBool _
+
+end Pacing
+
+/-! ### Tick gating
+
+A member that does not tick at a step is **inert**: nothing it holds
+changes and nothing it emits grows. Every per-step operator is pointwise
+in its inputs' views and inherits this; the three primitives that move
+content *across* steps on their own — network delivery, the knot
+feedback wire, and the tick knot's implicit defer — are gated by the
+receiving member's tick skeleton through `gateView`: at a ticking step
+`t+1` the gated view presents the source as of `t` (the `+1` floor), at
+a non-ticking step it is frozen. The ungated primitives are the special
+case of a member that ticks at every step. This is what makes a sleeping
+process in a wired run coincide with a non-ticking member of the
+lock-step machine (`Project/WiredRun.lean`), with no settling discipline:
+a process with leftover knot work simply ticks again. -/
+
+/-- The gated view of a per-step source: step 0 sees nothing; a ticking
+step `t+1` sees the source as of `t`; a non-ticking step repeats. -/
+def gateView {β : Type} (p : Nat → Bool) (f : Nat → List β) : Nat → List β
+  | 0 => []
+  | t + 1 => if p (t + 1) then f t else gateView p f t
+
+theorem gateView_zero {β : Type} (p : Nat → Bool) (f : Nat → List β) : gateView p f 0 = [] := rfl
+
+theorem gateView_succ {β : Type} (p : Nat → Bool) (f : Nat → List β) (t : Nat) :
+    gateView p f (t + 1) = if p (t + 1) then f t else gateView p f t := rfl
+
+/-- A gated view of a prefix-monotone source is a prefix of the source's current view. -/
+theorem gateView_prefix {β : Type} (p : Nat → Bool) (f : Nat → List β)
+    (hf : ∀ t, f t <+: f (t + 1)) : ∀ t, gateView p f t <+: f t
+  | 0 => List.nil_prefix
+  | t + 1 => by
+    rw [gateView_succ]
+    split
+    · exact hf t
+    · exact (gateView_prefix p f hf t).trans (hf t)
+
+/-- A gated view of a prefix-monotone source is prefix-monotone. -/
+theorem gateView_mono {β : Type} (p : Nat → Bool) (f : Nat → List β)
+    (hf : ∀ t, f t <+: f (t + 1)) (t : Nat) : gateView p f t <+: gateView p f (t + 1) := by
+  rw [gateView_succ (t := t)]
+  split
+  · exact gateView_prefix p f hf t
+  · exact List.prefix_refl _
+
+/-- Gated views agree below a horizon when the sources agree strictly below it. -/
+theorem gateView_congr {β : Type} (p : Nat → Bool) (f g : Nat → List β) (h : Nat)
+    (hfg : ∀ t, t < h → f t = g t) : ∀ t, t ≤ h → gateView p f t = gateView p g t
+  | 0, _ => rfl
+  | t + 1, ht => by
+    rw [gateView_succ, gateView_succ, hfg t ht, gateView_congr p f g h hfg t (Nat.le_of_succ_le ht)]
+
+/-- Once the source is stable from `U` on and the member has ticked at some
+`U' + 1 ≥ U + 1`, the gated view holds the stable value from there on. -/
+theorem gateView_stable {β : Type} (p : Nat → Bool) (f : Nat → List β) {U U' : Nat}
+    (hf : ∀ u, U ≤ u → f u = f U) (hU : U ≤ U') (hp : p (U' + 1) = true) :
+    ∀ t, U' + 1 ≤ t → gateView p f t = f U := by
+  intro t ht
+  obtain ⟨k, rfl⟩ := Nat.exists_eq_add_of_le ht
+  induction k with
+  | zero => rw [gateView_succ, hp]; exact hf U' hU; done
+  | succ k ih =>
+    rw [show U' + 1 + (k + 1) = (U' + 1 + k) + 1 from by omega, gateView_succ]
+    split
+    · exact hf _ (by omega)
+    · exact ih (by omega)
+
+theorem gateView_mono_le {β : Type} (p : Nat → Bool) (f : Nat → List β)
+    (hf : ∀ t, f t <+: f (t + 1)) {k k' : Nat} (hk : k ≤ k') : gateView p f k <+: gateView p f k' := by
+  induction k' with
+  | zero => cases Nat.le_zero.mp hk; exact List.prefix_refl _
+  | succ k' ih =>
+    rcases Nat.lt_or_ge k (k' + 1) with hlt | hge
+    · exact (ih (Nat.lt_succ_iff.mp hlt)).trans (gateView_mono p f hf k')
+    · cases Nat.le_antisymm hk hge; exact List.prefix_refl _
+
+/-- Ungated: a member ticking at every step sees the source one step late. -/
+theorem gateView_true {β : Type} (f : Nat → List β) (t : Nat) :
+    gateView (fun _ => true) f (t + 1) = f t := by
+  rw [gateView_succ]; rfl
+
+/-- Deliver a prefix of a wire per a step cursor, at the receiver's
+ticks: what the network has handed the receiver by each step. **Delivery
+takes at least one step** (no same-instant network hop: at a ticking
+step `t+1` the receiver sees a cursor prefix of the sender's wire *as of
+`t`*; step 0 sees nothing), and **a receiver that does not tick receives
+nothing** (it drains its inbox when it runs). The floor is structural —
+the cursor keeps all its freedom above it — and it is what makes every
+cycle through the network advance the step clock, so knot
+stabilization-in-depth is program-independent. -/
+def StepHist.deliver {α : Type} (h : StepHist α) (p : Nat → Bool) (c : Nat → Nat) :
+    StepHist α where
+  view := gateView p (fun t => (h.view t).take (cumMax c (t + 1)))
+  mono := gateView_mono p _ (fun t =>
+    (prefix_take_prefix _ (h.mono t)).trans (take_prefix_take (cumMax_mono c (t + 1))))
+
+theorem StepHist.deliver_view_zero {α : Type} (h : StepHist α) (p : Nat → Bool) (c : Nat → Nat) :
+    (h.deliver p c).view 0 = [] := rfl
+
+theorem StepHist.deliver_view_succ {α : Type} (h : StepHist α) (p : Nat → Bool) (c : Nat → Nat) (t : Nat) :
+    (h.deliver p c).view (t + 1) =
+      if p (t + 1) then (h.view t).take (cumMax c (t + 1)) else (h.deliver p c).view t := rfl
+
+/-- Delay a wire by one step at the member's ticks (the event-loop pass
+of a `forward_ref` knot: the feedback wire presents the body's output as
+of the member's previous step, and is frozen while the member does not
+tick). Structural, so *every* cycle — network-free local loops
 included — advances the step clock per unfolding. -/
-def StepHist.shift {α : Type} (h : StepHist α) : StepHist α where
-  view
-    | 0 => []
-    | t + 1 => h.view t
-  mono t := by
-    cases t with
-    | zero => exact List.nil_prefix
-    | succ t => exact h.mono t
+def StepHist.shift {α : Type} (h : StepHist α) (p : Nat → Bool) : StepHist α where
+  view := gateView p h.view
+  mono := gateView_mono p h.view h.mono
+
+theorem StepHist.shift_view_zero {α : Type} (h : StepHist α) (p : Nat → Bool) :
+    (h.shift p).view 0 = [] := rfl
+
+theorem StepHist.shift_view_succ {α : Type} (h : StepHist α) (p : Nat → Bool) (t : Nat) :
+    (h.shift p).view (t + 1) = if p (t + 1) then h.view t else (h.shift p).view t := rfl
 
 /-! ## Fan-in (interleaving emerges from delivery timing) -/
 
@@ -207,6 +363,21 @@ theorem tickSteps_prefix (p : Nat → Bool) (t : Nat) :
   unfold tickSteps
   rw [List.range_succ (n := t + 1), List.filter_append]
   exact ⟨_, rfl⟩
+
+theorem tickSteps_prefix_le (p : Nat → Bool) {t t' : Nat} (h : t ≤ t') :
+    tickSteps p t <+: tickSteps p t' := by
+  induction t' with
+  | zero => cases Nat.le_zero.mp h; exact List.prefix_refl _
+  | succ t' ih =>
+    rcases Nat.lt_or_ge t (t' + 1) with hlt | hge
+    · exact (ih (Nat.lt_succ_iff.mp hlt)).trans (tickSteps_prefix p t')
+    · cases Nat.le_antisymm h hge; exact List.prefix_refl _
+
+/-- A member that has ticked by `t` has ticked by any later `t'`. -/
+theorem tickSteps_isEmpty_of_le (p : Nat → Bool) {t t' : Nat} (h : t ≤ t')
+    (he : (tickSteps p t').isEmpty = true) : (tickSteps p t).isEmpty = true := by
+  rw [List.isEmpty_iff] at he ⊢
+  exact List.prefix_nil.mp (he ▸ tickSteps_prefix_le p h)
 
 /-- Per-tick batches: at each tick step, everything available and not
 yet consumed (hydro's real `batch` semantics). -/
@@ -340,11 +511,10 @@ def scan {ℓ : L} (sts ins outs : TickShape)
 end SchedTick
 
 set_option warn.classDefReducibility false in
-/-- The step machine, over a tick skeleton `pacing` (which steps each
-member of each location ticks at — tick presence is independent across
+/-- The step machine, over a pacing `pacing` (what each member of each
+location does at each step — idle, stutter or tick; independent across
 cluster members). -/
-def SchedSem (L : Type) (mem : L → Nat)
-    (pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool) :
+def SchedSem (L : Type) (mem : L → Nat) (pacing : Pacing L mem) :
     HydroSem L mem where
   Stream ℓ α _ _ _ := Fin (mem ℓ) → StepHist α
   -- a keyed stream: the runtime's flat wire of pairs (`into_keyed` is a
@@ -379,12 +549,12 @@ def SchedSem (L : Type) (mem : L → Nat)
   FixDec := Unit
   map s f := fun i => (s i).map (f i)
   filterMap s f := fun i => (s i).filterMap (f i)
-  broadcast_closed d s := fun i =>
-    mergeN (fun j => ((s j).deliver (d i j)).map (fun v => (j, v)))
-  demux d s addr := fun i =>
+  broadcast_closed {_c p _α _ _ord _ret} d s := fun i =>
+    mergeN (fun j => ((s j).deliver (pacing.active p i) (d i j)).map (fun v => (j, v)))
+  demux {_c p _α _ _ord} d s addr := fun i =>
     mergeN (fun j => (((s j).filterMap
       (fun dx => if dx.1 = addr i then some dx.2 else none)).deliver
-      (d i j)).map (fun v => (j, v)))
+      (pacing.active p i) (d i j)).map (fun v => (j, v)))
   values k := fun i => (k i).map Prod.snd
   into_keyed s := s
   kassume_ordering u _d := u
@@ -397,31 +567,30 @@ def SchedSem (L : Type) (mem : L → Nat)
   fold g init _Pre _ _ok s := fun i => schedFold g init (s i)
   fold_monotone _vo g init _ok _hinfl s := fun i => schedFold g init (s i)
   snapshot {ℓ _α _σ _ _ord _ret _b} s _d := fun i t =>
-    (tickSteps (pacing ℓ i) t).map (fun st => s i st)
+    (tickSteps (pacing.ticks ℓ i) t).map (fun st => s i st)
   batch {ℓ _α _} s _d := fun i t =>
-    batchesFrom ((s i).view) (tickSteps (pacing ℓ i) t) 0
+    batchesFrom ((s i).view) (tickSteps (pacing.ticks ℓ i) t) 0
   batch_ordered {ℓ _α _} s _d := fun i t =>
-    batchesFrom ((s i).view) (tickSteps (pacing ℓ i) t) 0
+    batchesFrom ((s i).view) (tickSteps (pacing.ticks ℓ i) t) 0
   sample_every t d :=
     famHist (fun step i => sampleAtOpt (t i step) (d i))
   timeout_snapshot {ℓ _α _ _ord _ret} _s d := fun i step =>
-    (d i).take (tickSteps (pacing ℓ i) step).length
+    (d i).take (tickSteps (pacing.ticks ℓ i) step).length
   source_interval_batch {ℓ} d := fun i step =>
-    (d i).take (tickSteps (pacing ℓ i) step).length
+    (d i).take (tickSteps (pacing.ticks ℓ i) step).length
   mapTick s f := fun i step => (s i step).map (f i)
   zipTick a b := fun i step => Trace.zip (a i step) (b i step)
-  defer_tick init t := fun i step => init :: t i step
+  defer_tick {ℓ _σ} init t := fun i step =>
+    if (tickSteps (pacing.ticks ℓ i) step).isEmpty then [] else init :: t i step
   allTicks bs := famHist (fun step i => (bs i step).flatten)
   flattenOrdered t := t
   flattenUnordered t := t
-  fix_stream _d body :=
+  fix_stream {ℓ _α _ _ord _ret} _d body :=
     famHist (fun t i =>
-      ((iterate (fun x j => ((body x) j).shift)
+      ((iterate (fun x j => ((body x) j).shift (pacing.active ℓ j))
         (fun _ => StepHist.bot) (t + 1)) i).view t)
-  fix_tick _d body := fun i t =>
-    (iterate (fun x j u => match u with
-        | 0 => ([] : Trace _)
-        | u + 1 => (body x) j u)
+  fix_tick {ℓ _σ} _d body := fun i t =>
+    (iterate (fun x j => gateView (pacing.active ℓ j) ((body x) j))
       (fun _ _ => []) (t + 1)) i t
   tinto_keyed x := x
   tassume_ordering u _d := u
@@ -429,7 +598,7 @@ def SchedSem (L : Type) (mem : L → Nat)
   -- `fold::<'static>` over (map, watermark), this tick's payloads then
   -- its watermark, GC eager — on the association list
   reduce_watermark ks wm f _Pre _ _ok := fun i t =>
-    scanAcrossTicksTrace (reduceWatermarkEager f) (SchedKMap.empty, none)
+    scanAcrossTicksTrace (reduceWatermarkEagerH f) (SchedKMap.empty, none)
       (Trace.zip (ks i t) (wm i t))
   -- in-tick operators on the runtime's plain lists (every grade)
   bmap b f := b.map f
@@ -446,14 +615,14 @@ def SchedSem (L : Type) (mem : L → Nat)
   bweakenOrder b := b
   bfilter b p := b.filter p
   binto_keyed b := b
-  bkfold g init _Pre _ _ok ks := keyedFoldAssoc g init ks
+  bkfold g init _Pre _ _ok ks := keyedFoldAssocH g init ks
   bksFilter m p := m.filter p
   bksMap m f := m.map f
   bksKeys m := m.keys
   bksEntries m := m.entries
-  bjoin a b := listJoin a b
-  bantiJoin a ks := a.filter (fun e => !(decide (e.1 ∈ ks)))
-  bfilterNotIn a o := a.filter (fun x => !(decide (x ∈ o)))
+  bjoin a b := listJoinH a b
+  bantiJoin a ks := listAntiJoin a ks
+  bfilterNotIn a o := listFilterNotIn a o
   bmax b := b.foldl maxStep none
   bfilterIf b flag := if flag then b else []
   bsPure v := v

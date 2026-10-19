@@ -337,13 +337,13 @@ theorem acceptor_p1_ok_pins (acc prop : L)
 -- the pinned max).
 #guard_eval ((acceptor_p1 (Values PaxLoc (paxMem 1 1)) .acc .prop
     (.mk' fun _ => [{Ballot.mk 1 0}, {Ballot.mk 0 0}])
-    (.mk' fun _ => [(none, []), (none, [(0, ⟨Ballot.mk 1 0, some 42⟩)])]) .triv).1 0)
+    (.mk' fun _ => [(none, HMap.ofList []), (none, HMap.ofList [(0, ⟨Ballot.mk 1 0, some 42⟩)])]) .triv).1 0)
   = [some (Ballot.mk 1 0), some (Ballot.mk 1 0)]
 
 #guard_eval (acceptor_p1 (Values PaxLoc (paxMem 1 1)) .acc .prop
     (.mk' fun _ => [{Ballot.mk 1 0}, {Ballot.mk 0 0}])
-    (.mk' fun _ => [(none, []), (none, [(0, ⟨Ballot.mk 1 0, some 42⟩)])]) .triv).2 0
-  = {⟨Ballot.mk 1 0, .ok (none, [])⟩,
+    (.mk' fun _ => [(none, HMap.ofList []), (none, HMap.ofList [(0, ⟨Ballot.mk 1 0, some 42⟩)])]) .triv).2 0
+  = {⟨Ballot.mk 1 0, .ok (none, HMap.ofList [])⟩,
      ⟨Ballot.mk 0 0, .error (some (Ballot.mk 1 0))⟩}
 
 #nondet_census acceptor_p1 (nondets := 0) (scheds := 1) (fuels := 0)

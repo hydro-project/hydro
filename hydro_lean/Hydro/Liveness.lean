@@ -93,20 +93,25 @@ theorem cumMax_mono_le (c : Nat → Nat) {t t' : Nat} (h : t ≤ t') :
     · cases Nat.le_antisymm h hge; exact Nat.le_refl _
 
 /-- **Fair delivery attains** (WF1 for `deliver`): a stabilized wire is
-eventually delivered in full through any fair cursor, and holds. -/
+eventually delivered in full through any fair cursor at any fairly
+ticking receiver, and holds. -/
 theorem deliver_fair_attains {α : Type} {h : StepHist α} {T₀ : Nat}
-    {c : Nat → Nat} (hs : StabilizesAt h T₀) (hc : FairCursor c) :
-    ∃ T, ∀ t, T ≤ t → (h.deliver c).view t = h.view T₀ := by
+    {p : Nat → Bool} {c : Nat → Nat} (hs : StabilizesAt h T₀) (hp : FairTicks p)
+    (hc : FairCursor c) :
+    ∃ T, ∀ t, T ≤ t → (h.deliver p c).view t = h.view T₀ := by
   obtain ⟨t₀, ht₀⟩ := hc (h.view T₀).length
-  refine ⟨max (T₀ + 1) (t₀ + 1), fun t ht => ?_⟩
-  have hT₀ : T₀ + 1 ≤ t := le_trans (Nat.le_max_left _ _) ht
-  have ht₀' : t₀ + 1 ≤ t := le_trans (Nat.le_max_right _ _) ht
-  obtain ⟨u, rfl⟩ : ∃ u, t = u + 1 :=
-    ⟨t - 1, by omega⟩
-  show (h.view u).take (cumMax c (u + 1)) = h.view T₀
-  rw [hs.view_ge (by omega)]
-  exact List.take_of_length_le
-    (le_trans ht₀ (cumMax_mono_le c (by omega)))
+  obtain ⟨u, hu, hpu⟩ := hp (max T₀ t₀ + 1)
+  obtain ⟨U', rfl⟩ : ∃ U', u = U' + 1 := ⟨u - 1, by omega⟩
+  refine ⟨U' + 1, fun t ht => ?_⟩
+  have hstab : ∀ v, max T₀ t₀ ≤ v →
+      (h.view v).take (cumMax c (v + 1)) = (h.view (max T₀ t₀)).take (cumMax c (max T₀ t₀ + 1)) := by
+    intro v hv
+    rw [hs.view_ge (le_trans (Nat.le_max_left _ _) hv), hs.view_ge (Nat.le_max_left _ _),
+      List.take_of_length_le (le_trans ht₀ (cumMax_mono_le c (by omega))),
+      List.take_of_length_le (le_trans ht₀ (cumMax_mono_le c (by omega)))]
+  show gateView p (fun v => (h.view v).take (cumMax c (v + 1))) t = h.view T₀
+  rw [gateView_stable p _ hstab (by omega) hpu t ht, hs.view_ge (Nat.le_max_left _ _),
+    List.take_of_length_le (le_trans ht₀ (cumMax_mono_le c (by omega)))]
 
 -- (`batchesFrom_prefix` — a prefix of tick-step lists yields a prefix
 -- of batch traces — lives in `SchedMono.lean`, the machine's

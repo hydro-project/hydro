@@ -1,6 +1,6 @@
 # Correspondence — from a denotational contract to a theorem about the machine
 
-How `paxos_core.ensures` (a fact at `Values`) becomes `paxos_safe_sched'` (a fact about
+How `paxos_core.ensures` (a fact at `Values`) becomes `paxos_safe_sched` (a fact about
 every run of the concurrent step machine), what that theorem quantifies over, what is
 deliberately *not* proven, and what a reviewer must judge by reading. Names are the
 anchors; line numbers drift. History by D-number in `FINDINGS.md`.
@@ -15,7 +15,7 @@ per-pair delivery cursors, per-member tick pacing, no quotients anywhere. The
 correspondence says: **every machine run, under every schedule, at every finite
 horizon, is covered by a denotational run at decisions derived from the schedule** —
 and at every observation the program actually makes (tick batches, snapshots) the
-coverage is an equality. The payoff is `paxos_safe_sched'` (`Paxos/CoupleWf.lean`):
+coverage is an equality. The payoff is `paxos_safe_sched` (`Paxos/CoupleWf.lean`):
 per-slot agreement of Paxos commits holds for the *step machine* at every pacing,
 schedule and horizon, **premise-free** — no satisfiability hypothesis, no decision
 argument — obtained by transporting the denotational contract along the coupling.
@@ -116,24 +116,34 @@ machine record, `twoPCVDec` is the generated `two_pc_vdec` at the machine's tran
 `TPCEnsures` (over `c_all_commit` and the inputs) does the rest — nothing about
 `collect_quorum`'s internals is ever opened (D69).
 
-## Walkthrough B: `paxos_safe_sched'` (`Paxos/CoupleWf.lean`) — the headline
+## Walkthrough B: `paxos_safe_sched` (`Paxos/CoupleWf.lean`) — the machine headline
 
 ```lean
-theorem paxos_safe_sched' (hnA : mem acc ≤ 2 * f + 1)
-    -- section variables: cpS/cpV/hcp, ckS/ckV/hck — client-payload and checkpoint
-    --   inputs, machine + abstract, coupled; sdec/ssched — ANY schedule; T — ANY
-    --   horizon; pacing — ANY per-member tick pacing
+theorem paxos_safe_sched (T : Nat) (hnA : mem acc ≤ 2 * f + 1)
+    -- pacing — ANY per-member pace (idle/stutter/tick); T — ANY horizon
+    (cpS : (SchedSem L mem pacing).Stream prop P .totalOrder .exactlyOnce)   -- ANY client stream
+    (ckS : CkInput pacing acc) (hck : CkMono pacing acc ckS)                  -- ANY checkpoint register that only grows
+    (sdec : PaxosCoreDec …) (ssched : PaxosCoreSched …)                       -- ANY timing, ANY delivery cursors
     (i j : Fin (mem prop)) (s : Nat) (w w' : Option P)
-    (hw  : (s, w)  ∈ ((paxos_core (SchedSem L mem pacing) .guarded … ).2 i).view T)
-    (hw' : (s, w') ∈ ((paxos_core (SchedSem L mem pacing) .guarded … ).2 j).view T) :
+    (hw  : (s, w)  ∈ ((paxos_core (SchedSem L mem pacing) .guarded prop acc f cpS ckS sdec ssched).2 i).view T)
+    (hw' : (s, w') ∈ ((paxos_core (SchedSem L mem pacing) .guarded prop acc f cpS ckS sdec ssched).2 j).view T) :
     w = w'
 ```
 
-No decision argument, no satisfiability hypothesis. The body is the same four moves
-with four names: `paxos_co_wf` (the five knots' `wf` triples, built from the generated
-`co_wf` artifacts) → `paxos_co_cpl` (`= .cpl paxos_co_wf`) → `paxos_co_sr`/`paxos_co_rr`
-(the legs named; `Paxos/CoupleSafety.lean`) → `paxos_core.ensures … .slot_functional`
-at the derived record `paxosVDecG`. Where the intuitions land:
+No decision argument, no satisfiability hypothesis, no Values-side input. It is proved
+through the **transfer lemma** `paxos_safe_sched'` (same file), whose statement carries
+the coupling's shape as hypotheses — a Values pool `cpV` with `hcp : view T <+: cpV i`,
+and a Values register `ckV` with `hck`: "`ckS` is the running fold of some source over
+some pool". Those are not facts about a run; `paxos_safe_sched` builds them from the
+inputs: truncate at the horizon `T` (the view at `T` is its own pool; the register is the
+`optMax`-fold of its own value history, `foldl_optMax_ckList`), and carry the commits
+back to the untruncated run by causality (`paxos_core.dag_denote` + `Dag.denote_causal`).
+
+The transfer lemma's body is the same four moves with four names: `paxos_co_wf` (the
+five knots' `wf` triples, built from the generated `co_wf` artifacts) → `paxos_co_cpl`
+(`= .cpl paxos_co_wf`) → `paxos_co_sr`/`paxos_co_rr` (the legs named;
+`Paxos/CoupleSafety.lean`) → `paxos_core.ensures … .slot_functional` at the derived
+record `paxosVDecG`. Where the intuitions land:
 
 - **Quorum intersection and provenance** are in `paxos_core`'s prove leg and the K4
   `invariant` on the `a_log` knot (over log entries; `nodup_inter_of_length` is the
@@ -189,6 +199,43 @@ stabilization + body monotonicity as the knot `wf`'s fourth conjunct). So "the p
 holds for every order" and "the machine's order is one of them" are both discharged in
 the corner, and `Sched.lean` records nothing new.
 
+## From one machine to many: `paxos_safe_wired` (`Paxos/WiredSafety.lean`, D74)
+
+`paxos_safe_sched` is about one closed `SchedSem` run. The production shape is `k`
+processes, each holding some members' state, exchanging messages over sockets. The
+bridge is proved by implication, never by re-proving Paxos:
+
+| step | statement | file |
+|---|---|---|
+| the body as a graph | `paxos_core.dag_denote : Dag.denote pacing (paxos_core.dag …) env = (paxos_core (SchedSem …) … ).1 …` — the elaborator compiled the `hydro def` body into a typed DAG and proved (kernel `Eq.refl` per module, callee lemmas by `simp`) that stepping the graph's meaning is the program's `SchedSem` run | `HydroGenProject.lean`, `Project/IR.lean` |
+| the lock-step machine | `Dag.run_spec`: `Dag.run`'s per-step output increments are `envIncAt (Dag.denote …) k` — the baked decisions (`sdec`/`ssched`) ARE the delivery oracle | `Project/StepMain.lean` |
+| one process | `Dag.step_wired`: a lock-step step in which exactly the hosted members tick, with `IdleEnv` (inputs only at them) and `OracleAt` (the process delivers per the graph's cursors), from any `Drained` state (multi-input tick cells hold no complete item — every machine state is, `step_drained`/`init_drained`), restricted to the hosted members equals `Dag.locStep`, and the rest only receive its `Sends` | `Project/WiredMain.lean` |
+| an interleaving | `Interleaving.view_active` / `view_idle` / **`outputs`**: for **every** interleaving (`who`, `inp`), every process's view is its own `locStep` trajectory with the others' sends enqueued, and the active process's increments are the denotation's at that step | `Project/WiredRun.lean` |
+| inputs unconstrained | **`paxos_safe_sched`**: `paxos_safe_sched'` with the Values pools built inside the proof — inputs truncated at the horizon are their own pools; commits carried back by causality through the graph (`Dag.denote_causal`). Closes SCHED_AUDIT F2 for Paxos | `Paxos/CoupleWf.lean` |
+| the headline | **`paxos_safe_wired`**: two commits at one slot, at any two processes, at any two steps, agree — `envOfInc` (the interleaving's increments are some environment's) + `outputs` + `paxos_core.dag_denote` + `StepHist.mono_le` + `paxos_safe_sched`. Hypotheses: `hnA`, the interleaving, the run's timing (`sdec` — all content decisions are `Unit` at `SchedSem`) and cursors (`ssched`), checkpoints only grow (`CkMono`) | `Paxos/WiredSafety.lean` |
+
+What the execution model needs from the semantics (D76): **a member that is not active
+is inert; an active member ticks or stutters.** A member's pace at a step is `idle`,
+`stutter` or `tick` (`Pace`). `SchedSem` gates the three primitives that move content
+across steps on their own — network delivery (`StepHist.deliver`), the knot feedback
+wire (`StepHist.shift`, `fix_tick`'s implicit defer) and `defer_tick`'s seed — by the
+member's activity (`gateView`: an active step sees the source one step late, an idle
+step repeats), and the tick bodies by its ticks. A stutter is the asynchronous dataflow
+progressing without a tick — what DFIR does inside one tick before the tick bodies run
+(stratum order), so one DFIR tick is "stutters, then a tick" (`Interleaving.tick`,
+`Dag.locStep sel tk`). A sleeping process is therefore exactly an idle member of the
+lock-step machine, and no settling, quiescence or initial-prefix condition is
+needed. Singleton wires have no empty increment (an idle member re-emits its value), so
+`IdleEnv` constrains list-like kinds only; the interleaving's inputs at non-hosted
+members are masked (`envMask`), not assumed empty.
+
+The witness: `lake exe wired` runs five `Dag.locStep` processes over TCP, each on its own
+thread sharing nothing but its sockets; the TCP run is an `Interleaving` because each
+tick reads before it sends (D76's DFIR audit). The gap that remains between the theorem and the binary is the
+compiler (the `@[csimp]` memo seams are kernel-checked identities) and the harness's
+JSON/socket code; the oracle the processes use (`oracleAll`, deliver everything that
+has arrived) is one of the oracles the theorem quantifies over.
+
 ## What is deliberately NOT proven
 
 - **Adequacy / bisimulation.** There is no `∀ decisions ∃ schedule` theorem, and there
@@ -201,21 +248,25 @@ the corner, and `Sched.lean` records nothing new.
 - **Real Rust execution.** The machine is a semantics of the Hydro combinators, not of
   compiled Rust; the 1:1 program-text mirror (`DOCTRINE.md` P1) is the bridge
   discipline, and `SCHED_AUDIT.md` is the fidelity audit of the machine against the
-  runtime.
+  runtime. `Project` (D74) executes the *Lean* program as processes; it does not
+  execute the Rust.
+- **The wired run is an interleaving** by the read-before-send argument (each tick
+  polls its sockets before it sends), not by a proof about the harness's socket code.
 - **Liveness** is proven only where `LIVENESS.md` says so (`cq_live_chain`); Paxos-scale
   liveness is queued.
 
 ## Trust base
 
-Every headline is audited by `#print axioms` in `AxCheck.lean`: `paxos_safe_sched'`,
-`cq_safe_sched'`, and the stack they consume (`paxos_co_sr`, `paxos_co_rr`,
-`paxos_co_wf`, `paxos_co_cpl`, the generated `co_*` classes). Expected foundation:
+Every headline is audited by `#print axioms` in `AxCheck.lean`: `paxos_safe_sched`,
+`cq_safe_sched'`, `paxos_safe_wired`, and the stack they consume (`paxos_co_sr`,
+`paxos_co_rr`, `paxos_co_wf`, `paxos_co_cpl`, the generated `co_*` classes,
+`paxos_core.dag_denote`, `Dag.run_spec`, `Dag.step_wired`, `Interleaving.outputs`). Expected foundation:
 `propext`, `Classical.choice`, `Quot.sound`; no `sorryAx`, no custom axioms anywhere in
 `Hydro/`. The quotient carriers (`Grades.lean`) rest on core `Quotient`, i.e. on
 `Quot.sound` — the same story as Mathlib's.
 
 Axioms are half of a trust base. The other half is the **definitions in the theorem
-statements** — above all `SchedSem`, because `paxos_safe_sched'` says "safe in every
+statements** — above all `SchedSem`, because `paxos_safe_sched` says "safe in every
 execution *of this machine*". A machine that secretly could not reorder messages,
 silently synchronized ticks, or dropped buffers would make the theorem true and
 worthless. `#print axioms` cannot catch that; the next section is the review that can.

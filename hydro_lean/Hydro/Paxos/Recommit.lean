@@ -133,7 +133,7 @@ hydro def recommit_after_leader_election (H : HydroSem L mem) (variant : PaxosVa
   --   .flatten_unordered() // Convert HashMap log back to stream
   tick (input logs := accepted_logs) :=
     yield (p_entries := H.bflatMapUnordered (H.bmap logs (fun lg => lg.2))
-      (fun log => H.bofList log));
+      (fun log => H.bofList log.toList));
   --   .into_keyed()
   --   .assume_ordering::<TotalOrder>(nondet!(/** the per-slot fold is
   --     order-dependent; every order is safe — FINDINGS D71 */))
@@ -295,7 +295,8 @@ hydro def recommit_after_leader_election (H : HydroSem L mem) (variant : PaxosVa
   ghost have hents : ∀ (i : Fin (mem prop)) (gv : Multiset (ALog P (mem prop))),
       (@id (Multiset (Nat × LogValue P (mem prop))) (p_entries_step i () gv).2) = rcEntries gv := by
     intro i gv
-    simp only [p_entries_step, den, id, rcEntries, poolFlatMapUnordered, mapPool, Multiset.bind_map]
+    simp only [p_entries_step, den, id, rcEntries, poolFlatMapUnordered, mapPool, Multiset.bind_map,
+      HMap.coe_toList]
   -- **a realized ordered tick is a permutation of the view's entries**,
   -- read at its index
   ghost have hord : ∀ (i : Fin (mem prop)) {t : Nat} {l : List (Nat × LogValue P (mem prop))},
@@ -673,8 +674,8 @@ hydro def recommit_after_leader_election (H : HydroSem L mem) (variant : PaxosVa
 -- 9); slot 2 forces a hole at slot 1; everything recommits at the new
 -- leader's ballot 3.
 #guard_eval (recommit_after_leader_election (Values PaxLoc (paxMem 1 1)) .guarded .prop
-    (.mk' fun _ => [({((none : Option Nat), [(0, ⟨Ballot.mk 1 0, some 9⟩)]),
-      ((none : Option Nat), [(0, ⟨Ballot.mk 0 0, some 4⟩), (2, ⟨Ballot.mk 0 0, some 7⟩)])}
+    (.mk' fun _ => [({((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 1 0, some 9⟩)]),
+      ((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 0 0, some 4⟩), (2, ⟨Ballot.mk 0 0, some 7⟩)])}
       : Multiset (ALog Nat 1))])
     (.mk' fun _ => [Ballot.mk 3 0]) 1
     ⟨fun _ => [[(0, ⟨Ballot.mk 0 0, some 4⟩), (2, ⟨Ballot.mk 0 0, some 7⟩), (0, ⟨Ballot.mk 1 0, some 9⟩)]]⟩).1 0
@@ -684,8 +685,8 @@ hydro def recommit_after_leader_election (H : HydroSem L mem) (variant : PaxosVa
 -- The same view in the other arrival order: the champion is the same
 -- (the max ballot is unique here).
 #guard_eval (recommit_after_leader_election (Values PaxLoc (paxMem 1 1)) .guarded .prop
-    (.mk' fun _ => [({((none : Option Nat), [(0, ⟨Ballot.mk 1 0, some 9⟩)]),
-      ((none : Option Nat), [(0, ⟨Ballot.mk 0 0, some 4⟩), (2, ⟨Ballot.mk 0 0, some 7⟩)])}
+    (.mk' fun _ => [({((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 1 0, some 9⟩)]),
+      ((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 0 0, some 4⟩), (2, ⟨Ballot.mk 0 0, some 7⟩)])}
       : Multiset (ALog Nat 1))])
     (.mk' fun _ => [Ballot.mk 3 0]) 1
     ⟨fun _ => [[(0, ⟨Ballot.mk 1 0, some 9⟩), (2, ⟨Ballot.mk 0 0, some 7⟩), (0, ⟨Ballot.mk 0 0, some 4⟩)]]⟩).1 0
@@ -695,24 +696,24 @@ hydro def recommit_after_leader_election (H : HydroSem L mem) (variant : PaxosVa
 -- An order decision that is not a permutation of the tick's entries does
 -- not realize the tick: nothing is published.
 #guard_eval (recommit_after_leader_election (Values PaxLoc (paxMem 1 1)) .guarded .prop
-    (.mk' fun _ => [({((none : Option Nat), [(0, ⟨Ballot.mk 1 0, some 9⟩)])} : Multiset (ALog Nat 1))])
+    (.mk' fun _ => [({((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 1 0, some 9⟩)])} : Multiset (ALog Nat 1))])
     (.mk' fun _ => [Ballot.mk 3 0]) 1 ⟨fun _ => [[]]⟩).1 0 = []
 
 -- A value already on more than `f` acceptors is not recommitted.
 #guard_eval (recommit_after_leader_election (Values PaxLoc (paxMem 1 1)) .guarded .prop
-    (.mk' fun _ => [({((none : Option Nat), [(0, ⟨Ballot.mk 1 0, some 9⟩)]),
-      ((none : Option Nat), [(0, ⟨Ballot.mk 1 0, some 9⟩)])} : Multiset (ALog Nat 1))])
+    (.mk' fun _ => [({((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 1 0, some 9⟩)]),
+      ((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 1 0, some 9⟩)])} : Multiset (ALog Nat 1))])
     (.mk' fun _ => [Ballot.mk 3 0]) 1
     ⟨fun _ => [[(0, ⟨Ballot.mk 1 0, some 9⟩), (0, ⟨Ballot.mk 1 0, some 9⟩)]]⟩).1 0 = [[]]
 
 -- Checkpointed slots are skipped (the checkpoint travels in the logs).
 #guard_eval (recommit_after_leader_election (Values PaxLoc (paxMem 1 1)) .guarded .prop
-    (.mk' fun _ => [({((some 0 : Option Nat), [(0, ⟨Ballot.mk 1 0, some 9⟩)])} : Multiset (ALog Nat 1))])
+    (.mk' fun _ => [({((some 0 : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 1 0, some 9⟩)])} : Multiset (ALog Nat 1))])
     (.mk' fun _ => [Ballot.mk 3 0]) 1 ⟨fun _ => [[(0, ⟨Ballot.mk 1 0, some 9⟩)]]⟩).1 0 = [[]]
 
 -- The max slot of the recovered view.
 #guard_eval (recommit_after_leader_election (Values PaxLoc (paxMem 1 1)) .guarded .prop
-    (.mk' fun _ => [({((none : Option Nat), [(0, ⟨Ballot.mk 1 0, some 9⟩),
+    (.mk' fun _ => [({((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 1 0, some 9⟩),
       (2, ⟨Ballot.mk 0 0, some 7⟩)])} : Multiset (ALog Nat 1))])
     (.mk' fun _ => [Ballot.mk 3 0]) 1
     ⟨fun _ => [[(0, ⟨Ballot.mk 1 0, some 9⟩), (2, ⟨Ballot.mk 0 0, some 7⟩)]]⟩).2 0 = [some 2]
@@ -724,16 +725,16 @@ value) → `count 2 > f` → SKIP. Order X·Z·Y: Z resets the count to one
 with `w`, Y resets it to one with `v` → `count 1` → RECOMMIT `v`. Same
 multiset, same champion, opposite decisions; both safe. -/
 #guard_eval (recommit_after_leader_election (Values PaxLoc (paxMem 1 1)) .guarded .prop
-    (.mk' fun _ => [({((none : Option Nat), [(0, ⟨Ballot.mk 1 0, some 5⟩)]),
-      ((none : Option Nat), [(0, ⟨Ballot.mk 2 0, some 6⟩)]),
-      ((none : Option Nat), [(0, ⟨Ballot.mk 3 0, some 5⟩)])} : Multiset (ALog Nat 1))])
+    (.mk' fun _ => [({((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 1 0, some 5⟩)]),
+      ((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 2 0, some 6⟩)]),
+      ((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 3 0, some 5⟩)])} : Multiset (ALog Nat 1))])
     (.mk' fun _ => [Ballot.mk 4 0]) 1
     ⟨fun _ => [[(0, ⟨Ballot.mk 1 0, some 5⟩), (0, ⟨Ballot.mk 3 0, some 5⟩),
       (0, ⟨Ballot.mk 2 0, some 6⟩)]]⟩).1 0 = [[]]
 #guard_eval (recommit_after_leader_election (Values PaxLoc (paxMem 1 1)) .guarded .prop
-    (.mk' fun _ => [({((none : Option Nat), [(0, ⟨Ballot.mk 1 0, some 5⟩)]),
-      ((none : Option Nat), [(0, ⟨Ballot.mk 2 0, some 6⟩)]),
-      ((none : Option Nat), [(0, ⟨Ballot.mk 3 0, some 5⟩)])} : Multiset (ALog Nat 1))])
+    (.mk' fun _ => [({((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 1 0, some 5⟩)]),
+      ((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 2 0, some 6⟩)]),
+      ((none : Option Nat), HMap.ofList [(0, ⟨Ballot.mk 3 0, some 5⟩)])} : Multiset (ALog Nat 1))])
     (.mk' fun _ => [Ballot.mk 4 0]) 1
     ⟨fun _ => [[(0, ⟨Ballot.mk 1 0, some 5⟩), (0, ⟨Ballot.mk 2 0, some 6⟩),
       (0, ⟨Ballot.mk 3 0, some 5⟩)]]⟩).1 0 = [[((0, Ballot.mk 4 0), some 5)]]

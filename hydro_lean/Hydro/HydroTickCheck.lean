@@ -779,16 +779,16 @@ example : @Eq Nat ((Values Unit (fun _ => 1)).bcount
       (({3, 1, 2} : Multiset Nat)) (· * 2))) 3 := by
   show Multiset.card (Multiset.map (· * 2) ({3, 1, 2} : Multiset Nat)) = 3
   simp
-example : @Eq Nat ((SchedSem Unit (fun _ => 1) (fun _ _ _ => true)).bcount
-    ((SchedSem Unit (fun _ => 1) (fun _ _ _ => true)).bmap (ord := .noOrder)
+example : @Eq Nat ((SchedSem Unit (fun _ => 1) (Pacing.ofTicks fun _ _ _ => true)).bcount
+    ((SchedSem Unit (fun _ => 1) (Pacing.ofTicks fun _ _ _ => true)).bmap (ord := .noOrder)
       [3, 1, 2] (· * 2))) 3 := rfl
 -- the machine keeps the runtime's order; the type forbids observing it
-example : ((SchedSem Unit (fun _ => 1) (fun _ _ _ => true)).bmap (ord := .noOrder)
+example : ((SchedSem Unit (fun _ => 1) (Pacing.ofTicks fun _ _ _ => true)).bmap (ord := .noOrder)
     [3, 1, 2] (· * 2) : List Nat) = [6, 2, 4] := rfl
 -- `enumerate` exists only at TotalOrder, where both legs are lists
 example : ((Values Unit (fun _ => 1)).benumerate [10, 11] : List (Nat × Nat))
   = [(0, 10), (1, 11)] := rfl
-example : ((SchedSem Unit (fun _ => 1) (fun _ _ _ => true)).benumerate [10, 11]
+example : ((SchedSem Unit (fun _ => 1) (Pacing.ofTicks fun _ _ _ => true)).benumerate [10, 11]
   : List (Nat × Nat)) = [(0, 10), (1, 11)] := rfl
 -- `fold` at NoOrder demands commutativity (the quotient's own obligation)
 example : @Eq Nat ((Values Unit (fun _ => 1)).bfold (ord := .noOrder) (ret := .exactlyOnce)
@@ -800,7 +800,7 @@ example : @Eq Nat ((Values Unit (fun _ => 1)).bfold (ord := .noOrder) (ret := .e
   rfl
 
 -- the corner: a coupled pair, and the conditional agreements
-abbrev CS := CoupleSem Unit (fun _ => 1) (fun _ _ _ => true) 3 3 le_rfl
+abbrev CS := CoupleSem Unit (fun _ => 1) (Pacing.ofTicks fun _ _ _ => true) 3 3 le_rfl
 
 /-- A coupled NoOrder batch: list `[3,1,2]` against multiset `{3,1,2}`. -/
 def cb : CS.BoundedStream Nat .noOrder .exactlyOnce :=
@@ -814,7 +814,7 @@ example : (CS.bcount cb).rr = (Values Unit (fun _ => 1)).bcount cb.rr := rfl
 -- the mapped pair stays coupled; its legs are the two `bmap`s
 example : (CS.bmap cb (· * 2)).rr = (Values Unit (fun _ => 1)).bmap cb.rr (· * 2) := rfl
 example : (CS.bmap cb (· * 2)).sr
-    = (SchedSem Unit (fun _ => 1) (fun _ _ _ => true)).bmap (ord := .noOrder) cb.sr (· * 2) := rfl
+    = (SchedSem Unit (fun _ => 1) (Pacing.ofTicks fun _ _ _ => true)).bmap (ord := .noOrder) cb.sr (· * 2) := rfl
 example : (CS.bmap cb (· * 2)).wf → CoupledBatch .noOrder .exactlyOnce
     (CS.bmap cb (· * 2)).sr (CS.bmap cb (· * 2)).rr :=
   (CS.bmap cb (· * 2)).cpl
@@ -870,7 +870,7 @@ hydro def toy_shape (H : HydroSem L mem) (ℓ : L)
 #guard (toy_shape (Values Unit (fun _ => 1)) () (.mk' fun _ => [1, 2, 3])
   (.mk' fun _ => [[10], [], [1, 2]])).2 0 = [[11], [], [2, 3]]
 -- the machine, as of any step
-example : (toy_shape (SchedSem Unit (fun _ => 1) (fun _ _ _ => true)) ()
+example : (toy_shape (SchedSem Unit (fun _ => 1) (Pacing.ofTicks fun _ _ _ => true)) ()
     (fun _ _ => [1, 2, 3]) (fun _ _ => [[10], [], [1, 2]])).1 0 5 = [2, 4, 9] := rfl
 
 end ShapedFormer

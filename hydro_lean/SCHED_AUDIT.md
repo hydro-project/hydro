@@ -84,7 +84,7 @@ fan-out; timers on wall-clock; all inter-process influence mediated by messages.
 | fan-in decision-freedom | `values`/`union` take no decision; interleaving from delivery timing; canonical within-step order | arrival order; deterministic in-tick scheduling | **S2** (F4) |
 | re-monotonization | `famFreeze` (freeze branch never fires for op-built flows — *unproven*) | n/a (Lean-internal) | **S2** (F3) |
 | transport scope | prefix cursors only | `TCP.lossy`, UDP exist | **S1-scope** (F6) |
-| input-coupling premise quantifiers | `hcp : ∀ T i, view T <+: cpV i`, `cpV` fixed first | clients send unboundedly | **S1** (F2) |
+| input-coupling premise quantifiers | `hcp : ∀ T i, view T <+: cpV i`, `cpV` fixed first (`paxos_safe_sched'`); none in `paxos_safe_sched` | clients send unboundedly | closed for Paxos (F2) |
 
 ## Findings
 
@@ -104,8 +104,13 @@ even though each finite prefix is well-behaved. Probably harmless — the conclu
 horizon `T` depends only on views ≤ `T` — but **machine causality is not a theorem in
 the tree**, so the reduction is informal. Fix shapes: (a) per-horizon premise
 (`∀ i, Multiset.ofList ((cpS i).view T) ≤ cpV i` at the theorem's own `T`; the corner's
-two horizons are the hook) or (b) a generic per-op causality lemma. *Status: OPEN by
-ruling.*
+two horizons are the hook) or (b) a generic per-op causality lemma. *Status: CLOSED for
+the Paxos headlines (D75): `paxos_safe_sched` (`Paxos/CoupleWf.lean`) takes the
+machine inputs alone — any client stream, any checkpoint register that only grows — and
+builds the corner's pools inside the proof from the inputs truncated at the horizon,
+carrying the commits back by causality through the graph (`paxos_core.dag_denote` +
+`Dag.denote_causal`, shape (b)). `paxos_safe_sched'` is kept as the corner-facing form;
+`cq_safe_sched'`/`two_pc_*` still carry their pools (same recipe applies).*
 
 ### F3 (S2) — `famFreeze` transparency at knots is assumed, not proven
 
@@ -262,11 +267,36 @@ extension with its own safety re-check) before any program that uses them is mir
 
 ## Follow-ups, in order of theorem strength bought
 
-1. **F2** per-horizon input coupling (or the causality lemma) — makes the headline
-   apply verbatim to unbounded clients.
+1. **F2** — done for Paxos (`paxos_safe_sched`); apply the same recipe to
+   `cq_safe_sched'` and `two_pc_safe_sched'`.
 2. **F3** `famFreeze`-transparency theorem for op-built bodies.
 3. **F6** the scope sentence wherever the theorem is advertised; extend the transport
    model only if/when a mirrored program needs lossy/UDP edges.
+
+4. **`SchedSem` against production DFIR** — `Project` (D74) is the vehicle: the
+   `hydro def` body is now also a typed dataflow graph with a per-process step
+   (`Dag.locStep`) proven equal to the machine's (`Dag.step_wired`), and `lake exe wired`
+   runs `paxos_core` as five TCP processes. What the audit still owes is the *cross*
+   check — record a production DFIR run's deliveries and pacing, replay them as the
+   graph's oracle (`Dag.Oracle`: one cursor per hosted receiver per sender) and ticks,
+   compare per-tick outputs. The execution model surfaced one fact about the
+   semantics a production comparison must respect, and D76 made the semantics say it:
+   a member that is not active is inert — delivery, knot feedback and `defer_tick`'s
+   seed are gated by the member's activity (`Pace`: idle / stutter / tick; tick bodies
+   by its ticks), so a process that is not running is exactly an idle member, and
+   every run from `Dag.init` is an interleaving with no settling or prefix condition.
+   One DFIR tick is "stutters, then a tick" in the model: a forward_ref knot closed
+   through the network propagates inside one DFIR tick (stratum order), and the
+   model's one-step knot shift is taken by a stutter, never by a tick production does
+   not trigger. Audited against DFIR (D76): one tick closure per
+   process, all `Tick` locations on one counter, intra-tick cycles rejected,
+   `DeferTick` → `defer_tick_lazy`, sources polled inside the tick, sinks flushed by a
+   task after it, `current_thread` + `LocalSet`, the closure never awaits — every model
+   assumption is exact or a superset of the runtime (a process is one cluster member,
+   `Member`/`Sel.single`). **The one load-bearing assumption is
+   the `+1` floor**: an executor that let reader tasks run mid-tick (multi-threaded, or a
+   tick that awaits) could produce a same-tick round trip the model excludes. Re-check if
+   DFIR's tick closure ever gains an await.
 
 None of these change `Sched.lean`'s operational definitions: the machine's op semantics
 survived the audit; the findings are about what the premises quantify over and about

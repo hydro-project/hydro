@@ -4,6 +4,8 @@ import Hydro.Paxos.CoupleWf
 import Hydro.HydroGenCheck
 import Hydro.HydroParamCheck
 import Hydro.TwoPC
+import Hydro.Project.StepMain
+import Hydro.Paxos.WiredSafety
 
 /-! Axiom audit of the headline theorems (build artifact; not part of the
 library). The expected foundation is the standard three:
@@ -66,3 +68,35 @@ theorems and the mono/causal instances. -/
 #print axioms Hydro.paxos_core_param₁
 #print axioms Hydro.paxos_core_param₂
 #print axioms Hydro.leader_election_param₁
+
+-- the production interpreter: graphs, their denotation lemmas, the lock-step run
+#print axioms Hydro.paxos_core.dag_denote
+#print axioms Hydro.two_pc.dag_denote
+#print axioms Hydro.collect_quorum.dag_denote
+#print axioms Hydro.Project.Dag.run_spec
+
+-- the wired machine (D74/D76): every process steps its own cells, and the
+-- interleaving's outputs are the denotation's — Paxos safety over TCP, for
+-- every interleaving (non-ticking members are inert; drained cells carry)
+#print axioms Hydro.Project.Dag.step_wired
+#print axioms Hydro.Project.Dag.step_drained
+#print axioms Hydro.Project.Interleaving.step_wired
+#print axioms Hydro.Project.Interleaving.view_active
+#print axioms Hydro.Project.Interleaving.view_idle
+#print axioms Hydro.Project.Interleaving.outputs
+#print axioms Hydro.paxos_safe_sched
+#print axioms Hydro.paxos_safe_wired
+#print axioms Hydro.Project.envIncAt_envOfInc
+#print axioms Hydro.Project.memoBox_eq_memoBoxImpl
+#print axioms Hydro.Project.memoBox2_eq_memoBox2Impl
+
+-- the hash-backed keyed operators (D75): the Rust's `K: Hash` at the operator,
+-- the machine's list semantics unchanged, the implementations csimp seams
+#print axioms Hydro.keyedFoldAssocH_eq_impl
+#print axioms Hydro.listJoinH_eq_impl
+#print axioms Hydro.listAntiJoin_eq_impl
+#print axioms Hydro.listFilterNotIn_eq_impl
+#print axioms Hydro.dedupH_eq_dedupImpl
+#print axioms Hydro.reduceWatermarkEagerH_eq_impl
+#print axioms Hydro.HMap.mem_foldlOn_insert_empty
+#print axioms Hydro.HMap.coe_toList

@@ -44,11 +44,11 @@ abbrev twoMem : Unit → Nat := fun _ => 2
 /-- The step machine over two members, every member ticking every
 step. -/
 abbrev S : HydroSem Unit twoMem :=
-  SchedSem Unit twoMem (fun _ _ _ => true)
+  SchedSem Unit twoMem (Pacing.ofTicks fun _ _ _ => true)
 
 /-- The same machine, every member ticking on even steps only. -/
 abbrev SHalf : HydroSem Unit twoMem :=
-  SchedSem Unit twoMem (fun _ _ t => t % 2 == 0)
+  SchedSem Unit twoMem (Pacing.ofTicks fun _ _ t => t % 2 == 0)
 
 /-- Member `0` sends `[10, 11]`, member `1` sends `[20, 21]`. -/
 def src : S.Stream () Nat .totalOrder .exactlyOnce :=
@@ -182,7 +182,7 @@ quotiented -/
 
 /-! ### 8 · `StabilizesAt` is non-vacuous (end-of-time is inhabited) -/
 
-def stabWire : StepHist Nat := (StepHist.const [1, 2]).deliver (fun s => s)
+def stabWire : StepHist Nat := (StepHist.const [1, 2]).deliver (fun _ => true) (fun s => s)
 
 -- computably attained: views 2, 3, …, 8 all equal the limit
 #guard (List.range 7).all (fun t => stabWire.view (2 + t) == stabWire.view 2)
@@ -199,7 +199,7 @@ example : StabilizesAt stabWire (0 + ([1, 2] : List Nat).length + 1) :=
 every step, member `1` only every third step. -/
 abbrev SSkew : HydroSem Unit twoMem :=
   SchedSem Unit twoMem
-    (fun _ i t => if i = (0 : Fin 2) then true else t % 3 == 0)
+    (Pacing.ofTicks fun _ i t => if i = (0 : Fin 2) then true else t % 3 == 0)
 
 def batchesSkew := SSkew.batch mergedA ()
 

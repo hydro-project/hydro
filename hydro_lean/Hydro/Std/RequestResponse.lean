@@ -62,7 +62,7 @@ metadata persists (`remaining_to_join`).
 
 Rust `nondet!` tally: 1 (the `use::batch`; the metadata leg is
 `atomic` — the caller's tick domain, not a decision). -/
-hydro def join_responses (H : HydroSem L mem) (ℓ : L)
+hydro def join_responses [Hashable K] (H : HydroSem L mem) (ℓ : L)
     (responses : H.Stream ℓ (K × V) .noOrder .exactlyOnce)
     (metadata : H.AtomicStream ℓ (K × M) .noOrder .exactlyOnce)
     (dec : H.BatchDec (mem ℓ) (K × V)) :

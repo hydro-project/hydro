@@ -248,7 +248,7 @@ hydro [p1bPairDecEq] def paxos_core {ckα : Type} [DecidableEq ckα]
         -- the covering entry lives in the opening tick's input view
         have hE : (slot, e₀) ∈ rcEntries ((le_step.2.2.1 i₂)[t]'hpr) := by
           unfold rcEntries
-          exact Multiset.mem_bind.mpr ⟨vj, hvj, Multiset.mem_coe.mpr he₀mem⟩
+          exact Multiset.mem_bind.mpr ⟨vj, hvj, HMap.mem_entries.mpr he₀mem⟩
         -- the opened value is the view's champion at the slot
         obtain ⟨best, hbestmem, hveq, hdom⟩ := hchar e₀ hE
         have hb₁best : b₁.ble best.ballot = true :=
@@ -265,7 +265,7 @@ hydro [p1bPairDecEq] def paxos_core {ckα : Type} [DecidableEq ckα]
           obtain ⟨j', tj', htj', hpay', -⟩ := hprom vj' hvj'
           refine ⟨j', tj', _, List.getElem?_eq_getElem htj', ?_⟩
           rw [← hpay']
-          exact Multiset.mem_coe.mp hlv2
+          exact HMap.mem_entries.mp hlv2
         -- the champion is itself a view entry (D71: the fold's champion
         -- is one of the slot's entries, in whatever order they arrived) —
         -- a published entry of this stage's log

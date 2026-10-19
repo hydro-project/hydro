@@ -23,7 +23,7 @@ namespace Hydro
 /-- The step-causality relation families: agreement below the horizon
 at the machine diagonal (decisions equal). -/
 def causalC (L : Type) (mem : L → Nat)
-    (pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool) :
+    (pacing : Pacing L mem) :
     HRelC Nat (SchedSem L mem pacing) (SchedSem L mem pacing) where
   streamRel h x y := SAgree h x y
   keyedRel h x y := SAgree h x y
@@ -51,7 +51,7 @@ def causalC (L : Type) (mem : L → Nat)
   fixRel _ d d' := d = d'
 
 variable {L : Type} {mem : L → Nat}
-  {pacing : (ℓ : L) → Fin (mem ℓ) → Nat → Bool}
+  {pacing : Pacing L mem}
 
 /-- The uniform op-law discharge: expose the agreement relations,
 substitute the decision equalities, close by the matching `causal_*`

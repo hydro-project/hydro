@@ -527,13 +527,17 @@ class HydroSem (L : Type) (mem : L → Nat) where
   obligation of its reduce step; the library-internal
   `assume_ordering`/`assume_retries` the Rust implementation performs
   are discharged by it. -/
-  reduce_watermark : ∀ {ℓ : L} {K V : Type} [DecidableEq K] [DecidableEq V]
+  reduce_watermark : ∀ {ℓ : L} {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V]
     [LinearOrder K] {ord : StrOrd},
     AtomicKeyedStream ℓ K V ord .exactlyOnce → Atomic ℓ (Option K) →
     (f : V → V → V) → (Pre : V → V → Prop) → [DecidableRel Pre] →
     FoldOk ord .exactlyOnce Pre (reduceStep f) →
     AtomicKeyedSingleton ℓ K V
   -- ### In-tick operators — the `sliced!` body vocabulary (D60)
+  --
+  -- `bkfold`/`bjoin`/`bantiJoin`/`bfilterNotIn` carry `[Hashable K]` where
+  -- the Rust operator demands `K: Hash` (the collections carry no bound):
+  -- the machine computes them through a hash map (`KeyedHash.lean`, D75).
   --
   -- Operators on one tick's bounded stream content, Rust's
   -- `Stream<α, Tick<ℓ>, Bounded, ord, ret>` API inside a slice. Closures
@@ -617,7 +621,7 @@ class HydroSem (L : Type) (mem : L → Nat) where
   /-- `KeyedStream::fold(q!(init), q!(g), commutative = …)` inside the
   tick: one value per key; the obligation is the input grade's `FoldOk`
   (quorum.rs's `commutative = manual_proof!`). -/
-  bkfold : ∀ {K V A : Type} [DecidableEq K] [DecidableEq V] [DecidableEq A]
+  bkfold : ∀ {K V A : Type} [DecidableEq K] [Hashable K] [DecidableEq V] [DecidableEq A]
     {ord : StrOrd} {ret : Retries} (g : A → V → A) (init : A)
     (Pre : V → V → Prop) [DecidableRel Pre],
     FoldOk ord ret Pre g → BoundedKeyedStream K V ord ret →
@@ -636,17 +640,17 @@ class HydroSem (L : Type) (mem : L → Nat) where
   bksEntries : ∀ {K V : Type} [DecidableEq K] [DecidableEq V],
     BoundedKeyedSingleton K V → BoundedStream (K × V) .noOrder .exactlyOnce
   /-- `.join(other)`: the pairs of entries at a common key (`NoOrder`). -/
-  bjoin : ∀ {K V W : Type} [DecidableEq K] [DecidableEq V] [DecidableEq W]
+  bjoin : ∀ {K V W : Type} [DecidableEq K] [Hashable K] [DecidableEq V] [DecidableEq W]
     {ord ord' : StrOrd},
     BoundedStream (K × V) ord .exactlyOnce →
     BoundedStream (K × W) ord' .exactlyOnce →
     BoundedStream (K × (V × W)) .noOrder .exactlyOnce
   /-- `.anti_join(keys)`: the entries whose key is absent from `keys`. -/
-  bantiJoin : ∀ {K V : Type} [DecidableEq K] [DecidableEq V] {ord ord' : StrOrd},
+  bantiJoin : ∀ {K V : Type} [DecidableEq K] [Hashable K] [DecidableEq V] {ord ord' : StrOrd},
     BoundedStream (K × V) ord .exactlyOnce → BoundedStream K ord' .exactlyOnce →
     BoundedStream (K × V) ord .exactlyOnce
   /-- `.filter_not_in(other)`: the items absent from `other`. -/
-  bfilterNotIn : ∀ {α : Type} [DecidableEq α] {ord ord' : StrOrd},
+  bfilterNotIn : ∀ {α : Type} [DecidableEq α] [Hashable α] {ord ord' : StrOrd},
     BoundedStream α ord .exactlyOnce → BoundedStream α ord' .exactlyOnce →
     BoundedStream α ord .exactlyOnce
   /-- `.max()` — the running maximum of an `Ord` type, `None` when

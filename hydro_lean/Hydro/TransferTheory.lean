@@ -71,20 +71,20 @@ theorem cumMax_id : ∀ t, cumMax (fun s => s) t = t
     rw [cumMax_id t]
     exact Nat.max_eq_right (Nat.le_succ t)
 
-/-- Generous delivery stabilizes once the wire has, after catching up
-to its content length… -/
+/-- Generous delivery (every step a tick, identity cursor) stabilizes once
+the wire has, after catching up to its content length… -/
 theorem StabilizesAt.deliver_id {α : Type} {h : StepHist α} {T : Nat}
     (hs : StabilizesAt h T) :
-    StabilizesAt (h.deliver (fun s => s)) (T + (h.view T).length + 1) := by
+    StabilizesAt (h.deliver (fun _ => true) (fun s => s)) (T + (h.view T).length + 1) := by
   intro t
   have key : ∀ u, T ≤ u → (h.view T).length ≤ u + 1 →
-      (h.deliver (fun s => s)).view (u + 1) = h.view T := by
+      (h.deliver (fun _ => true) (fun s => s)).view (u + 1) = h.view T := by
     intro u hu hlen
-    show (h.view u).take (cumMax (fun s => s) (u + 1)) = h.view T
-    rw [cumMax_id]
+    show gateView (fun _ => true) (fun t => (h.view t).take (cumMax (fun s => s) (t + 1))) (u + 1) = h.view T
+    rw [gateView_true, cumMax_id]
     obtain ⟨w, rfl⟩ := Nat.exists_eq_add_of_le hu
     rw [hs w, List.take_of_length_le (by omega)]
-  show (h.deliver (fun s => s)).view (T + (h.view T).length + 1 + t) = _
+  show (h.deliver (fun _ => true) (fun s => s)).view (T + (h.view T).length + 1 + t) = _
   rw [show T + (h.view T).length + 1 + t
       = (T + (h.view T).length + t) + 1 from by omega,
     key (T + (h.view T).length + t) (by omega) (by omega),
