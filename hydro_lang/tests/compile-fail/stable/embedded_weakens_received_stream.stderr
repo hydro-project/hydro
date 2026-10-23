@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> tests/compile-fail/stable/embedded_weakens_received_stream.rs:15:77
+   |
+15 |       let _: Stream<_, Process<'a, P2>, Unbounded, TotalOrder, ExactlyOnce> = numbers.send(
+   |  ____________--------------------------------------------------------------___^
+   | |            |
+   | |            expected due to this
+16 | |         p2,
+17 | |         EMBEDDED.at_least_once().no_order().fail_stop().name("data"),
+18 | |     );
+   | |_____^ expected `Stream<_, Process<'_, P2>>`, found `Stream<{integer}, ..., ..., ..., ...>`
+   |
+   = note: expected struct `hydro_lang::prelude::Stream<_, hydro_lang::prelude::Process<'a, P2>>`
+              found struct `hydro_lang::prelude::Stream<{integer}, hydro_lang::prelude::Process<'_, P2>, hydro_lang::prelude::Unbounded, hydro_lang::live_collections::stream::NoOrder, hydro_lang::live_collections::stream::AtLeastOnce>`

@@ -2926,7 +2926,7 @@ pub enum StreamOrder {
     TotalOrder,
 }
 
-#[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum StreamRetry {
     AtLeastOnce,
     ExactlyOnce,

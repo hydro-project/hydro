@@ -23,6 +23,13 @@ pub fn o2m_demux_embedded<'a>(
             MemberId::from_raw_id(0),
             OpaquePayload { text: s }
         )))
-        .demux(cluster, EMBEDDED.fail_stop().name("demux_data"))
+        .demux(
+            cluster,
+            EMBEDDED
+                .exactly_once()
+                .total_order()
+                .fail_stop()
+                .name("demux_data"),
+        )
         .map(q!(|payload| payload.text.to_uppercase()))
 }

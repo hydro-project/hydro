@@ -290,7 +290,10 @@ fn sim_embedded_send() {
     // An `EMBEDDED` channel leaves serialization to external code; in the simulator the raw
     // value is carried directly through the in-memory channel.
     let out_recv = input
-        .send(&p2, EMBEDDED.fail_stop().name("ch"))
+        .send(
+            &p2,
+            EMBEDDED.exactly_once().total_order().fail_stop().name("ch"),
+        )
         .map(q!(|x| x * 10))
         .sim_output();
 

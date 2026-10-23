@@ -2375,9 +2375,7 @@ impl DfirBuilder for SimBuilder {
         tag_id: StmtId,
         networking_info: &crate::networking::NetworkingInfo,
     ) {
-        use crate::compile::ir::StreamOrder;
-        use crate::location::dynamic::ClusterConsistency;
-        use crate::networking::{NetworkingInfo, TcpFault, UdpFault};
+        use crate::networking::{EmbeddedFault, NetworkingInfo, TcpFault, UdpFault};
         match networking_info {
             NetworkingInfo::Tcp { fault } => match fault {
                 TcpFault::FailStop => {}
@@ -2406,15 +2404,10 @@ impl DfirBuilder for SimBuilder {
                 }
                 _ => todo!("SimBuilder only supports lossy-delayed-forever UDP networking"),
             },
-            // An `EMBEDDED` channel is simulated by the guarantees it declares: ordered and
-            // eventually consistent like a fail-stop TCP channel, or unordered and eventually
-            // consistent like a lossy-delayed-forever one.
-            NetworkingInfo::Embedded {
-                ordering,
-                consistency,
-            } => match (ordering, consistency) {
-                (StreamOrder::TotalOrder, ClusterConsistency::EventualConsistency) => {}
-                (StreamOrder::NoOrder, ClusterConsistency::EventualConsistency) => {
+            // Ordering and retries are explored downstream, from the received stream's type.
+            NetworkingInfo::Embedded { fault, .. } => match fault {
+                EmbeddedFault::FailStop => {}
+                EmbeddedFault::LossyDelayedForever => {
                     assert!(
                         self.test_safety_only,
                         "Simulating `lossy_delayed_forever` requires `.test_safety_only()` on the \
@@ -2423,9 +2416,9 @@ impl DfirBuilder for SimBuilder {
                          `.sim().test_safety_only()` to opt in."
                     );
                 }
-                (_, ClusterConsistency::NoConsistency) => todo!(
-                    "SimBuilder only supports eventually consistent EMBEDDED networking \
-                     (`fail_stop()` and `lossy_delayed_forever()`)"
+                EmbeddedFault::Lossy => todo!(
+                    "SimBuilder only supports fail-stop and lossy-delayed-forever EMBEDDED \
+                     networking"
                 ),
             },
         }
