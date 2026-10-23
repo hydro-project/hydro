@@ -1,0 +1,20 @@
+error[E0277]: the stream must be totally ordered (`TotalOrder`), but has order `hydro_lang::live_collections::stream::NoOrder`
+  --> tests/compile-fail/nightly/embedded_channel_no_promises.rs:10:73
+   |
+10 |         messages: InputChannel::new(stream::iter(Vec::<String>::new()), Promises::new()),
+   |                   -----------------                                     ^^^^^^^^^^^^^^^ required here
+   |                   |
+   |                   required by a bound introduced by this call
+   |
+   = help: the trait `WeakerOrderingThan<hydro_lang::live_collections::stream::NoOrder>` is not implemented for `hydro_lang::live_collections::stream::TotalOrder`
+   = note: strengthen the order upstream, or consider a different API
+   = note: for an embedded input, the host promises it with `Promises::new().total_order(manual_proof!(/** why the order is kept */))`
+   = note: required for `hydro_test_embedded::echo_network_embedded::echo_receiver::incoming::messages` to implement `SatisfiedBy<hydro_lang::prelude::Unbounded, hydro_lang::live_collections::stream::NoOrder, hydro_lang::live_collections::stream::AtLeastOnce>`
+note: required by a bound in `InputChannel::<C, S>::new`
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   |     pub fn new<B, O, R>(inner: S, promises: Promises<B, O, R>) -> Self
+   |            --- required by a bound in this associated function
+   |     where
+   |         C: SatisfiedBy<B, O, R>,
+   |            ^^^^^^^^^^^^^^^^^^^^ required by this bound in `InputChannel::<C, S>::new`

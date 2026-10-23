@@ -1,0 +1,17 @@
+error[E0277]: the input collection must be bounded (`Bounded`), but has bound `hydro_lang::prelude::Unbounded`
+ --> tests/compile-fail/nightly/embedded_output_requires_bounded.rs:9:52
+  |
+9 |         output: OutputChannel::new(|_: String| {}).require_bounded(),
+  |                                                    ^^^^^^^^^^^^^^^ required here
+  |
+  = help: the trait `IsBounded` is not implemented for `hydro_lang::prelude::Unbounded`
+  = note: strengthen the boundedness upstream, or consider a different API
+  = note: to intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region; this introduces non-determinism, so avoid it unless necessary
+note: required by a bound in `OutputChannel::<M, S>::require_bounded`
+ --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+  |
+  |     pub fn require_bounded(self) -> Self
+  |            --------------- required by a bound in this associated function
+  |     where
+  |         M::Boundedness: IsBounded,
+  |                         ^^^^^^^^^ required by this bound in `OutputChannel::<M, S>::require_bounded`

@@ -48,15 +48,15 @@ use crate::compile::ir::{
 use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ForwardHandle};
-use crate::live_collections::boundedness::{Bounded, Unbounded};
+use crate::live_collections::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
 #[cfg(feature = "sim")]
 #[cfg(stageleft_runtime)]
 use crate::live_collections::stream::networking::serialize_bincode;
-use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
-#[cfg(feature = "tokio")]
-use crate::live_collections::stream::{Ordering, Retries};
+use crate::live_collections::stream::{
+    ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
+};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::dynamic::{ClusterConsistency, LocationId};
@@ -695,12 +695,16 @@ pub trait Location<'a>: DynLocation {
     /// Creates an external input stream for embedded deployment mode.
     ///
     /// The `name` parameter specifies the name of the field in the generated `EmbeddedInputs`
-    /// struct that will supply data to this stream at runtime: the host's
-    /// `Stream<Item = T> + Unpin`.
-    fn embedded_input<T>(
+    /// struct that will supply data to this stream at runtime: a
+    /// [`InputChannel`](crate::compile::embedded_runtime::InputChannel) around the host's
+    /// `Stream<Item = T> + Unpin`. The stream's boundedness `B`, ordering `O`, and retries `R`
+    /// are what the dataflow assumes of it, so they are what the host must promise: declare only
+    /// what the dataflow relies on (for example `Unbounded` and `NoOrder` if it neither waits for
+    /// the whole stream nor uses its order), and the host promises nothing more.
+    fn embedded_input<T, B: Boundedness, O: Ordering, R: Retries>(
         &self,
         name: impl Into<String>,
-    ) -> Stream<T, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> Stream<T, Self::DropConsistency, B, O, R>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -711,13 +715,8 @@ pub trait Location<'a>: DynLocation {
             target_location.clone(),
             HydroNode::Source {
                 source: HydroSource::Embedded(ident),
-                metadata: target_location.new_node_metadata(Stream::<
-                    T,
-                    Self,
-                    Unbounded,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
+                metadata: target_location
+                    .new_node_metadata(Stream::<T, Self, B, O, R>::collection_kind()),
             },
         )
     }

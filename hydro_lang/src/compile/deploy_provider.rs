@@ -251,7 +251,8 @@ pub trait Deploy<'a> {
         location_id: &LocationId,
     ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>;
 
-    /// Registers an embedded stream input for the given ident and element type.
+    /// Registers an embedded stream input for the given ident and element type, with the
+    /// `guarantees` the dataflow assumes of it.
     ///
     /// Only meaningful for the embedded deployment backend. The default
     /// implementation panics.
@@ -260,6 +261,7 @@ pub trait Deploy<'a> {
         _location_key: LocationKey,
         _ident: &syn::Ident,
         _element_type: &syn::Type,
+        _guarantees: &EmbeddedStreamGuarantees,
     ) {
         panic!("register_embedded_stream_input is only supported by EmbeddedDeploy");
     }
@@ -277,7 +279,25 @@ pub trait Deploy<'a> {
         panic!("register_embedded_singleton_input is only supported by EmbeddedDeploy");
     }
 
-    /// Registers an embedded output for the given ident and element type.
+    /// Records the guarantees of the stream `sent` on the network channel `name` from `sender`
+    /// to `receiver`, right after one of the `*_sink_source` methods instantiated it.
+    ///
+    /// Other backends provide the transport themselves, so a channel's guarantees are theirs to
+    /// keep and they do not need the stream's. The embedded backend leaves the transport to its
+    /// host, so it must tell the host what the channel carries, but the `*_sink_source` methods
+    /// are not given the sent stream's guarantees; this hook passes them on. The default
+    /// implementation does nothing.
+    fn register_embedded_network_guarantees(
+        _env: &mut Self::InstantiateEnv,
+        _sender: LocationKey,
+        _receiver: LocationKey,
+        _name: Option<&str>,
+        _sent: &EmbeddedStreamGuarantees,
+    ) {
+    }
+
+    /// Registers an embedded output for the given ident and element type, with the
+    /// `guarantees` the dataflow provides on it.
     ///
     /// Only meaningful for the embedded deployment backend. The default
     /// implementation panics.
@@ -286,9 +306,23 @@ pub trait Deploy<'a> {
         _location_key: LocationKey,
         _ident: &syn::Ident,
         _element_type: &syn::Type,
+        _guarantees: &EmbeddedStreamGuarantees,
     ) {
         panic!("register_embedded_output is only supported by EmbeddedDeploy");
     }
+}
+
+/// The guarantees of a stream crossing an embedded dataflow's boundary, as Hydro's live
+/// collections track them: for a stream input, what the dataflow assumes, which the host must
+/// promise; for an output or the stream sent on a network channel, what the dataflow provides.
+#[derive(Clone, Debug)]
+pub struct EmbeddedStreamGuarantees {
+    /// Whether the stream is complete from the start (`Bounded`).
+    pub bound: crate::compile::ir::BoundKind,
+    /// Whether the stream's order is meaningful (`TotalOrder`).
+    pub order: crate::compile::ir::StreamOrder,
+    /// Whether an element may appear more than once (`AtLeastOnce`).
+    pub retry: crate::compile::ir::StreamRetry,
 }
 
 pub trait ProcessSpec<'a, D>
