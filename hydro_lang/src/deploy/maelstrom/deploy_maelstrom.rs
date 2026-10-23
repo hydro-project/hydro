@@ -498,7 +498,7 @@ impl MaelstromDeployment {
             .as_ref()
             .expect("No trybuild config set - did you call deploy?");
 
-        let out = compile_trybuild_example(ExampleBuildConfig {
+        compile_trybuild_example(ExampleBuildConfig {
             trybuild: trybuild.clone(),
             bin_name: bin_name.clone(),
             runtime_feature: "hydro___feature_maelstrom_runtime",
@@ -508,10 +508,7 @@ impl MaelstromDeployment {
             set_trybuild_lib_name: false,
             allow_fuzz: false,
         })
-        .map_err(|()| Error::other("Maelstrom binary compilation failed"))?;
-
-        // Persist the built executable so it survives past the temporary build guards.
-        out.keep().map_err(|e| Error::other(e.to_string()))
+        .map_err(|()| Error::other("Maelstrom binary compilation failed"))
     }
 
     /// Run Maelstrom with the compiled binary, return Ok(()) if all checks pass.

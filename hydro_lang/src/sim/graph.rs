@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use dfir_lang::diagnostic::Diagnostics;
@@ -17,8 +18,8 @@ use crate::compile::deploy_provider::{Deploy, DynSourceSink, Node, RegisterPort}
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use crate::compile::trybuild::generate::LinkingMode;
 use crate::compile::trybuild::generate::{
-    BuiltArtifact, CONCURRENT_TEST_LOCK, ExampleBuildConfig, IS_TEST, TrybuildConfig,
-    compile_trybuild_example, create_trybuild, write_atomic, write_staged_source_cached,
+    CONCURRENT_TEST_LOCK, ExampleBuildConfig, IS_TEST, TrybuildConfig, compile_trybuild_example,
+    create_trybuild, write_atomic, write_staged_source_cached,
 };
 use crate::deploy::deploy_runtime::cluster_membership_stream;
 use crate::location::dynamic::LocationId;
@@ -433,7 +434,7 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 }
 
-pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<BuiltArtifact, ()> {
+pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<PathBuf, ()> {
     compile_trybuild_example(ExampleBuildConfig {
         trybuild,
         bin_name: bin,
