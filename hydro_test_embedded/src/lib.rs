@@ -16,6 +16,17 @@ pub mod embedded {
     reason = "generated code"
 )]
 #[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod unordered_output {
+    include!(concat!(env!("OUT_DIR"), "/unordered_output.rs"));
+}
+
+#[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
 pub mod singleton_input {
     include!(concat!(env!("OUT_DIR"), "/singleton_input.rs"));
 }
@@ -121,6 +132,30 @@ mod tests {
         run_flow(&mut flow).await;
         drop(flow);
         assert_eq!(collected, vec!["HELLO", "WORLD", "HYDRO"]);
+    }
+
+    // --- capitalize_unordered (an unordered output, no networking) ---
+    // Order: (inputs, outputs)
+    #[tokio::test]
+    async fn test_embedded_unordered_output() {
+        let input = stream::iter(vec![
+            "hello".to_owned(),
+            "world".to_owned(),
+            "hydro".to_owned(),
+        ]);
+        let mut collected = vec![];
+        let mut outputs = crate::unordered_output::capitalize_unordered::EmbeddedOutputs {
+            output: |s: String| collected.push(s),
+        };
+        let mut flow = crate::unordered_output::capitalize_unordered(
+            crate::unordered_output::capitalize_unordered::EmbeddedInputs { input },
+            &mut outputs,
+        );
+        run_flow(&mut flow).await;
+        drop(flow);
+        // The output is unordered, so compare contents only.
+        collected.sort();
+        assert_eq!(collected, vec!["HELLO", "HYDRO", "WORLD"]);
     }
 
     // --- singleton_input (singleton + stream, no networking) ---

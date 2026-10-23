@@ -6,7 +6,6 @@ fn main() {
 #[cfg(feature = "test_embedded")]
 fn generate_embedded() {
     use hydro_lang::location::Location;
-    use hydro_lang::prelude::nondet;
 
     println!("cargo::rerun-if-changed=build.rs");
 
@@ -24,6 +23,23 @@ fn generate_embedded() {
 
         std::fs::write(
             format!("{out_dir}/embedded.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- capitalize_unordered (local, an unordered output) ---
+    {
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<()>();
+        hydro_test::local::capitalize::capitalize_unordered(process.embedded_input("input"));
+
+        let code = flow
+            .with_process(&process, "capitalize_unordered")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/unordered_output.rs"),
             prettyplease::unparse(&code),
         )
         .unwrap();
@@ -101,7 +117,6 @@ fn generate_embedded() {
             &cluster,
             process.embedded_input("input"),
         )
-        .assume_ordering(nondet!(/** test */))
         .embedded_output("output");
 
         let code = flow
@@ -147,7 +162,6 @@ fn generate_embedded() {
         let cluster = flow.cluster::<hydro_test::embedded::m2o_send::Src>();
         let process = flow.process::<hydro_test::embedded::m2o_send::Dst>();
         hydro_test::embedded::m2o_send::m2o_send(&process, cluster.embedded_input("input"))
-            .assume_ordering(nondet!(/** test */))
             .embedded_output("output");
 
         let code = flow
@@ -168,7 +182,6 @@ fn generate_embedded() {
         let src = flow.cluster::<hydro_test::embedded::m2m_broadcast::Src>();
         let dst = flow.cluster::<hydro_test::embedded::m2m_broadcast::Dst>();
         hydro_test::embedded::m2m_broadcast::m2m_broadcast(&dst, src.embedded_input("input"))
-            .assume_ordering(nondet!(/** test */))
             .embedded_output("output");
 
         let code = flow
