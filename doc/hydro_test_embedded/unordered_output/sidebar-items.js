@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["capitalize_unordered"],"mod":["capitalize_unordered"]};
