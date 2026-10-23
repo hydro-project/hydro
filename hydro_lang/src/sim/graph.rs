@@ -720,6 +720,7 @@ fn compile_sim_graph_trybuild(
             __hydro_cluster_external_in: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::util::unsync::mpsc::Sender<__root_dfir_rs::bytes::Bytes>>>,
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
+            __hydro_retry_budget: #root::sim::runtime::RetryBudget,
         ) -> (
             Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
             Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
@@ -800,6 +801,7 @@ fn compile_sim_graph_trybuild(
             __hydro_cluster_external_in: &mut ::std::collections::HashMap<usize, ::std::collections::HashMap<u32, __root_dfir_rs::util::unsync::mpsc::Sender<__root_dfir_rs::bytes::Bytes>>>,
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
+            __hydro_retry_budget: #root::sim::runtime::RetryBudget,
         ) -> (
             Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
             Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
@@ -812,7 +814,7 @@ fn compile_sim_graph_trybuild(
             #root::sim::runtime::ScriptedHookRegistry,
         ) {
             #root::runtime_support::colored::control::set_override(should_color);
-            __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __hydro_cluster_external_out, __hydro_cluster_external_in, __println_handler, __eprintln_handler)
+            __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __hydro_cluster_external_out, __hydro_cluster_external_in, __println_handler, __eprintln_handler, __hydro_retry_budget)
         }
     };
     source_ast

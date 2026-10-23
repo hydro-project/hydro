@@ -26,7 +26,7 @@ use std::rc::Rc;
 
 use colored::Colorize;
 
-use super::{HookLocationMeta, RuntimeHook, SimLocation, abort};
+use super::{HookLocationMeta, RuntimeHook, SimLocation};
 
 /// The decisions a test-side handle can script for one kind of hook. Serialized when
 /// crossing the type-erased registry surface (see [`ScriptedHookControl::install_decision`]).
