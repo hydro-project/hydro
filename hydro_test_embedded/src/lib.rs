@@ -27,6 +27,17 @@ pub mod unordered_output {
     reason = "generated code"
 )]
 #[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod at_least_once_input {
+    include!(concat!(env!("OUT_DIR"), "/at_least_once_input.rs"));
+}
+
+#[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
 pub mod singleton_input {
     include!(concat!(env!("OUT_DIR"), "/singleton_input.rs"));
 }
@@ -156,6 +167,32 @@ mod tests {
         // The output is unordered, so compare contents only.
         collected.sort();
         assert_eq!(collected, vec!["HELLO", "HYDRO", "WORLD"]);
+    }
+
+    // --- unique_names (a `NoOrder`, `AtLeastOnce` input, no networking) ---
+    // Order: (inputs, outputs)
+    #[tokio::test]
+    async fn test_embedded_at_least_once_input() {
+        // The host's transport delivered "hello" twice, and out of order, which a `NoOrder`,
+        // `AtLeastOnce` input allows.
+        let input = stream::iter(vec![
+            "world".to_owned(),
+            "hello".to_owned(),
+            "hello".to_owned(),
+        ]);
+        let mut collected = vec![];
+        let mut outputs = crate::at_least_once_input::unique_names::EmbeddedOutputs {
+            output: |s: String| collected.push(s),
+        };
+        let mut flow = crate::at_least_once_input::unique_names(
+            crate::at_least_once_input::unique_names::EmbeddedInputs { input },
+            &mut outputs,
+        );
+        run_flow(&mut flow).await;
+        drop(flow);
+        // The output is unordered, so compare contents only.
+        collected.sort();
+        assert_eq!(collected, vec!["hello", "world"]);
     }
 
     // --- singleton_input (singleton + stream, no networking) ---

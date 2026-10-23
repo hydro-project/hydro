@@ -54,9 +54,9 @@ use crate::live_collections::singleton::Singleton;
 #[cfg(feature = "sim")]
 #[cfg(stageleft_runtime)]
 use crate::live_collections::stream::networking::serialize_bincode;
-use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
-#[cfg(feature = "tokio")]
-use crate::live_collections::stream::{Ordering, Retries};
+use crate::live_collections::stream::{
+    ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
+};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::dynamic::{ClusterConsistency, LocationId};
@@ -697,10 +697,10 @@ pub trait Location<'a>: DynLocation {
     /// The `name` parameter specifies the name of the field in the generated `EmbeddedInputs`
     /// struct that will supply data to this stream at runtime: the host's
     /// `Stream<Item = T> + Unpin`.
-    fn embedded_input<T>(
+    fn embedded_input<T, O: Ordering, R: Retries>(
         &self,
         name: impl Into<String>,
-    ) -> Stream<T, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> Stream<T, Self::DropConsistency, Unbounded, O, R>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -711,13 +711,8 @@ pub trait Location<'a>: DynLocation {
             target_location.clone(),
             HydroNode::Source {
                 source: HydroSource::Embedded(ident),
-                metadata: target_location.new_node_metadata(Stream::<
-                    T,
-                    Self,
-                    Unbounded,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
+                metadata: target_location
+                    .new_node_metadata(Stream::<T, Self, Unbounded, O, R>::collection_kind()),
             },
         )
     }

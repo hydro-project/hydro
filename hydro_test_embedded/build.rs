@@ -45,6 +45,23 @@ fn generate_embedded() {
         .unwrap();
     }
 
+    // --- unique_names (local, a `NoOrder`, `AtLeastOnce` input) ---
+    {
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<()>();
+        hydro_test::local::unique_names::unique_names(process.embedded_input("input"));
+
+        let code = flow
+            .with_process(&process, "unique_names")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/at_least_once_input.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
     // --- singleton_input (local, singleton + stream) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
