@@ -46,9 +46,12 @@ test-group = 'serial-integration'
 filter = 'binary(echo_local)'
 test-group = 'serial-integration'
 
+# `cargo sim` rebuilds `hydro_lang` and its dependencies with fuzzing instrumentation at
+# opt-level=3, which takes close to 10 minutes on macOS CI runners.
 [[profile.default.overrides]]
 filter = 'test(fuzz_with_cargo_sim)'
 threads-required = 'num-test-threads'
+slow-timeout = { period = "60s", terminate-after = 20 }
 
 [[profile.default.overrides]]
 filter = 'test(test_distributed_echo_example_docker)'
