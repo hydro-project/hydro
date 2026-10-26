@@ -76,8 +76,15 @@ impl Ordering for NoOrder {
 /// `Other`, which means that a stream with `Other` guarantees can be safely converted to
 /// have `Self` guarantees instead.
 #[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "the stream must be totally ordered (`TotalOrder`), but has order `{Other}`",
+    label = "required here",
+    note = "strengthen the order upstream, or consider a different API",
+    note = "for an embedded input, the host promises it with `Promises::new().total_order(manual_proof!(/** why the order is kept */))`"
+)]
 pub trait WeakerOrderingThan<Other: ?Sized>: Ordering {}
 #[sealed::sealed]
+#[diagnostic::do_not_recommend]
 impl<O, O2: Ordering> WeakerOrderingThan<O2> for O where O: Ordering + MinOrder<O2, Min = O> {}
 
 /// Helper trait for determining the weakest of two orderings.
@@ -130,8 +137,15 @@ impl Retries for AtLeastOnce {
 /// `Other`, which means that a stream with `Other` guarantees can be safely converted to
 /// have `Self` guarantees instead.
 #[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "the stream must be exactly-once (`ExactlyOnce`), but has retries `{Other}`",
+    label = "required here",
+    note = "strengthen the retries guarantee upstream, or consider a different API",
+    note = "for an embedded input, the host promises it with `Promises::new().exactly_once(manual_proof!(/** why nothing is delivered twice */))`"
+)]
 pub trait WeakerRetryThan<Other: ?Sized>: Retries {}
 #[sealed::sealed]
+#[diagnostic::do_not_recommend]
 impl<R, R2: Retries> WeakerRetryThan<R2> for R where R: Retries + MinRetries<R2, Min = R> {}
 
 /// Helper trait for determining the weakest of two retry guarantees.
