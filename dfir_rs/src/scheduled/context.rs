@@ -75,14 +75,18 @@ pub struct Context {
 }
 
 impl Context {
-    /// Create a new inline context with shared wake state and metrics.
-    pub fn new(wake_state: Arc<WakeState>, metrics: Rc<DfirMetrics>) -> Self {
+    /// Create a new inline context with a fresh wake state and no (never-populated) metrics.
+    ///
+    /// Use [`Self::new_with_metrics`] to attach pre-populated metrics for runtime metrics tracking.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create a new inline context with a fresh wake state and the given metrics.
+    pub fn new_with_metrics(metrics: DfirMetrics) -> Self {
         Self {
-            current_tick: TickInstant::default(),
-            wake_state,
-            metrics,
-            #[cfg(feature = "tokio")]
-            tasks_to_spawn: Vec::new(),
+            metrics: Rc::new(metrics),
+            ..Self::default()
         }
     }
 

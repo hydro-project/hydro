@@ -50,16 +50,22 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
                  _| {
         let receiver = &arguments[0];
         let stream_ident = wc.make_ident("stream");
-        let write_prologue = quote_spanned! {op_span=>
-            let mut #stream_ident = {
-                #[inline(always)]
-                fn check_stream<Stream: #root::futures::stream::Stream<Item = Item> + ::std::marker::Unpin, Item>(stream: Stream)
-                    -> impl #root::futures::stream::Stream<Item = Item> + ::std::marker::Unpin
-                {
-                    stream
-                }
-                check_stream(#receiver)
-            };
+        let write_prologue = if wc.options.exclude_type_guards {
+            quote_spanned! {op_span=>
+                let mut #stream_ident = #receiver;
+            }
+        } else {
+            quote_spanned! {op_span=>
+                let mut #stream_ident = {
+                    #[inline(always)]
+                    fn check_stream<Stream: #root::futures::stream::Stream<Item = Item> + ::std::marker::Unpin, Item>(stream: Stream)
+                        -> impl #root::futures::stream::Stream<Item = Item> + ::std::marker::Unpin
+                    {
+                        stream
+                    }
+                    check_stream(#receiver)
+                };
+            }
         };
         let fused_ident = wc.make_ident("stream_fused");
         let write_iterator = quote_spanned! {op_span=>
@@ -75,11 +81,7 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
         // future sends to wake this DFIR). The fused pull returns Ended immediately
         // if Pending was already hit during the pipeline.
         let write_iterator_after = quote_spanned! {op_span=>
-            {
-                use #root::dfir_pipes::pull::Pull;
-                let mut drain = ::std::pin::pin!(#fused_ident);
-                while let #root::dfir_pipes::pull::PullStep::Ready(..) = drain.as_mut().pull(&mut ()) {}
-            }
+            #root::dfir_pipes::pull::Pull::drain_sync(&mut #fused_ident);
         };
 
         Ok(OperatorWriteOutput {

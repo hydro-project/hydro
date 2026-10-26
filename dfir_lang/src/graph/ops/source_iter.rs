@@ -43,17 +43,23 @@ pub const SOURCE_ITER: OperatorConstraints = OperatorConstraints {
                _| {
         let iter = &arguments[0];
         let iter_ident = wc.make_ident("iter");
-        let write_prologue = quote_spanned! {op_span=>
-            let mut #iter_ident = {
-                #[inline(always)]
-                fn check_iter<IntoIter, Item>(into_iter: IntoIter) -> impl ::std::iter::Iterator<Item = Item>
-                where
-                    IntoIter: ::std::iter::IntoIterator<Item = Item>,
-                {
-                    ::std::iter::IntoIterator::into_iter(into_iter)
-                }
-                check_iter(#iter)
-            };
+        let write_prologue = if wc.options.exclude_type_guards {
+            quote_spanned! {op_span=>
+                let mut #iter_ident = ::std::iter::IntoIterator::into_iter(#iter);
+            }
+        } else {
+            quote_spanned! {op_span=>
+                let mut #iter_ident = {
+                    #[inline(always)]
+                    fn check_iter<IntoIter, Item>(into_iter: IntoIter) -> impl ::std::iter::Iterator<Item = Item>
+                    where
+                        IntoIter: ::std::iter::IntoIterator<Item = Item>,
+                    {
+                        ::std::iter::IntoIterator::into_iter(into_iter)
+                    }
+                    check_iter(#iter)
+                };
+            }
         };
         let write_iterator = quote_spanned! {op_span=>
             let #ident = #root::dfir_pipes::pull::iter(&mut #iter_ident);
