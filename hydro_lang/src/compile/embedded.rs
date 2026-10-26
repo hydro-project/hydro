@@ -721,22 +721,8 @@ fn marker_def(
     doc: &str,
     guarantees: &EmbeddedStreamGuarantees,
 ) -> proc_macro2::TokenStream {
-    let ordering = match guarantees.order {
-        crate::compile::ir::StreamOrder::TotalOrder => {
-            quote! { #root::live_collections::stream::TotalOrder }
-        }
-        crate::compile::ir::StreamOrder::NoOrder => {
-            quote! { #root::live_collections::stream::NoOrder }
-        }
-    };
-    let retries = match guarantees.retry {
-        crate::compile::ir::StreamRetry::ExactlyOnce => {
-            quote! { #root::live_collections::stream::ExactlyOnce }
-        }
-        crate::compile::ir::StreamRetry::AtLeastOnce => {
-            quote! { #root::live_collections::stream::AtLeastOnce }
-        }
-    };
+    let ordering = guarantees.order.type_tokens();
+    let retries = guarantees.retry.type_tokens();
     quote! {
         #[doc = #doc]
         #[allow(non_camel_case_types, reason = "named after its field")]
