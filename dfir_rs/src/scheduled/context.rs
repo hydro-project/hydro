@@ -411,6 +411,24 @@ impl<Tick: TickClosure> Dfir<Tick> {
     }
 }
 
+impl<Tick> Dfir<Tick> {
+    /// Replaces the tick closure with `f(tick_closure)`, keeping the rest of the dataflow (its
+    /// context, wake state and meta graph). Lets a runner wrap every tick, e.g. to catch panics
+    /// raised by the dataflow at the boundary of the code that compiled it.
+    #[doc(hidden)]
+    pub fn map_tick_closure<Tick2>(self, f: impl FnOnce(Tick) -> Tick2) -> Dfir<Tick2> {
+        Dfir {
+            tick_closure: f(self.tick_closure),
+            wake_state: self.wake_state,
+            context: self.context,
+            #[cfg(feature = "meta")]
+            meta_graph: self.meta_graph,
+            #[cfg(feature = "meta")]
+            diagnostics: self.diagnostics,
+        }
+    }
+}
+
 impl<Tick: 'static + for<'a> AsyncFnMut(&'a mut Context) -> bool> Dfir<Tick> {
     /// Type-erase the tick closure for use in heterogeneous collections.
     ///
