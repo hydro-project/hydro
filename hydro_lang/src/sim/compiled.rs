@@ -60,9 +60,9 @@
 //! swallows panics. Internal invariant checks should use `abort_assert!`
 //! rather than `panic!`/`assert!`.
 //!
-//! TODO(mingwei): Panics inside the tick DFIR (generated code in the dylib) are
-//! also caught by bolero's `catch_unwind`. Consider a mechanism to detect and
-//! propagate those as well.
+//! Panics inside the tick DFIR (generated code in the dylib) are caught in the dylib and raised
+//! again on the host as ordinary panics (see `sim::panic_guard`), so they reach bolero's
+//! `catch_unwind` like panics in the test body.
 
 /// Like `assert!`, but calls `std::process::abort()` instead of `panic!()`.
 /// Use for internal invariants that must not be silently caught by bolero.
@@ -808,6 +808,7 @@ type SimLoaded<'a> = libloading::Symbol<
         cluster_external_in: &mut HashMap<usize, HashMap<u32, UnsyncSender<Bytes>>>,
         println_handler: fn(fmt::Arguments<'_>),
         eprintln_handler: fn(fmt::Arguments<'_>),
+        panic_handler: super::panic_guard::PanicHandler,
     ) -> (
         Vec<(LocationId, Option<u32>, DfirErased)>,
         Vec<(LocationId, Option<u32>, DfirErased)>,
@@ -1184,6 +1185,7 @@ impl<'a> CompiledSimInstance<'a> {
                 } else {
                     null_handler
                 },
+                super::panic_guard::host_handler,
             )
         };
 
