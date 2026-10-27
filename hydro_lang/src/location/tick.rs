@@ -232,17 +232,21 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // The simulator only runs a tick when the tick receives input.
+    /// # process.source_iter(q!(vec![()])).batch(&tick, nondet!(/** test */)).all_ticks().for_each(q!(|_| {}));
     /// let optional = tick.none::<i32>();
     /// optional.unwrap_or(tick.singleton(q!(123)))
     /// # .all_ticks()
     /// # }, |mut stream| async move {
     /// // 123
-    /// # assert_eq!(stream.next().await.unwrap(), 123);
+    /// # for w in vec![123] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
     /// # }));
     /// # }
     /// ```
@@ -268,21 +272,20 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # // The simulator only runs a tick when the tick receives input.
+    /// # process.source_iter(q!(vec![(), ()])).batch(&tick, nondet!(/** test */)).all_ticks().for_each(q!(|_| {}));
     /// let optional = tick.optional_first_tick(q!(5));
     /// optional.unwrap_or(tick.singleton(q!(123))).all_ticks()
     /// # }, |mut stream| async move {
     /// // 5, 123, 123, 123, ...
-    /// # assert_eq!(stream.next().await.unwrap(), 5);
-    /// # assert_eq!(stream.next().await.unwrap(), 123);
-    /// # assert_eq!(stream.next().await.unwrap(), 123);
-    /// # assert_eq!(stream.next().await.unwrap(), 123);
+    /// # let outputs: Vec<i32> = stream.collect().await;
+    /// # assert_eq!(outputs[0], 5);
+    /// # assert!(outputs[1..].iter().all(|&x| x == 123));
     /// # }));
     /// # }
     /// ```

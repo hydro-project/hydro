@@ -252,7 +252,7 @@ macro_rules! __verus_panic__ {
 ///
 /// # Examples
 /// ```rust
-/// # #[cfg(feature = "deploy")] {
+/// # #[cfg(feature = "sim")] {
 /// # use hydro_lang::prelude::*;
 /// # use hydro_lang::live_collections::stream::NoOrder;
 /// # use futures::StreamExt;

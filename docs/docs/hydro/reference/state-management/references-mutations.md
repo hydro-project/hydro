@@ -94,15 +94,15 @@ In practice, most reference handles appear inside [slice blocks](./slices.mdx): 
 # use futures::StreamExt;
 # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
 let get_requests = process.source_iter(q!(vec![1, 2, 3]));
-let highest_bid: Optional<i32, _, _> = process
+let highest_bid = process
     .source_iter(q!(vec![55, 82]))
-    .max();
+    .fold(q!(|| 0), q!(|max, bid| *max = (*max).max(bid)));
 
 let responses = sliced! {
     let request_batch = use::batch(get_requests, nondet!(/** each request is handled independently */));
     let bid_snapshot = use::snapshot(highest_bid, nondet!(/** each request observes the highest bid at the time it is processed */));
     let bid_ref = bid_snapshot.by_ref();
-    request_batch.map(q!(|req| (req, bid_ref.unwrap_or(0))))
+    request_batch.map(q!(|req| (req, *bid_ref)))
 };
 # responses.map(q!(|(a, b)| a + b))
 # }, |mut stream| async move {
