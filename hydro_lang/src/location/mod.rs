@@ -309,7 +309,7 @@ pub trait Location<'a>: DynLocation {
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -336,8 +336,9 @@ pub trait Location<'a>: DynLocation {
     /// such as polling or heartbeat mechanisms.
     ///
     /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// ```rust,no_run
+    /// # #[cfg(feature = "sim")] {
+    /// # // Only compiled: `spin` never ends, so the simulator cannot run this example.
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -380,7 +381,7 @@ pub trait Location<'a>: DynLocation {
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -427,7 +428,7 @@ pub trait Location<'a>: DynLocation {
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -483,7 +484,7 @@ pub trait Location<'a>: DynLocation {
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -532,7 +533,7 @@ pub trait Location<'a>: DynLocation {
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -1311,8 +1312,9 @@ pub trait Location<'a>: DynLocation {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// ```rust,no_run
+    /// # #[cfg(feature = "sim")] {
+    /// # // Only compiled: sidecars run real async I/O, so the simulator cannot run this example.
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1417,7 +1419,7 @@ pub trait Location<'a>: DynLocation {
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1461,7 +1463,7 @@ pub trait Location<'a>: DynLocation {
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1554,7 +1556,7 @@ pub trait Location<'a>: DynLocation {
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use hydro_lang::live_collections::stream::NoOrder;
     /// # use futures::StreamExt;

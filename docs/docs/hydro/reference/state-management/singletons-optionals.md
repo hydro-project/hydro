@@ -86,12 +86,14 @@ Singletons and optionals can be transformed with `map`, `filter`, and `filter_ma
 # use hydro_lang::prelude::*;
 # use futures::StreamExt;
 # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+let tick = process.tick();
+let numbers = // 1, 2, 3, 4, all in one tick
+# process.source_iter(q!(vec![vec![1, 2, 3, 4]])).batch(&tick, nondet!(/** test */)).flatten_ordered();
 let count = numbers.clone().count();
 let sum = numbers.fold(q!(|| 0), q!(|acc, x| *acc += x));
 let average = sum.zip(count).map(q!(|(s, c)| s as f64 / c as f64));
 // 2.5
-# average.into_stream()
+# average.all_ticks()
 # }, |mut stream| async move {
 # assert_eq!(stream.next().await, Some(2.5));
 # }));

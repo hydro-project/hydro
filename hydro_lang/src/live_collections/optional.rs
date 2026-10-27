@@ -473,16 +473,17 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let optional = tick.optional_first_tick(q!(1));
-    /// optional.map(q!(|v| v + 1)).all_ticks()
+    /// let optional = process.singleton(q!(Some(1))).into_optional();
+    /// optional.map(q!(|v| v + 1)).into_stream()
     /// # }, |mut stream| async move {
     /// // 2
-    /// # assert_eq!(stream.next().await.unwrap(), 2);
+    /// # for w in vec![2] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
     /// # }));
     /// # }
     /// ```
@@ -523,13 +524,12 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let optional = tick.optional_first_tick(q!(vec![1, 2, 3]));
-    /// optional.flat_map_ordered(q!(|v| v)).all_ticks()
+    /// let optional = process.singleton(q!(Some(vec![1, 2, 3]))).into_optional();
+    /// optional.flat_map_ordered(q!(|v| v))
     /// # }, |mut stream| async move {
     /// // 1, 2, 3
     /// # for w in vec![1, 2, 3] {
@@ -566,15 +566,14 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
-    /// let tick = process.tick();
-    /// let optional = tick.optional_first_tick(q!(
-    ///     std::collections::HashSet::<i32>::from_iter(vec![1, 2, 3])
-    /// ));
-    /// optional.flat_map_unordered(q!(|v| v)).all_ticks()
+    /// let optional = process
+    ///     .singleton(q!(Some(std::collections::HashSet::<i32>::from_iter(vec![1, 2, 3]))))
+    ///     .into_optional();
+    /// optional.flat_map_unordered(q!(|v| v))
     /// # }, |mut stream| async move {
     /// // 1, 2, 3, but in no particular order
     /// # let mut results = Vec::new();
@@ -617,13 +616,12 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let optional = tick.optional_first_tick(q!(vec![1, 2, 3]));
-    /// optional.flatten_ordered().all_ticks()
+    /// let optional = process.singleton(q!(Some(vec![1, 2, 3]))).into_optional();
+    /// optional.flatten_ordered()
     /// # }, |mut stream| async move {
     /// // 1, 2, 3
     /// # for w in vec![1, 2, 3] {
@@ -649,15 +647,14 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
-    /// let tick = process.tick();
-    /// let optional = tick.optional_first_tick(q!(
-    ///     std::collections::HashSet::<i32>::from_iter(vec![1, 2, 3])
-    /// ));
-    /// optional.flatten_unordered().all_ticks()
+    /// let optional = process
+    ///     .singleton(q!(Some(std::collections::HashSet::<i32>::from_iter(vec![1, 2, 3]))))
+    ///     .into_optional();
+    /// optional.flatten_unordered()
     /// # }, |mut stream| async move {
     /// // 1, 2, 3, but in no particular order
     /// # let mut results = Vec::new();
@@ -689,16 +686,17 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let optional = tick.optional_first_tick(q!(5));
-    /// optional.filter(q!(|&x| x > 3)).all_ticks()
+    /// let optional = process.singleton(q!(Some(5))).into_optional();
+    /// optional.filter(q!(|&x| x > 3)).into_stream()
     /// # }, |mut stream| async move {
     /// // 5
-    /// # assert_eq!(stream.next().await.unwrap(), 5);
+    /// # for w in vec![5] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
     /// # }));
     /// # }
     /// ```
@@ -735,18 +733,19 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let optional = tick.optional_first_tick(q!("42"));
+    /// let optional = process.singleton(q!(Some("42"))).into_optional();
     /// optional
     ///     .filter_map(q!(|s| s.parse::<i32>().ok()))
-    ///     .all_ticks()
+    ///     .into_stream()
     /// # }, |mut stream| async move {
     /// // 42
-    /// # assert_eq!(stream.next().await.unwrap(), 42);
+    /// # for w in vec![42] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
     /// # }));
     /// # }
     /// ```
@@ -781,7 +780,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -793,10 +792,10 @@ where
     /// let max = numbers.max(); // Optional
     /// min.zip(max).all_ticks()
     /// # }, |mut stream| async move {
-    /// // [(123, 789)]
-    /// # for w in vec![(123, 789)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
+    /// // [(123, 789)], if all the numbers arrive in one tick
+    /// # let pairs: Vec<(i32, i32)> = stream.collect().await;
+    /// # assert_eq!(pairs.first().unwrap().0, 123);
+    /// # assert_eq!(pairs.last().unwrap().1, 789);
     /// # }));
     /// # }
     /// ```
@@ -844,19 +843,18 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let some_first_tick = tick.optional_first_tick(q!(123));
-    /// let some_second_tick = tick.optional_first_tick(q!(456)).defer_tick();
-    /// some_first_tick.or(some_second_tick).all_ticks()
+    /// let some = process.singleton(q!(Some(123))).into_optional();
+    /// let none = process.singleton(q!(None)).into_optional();
+    /// let fallback = process.singleton(q!(Some(456))).into_optional();
+    /// some.or(fallback.clone())
+    ///     .into_stream()
+    ///     .chain(none.or(fallback).into_stream())
     /// # }, |mut stream| async move {
-    /// // [123 /* first tick */, 456 /* second tick */]
+    /// // [123 /* some.or(..) */, 456 /* none.or(..) */]
     /// # for w in vec![123, 456] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
@@ -906,21 +904,18 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the later ticks to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let some_first_tick = tick.optional_first_tick(q!(123));
-    /// some_first_tick
-    ///     .unwrap_or(tick.singleton(q!(456)))
-    ///     .all_ticks()
+    /// let some = process.singleton(q!(Some(123))).into_optional();
+    /// let none = process.singleton(q!(None)).into_optional();
+    /// some.unwrap_or(process.singleton(q!(456)))
+    ///     .into_stream()
+    ///     .chain(none.unwrap_or(process.singleton(q!(456))).into_stream())
     /// # }, |mut stream| async move {
-    /// // [123 /* first tick */, 456 /* second tick */, 456 /* third tick */, 456, ...]
-    /// # for w in vec![123, 456, 456, 456] {
+    /// // [123 /* some */, 456 /* none */]
+    /// # for w in vec![123, 456] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
@@ -952,19 +947,18 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the later ticks to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let some_first_tick = tick.optional_first_tick(q!(123i32));
-    /// some_first_tick.unwrap_or_default().all_ticks()
+    /// let some = process.singleton(q!(Some(123i32))).into_optional();
+    /// let none = process.singleton(q!(None::<i32>)).into_optional();
+    /// some.unwrap_or_default()
+    ///     .into_stream()
+    ///     .chain(none.unwrap_or_default().into_stream())
     /// # }, |mut stream| async move {
-    /// // [123 /* first tick */, 0 /* second tick */, 0 /* third tick */, 0, ...]
-    /// # for w in vec![123, 0, 0, 0] {
+    /// // [123 /* some */, 0 /* none */]
+    /// # for w in vec![123, 0] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
@@ -985,19 +979,18 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the later ticks to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let some_first_tick = tick.optional_first_tick(q!(123));
-    /// some_first_tick.into_singleton().all_ticks()
+    /// let some = process.singleton(q!(Some(123))).into_optional();
+    /// let none = process.singleton(q!(None)).into_optional();
+    /// some.into_singleton()
+    ///     .into_stream()
+    ///     .chain(none.into_singleton().into_stream())
     /// # }, |mut stream| async move {
-    /// // [Some(123) /* first tick */, None /* second tick */, None /* third tick */, None, ...]
-    /// # for w in vec![Some(123), None, None, None] {
+    /// // [Some(123), None]
+    /// # for w in vec![Some(123), None] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
@@ -1029,18 +1022,17 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let some_first_tick = tick.optional_first_tick(q!(42));
-    /// some_first_tick.is_some().all_ticks()
+    /// let some = process.singleton(q!(Some(42))).into_optional();
+    /// let none = process.singleton(q!(None::<i32>)).into_optional();
+    /// some.is_some()
+    ///     .into_stream()
+    ///     .chain(none.is_some().into_stream())
     /// # }, |mut stream| async move {
-    /// // [true /* first tick */, false /* second tick */, ...]
+    /// // [true /* some */, false /* none */]
     /// # for w in vec![true, false] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
@@ -1058,18 +1050,17 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let some_first_tick = tick.optional_first_tick(q!(42));
-    /// some_first_tick.is_none().all_ticks()
+    /// let some = process.singleton(q!(Some(42))).into_optional();
+    /// let none = process.singleton(q!(None::<i32>)).into_optional();
+    /// some.is_none()
+    ///     .into_stream()
+    ///     .chain(none.is_none().into_stream())
     /// # }, |mut stream| async move {
-    /// // [false /* first tick */, true /* second tick */, ...]
+    /// // [false /* some */, true /* none */]
     /// # for w in vec![false, true] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
@@ -1088,19 +1079,22 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let a = tick.optional_first_tick(q!(5)); // Some(5), None
-    /// let b = tick.optional_first_tick(q!(5)); // Some(5), None
-    /// a.is_some_and_equals(b).all_ticks()
+    /// let five = process
+    ///   .source_iter(q!(vec![5]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .first(); // Some(5)
+    /// five.clone()
+    ///     .is_some_and_equals(five.clone())
+    ///     .into_stream()
+    ///     .chain(five.is_some_and_equals(tick.none()).into_stream())
+    ///     .all_ticks()
     /// # }, |mut stream| async move {
-    /// // [true, false]
+    /// // [true /* Some(5), Some(5) */, false /* Some(5), None */]
     /// # for w in vec![true, false] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
@@ -1184,27 +1178,12 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
-    /// # // ticks are lazy by default, forces the second tick to run
-    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    /// # let batch_first_tick = process
-    /// #   .source_iter(q!(vec![]))
-    /// #   .batch(&tick, nondet!(/** test */));
-    /// # let batch_second_tick = process
-    /// #   .source_iter(q!(vec![123, 456]))
-    /// #   .batch(&tick, nondet!(/** test */))
-    /// #   .defer_tick(); // appears on the second tick
-    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
-    /// input_batch // first tick: [], second tick: [123, 456]
-    ///     .clone()
-    ///     .max()
-    ///     .into_stream()
-    ///     .chain(input_batch)
-    ///     .all_ticks()
+    /// let numbers = process.source_iter(q!(vec![123, 456]));
+    /// numbers.clone().max().into_stream().chain(numbers)
     /// # }, |mut stream| async move {
     /// // [456, 123, 456]
     /// # for w in vec![456, 123, 456] {
@@ -1237,29 +1216,29 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let some_first_tick = tick.optional_first_tick(q!(()));
-    /// let signal = some_first_tick.is_some(); // true on first tick, false on second
-    /// let batch_first_tick = process
+    /// let value = process
     ///   .source_iter(q!(vec![456]))
-    ///   .batch(&tick, nondet!(/** test */));
-    /// let batch_second_tick = process
-    ///   .source_iter(q!(vec![789]))
     ///   .batch(&tick, nondet!(/** test */))
-    ///   .defer_tick();
-    /// batch_first_tick.chain(batch_second_tick).first()
-    ///   .filter_if(signal)
-    ///   .unwrap_or(tick.singleton(q!(0)))
-    ///   .all_ticks()
+    ///   .first(); // Some(456)
+    /// value
+    ///     .clone()
+    ///     .filter_if(tick.singleton(q!(true)))
+    ///     .unwrap_or(tick.singleton(q!(0)))
+    ///     .into_stream()
+    ///     .chain(
+    ///         value
+    ///             .filter_if(tick.singleton(q!(false)))
+    ///             .unwrap_or(tick.singleton(q!(0)))
+    ///             .into_stream(),
+    ///     )
+    ///     .all_ticks()
     /// # }, |mut stream| async move {
-    /// // [456, 0]
+    /// // [456 /* signal true */, 0 /* signal false */]
     /// # for w in vec![456, 0] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
@@ -1281,29 +1260,31 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let batch_first_tick = process
-    ///   .source_iter(q!(vec![]))
-    ///   .batch(&tick, nondet!(/** test */));
-    /// let batch_second_tick = process
+    /// let value = process
     ///   .source_iter(q!(vec![456]))
     ///   .batch(&tick, nondet!(/** test */))
-    ///   .defer_tick(); // appears on the second tick
-    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
-    /// batch_first_tick.chain(batch_second_tick).first()
-    ///   .filter_if_some(some_on_first_tick)
-    ///   .unwrap_or(tick.singleton(q!(789)))
-    ///   .all_ticks()
+    ///   .first(); // Some(456)
+    /// let some = value.clone().map(q!(|_| ()));
+    /// value
+    ///     .clone()
+    ///     .filter_if_some(some)
+    ///     .unwrap_or(tick.singleton(q!(789)))
+    ///     .into_stream()
+    ///     .chain(
+    ///         value
+    ///             .filter_if_some(tick.none::<()>())
+    ///             .unwrap_or(tick.singleton(q!(789)))
+    ///             .into_stream(),
+    ///     )
+    ///     .all_ticks()
     /// # }, |mut stream| async move {
-    /// // [789, 789]
-    /// # for w in vec![789, 789] {
+    /// // [456 /* signal is some */, 789 /* signal is none */]
+    /// # for w in vec![456, 789] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
@@ -1325,28 +1306,30 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let batch_first_tick = process
-    ///   .source_iter(q!(vec![]))
-    ///   .batch(&tick, nondet!(/** test */));
-    /// let batch_second_tick = process
+    /// let value = process
     ///   .source_iter(q!(vec![456]))
     ///   .batch(&tick, nondet!(/** test */))
-    ///   .defer_tick(); // appears on the second tick
-    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
-    /// batch_first_tick.chain(batch_second_tick).first()
-    ///   .filter_if_none(some_on_first_tick)
-    ///   .unwrap_or(tick.singleton(q!(789)))
-    ///   .all_ticks()
+    ///   .first(); // Some(456)
+    /// let some = value.clone().map(q!(|_| ()));
+    /// value
+    ///     .clone()
+    ///     .filter_if_none(some)
+    ///     .unwrap_or(tick.singleton(q!(789)))
+    ///     .into_stream()
+    ///     .chain(
+    ///         value
+    ///             .filter_if_none(tick.none::<()>())
+    ///             .unwrap_or(tick.singleton(q!(789)))
+    ///             .into_stream(),
+    ///     )
+    ///     .all_ticks()
     /// # }, |mut stream| async move {
-    /// // [789, 789]
+    /// // [789 /* signal is some */, 456 /* signal is none */]
     /// # for w in vec![789, 456] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
@@ -1368,22 +1351,28 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
-    /// some_on_first_tick
-    ///     .if_some_then(tick.singleton(q!(456)))
+    /// let some = process
+    ///   .source_iter(q!(vec![()]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .first(); // Some(())
+    /// some.if_some_then(tick.singleton(q!(456)))
     ///     .unwrap_or(tick.singleton(q!(123)))
-    /// # .all_ticks()
+    ///     .into_stream()
+    ///     .chain(
+    ///         tick.none::<()>()
+    ///             .if_some_then(tick.singleton(q!(456)))
+    ///             .unwrap_or(tick.singleton(q!(123)))
+    ///             .into_stream(),
+    ///     )
+    ///     .all_ticks()
     /// # }, |mut stream| async move {
-    /// // 456 (first tick) ~> 123 (second tick onwards)
-    /// # for w in vec![456, 123, 123] {
+    /// // [456 /* some */, 123 /* none */]
+    /// # for w in vec![456, 123] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
@@ -1574,29 +1563,19 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
-    /// # // ticks are lazy by default, forces the second tick to run
-    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    /// # let batch_first_tick = process
-    /// #   .source_iter(q!(vec![]))
-    /// #   .batch(&tick, nondet!(/** test */));
-    /// # let batch_second_tick = process
-    /// #   .source_iter(q!(vec![1, 2, 3]))
-    /// #   .batch(&tick, nondet!(/** test */))
-    /// #   .defer_tick(); // appears on the second tick
-    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
-    /// input_batch // first tick: [], second tick: [1, 2, 3]
-    ///     .max()
-    ///     .all_ticks()
+    /// let tick = process.tick();
+    /// let batch = process
+    ///   .source_iter(q!(vec![1, 2, 3]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// batch.max().all_ticks() // the max of each tick's batch
     /// # }, |mut stream| async move {
-    /// // [3]
-    /// # for w in vec![3] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
+    /// // for example [3], if all three elements arrive in one tick
+    /// # let maxes: Vec<_> = stream.collect().await;
+    /// # assert_eq!(maxes.last(), Some(&3));
     /// # }));
     /// # }
     /// ```
@@ -1623,32 +1602,23 @@ where
     /// "most recent" tick, but note that updates are propagated asynchronously outside the tick.
     ///
     /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// ```rust,no_run
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
-    /// # // ticks are lazy by default, forces the second tick to run
-    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    /// # let batch_first_tick = process
-    /// #   .source_iter(q!(vec![]))
-    /// #   .batch(&tick, nondet!(/** test */));
-    /// # let batch_second_tick = process
-    /// #   .source_iter(q!(vec![1, 2, 3]))
-    /// #   .batch(&tick, nondet!(/** test */))
-    /// #   .defer_tick(); // appears on the second tick
-    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
-    /// input_batch // first tick: [], second tick: [1, 2, 3]
-    ///     .max()
-    ///     .latest()
+    /// # // The simulator cannot yet model `Optional::latest`, so this example is only compiled.
+    /// let tick = process.tick();
+    /// let batch = process
+    ///   .source_iter(q!(vec![1, 2, 3]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// batch.max().latest() // the max of the latest tick's batch
     /// # .into_singleton()
     /// # .sample_eager(nondet!(/** test */))
     /// # }, |mut stream| async move {
-    /// // asynchronously changes from None ~> 3
-    /// # for w in vec![None, Some(3)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
+    /// // asynchronously changes from None ~> ... ~> Some(3)
+    /// # let samples: Vec<_> = stream.collect().await;
+    /// # assert!(samples.contains(&Some(3)));
     /// # }));
     /// # }
     /// ```
@@ -1696,31 +1666,26 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let batch_first_tick = process
-    ///   .source_iter(q!(vec![1, 2]))
+    /// let batch = process
+    ///   .source_iter(q!(vec![1, 2, 3, 4]))
     ///   .batch(&tick, nondet!(/** test */));
-    /// let batch_second_tick = process
-    ///   .source_iter(q!(vec![3, 4]))
-    ///   .batch(&tick, nondet!(/** test */))
-    ///   .defer_tick(); // appears on the second tick
-    /// let current_tick_sum = batch_first_tick.chain(batch_second_tick)
-    ///   .reduce(q!(|state, v| *state += v));
+    /// let current_tick_sum = batch.reduce(q!(|state, v| *state += v));
     ///
     /// current_tick_sum.clone().into_singleton().zip(
     ///   current_tick_sum.defer_tick().into_singleton() // state from previous tick
     /// ).all_ticks()
     /// # }, |mut stream| async move {
+    /// // for example, if the ticks' batches are [1, 2] and [3, 4]:
     /// // [(Some(3), None) /* first tick */, (Some(7), Some(3)) /* second tick */]
-    /// # for w in vec![(Some(3), None), (Some(7), Some(3))] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let pairs: Vec<(Option<i32>, Option<i32>)> = stream.collect().await;
+    /// # assert_eq!(pairs[0].1, None);
+    /// # for w in pairs.windows(2) {
+    /// #     assert_eq!(w[1].1, w[0].0);
     /// # }
     /// # }));
     /// # }
