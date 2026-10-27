@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["EmbeddedDeploy"],"struct":["EmbeddedInstantiateEnv","EmbeddedNode"]};
+window.SIDEBAR_ITEMS = {"enum":["EmbeddedDeploy"],"struct":["EmbeddedCodegenOptions","EmbeddedInstantiateEnv","EmbeddedNode"]};

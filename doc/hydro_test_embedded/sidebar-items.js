@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["at_least_once_input","echo_network","echo_network_embedded","embedded","m2m_broadcast","m2o_send","o2m_broadcast","o2m_demux_embedded","singleton_input","unordered_output"]};
+window.SIDEBAR_ITEMS = {"mod":["at_least_once_input","echo_network","echo_network_embedded","embedded","embedded_flame_attribution","m2m_broadcast","m2o_send","o2m_broadcast","o2m_demux_embedded","singleton_input","unordered_output"]};

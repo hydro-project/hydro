@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_pipes/src/pull/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-009149e2.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="dfir_pipes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (76456a688 2026-10-25)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-9b351432.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">dfir_pipes/pull/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Pull-based stream combinators for dataflow pipelines.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_pipes/src/pull/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-009149e2.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="dfir_pipes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (16d1ffac1 2026-10-26)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-9b351432.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">dfir_pipes/pull/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Pull-based stream combinators for dataflow pipelines.
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! This module provides pull-based operators that can be chained via method calls
 <a href=#4 id=4 data-nosnippet>4</a>//! on [`crate::pull::Pull`], similar to iterator adapters.
@@ -239,591 +239,605 @@
 <a href=#239 id=239 data-nosnippet>239</a>        <span class="self">self
 <a href=#240 id=240 data-nosnippet>240</a>    </span>}
 <a href=#241 id=241 data-nosnippet>241</a>
-<a href=#242 id=242 data-nosnippet>242</a>    <span class="doccomment">/// Takes two pulls and creates a new pull over both in sequence.
+<a href=#242 id=242 data-nosnippet>242</a>    <span class="doccomment">/// Synchronously pulls and discards all remaining items until this pull ends.
 <a href=#243 id=243 data-nosnippet>243</a>    ///
-<a href=#244 id=244 data-nosnippet>244</a>    /// `chain()` will return a new pull which will first iterate over
-<a href=#245 id=245 data-nosnippet>245</a>    /// values from the first pull and then over values from the second pull.
-<a href=#246 id=246 data-nosnippet>246</a>    ///
-<a href=#247 id=247 data-nosnippet>247</a>    /// The first pull must be finite (`CanEnd = Yes`) and fused ([`FusedPull`]).
-<a href=#248 id=248 data-nosnippet>248</a>    </span><span class="kw">fn </span>chain&lt;U&gt;(<span class="self">self</span>, other: U) -&gt; Chain&lt;<span class="self">Self</span>, U&gt;
-<a href=#249 id=249 data-nosnippet>249</a>    <span class="kw">where
-<a href=#250 id=250 data-nosnippet>250</a>        </span><span class="self">Self</span>: Sized + FusedPull&lt;CanEnd = Yes&gt;,
-<a href=#251 id=251 data-nosnippet>251</a>        U: Pull&lt;Item = <span class="self">Self</span>::Item, Meta = <span class="self">Self</span>::Meta&gt;,
-<a href=#252 id=252 data-nosnippet>252</a>    {
-<a href=#253 id=253 data-nosnippet>253</a>        Chain::new(<span class="self">self</span>, other)
+<a href=#244 id=244 data-nosnippet>244</a>    /// Only available for pulls which need no context (`Ctx = ()`) and can never pend
+<a href=#245 id=245 data-nosnippet>245</a>    /// (`CanPend = No`), since otherwise a synchronous loop would need a task context and could
+<a href=#246 id=246 data-nosnippet>246</a>    /// spin forever on [`PullStep::Pending`]. `CanEnd = Yes` ensures the loop terminates.
+<a href=#247 id=247 data-nosnippet>247</a>    </span><span class="kw">fn </span>drain_sync(<span class="kw-2">&amp;mut </span><span class="self">self</span>)
+<a href=#248 id=248 data-nosnippet>248</a>    <span class="kw">where
+<a href=#249 id=249 data-nosnippet>249</a>        for</span>&lt;<span class="lifetime">'ctx</span>&gt; <span class="self">Self</span>: Pull&lt;Ctx&lt;<span class="lifetime">'ctx</span>&gt; = (), CanPend = No, CanEnd = Yes&gt; + Unpin,
+<a href=#250 id=250 data-nosnippet>250</a>    {
+<a href=#251 id=251 data-nosnippet>251</a>        <span class="kw">let </span><span class="kw-2">mut </span>this = Pin::new(<span class="self">self</span>);
+<a href=#252 id=252 data-nosnippet>252</a>        <span class="kw">let </span>ctx = <span class="kw">crate</span>::mut_unit();
+<a href=#253 id=253 data-nosnippet>253</a>        <span class="kw">while let </span>PullStep::Ready(..) = this.as_mut().pull(ctx) {}
 <a href=#254 id=254 data-nosnippet>254</a>    }
 <a href=#255 id=255 data-nosnippet>255</a>
-<a href=#256 id=256 data-nosnippet>256</a>    <span class="doccomment">/// Creates a pull which gives the current iteration count as well as the next value.
+<a href=#256 id=256 data-nosnippet>256</a>    <span class="doccomment">/// Takes two pulls and creates a new pull over both in sequence.
 <a href=#257 id=257 data-nosnippet>257</a>    ///
-<a href=#258 id=258 data-nosnippet>258</a>    /// The pull returned yields pairs `(i, val)`, where `i` is the current index
-<a href=#259 id=259 data-nosnippet>259</a>    /// of iteration and `val` is the value returned by the pull.
-<a href=#260 id=260 data-nosnippet>260</a>    </span><span class="kw">fn </span>enumerate(<span class="self">self</span>) -&gt; Enumerate&lt;<span class="self">Self</span>&gt;
-<a href=#261 id=261 data-nosnippet>261</a>    <span class="kw">where
-<a href=#262 id=262 data-nosnippet>262</a>        </span><span class="self">Self</span>: Sized,
-<a href=#263 id=263 data-nosnippet>263</a>    {
-<a href=#264 id=264 data-nosnippet>264</a>        Enumerate::new(<span class="self">self</span>)
-<a href=#265 id=265 data-nosnippet>265</a>    }
-<a href=#266 id=266 data-nosnippet>266</a>
-<a href=#267 id=267 data-nosnippet>267</a>    <span class="doccomment">/// Creates a pull which uses a closure to determine if an element should be yielded.
-<a href=#268 id=268 data-nosnippet>268</a>    ///
-<a href=#269 id=269 data-nosnippet>269</a>    /// Given an element the closure must return `true` or `false`. The returned pull
-<a href=#270 id=270 data-nosnippet>270</a>    /// will yield only the elements for which the closure returns `true`.
-<a href=#271 id=271 data-nosnippet>271</a>    </span><span class="kw">fn </span>filter&lt;P&gt;(<span class="self">self</span>, predicate: P) -&gt; Filter&lt;<span class="self">Self</span>, P&gt;
-<a href=#272 id=272 data-nosnippet>272</a>    <span class="kw">where
-<a href=#273 id=273 data-nosnippet>273</a>        </span><span class="self">Self</span>: Sized,
-<a href=#274 id=274 data-nosnippet>274</a>        P: FnMut(<span class="kw-2">&amp;</span><span class="self">Self</span>::Item) -&gt; bool,
-<a href=#275 id=275 data-nosnippet>275</a>    {
-<a href=#276 id=276 data-nosnippet>276</a>        Filter::new(<span class="self">self</span>, predicate)
-<a href=#277 id=277 data-nosnippet>277</a>    }
-<a href=#278 id=278 data-nosnippet>278</a>
-<a href=#279 id=279 data-nosnippet>279</a>    <span class="doccomment">/// Creates a pull that both filters and maps.
-<a href=#280 id=280 data-nosnippet>280</a>    ///
-<a href=#281 id=281 data-nosnippet>281</a>    /// The returned pull yields only the values for which the supplied closure
-<a href=#282 id=282 data-nosnippet>282</a>    /// returns `Some(value)`.
-<a href=#283 id=283 data-nosnippet>283</a>    </span><span class="kw">fn </span>filter_map&lt;B, F&gt;(<span class="self">self</span>, f: F) -&gt; FilterMap&lt;<span class="self">Self</span>, F&gt;
-<a href=#284 id=284 data-nosnippet>284</a>    <span class="kw">where
-<a href=#285 id=285 data-nosnippet>285</a>        </span><span class="self">Self</span>: Sized,
-<a href=#286 id=286 data-nosnippet>286</a>        F: FnMut(<span class="self">Self</span>::Item) -&gt; <span class="prelude-ty">Option</span>&lt;B&gt;,
-<a href=#287 id=287 data-nosnippet>287</a>    {
-<a href=#288 id=288 data-nosnippet>288</a>        FilterMap::new(<span class="self">self</span>, f)
-<a href=#289 id=289 data-nosnippet>289</a>    }
-<a href=#290 id=290 data-nosnippet>290</a>
-<a href=#291 id=291 data-nosnippet>291</a>    <span class="doccomment">/// Creates a pull that both filters and maps using an async closure.
-<a href=#292 id=292 data-nosnippet>292</a>    ///
-<a href=#293 id=293 data-nosnippet>293</a>    /// Like [`filter_map`](Pull::filter_map), but the closure returns a
-<a href=#294 id=294 data-nosnippet>294</a>    /// `Future&lt;Output = Option&lt;B&gt;&gt;`. When the future is pending, this operator
-<a href=#295 id=295 data-nosnippet>295</a>    /// yields `Pending` as well.
-<a href=#296 id=296 data-nosnippet>296</a>    </span><span class="kw">fn </span>filter_map_async&lt;B, Fut, F&gt;(<span class="self">self</span>, f: F) -&gt; FilterMapAsync&lt;<span class="self">Self</span>, F, Fut, <span class="self">Self</span>::Meta&gt;
-<a href=#297 id=297 data-nosnippet>297</a>    <span class="kw">where
-<a href=#298 id=298 data-nosnippet>298</a>        </span><span class="self">Self</span>: Sized,
-<a href=#299 id=299 data-nosnippet>299</a>        F: FnMut(<span class="self">Self</span>::Item) -&gt; Fut,
-<a href=#300 id=300 data-nosnippet>300</a>        Fut: Future&lt;Output = <span class="prelude-ty">Option</span>&lt;B&gt;&gt;,
+<a href=#258 id=258 data-nosnippet>258</a>    /// `chain()` will return a new pull which will first iterate over
+<a href=#259 id=259 data-nosnippet>259</a>    /// values from the first pull and then over values from the second pull.
+<a href=#260 id=260 data-nosnippet>260</a>    ///
+<a href=#261 id=261 data-nosnippet>261</a>    /// The first pull must be finite (`CanEnd = Yes`) and fused ([`FusedPull`]).
+<a href=#262 id=262 data-nosnippet>262</a>    </span><span class="kw">fn </span>chain&lt;U&gt;(<span class="self">self</span>, other: U) -&gt; Chain&lt;<span class="self">Self</span>, U&gt;
+<a href=#263 id=263 data-nosnippet>263</a>    <span class="kw">where
+<a href=#264 id=264 data-nosnippet>264</a>        </span><span class="self">Self</span>: Sized + FusedPull&lt;CanEnd = Yes&gt;,
+<a href=#265 id=265 data-nosnippet>265</a>        U: Pull&lt;Item = <span class="self">Self</span>::Item, Meta = <span class="self">Self</span>::Meta&gt;,
+<a href=#266 id=266 data-nosnippet>266</a>    {
+<a href=#267 id=267 data-nosnippet>267</a>        Chain::new(<span class="self">self</span>, other)
+<a href=#268 id=268 data-nosnippet>268</a>    }
+<a href=#269 id=269 data-nosnippet>269</a>
+<a href=#270 id=270 data-nosnippet>270</a>    <span class="doccomment">/// Creates a pull which gives the current iteration count as well as the next value.
+<a href=#271 id=271 data-nosnippet>271</a>    ///
+<a href=#272 id=272 data-nosnippet>272</a>    /// The pull returned yields pairs `(i, val)`, where `i` is the current index
+<a href=#273 id=273 data-nosnippet>273</a>    /// of iteration and `val` is the value returned by the pull.
+<a href=#274 id=274 data-nosnippet>274</a>    </span><span class="kw">fn </span>enumerate(<span class="self">self</span>) -&gt; Enumerate&lt;<span class="self">Self</span>&gt;
+<a href=#275 id=275 data-nosnippet>275</a>    <span class="kw">where
+<a href=#276 id=276 data-nosnippet>276</a>        </span><span class="self">Self</span>: Sized,
+<a href=#277 id=277 data-nosnippet>277</a>    {
+<a href=#278 id=278 data-nosnippet>278</a>        Enumerate::new(<span class="self">self</span>)
+<a href=#279 id=279 data-nosnippet>279</a>    }
+<a href=#280 id=280 data-nosnippet>280</a>
+<a href=#281 id=281 data-nosnippet>281</a>    <span class="doccomment">/// Creates a pull which uses a closure to determine if an element should be yielded.
+<a href=#282 id=282 data-nosnippet>282</a>    ///
+<a href=#283 id=283 data-nosnippet>283</a>    /// Given an element the closure must return `true` or `false`. The returned pull
+<a href=#284 id=284 data-nosnippet>284</a>    /// will yield only the elements for which the closure returns `true`.
+<a href=#285 id=285 data-nosnippet>285</a>    </span><span class="kw">fn </span>filter&lt;P&gt;(<span class="self">self</span>, predicate: P) -&gt; Filter&lt;<span class="self">Self</span>, P&gt;
+<a href=#286 id=286 data-nosnippet>286</a>    <span class="kw">where
+<a href=#287 id=287 data-nosnippet>287</a>        </span><span class="self">Self</span>: Sized,
+<a href=#288 id=288 data-nosnippet>288</a>        P: FnMut(<span class="kw-2">&amp;</span><span class="self">Self</span>::Item) -&gt; bool,
+<a href=#289 id=289 data-nosnippet>289</a>    {
+<a href=#290 id=290 data-nosnippet>290</a>        Filter::new(<span class="self">self</span>, predicate)
+<a href=#291 id=291 data-nosnippet>291</a>    }
+<a href=#292 id=292 data-nosnippet>292</a>
+<a href=#293 id=293 data-nosnippet>293</a>    <span class="doccomment">/// Creates a pull that both filters and maps.
+<a href=#294 id=294 data-nosnippet>294</a>    ///
+<a href=#295 id=295 data-nosnippet>295</a>    /// The returned pull yields only the values for which the supplied closure
+<a href=#296 id=296 data-nosnippet>296</a>    /// returns `Some(value)`.
+<a href=#297 id=297 data-nosnippet>297</a>    </span><span class="kw">fn </span>filter_map&lt;B, F&gt;(<span class="self">self</span>, f: F) -&gt; FilterMap&lt;<span class="self">Self</span>, F&gt;
+<a href=#298 id=298 data-nosnippet>298</a>    <span class="kw">where
+<a href=#299 id=299 data-nosnippet>299</a>        </span><span class="self">Self</span>: Sized,
+<a href=#300 id=300 data-nosnippet>300</a>        F: FnMut(<span class="self">Self</span>::Item) -&gt; <span class="prelude-ty">Option</span>&lt;B&gt;,
 <a href=#301 id=301 data-nosnippet>301</a>    {
-<a href=#302 id=302 data-nosnippet>302</a>        FilterMapAsync::new(<span class="self">self</span>, f)
+<a href=#302 id=302 data-nosnippet>302</a>        FilterMap::new(<span class="self">self</span>, f)
 <a href=#303 id=303 data-nosnippet>303</a>    }
 <a href=#304 id=304 data-nosnippet>304</a>
-<a href=#305 id=305 data-nosnippet>305</a>    <span class="doccomment">/// Creates a pull that works like map, but flattens nested structure.
+<a href=#305 id=305 data-nosnippet>305</a>    <span class="doccomment">/// Creates a pull that both filters and maps using an async closure.
 <a href=#306 id=306 data-nosnippet>306</a>    ///
-<a href=#307 id=307 data-nosnippet>307</a>    /// The `flat_map()` method is useful when you have a pull of items, and you
-<a href=#308 id=308 data-nosnippet>308</a>    /// want to apply a function that returns an iterator for each item, then
-<a href=#309 id=309 data-nosnippet>309</a>    /// flatten all those iterators into a single pull.
-<a href=#310 id=310 data-nosnippet>310</a>    </span><span class="kw">fn </span>flat_map&lt;U, F&gt;(<span class="self">self</span>, f: F) -&gt; FlatMap&lt;<span class="self">Self</span>, F, U::IntoIter, <span class="self">Self</span>::Meta&gt;
+<a href=#307 id=307 data-nosnippet>307</a>    /// Like [`filter_map`](Pull::filter_map), but the closure returns a
+<a href=#308 id=308 data-nosnippet>308</a>    /// `Future&lt;Output = Option&lt;B&gt;&gt;`. When the future is pending, this operator
+<a href=#309 id=309 data-nosnippet>309</a>    /// yields `Pending` as well.
+<a href=#310 id=310 data-nosnippet>310</a>    </span><span class="kw">fn </span>filter_map_async&lt;B, Fut, F&gt;(<span class="self">self</span>, f: F) -&gt; FilterMapAsync&lt;<span class="self">Self</span>, F, Fut, <span class="self">Self</span>::Meta&gt;
 <a href=#311 id=311 data-nosnippet>311</a>    <span class="kw">where
 <a href=#312 id=312 data-nosnippet>312</a>        </span><span class="self">Self</span>: Sized,
-<a href=#313 id=313 data-nosnippet>313</a>        F: FnMut(<span class="self">Self</span>::Item) -&gt; U,
-<a href=#314 id=314 data-nosnippet>314</a>        U: IntoIterator,
+<a href=#313 id=313 data-nosnippet>313</a>        F: FnMut(<span class="self">Self</span>::Item) -&gt; Fut,
+<a href=#314 id=314 data-nosnippet>314</a>        Fut: Future&lt;Output = <span class="prelude-ty">Option</span>&lt;B&gt;&gt;,
 <a href=#315 id=315 data-nosnippet>315</a>    {
-<a href=#316 id=316 data-nosnippet>316</a>        FlatMap::new(<span class="self">self</span>, f)
+<a href=#316 id=316 data-nosnippet>316</a>        FilterMapAsync::new(<span class="self">self</span>, f)
 <a href=#317 id=317 data-nosnippet>317</a>    }
 <a href=#318 id=318 data-nosnippet>318</a>
-<a href=#319 id=319 data-nosnippet>319</a>    <span class="doccomment">/// Creates a pull that flattens nested structure.
+<a href=#319 id=319 data-nosnippet>319</a>    <span class="doccomment">/// Creates a pull that works like map, but flattens nested structure.
 <a href=#320 id=320 data-nosnippet>320</a>    ///
-<a href=#321 id=321 data-nosnippet>321</a>    /// This is useful when you have a pull of iterables, and you want to
-<a href=#322 id=322 data-nosnippet>322</a>    /// flatten them into a single pull.
-<a href=#323 id=323 data-nosnippet>323</a>    </span><span class="kw">fn </span>flatten(<span class="self">self</span>) -&gt; Flatten&lt;<span class="self">Self</span>, &lt;<span class="self">Self</span>::Item <span class="kw">as </span>IntoIterator&gt;::IntoIter, <span class="self">Self</span>::Meta&gt;
-<a href=#324 id=324 data-nosnippet>324</a>    <span class="kw">where
-<a href=#325 id=325 data-nosnippet>325</a>        </span><span class="self">Self</span>: Sized,
-<a href=#326 id=326 data-nosnippet>326</a>        <span class="self">Self</span>::Item: IntoIterator,
-<a href=#327 id=327 data-nosnippet>327</a>    {
-<a href=#328 id=328 data-nosnippet>328</a>        Flatten::new(<span class="self">self</span>)
-<a href=#329 id=329 data-nosnippet>329</a>    }
-<a href=#330 id=330 data-nosnippet>330</a>
-<a href=#331 id=331 data-nosnippet>331</a>    <span class="doccomment">/// Creates a pull that flattens items that are streams by polling each inner stream.
-<a href=#332 id=332 data-nosnippet>332</a>    ///
-<a href=#333 id=333 data-nosnippet>333</a>    /// This is useful when you have a pull of streams, and you want to
-<a href=#334 id=334 data-nosnippet>334</a>    /// flatten them into a single pull. Requires an async context since
-<a href=#335 id=335 data-nosnippet>335</a>    /// inner streams are polled.
-<a href=#336 id=336 data-nosnippet>336</a>    </span><span class="kw">fn </span>flatten_stream(<span class="self">self</span>) -&gt; FlattenStream&lt;<span class="self">Self</span>, <span class="self">Self</span>::Item, <span class="self">Self</span>::Meta&gt;
-<a href=#337 id=337 data-nosnippet>337</a>    <span class="kw">where
-<a href=#338 id=338 data-nosnippet>338</a>        </span><span class="self">Self</span>: Sized,
-<a href=#339 id=339 data-nosnippet>339</a>        <span class="self">Self</span>::Item: futures_core::Stream,
-<a href=#340 id=340 data-nosnippet>340</a>    {
-<a href=#341 id=341 data-nosnippet>341</a>        FlattenStream::new(<span class="self">self</span>)
-<a href=#342 id=342 data-nosnippet>342</a>    }
-<a href=#343 id=343 data-nosnippet>343</a>
-<a href=#344 id=344 data-nosnippet>344</a>    <span class="doccomment">/// Creates a pull that maps each item to a stream via a closure and flattens the results.
-<a href=#345 id=345 data-nosnippet>345</a>    ///
-<a href=#346 id=346 data-nosnippet>346</a>    /// This is like [`flat_map`](Pull::flat_map), but the closure returns a
-<a href=#347 id=347 data-nosnippet>347</a>    /// [`Stream`](futures_core::Stream) instead of an [`IntoIterator`]. Requires
-<a href=#348 id=348 data-nosnippet>348</a>    /// an async context since inner streams are polled.
-<a href=#349 id=349 data-nosnippet>349</a>    </span><span class="kw">fn </span>flat_map_stream&lt;St, F&gt;(<span class="self">self</span>, f: F) -&gt; FlatMapStream&lt;<span class="self">Self</span>, F, St, <span class="self">Self</span>::Meta&gt;
-<a href=#350 id=350 data-nosnippet>350</a>    <span class="kw">where
-<a href=#351 id=351 data-nosnippet>351</a>        </span><span class="self">Self</span>: Sized,
-<a href=#352 id=352 data-nosnippet>352</a>        F: FnMut(<span class="self">Self</span>::Item) -&gt; St,
-<a href=#353 id=353 data-nosnippet>353</a>        St: futures_core::Stream,
+<a href=#321 id=321 data-nosnippet>321</a>    /// The `flat_map()` method is useful when you have a pull of items, and you
+<a href=#322 id=322 data-nosnippet>322</a>    /// want to apply a function that returns an iterator for each item, then
+<a href=#323 id=323 data-nosnippet>323</a>    /// flatten all those iterators into a single pull.
+<a href=#324 id=324 data-nosnippet>324</a>    </span><span class="kw">fn </span>flat_map&lt;U, F&gt;(<span class="self">self</span>, f: F) -&gt; FlatMap&lt;<span class="self">Self</span>, F, U::IntoIter, <span class="self">Self</span>::Meta&gt;
+<a href=#325 id=325 data-nosnippet>325</a>    <span class="kw">where
+<a href=#326 id=326 data-nosnippet>326</a>        </span><span class="self">Self</span>: Sized,
+<a href=#327 id=327 data-nosnippet>327</a>        F: FnMut(<span class="self">Self</span>::Item) -&gt; U,
+<a href=#328 id=328 data-nosnippet>328</a>        U: IntoIterator,
+<a href=#329 id=329 data-nosnippet>329</a>    {
+<a href=#330 id=330 data-nosnippet>330</a>        FlatMap::new(<span class="self">self</span>, f)
+<a href=#331 id=331 data-nosnippet>331</a>    }
+<a href=#332 id=332 data-nosnippet>332</a>
+<a href=#333 id=333 data-nosnippet>333</a>    <span class="doccomment">/// Creates a pull that flattens nested structure.
+<a href=#334 id=334 data-nosnippet>334</a>    ///
+<a href=#335 id=335 data-nosnippet>335</a>    /// This is useful when you have a pull of iterables, and you want to
+<a href=#336 id=336 data-nosnippet>336</a>    /// flatten them into a single pull.
+<a href=#337 id=337 data-nosnippet>337</a>    </span><span class="kw">fn </span>flatten(<span class="self">self</span>) -&gt; Flatten&lt;<span class="self">Self</span>, &lt;<span class="self">Self</span>::Item <span class="kw">as </span>IntoIterator&gt;::IntoIter, <span class="self">Self</span>::Meta&gt;
+<a href=#338 id=338 data-nosnippet>338</a>    <span class="kw">where
+<a href=#339 id=339 data-nosnippet>339</a>        </span><span class="self">Self</span>: Sized,
+<a href=#340 id=340 data-nosnippet>340</a>        <span class="self">Self</span>::Item: IntoIterator,
+<a href=#341 id=341 data-nosnippet>341</a>    {
+<a href=#342 id=342 data-nosnippet>342</a>        Flatten::new(<span class="self">self</span>)
+<a href=#343 id=343 data-nosnippet>343</a>    }
+<a href=#344 id=344 data-nosnippet>344</a>
+<a href=#345 id=345 data-nosnippet>345</a>    <span class="doccomment">/// Creates a pull that flattens items that are streams by polling each inner stream.
+<a href=#346 id=346 data-nosnippet>346</a>    ///
+<a href=#347 id=347 data-nosnippet>347</a>    /// This is useful when you have a pull of streams, and you want to
+<a href=#348 id=348 data-nosnippet>348</a>    /// flatten them into a single pull. Requires an async context since
+<a href=#349 id=349 data-nosnippet>349</a>    /// inner streams are polled.
+<a href=#350 id=350 data-nosnippet>350</a>    </span><span class="kw">fn </span>flatten_stream(<span class="self">self</span>) -&gt; FlattenStream&lt;<span class="self">Self</span>, <span class="self">Self</span>::Item, <span class="self">Self</span>::Meta&gt;
+<a href=#351 id=351 data-nosnippet>351</a>    <span class="kw">where
+<a href=#352 id=352 data-nosnippet>352</a>        </span><span class="self">Self</span>: Sized,
+<a href=#353 id=353 data-nosnippet>353</a>        <span class="self">Self</span>::Item: futures_core::Stream,
 <a href=#354 id=354 data-nosnippet>354</a>    {
-<a href=#355 id=355 data-nosnippet>355</a>        FlatMapStream::new(<span class="self">self</span>, f)
+<a href=#355 id=355 data-nosnippet>355</a>        FlattenStream::new(<span class="self">self</span>)
 <a href=#356 id=356 data-nosnippet>356</a>    }
 <a href=#357 id=357 data-nosnippet>357</a>
-<a href=#358 id=358 data-nosnippet>358</a>    <span class="doccomment">/// Creates a future which runs the given function on each element of a pull.
-<a href=#359 id=359 data-nosnippet>359</a>    </span><span class="kw">fn </span>for_each&lt;F&gt;(<span class="self">self</span>, f: F) -&gt; ForEach&lt;<span class="self">Self</span>, F&gt;
-<a href=#360 id=360 data-nosnippet>360</a>    <span class="kw">where
-<a href=#361 id=361 data-nosnippet>361</a>        </span><span class="self">Self</span>: Sized,
-<a href=#362 id=362 data-nosnippet>362</a>        F: FnMut(<span class="self">Self</span>::Item),
-<a href=#363 id=363 data-nosnippet>363</a>    {
-<a href=#364 id=364 data-nosnippet>364</a>        ForEach::new(<span class="self">self</span>, f)
-<a href=#365 id=365 data-nosnippet>365</a>    }
-<a href=#366 id=366 data-nosnippet>366</a>
-<a href=#367 id=367 data-nosnippet>367</a>    <span class="doccomment">/// Creates a future which collects all elements of a pull into a collection.
-<a href=#368 id=368 data-nosnippet>368</a>    ///
-<a href=#369 id=369 data-nosnippet>369</a>    /// The collection type `C` must implement `Default` and `Extend&lt;Item&gt;`.
-<a href=#370 id=370 data-nosnippet>370</a>    </span><span class="kw">fn </span>collect&lt;C&gt;(<span class="self">self</span>) -&gt; Collect&lt;<span class="self">Self</span>, C&gt;
-<a href=#371 id=371 data-nosnippet>371</a>    <span class="kw">where
-<a href=#372 id=372 data-nosnippet>372</a>        </span><span class="self">Self</span>: Sized,
-<a href=#373 id=373 data-nosnippet>373</a>        C: Default + Extend&lt;<span class="self">Self</span>::Item&gt;,
-<a href=#374 id=374 data-nosnippet>374</a>    {
-<a href=#375 id=375 data-nosnippet>375</a>        Collect::new(<span class="self">self</span>)
-<a href=#376 id=376 data-nosnippet>376</a>    }
-<a href=#377 id=377 data-nosnippet>377</a>
-<a href=#378 id=378 data-nosnippet>378</a>    <span class="doccomment">/// Creates a future that eagerly drains this pull into the given [`AccumState`] `state`,
-<a href=#379 id=379 data-nosnippet>379</a>    /// resolving to an [`Iter`] pull over the accumulated output items.
-<a href=#380 id=380 data-nosnippet>380</a>    ///
-<a href=#381 id=381 data-nosnippet>381</a>    /// This is the pull-side counterpart of [`crate::push::accumulate`]: the input is fully
-<a href=#382 id=382 data-nosnippet>382</a>    /// consumed when the future is awaited (not lazily when the output is pulled), so the
-<a href=#383 id=383 data-nosnippet>383</a>    /// accumulator state is fully updated even if the resulting output pull is never (fully)
-<a href=#384 id=384 data-nosnippet>384</a>    /// consumed.
-<a href=#385 id=385 data-nosnippet>385</a>    ///
-<a href=#386 id=386 data-nosnippet>386</a>    /// This is the unified accumulator entry point; see [`Pull::fold`], [`Pull::fold_ref`],
-<a href=#387 id=387 data-nosnippet>387</a>    /// [`Pull::reduce`], and [`Pull::reduce_ref`] for the common cases.
-<a href=#388 id=388 data-nosnippet>388</a>    </span><span class="kw">fn </span>accumulate&lt;State&gt;(<span class="self">self</span>, state: State) -&gt; Accumulate&lt;<span class="self">Self</span>, State&gt;
-<a href=#389 id=389 data-nosnippet>389</a>    <span class="kw">where
-<a href=#390 id=390 data-nosnippet>390</a>        </span><span class="self">Self</span>: Sized,
-<a href=#391 id=391 data-nosnippet>391</a>        State: AccumState&lt;Input = <span class="self">Self</span>::Item&gt;,
-<a href=#392 id=392 data-nosnippet>392</a>    {
-<a href=#393 id=393 data-nosnippet>393</a>        Accumulate::new(<span class="self">self</span>, state)
-<a href=#394 id=394 data-nosnippet>394</a>    }
-<a href=#395 id=395 data-nosnippet>395</a>
-<a href=#396 id=396 data-nosnippet>396</a>    <span class="doccomment">/// Creates a future that folds every item into the owned accumulator `acc` via `comb_fn`,
-<a href=#397 id=397 data-nosnippet>397</a>    /// resolving to a pull that emits the final accumulated value (exactly one item).
-<a href=#398 id=398 data-nosnippet>398</a>    ///
-<a href=#399 id=399 data-nosnippet>399</a>    /// The accumulated value is emitted **by move**, so no `Clone` bound is required.
-<a href=#400 id=400 data-nosnippet>400</a>    /// For persistent externally-owned state, use [`Pull::fold_ref`].
-<a href=#401 id=401 data-nosnippet>401</a>    </span><span class="kw">fn </span>fold&lt;Acc, CombFn&gt;(
-<a href=#402 id=402 data-nosnippet>402</a>        <span class="self">self</span>,
-<a href=#403 id=403 data-nosnippet>403</a>        acc: Acc,
-<a href=#404 id=404 data-nosnippet>404</a>        comb_fn: CombFn,
-<a href=#405 id=405 data-nosnippet>405</a>    ) -&gt; Accumulate&lt;<span class="self">Self</span>, FoldState&lt;Acc, CombFn, Acc, <span class="self">Self</span>::Item&gt;&gt;
-<a href=#406 id=406 data-nosnippet>406</a>    <span class="kw">where
-<a href=#407 id=407 data-nosnippet>407</a>        </span><span class="self">Self</span>: Sized,
-<a href=#408 id=408 data-nosnippet>408</a>        CombFn: FnMut(<span class="kw-2">&amp;mut </span>Acc, <span class="self">Self</span>::Item),
-<a href=#409 id=409 data-nosnippet>409</a>    {
-<a href=#410 id=410 data-nosnippet>410</a>        <span class="self">self</span>.accumulate(FoldState::new(acc, comb_fn))
-<a href=#411 id=411 data-nosnippet>411</a>    }
-<a href=#412 id=412 data-nosnippet>412</a>
-<a href=#413 id=413 data-nosnippet>413</a>    <span class="doccomment">/// Creates a future that folds every item into the borrowed accumulator `acc_ref` via
-<a href=#414 id=414 data-nosnippet>414</a>    /// `comb_fn`, resolving to a pull that emits `&amp;mut Acc` (exactly one item).
-<a href=#415 id=415 data-nosnippet>415</a>    ///
-<a href=#416 id=416 data-nosnippet>416</a>    /// The accumulated value persists in the external storage, e.g. across ticks.
-<a href=#417 id=417 data-nosnippet>417</a>    </span><span class="kw">fn </span>fold_ref&lt;Acc, CombFn&gt;(
-<a href=#418 id=418 data-nosnippet>418</a>        <span class="self">self</span>,
-<a href=#419 id=419 data-nosnippet>419</a>        acc_ref: <span class="kw-2">&amp;mut </span>Acc,
-<a href=#420 id=420 data-nosnippet>420</a>        comb_fn: CombFn,
-<a href=#421 id=421 data-nosnippet>421</a>    ) -&gt; Accumulate&lt;<span class="self">Self</span>, FoldState&lt;<span class="kw-2">&amp;mut </span>Acc, CombFn, Acc, <span class="self">Self</span>::Item&gt;&gt;
-<a href=#422 id=422 data-nosnippet>422</a>    <span class="kw">where
-<a href=#423 id=423 data-nosnippet>423</a>        </span><span class="self">Self</span>: Sized,
-<a href=#424 id=424 data-nosnippet>424</a>        CombFn: FnMut(<span class="kw-2">&amp;mut </span>Acc, <span class="self">Self</span>::Item),
-<a href=#425 id=425 data-nosnippet>425</a>    {
-<a href=#426 id=426 data-nosnippet>426</a>        <span class="self">self</span>.accumulate(FoldState::new(acc_ref, comb_fn))
-<a href=#427 id=427 data-nosnippet>427</a>    }
-<a href=#428 id=428 data-nosnippet>428</a>
-<a href=#429 id=429 data-nosnippet>429</a>    <span class="doccomment">/// Creates a future that reduces all items into a single value via `reduce_fn` (the first
-<a href=#430 id=430 data-nosnippet>430</a>    /// item initializes the accumulator), resolving to a pull that emits the final value
-<a href=#431 id=431 data-nosnippet>431</a>    /// (one item, or none if the input was empty).
-<a href=#432 id=432 data-nosnippet>432</a>    ///
-<a href=#433 id=433 data-nosnippet>433</a>    /// The accumulated value is emitted **by move**, so no `Clone` bound is required.
-<a href=#434 id=434 data-nosnippet>434</a>    /// For persistent externally-owned state, use [`Pull::reduce_ref`].
-<a href=#435 id=435 data-nosnippet>435</a>    </span><span class="kw">fn </span>reduce&lt;ReduceFn&gt;(
-<a href=#436 id=436 data-nosnippet>436</a>        <span class="self">self</span>,
-<a href=#437 id=437 data-nosnippet>437</a>        reduce_fn: ReduceFn,
-<a href=#438 id=438 data-nosnippet>438</a>    ) -&gt; Accumulate&lt;<span class="self">Self</span>, ReduceState&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;, ReduceFn, <span class="self">Self</span>::Item&gt;&gt;
-<a href=#439 id=439 data-nosnippet>439</a>    <span class="kw">where
-<a href=#440 id=440 data-nosnippet>440</a>        </span><span class="self">Self</span>: Sized,
-<a href=#441 id=441 data-nosnippet>441</a>        ReduceFn: FnMut(<span class="kw-2">&amp;mut </span><span class="self">Self</span>::Item, <span class="self">Self</span>::Item),
-<a href=#442 id=442 data-nosnippet>442</a>    {
-<a href=#443 id=443 data-nosnippet>443</a>        <span class="self">self</span>.accumulate(ReduceState::new(<span class="prelude-val">None</span>, reduce_fn))
-<a href=#444 id=444 data-nosnippet>444</a>    }
-<a href=#445 id=445 data-nosnippet>445</a>
-<a href=#446 id=446 data-nosnippet>446</a>    <span class="doccomment">/// Creates a future that reduces all items into the borrowed accumulator `acc` via
-<a href=#447 id=447 data-nosnippet>447</a>    /// `reduce_fn`, resolving to a pull that emits `&amp;mut Item` (one item if the accumulator
-<a href=#448 id=448 data-nosnippet>448</a>    /// is occupied — including solely from prior external state — or none).
-<a href=#449 id=449 data-nosnippet>449</a>    ///
-<a href=#450 id=450 data-nosnippet>450</a>    /// The accumulated value persists in the external storage, e.g. across ticks.
-<a href=#451 id=451 data-nosnippet>451</a>    </span><span class="kw">fn </span>reduce_ref&lt;ReduceFn&gt;(
-<a href=#452 id=452 data-nosnippet>452</a>        <span class="self">self</span>,
-<a href=#453 id=453 data-nosnippet>453</a>        acc: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;,
-<a href=#454 id=454 data-nosnippet>454</a>        reduce_fn: ReduceFn,
-<a href=#455 id=455 data-nosnippet>455</a>    ) -&gt; Accumulate&lt;<span class="self">Self</span>, ReduceState&lt;<span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;, ReduceFn, <span class="self">Self</span>::Item&gt;&gt;
-<a href=#456 id=456 data-nosnippet>456</a>    <span class="kw">where
-<a href=#457 id=457 data-nosnippet>457</a>        </span><span class="self">Self</span>: Sized,
-<a href=#458 id=458 data-nosnippet>458</a>        ReduceFn: FnMut(<span class="kw-2">&amp;mut </span><span class="self">Self</span>::Item, <span class="self">Self</span>::Item),
-<a href=#459 id=459 data-nosnippet>459</a>    {
-<a href=#460 id=460 data-nosnippet>460</a>        <span class="self">self</span>.accumulate(ReduceState::new(acc, reduce_fn))
-<a href=#461 id=461 data-nosnippet>461</a>    }
-<a href=#462 id=462 data-nosnippet>462</a>
-<a href=#463 id=463 data-nosnippet>463</a>    <span class="doccomment">/// Creates a pull that ends after the first `None`.
-<a href=#464 id=464 data-nosnippet>464</a>    ///
-<a href=#465 id=465 data-nosnippet>465</a>    /// After a pull returns `Ended` for the first time, the behavior of calling
-<a href=#466 id=466 data-nosnippet>466</a>    /// `pull` again is implementation-defined. `fuse()` adapts any pull,
-<a href=#467 id=467 data-nosnippet>467</a>    /// ensuring that after `Ended` is given once, it will always return `Ended`
-<a href=#468 id=468 data-nosnippet>468</a>    /// forever.
-<a href=#469 id=469 data-nosnippet>469</a>    ///
-<a href=#470 id=470 data-nosnippet>470</a>    /// Usually this method will simply return `Fuse&lt;Self&gt;`, but it may be
-<a href=#471 id=471 data-nosnippet>471</a>    /// overridden for optimization.
-<a href=#472 id=472 data-nosnippet>472</a>    </span><span class="kw">fn </span>fuse(
-<a href=#473 id=473 data-nosnippet>473</a>        <span class="self">self</span>,
-<a href=#474 id=474 data-nosnippet>474</a>    ) -&gt; <span class="kw">impl for</span>&lt;<span class="lifetime">'ctx</span>&gt; FusedPull&lt;
-<a href=#475 id=475 data-nosnippet>475</a>        Ctx&lt;<span class="lifetime">'ctx</span>&gt; = <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'ctx</span>&gt;,
-<a href=#476 id=476 data-nosnippet>476</a>        Item = <span class="self">Self</span>::Item,
-<a href=#477 id=477 data-nosnippet>477</a>        Meta = <span class="self">Self</span>::Meta,
-<a href=#478 id=478 data-nosnippet>478</a>        CanPend = <span class="self">Self</span>::CanPend,
-<a href=#479 id=479 data-nosnippet>479</a>        CanEnd = <span class="self">Self</span>::CanEnd,
-<a href=#480 id=480 data-nosnippet>480</a>    &gt;
-<a href=#481 id=481 data-nosnippet>481</a>    <span class="kw">where
-<a href=#482 id=482 data-nosnippet>482</a>        </span><span class="self">Self</span>: Sized,
-<a href=#483 id=483 data-nosnippet>483</a>    {
-<a href=#484 id=484 data-nosnippet>484</a>        Fuse::new(<span class="self">self</span>)
-<a href=#485 id=485 data-nosnippet>485</a>    }
-<a href=#486 id=486 data-nosnippet>486</a>
-<a href=#487 id=487 data-nosnippet>487</a>    <span class="doccomment">/// Does something with each element of a pull, passing the value on.
-<a href=#488 id=488 data-nosnippet>488</a>    ///
-<a href=#489 id=489 data-nosnippet>489</a>    /// When using pulls, you'll often chain several of them together.
-<a href=#490 id=490 data-nosnippet>490</a>    /// While working on such code, you might want to check out what's
-<a href=#491 id=491 data-nosnippet>491</a>    /// happening at various parts in the pipeline. To do that, insert
-<a href=#492 id=492 data-nosnippet>492</a>    /// a call to `inspect()`.
-<a href=#493 id=493 data-nosnippet>493</a>    </span><span class="kw">fn </span>inspect&lt;F&gt;(<span class="self">self</span>, f: F) -&gt; Inspect&lt;<span class="self">Self</span>, F&gt;
-<a href=#494 id=494 data-nosnippet>494</a>    <span class="kw">where
-<a href=#495 id=495 data-nosnippet>495</a>        </span><span class="self">Self</span>: Sized,
-<a href=#496 id=496 data-nosnippet>496</a>        F: FnMut(<span class="kw-2">&amp;</span><span class="self">Self</span>::Item),
+<a href=#358 id=358 data-nosnippet>358</a>    <span class="doccomment">/// Creates a pull that maps each item to a stream via a closure and flattens the results.
+<a href=#359 id=359 data-nosnippet>359</a>    ///
+<a href=#360 id=360 data-nosnippet>360</a>    /// This is like [`flat_map`](Pull::flat_map), but the closure returns a
+<a href=#361 id=361 data-nosnippet>361</a>    /// [`Stream`](futures_core::Stream) instead of an [`IntoIterator`]. Requires
+<a href=#362 id=362 data-nosnippet>362</a>    /// an async context since inner streams are polled.
+<a href=#363 id=363 data-nosnippet>363</a>    </span><span class="kw">fn </span>flat_map_stream&lt;St, F&gt;(<span class="self">self</span>, f: F) -&gt; FlatMapStream&lt;<span class="self">Self</span>, F, St, <span class="self">Self</span>::Meta&gt;
+<a href=#364 id=364 data-nosnippet>364</a>    <span class="kw">where
+<a href=#365 id=365 data-nosnippet>365</a>        </span><span class="self">Self</span>: Sized,
+<a href=#366 id=366 data-nosnippet>366</a>        F: FnMut(<span class="self">Self</span>::Item) -&gt; St,
+<a href=#367 id=367 data-nosnippet>367</a>        St: futures_core::Stream,
+<a href=#368 id=368 data-nosnippet>368</a>    {
+<a href=#369 id=369 data-nosnippet>369</a>        FlatMapStream::new(<span class="self">self</span>, f)
+<a href=#370 id=370 data-nosnippet>370</a>    }
+<a href=#371 id=371 data-nosnippet>371</a>
+<a href=#372 id=372 data-nosnippet>372</a>    <span class="doccomment">/// Creates a future which runs the given function on each element of a pull.
+<a href=#373 id=373 data-nosnippet>373</a>    </span><span class="kw">fn </span>for_each&lt;F&gt;(<span class="self">self</span>, f: F) -&gt; ForEach&lt;<span class="self">Self</span>, F&gt;
+<a href=#374 id=374 data-nosnippet>374</a>    <span class="kw">where
+<a href=#375 id=375 data-nosnippet>375</a>        </span><span class="self">Self</span>: Sized,
+<a href=#376 id=376 data-nosnippet>376</a>        F: FnMut(<span class="self">Self</span>::Item),
+<a href=#377 id=377 data-nosnippet>377</a>    {
+<a href=#378 id=378 data-nosnippet>378</a>        ForEach::new(<span class="self">self</span>, f)
+<a href=#379 id=379 data-nosnippet>379</a>    }
+<a href=#380 id=380 data-nosnippet>380</a>
+<a href=#381 id=381 data-nosnippet>381</a>    <span class="doccomment">/// Creates a future which collects all elements of a pull into a collection.
+<a href=#382 id=382 data-nosnippet>382</a>    ///
+<a href=#383 id=383 data-nosnippet>383</a>    /// The collection type `C` must implement `Default` and `Extend&lt;Item&gt;`.
+<a href=#384 id=384 data-nosnippet>384</a>    </span><span class="kw">fn </span>collect&lt;C&gt;(<span class="self">self</span>) -&gt; Collect&lt;<span class="self">Self</span>, C&gt;
+<a href=#385 id=385 data-nosnippet>385</a>    <span class="kw">where
+<a href=#386 id=386 data-nosnippet>386</a>        </span><span class="self">Self</span>: Sized,
+<a href=#387 id=387 data-nosnippet>387</a>        C: Default + Extend&lt;<span class="self">Self</span>::Item&gt;,
+<a href=#388 id=388 data-nosnippet>388</a>    {
+<a href=#389 id=389 data-nosnippet>389</a>        Collect::new(<span class="self">self</span>)
+<a href=#390 id=390 data-nosnippet>390</a>    }
+<a href=#391 id=391 data-nosnippet>391</a>
+<a href=#392 id=392 data-nosnippet>392</a>    <span class="doccomment">/// Creates a future that eagerly drains this pull into the given [`AccumState`] `state`,
+<a href=#393 id=393 data-nosnippet>393</a>    /// resolving to an [`Iter`] pull over the accumulated output items.
+<a href=#394 id=394 data-nosnippet>394</a>    ///
+<a href=#395 id=395 data-nosnippet>395</a>    /// This is the pull-side counterpart of [`crate::push::accumulate`]: the input is fully
+<a href=#396 id=396 data-nosnippet>396</a>    /// consumed when the future is awaited (not lazily when the output is pulled), so the
+<a href=#397 id=397 data-nosnippet>397</a>    /// accumulator state is fully updated even if the resulting output pull is never (fully)
+<a href=#398 id=398 data-nosnippet>398</a>    /// consumed.
+<a href=#399 id=399 data-nosnippet>399</a>    ///
+<a href=#400 id=400 data-nosnippet>400</a>    /// This is the unified accumulator entry point; see [`Pull::fold`], [`Pull::fold_ref`],
+<a href=#401 id=401 data-nosnippet>401</a>    /// [`Pull::reduce`], and [`Pull::reduce_ref`] for the common cases.
+<a href=#402 id=402 data-nosnippet>402</a>    </span><span class="kw">fn </span>accumulate&lt;State&gt;(<span class="self">self</span>, state: State) -&gt; Accumulate&lt;<span class="self">Self</span>, State&gt;
+<a href=#403 id=403 data-nosnippet>403</a>    <span class="kw">where
+<a href=#404 id=404 data-nosnippet>404</a>        </span><span class="self">Self</span>: Sized,
+<a href=#405 id=405 data-nosnippet>405</a>        State: AccumState&lt;Input = <span class="self">Self</span>::Item&gt;,
+<a href=#406 id=406 data-nosnippet>406</a>    {
+<a href=#407 id=407 data-nosnippet>407</a>        Accumulate::new(<span class="self">self</span>, state)
+<a href=#408 id=408 data-nosnippet>408</a>    }
+<a href=#409 id=409 data-nosnippet>409</a>
+<a href=#410 id=410 data-nosnippet>410</a>    <span class="doccomment">/// Creates a future that folds every item into the owned accumulator `acc` via `comb_fn`,
+<a href=#411 id=411 data-nosnippet>411</a>    /// resolving to a pull that emits the final accumulated value (exactly one item).
+<a href=#412 id=412 data-nosnippet>412</a>    ///
+<a href=#413 id=413 data-nosnippet>413</a>    /// The accumulated value is emitted **by move**, so no `Clone` bound is required.
+<a href=#414 id=414 data-nosnippet>414</a>    /// For persistent externally-owned state, use [`Pull::fold_ref`].
+<a href=#415 id=415 data-nosnippet>415</a>    </span><span class="kw">fn </span>fold&lt;Acc, CombFn&gt;(
+<a href=#416 id=416 data-nosnippet>416</a>        <span class="self">self</span>,
+<a href=#417 id=417 data-nosnippet>417</a>        acc: Acc,
+<a href=#418 id=418 data-nosnippet>418</a>        comb_fn: CombFn,
+<a href=#419 id=419 data-nosnippet>419</a>    ) -&gt; Accumulate&lt;<span class="self">Self</span>, FoldState&lt;Acc, CombFn, Acc, <span class="self">Self</span>::Item&gt;&gt;
+<a href=#420 id=420 data-nosnippet>420</a>    <span class="kw">where
+<a href=#421 id=421 data-nosnippet>421</a>        </span><span class="self">Self</span>: Sized,
+<a href=#422 id=422 data-nosnippet>422</a>        CombFn: FnMut(<span class="kw-2">&amp;mut </span>Acc, <span class="self">Self</span>::Item),
+<a href=#423 id=423 data-nosnippet>423</a>    {
+<a href=#424 id=424 data-nosnippet>424</a>        <span class="self">self</span>.accumulate(FoldState::new(acc, comb_fn))
+<a href=#425 id=425 data-nosnippet>425</a>    }
+<a href=#426 id=426 data-nosnippet>426</a>
+<a href=#427 id=427 data-nosnippet>427</a>    <span class="doccomment">/// Creates a future that folds every item into the borrowed accumulator `acc_ref` via
+<a href=#428 id=428 data-nosnippet>428</a>    /// `comb_fn`, resolving to a pull that emits `&amp;mut Acc` (exactly one item).
+<a href=#429 id=429 data-nosnippet>429</a>    ///
+<a href=#430 id=430 data-nosnippet>430</a>    /// The accumulated value persists in the external storage, e.g. across ticks.
+<a href=#431 id=431 data-nosnippet>431</a>    </span><span class="kw">fn </span>fold_ref&lt;Acc, CombFn&gt;(
+<a href=#432 id=432 data-nosnippet>432</a>        <span class="self">self</span>,
+<a href=#433 id=433 data-nosnippet>433</a>        acc_ref: <span class="kw-2">&amp;mut </span>Acc,
+<a href=#434 id=434 data-nosnippet>434</a>        comb_fn: CombFn,
+<a href=#435 id=435 data-nosnippet>435</a>    ) -&gt; Accumulate&lt;<span class="self">Self</span>, FoldState&lt;<span class="kw-2">&amp;mut </span>Acc, CombFn, Acc, <span class="self">Self</span>::Item&gt;&gt;
+<a href=#436 id=436 data-nosnippet>436</a>    <span class="kw">where
+<a href=#437 id=437 data-nosnippet>437</a>        </span><span class="self">Self</span>: Sized,
+<a href=#438 id=438 data-nosnippet>438</a>        CombFn: FnMut(<span class="kw-2">&amp;mut </span>Acc, <span class="self">Self</span>::Item),
+<a href=#439 id=439 data-nosnippet>439</a>    {
+<a href=#440 id=440 data-nosnippet>440</a>        <span class="self">self</span>.accumulate(FoldState::new(acc_ref, comb_fn))
+<a href=#441 id=441 data-nosnippet>441</a>    }
+<a href=#442 id=442 data-nosnippet>442</a>
+<a href=#443 id=443 data-nosnippet>443</a>    <span class="doccomment">/// Creates a future that reduces all items into a single value via `reduce_fn` (the first
+<a href=#444 id=444 data-nosnippet>444</a>    /// item initializes the accumulator), resolving to a pull that emits the final value
+<a href=#445 id=445 data-nosnippet>445</a>    /// (one item, or none if the input was empty).
+<a href=#446 id=446 data-nosnippet>446</a>    ///
+<a href=#447 id=447 data-nosnippet>447</a>    /// The accumulated value is emitted **by move**, so no `Clone` bound is required.
+<a href=#448 id=448 data-nosnippet>448</a>    /// For persistent externally-owned state, use [`Pull::reduce_ref`].
+<a href=#449 id=449 data-nosnippet>449</a>    </span><span class="kw">fn </span>reduce&lt;ReduceFn&gt;(
+<a href=#450 id=450 data-nosnippet>450</a>        <span class="self">self</span>,
+<a href=#451 id=451 data-nosnippet>451</a>        reduce_fn: ReduceFn,
+<a href=#452 id=452 data-nosnippet>452</a>    ) -&gt; Accumulate&lt;<span class="self">Self</span>, ReduceState&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;, ReduceFn, <span class="self">Self</span>::Item&gt;&gt;
+<a href=#453 id=453 data-nosnippet>453</a>    <span class="kw">where
+<a href=#454 id=454 data-nosnippet>454</a>        </span><span class="self">Self</span>: Sized,
+<a href=#455 id=455 data-nosnippet>455</a>        ReduceFn: FnMut(<span class="kw-2">&amp;mut </span><span class="self">Self</span>::Item, <span class="self">Self</span>::Item),
+<a href=#456 id=456 data-nosnippet>456</a>    {
+<a href=#457 id=457 data-nosnippet>457</a>        <span class="self">self</span>.accumulate(ReduceState::new(<span class="prelude-val">None</span>, reduce_fn))
+<a href=#458 id=458 data-nosnippet>458</a>    }
+<a href=#459 id=459 data-nosnippet>459</a>
+<a href=#460 id=460 data-nosnippet>460</a>    <span class="doccomment">/// Creates a future that reduces all items into the borrowed accumulator `acc` via
+<a href=#461 id=461 data-nosnippet>461</a>    /// `reduce_fn`, resolving to a pull that emits `&amp;mut Item` (one item if the accumulator
+<a href=#462 id=462 data-nosnippet>462</a>    /// is occupied — including solely from prior external state — or none).
+<a href=#463 id=463 data-nosnippet>463</a>    ///
+<a href=#464 id=464 data-nosnippet>464</a>    /// The accumulated value persists in the external storage, e.g. across ticks.
+<a href=#465 id=465 data-nosnippet>465</a>    </span><span class="kw">fn </span>reduce_ref&lt;ReduceFn&gt;(
+<a href=#466 id=466 data-nosnippet>466</a>        <span class="self">self</span>,
+<a href=#467 id=467 data-nosnippet>467</a>        acc: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;,
+<a href=#468 id=468 data-nosnippet>468</a>        reduce_fn: ReduceFn,
+<a href=#469 id=469 data-nosnippet>469</a>    ) -&gt; Accumulate&lt;<span class="self">Self</span>, ReduceState&lt;<span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;, ReduceFn, <span class="self">Self</span>::Item&gt;&gt;
+<a href=#470 id=470 data-nosnippet>470</a>    <span class="kw">where
+<a href=#471 id=471 data-nosnippet>471</a>        </span><span class="self">Self</span>: Sized,
+<a href=#472 id=472 data-nosnippet>472</a>        ReduceFn: FnMut(<span class="kw-2">&amp;mut </span><span class="self">Self</span>::Item, <span class="self">Self</span>::Item),
+<a href=#473 id=473 data-nosnippet>473</a>    {
+<a href=#474 id=474 data-nosnippet>474</a>        <span class="self">self</span>.accumulate(ReduceState::new(acc, reduce_fn))
+<a href=#475 id=475 data-nosnippet>475</a>    }
+<a href=#476 id=476 data-nosnippet>476</a>
+<a href=#477 id=477 data-nosnippet>477</a>    <span class="doccomment">/// Creates a pull that ends after the first `None`.
+<a href=#478 id=478 data-nosnippet>478</a>    ///
+<a href=#479 id=479 data-nosnippet>479</a>    /// After a pull returns `Ended` for the first time, the behavior of calling
+<a href=#480 id=480 data-nosnippet>480</a>    /// `pull` again is implementation-defined. `fuse()` adapts any pull,
+<a href=#481 id=481 data-nosnippet>481</a>    /// ensuring that after `Ended` is given once, it will always return `Ended`
+<a href=#482 id=482 data-nosnippet>482</a>    /// forever.
+<a href=#483 id=483 data-nosnippet>483</a>    ///
+<a href=#484 id=484 data-nosnippet>484</a>    /// Usually this method will simply return `Fuse&lt;Self&gt;`, but it may be
+<a href=#485 id=485 data-nosnippet>485</a>    /// overridden for optimization.
+<a href=#486 id=486 data-nosnippet>486</a>    </span><span class="kw">fn </span>fuse(
+<a href=#487 id=487 data-nosnippet>487</a>        <span class="self">self</span>,
+<a href=#488 id=488 data-nosnippet>488</a>    ) -&gt; <span class="kw">impl for</span>&lt;<span class="lifetime">'ctx</span>&gt; FusedPull&lt;
+<a href=#489 id=489 data-nosnippet>489</a>        Ctx&lt;<span class="lifetime">'ctx</span>&gt; = <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'ctx</span>&gt;,
+<a href=#490 id=490 data-nosnippet>490</a>        Item = <span class="self">Self</span>::Item,
+<a href=#491 id=491 data-nosnippet>491</a>        Meta = <span class="self">Self</span>::Meta,
+<a href=#492 id=492 data-nosnippet>492</a>        CanPend = <span class="self">Self</span>::CanPend,
+<a href=#493 id=493 data-nosnippet>493</a>        CanEnd = <span class="self">Self</span>::CanEnd,
+<a href=#494 id=494 data-nosnippet>494</a>    &gt;
+<a href=#495 id=495 data-nosnippet>495</a>    <span class="kw">where
+<a href=#496 id=496 data-nosnippet>496</a>        </span><span class="self">Self</span>: Sized,
 <a href=#497 id=497 data-nosnippet>497</a>    {
-<a href=#498 id=498 data-nosnippet>498</a>        Inspect::new(<span class="self">self</span>, f)
+<a href=#498 id=498 data-nosnippet>498</a>        Fuse::new(<span class="self">self</span>)
 <a href=#499 id=499 data-nosnippet>499</a>    }
 <a href=#500 id=500 data-nosnippet>500</a>
-<a href=#501 id=501 data-nosnippet>501</a>    <span class="doccomment">/// Takes a closure and creates a pull that calls that closure on each element.
+<a href=#501 id=501 data-nosnippet>501</a>    <span class="doccomment">/// Does something with each element of a pull, passing the value on.
 <a href=#502 id=502 data-nosnippet>502</a>    ///
-<a href=#503 id=503 data-nosnippet>503</a>    /// `map()` transforms one pull into another, by means of its argument: something
-<a href=#504 id=504 data-nosnippet>504</a>    /// that implements `FnMut`. It produces a new pull which calls this closure on
-<a href=#505 id=505 data-nosnippet>505</a>    /// each element of the original pull.
-<a href=#506 id=506 data-nosnippet>506</a>    </span><span class="kw">fn </span>map&lt;B, F&gt;(<span class="self">self</span>, f: F) -&gt; Map&lt;<span class="self">Self</span>, F&gt;
-<a href=#507 id=507 data-nosnippet>507</a>    <span class="kw">where
-<a href=#508 id=508 data-nosnippet>508</a>        </span><span class="self">Self</span>: Sized,
-<a href=#509 id=509 data-nosnippet>509</a>        F: FnMut(<span class="self">Self</span>::Item) -&gt; B,
-<a href=#510 id=510 data-nosnippet>510</a>    {
-<a href=#511 id=511 data-nosnippet>511</a>        Map::new(<span class="self">self</span>, f)
-<a href=#512 id=512 data-nosnippet>512</a>    }
-<a href=#513 id=513 data-nosnippet>513</a>
-<a href=#514 id=514 data-nosnippet>514</a>    <span class="doccomment">/// Creates a future that pulls all items and sends them into a [`crate::Sink`].
-<a href=#515 id=515 data-nosnippet>515</a>    </span><span class="kw">fn </span>send_sink&lt;Push&gt;(<span class="self">self</span>, push: Push) -&gt; SendSink&lt;<span class="self">Self</span>, Push&gt;
-<a href=#516 id=516 data-nosnippet>516</a>    <span class="kw">where
-<a href=#517 id=517 data-nosnippet>517</a>        </span><span class="self">Self</span>: Sized,
-<a href=#518 id=518 data-nosnippet>518</a>        Push: futures_sink::Sink&lt;<span class="self">Self</span>::Item&gt;,
-<a href=#519 id=519 data-nosnippet>519</a>    {
-<a href=#520 id=520 data-nosnippet>520</a>        SendSink::new(<span class="self">self</span>, push)
-<a href=#521 id=521 data-nosnippet>521</a>    }
-<a href=#522 id=522 data-nosnippet>522</a>
-<a href=#523 id=523 data-nosnippet>523</a>    <span class="doccomment">/// Creates a future that pulls all items and pushes them into a [`crate::push::Push`].
-<a href=#524 id=524 data-nosnippet>524</a>    </span><span class="kw">fn </span>send_push&lt;Psh&gt;(<span class="self">self</span>, push: Psh) -&gt; SendPush&lt;<span class="self">Self</span>, Psh&gt;
-<a href=#525 id=525 data-nosnippet>525</a>    <span class="kw">where
-<a href=#526 id=526 data-nosnippet>526</a>        </span><span class="self">Self</span>: Sized,
-<a href=#527 id=527 data-nosnippet>527</a>        Psh: <span class="kw">crate</span>::push::Push&lt;<span class="self">Self</span>::Item, <span class="self">Self</span>::Meta&gt;,
-<a href=#528 id=528 data-nosnippet>528</a>    {
-<a href=#529 id=529 data-nosnippet>529</a>        SendPush::new(<span class="self">self</span>, push)
-<a href=#530 id=530 data-nosnippet>530</a>    }
-<a href=#531 id=531 data-nosnippet>531</a>
-<a href=#532 id=532 data-nosnippet>532</a>    <span class="doccomment">/// Creates a pull that skips the first `n` elements.
-<a href=#533 id=533 data-nosnippet>533</a>    </span><span class="kw">fn </span>skip(<span class="self">self</span>, n: usize) -&gt; Skip&lt;<span class="self">Self</span>&gt;
-<a href=#534 id=534 data-nosnippet>534</a>    <span class="kw">where
-<a href=#535 id=535 data-nosnippet>535</a>        </span><span class="self">Self</span>: Sized,
-<a href=#536 id=536 data-nosnippet>536</a>    {
-<a href=#537 id=537 data-nosnippet>537</a>        Skip::new(<span class="self">self</span>, n)
-<a href=#538 id=538 data-nosnippet>538</a>    }
-<a href=#539 id=539 data-nosnippet>539</a>
-<a href=#540 id=540 data-nosnippet>540</a>    <span class="doccomment">/// Creates a pull that skips elements based on a predicate.
-<a href=#541 id=541 data-nosnippet>541</a>    ///
-<a href=#542 id=542 data-nosnippet>542</a>    /// `skip_while()` takes a closure as an argument. It will call this closure
-<a href=#543 id=543 data-nosnippet>543</a>    /// on each element of the pull, and ignore elements until it returns `false`.
-<a href=#544 id=544 data-nosnippet>544</a>    </span><span class="kw">fn </span>skip_while&lt;P&gt;(<span class="self">self</span>, predicate: P) -&gt; SkipWhile&lt;<span class="self">Self</span>, P&gt;
-<a href=#545 id=545 data-nosnippet>545</a>    <span class="kw">where
-<a href=#546 id=546 data-nosnippet>546</a>        </span><span class="self">Self</span>: Sized,
-<a href=#547 id=547 data-nosnippet>547</a>        P: FnMut(<span class="kw-2">&amp;</span><span class="self">Self</span>::Item) -&gt; bool,
-<a href=#548 id=548 data-nosnippet>548</a>    {
-<a href=#549 id=549 data-nosnippet>549</a>        SkipWhile::new(<span class="self">self</span>, predicate)
-<a href=#550 id=550 data-nosnippet>550</a>    }
-<a href=#551 id=551 data-nosnippet>551</a>
-<a href=#552 id=552 data-nosnippet>552</a>    <span class="doccomment">/// Creates a pull that yields the first `n` elements, or fewer if the
-<a href=#553 id=553 data-nosnippet>553</a>    /// underlying pull ends sooner.
-<a href=#554 id=554 data-nosnippet>554</a>    </span><span class="kw">fn </span>take(<span class="self">self</span>, n: usize) -&gt; Take&lt;<span class="self">Self</span>&gt;
-<a href=#555 id=555 data-nosnippet>555</a>    <span class="kw">where
-<a href=#556 id=556 data-nosnippet>556</a>        </span><span class="self">Self</span>: Sized,
-<a href=#557 id=557 data-nosnippet>557</a>    {
-<a href=#558 id=558 data-nosnippet>558</a>        Take::new(<span class="self">self</span>, n)
-<a href=#559 id=559 data-nosnippet>559</a>    }
-<a href=#560 id=560 data-nosnippet>560</a>
-<a href=#561 id=561 data-nosnippet>561</a>    <span class="doccomment">/// Creates a pull that yields elements based on a predicate.
-<a href=#562 id=562 data-nosnippet>562</a>    ///
-<a href=#563 id=563 data-nosnippet>563</a>    /// `take_while()` takes a closure as an argument. It will call this closure
-<a href=#564 id=564 data-nosnippet>564</a>    /// on each element of the pull, and yield elements while it returns `true`.
-<a href=#565 id=565 data-nosnippet>565</a>    </span><span class="kw">fn </span>take_while&lt;P&gt;(<span class="self">self</span>, predicate: P) -&gt; TakeWhile&lt;<span class="self">Self</span>, P&gt;
-<a href=#566 id=566 data-nosnippet>566</a>    <span class="kw">where
-<a href=#567 id=567 data-nosnippet>567</a>        </span><span class="self">Self</span>: Sized,
-<a href=#568 id=568 data-nosnippet>568</a>        P: FnMut(<span class="kw-2">&amp;</span><span class="self">Self</span>::Item) -&gt; bool,
-<a href=#569 id=569 data-nosnippet>569</a>    {
-<a href=#570 id=570 data-nosnippet>570</a>        TakeWhile::new(<span class="self">self</span>, predicate)
-<a href=#571 id=571 data-nosnippet>571</a>    }
-<a href=#572 id=572 data-nosnippet>572</a>
-<a href=#573 id=573 data-nosnippet>573</a>    <span class="doccomment">/// Zips two pulls together, stopping once either is exhausted.
-<a href=#574 id=574 data-nosnippet>574</a>    </span><span class="kw">fn </span>zip&lt;U&gt;(<span class="self">self</span>, other: U) -&gt; Zip&lt;<span class="self">Self</span>, U&gt;
-<a href=#575 id=575 data-nosnippet>575</a>    <span class="kw">where
-<a href=#576 id=576 data-nosnippet>576</a>        </span><span class="self">Self</span>: Sized,
-<a href=#577 id=577 data-nosnippet>577</a>        U: Pull&lt;Meta = <span class="self">Self</span>::Meta&gt;,
-<a href=#578 id=578 data-nosnippet>578</a>    {
-<a href=#579 id=579 data-nosnippet>579</a>        Zip::new(<span class="self">self</span>, other)
-<a href=#580 id=580 data-nosnippet>580</a>    }
-<a href=#581 id=581 data-nosnippet>581</a>
-<a href=#582 id=582 data-nosnippet>582</a>    <span class="doccomment">/// Zips two pulls together, continuing until both are exhausted.
-<a href=#583 id=583 data-nosnippet>583</a>    ///
-<a href=#584 id=584 data-nosnippet>584</a>    /// Unlike a regular zip which ends when either pull ends, `zip_longest`
-<a href=#585 id=585 data-nosnippet>585</a>    /// continues until both pulls have ended, yielding [`crate::EitherOrBoth`]
-<a href=#586 id=586 data-nosnippet>586</a>    /// values to indicate which pulls yielded items.
-<a href=#587 id=587 data-nosnippet>587</a>    ///
-<a href=#588 id=588 data-nosnippet>588</a>    /// Both pulls must be fused ([`FusedPull`]) to ensure correct behavior
-<a href=#589 id=589 data-nosnippet>589</a>    /// after one pull ends.
-<a href=#590 id=590 data-nosnippet>590</a>    </span><span class="kw">fn </span>zip_longest&lt;U&gt;(<span class="self">self</span>, other: U) -&gt; ZipLongest&lt;<span class="self">Self</span>, U&gt;
-<a href=#591 id=591 data-nosnippet>591</a>    <span class="kw">where
-<a href=#592 id=592 data-nosnippet>592</a>        </span><span class="self">Self</span>: Sized + FusedPull,
-<a href=#593 id=593 data-nosnippet>593</a>        U: FusedPull&lt;Meta = <span class="self">Self</span>::Meta&gt;,
-<a href=#594 id=594 data-nosnippet>594</a>    {
-<a href=#595 id=595 data-nosnippet>595</a>        ZipLongest::new(<span class="self">self</span>, other)
-<a href=#596 id=596 data-nosnippet>596</a>    }
-<a href=#597 id=597 data-nosnippet>597</a>
-<a href=#598 id=598 data-nosnippet>598</a>    <span class="doccomment">/// Creates a future that resolves with the next item from this pull.
-<a href=#599 id=599 data-nosnippet>599</a>    ///
-<a href=#600 id=600 data-nosnippet>600</a>    /// This is the `Pull` equivalent of the `StreamExt::next()` future.
-<a href=#601 id=601 data-nosnippet>601</a>    </span><span class="kw">fn </span>next(<span class="self">self</span>) -&gt; Next&lt;<span class="self">Self</span>&gt;
-<a href=#602 id=602 data-nosnippet>602</a>    <span class="kw">where
-<a href=#603 id=603 data-nosnippet>603</a>        </span><span class="self">Self</span>: Sized,
-<a href=#604 id=604 data-nosnippet>604</a>    {
-<a href=#605 id=605 data-nosnippet>605</a>        Next::new(<span class="self">self</span>)
-<a href=#606 id=606 data-nosnippet>606</a>    }
-<a href=#607 id=607 data-nosnippet>607</a>
-<a href=#608 id=608 data-nosnippet>608</a>    <span class="doccomment">/// Crosses each item from this pull with a singleton value from another pull.
-<a href=#609 id=609 data-nosnippet>609</a>    ///
-<a href=#610 id=610 data-nosnippet>610</a>    /// The singleton value is obtained from the first item of `singleton_pull` and cached.
-<a href=#611 id=611 data-nosnippet>611</a>    /// All subsequent items from this pull are paired with this cached singleton value.
-<a href=#612 id=612 data-nosnippet>612</a>    ///
-<a href=#613 id=613 data-nosnippet>613</a>    /// If `singleton_pull` ends before yielding any items, the entire combinator ends immediately.
-<a href=#614 id=614 data-nosnippet>614</a>    </span><span class="kw">fn </span>cross_singleton&lt;SinglePull&gt;(
-<a href=#615 id=615 data-nosnippet>615</a>        <span class="self">self</span>,
-<a href=#616 id=616 data-nosnippet>616</a>        singleton_pull: SinglePull,
-<a href=#617 id=617 data-nosnippet>617</a>    ) -&gt; CrossSingleton&lt;<span class="self">Self</span>, SinglePull, <span class="prelude-ty">Option</span>&lt;SinglePull::Item&gt;&gt;
-<a href=#618 id=618 data-nosnippet>618</a>    <span class="kw">where
-<a href=#619 id=619 data-nosnippet>619</a>        </span><span class="self">Self</span>: Sized,
-<a href=#620 id=620 data-nosnippet>620</a>        SinglePull: Pull,
-<a href=#621 id=621 data-nosnippet>621</a>        SinglePull::Item: Clone,
-<a href=#622 id=622 data-nosnippet>622</a>    {
-<a href=#623 id=623 data-nosnippet>623</a>        CrossSingleton::new(<span class="self">self</span>, singleton_pull, <span class="prelude-val">None</span>)
-<a href=#624 id=624 data-nosnippet>624</a>    }
-<a href=#625 id=625 data-nosnippet>625</a>
-<a href=#626 id=626 data-nosnippet>626</a>    <span class="doccomment">/// [`Self::cross_singleton`] with external state.
-<a href=#627 id=627 data-nosnippet>627</a>    </span><span class="kw">fn </span>cross_singleton_state&lt;SinglePull&gt;(
-<a href=#628 id=628 data-nosnippet>628</a>        <span class="self">self</span>,
-<a href=#629 id=629 data-nosnippet>629</a>        singleton_pull: SinglePull,
-<a href=#630 id=630 data-nosnippet>630</a>        singleton_state: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;SinglePull::Item&gt;,
-<a href=#631 id=631 data-nosnippet>631</a>    ) -&gt; CrossSingleton&lt;<span class="self">Self</span>, SinglePull, <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;SinglePull::Item&gt;&gt;
+<a href=#503 id=503 data-nosnippet>503</a>    /// When using pulls, you'll often chain several of them together.
+<a href=#504 id=504 data-nosnippet>504</a>    /// While working on such code, you might want to check out what's
+<a href=#505 id=505 data-nosnippet>505</a>    /// happening at various parts in the pipeline. To do that, insert
+<a href=#506 id=506 data-nosnippet>506</a>    /// a call to `inspect()`.
+<a href=#507 id=507 data-nosnippet>507</a>    </span><span class="kw">fn </span>inspect&lt;F&gt;(<span class="self">self</span>, f: F) -&gt; Inspect&lt;<span class="self">Self</span>, F&gt;
+<a href=#508 id=508 data-nosnippet>508</a>    <span class="kw">where
+<a href=#509 id=509 data-nosnippet>509</a>        </span><span class="self">Self</span>: Sized,
+<a href=#510 id=510 data-nosnippet>510</a>        F: FnMut(<span class="kw-2">&amp;</span><span class="self">Self</span>::Item),
+<a href=#511 id=511 data-nosnippet>511</a>    {
+<a href=#512 id=512 data-nosnippet>512</a>        Inspect::new(<span class="self">self</span>, f)
+<a href=#513 id=513 data-nosnippet>513</a>    }
+<a href=#514 id=514 data-nosnippet>514</a>
+<a href=#515 id=515 data-nosnippet>515</a>    <span class="doccomment">/// Takes a closure and creates a pull that calls that closure on each element.
+<a href=#516 id=516 data-nosnippet>516</a>    ///
+<a href=#517 id=517 data-nosnippet>517</a>    /// `map()` transforms one pull into another, by means of its argument: something
+<a href=#518 id=518 data-nosnippet>518</a>    /// that implements `FnMut`. It produces a new pull which calls this closure on
+<a href=#519 id=519 data-nosnippet>519</a>    /// each element of the original pull.
+<a href=#520 id=520 data-nosnippet>520</a>    </span><span class="kw">fn </span>map&lt;B, F&gt;(<span class="self">self</span>, f: F) -&gt; Map&lt;<span class="self">Self</span>, F&gt;
+<a href=#521 id=521 data-nosnippet>521</a>    <span class="kw">where
+<a href=#522 id=522 data-nosnippet>522</a>        </span><span class="self">Self</span>: Sized,
+<a href=#523 id=523 data-nosnippet>523</a>        F: FnMut(<span class="self">Self</span>::Item) -&gt; B,
+<a href=#524 id=524 data-nosnippet>524</a>    {
+<a href=#525 id=525 data-nosnippet>525</a>        Map::new(<span class="self">self</span>, f)
+<a href=#526 id=526 data-nosnippet>526</a>    }
+<a href=#527 id=527 data-nosnippet>527</a>
+<a href=#528 id=528 data-nosnippet>528</a>    <span class="doccomment">/// Creates a future that pulls all items and sends them into a [`crate::Sink`].
+<a href=#529 id=529 data-nosnippet>529</a>    </span><span class="kw">fn </span>send_sink&lt;Push&gt;(<span class="self">self</span>, push: Push) -&gt; SendSink&lt;<span class="self">Self</span>, Push&gt;
+<a href=#530 id=530 data-nosnippet>530</a>    <span class="kw">where
+<a href=#531 id=531 data-nosnippet>531</a>        </span><span class="self">Self</span>: Sized,
+<a href=#532 id=532 data-nosnippet>532</a>        Push: futures_sink::Sink&lt;<span class="self">Self</span>::Item&gt;,
+<a href=#533 id=533 data-nosnippet>533</a>    {
+<a href=#534 id=534 data-nosnippet>534</a>        SendSink::new(<span class="self">self</span>, push)
+<a href=#535 id=535 data-nosnippet>535</a>    }
+<a href=#536 id=536 data-nosnippet>536</a>
+<a href=#537 id=537 data-nosnippet>537</a>    <span class="doccomment">/// Creates a future that pulls all items and pushes them into a [`crate::push::Push`].
+<a href=#538 id=538 data-nosnippet>538</a>    </span><span class="kw">fn </span>send_push&lt;Psh&gt;(<span class="self">self</span>, push: Psh) -&gt; SendPush&lt;<span class="self">Self</span>, Psh&gt;
+<a href=#539 id=539 data-nosnippet>539</a>    <span class="kw">where
+<a href=#540 id=540 data-nosnippet>540</a>        </span><span class="self">Self</span>: Sized,
+<a href=#541 id=541 data-nosnippet>541</a>        Psh: <span class="kw">crate</span>::push::Push&lt;<span class="self">Self</span>::Item, <span class="self">Self</span>::Meta&gt;,
+<a href=#542 id=542 data-nosnippet>542</a>    {
+<a href=#543 id=543 data-nosnippet>543</a>        SendPush::new(<span class="self">self</span>, push)
+<a href=#544 id=544 data-nosnippet>544</a>    }
+<a href=#545 id=545 data-nosnippet>545</a>
+<a href=#546 id=546 data-nosnippet>546</a>    <span class="doccomment">/// Creates a pull that skips the first `n` elements.
+<a href=#547 id=547 data-nosnippet>547</a>    </span><span class="kw">fn </span>skip(<span class="self">self</span>, n: usize) -&gt; Skip&lt;<span class="self">Self</span>&gt;
+<a href=#548 id=548 data-nosnippet>548</a>    <span class="kw">where
+<a href=#549 id=549 data-nosnippet>549</a>        </span><span class="self">Self</span>: Sized,
+<a href=#550 id=550 data-nosnippet>550</a>    {
+<a href=#551 id=551 data-nosnippet>551</a>        Skip::new(<span class="self">self</span>, n)
+<a href=#552 id=552 data-nosnippet>552</a>    }
+<a href=#553 id=553 data-nosnippet>553</a>
+<a href=#554 id=554 data-nosnippet>554</a>    <span class="doccomment">/// Creates a pull that skips elements based on a predicate.
+<a href=#555 id=555 data-nosnippet>555</a>    ///
+<a href=#556 id=556 data-nosnippet>556</a>    /// `skip_while()` takes a closure as an argument. It will call this closure
+<a href=#557 id=557 data-nosnippet>557</a>    /// on each element of the pull, and ignore elements until it returns `false`.
+<a href=#558 id=558 data-nosnippet>558</a>    </span><span class="kw">fn </span>skip_while&lt;P&gt;(<span class="self">self</span>, predicate: P) -&gt; SkipWhile&lt;<span class="self">Self</span>, P&gt;
+<a href=#559 id=559 data-nosnippet>559</a>    <span class="kw">where
+<a href=#560 id=560 data-nosnippet>560</a>        </span><span class="self">Self</span>: Sized,
+<a href=#561 id=561 data-nosnippet>561</a>        P: FnMut(<span class="kw-2">&amp;</span><span class="self">Self</span>::Item) -&gt; bool,
+<a href=#562 id=562 data-nosnippet>562</a>    {
+<a href=#563 id=563 data-nosnippet>563</a>        SkipWhile::new(<span class="self">self</span>, predicate)
+<a href=#564 id=564 data-nosnippet>564</a>    }
+<a href=#565 id=565 data-nosnippet>565</a>
+<a href=#566 id=566 data-nosnippet>566</a>    <span class="doccomment">/// Creates a pull that yields the first `n` elements, or fewer if the
+<a href=#567 id=567 data-nosnippet>567</a>    /// underlying pull ends sooner.
+<a href=#568 id=568 data-nosnippet>568</a>    </span><span class="kw">fn </span>take(<span class="self">self</span>, n: usize) -&gt; Take&lt;<span class="self">Self</span>&gt;
+<a href=#569 id=569 data-nosnippet>569</a>    <span class="kw">where
+<a href=#570 id=570 data-nosnippet>570</a>        </span><span class="self">Self</span>: Sized,
+<a href=#571 id=571 data-nosnippet>571</a>    {
+<a href=#572 id=572 data-nosnippet>572</a>        Take::new(<span class="self">self</span>, n)
+<a href=#573 id=573 data-nosnippet>573</a>    }
+<a href=#574 id=574 data-nosnippet>574</a>
+<a href=#575 id=575 data-nosnippet>575</a>    <span class="doccomment">/// Creates a pull that yields elements based on a predicate.
+<a href=#576 id=576 data-nosnippet>576</a>    ///
+<a href=#577 id=577 data-nosnippet>577</a>    /// `take_while()` takes a closure as an argument. It will call this closure
+<a href=#578 id=578 data-nosnippet>578</a>    /// on each element of the pull, and yield elements while it returns `true`.
+<a href=#579 id=579 data-nosnippet>579</a>    </span><span class="kw">fn </span>take_while&lt;P&gt;(<span class="self">self</span>, predicate: P) -&gt; TakeWhile&lt;<span class="self">Self</span>, P&gt;
+<a href=#580 id=580 data-nosnippet>580</a>    <span class="kw">where
+<a href=#581 id=581 data-nosnippet>581</a>        </span><span class="self">Self</span>: Sized,
+<a href=#582 id=582 data-nosnippet>582</a>        P: FnMut(<span class="kw-2">&amp;</span><span class="self">Self</span>::Item) -&gt; bool,
+<a href=#583 id=583 data-nosnippet>583</a>    {
+<a href=#584 id=584 data-nosnippet>584</a>        TakeWhile::new(<span class="self">self</span>, predicate)
+<a href=#585 id=585 data-nosnippet>585</a>    }
+<a href=#586 id=586 data-nosnippet>586</a>
+<a href=#587 id=587 data-nosnippet>587</a>    <span class="doccomment">/// Zips two pulls together, stopping once either is exhausted.
+<a href=#588 id=588 data-nosnippet>588</a>    </span><span class="kw">fn </span>zip&lt;U&gt;(<span class="self">self</span>, other: U) -&gt; Zip&lt;<span class="self">Self</span>, U&gt;
+<a href=#589 id=589 data-nosnippet>589</a>    <span class="kw">where
+<a href=#590 id=590 data-nosnippet>590</a>        </span><span class="self">Self</span>: Sized,
+<a href=#591 id=591 data-nosnippet>591</a>        U: Pull&lt;Meta = <span class="self">Self</span>::Meta&gt;,
+<a href=#592 id=592 data-nosnippet>592</a>    {
+<a href=#593 id=593 data-nosnippet>593</a>        Zip::new(<span class="self">self</span>, other)
+<a href=#594 id=594 data-nosnippet>594</a>    }
+<a href=#595 id=595 data-nosnippet>595</a>
+<a href=#596 id=596 data-nosnippet>596</a>    <span class="doccomment">/// Zips two pulls together, continuing until both are exhausted.
+<a href=#597 id=597 data-nosnippet>597</a>    ///
+<a href=#598 id=598 data-nosnippet>598</a>    /// Unlike a regular zip which ends when either pull ends, `zip_longest`
+<a href=#599 id=599 data-nosnippet>599</a>    /// continues until both pulls have ended, yielding [`crate::EitherOrBoth`]
+<a href=#600 id=600 data-nosnippet>600</a>    /// values to indicate which pulls yielded items.
+<a href=#601 id=601 data-nosnippet>601</a>    ///
+<a href=#602 id=602 data-nosnippet>602</a>    /// Both pulls must be fused ([`FusedPull`]) to ensure correct behavior
+<a href=#603 id=603 data-nosnippet>603</a>    /// after one pull ends.
+<a href=#604 id=604 data-nosnippet>604</a>    </span><span class="kw">fn </span>zip_longest&lt;U&gt;(<span class="self">self</span>, other: U) -&gt; ZipLongest&lt;<span class="self">Self</span>, U&gt;
+<a href=#605 id=605 data-nosnippet>605</a>    <span class="kw">where
+<a href=#606 id=606 data-nosnippet>606</a>        </span><span class="self">Self</span>: Sized + FusedPull,
+<a href=#607 id=607 data-nosnippet>607</a>        U: FusedPull&lt;Meta = <span class="self">Self</span>::Meta&gt;,
+<a href=#608 id=608 data-nosnippet>608</a>    {
+<a href=#609 id=609 data-nosnippet>609</a>        ZipLongest::new(<span class="self">self</span>, other)
+<a href=#610 id=610 data-nosnippet>610</a>    }
+<a href=#611 id=611 data-nosnippet>611</a>
+<a href=#612 id=612 data-nosnippet>612</a>    <span class="doccomment">/// Creates a future that resolves with the next item from this pull.
+<a href=#613 id=613 data-nosnippet>613</a>    ///
+<a href=#614 id=614 data-nosnippet>614</a>    /// This is the `Pull` equivalent of the `StreamExt::next()` future.
+<a href=#615 id=615 data-nosnippet>615</a>    </span><span class="kw">fn </span>next(<span class="self">self</span>) -&gt; Next&lt;<span class="self">Self</span>&gt;
+<a href=#616 id=616 data-nosnippet>616</a>    <span class="kw">where
+<a href=#617 id=617 data-nosnippet>617</a>        </span><span class="self">Self</span>: Sized,
+<a href=#618 id=618 data-nosnippet>618</a>    {
+<a href=#619 id=619 data-nosnippet>619</a>        Next::new(<span class="self">self</span>)
+<a href=#620 id=620 data-nosnippet>620</a>    }
+<a href=#621 id=621 data-nosnippet>621</a>
+<a href=#622 id=622 data-nosnippet>622</a>    <span class="doccomment">/// Crosses each item from this pull with a singleton value from another pull.
+<a href=#623 id=623 data-nosnippet>623</a>    ///
+<a href=#624 id=624 data-nosnippet>624</a>    /// The singleton value is obtained from the first item of `singleton_pull` and cached.
+<a href=#625 id=625 data-nosnippet>625</a>    /// All subsequent items from this pull are paired with this cached singleton value.
+<a href=#626 id=626 data-nosnippet>626</a>    ///
+<a href=#627 id=627 data-nosnippet>627</a>    /// If `singleton_pull` ends before yielding any items, the entire combinator ends immediately.
+<a href=#628 id=628 data-nosnippet>628</a>    </span><span class="kw">fn </span>cross_singleton&lt;SinglePull&gt;(
+<a href=#629 id=629 data-nosnippet>629</a>        <span class="self">self</span>,
+<a href=#630 id=630 data-nosnippet>630</a>        singleton_pull: SinglePull,
+<a href=#631 id=631 data-nosnippet>631</a>    ) -&gt; CrossSingleton&lt;<span class="self">Self</span>, SinglePull, <span class="prelude-ty">Option</span>&lt;SinglePull::Item&gt;&gt;
 <a href=#632 id=632 data-nosnippet>632</a>    <span class="kw">where
 <a href=#633 id=633 data-nosnippet>633</a>        </span><span class="self">Self</span>: Sized,
 <a href=#634 id=634 data-nosnippet>634</a>        SinglePull: Pull,
 <a href=#635 id=635 data-nosnippet>635</a>        SinglePull::Item: Clone,
 <a href=#636 id=636 data-nosnippet>636</a>    {
-<a href=#637 id=637 data-nosnippet>637</a>        CrossSingleton::new(<span class="self">self</span>, singleton_pull, singleton_state)
+<a href=#637 id=637 data-nosnippet>637</a>        CrossSingleton::new(<span class="self">self</span>, singleton_pull, <span class="prelude-val">None</span>)
 <a href=#638 id=638 data-nosnippet>638</a>    }
 <a href=#639 id=639 data-nosnippet>639</a>
-<a href=#640 id=640 data-nosnippet>640</a>    <span class="doccomment">/// Performs a symmetric hash join with another pull.
-<a href=#641 id=641 data-nosnippet>641</a>    ///
-<a href=#642 id=642 data-nosnippet>642</a>    /// Joins items from this pull with items from `rhs` based on a common key.
-<a href=#643 id=643 data-nosnippet>643</a>    /// Both pulls must yield `(Key, Value)` tuples. The result is a pull of
-<a href=#644 id=644 data-nosnippet>644</a>    /// `(Key, (V1, V2))` tuples for each matching pair.
-<a href=#645 id=645 data-nosnippet>645</a>    ///
-<a href=#646 id=646 data-nosnippet>646</a>    /// The `lhs_state` and `rhs_state` parameters store the join state and must
-<a href=#647 id=647 data-nosnippet>647</a>    /// implement [`HalfJoinState`].
-<a href=#648 id=648 data-nosnippet>648</a>    </span><span class="attr">#[cfg(feature = <span class="string">"std"</span>)]
-<a href=#649 id=649 data-nosnippet>649</a>    #[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"std"</span>)))]
-<a href=#650 id=650 data-nosnippet>650</a>    </span><span class="kw">fn </span>symmetric_hash_join&lt;Key, V1, Rhs, V2, LhsState, RhsState&gt;(
-<a href=#651 id=651 data-nosnippet>651</a>        <span class="self">self</span>,
-<a href=#652 id=652 data-nosnippet>652</a>        rhs: Rhs,
-<a href=#653 id=653 data-nosnippet>653</a>        lhs_state: LhsState,
-<a href=#654 id=654 data-nosnippet>654</a>        rhs_state: RhsState,
-<a href=#655 id=655 data-nosnippet>655</a>    ) -&gt; SymmetricHashJoin&lt;<span class="self">Self</span>, Rhs, LhsState, RhsState, LhsState, RhsState&gt;
-<a href=#656 id=656 data-nosnippet>656</a>    <span class="kw">where
-<a href=#657 id=657 data-nosnippet>657</a>        </span><span class="self">Self</span>: Sized + FusedPull&lt;Item = (Key, V1), Meta = ()&gt;,
-<a href=#658 id=658 data-nosnippet>658</a>        Key: Eq + std::hash::Hash + Clone,
-<a href=#659 id=659 data-nosnippet>659</a>        V1: Clone,
-<a href=#660 id=660 data-nosnippet>660</a>        V2: Clone,
-<a href=#661 id=661 data-nosnippet>661</a>        Rhs: FusedPull&lt;Item = (Key, V2), Meta = ()&gt;,
-<a href=#662 id=662 data-nosnippet>662</a>        LhsState: HalfJoinState&lt;Key, V1, V2&gt;,
-<a href=#663 id=663 data-nosnippet>663</a>        RhsState: HalfJoinState&lt;Key, V2, V1&gt;,
-<a href=#664 id=664 data-nosnippet>664</a>    {
-<a href=#665 id=665 data-nosnippet>665</a>        SymmetricHashJoin::new(<span class="self">self</span>, rhs, lhs_state, rhs_state)
-<a href=#666 id=666 data-nosnippet>666</a>    }
-<a href=#667 id=667 data-nosnippet>667</a>
-<a href=#668 id=668 data-nosnippet>668</a>    <span class="doccomment">/// [`Self::symmetric_hash_join`] with external state.
-<a href=#669 id=669 data-nosnippet>669</a>    </span><span class="attr">#[cfg(feature = <span class="string">"std"</span>)]
-<a href=#670 id=670 data-nosnippet>670</a>    #[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"std"</span>)))]
-<a href=#671 id=671 data-nosnippet>671</a>    </span><span class="kw">fn </span>symmetric_hash_join_state&lt;<span class="lifetime">'a</span>, Key, V1, Rhs, V2, LhsState, RhsState&gt;(
-<a href=#672 id=672 data-nosnippet>672</a>        <span class="self">self</span>,
-<a href=#673 id=673 data-nosnippet>673</a>        rhs: Rhs,
-<a href=#674 id=674 data-nosnippet>674</a>        lhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>LhsState,
-<a href=#675 id=675 data-nosnippet>675</a>        rhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>RhsState,
-<a href=#676 id=676 data-nosnippet>676</a>    ) -&gt; SymmetricHashJoin&lt;<span class="self">Self</span>, Rhs, <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>LhsState, <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>RhsState, LhsState, RhsState&gt;
-<a href=#677 id=677 data-nosnippet>677</a>    <span class="kw">where
-<a href=#678 id=678 data-nosnippet>678</a>        </span><span class="self">Self</span>: Sized + FusedPull&lt;Item = (Key, V1), Meta = ()&gt;,
-<a href=#679 id=679 data-nosnippet>679</a>        Key: Eq + std::hash::Hash + Clone,
-<a href=#680 id=680 data-nosnippet>680</a>        V1: Clone,
-<a href=#681 id=681 data-nosnippet>681</a>        V2: Clone,
-<a href=#682 id=682 data-nosnippet>682</a>        Rhs: FusedPull&lt;Item = (Key, V2), Meta = ()&gt;,
-<a href=#683 id=683 data-nosnippet>683</a>        LhsState: HalfJoinState&lt;Key, V1, V2&gt;,
-<a href=#684 id=684 data-nosnippet>684</a>        RhsState: HalfJoinState&lt;Key, V2, V1&gt;,
-<a href=#685 id=685 data-nosnippet>685</a>    {
-<a href=#686 id=686 data-nosnippet>686</a>        SymmetricHashJoin::new(<span class="self">self</span>, rhs, lhs_state, rhs_state)
-<a href=#687 id=687 data-nosnippet>687</a>    }
-<a href=#688 id=688 data-nosnippet>688</a>}
-<a href=#689 id=689 data-nosnippet>689</a>
-<a href=#690 id=690 data-nosnippet>690</a><span class="kw">impl</span>&lt;P&gt; Pull <span class="kw">for </span><span class="kw-2">&amp;mut </span>P
-<a href=#691 id=691 data-nosnippet>691</a><span class="kw">where
-<a href=#692 id=692 data-nosnippet>692</a>    </span>P: Pull + Unpin + <span class="question-mark">?</span>Sized,
-<a href=#693 id=693 data-nosnippet>693</a>{
-<a href=#694 id=694 data-nosnippet>694</a>    <span class="kw">type </span>Ctx&lt;<span class="lifetime">'ctx</span>&gt; = P::Ctx&lt;<span class="lifetime">'ctx</span>&gt;;
-<a href=#695 id=695 data-nosnippet>695</a>
-<a href=#696 id=696 data-nosnippet>696</a>    <span class="kw">type </span>Item = P::Item;
-<a href=#697 id=697 data-nosnippet>697</a>    <span class="kw">type </span>Meta = P::Meta;
-<a href=#698 id=698 data-nosnippet>698</a>    <span class="kw">type </span>CanPend = P::CanPend;
-<a href=#699 id=699 data-nosnippet>699</a>    <span class="kw">type </span>CanEnd = P::CanEnd;
-<a href=#700 id=700 data-nosnippet>700</a>
-<a href=#701 id=701 data-nosnippet>701</a>    <span class="kw">fn </span>pull(
-<a href=#702 id=702 data-nosnippet>702</a>        <span class="kw-2">mut </span><span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
-<a href=#703 id=703 data-nosnippet>703</a>        ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#704 id=704 data-nosnippet>704</a>    ) -&gt; PullStep&lt;<span class="self">Self</span>::Item, <span class="self">Self</span>::Meta, <span class="self">Self</span>::CanPend, <span class="self">Self</span>::CanEnd&gt; {
-<a href=#705 id=705 data-nosnippet>705</a>        Pin::new(<span class="kw-2">&amp;mut **</span><span class="self">self</span>).pull(ctx)
-<a href=#706 id=706 data-nosnippet>706</a>    }
-<a href=#707 id=707 data-nosnippet>707</a>
-<a href=#708 id=708 data-nosnippet>708</a>    <span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
-<a href=#709 id=709 data-nosnippet>709</a>        (<span class="kw-2">**</span><span class="self">self</span>).size_hint()
-<a href=#710 id=710 data-nosnippet>710</a>    }
-<a href=#711 id=711 data-nosnippet>711</a>}
-<a href=#712 id=712 data-nosnippet>712</a>
-<a href=#713 id=713 data-nosnippet>713</a><span class="doccomment">/// A marker trait for pulls that are "fused".
-<a href=#714 id=714 data-nosnippet>714</a>///
-<a href=#715 id=715 data-nosnippet>715</a>/// A fused pull guarantees that once it returns [`PullStep::Ended`], all subsequent
-<a href=#716 id=716 data-nosnippet>716</a>/// calls to [`Pull::pull`] will also return [`PullStep::Ended`]. This property allows
-<a href=#717 id=717 data-nosnippet>717</a>/// downstream operators like [`Pull::chain`] to avoid tracking whether
-<a href=#718 id=718 data-nosnippet>718</a>/// the upstream has ended.
-<a href=#719 id=719 data-nosnippet>719</a>///
-<a href=#720 id=720 data-nosnippet>720</a>/// Implementors should ensure this invariant is upheld. The [`Pull::fuse`]
-<a href=#721 id=721 data-nosnippet>721</a>/// adapter can be used to make any pull fused.
-<a href=#722 id=722 data-nosnippet>722</a></span><span class="kw">pub trait </span>FusedPull: Pull {}
-<a href=#723 id=723 data-nosnippet>723</a>
-<a href=#724 id=724 data-nosnippet>724</a><span class="kw">impl</span>&lt;P&gt; FusedPull <span class="kw">for </span><span class="kw-2">&amp;mut </span>P <span class="kw">where </span>P: FusedPull + Unpin + <span class="question-mark">?</span>Sized {}
-<a href=#725 id=725 data-nosnippet>725</a>
-<a href=#726 id=726 data-nosnippet>726</a><span class="doccomment">/// Creates a pull from an iterator.
-<a href=#727 id=727 data-nosnippet>727</a>///
-<a href=#728 id=728 data-nosnippet>728</a>/// This is the primary way to create a pull from synchronous data.
-<a href=#729 id=729 data-nosnippet>729</a>/// The resulting pull will never pend and will end when the iterator is exhausted.
-<a href=#730 id=730 data-nosnippet>730</a></span><span class="kw">pub fn </span>iter&lt;I: IntoIterator&gt;(iter: I) -&gt; Iter&lt;I::IntoIter&gt; {
-<a href=#731 id=731 data-nosnippet>731</a>    Iter::new(iter.into_iter())
-<a href=#732 id=732 data-nosnippet>732</a>}
-<a href=#733 id=733 data-nosnippet>733</a>
-<a href=#734 id=734 data-nosnippet>734</a><span class="doccomment">/// Creates a pull from a `futures::Stream`.
-<a href=#735 id=735 data-nosnippet>735</a>///
-<a href=#736 id=736 data-nosnippet>736</a>/// The resulting pull requires `&amp;mut Context&lt;'_&gt;` to be polled and can both
-<a href=#737 id=737 data-nosnippet>737</a>/// pend and end.
-<a href=#738 id=738 data-nosnippet>738</a></span><span class="kw">pub const fn </span>stream&lt;S: futures_core::stream::Stream&gt;(stream: S) -&gt; Stream&lt;S&gt; {
-<a href=#739 id=739 data-nosnippet>739</a>    Stream::new(stream)
-<a href=#740 id=740 data-nosnippet>740</a>}
-<a href=#741 id=741 data-nosnippet>741</a>
-<a href=#742 id=742 data-nosnippet>742</a><span class="doccomment">/// Creates a [`StreamCompat`] adapter that wraps a [`Pull`] and implements [`futures_core::stream::Stream`].
-<a href=#743 id=743 data-nosnippet>743</a></span><span class="kw">pub const fn </span>stream_compat&lt;Pul: Pull&gt;(pull: Pul) -&gt; StreamCompat&lt;Pul&gt; {
-<a href=#744 id=744 data-nosnippet>744</a>    StreamCompat::new(pull)
-<a href=#745 id=745 data-nosnippet>745</a>}
-<a href=#746 id=746 data-nosnippet>746</a>
-<a href=#747 id=747 data-nosnippet>747</a><span class="doccomment">/// Creates a pull from a `futures::Stream` with a custom waker.
-<a href=#748 id=748 data-nosnippet>748</a>///
-<a href=#749 id=749 data-nosnippet>749</a>/// This variant uses a provided waker function instead of requiring a context.
-<a href=#750 id=750 data-nosnippet>750</a>/// When the stream returns `Pending`, this pull treats it as ended (non-blocking).
-<a href=#751 id=751 data-nosnippet>751</a></span><span class="kw">pub const fn </span>stream_ready&lt;S&gt;(stream: S, waker: Waker) -&gt; StreamReady&lt;S&gt;
-<a href=#752 id=752 data-nosnippet>752</a><span class="kw">where
-<a href=#753 id=753 data-nosnippet>753</a>    </span>S: futures_core::stream::Stream,
-<a href=#754 id=754 data-nosnippet>754</a>{
-<a href=#755 id=755 data-nosnippet>755</a>    StreamReady::new(stream, waker)
-<a href=#756 id=756 data-nosnippet>756</a>}
-<a href=#757 id=757 data-nosnippet>757</a>
-<a href=#758 id=758 data-nosnippet>758</a><span class="doccomment">/// Creates a synchronous pull from a closure.
-<a href=#759 id=759 data-nosnippet>759</a>///
-<a href=#760 id=760 data-nosnippet>760</a>/// The closure is called each time the pull is polled and should return a `PullStep`.
-<a href=#761 id=761 data-nosnippet>761</a></span><span class="kw">pub fn </span>from_fn&lt;F, Item, Meta, CanEnd&gt;(func: F) -&gt; FromFn&lt;F, Item, Meta, CanEnd&gt;
-<a href=#762 id=762 data-nosnippet>762</a><span class="kw">where
-<a href=#763 id=763 data-nosnippet>763</a>    </span>F: FnMut() -&gt; PullStep&lt;Item, Meta, No, CanEnd&gt;,
-<a href=#764 id=764 data-nosnippet>764</a>    Meta: Copy,
-<a href=#765 id=765 data-nosnippet>765</a>    CanEnd: Toggle,
-<a href=#766 id=766 data-nosnippet>766</a>{
-<a href=#767 id=767 data-nosnippet>767</a>    FromFn::new(func)
-<a href=#768 id=768 data-nosnippet>768</a>}
-<a href=#769 id=769 data-nosnippet>769</a>
-<a href=#770 id=770 data-nosnippet>770</a><span class="doccomment">/// Creates an asynchronous or synchronous pull from a closure.
-<a href=#771 id=771 data-nosnippet>771</a>///
-<a href=#772 id=772 data-nosnippet>772</a>/// The closure is called each time the pull is polled and should return a `PullStep`.
-<a href=#773 id=773 data-nosnippet>773</a></span><span class="kw">pub fn </span>poll_fn&lt;F, Item, Meta, CanPend, CanEnd&gt;(func: F) -&gt; PollFn&lt;F, Item, Meta, CanPend, CanEnd&gt;
-<a href=#774 id=774 data-nosnippet>774</a><span class="kw">where
-<a href=#775 id=775 data-nosnippet>775</a>    </span>F: FnMut(<span class="kw-2">&amp;mut </span>core::task::Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; PullStep&lt;Item, Meta, CanPend, CanEnd&gt;,
-<a href=#776 id=776 data-nosnippet>776</a>    Meta: Copy,
-<a href=#777 id=777 data-nosnippet>777</a>    CanPend: Toggle,
-<a href=#778 id=778 data-nosnippet>778</a>    CanEnd: Toggle,
-<a href=#779 id=779 data-nosnippet>779</a>{
-<a href=#780 id=780 data-nosnippet>780</a>    PollFn::new(func)
-<a href=#781 id=781 data-nosnippet>781</a>}
-<a href=#782 id=782 data-nosnippet>782</a>
-<a href=#783 id=783 data-nosnippet>783</a><span class="doccomment">/// Creates an empty pull that immediately ends.
-<a href=#784 id=784 data-nosnippet>784</a></span><span class="kw">pub fn </span>empty&lt;Item&gt;() -&gt; Empty&lt;Item&gt; {
-<a href=#785 id=785 data-nosnippet>785</a>    Empty::default()
-<a href=#786 id=786 data-nosnippet>786</a>}
-<a href=#787 id=787 data-nosnippet>787</a>
-<a href=#788 id=788 data-nosnippet>788</a><span class="doccomment">/// Creates a pull that yields a single item.
-<a href=#789 id=789 data-nosnippet>789</a></span><span class="kw">pub const fn </span>once&lt;Item&gt;(item: Item) -&gt; Once&lt;Item&gt; {
-<a href=#790 id=790 data-nosnippet>790</a>    Once::new(item)
-<a href=#791 id=791 data-nosnippet>791</a>}
-<a href=#792 id=792 data-nosnippet>792</a>
-<a href=#793 id=793 data-nosnippet>793</a><span class="doccomment">/// Creates a pull that yields clones of the given item forever.
-<a href=#794 id=794 data-nosnippet>794</a></span><span class="kw">pub const fn </span>repeat&lt;Item&gt;(item: Item) -&gt; Repeat&lt;Item&gt;
-<a href=#795 id=795 data-nosnippet>795</a><span class="kw">where
-<a href=#796 id=796 data-nosnippet>796</a>    </span>Item: Clone,
-<a href=#797 id=797 data-nosnippet>797</a>{
-<a href=#798 id=798 data-nosnippet>798</a>    Repeat::new(item)
-<a href=#799 id=799 data-nosnippet>799</a>}
-<a href=#800 id=800 data-nosnippet>800</a>
-<a href=#801 id=801 data-nosnippet>801</a><span class="doccomment">/// Creates a pull that is always pending and never yields items or ends.
-<a href=#802 id=802 data-nosnippet>802</a></span><span class="kw">pub const fn </span>pending&lt;Item&gt;() -&gt; Pending&lt;Item&gt; {
-<a href=#803 id=803 data-nosnippet>803</a>    Pending::new()
-<a href=#804 id=804 data-nosnippet>804</a>}
-<a href=#805 id=805 data-nosnippet>805</a>
-<a href=#806 id=806 data-nosnippet>806</a><span class="doccomment">/// A macro to override [`Pull::fuse`] for pulls that are already fused.
-<a href=#807 id=807 data-nosnippet>807</a>///
-<a href=#808 id=808 data-nosnippet>808</a>/// This macro should be used in the `impl` block for a pull type that is already fused.
-<a href=#809 id=809 data-nosnippet>809</a>/// It provides a default implementation of `fuse` that simply returns `self`.
-<a href=#810 id=810 data-nosnippet>810</a></span><span class="macro">macro_rules!</span> fuse_self {
-<a href=#811 id=811 data-nosnippet>811</a>    () =&gt; {
-<a href=#812 id=812 data-nosnippet>812</a>        <span class="kw">fn </span>fuse(
-<a href=#813 id=813 data-nosnippet>813</a>            <span class="self">self</span>,
-<a href=#814 id=814 data-nosnippet>814</a>        ) -&gt; <span class="kw">impl for</span>&lt;<span class="lifetime">'ctx</span>&gt; FusedPull&lt;
-<a href=#815 id=815 data-nosnippet>815</a>            Ctx&lt;<span class="lifetime">'ctx</span>&gt; = <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'ctx</span>&gt;,
-<a href=#816 id=816 data-nosnippet>816</a>            Item = <span class="self">Self</span>::Item,
-<a href=#817 id=817 data-nosnippet>817</a>            Meta = <span class="self">Self</span>::Meta,
-<a href=#818 id=818 data-nosnippet>818</a>            CanPend = <span class="self">Self</span>::CanPend,
-<a href=#819 id=819 data-nosnippet>819</a>            CanEnd = <span class="self">Self</span>::CanEnd,
-<a href=#820 id=820 data-nosnippet>820</a>        &gt;
-<a href=#821 id=821 data-nosnippet>821</a>        <span class="kw">where
-<a href=#822 id=822 data-nosnippet>822</a>            </span><span class="self">Self</span>: Sized,
-<a href=#823 id=823 data-nosnippet>823</a>        {
-<a href=#824 id=824 data-nosnippet>824</a>            <span class="self">self
-<a href=#825 id=825 data-nosnippet>825</a>        </span>}
-<a href=#826 id=826 data-nosnippet>826</a>    };
-<a href=#827 id=827 data-nosnippet>827</a>}
-<a href=#828 id=828 data-nosnippet>828</a><span class="kw">use </span>fuse_self;
+<a href=#640 id=640 data-nosnippet>640</a>    <span class="doccomment">/// [`Self::cross_singleton`] with external state.
+<a href=#641 id=641 data-nosnippet>641</a>    </span><span class="kw">fn </span>cross_singleton_state&lt;SinglePull&gt;(
+<a href=#642 id=642 data-nosnippet>642</a>        <span class="self">self</span>,
+<a href=#643 id=643 data-nosnippet>643</a>        singleton_pull: SinglePull,
+<a href=#644 id=644 data-nosnippet>644</a>        singleton_state: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;SinglePull::Item&gt;,
+<a href=#645 id=645 data-nosnippet>645</a>    ) -&gt; CrossSingleton&lt;<span class="self">Self</span>, SinglePull, <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;SinglePull::Item&gt;&gt;
+<a href=#646 id=646 data-nosnippet>646</a>    <span class="kw">where
+<a href=#647 id=647 data-nosnippet>647</a>        </span><span class="self">Self</span>: Sized,
+<a href=#648 id=648 data-nosnippet>648</a>        SinglePull: Pull,
+<a href=#649 id=649 data-nosnippet>649</a>        SinglePull::Item: Clone,
+<a href=#650 id=650 data-nosnippet>650</a>    {
+<a href=#651 id=651 data-nosnippet>651</a>        CrossSingleton::new(<span class="self">self</span>, singleton_pull, singleton_state)
+<a href=#652 id=652 data-nosnippet>652</a>    }
+<a href=#653 id=653 data-nosnippet>653</a>
+<a href=#654 id=654 data-nosnippet>654</a>    <span class="doccomment">/// Performs a symmetric hash join with another pull.
+<a href=#655 id=655 data-nosnippet>655</a>    ///
+<a href=#656 id=656 data-nosnippet>656</a>    /// Joins items from this pull with items from `rhs` based on a common key.
+<a href=#657 id=657 data-nosnippet>657</a>    /// Both pulls must yield `(Key, Value)` tuples. The result is a pull of
+<a href=#658 id=658 data-nosnippet>658</a>    /// `(Key, (V1, V2))` tuples for each matching pair.
+<a href=#659 id=659 data-nosnippet>659</a>    ///
+<a href=#660 id=660 data-nosnippet>660</a>    /// The `lhs_state` and `rhs_state` parameters store the join state and must
+<a href=#661 id=661 data-nosnippet>661</a>    /// implement [`HalfJoinState`].
+<a href=#662 id=662 data-nosnippet>662</a>    </span><span class="attr">#[cfg(feature = <span class="string">"std"</span>)]
+<a href=#663 id=663 data-nosnippet>663</a>    #[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"std"</span>)))]
+<a href=#664 id=664 data-nosnippet>664</a>    </span><span class="kw">fn </span>symmetric_hash_join&lt;Key, V1, Rhs, V2, LhsState, RhsState&gt;(
+<a href=#665 id=665 data-nosnippet>665</a>        <span class="self">self</span>,
+<a href=#666 id=666 data-nosnippet>666</a>        rhs: Rhs,
+<a href=#667 id=667 data-nosnippet>667</a>        lhs_state: LhsState,
+<a href=#668 id=668 data-nosnippet>668</a>        rhs_state: RhsState,
+<a href=#669 id=669 data-nosnippet>669</a>    ) -&gt; SymmetricHashJoin&lt;<span class="self">Self</span>, Rhs, LhsState, RhsState, LhsState, RhsState&gt;
+<a href=#670 id=670 data-nosnippet>670</a>    <span class="kw">where
+<a href=#671 id=671 data-nosnippet>671</a>        </span><span class="self">Self</span>: Sized + FusedPull&lt;Item = (Key, V1), Meta = ()&gt;,
+<a href=#672 id=672 data-nosnippet>672</a>        Key: Eq + std::hash::Hash + Clone,
+<a href=#673 id=673 data-nosnippet>673</a>        V1: Clone,
+<a href=#674 id=674 data-nosnippet>674</a>        V2: Clone,
+<a href=#675 id=675 data-nosnippet>675</a>        Rhs: FusedPull&lt;Item = (Key, V2), Meta = ()&gt;,
+<a href=#676 id=676 data-nosnippet>676</a>        LhsState: HalfJoinState&lt;Key, V1, V2&gt;,
+<a href=#677 id=677 data-nosnippet>677</a>        RhsState: HalfJoinState&lt;Key, V2, V1&gt;,
+<a href=#678 id=678 data-nosnippet>678</a>    {
+<a href=#679 id=679 data-nosnippet>679</a>        SymmetricHashJoin::new(<span class="self">self</span>, rhs, lhs_state, rhs_state)
+<a href=#680 id=680 data-nosnippet>680</a>    }
+<a href=#681 id=681 data-nosnippet>681</a>
+<a href=#682 id=682 data-nosnippet>682</a>    <span class="doccomment">/// [`Self::symmetric_hash_join`] with external state.
+<a href=#683 id=683 data-nosnippet>683</a>    </span><span class="attr">#[cfg(feature = <span class="string">"std"</span>)]
+<a href=#684 id=684 data-nosnippet>684</a>    #[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"std"</span>)))]
+<a href=#685 id=685 data-nosnippet>685</a>    </span><span class="kw">fn </span>symmetric_hash_join_state&lt;<span class="lifetime">'a</span>, Key, V1, Rhs, V2, LhsState, RhsState&gt;(
+<a href=#686 id=686 data-nosnippet>686</a>        <span class="self">self</span>,
+<a href=#687 id=687 data-nosnippet>687</a>        rhs: Rhs,
+<a href=#688 id=688 data-nosnippet>688</a>        lhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>LhsState,
+<a href=#689 id=689 data-nosnippet>689</a>        rhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>RhsState,
+<a href=#690 id=690 data-nosnippet>690</a>    ) -&gt; SymmetricHashJoin&lt;<span class="self">Self</span>, Rhs, <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>LhsState, <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>RhsState, LhsState, RhsState&gt;
+<a href=#691 id=691 data-nosnippet>691</a>    <span class="kw">where
+<a href=#692 id=692 data-nosnippet>692</a>        </span><span class="self">Self</span>: Sized + FusedPull&lt;Item = (Key, V1), Meta = ()&gt;,
+<a href=#693 id=693 data-nosnippet>693</a>        Key: Eq + std::hash::Hash + Clone,
+<a href=#694 id=694 data-nosnippet>694</a>        V1: Clone,
+<a href=#695 id=695 data-nosnippet>695</a>        V2: Clone,
+<a href=#696 id=696 data-nosnippet>696</a>        Rhs: FusedPull&lt;Item = (Key, V2), Meta = ()&gt;,
+<a href=#697 id=697 data-nosnippet>697</a>        LhsState: HalfJoinState&lt;Key, V1, V2&gt;,
+<a href=#698 id=698 data-nosnippet>698</a>        RhsState: HalfJoinState&lt;Key, V2, V1&gt;,
+<a href=#699 id=699 data-nosnippet>699</a>    {
+<a href=#700 id=700 data-nosnippet>700</a>        SymmetricHashJoin::new(<span class="self">self</span>, rhs, lhs_state, rhs_state)
+<a href=#701 id=701 data-nosnippet>701</a>    }
+<a href=#702 id=702 data-nosnippet>702</a>}
+<a href=#703 id=703 data-nosnippet>703</a>
+<a href=#704 id=704 data-nosnippet>704</a><span class="kw">impl</span>&lt;P&gt; Pull <span class="kw">for </span><span class="kw-2">&amp;mut </span>P
+<a href=#705 id=705 data-nosnippet>705</a><span class="kw">where
+<a href=#706 id=706 data-nosnippet>706</a>    </span>P: Pull + Unpin + <span class="question-mark">?</span>Sized,
+<a href=#707 id=707 data-nosnippet>707</a>{
+<a href=#708 id=708 data-nosnippet>708</a>    <span class="kw">type </span>Ctx&lt;<span class="lifetime">'ctx</span>&gt; = P::Ctx&lt;<span class="lifetime">'ctx</span>&gt;;
+<a href=#709 id=709 data-nosnippet>709</a>
+<a href=#710 id=710 data-nosnippet>710</a>    <span class="kw">type </span>Item = P::Item;
+<a href=#711 id=711 data-nosnippet>711</a>    <span class="kw">type </span>Meta = P::Meta;
+<a href=#712 id=712 data-nosnippet>712</a>    <span class="kw">type </span>CanPend = P::CanPend;
+<a href=#713 id=713 data-nosnippet>713</a>    <span class="kw">type </span>CanEnd = P::CanEnd;
+<a href=#714 id=714 data-nosnippet>714</a>
+<a href=#715 id=715 data-nosnippet>715</a>    <span class="kw">fn </span>pull(
+<a href=#716 id=716 data-nosnippet>716</a>        <span class="kw-2">mut </span><span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
+<a href=#717 id=717 data-nosnippet>717</a>        ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#718 id=718 data-nosnippet>718</a>    ) -&gt; PullStep&lt;<span class="self">Self</span>::Item, <span class="self">Self</span>::Meta, <span class="self">Self</span>::CanPend, <span class="self">Self</span>::CanEnd&gt; {
+<a href=#719 id=719 data-nosnippet>719</a>        Pin::new(<span class="kw-2">&amp;mut **</span><span class="self">self</span>).pull(ctx)
+<a href=#720 id=720 data-nosnippet>720</a>    }
+<a href=#721 id=721 data-nosnippet>721</a>
+<a href=#722 id=722 data-nosnippet>722</a>    <span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+<a href=#723 id=723 data-nosnippet>723</a>        (<span class="kw-2">**</span><span class="self">self</span>).size_hint()
+<a href=#724 id=724 data-nosnippet>724</a>    }
+<a href=#725 id=725 data-nosnippet>725</a>}
+<a href=#726 id=726 data-nosnippet>726</a>
+<a href=#727 id=727 data-nosnippet>727</a><span class="doccomment">/// A marker trait for pulls that are "fused".
+<a href=#728 id=728 data-nosnippet>728</a>///
+<a href=#729 id=729 data-nosnippet>729</a>/// A fused pull guarantees that once it returns [`PullStep::Ended`], all subsequent
+<a href=#730 id=730 data-nosnippet>730</a>/// calls to [`Pull::pull`] will also return [`PullStep::Ended`]. This property allows
+<a href=#731 id=731 data-nosnippet>731</a>/// downstream operators like [`Pull::chain`] to avoid tracking whether
+<a href=#732 id=732 data-nosnippet>732</a>/// the upstream has ended.
+<a href=#733 id=733 data-nosnippet>733</a>///
+<a href=#734 id=734 data-nosnippet>734</a>/// Implementors should ensure this invariant is upheld. The [`Pull::fuse`]
+<a href=#735 id=735 data-nosnippet>735</a>/// adapter can be used to make any pull fused.
+<a href=#736 id=736 data-nosnippet>736</a></span><span class="kw">pub trait </span>FusedPull: Pull {}
+<a href=#737 id=737 data-nosnippet>737</a>
+<a href=#738 id=738 data-nosnippet>738</a><span class="kw">impl</span>&lt;P&gt; FusedPull <span class="kw">for </span><span class="kw-2">&amp;mut </span>P <span class="kw">where </span>P: FusedPull + Unpin + <span class="question-mark">?</span>Sized {}
+<a href=#739 id=739 data-nosnippet>739</a>
+<a href=#740 id=740 data-nosnippet>740</a><span class="doccomment">/// Creates a pull from an iterator.
+<a href=#741 id=741 data-nosnippet>741</a>///
+<a href=#742 id=742 data-nosnippet>742</a>/// This is the primary way to create a pull from synchronous data.
+<a href=#743 id=743 data-nosnippet>743</a>/// The resulting pull will never pend and will end when the iterator is exhausted.
+<a href=#744 id=744 data-nosnippet>744</a></span><span class="kw">pub fn </span>iter&lt;I: IntoIterator&gt;(iter: I) -&gt; Iter&lt;I::IntoIter&gt; {
+<a href=#745 id=745 data-nosnippet>745</a>    Iter::new(iter.into_iter())
+<a href=#746 id=746 data-nosnippet>746</a>}
+<a href=#747 id=747 data-nosnippet>747</a>
+<a href=#748 id=748 data-nosnippet>748</a><span class="doccomment">/// Creates a pull from a `futures::Stream`.
+<a href=#749 id=749 data-nosnippet>749</a>///
+<a href=#750 id=750 data-nosnippet>750</a>/// The resulting pull requires `&amp;mut Context&lt;'_&gt;` to be polled and can both
+<a href=#751 id=751 data-nosnippet>751</a>/// pend and end.
+<a href=#752 id=752 data-nosnippet>752</a></span><span class="kw">pub const fn </span>stream&lt;S: futures_core::stream::Stream&gt;(stream: S) -&gt; Stream&lt;S&gt; {
+<a href=#753 id=753 data-nosnippet>753</a>    Stream::new(stream)
+<a href=#754 id=754 data-nosnippet>754</a>}
+<a href=#755 id=755 data-nosnippet>755</a>
+<a href=#756 id=756 data-nosnippet>756</a><span class="doccomment">/// Creates a [`StreamCompat`] adapter that wraps a [`Pull`] and implements [`futures_core::stream::Stream`].
+<a href=#757 id=757 data-nosnippet>757</a></span><span class="kw">pub const fn </span>stream_compat&lt;Pul: Pull&gt;(pull: Pul) -&gt; StreamCompat&lt;Pul&gt; {
+<a href=#758 id=758 data-nosnippet>758</a>    StreamCompat::new(pull)
+<a href=#759 id=759 data-nosnippet>759</a>}
+<a href=#760 id=760 data-nosnippet>760</a>
+<a href=#761 id=761 data-nosnippet>761</a><span class="doccomment">/// Creates a pull from a `futures::Stream` with a custom waker.
+<a href=#762 id=762 data-nosnippet>762</a>///
+<a href=#763 id=763 data-nosnippet>763</a>/// This variant uses a provided waker function instead of requiring a context.
+<a href=#764 id=764 data-nosnippet>764</a>/// When the stream returns `Pending`, this pull treats it as ended (non-blocking).
+<a href=#765 id=765 data-nosnippet>765</a></span><span class="kw">pub const fn </span>stream_ready&lt;S&gt;(stream: S, waker: Waker) -&gt; StreamReady&lt;S&gt;
+<a href=#766 id=766 data-nosnippet>766</a><span class="kw">where
+<a href=#767 id=767 data-nosnippet>767</a>    </span>S: futures_core::stream::Stream,
+<a href=#768 id=768 data-nosnippet>768</a>{
+<a href=#769 id=769 data-nosnippet>769</a>    StreamReady::new(stream, waker)
+<a href=#770 id=770 data-nosnippet>770</a>}
+<a href=#771 id=771 data-nosnippet>771</a>
+<a href=#772 id=772 data-nosnippet>772</a><span class="doccomment">/// Creates a synchronous pull from a closure.
+<a href=#773 id=773 data-nosnippet>773</a>///
+<a href=#774 id=774 data-nosnippet>774</a>/// The closure is called each time the pull is polled and should return a `PullStep`.
+<a href=#775 id=775 data-nosnippet>775</a></span><span class="kw">pub fn </span>from_fn&lt;F, Item, Meta, CanEnd&gt;(func: F) -&gt; FromFn&lt;F, Item, Meta, CanEnd&gt;
+<a href=#776 id=776 data-nosnippet>776</a><span class="kw">where
+<a href=#777 id=777 data-nosnippet>777</a>    </span>F: FnMut() -&gt; PullStep&lt;Item, Meta, No, CanEnd&gt;,
+<a href=#778 id=778 data-nosnippet>778</a>    Meta: Copy,
+<a href=#779 id=779 data-nosnippet>779</a>    CanEnd: Toggle,
+<a href=#780 id=780 data-nosnippet>780</a>{
+<a href=#781 id=781 data-nosnippet>781</a>    FromFn::new(func)
+<a href=#782 id=782 data-nosnippet>782</a>}
+<a href=#783 id=783 data-nosnippet>783</a>
+<a href=#784 id=784 data-nosnippet>784</a><span class="doccomment">/// Creates an asynchronous or synchronous pull from a closure.
+<a href=#785 id=785 data-nosnippet>785</a>///
+<a href=#786 id=786 data-nosnippet>786</a>/// The closure is called each time the pull is polled and should return a `PullStep`.
+<a href=#787 id=787 data-nosnippet>787</a></span><span class="kw">pub fn </span>poll_fn&lt;F, Item, Meta, CanPend, CanEnd&gt;(func: F) -&gt; PollFn&lt;F, Item, Meta, CanPend, CanEnd&gt;
+<a href=#788 id=788 data-nosnippet>788</a><span class="kw">where
+<a href=#789 id=789 data-nosnippet>789</a>    </span>F: FnMut(<span class="kw-2">&amp;mut </span>core::task::Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; PullStep&lt;Item, Meta, CanPend, CanEnd&gt;,
+<a href=#790 id=790 data-nosnippet>790</a>    Meta: Copy,
+<a href=#791 id=791 data-nosnippet>791</a>    CanPend: Toggle,
+<a href=#792 id=792 data-nosnippet>792</a>    CanEnd: Toggle,
+<a href=#793 id=793 data-nosnippet>793</a>{
+<a href=#794 id=794 data-nosnippet>794</a>    PollFn::new(func)
+<a href=#795 id=795 data-nosnippet>795</a>}
+<a href=#796 id=796 data-nosnippet>796</a>
+<a href=#797 id=797 data-nosnippet>797</a><span class="doccomment">/// Creates an empty pull that immediately ends.
+<a href=#798 id=798 data-nosnippet>798</a></span><span class="kw">pub fn </span>empty&lt;Item&gt;() -&gt; Empty&lt;Item&gt; {
+<a href=#799 id=799 data-nosnippet>799</a>    Empty::default()
+<a href=#800 id=800 data-nosnippet>800</a>}
+<a href=#801 id=801 data-nosnippet>801</a>
+<a href=#802 id=802 data-nosnippet>802</a><span class="doccomment">/// Creates a pull that yields a single item.
+<a href=#803 id=803 data-nosnippet>803</a></span><span class="kw">pub const fn </span>once&lt;Item&gt;(item: Item) -&gt; Once&lt;Item&gt; {
+<a href=#804 id=804 data-nosnippet>804</a>    Once::new(item)
+<a href=#805 id=805 data-nosnippet>805</a>}
+<a href=#806 id=806 data-nosnippet>806</a>
+<a href=#807 id=807 data-nosnippet>807</a><span class="doccomment">/// Creates a pull that yields clones of the given item forever.
+<a href=#808 id=808 data-nosnippet>808</a></span><span class="kw">pub const fn </span>repeat&lt;Item&gt;(item: Item) -&gt; Repeat&lt;Item&gt;
+<a href=#809 id=809 data-nosnippet>809</a><span class="kw">where
+<a href=#810 id=810 data-nosnippet>810</a>    </span>Item: Clone,
+<a href=#811 id=811 data-nosnippet>811</a>{
+<a href=#812 id=812 data-nosnippet>812</a>    Repeat::new(item)
+<a href=#813 id=813 data-nosnippet>813</a>}
+<a href=#814 id=814 data-nosnippet>814</a>
+<a href=#815 id=815 data-nosnippet>815</a><span class="doccomment">/// Creates a pull that is always pending and never yields items or ends.
+<a href=#816 id=816 data-nosnippet>816</a></span><span class="kw">pub const fn </span>pending&lt;Item&gt;() -&gt; Pending&lt;Item&gt; {
+<a href=#817 id=817 data-nosnippet>817</a>    Pending::new()
+<a href=#818 id=818 data-nosnippet>818</a>}
+<a href=#819 id=819 data-nosnippet>819</a>
+<a href=#820 id=820 data-nosnippet>820</a><span class="doccomment">/// A macro to override [`Pull::fuse`] for pulls that are already fused.
+<a href=#821 id=821 data-nosnippet>821</a>///
+<a href=#822 id=822 data-nosnippet>822</a>/// This macro should be used in the `impl` block for a pull type that is already fused.
+<a href=#823 id=823 data-nosnippet>823</a>/// It provides a default implementation of `fuse` that simply returns `self`.
+<a href=#824 id=824 data-nosnippet>824</a></span><span class="macro">macro_rules!</span> fuse_self {
+<a href=#825 id=825 data-nosnippet>825</a>    () =&gt; {
+<a href=#826 id=826 data-nosnippet>826</a>        <span class="kw">fn </span>fuse(
+<a href=#827 id=827 data-nosnippet>827</a>            <span class="self">self</span>,
+<a href=#828 id=828 data-nosnippet>828</a>        ) -&gt; <span class="kw">impl for</span>&lt;<span class="lifetime">'ctx</span>&gt; FusedPull&lt;
+<a href=#829 id=829 data-nosnippet>829</a>            Ctx&lt;<span class="lifetime">'ctx</span>&gt; = <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'ctx</span>&gt;,
+<a href=#830 id=830 data-nosnippet>830</a>            Item = <span class="self">Self</span>::Item,
+<a href=#831 id=831 data-nosnippet>831</a>            Meta = <span class="self">Self</span>::Meta,
+<a href=#832 id=832 data-nosnippet>832</a>            CanPend = <span class="self">Self</span>::CanPend,
+<a href=#833 id=833 data-nosnippet>833</a>            CanEnd = <span class="self">Self</span>::CanEnd,
+<a href=#834 id=834 data-nosnippet>834</a>        &gt;
+<a href=#835 id=835 data-nosnippet>835</a>        <span class="kw">where
+<a href=#836 id=836 data-nosnippet>836</a>            </span><span class="self">Self</span>: Sized,
+<a href=#837 id=837 data-nosnippet>837</a>        {
+<a href=#838 id=838 data-nosnippet>838</a>            <span class="self">self
+<a href=#839 id=839 data-nosnippet>839</a>        </span>}
+<a href=#840 id=840 data-nosnippet>840</a>    };
+<a href=#841 id=841 data-nosnippet>841</a>}
+<a href=#842 id=842 data-nosnippet>842</a><span class="kw">use </span>fuse_self;
 </code></pre></div></section></main></body></html>
