@@ -529,6 +529,37 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
     }
 }
 
+/// Options controlling the Rust source emitted by
+/// [`DeployFlow::generate_embedded_with_options`](super::deploy::DeployFlow::generate_embedded_with_options).
+///
+/// This is deliberately *not* the full set of DFIR codegen knobs ([`AsCodeOptions`]). Most of
+/// those are decided by Hydro on the user's behalf: type guards are excluded because Hydro has
+/// already type-checked the dataflow and injects its own type hints, the serialized meta graph is
+/// excluded because nothing consumes it in embedded mode, and runtime metrics tracking is driven by
+/// [sidecars](crate::telemetry::Sidecar) rather than a raw flag. Only the choices that genuinely
+/// belong to the embedding developer are exposed here, which also keeps the embedded API stable
+/// as the underlying DFIR options evolve.
+#[derive(Clone, Debug, Default)]
+#[non_exhaustive]
+pub struct EmbeddedCodegenOptions {
+    /// Emit a named wrapper function around every DFIR operator so that each operator gets its own
+    /// stack frame in profiles/flamegraphs.
+    ///
+    /// Off by default: the wrappers are purely for profiler attribution (Hydro already type-checks
+    /// the dataflow), and they make the generated code several times more verbose. Enable this
+    /// when profiling an embedded Hydro program.
+    pub require_flame_attribution: bool,
+}
+
+impl EmbeddedCodegenOptions {
+    /// Returns options with [`Self::require_flame_attribution`] set.
+    pub fn with_flame_attribution() -> Self {
+        Self {
+            require_flame_attribution: true,
+        }
+    }
+}
+
 impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
     /// Generates a `syn::File` containing one function per location in the flow.
     ///
@@ -539,6 +570,9 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
     /// where `fn_name` is the `String` passed to `with_process` / `with_cluster`.
     ///
     /// The returned `Dfir` can be manually executed by the caller.
+    ///
+    /// Uses the default [`EmbeddedCodegenOptions`]; see
+    /// [`Self::generate_embedded_with_options`] to customize them.
     ///
     /// # Arguments
     ///
@@ -560,7 +594,16 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
     /// ```ignore
     /// include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
     /// ```
-    pub fn generate_embedded(mut self, crate_name: &str) -> syn::File {
+    pub fn generate_embedded(self, crate_name: &str) -> syn::File {
+        self.generate_embedded_with_options(crate_name, &EmbeddedCodegenOptions::default())
+    }
+
+    /// Like [`Self::generate_embedded`], but with explicit [`EmbeddedCodegenOptions`].
+    pub fn generate_embedded_with_options(
+        mut self,
+        crate_name: &str,
+        codegen_options: &EmbeddedCodegenOptions,
+    ) -> syn::File {
         let mut env = EmbeddedInstantiateEnv::default();
         let compiled = self.compile_internal(&mut env);
 
@@ -613,15 +656,25 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             let mut diagnostics = Diagnostics::new();
             // `as_code_options` is sparse: it only has entries for locations where a sidecar
             // edited the options. Locations without sidecars fall back to the defaults.
-            let default_as_code_options = AsCodeOptions::default();
-            let as_code_options = compiled
+            let mut as_code_options = compiled
                 .as_code_options
                 .get(location_key)
-                .unwrap_or(&default_as_code_options);
+                .cloned()
+                .unwrap_or_default();
+            // Hydro has already type-checked the dataflow and injects its own type hints into
+            // the DFIR it emits, so the DFIR type guards are redundant here. Excluding them keeps
+            // the generated (and user-visible) embedded code compact and reviewable. The
+            // per-operator wrappers can still be requested for flamegraph attribution.
+            as_code_options.exclude_type_guards = true;
+            as_code_options.require_flame_attribution = codegen_options.require_flame_attribution;
+            // The serialized meta graph + diagnostics JSON blobs are only used for runtime
+            // introspection / debugging of hand-written DFIR; embedded Hydro programs have no use
+            // for them, and they are large opaque string literals.
+            as_code_options.exclude_meta = true;
             let dfir_tokens = graph
                 .as_code_with_options(
                     &quote! { __root_dfir_rs },
-                    as_code_options,
+                    &as_code_options,
                     quote!(),
                     &mut diagnostics,
                 )

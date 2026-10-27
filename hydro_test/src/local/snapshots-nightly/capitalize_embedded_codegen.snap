@@ -1,0 +1,98 @@
+---
+source: hydro_test/src/local/capitalize.rs
+expression: "capitalize_codegen(&EmbeddedCodegenOptions::default())"
+---
+use hydro_test::__staged::__deps::*;
+use hydro_lang::prelude::*;
+use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
+pub use hydro_test::__staged;
+pub mod capitalize {
+    use super::*;
+    pub struct EmbeddedInputs<
+        __In0: __root_dfir_rs::futures::Stream<Item = std::string::String> + Unpin,
+    > {
+        pub input: __In0,
+    }
+    pub struct EmbeddedOutputs<__Out0: FnMut(std::string::String)> {
+        pub output: __Out0,
+    }
+}
+#[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
+pub fn capitalize<
+    'a,
+    __In0: __root_dfir_rs::futures::Stream<Item = std::string::String> + Unpin + 'a,
+    __Out0: FnMut(std::string::String) + 'a,
+>(
+    __inputs: capitalize::EmbeddedInputs<__In0>,
+    __outputs: &'a mut capitalize::EmbeddedOutputs<__Out0>,
+) -> hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir<
+    impl hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a,
+> {
+    let input = __inputs.input;
+    let mut output = &mut __outputs.output;
+    {
+        use __root_dfir_rs::{var_expr, var_args};
+        #[allow(unused_mut)]
+        let mut df = __root_dfir_rs::scheduled::context::Context::new();
+        let mut sg_1v1_node_1v1_stream = input;
+        let mut __dfir_bump = __root_dfir_rs::bumpalo::Bump::new();
+        let mut __dfir_work_done = true;
+        #[allow(
+            unused_qualifications,
+            unused_mut,
+            unused_variables,
+            clippy::await_holding_refcell_ref,
+            clippy::deref_addrof
+        )]
+        let __dfir_inline_tick = async move |
+            df: &mut __root_dfir_rs::scheduled::context::Context|
+        {
+            __dfir_bump.reset();
+            {
+                let sgid_1v1 = async {
+                    let context = &df;
+                    let mut sg_1v1_node_1v1_stream_fused = __root_dfir_rs::dfir_pipes::pull::Pull::fuse(
+                        __root_dfir_rs::dfir_pipes::pull::stream_ready(
+                            &mut sg_1v1_node_1v1_stream,
+                            context.waker(),
+                        ),
+                    );
+                    let op_1v1 = &mut sg_1v1_node_1v1_stream_fused;
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "dfir has no explicit `cloned`/`copied` operator"
+                    )]
+                    let op_2v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
+                        op_1v1,
+                        stageleft::runtime_support::fnmut1_type_hint::<
+                            std::string::String,
+                            std::string::String,
+                        >({
+                            use crate::__staged::__deps::*;
+                            use crate::__staged::local::capitalize::*;
+                            crate::__staged::__stageleft_quote_src_local_capitalize_rs_LINE_COL!(
+                                [] [| s | s.to_uppercase()]
+                            )
+                        }),
+                    );
+                    let op_3v1 = __root_dfir_rs::dfir_pipes::push::for_each(&mut output);
+                    __root_dfir_rs::dfir_pipes::pull::Pull::send_push(op_2v1, op_3v1)
+                        .await;
+                    __root_dfir_rs::dfir_pipes::pull::Pull::drain_sync(
+                        &mut sg_1v1_node_1v1_stream_fused,
+                    );
+                };
+                {
+                    sgid_1v1.await;
+                }
+                #[allow(clippy::nonminimal_bool, reason = "codegen")]
+                if false {
+                    df.schedule_subgraph(true);
+                }
+            }
+            df.__end_tick();
+            ::std::mem::take(&mut __dfir_work_done)
+        };
+        __root_dfir_rs::scheduled::context::Dfir::new(__dfir_inline_tick, df, None, None)
+    }
+}

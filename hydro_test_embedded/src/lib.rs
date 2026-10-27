@@ -9,6 +9,19 @@ pub mod embedded {
     include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
 }
 
+/// Same program as [`embedded`], generated with
+/// [`EmbeddedCodegenOptions::with_flame_attribution`](hydro_lang::compile::embedded::EmbeddedCodegenOptions::with_flame_attribution).
+#[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod embedded_flame_attribution {
+    include!(concat!(env!("OUT_DIR"), "/embedded_flame_attribution.rs"));
+}
+
 #[cfg(feature = "test_embedded")]
 #[expect(
     clippy::allow_attributes,
@@ -123,26 +136,43 @@ mod tests {
             .await;
     }
 
+    /// Runs the generated `capitalize` dataflow from the given generated module and checks its
+    /// output. The same Hydro program is generated into several modules with different codegen
+    /// options (see `build.rs`), so this body is shared between them.
+    macro_rules! check_capitalize {
+        ($module:ident) => {{
+            let input = stream::iter(vec![
+                "hello".to_owned(),
+                "world".to_owned(),
+                "hydro".to_owned(),
+            ]);
+            let mut collected = vec![];
+            let mut outputs = crate::$module::capitalize::EmbeddedOutputs {
+                output: |s: String| collected.push(s),
+            };
+            let mut flow = crate::$module::capitalize(
+                crate::$module::capitalize::EmbeddedInputs { input },
+                &mut outputs,
+            );
+            run_flow(&mut flow).await;
+            drop(flow);
+            assert_eq!(collected, vec!["HELLO", "WORLD", "HYDRO"]);
+        }};
+    }
+
     // --- capitalize (no networking) ---
     // Order: (inputs, outputs)
     #[tokio::test]
     async fn test_embedded_capitalize() {
-        let input = stream::iter(vec![
-            "hello".to_owned(),
-            "world".to_owned(),
-            "hydro".to_owned(),
-        ]);
-        let mut collected = vec![];
-        let mut outputs = crate::embedded::capitalize::EmbeddedOutputs {
-            output: |s: String| collected.push(s),
-        };
-        let mut flow = crate::embedded::capitalize(
-            crate::embedded::capitalize::EmbeddedInputs { input },
-            &mut outputs,
-        );
-        run_flow(&mut flow).await;
-        drop(flow);
-        assert_eq!(collected, vec!["HELLO", "WORLD", "HYDRO"]);
+        check_capitalize!(embedded);
+    }
+
+    // --- capitalize, generated with flame attribution wrappers ---
+    // Same program as above, but exercises the per-operator wrapper codegen path
+    // (`require_flame_attribution`), which the default `embedded` module does not emit.
+    #[tokio::test]
+    async fn test_embedded_capitalize_flame_attribution() {
+        check_capitalize!(embedded_flame_attribution);
     }
 
     // --- capitalize_unordered (an unordered output, no networking) ---

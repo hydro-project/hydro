@@ -12,6 +12,8 @@ fn generate_embedded() {
     let out_dir = std::env::var("OUT_DIR").unwrap();
 
     // --- capitalize (local, no networking) ---
+    // Uses `generate_embedded`, i.e. the default `EmbeddedCodegenOptions` (no per-operator
+    // flame attribution wrappers), which is what most users will call.
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
         let process = flow.process::<()>();
@@ -23,6 +25,30 @@ fn generate_embedded() {
 
         std::fs::write(
             format!("{out_dir}/embedded.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- capitalize, with flame attribution wrappers ---
+    // Same program, but with `EmbeddedCodegenOptions::with_flame_attribution()`, so that the
+    // per-operator wrapper codegen path is also compiled and run.
+    {
+        use hydro_lang::compile::embedded::EmbeddedCodegenOptions;
+
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<()>();
+        hydro_test::local::capitalize::capitalize(process.embedded_input("input"));
+
+        let code = flow
+            .with_process(&process, "capitalize")
+            .generate_embedded_with_options(
+                "hydro_test",
+                &EmbeddedCodegenOptions::with_flame_attribution(),
+            );
+
+        std::fs::write(
+            format!("{out_dir}/embedded_flame_attribution.rs"),
             prettyplease::unparse(&code),
         )
         .unwrap();

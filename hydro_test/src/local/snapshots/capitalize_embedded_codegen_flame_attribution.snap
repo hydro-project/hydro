@@ -1,0 +1,292 @@
+---
+source: hydro_test/src/local/capitalize.rs
+expression: "capitalize_codegen(&EmbeddedCodegenOptions::with_flame_attribution())"
+---
+use hydro_test::__staged::__deps::*;
+use hydro_lang::prelude::*;
+use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
+pub use hydro_test::__staged;
+pub mod capitalize {
+    use super::*;
+    pub struct EmbeddedInputs<
+        __In0: __root_dfir_rs::futures::Stream<Item = std::string::String> + Unpin,
+    > {
+        pub input: __In0,
+    }
+    pub struct EmbeddedOutputs<__Out0: FnMut(std::string::String)> {
+        pub output: __Out0,
+    }
+}
+#[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
+pub fn capitalize<
+    'a,
+    __In0: __root_dfir_rs::futures::Stream<Item = std::string::String> + Unpin + 'a,
+    __Out0: FnMut(std::string::String) + 'a,
+>(
+    __inputs: capitalize::EmbeddedInputs<__In0>,
+    __outputs: &'a mut capitalize::EmbeddedOutputs<__Out0>,
+) -> hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir<
+    impl hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a,
+> {
+    let input = __inputs.input;
+    let mut output = &mut __outputs.output;
+    {
+        use __root_dfir_rs::{var_expr, var_args};
+        #[allow(unused_mut)]
+        let mut df = __root_dfir_rs::scheduled::context::Context::new();
+        let mut sg_1v1_node_1v1_stream = input;
+        let mut __dfir_bump = __root_dfir_rs::bumpalo::Bump::new();
+        let mut __dfir_work_done = true;
+        #[allow(
+            unused_qualifications,
+            unused_mut,
+            unused_variables,
+            clippy::await_holding_refcell_ref,
+            clippy::deref_addrof
+        )]
+        let __dfir_inline_tick = async move |
+            df: &mut __root_dfir_rs::scheduled::context::Context|
+        {
+            __dfir_bump.reset();
+            {
+                let sgid_1v1 = async {
+                    let context = &df;
+                    let mut sg_1v1_node_1v1_stream_fused = __root_dfir_rs::dfir_pipes::pull::Pull::fuse(
+                        __root_dfir_rs::dfir_pipes::pull::stream_ready(
+                            &mut sg_1v1_node_1v1_stream,
+                            context.waker(),
+                        ),
+                    );
+                    let op_1v1 = &mut sg_1v1_node_1v1_stream_fused;
+                    let op_1v1 = {
+                        #[allow(non_snake_case)]
+                        #[inline(always)]
+                        pub fn op_1v1__source_stream__0<Item, Input>(
+                            input: Input,
+                        ) -> impl __root_dfir_rs::dfir_pipes::pull::Pull<
+                            Item = Item,
+                            Meta = (),
+                            CanPend = Input::CanPend,
+                            CanEnd = Input::CanEnd,
+                        >
+                        where
+                            Input: __root_dfir_rs::dfir_pipes::pull::Pull<
+                                Item = Item,
+                                Meta = (),
+                            >,
+                        {
+                            __root_dfir_rs::pin_project_lite::pin_project! {
+                                #[repr(transparent)] struct Pull < Item, Input :
+                                __root_dfir_rs::dfir_pipes::pull::Pull < Item = Item >> {
+                                #[pin] inner : Input }
+                            }
+                            impl<Item, Input> __root_dfir_rs::dfir_pipes::pull::Pull
+                            for Pull<Item, Input>
+                            where
+                                Input: __root_dfir_rs::dfir_pipes::pull::Pull<Item = Item>,
+                            {
+                                type Ctx<'ctx> = Input::Ctx<'ctx>;
+                                type Item = Item;
+                                type Meta = Input::Meta;
+                                type CanPend = Input::CanPend;
+                                type CanEnd = Input::CanEnd;
+                                #[inline(always)]
+                                fn pull(
+                                    self: ::std::pin::Pin<&mut Self>,
+                                    ctx: &mut Self::Ctx<'_>,
+                                ) -> __root_dfir_rs::dfir_pipes::pull::PullStep<
+                                    Self::Item,
+                                    Self::Meta,
+                                    Self::CanPend,
+                                    Self::CanEnd,
+                                > {
+                                    __root_dfir_rs::dfir_pipes::pull::Pull::pull(
+                                        self.project().inner,
+                                        ctx,
+                                    )
+                                }
+                                #[inline(always)]
+                                fn size_hint(&self) -> (usize, Option<usize>) {
+                                    __root_dfir_rs::dfir_pipes::pull::Pull::size_hint(
+                                        &self.inner,
+                                    )
+                                }
+                            }
+                            Pull { inner: input }
+                        }
+                        op_1v1__source_stream__0::<_, _>(op_1v1)
+                    };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "dfir has no explicit `cloned`/`copied` operator"
+                    )]
+                    let op_2v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
+                        op_1v1,
+                        stageleft::runtime_support::fnmut1_type_hint::<
+                            std::string::String,
+                            std::string::String,
+                        >({
+                            use crate::__staged::__deps::*;
+                            use crate::__staged::local::capitalize::*;
+                            crate::__staged::__stageleft_quote_src_local_capitalize_rs_LINE_COL!(
+                                [] [| s | s.to_uppercase()]
+                            )
+                        }),
+                    );
+                    let op_2v1 = {
+                        #[allow(non_snake_case)]
+                        #[inline(always)]
+                        pub fn op_2v1__map__1<Item, Input>(
+                            input: Input,
+                        ) -> impl __root_dfir_rs::dfir_pipes::pull::Pull<
+                            Item = Item,
+                            Meta = (),
+                            CanPend = Input::CanPend,
+                            CanEnd = Input::CanEnd,
+                        >
+                        where
+                            Input: __root_dfir_rs::dfir_pipes::pull::Pull<
+                                Item = Item,
+                                Meta = (),
+                            >,
+                        {
+                            __root_dfir_rs::pin_project_lite::pin_project! {
+                                #[repr(transparent)] struct Pull < Item, Input :
+                                __root_dfir_rs::dfir_pipes::pull::Pull < Item = Item >> {
+                                #[pin] inner : Input }
+                            }
+                            impl<Item, Input> __root_dfir_rs::dfir_pipes::pull::Pull
+                            for Pull<Item, Input>
+                            where
+                                Input: __root_dfir_rs::dfir_pipes::pull::Pull<Item = Item>,
+                            {
+                                type Ctx<'ctx> = Input::Ctx<'ctx>;
+                                type Item = Item;
+                                type Meta = Input::Meta;
+                                type CanPend = Input::CanPend;
+                                type CanEnd = Input::CanEnd;
+                                #[inline(always)]
+                                fn pull(
+                                    self: ::std::pin::Pin<&mut Self>,
+                                    ctx: &mut Self::Ctx<'_>,
+                                ) -> __root_dfir_rs::dfir_pipes::pull::PullStep<
+                                    Self::Item,
+                                    Self::Meta,
+                                    Self::CanPend,
+                                    Self::CanEnd,
+                                > {
+                                    __root_dfir_rs::dfir_pipes::pull::Pull::pull(
+                                        self.project().inner,
+                                        ctx,
+                                    )
+                                }
+                                #[inline(always)]
+                                fn size_hint(&self) -> (usize, Option<usize>) {
+                                    __root_dfir_rs::dfir_pipes::pull::Pull::size_hint(
+                                        &self.inner,
+                                    )
+                                }
+                            }
+                            Pull { inner: input }
+                        }
+                        op_2v1__map__1::<_, _>(op_2v1)
+                    };
+                    let op_3v1 = __root_dfir_rs::dfir_pipes::push::for_each(&mut output);
+                    let op_3v1 = {
+                        #[allow(non_snake_case)]
+                        #[inline(always)]
+                        pub fn op_3v1__for_each__2<Item, Psh>(
+                            psh: Psh,
+                        ) -> impl __root_dfir_rs::dfir_pipes::push::Push<
+                            Item,
+                            (),
+                            CanPend = Psh::CanPend,
+                        >
+                        where
+                            Psh: __root_dfir_rs::dfir_pipes::push::Push<Item, ()>,
+                        {
+                            __root_dfir_rs::pin_project_lite::pin_project! {
+                                #[repr(transparent)] struct PushGuard < Psh > { #[pin] inner
+                                : Psh, }
+                            }
+                            impl<
+                                Item,
+                                Psh,
+                            > __root_dfir_rs::dfir_pipes::push::Push<Item, ()>
+                            for PushGuard<Psh>
+                            where
+                                Psh: __root_dfir_rs::dfir_pipes::push::Push<Item, ()>,
+                            {
+                                type Ctx<'ctx> = Psh::Ctx<'ctx>;
+                                type CanPend = Psh::CanPend;
+                                #[inline(always)]
+                                fn poll_ready(
+                                    self: ::std::pin::Pin<&mut Self>,
+                                    ctx: &mut Self::Ctx<'_>,
+                                ) -> __root_dfir_rs::dfir_pipes::push::PushStep<
+                                    Self::CanPend,
+                                > {
+                                    __root_dfir_rs::dfir_pipes::push::Push::poll_ready(
+                                        self.project().inner,
+                                        ctx,
+                                    )
+                                }
+                                #[inline(always)]
+                                fn start_send(
+                                    self: ::std::pin::Pin<&mut Self>,
+                                    item: Item,
+                                    meta: (),
+                                ) {
+                                    __root_dfir_rs::dfir_pipes::push::Push::start_send(
+                                        self.project().inner,
+                                        item,
+                                        meta,
+                                    )
+                                }
+                                #[inline(always)]
+                                fn poll_finalize(
+                                    self: ::std::pin::Pin<&mut Self>,
+                                    ctx: &mut Self::Ctx<'_>,
+                                ) -> __root_dfir_rs::dfir_pipes::push::PushStep<
+                                    Self::CanPend,
+                                > {
+                                    __root_dfir_rs::dfir_pipes::push::Push::poll_finalize(
+                                        self.project().inner,
+                                        ctx,
+                                    )
+                                }
+                                #[inline(always)]
+                                fn size_hint(
+                                    self: ::std::pin::Pin<&mut Self>,
+                                    hint: (usize, Option<usize>),
+                                ) {
+                                    __root_dfir_rs::dfir_pipes::push::Push::size_hint(
+                                        self.project().inner,
+                                        hint,
+                                    )
+                                }
+                            }
+                            PushGuard { inner: psh }
+                        }
+                        op_3v1__for_each__2(op_3v1)
+                    };
+                    __root_dfir_rs::dfir_pipes::pull::Pull::send_push(op_2v1, op_3v1)
+                        .await;
+                    __root_dfir_rs::dfir_pipes::pull::Pull::drain_sync(
+                        &mut sg_1v1_node_1v1_stream_fused,
+                    );
+                };
+                {
+                    sgid_1v1.await;
+                }
+                #[allow(clippy::nonminimal_bool, reason = "codegen")]
+                if false {
+                    df.schedule_subgraph(true);
+                }
+            }
+            df.__end_tick();
+            ::std::mem::take(&mut __dfir_work_done)
+        };
+        __root_dfir_rs::scheduled::context::Dfir::new(__dfir_inline_tick, df, None, None)
+    }
+}

@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::iter::FusedIterator;
 
 use itertools::Itertools;
-use proc_macro2::{Ident, Literal, Span, TokenStream};
+use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
 use quote::{ToTokens, format_ident, quote, quote_spanned};
 use serde::{Deserialize, Serialize};
 use slotmap::{Key, SecondaryMap, SlotMap, SparseSecondaryMap};
@@ -1738,6 +1738,7 @@ impl DfirGraph {
                                 op_name,
                                 op_inst,
                                 arguments,
+                                options,
                             };
 
                             let write_result =
@@ -1759,26 +1760,52 @@ impl DfirGraph {
                                 }
                             });
 
-                            op_prologue_code.push(syn::parse_quote! {
-                                #[allow(dead_code, non_snake_case, reason = "codegen")]
-                                #[inline(always)]
-                                fn #work_fn<T>(thunk: impl ::std::ops::FnOnce() -> T) -> T {
-                                    thunk()
-                                }
+                            // The `work_fn` / `work_fn_async` thunks exist purely so that work done
+                            // by an operator outside of the pull/push pipeline (e.g. `fold`
+                            // accumulation) is attributed to a named frame in flamegraphs. Only emit
+                            // them if the operator's codegen actually references them, otherwise they
+                            // are dead code which just clutters the output.
+                            let op_outputs = [
+                                &write_prologue,
+                                &write_iterator,
+                                &write_iterator_after,
+                                &write_tick_end,
+                            ];
+                            let uses_ident = |ident: &Ident| {
+                                op_outputs
+                                    .iter()
+                                    .any(|tokens| tokens_contain_ident((*tokens).clone(), ident))
+                            };
 
-                                #[allow(dead_code, non_snake_case, reason = "codegen")]
-                                #[inline(always)]
-                                async fn #work_fn_async<T>(
-                                    thunk: impl ::std::future::Future<Output = T>,
-                                ) -> T {
-                                    thunk.await
-                                }
-                            });
+                            if uses_ident(&work_fn) {
+                                op_prologue_code.push(syn::parse_quote! {
+                                    #[allow(dead_code, non_snake_case, reason = "codegen")]
+                                    #[inline(always)]
+                                    fn #work_fn<T>(thunk: impl ::std::ops::FnOnce() -> T) -> T {
+                                        thunk()
+                                    }
+                                });
+                            }
+                            if uses_ident(&work_fn_async) {
+                                op_prologue_code.push(syn::parse_quote! {
+                                    #[allow(dead_code, non_snake_case, reason = "codegen")]
+                                    #[inline(always)]
+                                    async fn #work_fn_async<T>(
+                                        thunk: impl ::std::future::Future<Output = T>,
+                                    ) -> T {
+                                        thunk.await
+                                    }
+                                });
+                            }
                             op_prologue_code.push(write_prologue);
                             op_tick_end_code.push(write_tick_end);
                             subgraph_op_iter_code.push(write_iterator);
 
-                            if !options.exclude_type_guards {
+                            // The per-operator wrapper serves a dual purpose: it is the type guard,
+                            // and (since the wrapper's `pull`/`push` impls live inside a fn named
+                            // after the operator) it is also what gives streaming operators a named
+                            // frame in flamegraphs.
+                            if !options.exclude_type_guards || options.require_flame_attribution {
                                 let type_guard = if is_pull {
                                     quote_spanned! {op_span=>
                                         let #ident = {
@@ -1933,23 +1960,31 @@ impl DfirGraph {
                             .span()
                             .join(push_ident.span())
                             .unwrap_or_else(|| push_ident.span());
-                        let pivot_fn_ident = Ident::new(
-                            &format!("pivot_run_sg_{:?}", subgraph_id.data()),
-                            pivot_span,
-                        );
                         let root = change_spans(root.clone(), pivot_span);
-                        subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
-                            #[inline(always)]
-                            fn #pivot_fn_ident<Pul, Psh, Item>(pull: Pul, push: Psh)
-                                -> impl ::std::future::Future<Output = ()>
-                            where
-                                Pul: #root::dfir_pipes::pull::Pull<Item = Item>,
-                                Psh: #root::dfir_pipes::push::Push<Item, Pul::Meta>,
-                            {
-                                #root::dfir_pipes::pull::Pull::send_push(pull, push)
-                            }
-                            (#pivot_fn_ident)(#pull_ident, #push_ident).await;
-                        });
+                        if options.exclude_type_guards {
+                            // `send_push` already carries the same `Item`/`Meta` bounds as the
+                            // guard function below, so call it directly.
+                            subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
+                                #root::dfir_pipes::pull::Pull::send_push(#pull_ident, #push_ident).await;
+                            });
+                        } else {
+                            let pivot_fn_ident = Ident::new(
+                                &format!("pivot_run_sg_{:?}", subgraph_id.data()),
+                                pivot_span,
+                            );
+                            subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
+                                #[inline(always)]
+                                fn #pivot_fn_ident<Pul, Psh, Item>(pull: Pul, push: Psh)
+                                    -> impl ::std::future::Future<Output = ()>
+                                where
+                                    Pul: #root::dfir_pipes::pull::Pull<Item = Item>,
+                                    Psh: #root::dfir_pipes::push::Push<Item, Pul::Meta>,
+                                {
+                                    #root::dfir_pipes::pull::Pull::send_push(pull, push)
+                                }
+                                (#pivot_fn_ident)(#pull_ident, #push_ident).await;
+                            });
+                        }
                     }
                 };
 
@@ -2130,7 +2165,10 @@ impl DfirGraph {
         };
 
         // Generate metrics initialization: one entry per handoff and per subgraph.
-        let metrics_init_code = if options.include_metrics_tracking {
+        // Generate the `Context` constructor and, if metrics tracking is enabled, the metrics
+        // initialization (one entry per handoff and per subgraph) plus the per-tick
+        // `__dfir_metrics` binding used by the tracking code.
+        let (context_new_code, tick_metrics_code) = if options.include_metrics_tracking {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _, _)| {
                 let ffi = node_id.data().as_ffi();
                 quote! {
@@ -2149,9 +2187,26 @@ impl DfirGraph {
                     );
                 }
             });
-            handoff_inits.chain(subgraph_inits).collect::<Vec<_>>()
+            let init_code = handoff_inits.chain(subgraph_inits).collect::<Vec<_>>();
+            (
+                quote! {
+                    #root::scheduled::context::Context::new_with_metrics({
+                        let mut dfir_metrics = #root::scheduled::metrics::DfirMetrics::default();
+                        #( #init_code )*
+                        dfir_metrics
+                    })
+                },
+                quote! {
+                    let __dfir_metrics = #df.metrics();
+                },
+            )
         } else {
-            Vec::new()
+            (
+                quote! {
+                    #root::scheduled::context::Context::new()
+                },
+                quote! {},
+            )
         };
 
         // For creating back-buffer handoff vecs.
@@ -2203,21 +2258,8 @@ impl DfirGraph {
 
                 use #root::{var_expr, var_args};
 
-                let __dfir_wake_state = ::std::sync::Arc::new(
-                    #root::scheduled::context::WakeState::default()
-                );
-
-                let __dfir_metrics = {
-                    let mut dfir_metrics = #root::scheduled::metrics::DfirMetrics::default();
-                    #( #metrics_init_code )*
-                    ::std::rc::Rc::new(dfir_metrics)
-                };
-
                 #[allow(unused_mut)]
-                let mut #df = #root::scheduled::context::Context::new(
-                    ::std::clone::Clone::clone(&__dfir_wake_state),
-                    __dfir_metrics,
-                );
+                let mut #df = #context_new_code;
 
                 #( #op_prologue_code )*
 
@@ -2241,7 +2283,7 @@ impl DfirGraph {
                     #bump_ident.reset();
 
                     {
-                        let __dfir_metrics = #df.metrics();
+                        #tick_metrics_code
 
                         #gated_subgraph_code
 
@@ -2726,12 +2768,37 @@ impl DfirGraph {
 }
 
 /// Options for [`DfirGraph::as_code_with_options`].
-#[derive(Default)]
+#[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub struct AsCodeOptions {
-    /// Controls whether type guards are emitted in codegen. Excluding type guards may result in worse
-    /// error messages, and may have little benefit on `--release` builds.
+    /// Controls whether type guards are emitted in codegen.
+    ///
+    /// Type guards are identity wrapper functions emitted around each operator (and in some
+    /// operators' own codegen, e.g. `check_stream` in `source_stream`, or the `pivot_run_sg_*`
+    /// function joining the pull and push halves of a subgraph), which pin down the `Item`/`Meta`
+    /// types flowing between operators so that type errors in user code are reported at the
+    /// offending operator rather than somewhere downstream. They have no runtime effect, but they
+    /// make the generated code significantly more verbose.
+    ///
+    /// Excluding type guards may result in worse error messages for hand-written DFIR. However,
+    /// front-ends which already type-check the dataflow themselves (e.g. Hydro) and inject their
+    /// own type hints can safely exclude them to produce much more compact generated code.
+    ///
+    /// Note that the per-operator type guard wrapper is also what gives streaming operators (e.g.
+    /// `map`, `filter`) a named stack frame in profiles/flamegraphs, since the wrapper struct's
+    /// `pull`/`push` impls live inside a function named after the operator. Set
+    /// [`Self::require_flame_attribution`] to keep those wrappers even when type guards are
+    /// excluded.
     pub exclude_type_guards: bool,
+    /// Requires that every operator gets a named stack frame for profiler/flamegraph attribution,
+    /// even when [`Self::exclude_type_guards`] is set.
+    ///
+    /// Operators which do work outside the pull/push pipeline (e.g. `fold`, `join`) always get
+    /// attribution via their `work_fn` thunks. Streaming operators (e.g. `map`, `filter`) only get
+    /// attribution via the per-operator type guard wrapper, so this option forces that wrapper to
+    /// be emitted when type guards are otherwise excluded. Has no effect when type guards are
+    /// included (the default).
+    pub require_flame_attribution: bool,
     /// Controls whether the runtime meta graph + diagnostics JSON blobs are baked into the generated
     /// `Dfir::new(...)` call.
     pub exclude_meta: bool,
@@ -2780,6 +2847,15 @@ pub enum WriteGraphType {
     Mermaid,
     /// Dot (Graphviz) graphs.
     Dot,
+}
+
+/// Returns `true` if `ident` appears anywhere (at any nesting depth) in `tokens`.
+fn tokens_contain_ident(tokens: TokenStream, ident: &Ident) -> bool {
+    tokens.into_iter().any(|tt| match tt {
+        TokenTree::Ident(i) => i == *ident,
+        TokenTree::Group(group) => tokens_contain_ident(group.stream(), ident),
+        TokenTree::Punct(_) | TokenTree::Literal(_) => false,
+    })
 }
 
 /// [`itertools::Itertools::into_group_map`], but for `BTreeMap`.

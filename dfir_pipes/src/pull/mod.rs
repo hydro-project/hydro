@@ -239,6 +239,20 @@ pub trait Pull {
         self
     }
 
+    /// Synchronously pulls and discards all remaining items until this pull ends.
+    ///
+    /// Only available for pulls which need no context (`Ctx = ()`) and can never pend
+    /// (`CanPend = No`), since otherwise a synchronous loop would need a task context and could
+    /// spin forever on [`PullStep::Pending`]. `CanEnd = Yes` ensures the loop terminates.
+    fn drain_sync(&mut self)
+    where
+        for<'ctx> Self: Pull<Ctx<'ctx> = (), CanPend = No, CanEnd = Yes> + Unpin,
+    {
+        let mut this = Pin::new(self);
+        let ctx = crate::mut_unit();
+        while let PullStep::Ready(..) = this.as_mut().pull(ctx) {}
+    }
+
     /// Takes two pulls and creates a new pull over both in sequence.
     ///
     /// `chain()` will return a new pull which will first iterate over

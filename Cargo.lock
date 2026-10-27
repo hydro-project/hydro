@@ -2782,6 +2782,7 @@ dependencies = [
  "hydro_std",
  "include_mdtests",
  "palette",
+ "prettyplease",
  "rand 0.10.2",
  "regex",
  "serde",

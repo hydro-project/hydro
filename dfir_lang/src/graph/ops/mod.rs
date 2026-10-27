@@ -14,8 +14,8 @@ use syn::punctuated::Punctuated;
 use syn::{Expr, Token, parse_quote_spanned};
 
 use super::{
-    GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics, OperatorInstance,
-    PortIndexValue,
+    AsCodeOptions, GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics,
+    OperatorInstance, PortIndexValue,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::parse::{Operator, PortIndex};
@@ -137,6 +137,11 @@ pub const RANGE_1: &'static dyn RangeTrait<usize> = &(1..=1);
 
 /// Helper to write the `write_iterator` portion of [`OperatorConstraints::write_fn`] output for
 /// unary identity operators.
+///
+/// When no explicit type argument is given and
+/// [`AsCodeOptions::exclude_type_guards`](super::AsCodeOptions::exclude_type_guards) is set, the
+/// identity `check_input`/`check_output` type guard is omitted and the input/output is simply
+/// rebound.
 pub fn identity_write_iterator_fn(
     &WriteContextArgs {
         root,
@@ -145,6 +150,7 @@ pub fn identity_write_iterator_fn(
         inputs,
         outputs,
         is_pull,
+        options,
         op_inst:
             OperatorInstance {
                 generics: OpInstGenerics { type_args, .. },
@@ -153,6 +159,14 @@ pub fn identity_write_iterator_fn(
         ..
     }: &WriteContextArgs<'_>,
 ) -> TokenStream {
+    if type_args.is_empty() && options.exclude_type_guards {
+        // No user-provided type to pin down, so the guard would be a pure (verbose) no-op.
+        let src = if is_pull { &inputs[0] } else { &outputs[0] };
+        return quote_spanned! {op_span=>
+            let #ident = #src;
+        };
+    }
+
     let generic_type = type_args
         .first()
         .map(quote::ToTokens::to_token_stream)
@@ -418,6 +432,13 @@ pub struct WriteContextArgs<'a> {
     /// These arguments include singleton postprocessing codegen, with
     /// [`std::cell::RefCell::borrow_mut`] code pre-generated.
     pub arguments: &'a Punctuated<Expr, Token![,]>,
+
+    /// The codegen options passed to
+    /// [`DfirGraph::as_code_with_options`](super::DfirGraph::as_code_with_options).
+    ///
+    /// Operators may consult these, e.g. to omit their own type-guard helper functions when
+    /// [`AsCodeOptions::exclude_type_guards`] is set.
+    pub options: &'a AsCodeOptions,
 }
 impl WriteContextArgs<'_> {
     /// Generate a (almost certainly) unique identifier with the given suffix.
