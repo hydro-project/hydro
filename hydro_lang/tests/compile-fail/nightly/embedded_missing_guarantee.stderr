@@ -20,6 +20,8 @@ help: the following other types implement trait `EmbeddedRetries`
 note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<T, hydro_lang::prelude::Process<'a, L>, B, O, R>>::send`
   --> src/live_collections/stream/networking.rs
    |
+   | impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>, B, O, R> {
+...
    |     pub fn send<L2, N: NetworkFor<T>>(
    |                        ^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R>>::send`
 
@@ -66,6 +68,8 @@ help: the following other types implement trait `EmbeddedOrdering`
 note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<T, hydro_lang::prelude::Process<'a, L>, B, O, R>>::send`
   --> src/live_collections/stream/networking.rs
    |
+   | impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>, B, O, R> {
+...
    |     pub fn send<L2, N: NetworkFor<T>>(
    |                        ^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R>>::send`
 
@@ -119,6 +123,8 @@ help: the following other types implement trait `EmbeddedFailPolicy`
 note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<T, hydro_lang::prelude::Process<'a, L>, B, O, R>>::send`
   --> src/live_collections/stream/networking.rs
    |
+   | impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>, B, O, R> {
+...
    |     pub fn send<L2, N: NetworkFor<T>>(
    |                        ^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R>>::send`
 
