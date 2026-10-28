@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DfirMetrics","DfirMetricsIntervals","HandoffMetrics","SubgraphMetrics"]};
+window.SIDEBAR_ITEMS = {"struct":["DfirMetrics","DfirMetricsIntervals","HandoffMetrics","SubgraphMetrics"],"trait":["MetricsState"]};
