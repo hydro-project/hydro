@@ -131,9 +131,7 @@ async fn run() {
     // Build and run the dataflow.
     let inputs = embedded::capitalize::EmbeddedInputs { input };
     let mut flow = embedded::capitalize(inputs, &mut outputs);
-    tokio::task::LocalSet::new()
-        .run_until(flow.run_available())
-        .await;
+    flow.run_available().await;
     drop(flow);
 
     assert_eq!(results, vec!["HELLO", "WORLD"]);
