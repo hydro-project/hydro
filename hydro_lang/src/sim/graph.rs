@@ -722,8 +722,8 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased<()>)>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased<()>)>,
             #root::sim::runtime::Hooks,
             #root::sim::runtime::ObservationHooks,
             #root::sim::runtime::InlineHooks,
@@ -802,8 +802,8 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased<()>)>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased<()>)>,
             #root::sim::runtime::Hooks,
             #root::sim::runtime::ObservationHooks,
             #root::sim::runtime::InlineHooks,

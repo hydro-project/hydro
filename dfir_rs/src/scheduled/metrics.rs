@@ -7,8 +7,40 @@ use std::task::{Context, Poll};
 
 use dfir_lang::graph_ids::{GraphNodeId, GraphSubgraphId};
 use pin_project_lite::pin_project;
+use sealed::sealed;
 use slotmap::SecondaryMap;
 use web_time::{Duration, Instant};
+
+/// Typestate marker for whether a [`Context`](super::context::Context) tracks runtime metrics.
+///
+/// This trait is sealed and is implemented for exactly two types:
+///
+/// - [`DfirMetrics`]: metrics are tracked. The context holds a shared [`Rc<DfirMetrics>`] handle
+///   which is updated by the generated code and exposed via
+///   [`Dfir::metrics`](super::context::Dfir::metrics).
+/// - `()`: metrics are not tracked. The handle is the zero-sized `()`, so the context statically
+///   contains no metrics state at all, and the `metrics()` accessors do not exist.
+///
+/// Which one is used is determined at codegen time by
+/// [`AsCodeOptions::include_metrics_tracking`](dfir_lang::graph::AsCodeOptions::include_metrics_tracking),
+/// so there is no runtime check or default-allocated metrics when tracking is disabled.
+#[sealed]
+pub trait MetricsState: 'static {
+    /// The metrics handle stored inside the context: [`Rc<DfirMetrics>`] or `()`.
+    type Handle;
+}
+
+/// Metrics are tracked.
+#[sealed]
+impl MetricsState for DfirMetrics {
+    type Handle = Rc<DfirMetrics>;
+}
+
+/// Metrics are not tracked. Zero-sized, no runtime cost.
+#[sealed]
+impl MetricsState for () {
+    type Handle = ();
+}
 
 /// Metrics for a [`Dfir`](super::context::Dfir) graph instance.
 ///
