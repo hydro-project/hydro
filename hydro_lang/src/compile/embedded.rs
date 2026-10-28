@@ -1407,11 +1407,11 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                     });
                     generics.push(generic);
                     extra_destructure
-                        .push(quote! { let mut #ident = __outputs.#ident.inner_mut(); });
+                        .push(quote! { let mut #ident = __outputs.#ident.into_inner(); });
                 }
 
                 output_params.push(quote! {
-                    __outputs: &'a mut #fn_ident::#output_struct_ident<#(#generics),*>
+                    __outputs: #fn_ident::#output_struct_ident<#(#generics),*>
                 });
 
                 mod_items.push(quote! {
@@ -1463,14 +1463,14 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 }
 
                 net_out_params.push(quote! {
-                    __network_out: &'a mut #fn_ident::EmbeddedNetworkOut<#(#generics),*>
+                    __network_out: #fn_ident::EmbeddedNetworkOut<#(#generics),*>
                 });
 
                 for (port, field) in ports.iter().zip(fields) {
                     let var_ident =
                         syn::Ident::new(&format!("__network_out_{}", port.name), Span::call_site());
                     extra_destructure
-                        .push(quote! { let mut #var_ident = __network_out.#field.inner_mut(); });
+                        .push(quote! { let mut #var_ident = __network_out.#field.into_inner(); });
                 }
 
                 mod_items.push(quote! {

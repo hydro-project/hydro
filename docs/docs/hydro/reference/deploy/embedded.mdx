@@ -122,7 +122,7 @@ async fn run() {
 
     // Collect outputs via a closure.
     let mut results = vec![];
-    let mut outputs = embedded::capitalize::EmbeddedOutputs {
+    let outputs = embedded::capitalize::EmbeddedOutputs {
         output: EmbeddedOutputChannel::new(
             |s: String| {
                 results.push(s);
@@ -142,7 +142,7 @@ async fn run() {
                 .exactly_once(manual_proof!(/** each element appears once in the list */)),
         ),
     };
-    let mut flow = embedded::capitalize(inputs, &mut outputs);
+    let mut flow = embedded::capitalize(inputs, outputs);
     flow.run_available().await;
     drop(flow);
 
@@ -150,7 +150,7 @@ async fn run() {
 }
 ```
 
-The generated function accepts an `EmbeddedInputs` struct, with one named field per input (each stream input is any `Stream<Item = T> + Unpin`), and a mutable reference to the `EmbeddedOutputs` struct, with one named `FnMut` closure per output, wrapped in an `EmbeddedOutputChannel` (see [Promising and Acknowledging Guarantees](#promising-and-acknowledging-guarantees)). It returns a [`Dfir`](rust:dfir_rs::scheduled::context::Dfir) graph that you run with [`run_available()`](rust:dfir_rs::scheduled::context::Dfir::run_available) (or tick manually).
+The generated function accepts an `EmbeddedInputs` struct, with one named field per input (each stream input is any `Stream<Item = T> + Unpin`), and the `EmbeddedOutputs` struct (which the returned graph takes ownership of), with one named `FnMut` closure per output, wrapped in an `EmbeddedOutputChannel` (see [Promising and Acknowledging Guarantees](#promising-and-acknowledging-guarantees)). It returns a [`Dfir`](rust:dfir_rs::scheduled::context::Dfir) graph that you run with [`run_available()`](rust:dfir_rs::scheduled::context::Dfir::run_available) (or tick manually).
 
 
 ## Singleton Inputs
@@ -195,7 +195,7 @@ pub mod greet {
 
 pub fn greet<'a, In0: Stream<Item = String> + Unpin + 'a, ...>(
     __inputs: greet::EmbeddedInputs<In0>,
-    __outputs: &'a mut greet::EmbeddedOutputs<...>,
+    __outputs: greet::EmbeddedOutputs<...>,
 ) -> Dfir<'a> { ... }
 ```
 
@@ -204,14 +204,14 @@ Call it like any other Rust function:
 ```rust,ignore
 let input = futures::stream::iter(vec!["Alice".to_owned(), "Bob".to_owned()]);
 let mut results = vec![];
-let mut outputs = embedded::greet::EmbeddedOutputs {
+let outputs = embedded::greet::EmbeddedOutputs {
     output: EmbeddedOutputChannel::new(|s: String| results.push(s), Acknowledgements::new()),
 };
 let inputs = embedded::greet::EmbeddedInputs {
     names: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))),
     greeting: "Hello".to_owned(),
 };
-let mut flow = embedded::greet(inputs, &mut outputs);
+let mut flow = embedded::greet(inputs, outputs);
 ```
 
 
@@ -224,7 +224,7 @@ A function generated for a cluster location receives a `__cluster_self_id` param
 
 ```rust,ignore
 let member_id = TaglessMemberId::from_raw_id(0);
-let mut flow = my_cluster_fn(&member_id, my_cluster_fn::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, &mut outputs);
+let mut flow = my_cluster_fn(&member_id, my_cluster_fn::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, outputs);
 ```
 
 ### Membership Streams
@@ -253,13 +253,13 @@ let membership = my_sender::EmbeddedMembershipStreams {
             .exactly_once(manual_proof!(/** each event is listed once */)),
     ),
 };
-let mut flow = my_sender(membership, my_sender::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, &mut net_out);
+let mut flow = my_sender(membership, my_sender::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, net_out);
 ```
 
 A cluster that sends to another cluster receives both `__cluster_self_id` and the membership struct:
 
 ```rust,ignore
-let mut flow = m2m_sender(&src_id, membership, m2m_sender::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, &mut net_out);
+let mut flow = m2m_sender(&src_id, membership, m2m_sender::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, net_out);
 ```
 
 In `build.rs`, use `with_cluster` instead of `with_process` to register cluster locations:
@@ -297,7 +297,7 @@ pub mod echo_sender {
 
 pub fn echo_sender<'a, In0: Stream<Item = String> + Unpin + 'a, F: FnMut(Bytes) + 'a>(
     __inputs: echo_sender::EmbeddedInputs<In0>,
-    __network_out: &'a mut echo_sender::EmbeddedNetworkOut<F>,
+    __network_out: echo_sender::EmbeddedNetworkOut<F>,
 ) -> Dfir<'a> { ... }
 ```
 
@@ -311,7 +311,7 @@ pub mod echo_receiver {
 }
 
 pub fn echo_receiver<'a, S: Stream<Item = Result<BytesMut, io::Error>> + Unpin + 'a>(
-    __outputs: &'a mut echo_receiver::EmbeddedOutputs<...>,
+    __outputs: echo_receiver::EmbeddedOutputs<...>,
     __network_in: echo_receiver::EmbeddedNetworkIn<S>,
 ) -> Dfir<'a> { ... }
 ```
@@ -428,7 +428,7 @@ let net_in = echo_receiver::EmbeddedNetworkIn {
             .exactly_once(manual_proof!(/** nothing is ever resent */)),
     ),
 };
-let mut outputs = my_process::EmbeddedOutputs {
+let outputs = my_process::EmbeddedOutputs {
     // Appends to a log, which relies on order and no duplicates: acknowledges nothing.
     log: EmbeddedOutputChannel::new(my_log_sink, Acknowledgements::new()),
     // Correlates each response by its ID, so it tolerates any order.

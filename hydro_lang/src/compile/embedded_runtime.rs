@@ -301,8 +301,8 @@ impl<C: EmbeddedNetworkChannel, S> EmbeddedNetworkOutputChannel<C, S> {
 impl<C, S> EmbeddedNetworkOutputChannel<C, S> {
     /// The host's sink. Used by generated code.
     #[doc(hidden)]
-    pub fn inner_mut(&mut self) -> &mut S {
-        &mut self.inner
+    pub fn into_inner(self) -> S {
+        self.inner
     }
 }
 
@@ -465,7 +465,7 @@ impl<M: EmbeddedChannel, S> EmbeddedOutputChannel<M, S> {
 impl<M, S> EmbeddedOutputChannel<M, S> {
     /// The host's sink. Used by generated code.
     #[doc(hidden)]
-    pub fn inner_mut(&mut self) -> &mut S {
-        &mut self.inner
+    pub fn into_inner(self) -> S {
+        self.inner
     }
 }
