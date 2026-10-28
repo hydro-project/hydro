@@ -4,6 +4,7 @@
 //! [`Dfir`] (the dataflow execution wrapper).
 
 use std::future::Future;
+use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -15,7 +16,7 @@ use dfir_lang::diagnostic::{Diagnostic, Diagnostics, SerdeSpan};
 #[cfg(feature = "meta")]
 use dfir_lang::graph::DfirGraph;
 
-use super::metrics::{DfirMetrics, DfirMetricsIntervals};
+use super::metrics::{DfirMetrics, DfirMetricsIntervals, MetricsState};
 use crate::scheduled::ticks::TickInstant;
 
 /// Coordinates waking between [`Context`] (inside the tick closure) and [`Dfir`]
@@ -59,34 +60,68 @@ impl Wake for WakeState {
 /// Exposes methods that operator-generated code calls on both
 /// `df` (for prologues: `request_task`) and
 /// `context` (for iterators: `current_tick`, `schedule_subgraph`, etc.).
-#[derive(Default)]
-pub struct Context {
+///
+/// # Metrics typestate
+///
+/// The `M` type parameter is a [`MetricsState`] typestate which statically records whether this
+/// context tracks runtime metrics:
+///
+/// - `Context<DfirMetrics>` (the default) is created via [`Context::new_with_metrics`] and holds
+///   a shared `Rc<DfirMetrics>` handle, accessible via [`Context::metrics`].
+/// - `Context<()>` is created via [`Context::new`] and holds no metrics state whatsoever. The
+///   `metrics()` accessor does not exist on it, so it is a compile error to try to read metrics
+///   from a context which never tracked them.
+pub struct Context<M: MetricsState = DfirMetrics> {
     /// Counter for number of ticks run.
     current_tick: TickInstant,
     /// Coordinates waking between [`Context`] (inside the tick closure) and [`Dfir`]
     /// (the external runner). Shared via `Arc` between both. Implements [`Wake`].
     wake_state: Arc<WakeState>,
-    /// Live-updating DFIR runtime metrics via interior mutability.
-    metrics: Rc<DfirMetrics>,
+    /// Live-updating DFIR runtime metrics via interior mutability (`Rc<DfirMetrics>`), or `()`
+    /// when metrics are not tracked.
+    metrics: M::Handle,
     /// Tasks buffered via [`Self::request_task`], spawned by [`Dfir::spawn_tasks`]
     /// once the runtime is running inside a tokio `LocalSet`.
     #[cfg(feature = "tokio")]
     tasks_to_spawn: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>>,
 }
 
-impl Context {
-    /// Create a new inline context with a fresh wake state and no (never-populated) metrics.
+impl Context<()> {
+    /// Create a new inline context with a fresh wake state and **no** metrics tracking.
     ///
-    /// Use [`Self::new_with_metrics`] to attach pre-populated metrics for runtime metrics tracking.
+    /// The returned `Context<()>` statically contains no metrics state. Use
+    /// [`Context::new_with_metrics`] to create a `Context<DfirMetrics>` which tracks metrics.
     pub fn new() -> Self {
-        Self::default()
+        Self::with_metrics_handle(())
+    }
+}
+
+impl Default for Context<()> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Context<DfirMetrics> {
+    /// Create a new inline context with a fresh wake state and the given (pre-populated) metrics.
+    pub fn new_with_metrics(metrics: DfirMetrics) -> Self {
+        Self::with_metrics_handle(Rc::new(metrics))
     }
 
-    /// Create a new inline context with a fresh wake state and the given metrics.
-    pub fn new_with_metrics(metrics: DfirMetrics) -> Self {
+    /// Returns a reference to the runtime metrics.
+    pub fn metrics(&self) -> &Rc<DfirMetrics> {
+        &self.metrics
+    }
+}
+
+impl<M: MetricsState> Context<M> {
+    fn with_metrics_handle(metrics: M::Handle) -> Self {
         Self {
-            metrics: Rc::new(metrics),
-            ..Self::default()
+            current_tick: TickInstant::default(),
+            wake_state: Arc::default(),
+            metrics,
+            #[cfg(feature = "tokio")]
+            tasks_to_spawn: Vec::new(),
         }
     }
 
@@ -112,11 +147,6 @@ impl Context {
     /// Gets the current tick count.
     pub fn current_tick(&self) -> TickInstant {
         self.current_tick
-    }
-
-    /// Returns a reference to the runtime metrics.
-    pub fn metrics(&self) -> &Rc<DfirMetrics> {
-        &self.metrics
     }
 
     /// Signals that external data has arrived and a new tick should be started.
@@ -146,7 +176,7 @@ impl Context {
 ///
 /// # Design
 ///
-/// The inline codegen generates an `async move |df: &mut Context|` closure that captures
+/// The inline codegen generates an `async move |df: &mut Context<M>|` closure that captures
 /// dataflow-specific state (handoff buffers, source iterators) and receives the [`Context`]
 /// (tick counter, metrics) by reference each tick. `Dfir` owns both the
 /// closure and the context, and coordinates tick lifecycle and idle/wake behavior.
@@ -161,14 +191,22 @@ impl Context {
 /// support type erasure via [`TickClosureErased`] / [`DfirErased`] for heterogeneous
 /// collections (e.g., the sim runtime storing multiple locations in a `Vec`). The concrete
 /// (non-erased) path used by trybuild and embedded has zero overhead.
-pub struct Dfir<Tick> {
+///
+/// # Metrics
+///
+/// Whether this `Dfir` tracks runtime metrics is determined statically by
+/// [`TickClosure::Metrics`] (see [`MetricsState`]). The [`Self::metrics`] and
+/// [`Self::metrics_intervals`] accessors only exist when `Tick::Metrics = DfirMetrics`. When
+/// returning a `Dfir` from a function via `impl TickClosure`, use
+/// `Dfir<impl TickClosure<Metrics = DfirMetrics>>` if callers need to access the metrics.
+pub struct Dfir<Tick: TickClosure> {
     /// Async closure which runs a single tick when called.
     tick_closure: Tick,
     /// Coordinates waking between [`Context`] (inside the tick closure) and [`Dfir`]
     /// (the external runner). Shared via `Arc` between both. Implements [`Wake`].
     wake_state: Arc<WakeState>,
     /// The inline context, owned by `Dfir` and passed to the tick closure by reference.
-    context: Context,
+    context: Context<Tick::Metrics>,
     /// See [`Self::meta_graph()`].
     #[cfg(feature = "meta")]
     meta_graph: Option<DfirGraph>,
@@ -177,65 +215,116 @@ pub struct Dfir<Tick> {
     diagnostics: Option<Vec<Diagnostic<SerdeSpan>>>,
 }
 
-/// Trait for tick closures — abstracts over both concrete async closures
-/// and type-erased boxed versions ([`TickClosureErased`]).
+/// Trait for tick closures — abstracts over both concrete async closures (wrapped in
+/// [`TickClosureFn`]) and type-erased boxed versions ([`TickClosureErased`]).
 ///
 /// The `&mut Context` parameter is owned by [`Dfir`] and lent to the
 /// closure each tick, avoiding shared-ownership overhead for the context.
-#[doc(hidden)]
+///
+/// The [`Self::Metrics`] associated type carries the [`MetricsState`] typestate of the context the
+/// closure expects, so that [`Dfir<Tick>`] can be parameterized by the closure alone.
 pub trait TickClosure {
+    /// Whether the context passed to this closure tracks metrics. See [`MetricsState`].
+    type Metrics: MetricsState;
+
     /// Call the tick closure. Returns `true` if any subgraph received input data.
-    fn call_tick<'a>(&'a mut self, ctx: &'a mut Context) -> impl Future<Output = bool> + 'a;
+    #[doc(hidden)]
+    fn call_tick<'a>(
+        &'a mut self,
+        ctx: &'a mut Context<Self::Metrics>,
+    ) -> impl Future<Output = bool> + 'a;
 }
 
-impl<F: for<'a> AsyncFnMut(&'a mut Context) -> bool> TickClosure for F {
-    fn call_tick<'a>(&'a mut self, ctx: &'a mut Context) -> impl Future<Output = bool> + 'a {
-        self(ctx)
+/// Wraps an `AsyncFnMut(&mut Context<M>) -> bool` closure as a [`TickClosure`].
+///
+/// A blanket `impl<M, F: AsyncFnMut(&mut Context<M>)> TickClosure for F` is not allowed
+/// since `M` would only be constrained via the `AsyncFnMut` bound (E0207), so the generated code
+/// wraps the tick closure in this newtype which carries `M` explicitly.
+#[doc(hidden)]
+pub struct TickClosureFn<M, F> {
+    func: F,
+    _metrics: PhantomData<fn() -> M>,
+}
+
+impl<M, F> TickClosureFn<M, F>
+where
+    M: MetricsState,
+    F: for<'a> AsyncFnMut(&'a mut Context<M>) -> bool,
+{
+    /// Wrap the given async tick closure.
+    pub fn new(func: F) -> Self {
+        Self {
+            func,
+            _metrics: PhantomData,
+        }
     }
 }
 
-/// No-op `TickClosure`.
+impl<M, F> TickClosure for TickClosureFn<M, F>
+where
+    M: MetricsState,
+    F: for<'a> AsyncFnMut(&'a mut Context<M>) -> bool,
+{
+    type Metrics = M;
+
+    fn call_tick<'a>(&'a mut self, ctx: &'a mut Context<M>) -> impl Future<Output = bool> + 'a {
+        (self.func)(ctx)
+    }
+}
+
+/// No-op `TickClosure`. Used by `dfir_syntax!` as a stand-in when codegen fails, so its
+/// `Metrics` matches the macro's default (metrics tracking enabled).
 #[doc(hidden)]
 pub struct NullTickClosure;
 
 impl TickClosure for NullTickClosure {
-    fn call_tick<'a>(&'a mut self, _ctx: &'a mut Context) -> impl Future<Output = bool> + 'a {
+    type Metrics = DfirMetrics;
+
+    fn call_tick<'a>(
+        &'a mut self,
+        _ctx: &'a mut Context<DfirMetrics>,
+    ) -> impl Future<Output = bool> + 'a {
         std::future::ready(false)
     }
 }
 
 /// Type-erased tick function for use in heterogeneous collections (e.g., the sim runtime).
 #[doc(hidden)]
-pub struct TickClosureErased(Box<dyn TickClosureErasedInner>);
+pub struct TickClosureErased<M: MetricsState = DfirMetrics>(Box<dyn TickClosureErasedInner<M>>);
 
-/// Object-safe inner trait for [`TickClosureErased`]. Needed because `AsyncFnMut` is not
-/// object-safe (GAT return type), but a trait with `&mut self -> Pin<Box<dyn Future + '_>>`
+/// Object-safe inner trait for [`TickClosureErased`]. Needed because [`TickClosure::call_tick`]
+/// returns `impl Future` (not object-safe), but a trait with `&mut self -> Pin<Box<dyn Future + '_>>`
 /// is — the returned future borrows from the trait object which owns the closure.
-trait TickClosureErasedInner {
+trait TickClosureErasedInner<M: MetricsState> {
     fn call_tick<'a>(
         &'a mut self,
-        ctx: &'a mut Context,
+        ctx: &'a mut Context<M>,
     ) -> Pin<Box<dyn Future<Output = bool> + 'a>>;
 }
 
-impl<F: for<'a> AsyncFnMut(&'a mut Context) -> bool> TickClosureErasedInner for F {
+impl<Tick: TickClosure> TickClosureErasedInner<Tick::Metrics> for Tick {
     fn call_tick<'a>(
         &'a mut self,
-        ctx: &'a mut Context,
+        ctx: &'a mut Context<Tick::Metrics>,
     ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        Box::pin(self(ctx))
+        Box::pin(TickClosure::call_tick(self, ctx))
     }
 }
 
-impl TickClosure for TickClosureErased {
-    fn call_tick<'a>(&'a mut self, ctx: &'a mut Context) -> impl Future<Output = bool> + 'a {
+impl<M: MetricsState> TickClosure for TickClosureErased<M> {
+    type Metrics = M;
+
+    fn call_tick<'a>(&'a mut self, ctx: &'a mut Context<M>) -> impl Future<Output = bool> + 'a {
         self.0.call_tick(ctx)
     }
 }
 
 /// Type alias for a type-erased [`Dfir`] that can be stored in heterogeneous collections.
 /// Created via [`Dfir::into_erased`].
-pub type DfirErased = Dfir<TickClosureErased>;
+///
+/// `M` is the [`MetricsState`] of the erased dataflow: `DfirMetrics` (the default) if metrics
+/// are tracked, or `()` if not.
+pub type DfirErased<M = DfirMetrics> = Dfir<TickClosureErased<M>>;
 
 impl<Tick: TickClosure> Dfir<Tick> {
     /// Create a new `Dfir` from a tick closure, inline context,
@@ -243,7 +332,7 @@ impl<Tick: TickClosure> Dfir<Tick> {
     #[doc(hidden)]
     pub fn new(
         tick_closure: Tick,
-        context: Context,
+        context: Context<Tick::Metrics>,
         meta_graph_json: Option<&str>,
         diagnostics_json: Option<&str>,
     ) -> Self {
@@ -287,14 +376,19 @@ impl<Tick: TickClosure> Dfir<Tick> {
         self.diagnostics.as_deref()
     }
 
-    /// Returns a reference-counted handle to the continually-updated runtime metrics for this DFIR instance.
-    pub fn metrics(&self) -> Rc<DfirMetrics> {
-        Rc::clone(self.context.metrics())
-    }
-
     /// Gets the current tick (local time) count.
     pub fn current_tick(&self) -> TickInstant {
         self.context.current_tick()
+    }
+}
+
+/// Metrics accessors, only available when metrics tracking is enabled (`Tick::Metrics = DfirMetrics`).
+impl<Tick: TickClosure<Metrics = DfirMetrics>> Dfir<Tick> {
+    /// Returns a reference-counted handle to the continually-updated runtime metrics for this DFIR instance.
+    ///
+    /// Only available when metrics tracking is enabled, see [`MetricsState`].
+    pub fn metrics(&self) -> Rc<DfirMetrics> {
+        Rc::clone(self.context.metrics())
     }
 
     /// Returns a [`DfirMetricsIntervals`] handle where each call to
@@ -305,6 +399,8 @@ impl<Tick: TickClosure> Dfir<Tick> {
     ///
     /// Cloning the handle "forks" it from the original, as afterwards each interval may return different metrics
     /// depending on when exactly `take_interval` is called.
+    ///
+    /// Only available when metrics tracking is enabled, see [`MetricsState`].
     pub fn metrics_intervals(&self) -> DfirMetricsIntervals {
         DfirMetricsIntervals {
             curr: self.metrics(),
@@ -411,16 +507,18 @@ impl<Tick: TickClosure> Dfir<Tick> {
     }
 }
 
-impl<Tick: 'static + for<'a> AsyncFnMut(&'a mut Context) -> bool> Dfir<Tick> {
+impl<Tick: TickClosure + 'static> Dfir<Tick> {
     /// Type-erase the tick closure for use in heterogeneous collections.
     ///
-    /// Wraps the concrete async closure in [`TickClosureErased`], which boxes the future
+    /// Wraps the concrete tick closure in [`TickClosureErased`], which boxes the future
     /// returned by each tick call. This adds one heap allocation per tick, but enables
     /// storing multiple `Dfir`s with different closure types in a single `Vec`.
     ///
+    /// The [`MetricsState`] typestate is preserved: the result is `DfirErased<Tick::Metrics>`.
+    ///
     /// Only needed for the sim runtime path. The trybuild and embedded paths keep the
     /// concrete type and pay no erasure cost.
-    pub fn into_erased(self) -> DfirErased {
+    pub fn into_erased(self) -> DfirErased<Tick::Metrics> {
         Dfir {
             tick_closure: TickClosureErased(Box::new(self.tick_closure)),
             wake_state: self.wake_state,

@@ -301,6 +301,9 @@ pub fn compile_graph_trybuild(
         }
         #[cfg(feature = "maelstrom")]
         DeployMode::Maelstrom => {
+            // The `MetricsState` typestate of the generated `Dfir`, revealed in the
+            // `impl TickClosure` signature so sidecars can call `.metrics()` when tracking is enabled.
+            let dfir_metrics_ty = crate::compile::dfir_metrics_state_type(as_code_options, &root);
             syn::parse_quote! {
                 #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case, unexpected_cfgs, unfulfilled_lint_expectations)]
                 use #trybuild_crate_name_ident::__root as #orig_crate_name;
@@ -314,7 +317,7 @@ pub fn compile_graph_trybuild(
                 fn __hydro_runtime<'a>(
                     __hydro_lang_maelstrom_meta: &'a #root::__staged::deploy::maelstrom::deploy_runtime_maelstrom::MaelstromMeta
                 )
-                    -> #root::runtime_support::dfir_rs::scheduled::context::Dfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a>
+                    -> #root::runtime_support::dfir_rs::scheduled::context::Dfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure<Metrics = #dfir_metrics_ty> + 'a>
                 {
                     #( #extra_stmts )*
 

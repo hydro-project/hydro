@@ -2164,11 +2164,16 @@ impl DfirGraph {
             (quote! { None }, quote! { None })
         };
 
-        // Generate metrics initialization: one entry per handoff and per subgraph.
-        // Generate the `Context` constructor and, if metrics tracking is enabled, the metrics
-        // initialization (one entry per handoff and per subgraph) plus the per-tick
-        // `__dfir_metrics` binding used by the tracking code.
-        let (context_new_code, tick_metrics_code) = if options.include_metrics_tracking {
+        // Generate the `Context` constructor, the `Context<M>` metrics typestate used in the tick
+        // closure's signature, and, if metrics tracking is enabled, the metrics initialization
+        // (one entry per handoff and per subgraph) plus the per-tick `__dfir_metrics` binding used
+        // by the tracking code.
+        //
+        // When metrics tracking is disabled, `Context<()>` is used, which statically guarantees that
+        // no metrics state exists at runtime (see `dfir_rs::scheduled::metrics::MetricsState`).
+        let (context_new_code, context_metrics_ty, tick_metrics_code) = if options
+            .include_metrics_tracking
+        {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _, _)| {
                 let ffi = node_id.data().as_ffi();
                 quote! {
@@ -2197,6 +2202,9 @@ impl DfirGraph {
                     })
                 },
                 quote! {
+                    #root::scheduled::metrics::DfirMetrics
+                },
+                quote! {
                     let __dfir_metrics = #df.metrics();
                 },
             )
@@ -2205,6 +2213,7 @@ impl DfirGraph {
                 quote! {
                     #root::scheduled::context::Context::new()
                 },
+                quote! { () },
                 quote! {},
             )
         };
@@ -2278,7 +2287,7 @@ impl DfirGraph {
                 // if any handoff buffer has data.
                 let mut __dfir_work_done = true;
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof)]
-                let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context| {
+                let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context<#context_metrics_ty>| {
                     // Reset arena between ticks (start-of-tick)
                     #bump_ident.reset();
 
@@ -2307,7 +2316,7 @@ impl DfirGraph {
                     ::std::mem::take(&mut __dfir_work_done)
                 };
                 #root::scheduled::context::Dfir::new(
-                    __dfir_inline_tick,
+                    #root::scheduled::context::TickClosureFn::new(__dfir_inline_tick),
                     #df,
                     #meta_graph_arg,
                     #diagnostics_arg,
@@ -2803,8 +2812,12 @@ pub struct AsCodeOptions {
     /// `Dfir::new(...)` call.
     pub exclude_meta: bool,
     /// Controls whether metrics are tracked. Metrics tracking is opt-in: no tracking code is
-    /// generated unless this is set. Even if metrics are tracked, they still need to be reported
-    /// via the `Context::metrics` field.
+    /// generated unless this is set.
+    ///
+    /// This selects the `MetricsState` typestate of the generated `Dfir`'s `Context`: when set,
+    /// `Context<DfirMetrics>` is used and `Dfir::metrics()` is available; when unset,
+    /// `Context<()>` is used, which statically guarantees that there is no metrics state (and no
+    /// `Dfir::metrics()` accessor) at runtime.
     pub include_metrics_tracking: bool,
 }
 

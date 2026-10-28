@@ -26,7 +26,9 @@ pub fn capitalize<
     __inputs: capitalize::EmbeddedInputs<__In0>,
     __outputs: &'a mut capitalize::EmbeddedOutputs<__Out0>,
 ) -> hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir<
-    impl hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a,
+    impl hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure<
+        Metrics = (),
+    > + 'a,
 > {
     let input = __inputs.input;
     let mut output = &mut __outputs.output;
@@ -45,7 +47,7 @@ pub fn capitalize<
             clippy::deref_addrof
         )]
         let __dfir_inline_tick = async move |
-            df: &mut __root_dfir_rs::scheduled::context::Context|
+            df: &mut __root_dfir_rs::scheduled::context::Context<()>|
         {
             __dfir_bump.reset();
             {
@@ -93,6 +95,11 @@ pub fn capitalize<
             df.__end_tick();
             ::std::mem::take(&mut __dfir_work_done)
         };
-        __root_dfir_rs::scheduled::context::Dfir::new(__dfir_inline_tick, df, None, None)
+        __root_dfir_rs::scheduled::context::Dfir::new(
+            __root_dfir_rs::scheduled::context::TickClosureFn::new(__dfir_inline_tick),
+            df,
+            None,
+            None,
+        )
     }
 }
