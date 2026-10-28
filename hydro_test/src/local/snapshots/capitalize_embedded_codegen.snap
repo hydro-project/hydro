@@ -59,14 +59,14 @@ pub fn capitalize<
     __Out0: FnMut(std::string::String) + 'a,
 >(
     __inputs: capitalize::EmbeddedInputs<__In0>,
-    __outputs: &'a mut capitalize::EmbeddedOutputs<__Out0>,
+    __outputs: capitalize::EmbeddedOutputs<__Out0>,
 ) -> hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir<
     impl hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure<
         Metrics = (),
     > + 'a,
 > {
     let input = __inputs.input.into_inner();
-    let mut output = __outputs.output.inner_mut();
+    let mut output = __outputs.output.into_inner();
     {
         use __root_dfir_rs::{var_expr, var_args};
         #[allow(unused_mut)]
