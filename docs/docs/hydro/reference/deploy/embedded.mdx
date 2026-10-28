@@ -122,7 +122,7 @@ async fn run() {
 
     // Collect outputs via a closure.
     let mut results = vec![];
-    let mut outputs = embedded::capitalize::EmbeddedOutputs {
+    let outputs = embedded::capitalize::EmbeddedOutputs {
         output: OutputChannel::new(|s: String| {
             results.push(s);
         }),
@@ -139,7 +139,7 @@ async fn run() {
                 .exactly_once(manual_proof!(/** each element appears once in the list */)),
         ),
     };
-    let mut flow = embedded::capitalize(inputs, &mut outputs);
+    let mut flow = embedded::capitalize(inputs, outputs);
     tokio::task::LocalSet::new()
         .run_until(flow.run_available())
         .await;
@@ -149,7 +149,7 @@ async fn run() {
 }
 ```
 
-The generated function accepts an `EmbeddedInputs` struct, with one named field per input (each stream input is any `Stream<Item = T> + Unpin`), and a mutable reference to the `EmbeddedOutputs` struct, with one named `FnMut` closure per output, wrapped in an `OutputChannel` (see [Promising and Requiring Guarantees](#promising-and-requiring-guarantees)). It returns a [`Dfir`](rust:dfir_rs::scheduled::context::Dfir) graph that you run with [`run_available()`](rust:dfir_rs::scheduled::context::Dfir::run_available) (or tick manually).
+The generated function accepts an `EmbeddedInputs` struct, with one named field per input (each stream input is any `Stream<Item = T> + Unpin`), and the `EmbeddedOutputs` struct (which the returned graph takes ownership of), with one named `FnMut` closure per output, wrapped in an `OutputChannel` (see [Promising and Requiring Guarantees](#promising-and-requiring-guarantees)). It returns a [`Dfir`](rust:dfir_rs::scheduled::context::Dfir) graph that you run with [`run_available()`](rust:dfir_rs::scheduled::context::Dfir::run_available) (or tick manually).
 
 
 ## Singleton Inputs
@@ -194,7 +194,7 @@ pub mod greet {
 
 pub fn greet<'a, In0: Stream<Item = String> + Unpin + 'a, ...>(
     __inputs: greet::EmbeddedInputs<In0>,
-    __outputs: &'a mut greet::EmbeddedOutputs<...>,
+    __outputs: greet::EmbeddedOutputs<...>,
 ) -> Dfir<'a> { ... }
 ```
 
@@ -203,14 +203,14 @@ Call it like any other Rust function:
 ```rust,ignore
 let input = futures::stream::iter(vec!["Alice".to_owned(), "Bob".to_owned()]);
 let mut results = vec![];
-let mut outputs = embedded::greet::EmbeddedOutputs {
+let outputs = embedded::greet::EmbeddedOutputs {
     output: OutputChannel::new(|s: String| results.push(s)),
 };
 let inputs = embedded::greet::EmbeddedInputs {
     names: InputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))),
     greeting: "Hello".to_owned(),
 };
-let mut flow = embedded::greet(inputs, &mut outputs);
+let mut flow = embedded::greet(inputs, outputs);
 ```
 
 
@@ -219,11 +219,11 @@ let mut flow = embedded::greet(inputs, &mut outputs);
 When a location is a cluster (registered with [`with_cluster`](rust:hydro_lang::compile::builder::FlowBuilder::with_cluster) in `build.rs`), the generated function receives additional parameters for the cluster's identity and membership information.
 
 ### Self ID
-A function generated for a cluster location receives a `__cluster_self_id` parameter of type [`&TaglessMemberId`](rust:hydro_lang::location::member_id::TaglessMemberId). This tells the running instance which member of the cluster it is. You provide this when you call the generated function:
+If a cluster's code reads its own member ID ([`CLUSTER_SELF_ID`](rust:hydro_lang::location::cluster::CLUSTER_SELF_ID)), the function generated for it receives a `__cluster_self_id` parameter of type [`&TaglessMemberId`](rust:hydro_lang::location::member_id::TaglessMemberId). This tells the running instance which member of the cluster it is. You provide this when you call the generated function:
 
 ```rust,ignore
 let member_id = TaglessMemberId::from_raw_id(0);
-let mut flow = my_cluster_fn(&member_id, my_cluster_fn::EmbeddedInputs { input: InputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, &mut outputs);
+let mut flow = my_cluster_fn(&member_id, my_cluster_fn::EmbeddedInputs { input: InputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, outputs);
 ```
 
 ### Membership Streams
@@ -252,13 +252,13 @@ let membership = my_sender::EmbeddedMembershipStreams {
             .exactly_once(manual_proof!(/** each event is listed once */)),
     ),
 };
-let mut flow = my_sender(membership, my_sender::EmbeddedInputs { input: InputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, &mut net_out);
+let mut flow = my_sender(membership, my_sender::EmbeddedInputs { input: InputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, net_out);
 ```
 
-A cluster that sends to another cluster receives both `__cluster_self_id` and the membership struct:
+A cluster that sends to another cluster receives the membership struct, and `__cluster_self_id` if it reads its own ID:
 
 ```rust,ignore
-let mut flow = m2m_sender(&src_id, membership, m2m_sender::EmbeddedInputs { input: InputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, &mut net_out);
+let mut flow = m2m_sender(&src_id, membership, m2m_sender::EmbeddedInputs { input: InputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, net_out);
 ```
 
 In `build.rs`, use `with_cluster` instead of `with_process` to register cluster locations:
@@ -296,7 +296,7 @@ pub mod echo_sender {
 
 pub fn echo_sender<'a, In0: Stream<Item = String> + Unpin + 'a, F: FnMut(Bytes) + 'a>(
     __inputs: echo_sender::EmbeddedInputs<In0>,
-    __network_out: &'a mut echo_sender::EmbeddedNetworkOut<F>,
+    __network_out: echo_sender::EmbeddedNetworkOut<F>,
 ) -> Dfir<'a> { ... }
 ```
 
@@ -310,7 +310,7 @@ pub mod echo_receiver {
 }
 
 pub fn echo_receiver<'a, S: Stream<Item = Result<BytesMut, io::Error>> + Unpin + 'a>(
-    __outputs: &'a mut echo_receiver::EmbeddedOutputs<...>,
+    __outputs: echo_receiver::EmbeddedOutputs<...>,
     __network_in: echo_receiver::EmbeddedNetworkIn<S>,
 ) -> Dfir<'a> { ... }
 ```
@@ -341,7 +341,7 @@ pub mod o2m_receiver {
 }
 ```
 
-Your transport layer is responsible for routing: when the sender calls the `FnMut` with `(member_id, bytes)`, you deliver `bytes` to the instance running with that `__cluster_self_id`.
+Your transport layer is responsible for routing: when the sender calls the `FnMut` with `(member_id, bytes)`, you deliver `bytes` to the member with that ID.
 
 #### Cluster → Process (m2o)
 
@@ -410,7 +410,7 @@ let net_in = echo_receiver::EmbeddedNetworkIn {
             .exactly_once(manual_proof!(/** nothing is ever resent */)),
     ),
 };
-let mut outputs = echo_receiver::EmbeddedOutputs {
+let outputs = echo_receiver::EmbeddedOutputs {
     // Appends to a log, so it needs order and no duplicates.
     output: OutputChannel::new(my_log_sink).require_total_order().require_exactly_once(),
 };

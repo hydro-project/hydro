@@ -214,7 +214,7 @@ impl<M: EmbeddedChannel, S> OutputChannel<M, S> {
 impl<M, S> OutputChannel<M, S> {
     /// The host's sink. Used by generated code.
     #[doc(hidden)]
-    pub fn inner_mut(&mut self) -> &mut S {
-        &mut self.inner
+    pub fn into_inner(self) -> S {
+        self.inner
     }
 }

@@ -267,6 +267,24 @@ fn generate_embedded() {
         .unwrap();
     }
 
+    // --- self_id (local cluster; reads its own member ID) ---
+    {
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let cluster = flow.cluster::<hydro_test::embedded::self_id::Members>();
+        hydro_test::embedded::self_id::tag_with_self_id(cluster.embedded_input("input"))
+            .embedded_output("output");
+
+        let code = flow
+            .with_cluster(&cluster, "self_id_member")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/self_id.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
     // --- m2o_send (cluster -> process) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();

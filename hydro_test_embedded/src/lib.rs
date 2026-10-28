@@ -128,6 +128,17 @@ pub mod o2m_demux_embedded {
     reason = "generated code"
 )]
 #[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod self_id {
+    include!(concat!(env!("OUT_DIR"), "/self_id.rs"));
+}
+
+#[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
 pub mod m2o_send {
     include!(concat!(env!("OUT_DIR"), "/m2o_send.rs"));
 }
@@ -192,7 +203,7 @@ mod tests {
                 "hydro".to_owned(),
             ]);
             let mut collected = vec![];
-            let mut outputs = crate::$module::capitalize::EmbeddedOutputs {
+            let outputs = crate::$module::capitalize::EmbeddedOutputs {
                 output: OutputChannel::new(|s: String| collected.push(s))
                     .require_total_order()
                     .require_exactly_once(),
@@ -201,7 +212,7 @@ mod tests {
                 crate::$module::capitalize::EmbeddedInputs {
                     input: in_memory(input),
                 },
-                &mut outputs,
+                outputs,
             );
             run_flow(&mut flow).await;
             drop(flow);
@@ -234,14 +245,14 @@ mod tests {
             "hydro".to_owned(),
         ]);
         let mut collected = vec![];
-        let mut outputs = crate::unordered_output::capitalize_unordered::EmbeddedOutputs {
+        let outputs = crate::unordered_output::capitalize_unordered::EmbeddedOutputs {
             output: OutputChannel::new(|s: String| collected.push(s)),
         };
         let mut flow = crate::unordered_output::capitalize_unordered(
             crate::unordered_output::capitalize_unordered::EmbeddedInputs {
                 input: in_memory(input),
             },
-            &mut outputs,
+            outputs,
         );
         run_flow(&mut flow).await;
         drop(flow);
@@ -262,7 +273,7 @@ mod tests {
             "hello".to_owned(),
         ]);
         let mut collected = vec![];
-        let mut outputs = crate::at_least_once_input::unique_names::EmbeddedOutputs {
+        let outputs = crate::at_least_once_input::unique_names::EmbeddedOutputs {
             output: OutputChannel::new(|s: String| collected.push(s)),
         };
         let mut flow = crate::at_least_once_input::unique_names(
@@ -270,7 +281,7 @@ mod tests {
                 // The dataflow relies on nothing about this input, so no promises are needed.
                 input: InputChannel::new(input, Promises::new()),
             },
-            &mut outputs,
+            outputs,
         );
         run_flow(&mut flow).await;
         drop(flow);
@@ -316,7 +327,7 @@ mod tests {
     async fn test_embedded_singleton_input() {
         let names = stream::iter(vec!["Alice".to_owned(), "Bob".to_owned()]);
         let mut collected = vec![];
-        let mut outputs = crate::singleton_input::prefix_names::EmbeddedOutputs {
+        let outputs = crate::singleton_input::prefix_names::EmbeddedOutputs {
             output: OutputChannel::new(|s: String| collected.push(s)),
         };
         let mut flow = crate::singleton_input::prefix_names(
@@ -324,7 +335,7 @@ mod tests {
                 names: in_memory(names),
                 prefix: "Hello".to_owned(),
             },
-            &mut outputs,
+            outputs,
         );
         run_flow(&mut flow).await;
         drop(flow);
@@ -340,7 +351,7 @@ mod tests {
 
         // Sender: (input, net_out)
         let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
-        let mut net_out = crate::echo_network::echo_sender::EmbeddedNetworkOut {
+        let net_out = crate::echo_network::echo_sender::EmbeddedNetworkOut {
             messages: OutputChannel::new(move |bytes: Bytes| {
                 tx.send(bytes).unwrap();
             }),
@@ -349,7 +360,7 @@ mod tests {
             crate::echo_network::echo_sender::EmbeddedInputs {
                 input: in_memory(input),
             },
-            &mut net_out,
+            net_out,
         );
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
@@ -365,10 +376,10 @@ mod tests {
             messages: in_memory(stream::iter(bytes_vec)),
         };
         let mut received = vec![];
-        let mut outputs = crate::echo_network::echo_receiver::EmbeddedOutputs {
+        let outputs = crate::echo_network::echo_receiver::EmbeddedOutputs {
             output: OutputChannel::new(|s: String| received.push(s)),
         };
-        let mut flow_receiver = crate::echo_network::echo_receiver(&mut outputs, net_in);
+        let mut flow_receiver = crate::echo_network::echo_receiver(outputs, net_in);
         run_flow(&mut flow_receiver).await;
         drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
@@ -383,7 +394,7 @@ mod tests {
 
         // Sender: `messages` is now `FnMut(String)` (the raw payload, not `Bytes`).
         let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
-        let mut net_out = crate::echo_network_embedded::echo_sender::EmbeddedNetworkOut {
+        let net_out = crate::echo_network_embedded::echo_sender::EmbeddedNetworkOut {
             // The receiving end promises order and no duplicates; this transport (an in-order
             // queue) keeps them only if the dataflow sends them, so it requires both.
             messages: OutputChannel::new(move |s: String| {
@@ -396,7 +407,7 @@ mod tests {
             crate::echo_network_embedded::echo_sender::EmbeddedInputs {
                 input: in_memory(input),
             },
-            &mut net_out,
+            net_out,
         );
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
@@ -413,12 +424,12 @@ mod tests {
             messages: in_memory(stream::iter(msgs)),
         };
         let mut received = vec![];
-        let mut outputs = crate::echo_network_embedded::echo_receiver::EmbeddedOutputs {
+        let outputs = crate::echo_network_embedded::echo_receiver::EmbeddedOutputs {
             output: OutputChannel::new(|s: String| received.push(s))
                 .require_total_order()
                 .require_exactly_once(),
         };
-        let mut flow_receiver = crate::echo_network_embedded::echo_receiver(&mut outputs, net_in);
+        let mut flow_receiver = crate::echo_network_embedded::echo_receiver(outputs, net_in);
         run_flow(&mut flow_receiver).await;
         drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
@@ -426,7 +437,7 @@ mod tests {
 
     // --- o2m_broadcast (process -> cluster) ---
     // sender (process): (membership, inputs, network_out)
-    // receiver (cluster): (self_id, outputs, network_in)
+    // receiver (cluster): (outputs, network_in)
     #[tokio::test]
     async fn test_o2m_broadcast() {
         let member_id = TaglessMemberId::from_raw_id(0);
@@ -440,7 +451,7 @@ mod tests {
                 MembershipEvent::Joined,
             )])),
         };
-        let mut net_out = crate::o2m_broadcast::o2m_sender::EmbeddedNetworkOut {
+        let net_out = crate::o2m_broadcast::o2m_sender::EmbeddedNetworkOut {
             o2m_data: OutputChannel::new(move |item: (TaglessMemberId, Bytes)| {
                 tx.send(item).unwrap();
             }),
@@ -450,7 +461,7 @@ mod tests {
             crate::o2m_broadcast::o2m_sender::EmbeddedInputs {
                 input: in_memory(input),
             },
-            &mut net_out,
+            net_out,
         );
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
@@ -462,16 +473,15 @@ mod tests {
         }
         assert_eq!(tagged_bytes.len(), 2);
 
-        // Receiver (cluster): (self_id, outputs, network_in)
+        // Receiver (cluster): (outputs, network_in)
         let net_in = crate::o2m_broadcast::o2m_receiver::EmbeddedNetworkIn {
             o2m_data: in_memory(stream::iter(tagged_bytes)),
         };
         let mut received = vec![];
-        let mut outputs = crate::o2m_broadcast::o2m_receiver::EmbeddedOutputs {
+        let outputs = crate::o2m_broadcast::o2m_receiver::EmbeddedOutputs {
             output: OutputChannel::new(|s: String| received.push(s)),
         };
-        let mut flow_receiver =
-            crate::o2m_broadcast::o2m_receiver(&member_id, &mut outputs, net_in);
+        let mut flow_receiver = crate::o2m_broadcast::o2m_receiver(outputs, net_in);
         run_flow(&mut flow_receiver).await;
         drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
@@ -481,7 +491,7 @@ mod tests {
     // The payload type has no serde derives; the embedded channel moves it in-process
     // (regression test for hydro-project/hydro#3158).
     // sender (process): (inputs, network_out)
-    // receiver (cluster): (self_id, outputs, network_in)
+    // receiver (cluster): (outputs, network_in)
     #[tokio::test]
     async fn test_o2m_demux_embedded() {
         use hydro_test::embedded::o2m_demux_embedded::OpaquePayload;
@@ -492,7 +502,7 @@ mod tests {
 
         // Sender (process): (input, net_out); the channel carries the raw payload (not `Bytes`).
         let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
-        let mut net_out = crate::o2m_demux_embedded::o2m_demux_sender::EmbeddedNetworkOut {
+        let net_out = crate::o2m_demux_embedded::o2m_demux_sender::EmbeddedNetworkOut {
             demux_data: OutputChannel::new(move |item: (TaglessMemberId, OpaquePayload)| {
                 tx.send(item).unwrap();
             }),
@@ -501,7 +511,7 @@ mod tests {
             crate::o2m_demux_embedded::o2m_demux_sender::EmbeddedInputs {
                 input: in_memory(input),
             },
-            &mut net_out,
+            net_out,
         );
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
@@ -513,42 +523,63 @@ mod tests {
         }
         assert_eq!(payloads.len(), 2);
 
-        // Receiver (cluster): (self_id, outputs, network_in); raw payloads, no deserialization.
+        // Receiver (cluster): (outputs, network_in); raw payloads, no deserialization.
         let net_in = crate::o2m_demux_embedded::o2m_demux_receiver::EmbeddedNetworkIn {
             demux_data: in_memory(stream::iter(payloads)),
         };
         let mut received = vec![];
-        let mut outputs = crate::o2m_demux_embedded::o2m_demux_receiver::EmbeddedOutputs {
+        let outputs = crate::o2m_demux_embedded::o2m_demux_receiver::EmbeddedOutputs {
             output: OutputChannel::new(|s: String| received.push(s)),
         };
-        let mut flow_receiver =
-            crate::o2m_demux_embedded::o2m_demux_receiver(&member_id, &mut outputs, net_in);
+        let mut flow_receiver = crate::o2m_demux_embedded::o2m_demux_receiver(outputs, net_in);
         run_flow(&mut flow_receiver).await;
         drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
     }
 
+    // --- self_id (a cluster that reads its own member ID) ---
+    // Order: (self_id, inputs, outputs)
+    #[tokio::test]
+    async fn test_self_id() {
+        let member_id = TaglessMemberId::from_raw_id(7);
+        let mut received = vec![];
+        let outputs = crate::self_id::self_id_member::EmbeddedOutputs {
+            output: OutputChannel::new(|tagged| received.push(tagged)),
+        };
+        let mut flow = crate::self_id::self_id_member(
+            &member_id,
+            crate::self_id::self_id_member::EmbeddedInputs {
+                input: in_memory(stream::iter(vec!["hello".to_owned()])),
+            },
+            outputs,
+        );
+        run_flow(&mut flow).await;
+        drop(flow);
+        assert_eq!(received.len(), 1);
+        assert_eq!(received[0].0.get_raw_id(), 7);
+        assert_eq!(received[0].1, "hello");
+    }
+
     // --- m2o_send (cluster -> process) ---
-    // sender (cluster): (self_id, inputs, network_out)
+    // sender (cluster): (inputs, network_out)
     // receiver (process): (outputs, network_in)
     #[tokio::test]
     async fn test_m2o_send() {
         let member_id = TaglessMemberId::from_raw_id(42);
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Bytes>();
 
-        // Sender (cluster): (self_id, input, net_out)
+        // Sender (cluster): (input, net_out)
         let input = stream::iter(vec!["foo".to_owned(), "bar".to_owned()]);
-        let mut net_out = crate::m2o_send::m2o_sender::EmbeddedNetworkOut {
+        let net_out = crate::m2o_send::m2o_sender::EmbeddedNetworkOut {
             m2o_data: OutputChannel::new(move |bytes: Bytes| {
                 tx.send(bytes).unwrap();
             }),
         };
         let mut flow_sender = crate::m2o_send::m2o_sender(
-            &member_id,
             crate::m2o_send::m2o_sender::EmbeddedInputs {
                 input: in_memory(input),
             },
-            &mut net_out,
+            net_out,
         );
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
@@ -565,10 +596,10 @@ mod tests {
             m2o_data: in_memory(stream::iter(tagged_bytes)),
         };
         let mut received = vec![];
-        let mut outputs = crate::m2o_send::m2o_receiver::EmbeddedOutputs {
+        let outputs = crate::m2o_send::m2o_receiver::EmbeddedOutputs {
             output: OutputChannel::new(|s| received.push(s)),
         };
-        let mut flow_receiver = crate::m2o_send::m2o_receiver(&mut outputs, net_in);
+        let mut flow_receiver = crate::m2o_send::m2o_receiver(outputs, net_in);
         run_flow(&mut flow_receiver).await;
         drop(flow_receiver);
         assert_eq!(received.len(), 2);
@@ -578,15 +609,15 @@ mod tests {
     }
 
     // --- m2m_broadcast (cluster -> cluster) ---
-    // sender (cluster): (self_id, membership, inputs, network_out)
-    // receiver (cluster): (self_id, outputs, network_in)
+    // sender (cluster): (membership, inputs, network_out)
+    // receiver (cluster): (outputs, network_in)
     #[tokio::test]
     async fn test_m2m_broadcast() {
         let src_id = TaglessMemberId::from_raw_id(0);
         let dst_id = TaglessMemberId::from_raw_id(0);
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(TaglessMemberId, Bytes)>();
 
-        // Sender (cluster): (self_id, membership, input, net_out)
+        // Sender (cluster): (membership, input, net_out)
         let input = stream::iter(vec!["ping".to_owned()]);
         let membership = crate::m2m_broadcast::m2m_sender::EmbeddedMembershipStreams {
             m2m_receiver: in_memory(stream::iter(vec![(
@@ -594,18 +625,17 @@ mod tests {
                 MembershipEvent::Joined,
             )])),
         };
-        let mut net_out = crate::m2m_broadcast::m2m_sender::EmbeddedNetworkOut {
+        let net_out = crate::m2m_broadcast::m2m_sender::EmbeddedNetworkOut {
             m2m_data: OutputChannel::new(move |item: (TaglessMemberId, Bytes)| {
                 tx.send(item).unwrap();
             }),
         };
         let mut flow_sender = crate::m2m_broadcast::m2m_sender(
-            &src_id,
             membership,
             crate::m2m_broadcast::m2m_sender::EmbeddedInputs {
                 input: in_memory(input),
             },
-            &mut net_out,
+            net_out,
         );
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
@@ -617,15 +647,15 @@ mod tests {
         }
         assert_eq!(tagged_bytes.len(), 1);
 
-        // Receiver (cluster): (self_id, outputs, network_in)
+        // Receiver (cluster): (outputs, network_in)
         let net_in = crate::m2m_broadcast::m2m_receiver::EmbeddedNetworkIn {
             m2m_data: in_memory(stream::iter(tagged_bytes)),
         };
         let mut received = vec![];
-        let mut outputs = crate::m2m_broadcast::m2m_receiver::EmbeddedOutputs {
+        let outputs = crate::m2m_broadcast::m2m_receiver::EmbeddedOutputs {
             output: OutputChannel::new(|s| received.push(s)),
         };
-        let mut flow_receiver = crate::m2m_broadcast::m2m_receiver(&dst_id, &mut outputs, net_in);
+        let mut flow_receiver = crate::m2m_broadcast::m2m_receiver(outputs, net_in);
         run_flow(&mut flow_receiver).await;
         drop(flow_receiver);
         assert_eq!(received.len(), 1);
