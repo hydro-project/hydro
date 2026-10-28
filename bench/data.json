@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1793093549908,
+  "lastUpdate": 1793182469169,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -319511,6 +319511,208 @@
             "name": "paxos_bench",
             "value": 270880,
             "range": "± 1130.31",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "116d5b2420a5fcd0ebdc84e40cd84106c72ab32c",
+          "message": "feat(dfir_lang, hydro_lang)!: compact codegen for Hydro embedded + snapshot tests (#3253)\n\n## `dfir_pipes`\n\n- New `Pull::drain_sync(&mut self)`: synchronously pulls and discards\nremaining items. Only\navailable where `for<'ctx> Self: Pull<Ctx<'ctx> = (), CanPend = No,\nCanEnd = Yes> + Unpin`,\ni.e. pulls that need no task context, cannot pend (so the loop can't\nspin on `Pending`), and\ncan end (so it terminates). The `()` context is supplied internally via\n`mut_unit()`.\nReplaces an inline `pin!` + `while let Ready` loop that was being\ncodegen'd into every\n  `source_stream`.\n\n## `dfir_rs`\n\n- `Context::new()` now takes no arguments (fresh wake state, default\nmetrics) and\n`Context::new_with_metrics(DfirMetrics)` takes populated metrics by\nvalue. The only caller\n  was the codegen, which always passed `Arc::new(WakeState::default())`.\n\nBREAKING CHANGE: `Context::new(wake_state, metrics)` → `Context::new()`\n/\n  `Context::new_with_metrics(metrics)`.\n\n## `dfir_lang`\n\n- `AsCodeOptions` now derives `Clone, Debug`, and gains\n`require_flame_attribution`.\n- `WriteContextArgs` gains an `options: &AsCodeOptions` field so\noperators can consult the\n  codegen options.\n- `exclude_type_guards` now also covers the operator-level single-call\nidentity guards:\n`source_stream`'s `check_stream`, `source_iter`'s `check_iter`, the\nidentity\n`check_input`/`check_output` (only when no explicit type arg is given —\nan explicit\n`identity::<T>()` is a real type hint and is kept), and the per-subgraph\n`pivot_run_sg_*`\nwrapper (replaced by a direct `Pull::send_push(..).await`, same bounds).\n- The per-operator type guard wrapper does double duty: besides pinning\ntypes, its\n`pull`/`push` impls live inside a fn named after the operator, which is\nwhat gives streaming\noperators (`map`, `filter`, …) a named frame in flamegraphs. It is\ntherefore emitted when\n`!exclude_type_guards || require_flame_attribution`, so front-ends can\ndrop type checking\nbut keep profiler attribution. Docs on `exclude_type_guards` explain\nthis.\n- Unconditional cleanups (no behavior or attribution change; full\n`dfir_rs` suite incl.\n  compile-fail stderr tests and metrics tests passes):\n- `work_fn` / `work_fn_async` thunks are only emitted when the\noperator's generated code\nactually references them. Previously two dead fns were emitted for every\noperator, even\nstreaming ops like `map` which never call them (their attribution comes\nfrom the wrapper).\n- `Context` construction is `Context::new()` when metrics tracking is\noff, or\n`Context::new_with_metrics({ ..populated DfirMetrics.. })` when on; the\n`__dfir_wake_state`\n/ `__dfir_metrics` temporaries and the per-tick `let __dfir_metrics =\ndf.metrics()` are only\n    emitted when tracking is on.\n- `source_stream`'s end-of-subgraph drain is a single\n`Pull::drain_sync(&mut fused)` call.\n\n## `hydro_lang`\n\n- New `compile::embedded::EmbeddedCodegenOptions {\nrequire_flame_attribution }` (default off)\n  with `EmbeddedCodegenOptions::with_flame_attribution()`.\n- New\n`DeployFlow::<EmbeddedDeploy>::generate_embedded_with_options(crate_name,\n&options)`;\n  `generate_embedded` delegates to it with defaults.\n- The embedded path forces `exclude_type_guards = true` and\n`exclude_meta = true` on the\n(possibly sidecar-edited) options, and forwards\n`require_flame_attribution`. Hydro already\ntype-checks the dataflow and injects its own `*_type_hint` calls, and\nthe serialized meta\n  graph / diagnostics JSON is useless in embedded mode.\n\n## `hydro_test`\n\n- Two snapshot tests in `local::capitalize::tests`, snapshotting the\n`prettyplease`-formatted\n`generate_embedded` output for the simplest embedded program so future\ncodegen cleanups can be\n  reviewed as diffs:\n- `capitalize_embedded_codegen` (defaults): ~370 lines before this\nchange → 98 lines.\n- `capitalize_embedded_codegen_flame_attribution`: 292 lines; differs\nfrom the above only by\n    the three per-operator attribution wrappers.\n- `prettyplease` added as a dev-dependency; snapshots committed for both\n`snapshots/` and\n  `snapshots-nightly/`.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-10-27T20:16:01Z",
+          "url": "https://github.com/hydro-project/hydro/commit/116d5b2420a5fcd0ebdc84e40cd84106c72ab32c"
+        },
+        "date": 1793182469099,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311471,
+            "range": "± 5523",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6533375,
+            "range": "± 20332",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6887411,
+            "range": "± 22701",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 48580,
+            "range": "± 3577",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 14125109,
+            "range": "± 361203",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1557816,
+            "range": "± 13025",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1620344,
+            "range": "± 9467",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 43654246,
+            "range": "± 383378",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6816206,
+            "range": "± 22344",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 44452003,
+            "range": "± 5864221",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6537728,
+            "range": "± 12661",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6988529,
+            "range": "± 10139",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 40781538,
+            "range": "± 693365",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 4041,
+            "range": "± 52",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 23544,
+            "range": "± 316",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 6451,
+            "range": "± 124",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6609,
+            "range": "± 103",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 375478,
+            "range": "± 1243",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55797,
+            "range": "± 1870",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 41860,
+            "range": "± 599",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 17167,
+            "range": "± 171",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6989,
+            "range": "± 218",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1492,
+            "range": "± 59",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 75599,
+            "range": "± 1504",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 81351,
+            "range": "± 689",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7378,
+            "range": "± 148",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15708,
+            "range": "± 315",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 26786,
+            "range": "± 496",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7526,
+            "range": "± 125",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 208200,
+            "range": "± 635.61",
             "unit": "ops/s"
           }
         ]
