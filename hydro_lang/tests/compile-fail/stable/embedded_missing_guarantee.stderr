@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `(): Retries` is not satisfied
   --> tests/compile-fail/stable/embedded_missing_guarantee.rs:13:19
    |
-13 |         .send(p2, EMBEDDED.total_order().fail_stop().name("no_retries"));
-   |          ----     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Retries` is not implemented for `()`
+13 |         .send(p2, EMBEDDED.never_reorders().never_drops().name("no_dups"));
+   |          ----     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Retries` is not implemented for `()`
    |          |
    |          required by a bound introduced by this call
    |
@@ -24,13 +24,13 @@ note: required by a bound in `hydro_lang::live_collections::stream::networking::
    |         R: MinRetries<N::RetriesGuarantee>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R>>::send`
 
-error[E0277]: this `EMBEDDED` channel does not declare its retries
+error[E0277]: this `EMBEDDED` channel does not declare whether it may duplicate messages
   --> tests/compile-fail/stable/embedded_missing_guarantee.rs:13:10
    |
-13 |         .send(p2, EMBEDDED.total_order().fail_stop().name("no_retries"));
+13 |         .send(p2, EMBEDDED.never_reorders().never_drops().name("no_dups"));
    |          ^^^^ the trait `EmbeddedRetries` is not implemented for `()`
    |
-   = note: add `.exactly_once()` or `.at_least_once()` to the network config
+   = note: add `.never_duplicates()` or `.may_duplicate()` to the network config
 help: the following other types implement trait `EmbeddedRetries`
   --> src/networking/mod.rs
    |
@@ -42,12 +42,13 @@ help: the following other types implement trait `EmbeddedRetries`
    = note: required for `EmbeddedTransport<(), hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::FailStop>` to implement `TransportKind`
 
 error[E0277]: the trait bound `(): hydro_lang::live_collections::stream::Ordering` is not satisfied
-  --> tests/compile-fail/stable/embedded_missing_guarantee.rs:19:19
+  --> tests/compile-fail/stable/embedded_missing_guarantee.rs:19:9
    |
-19 |         .send(p2, EMBEDDED.exactly_once().fail_stop().name("no_ordering"));
-   |          ----     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `hydro_lang::live_collections::stream::Ordering` is not implemented for `()`
-   |          |
-   |          required by a bound introduced by this call
+17 |     let _ = p1.source_iter(q!(vec![1, 2, 3])).send(
+   |                                               ---- required by a bound introduced by this call
+18 |         p2,
+19 |         EMBEDDED.never_duplicates().never_drops().name("no_order"),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `hydro_lang::live_collections::stream::Ordering` is not implemented for `()`
    |
 help: the following other types implement trait `hydro_lang::live_collections::stream::Ordering`
   --> src/live_collections/stream/mod.rs
@@ -67,13 +68,13 @@ note: required by a bound in `hydro_lang::live_collections::stream::networking::
    |         O: MinOrder<N::OrderingGuarantee>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R>>::send`
 
-error[E0277]: this `EMBEDDED` channel does not declare its ordering
-  --> tests/compile-fail/stable/embedded_missing_guarantee.rs:19:10
+error[E0277]: this `EMBEDDED` channel does not declare whether it may reorder messages
+  --> tests/compile-fail/stable/embedded_missing_guarantee.rs:17:47
    |
-19 |         .send(p2, EMBEDDED.exactly_once().fail_stop().name("no_ordering"));
-   |          ^^^^ the trait `EmbeddedOrdering` is not implemented for `()`
+17 |     let _ = p1.source_iter(q!(vec![1, 2, 3])).send(
+   |                                               ^^^^ the trait `EmbeddedOrdering` is not implemented for `()`
    |
-   = note: add `.total_order()` or `.no_order()` to the network config
+   = note: add `.never_reorders()` or `.may_reorder()` to the network config
 help: the following other types implement trait `EmbeddedOrdering`
   --> src/networking/mod.rs
    |
@@ -84,13 +85,13 @@ help: the following other types implement trait `EmbeddedOrdering`
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::live_collections::stream::NoOrder`
    = note: required for `EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, (), hydro_lang::networking::FailStop>` to implement `TransportKind`
 
-error[E0277]: this `EMBEDDED` channel does not declare its failure policy
-  --> tests/compile-fail/stable/embedded_missing_guarantee.rs:23:47
+error[E0277]: this `EMBEDDED` channel does not declare whether it may drop messages
+  --> tests/compile-fail/stable/embedded_missing_guarantee.rs:24:47
    |
-23 |     let _ = p1.source_iter(q!(vec![1, 2, 3])).send(
+24 |     let _ = p1.source_iter(q!(vec![1, 2, 3])).send(
    |                                               ^^^^ the trait `EmbeddedFailPolicy` is not implemented for `()`
    |
-   = note: add `.fail_stop()`, `.lossy(nondet!(..))`, or `.lossy_delayed_forever()` to the network config
+   = note: add `.never_drops()`, `.may_drop(nondet!(..))`, or `.may_delay_forever()` to the network config
 help: the following other types implement trait `EmbeddedFailPolicy`
   --> src/networking/mod.rs
    |

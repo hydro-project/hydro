@@ -26,9 +26,9 @@ pub fn o2m_demux_embedded<'a>(
         .demux(
             cluster,
             EMBEDDED
-                .exactly_once()
-                .total_order()
-                .fail_stop()
+                .never_reorders()
+                .never_duplicates()
+                .never_drops()
                 .name("demux_data"),
         )
         .map(q!(|payload| payload.text.to_uppercase()))
