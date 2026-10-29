@@ -1608,7 +1608,7 @@ impl<T, O: Ordering, R: Retries> SimReceiver<T, O, R> {
     }
 
     /// See [`try_next_bytes`].
-    async fn try_next_impl(&self) -> Option<T> {
+    pub(crate) async fn try_next_impl(&self) -> Option<T> {
         let (receiver, quiescence) = self.connections();
         try_next_bytes(&receiver, &quiescence)
             .await

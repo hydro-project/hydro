@@ -683,7 +683,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -752,7 +752,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -779,7 +779,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -813,7 +813,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -869,7 +869,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -927,7 +927,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -987,7 +987,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1042,7 +1042,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1089,7 +1089,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1143,7 +1143,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1201,17 +1201,15 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let batch = process
-    ///   .source_iter(q!(vec![(1, 123), (1, 456), (2, 123)]))
-    ///   .into_keyed()
-    ///   .batch(&tick, nondet!(/** test */));
-    /// let count = batch.clone().entries().count(); // `count()` returns a singleton
-    /// batch.cross_singleton(count).all_ticks().entries()
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, 123), (1, 456), (2, 123)]))
+    ///     .into_keyed();
+    /// let count = numbers.clone().entries().count(); // `count()` returns a singleton
+    /// numbers.cross_singleton(count).entries()
     /// # }, |mut stream| async move {
     /// // { 1: [(123, 3), (456, 3)], 2: [(123, 3)] }
     /// # let mut results = Vec::new();
@@ -1257,7 +1255,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1312,7 +1310,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
@@ -1374,7 +1372,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1407,7 +1405,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
@@ -1444,7 +1442,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1492,7 +1490,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1556,7 +1554,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1627,7 +1625,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1756,7 +1754,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1824,7 +1822,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1870,7 +1868,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1924,7 +1922,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1966,15 +1964,17 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// let numbers = process
-    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4), (1, 5)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// let batch = // { 1: [2, 3, 5], 2: [3, 4] }, all in one tick
+    /// # process
+    /// #     .source_iter(q!(vec![vec![(1, 2), (2, 3), (1, 3), (2, 4), (1, 5)]]))
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .flatten_ordered()
+    /// #     .into_keyed();
     /// batch
     ///     .value_counts()
     ///     .entries()
@@ -2021,15 +2021,17 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// let numbers = process
-    ///     .source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// let batch = // { 1: [false, false], 2: [true, false] }, all in one tick
+    /// # process
+    /// #     .source_iter(q!(vec![vec![(1, false), (2, true), (1, false), (2, false)]]))
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .flatten_ordered()
+    /// #     .into_keyed();
     /// batch
     ///     .fold(q!(|| false), q!(|acc, x| *acc |= x))
     ///     .entries()
@@ -2095,15 +2097,17 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// let numbers = process
-    ///     .source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// let batch = // { 1: [false, false], 2: [true, false] }, all in one tick
+    /// # process
+    /// #     .source_iter(q!(vec![vec![(1, false), (2, true), (1, false), (2, false)]]))
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .flatten_ordered()
+    /// #     .into_keyed();
     /// batch
     ///     .reduce(q!(|acc, x| *acc |= x))
     ///     .entries()
@@ -2162,23 +2166,27 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// let batch = // { 0: [false], 1: [false], 2: [false, true] }, all in one tick
+    /// # process
+    /// #     .source_iter(q!(vec![vec![(0, false), (1, false), (2, false), (2, true)]]))
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .flatten_ordered()
+    /// #     .into_keyed();
     /// let watermark = tick.singleton(q!(2));
-    /// let numbers = process
-    ///     .source_iter(q!([(0, false), (1, false), (2, false), (2, true)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
     /// batch
     ///     .reduce_watermark(watermark, q!(|acc, x| *acc |= x))
     ///     .entries()
     ///     .all_ticks()
     /// # }, |mut stream| async move {
     /// // (2, true)
-    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # for w in vec![(2, true)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
     /// # }));
     /// # }
     /// ```
@@ -2228,19 +2236,15 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
     /// let keyed_stream = process
-    ///     .source_iter(q!(vec![ (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd') ]))
-    ///     .batch(&tick, nondet!(/** test */))
+    ///     .source_iter(q!(vec![(1, 'a'), (2, 'b'), (3, 'c'), (4, 'd')]))
     ///     .into_keyed();
-    /// let keys_to_remove = process
-    ///     .source_iter(q!(vec![1, 2]))
-    ///     .batch(&tick, nondet!(/** test */));
-    /// keyed_stream.filter_key_not_in(keys_to_remove).all_ticks()
+    /// let keys_to_remove = process.source_iter(q!(vec![1, 2]));
+    /// keyed_stream.filter_key_not_in(keys_to_remove)
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 3: ['c'], 4: ['d'] }
@@ -2280,23 +2284,20 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
     /// let keyed_data = process
     ///     .source_iter(q!(vec![(1, 10), (1, 11), (2, 20)]))
-    ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */));
+    ///     .into_keyed();
     /// let other_data = process
     ///     .source_iter(q!(vec![(1, 100), (2, 200), (2, 201)]))
-    ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */));
-    /// keyed_data.join_keyed_stream(other_data).entries().all_ticks()
+    ///     .into_keyed();
+    /// keyed_data.join_keyed_stream(other_data).entries()
     /// # }, |mut stream| async move {
     /// // { 1: [(10, 100), (11, 100)], 2: [(20, 200), (20, 201)] } in any order
-    /// # let mut results = vec![];
+    /// # let mut results = Vec::new();
     /// # for _ in 0..4 {
     /// #     results.push(stream.next().await.unwrap());
     /// # }
@@ -2330,7 +2331,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2370,23 +2371,18 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
     /// let numbers = process
     ///     .source_iter(q!(vec![(1, 3), (2, 1), (1, 1), (2, 2)]))
     ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch.sort().all_ticks()
+    /// numbers.sort()
     /// # .entries()
     /// # }, |mut stream| async move {
     /// // values sorted within each key: { 1: [1, 3], 2: [1, 2] }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..4 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
+    /// # let results: Vec<(i32, i32)> = stream.collect().await;
     /// # let key1_vals: Vec<_> = results.iter().filter(|(k, _)| *k == 1).map(|(_, v)| *v).collect();
     /// # let key2_vals: Vec<_> = results.iter().filter(|(k, _)| *k == 2).map(|(_, v)| *v).collect();
     /// # assert_eq!(key1_vals, vec![1, 3]);
@@ -2414,7 +2410,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2469,24 +2465,21 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
     /// let keyed_data = process
     ///     .source_iter(q!(vec![(1, 10), (1, 11), (2, 20)]))
-    ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */));
+    ///     .into_keyed();
     /// let singleton_data = process
     ///     .source_iter(q!(vec![(1, 100), (2, 200)]))
     ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */))
     ///     .first();
-    /// keyed_data.join_keyed_singleton(singleton_data).entries().all_ticks()
+    /// keyed_data.join_keyed_singleton(singleton_data).entries()
     /// # }, |mut stream| async move {
     /// // { 1: [(10, 100), (11, 100)], 2: [(20, 200)] } in any order
-    /// # let mut results = vec![];
+    /// # let mut results = Vec::new();
     /// # for _ in 0..3 {
     /// #     results.push(stream.next().await.unwrap());
     /// # }
@@ -2529,7 +2522,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2577,27 +2570,24 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
     /// let requests = // { 1: [10, 11], 2: 20 }
     /// # process
     /// #     .source_iter(q!(vec![(1, 10), (1, 11), (2, 20)]))
-    /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */));
+    /// #     .into_keyed();
     /// let other_data = // { 10: 100, 11: 110 }
     /// # process
     /// #     .source_iter(q!(vec![(10, 100), (11, 110)]))
     /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
     /// #     .first();
     /// requests.lookup_keyed_singleton(other_data)
-    /// # .entries().all_ticks()
+    /// # .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [(10, Some(100)), (11, Some(110))], 2: (20, None) }
-    /// # let mut results = vec![];
+    /// # let mut results = Vec::new();
     /// # for _ in 0..3 {
     /// #     results.push(stream.next().await.unwrap());
     /// # }
@@ -2626,26 +2616,23 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
     /// let requests = // { 1: [10, 11], 2: 20 }
     /// # process
     /// #     .source_iter(q!(vec![(1, 10), (1, 11), (2, 20)]))
-    /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */));
+    /// #     .into_keyed();
     /// let other_data = // { 10: [100, 101], 11: 110 }
     /// # process
     /// #     .source_iter(q!(vec![(10, 100), (10, 101), (11, 110)]))
-    /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */));
+    /// #     .into_keyed();
     /// requests.lookup_keyed_stream(other_data)
-    /// # .entries().all_ticks()
+    /// # .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [(10, Some(100)), (10, Some(101)), (11, Some(110))], 2: (20, None) }
-    /// # let mut results = vec![];
+    /// # let mut results = Vec::new();
     /// # for _ in 0..4 {
     /// #     results.push(stream.next().await.unwrap());
     /// # }
@@ -2753,7 +2740,7 @@ impl<'a, K1, K2, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2790,7 +2777,7 @@ impl<'a, K, V, L: Location<'a>, O: Ordering, R: Retries> KeyedStream<K, V, L, Un
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2869,7 +2856,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, R: Retries> KeyedStream<K, V, L,
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -3026,23 +3013,15 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// # // ticks are lazy by default, forces the second tick to run
-    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    /// # let batch_first_tick = process
-    /// #   .source_iter(q!(vec![(0, 1), (1, 2), (2, 3), (3, 4)]))
-    /// #   .into_keyed()
-    /// #   .batch(&tick, nondet!(/** test */));
-    /// # let batch_second_tick = process
-    /// #   .source_iter(q!(vec![(0, 5), (1, 6), (2, 7)]))
-    /// #   .into_keyed()
-    /// #   .batch(&tick, nondet!(/** test */))
-    /// #   .defer_tick(); // appears on the second tick
-    /// let input = batch_first_tick.chain(batch_second_tick);
+    /// let input = process
+    ///   .source_iter(q!(vec![(0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (1, 6), (2, 7)]))
+    ///   .into_keyed()
+    ///   .batch(&tick, nondet!(/** test */));
     ///
     /// input
     ///     .across_ticks(|s| {
@@ -3053,20 +3032,16 @@ where
     ///     .entries()
     ///     .all_ticks()
     /// # }, |mut stream| async move {
+    /// // For example, if the first tick's batch is { 0: [1], 1: [2], 2: [3], 3: [4] }:
     /// // First tick: [(0, 1), (1, 2), (2, 3), (3, 4)]
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..4 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(0, 1), (1, 2), (2, 3), (3, 4)]);
     /// // Second tick: [(0, 6), (1, 8), (2, 10), (3, 4)]
-    /// # results.clear();
-    /// # for _ in 0..4 {
-    /// #     results.push(stream.next().await.unwrap());
+    /// # let results: Vec<(i32, i32)> = stream.collect().await;
+    /// # // the last running sum emitted for each key is its total
+    /// # let mut last = std::collections::BTreeMap::new();
+    /// # for (k, v) in results {
+    /// #     last.insert(k, v);
     /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(0, 6), (1, 8), (2, 10), (3, 4)]);
+    /// # assert_eq!(last.into_iter().collect::<Vec<_>>(), vec![(0, 6), (1, 8), (2, 10), (3, 4)]);
     /// # }));
     /// # }
     /// ```
@@ -3087,50 +3062,30 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// # // ticks are lazy by default, forces the second tick to run
-    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    /// # let batch_first_tick = process
-    /// #   .source_iter(q!(vec![(1, 2), (1, 3)]))
+    /// let changes_across_ticks = // for example { 1: [2, 3] } (first tick), { 1: [4], 2: [5] } (second tick)
+    /// # process
+    /// #   .source_iter(q!(vec![(1, 2), (1, 3), (1, 4), (2, 5)]))
     /// #   .batch(&tick, nondet!(/** test */))
     /// #   .into_keyed();
-    /// # let batch_second_tick = process
-    /// #   .source_iter(q!(vec![(1, 4), (2, 5)]))
-    /// #   .batch(&tick, nondet!(/** test */))
-    /// #   .defer_tick()
-    /// #   .into_keyed(); // appears on the second tick
-    /// let changes_across_ticks = // { 1: [2, 3] } (first tick), { 1: [4], 2: [5] } (second tick)
-    /// # batch_first_tick.chain(batch_second_tick);
     /// changes_across_ticks.clone().defer_tick().chain( // from the previous tick
     ///     changes_across_ticks // from the current tick
     /// )
     /// # .entries().all_ticks()
     /// # }, |mut stream| async move {
     /// // First tick: { 1: [2, 3] }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 2), (1, 3)]);
     /// // Second tick: { 1: [2, 3, 4], 2: [5] }
-    /// # results.clear();
-    /// # for _ in 0..4 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 2), (1, 3), (1, 4), (2, 5)]);
     /// // Third tick: { 1: [4], 2: [5] }
-    /// # results.clear();
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
+    /// # let results: Vec<(i32, i32)> = stream.collect().await;
+    /// # // each element appears in its own tick, and again in the next tick if one runs
+    /// # for x in [(1, 2), (1, 3), (1, 4), (2, 5)] {
+    /// #     let n = results.iter().filter(|&&r| r == x).count();
+    /// #     assert!(n == 1 || n == 2);
     /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 4), (2, 5)]);
     /// # }));
     /// # }
     /// ```

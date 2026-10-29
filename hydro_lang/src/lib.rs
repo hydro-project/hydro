@@ -147,8 +147,9 @@ pub mod viz;
 )]
 mod staging_util;
 
-#[cfg(feature = "deploy")]
-#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
+#[cfg(feature = "sim")]
+#[cfg(stageleft_runtime)]
+#[cfg_attr(docsrs, doc(cfg(feature = "sim")))]
 pub mod test_util;
 
 #[cfg(feature = "build")]

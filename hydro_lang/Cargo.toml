@@ -88,6 +88,8 @@ maelstrom = [
 ]
 
 sim_runtime = [
+    # the generated simulation code uses `hydro_lang::sim::runtime`
+    "sim",
     "runtime_support",
     # affects layout of DFIR, thus the ABI
     "dfir_rs/meta",
