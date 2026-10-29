@@ -908,16 +908,18 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             let mut net_in_params: Vec<proc_macro2::TokenStream> = Vec::new();
             let mut extra_destructure: Vec<proc_macro2::TokenStream> = Vec::new();
 
-            // For cluster locations, add self_id parameter.
-            if self.clusters.contains_key(location_key) {
+            // For cluster locations whose code reads their own member ID, add a self_id parameter.
+            let self_id_ident = syn::Ident::new(
+                &format!("__hydro_lang_cluster_self_id_{}", location_key),
+                Span::call_site(),
+            );
+            if self.clusters.contains_key(location_key)
+                && mentions_ident(&dfir_tokens, &self_id_ident)
+            {
                 cluster_params.push(quote! {
                     __cluster_self_id: &'a #root::location::member_id::TaglessMemberId
                 });
                 // Alias to the name the generated DFIR code expects.
-                let self_id_ident = syn::Ident::new(
-                    &format!("__hydro_lang_cluster_self_id_{}", location_key),
-                    Span::call_site(),
-                );
                 extra_destructure.push(quote! {
                     let #self_id_ident = __cluster_self_id;
                 });
@@ -1145,11 +1147,11 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                     });
                     generics.push(generic);
                     extra_destructure
-                        .push(quote! { let mut #ident = __outputs.#ident.inner_mut(); });
+                        .push(quote! { let mut #ident = __outputs.#ident.into_inner(); });
                 }
 
                 output_params.push(quote! {
-                    __outputs: &'a mut #fn_ident::#output_struct_ident<#(#generics),*>
+                    __outputs: #fn_ident::#output_struct_ident<#(#generics),*>
                 });
 
                 mod_items.push(quote! {
@@ -1195,14 +1197,14 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 }
 
                 net_out_params.push(quote! {
-                    __network_out: &'a mut #fn_ident::EmbeddedNetworkOut<#(#generics),*>
+                    __network_out: #fn_ident::EmbeddedNetworkOut<#(#generics),*>
                 });
 
                 for (port, field) in ports.iter().zip(fields) {
                     let var_ident =
                         syn::Ident::new(&format!("__network_out_{}", port.name), Span::call_site());
                     extra_destructure
-                        .push(quote! { let mut #var_ident = __network_out.#field.inner_mut(); });
+                        .push(quote! { let mut #var_ident = __network_out.#field.into_inner(); });
                 }
 
                 mod_items.push(quote! {
@@ -1318,6 +1320,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 syn::parse_quote! {
                     #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
                     pub fn #fn_ident<'a>(#(#all_params),*) -> #ret_type {
+                        #(#extra_destructure)*
                         #dfir_tokens
                     }
                 }
@@ -1335,4 +1338,13 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             #( #items )*
         }
     }
+}
+
+/// Whether `tokens` contain `ident`, at any depth.
+fn mentions_ident(tokens: &proc_macro2::TokenStream, ident: &syn::Ident) -> bool {
+    tokens.clone().into_iter().any(|token| match token {
+        proc_macro2::TokenTree::Ident(found) => found == *ident,
+        proc_macro2::TokenTree::Group(group) => mentions_ident(&group.stream(), ident),
+        _ => false,
+    })
 }

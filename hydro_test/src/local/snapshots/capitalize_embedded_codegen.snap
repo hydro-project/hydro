@@ -11,10 +11,43 @@ pub mod capitalize {
     pub struct EmbeddedInputs<
         __In0: __root_dfir_rs::futures::Stream<Item = std::string::String> + Unpin,
     > {
-        pub input: __In0,
+        ///The `input` stream input (marker type: [`inputs::input`]).
+        pub input: hydro_lang::compile::embedded_runtime::InputChannel<
+            inputs::input,
+            __In0,
+        >,
+    }
+    /// Marker types for each stream input, describing each stream field of
+    /// `EmbeddedInputs`.
+    pub mod inputs {
+        use super::*;
+        /**The `input` stream input.
+
+Promise its guarantees with `InputChannel::new(.., Promises::new().total_order(proof).exactly_once(proof))`.*/
+        #[allow(non_camel_case_types, reason = "named after its field")]
+        pub struct input;
+        impl hydro_lang::compile::embedded_runtime::EmbeddedChannel for input {
+            type Ordering = hydro_lang::live_collections::stream::TotalOrder;
+            type Retries = hydro_lang::live_collections::stream::ExactlyOnce;
+        }
     }
     pub struct EmbeddedOutputs<__Out0: FnMut(std::string::String)> {
-        pub output: __Out0,
+        ///The `output` output (marker type: [`outputs::output`]).
+        pub output: hydro_lang::compile::embedded_runtime::OutputChannel<
+            outputs::output,
+            __Out0,
+        >,
+    }
+    /// Marker types for each output, describing each field of `EmbeddedOutputs`.
+    pub mod outputs {
+        use super::*;
+        ///The `output` output.
+        #[allow(non_camel_case_types, reason = "named after its field")]
+        pub struct output;
+        impl hydro_lang::compile::embedded_runtime::EmbeddedChannel for output {
+            type Ordering = hydro_lang::live_collections::stream::TotalOrder;
+            type Retries = hydro_lang::live_collections::stream::ExactlyOnce;
+        }
     }
 }
 #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
@@ -24,14 +57,14 @@ pub fn capitalize<
     __Out0: FnMut(std::string::String) + 'a,
 >(
     __inputs: capitalize::EmbeddedInputs<__In0>,
-    __outputs: &'a mut capitalize::EmbeddedOutputs<__Out0>,
+    __outputs: capitalize::EmbeddedOutputs<__Out0>,
 ) -> hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir<
     impl hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure<
         Metrics = (),
     > + 'a,
 > {
-    let input = __inputs.input;
-    let mut output = &mut __outputs.output;
+    let input = __inputs.input.into_inner();
+    let mut output = __outputs.output.into_inner();
     {
         use __root_dfir_rs::{var_expr, var_args};
         #[allow(unused_mut)]
