@@ -253,12 +253,11 @@ pub fn compile_graph_trybuild(
 
                     let mut #dfir_ident = #dfir_expr;
 
-                    let local_set = #root::runtime_support::tokio::task::LocalSet::new();
                     #(
-                        let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
+                        let _ = #root::runtime_support::tokio::spawn( #sidecars ); // Uses #dfir_ident
                     )*
 
-                    let _ = local_set.run_until(#dfir_ident.run()).await;
+                    let _ = #dfir_ident.run().await;
                 }
             }
         }
@@ -286,16 +285,15 @@ pub fn compile_graph_trybuild(
                     // TODO(mingwei): initialize `tracing` at this point in execution.
                     // After "ack start" is when we can print whatever we want.
 
-                    let local_set = #root::runtime_support::tokio::task::LocalSet::new();
                     #(
-                        let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
+                        let _ = #root::runtime_support::tokio::spawn( #sidecars ); // Uses #dfir_ident
                     )*
 
-                    let _ = local_set.run_until(#root::runtime_support::launch::run_stdin_commands(
+                    let _ = #root::runtime_support::launch::run_stdin_commands(
                         async move {
                             #dfir_ident.run().await
                         }
-                    )).await;
+                    ).await;
                 }
             }
         }
@@ -335,12 +333,11 @@ pub fn compile_graph_trybuild(
 
                     __hydro_lang_maelstrom_meta.start_receiving(); // start receiving messages after initializing subscribers
 
-                    let local_set = #root::runtime_support::tokio::task::LocalSet::new();
                     #(
-                        let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
+                        let _ = #root::runtime_support::tokio::spawn( #sidecars ); // Uses #dfir_ident
                     )*
 
-                    let _ = local_set.run_until(#dfir_ident.run()).await;
+                    let _ = #dfir_ident.run().await;
                 }
             }
         }

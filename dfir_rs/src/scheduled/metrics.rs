@@ -1,8 +1,8 @@
 //! Runtime metrics for DFIR.
 
-use std::cell::Cell;
 use std::pin::Pin;
-use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::task::{Context, Poll};
 
 use dfir_lang::graph_ids::{GraphNodeId, GraphSubgraphId};
@@ -15,7 +15,7 @@ use web_time::{Duration, Instant};
 ///
 /// This trait is sealed and is implemented for exactly two types:
 ///
-/// - [`DfirMetrics`]: metrics are tracked. The context holds a shared [`Rc<DfirMetrics>`] handle
+/// - [`DfirMetrics`]: metrics are tracked. The context holds a shared [`Arc<DfirMetrics>`] handle
 ///   which is updated by the generated code and exposed via
 ///   [`Dfir::metrics`](super::context::Dfir::metrics).
 /// - `()`: metrics are not tracked. The handle is the zero-sized `()`, so the context statically
@@ -26,14 +26,14 @@ use web_time::{Duration, Instant};
 /// so there is no runtime check or default-allocated metrics when tracking is disabled.
 #[sealed]
 pub trait MetricsState: 'static {
-    /// The metrics handle stored inside the context: [`Rc<DfirMetrics>`] or `()`.
+    /// The metrics handle stored inside the context: [`Arc<DfirMetrics>`] or `()`.
     type Handle;
 }
 
 /// Metrics are tracked.
 #[sealed]
 impl MetricsState for DfirMetrics {
-    type Handle = Rc<DfirMetrics>;
+    type Handle = Arc<DfirMetrics>;
 }
 
 /// Metrics are not tracked. Zero-sized, no runtime cost.
@@ -47,6 +47,15 @@ impl MetricsState for () {
 /// Call [`Dfir::metrics`](super::context::Dfir::metrics) for reference-counted continually-updated metrics,
 /// or call [`Dfir::metrics_intervals`](super::context::Dfir::metrics_intervals) to obtain a [`DfirMetricsIntervals`] handle, and use
 /// [`DfirMetricsIntervals::take_interval`] to retrieve metrics for successive intervals.
+///
+/// # Thread safety
+///
+/// All counters are atomics, so the live metrics may be read from any thread (e.g. a metrics
+/// reporting task) while the dataflow is running. Each individual counter is always consistent, but
+/// a snapshot (via [`Clone`] or [`DfirMetricsIntervals::take_interval`]) taken from another thread
+/// may observe counters from slightly different moments in time relative to each other (e.g.
+/// [`SubgraphMetrics::total_run_count`] incremented but [`SubgraphMetrics::total_poll_duration`]
+/// not yet updated for that run).
 #[derive(Default, Clone)]
 #[non_exhaustive]
 pub struct DfirMetrics {
@@ -83,7 +92,7 @@ impl DfirMetrics {
 #[derive(Clone)]
 pub struct DfirMetricsIntervals {
     /// `curr` is continually updating (via shared ownership).
-    pub(super) curr: Rc<DfirMetrics>,
+    pub(super) curr: Arc<DfirMetrics>,
     /// `prev` is an unchanging snapshot in time. `None` for "since creation".
     pub(super) prev: Option<DfirMetrics>,
 }
@@ -104,12 +113,96 @@ impl DfirMetricsIntervals {
     /// Returns a reference-counted handle to the original continually-updated runtime metrics for this DFIR instance.
     ///
     /// See [`Dfir::metrics`](super::context::Dfir::metrics).
-    pub fn all_metrics(&self) -> Rc<DfirMetrics> {
-        Rc::clone(&self.curr)
+    pub fn all_metrics(&self) -> Arc<DfirMetrics> {
+        Arc::clone(&self.curr)
     }
 }
 
-/// Declarative macro to generate metrics structs with Cell-based fields and getter methods.
+/// An atomic cell holding a single metric value: [`AtomicCount`] or [`AtomicDuration`].
+///
+/// Metrics are written only by the thread running the dataflow and may be read concurrently from
+/// other threads, so all operations use [`Ordering::Relaxed`].
+#[sealed]
+pub trait MetricCell: Default {
+    /// The plain value type stored in this cell.
+    type Value: Copy;
+
+    /// Reads the current value.
+    fn get(&self) -> Self::Value;
+    /// Overwrites the current value.
+    fn set(&self, value: Self::Value);
+    /// Adds `value` to the current value.
+    fn add(&self, value: Self::Value);
+}
+
+/// An atomic `usize` counter metric. See [`MetricCell`].
+#[derive(Default, Debug)]
+#[repr(transparent)]
+pub struct AtomicCount(AtomicUsize);
+
+#[sealed]
+impl MetricCell for AtomicCount {
+    type Value = usize;
+
+    fn get(&self) -> usize {
+        self.0.load(Ordering::Relaxed)
+    }
+
+    fn set(&self, value: usize) {
+        self.0.store(value, Ordering::Relaxed);
+    }
+
+    fn add(&self, value: usize) {
+        self.0.fetch_add(value, Ordering::Relaxed);
+    }
+}
+
+impl Clone for AtomicCount {
+    fn clone(&self) -> Self {
+        let cell = Self::default();
+        cell.set(self.get());
+        cell
+    }
+}
+
+/// An atomic [`Duration`] metric, stored as whole nanoseconds in a `u64` (saturating at ~584
+/// years). See [`MetricCell`].
+#[derive(Default, Debug)]
+#[repr(transparent)]
+pub struct AtomicDuration(AtomicU64);
+
+impl AtomicDuration {
+    fn to_nanos(value: Duration) -> u64 {
+        u64::try_from(value.as_nanos()).unwrap_or(u64::MAX)
+    }
+}
+
+#[sealed]
+impl MetricCell for AtomicDuration {
+    type Value = Duration;
+
+    fn get(&self) -> Duration {
+        Duration::from_nanos(self.0.load(Ordering::Relaxed))
+    }
+
+    fn set(&self, value: Duration) {
+        self.0.store(Self::to_nanos(value), Ordering::Relaxed);
+    }
+
+    fn add(&self, value: Duration) {
+        self.0.fetch_add(Self::to_nanos(value), Ordering::Relaxed);
+    }
+}
+
+impl Clone for AtomicDuration {
+    fn clone(&self) -> Self {
+        let cell = Self::default();
+        cell.set(self.get());
+        cell
+    }
+}
+
+/// Declarative macro to generate metrics structs with atomic cell fields and value getter methods.
 macro_rules! define_metrics {
     (
         $(#[$struct_attr:meta])*
@@ -118,7 +211,7 @@ macro_rules! define_metrics {
                 $( #[doc = $doc:literal] )*
                 #[diff($diff:ident)]
                 $( #[$field_attr:meta] )*
-                $field_name:ident: Cell<$field_type:ty>,
+                $field_name:ident: $field_type:ty,
             )*
         }
     ) => {
@@ -129,14 +222,14 @@ macro_rules! define_metrics {
             $(
                 #[doc(hidden)] // Public for codegen access; use the getter method instead.
                 $(#[$field_attr])*
-                pub $field_name: Cell<$field_type>,
+                pub $field_name: $field_type,
             )*
         }
 
         impl $struct_name {
             $(
                 $( #[doc = $doc] )*
-                pub fn $field_name(&self) -> $field_type {
+                pub fn $field_name(&self) -> <$field_type as MetricCell>::Value {
                     self.$field_name.get()
                 }
             )*
@@ -152,8 +245,8 @@ macro_rules! define_metrics {
 
 macro_rules! define_metrics_diff_field {
     (total, $field:ident, $slf:ident, $other:ident) => {
-        debug_assert!($other.$field.get() <= $slf.$field.get());
-        $slf.$field.update(|x| x - $other.$field.get());
+        debug_assert!($other.$field() <= $slf.$field());
+        $slf.$field.set($slf.$field() - $other.$field());
     };
     (curr, $field:ident, $slf:ident, $other:ident) => {};
 }
@@ -163,11 +256,11 @@ define_metrics! {
     pub struct HandoffMetrics {
         /// Number of items currently in the handoff.
         #[diff(curr)]
-        curr_items_count: Cell<usize>,
+        curr_items_count: AtomicCount,
 
         /// Total number of items read out of the handoff.
         #[diff(total)]
-        total_items_count: Cell<usize>,
+        total_items_count: AtomicCount,
     }
 }
 
@@ -176,23 +269,23 @@ define_metrics! {
     pub struct SubgraphMetrics {
         /// Number of times the subgraph has run.
         #[diff(total)]
-        total_run_count: Cell<usize>,
+        total_run_count: AtomicCount,
 
         /// Time elapsed during polling (when the subgraph is actively doing work).
         #[diff(total)]
-        total_poll_duration: Cell<Duration>,
+        total_poll_duration: AtomicDuration,
 
         /// Number of times the subgraph has been polled.
         #[diff(total)]
-        total_poll_count: Cell<usize>,
+        total_poll_count: AtomicCount,
 
         /// Time elapsed during idle (when the subgraph has yielded and is waiting for async events).
         #[diff(total)]
-        total_idle_duration: Cell<Duration>,
+        total_idle_duration: AtomicDuration,
 
         /// Number of times the subgraph has been idle.
         #[diff(total)]
-        total_idle_count: Cell<usize>,
+        total_idle_count: AtomicCount,
     }
 }
 
@@ -228,10 +321,8 @@ where
 
         // End idle duration.
         if let Some(idle_start) = this.idle_start {
-            this.metrics
-                .total_idle_duration
-                .update(|x| x + idle_start.elapsed());
-            this.metrics.total_idle_count.update(|x| x + 1);
+            this.metrics.total_idle_duration.add(idle_start.elapsed());
+            this.metrics.total_idle_count.add(1);
         }
 
         // Begin poll duration.
@@ -239,10 +330,8 @@ where
         let out = this.future.poll(cx);
 
         // End poll duration.
-        this.metrics
-            .total_poll_duration
-            .update(|x| x + poll_start.elapsed());
-        this.metrics.total_poll_count.update(|x| x + 1);
+        this.metrics.total_poll_duration.add(poll_start.elapsed());
+        this.metrics.total_poll_count.add(1);
 
         // Begin idle duration.
         this.idle_start.replace(Instant::now());
@@ -267,27 +356,25 @@ mod test {
         let handoff_id = node_map.insert(());
 
         let mut metrics = DfirMetrics::default();
-        metrics.subgraphs.insert(
-            sg_id,
-            SubgraphMetrics {
-                total_run_count: Cell::new(5),
-                total_poll_count: Cell::new(10),
-                total_idle_count: Cell::new(2),
-                total_poll_duration: Cell::new(Duration::from_millis(500)),
-                total_idle_duration: Cell::new(Duration::from_millis(200)),
-            },
-        );
-        metrics.handoffs.insert(
-            handoff_id,
-            HandoffMetrics {
-                curr_items_count: Cell::new(3),
-                total_items_count: Cell::new(100),
-            },
-        );
-        let metrics = Rc::new(metrics);
+        let sg_metrics = SubgraphMetrics::default();
+        sg_metrics.total_run_count.set(5);
+        sg_metrics.total_poll_count.set(10);
+        sg_metrics.total_idle_count.set(2);
+        sg_metrics
+            .total_poll_duration
+            .set(Duration::from_millis(500));
+        sg_metrics
+            .total_idle_duration
+            .set(Duration::from_millis(200));
+        metrics.subgraphs.insert(sg_id, sg_metrics);
+        let hoff_metrics = HandoffMetrics::default();
+        hoff_metrics.curr_items_count.set(3);
+        hoff_metrics.total_items_count.set(100);
+        metrics.handoffs.insert(handoff_id, hoff_metrics);
+        let metrics = Arc::new(metrics);
 
         let mut intervals = DfirMetricsIntervals {
-            curr: Rc::clone(&metrics),
+            curr: Arc::clone(&metrics),
             prev: None,
         };
 
