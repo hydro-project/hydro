@@ -16,6 +16,11 @@ note: method defined here
 ...
    |     fn uninitialized(
    |        ^^^^^^^^^^^^^
+note: method provided through this blanket `impl`
+  --> $CARGO/stageleft-$VERSION/src/runtime_support.rs
+   |
+   | impl<Ctx, T: FreeVariableWithContextWithProps<Ctx, ()>> FreeVariableWithContext<Ctx> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
@@ -35,4 +40,9 @@ note: method defined here
    | pub trait FreeVariableWithContext<Ctx>: FreeVariableWithContextWithProps<Ctx, ()> {
    |     fn to_tokens(self, ctx: &Ctx) -> QuoteTokens
    |        ^^^^^^^^^
+note: method provided through this blanket `impl`
+  --> $CARGO/stageleft-$VERSION/src/runtime_support.rs
+   |
+   | impl<Ctx, T: FreeVariableWithContextWithProps<Ctx, ()>> FreeVariableWithContext<Ctx> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
