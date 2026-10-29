@@ -627,18 +627,6 @@ fn tick_of_out_location(out_location: &LocationId) -> &LocationId {
     }
 }
 
-fn stream_order_type(order: &StreamOrder) -> syn::Type {
-    let root = get_this_crate();
-    match order {
-        StreamOrder::TotalOrder => {
-            parse_quote! { #root::live_collections::stream::TotalOrder }
-        }
-        StreamOrder::NoOrder => {
-            parse_quote! { #root::live_collections::stream::NoOrder }
-        }
-    }
-}
-
 impl DfirBuilder for SimBuilder {
     fn singleton_intermediates(&self) -> bool {
         true
@@ -702,7 +690,7 @@ impl DfirBuilder for SimBuilder {
                 ..
             } => {
                 debug_assert!(in_location.is_top_level());
-                let order_ty = stream_order_type(order);
+                let order_ty = order.type_tokens();
                 let plumbing = self.tick_input_plumbing(in_location, TickInputBuffer::Queue);
                 let TickInputPlumbing {
                     buffered_ident,
@@ -738,7 +726,7 @@ impl DfirBuilder for SimBuilder {
                 ..
             } => {
                 debug_assert!(in_location.is_top_level());
-                let order_ty = stream_order_type(value_order);
+                let order_ty = value_order.type_tokens();
                 let plumbing = self.tick_input_plumbing(in_location, TickInputBuffer::KeyedQueues);
                 let TickInputPlumbing {
                     buffered_ident,

@@ -2985,6 +2985,30 @@ pub enum StreamRetry {
     ExactlyOnce,
 }
 
+#[cfg(feature = "build")]
+impl StreamOrder {
+    /// The `Ordering` type for this order.
+    pub fn type_tokens(&self) -> TokenStream {
+        let root = crate::staging_util::get_this_crate();
+        match self {
+            StreamOrder::TotalOrder => quote! { #root::live_collections::stream::TotalOrder },
+            StreamOrder::NoOrder => quote! { #root::live_collections::stream::NoOrder },
+        }
+    }
+}
+
+#[cfg(feature = "build")]
+impl StreamRetry {
+    /// The `Retries` type for this retry guarantee.
+    pub fn type_tokens(&self) -> TokenStream {
+        let root = crate::staging_util::get_this_crate();
+        match self {
+            StreamRetry::ExactlyOnce => quote! { #root::live_collections::stream::ExactlyOnce },
+            StreamRetry::AtLeastOnce => quote! { #root::live_collections::stream::AtLeastOnce },
+        }
+    }
+}
+
 #[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
 pub enum KeyedSingletonBoundKind {
     Unbounded,
