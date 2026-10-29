@@ -541,3 +541,28 @@ impl<Tick: TickClosure + 'static> Dfir<Tick> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::future::ready;
+
+    use static_assertions::assert_impl_all;
+
+    use super::{Context, Dfir, TickClosure};
+
+    struct SendTick;
+
+    impl TickClosure for SendTick {
+        type Metrics = ();
+
+        fn call_tick<'a>(
+            &'a mut self,
+            _ctx: &'a mut Context<()>,
+        ) -> impl Future<Output = bool> + 'a {
+            ready(false)
+        }
+    }
+
+    assert_impl_all!(Context<()>: Send);
+    assert_impl_all!(Dfir<SendTick>: Send);
+}
