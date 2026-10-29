@@ -222,47 +222,16 @@ impl<F: TcpFailPolicy> TransportKind for Tcp<F> {
 }
 
 /// Items cross a channel that the host of an embedded program implements however it likes (a
-/// network connection, an in-memory queue, ...), keeping the declared retries `R`, ordering `O`,
-/// and failure policy `F` (`()` until declared).
+/// network connection, an in-memory queue, ...), keeping the retries `R`, ordering `O`, and
+/// failure policy `F` left after the anomalies the channel declares it may introduce.
 pub struct EmbeddedTransport<R, O, F> {
     _phantom: PhantomData<(R, O, F)>,
 }
 
-/// A retry guarantee an [`EMBEDDED`] channel can declare: [`ExactlyOnce`] or [`AtLeastOnce`].
+/// A failure policy an [`EMBEDDED`] channel can have: [`FailStop`] (no loss), [`Lossy`]
+/// ([`may_drop`](NetworkingConfig::may_drop)), or [`LossyDelayedForever`]
+/// ([`may_delay_forever`](NetworkingConfig::may_delay_forever)).
 #[sealed::sealed]
-#[diagnostic::on_unimplemented(
-    message = "this `EMBEDDED` channel does not declare its retries",
-    note = "add `.exactly_once()` or `.at_least_once()` to the network config"
-)]
-pub trait EmbeddedRetries: Retries {}
-
-#[sealed::sealed]
-impl EmbeddedRetries for ExactlyOnce {}
-
-#[sealed::sealed]
-impl EmbeddedRetries for AtLeastOnce {}
-
-/// An ordering an [`EMBEDDED`] channel can declare: [`TotalOrder`] or [`NoOrder`].
-#[sealed::sealed]
-#[diagnostic::on_unimplemented(
-    message = "this `EMBEDDED` channel does not declare its ordering",
-    note = "add `.total_order()` or `.no_order()` to the network config"
-)]
-pub trait EmbeddedOrdering: Ordering {}
-
-#[sealed::sealed]
-impl EmbeddedOrdering for TotalOrder {}
-
-#[sealed::sealed]
-impl EmbeddedOrdering for NoOrder {}
-
-/// A failure policy an [`EMBEDDED`] channel can declare: [`FailStop`], [`Lossy`], or
-/// [`LossyDelayedForever`].
-#[sealed::sealed]
-#[diagnostic::on_unimplemented(
-    message = "this `EMBEDDED` channel does not declare its failure policy",
-    note = "add `.fail_stop()`, `.lossy(nondet!(..))`, or `.lossy_delayed_forever()` to the network config"
-)]
 pub trait EmbeddedFailPolicy {
     /// The ordering of the received stream when the channel declares ordering `O`.
     type Ordering<O: Ordering>: Ordering;
@@ -308,12 +277,10 @@ impl EmbeddedFailPolicy for LossyDelayedForever {
     }
 }
 
-/// An [`EMBEDDED`] channel's guarantees are the ones it declares, with the consistency
-/// guarantee of its failure policy (as for [`Tcp`] and [`Udp`]).
+/// An [`EMBEDDED`] channel's guarantees are the ones its declared anomalies leave, with the
+/// consistency guarantee of its failure policy (as for [`Tcp`] and [`Udp`]).
 #[sealed::sealed]
-impl<R: EmbeddedRetries, O: EmbeddedOrdering, F: EmbeddedFailPolicy> TransportKind
-    for EmbeddedTransport<R, O, F>
-{
+impl<R: Retries, O: Ordering, F: EmbeddedFailPolicy> TransportKind for EmbeddedTransport<R, O, F> {
     type OrderingGuarantee = F::Ordering<O>;
 
     type RetriesGuarantee = R;
@@ -543,19 +510,11 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     }
 }
 
-impl<O, F, S: ?Sized> NetworkingConfig<EmbeddedTransport<(), O, F>, S> {
-    /// Requires the host's channel to never deliver a message more than once.
+impl<O, F, S: ?Sized> NetworkingConfig<EmbeddedTransport<ExactlyOnce, O, F>, S> {
+    /// Declares that the host's channel may deliver a message more than once, so the received
+    /// stream is [`AtLeastOnce`].
     #[must_use]
-    pub const fn exactly_once(self) -> NetworkingConfig<EmbeddedTransport<ExactlyOnce, O, F>, S> {
-        NetworkingConfig {
-            name: self.name,
-            _phantom: (PhantomData, PhantomData),
-        }
-    }
-
-    /// Allows the host's channel to deliver a message more than once.
-    #[must_use]
-    pub const fn at_least_once(self) -> NetworkingConfig<EmbeddedTransport<AtLeastOnce, O, F>, S> {
+    pub const fn may_duplicate(self) -> NetworkingConfig<EmbeddedTransport<AtLeastOnce, O, F>, S> {
         NetworkingConfig {
             name: self.name,
             _phantom: (PhantomData, PhantomData),
@@ -563,19 +522,11 @@ impl<O, F, S: ?Sized> NetworkingConfig<EmbeddedTransport<(), O, F>, S> {
     }
 }
 
-impl<R, F, S: ?Sized> NetworkingConfig<EmbeddedTransport<R, (), F>, S> {
-    /// Requires the host's channel to deliver each sender's messages in the order it sent them.
+impl<R, F, S: ?Sized> NetworkingConfig<EmbeddedTransport<R, TotalOrder, F>, S> {
+    /// Declares that the host's channel may deliver a sender's messages in a different order
+    /// than it sent them, so the received stream is [`NoOrder`].
     #[must_use]
-    pub const fn total_order(self) -> NetworkingConfig<EmbeddedTransport<R, TotalOrder, F>, S> {
-        NetworkingConfig {
-            name: self.name,
-            _phantom: (PhantomData, PhantomData),
-        }
-    }
-
-    /// Allows the host's channel to deliver messages in any order.
-    #[must_use]
-    pub const fn no_order(self) -> NetworkingConfig<EmbeddedTransport<R, NoOrder, F>, S> {
+    pub const fn may_reorder(self) -> NetworkingConfig<EmbeddedTransport<R, NoOrder, F>, S> {
         NetworkingConfig {
             name: self.name,
             _phantom: (PhantomData, PhantomData),
@@ -583,23 +534,14 @@ impl<R, F, S: ?Sized> NetworkingConfig<EmbeddedTransport<R, (), F>, S> {
     }
 }
 
-impl<R, O, S: ?Sized> NetworkingConfig<EmbeddedTransport<R, O, ()>, S> {
-    /// Requires the host's channel to stop delivering a sender's messages once its channel
-    /// fails, like [`TCP.fail_stop()`](NetworkingConfig::fail_stop).
-    #[must_use]
-    pub const fn fail_stop(self) -> NetworkingConfig<EmbeddedTransport<R, O, FailStop>, S> {
-        NetworkingConfig {
-            name: self.name,
-            _phantom: (PhantomData, PhantomData),
-        }
-    }
-
-    /// Allows the host's channel to lose messages, like [`TCP.lossy()`](NetworkingConfig::lossy).
+impl<R, O, S: ?Sized> NetworkingConfig<EmbeddedTransport<R, O, FailStop>, S> {
+    /// Declares that the host's channel may lose messages and keep delivering later ones, like
+    /// [`TCP.lossy()`](NetworkingConfig::lossy).
     ///
     /// # Non-Determinism
     /// A lossy channel will non-deterministically drop messages during execution.
     #[must_use]
-    pub const fn lossy(
+    pub const fn may_drop(
         self,
         nondet: NonDet,
     ) -> NetworkingConfig<EmbeddedTransport<R, O, Lossy>, S> {
@@ -610,14 +552,15 @@ impl<R, O, S: ?Sized> NetworkingConfig<EmbeddedTransport<R, O, ()>, S> {
         }
     }
 
-    /// Treats a message the host's channel never delivers as indefinitely delayed, like
+    /// Declares that the host's channel may never deliver a message, which is treated as
+    /// indefinitely delayed, like
     /// [`TCP.lossy_delayed_forever()`](NetworkingConfig::lossy_delayed_forever). The received
-    /// stream is [`NoOrder`], even with [`total_order()`](NetworkingConfig::total_order).
+    /// stream is [`NoOrder`].
     ///
     /// The Hydro simulator requires
     /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) for this mode.
     #[must_use]
-    pub const fn lossy_delayed_forever(
+    pub const fn may_delay_forever(
         self,
     ) -> NetworkingConfig<EmbeddedTransport<R, O, LossyDelayedForever>, S> {
         NetworkingConfig {
@@ -742,15 +685,22 @@ pub const TCP: NetworkingConfig<Tcp<()>, NoSer> = NetworkingConfig {
 };
 
 /// A network channel implemented by the host of an embedded program, which chooses how messages
-/// travel: a network connection, an in-memory queue, or anything else that delivers them with the
-/// declared guarantees (for example
-/// `EMBEDDED.exactly_once().total_order().fail_stop().name("messages")`).
+/// travel: a network connection, an in-memory queue, or anything else. `EMBEDDED` alone is a
+/// channel that introduces no anomalies: it delivers each sender's messages once, in order, and
+/// stops only when it fails, like [`TCP.fail_stop()`](NetworkingConfig::fail_stop). Declare each
+/// anomaly the host's channel may introduce with [`may_reorder`](NetworkingConfig::may_reorder),
+/// [`may_duplicate`](NetworkingConfig::may_duplicate), [`may_drop`](NetworkingConfig::may_drop),
+/// or [`may_delay_forever`](NetworkingConfig::may_delay_forever) (for example
+/// `EMBEDDED.may_reorder().name("messages")`); the received stream is weakened accordingly.
 ///
 /// Items cross the channel unserialized: the generated channel ends carry the raw element type,
-/// and the host encodes it if its transport needs to. The program names only the guarantees, not
+/// and the host encodes it if its transport needs to. The program names only the anomalies, not
 /// a transport, so it is only supported by the embedded deployment backend and the Hydro
 /// simulator (which carries the raw values in memory); other backends use [`TCP`] or [`UDP`].
-pub const EMBEDDED: NetworkingConfig<EmbeddedTransport<(), (), ()>, Embedded> = NetworkingConfig {
+pub const EMBEDDED: NetworkingConfig<
+    EmbeddedTransport<ExactlyOnce, TotalOrder, FailStop>,
+    Embedded,
+> = NetworkingConfig {
     name: None,
     _phantom: (PhantomData, PhantomData),
 };

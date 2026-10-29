@@ -11,13 +11,6 @@ pub fn echo_network_embedded<'a>(
     input: Stream<String, Process<'a, Sender>>,
 ) -> Stream<String, Process<'a, Receiver>> {
     input
-        .send(
-            receiver,
-            EMBEDDED
-                .exactly_once()
-                .total_order()
-                .fail_stop()
-                .name("messages"),
-        )
+        .send(receiver, EMBEDDED.name("messages"))
         .map(q!(|s| s.to_uppercase()))
 }

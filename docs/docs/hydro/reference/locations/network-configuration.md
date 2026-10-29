@@ -38,16 +38,25 @@ The `.bincode()` API configures the channel to use the [`bincode`](https://docs.
 
 ## EMBEDDED
 
-`EMBEDDED` is for [embedded deployments](../deploy/embedded.mdx), where the host program that runs the generated code implements every channel itself: over a network connection, through an in-memory queue, with a specialized transport like DPDK or shared memory, or with an existing messaging layer. The config names only the **guarantees** the channel must keep: its retries, ordering, and failure policy, each required:
+`EMBEDDED` is for [embedded deployments](../deploy/embedded.mdx), where the host program that runs the generated code implements every channel itself: over a network connection, through an in-memory queue, with a specialized transport like DPDK or shared memory, or with an existing messaging layer. The config names only the **anomalies** the host's channel may introduce. `EMBEDDED` alone introduces none: it delivers each sender's messages once, in order, and stops only when it fails, like `TCP.fail_stop()`. Declare each anomaly the channel may introduce, and the received stream is weakened accordingly:
+
+| Builder | The host's channel may… | Received stream |
+|---|---|---|
+| `.may_reorder()` | deliver a sender's messages out of order | `NoOrder` |
+| `.may_duplicate()` | deliver a message more than once | `AtLeastOnce` |
+| `.may_drop(nondet!(..))` | lose messages and keep delivering later ones, like `TCP.lossy(..)` | as `TCP.lossy(..)` |
+| `.may_delay_forever()` | never deliver a message, treated as delayed forever, like `TCP.lossy_delayed_forever()` | `NoOrder` |
+
+A channel may drop messages or delay them forever, not both.
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
-let config = EMBEDDED.exactly_once().total_order().fail_stop().name("messages");
+let config = EMBEDDED.may_reorder().may_duplicate().name("messages");
 ```
 
 Each embedded channel is unidirectional and has two ends, an input and an output. For channels that move data from the dataflow to the embedded host, the network configuration dictates what guarantees and behavior the embedded host can expect from the channel. For channels that move data from the embedded host to the data flow, the network configuration determines what guarantees and behavior the embedded host must uphold.
 
-As with TCP and UDP, the Hydro simulator requires [`.test_safety_only()`](rust:hydro_lang::sim::flow::SimFlow::test_safety_only) for `lossy_delayed_forever()`, and does not support `lossy` yet.
+As with TCP and UDP, the Hydro simulator requires [`.test_safety_only()`](rust:hydro_lang::sim::flow::SimFlow::test_safety_only) for `may_delay_forever()`, and does not support `may_drop` yet.
 
 `EMBEDDED` channels are never serialized by Hydro: the raw element type `T` is exposed at the channel boundary, so the generated sender side hands the host `T` values directly, and the receiver side accepts a stream of `T` values. The host encodes them only if its transport needs to (an in-memory queue never does). Because no transport managed by Hydro is involved, the receiving side gets the raw payload with no transport `Result` to unwrap: the host decides how to handle serialization and delivery faults before feeding elements into the receiver.
 
