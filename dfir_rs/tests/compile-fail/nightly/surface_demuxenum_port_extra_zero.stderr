@@ -60,7 +60,7 @@ help: the trait `dfir_rs::dfir_pipes::pull::Pull` is conditionally implemented f
    |             |                    unsatisfied requirement introduced here: `<_ as FnOnce<(<_ as dfir_rs::dfir_pipes::pull::Pull>::Item,)>>::Output == _`
    |             unsatisfied requirement introduced here: `_: FnMut(<_ as dfir_rs::dfir_pipes::pull::Pull>::Item)`
    = note: required for `dfir_rs::dfir_pipes::pull::Map<impl dfir_rs::dfir_pipes::pull::Pull<Item = _, Meta = (), CanPend = <dfir_rs::dfir_pipes::pull::Iter<&mut impl Iterator<Item = _>> as dfir_rs::dfir_pipes::pull::Pull>::CanPend, CanEnd = <dfir_rs::dfir_pipes::pull::Iter<&mut impl Iterator<Item = _>> as dfir_rs::dfir_pipes::pull::Pull>::CanEnd>, fn(Shape) -> <Shape as SingleVariant>::Output {<Shape as SingleVariant>::single_variant}>` to implement `dfir_rs::dfir_pipes::pull::Pull`
-note: required by a bound in `main::{closure#1}::{closure#0}::{closure#0}::op_2v1__demux_enum__loc_dfir_rs_tests_compile_fail_nightly_surface_demuxenum_port_extra_zero_rs_10_39_10_60`
+note: required by a bound in `op_2v1__demux_enum__loc_dfir_rs_tests_compile_fail_nightly_surface_demuxenum_port_extra_zero_rs_10_39_10_60`
   --> tests/compile-fail/nightly/surface_demuxenum_port_extra_zero.rs:10:39
    |
 10 |         my_demux = source_iter([]) -> demux_enum::<Shape>();
@@ -87,7 +87,7 @@ help: the trait `dfir_rs::dfir_pipes::pull::Pull` is conditionally implemented f
    |             |                    unsatisfied requirement introduced here: `<_ as FnOnce<(<_ as dfir_rs::dfir_pipes::pull::Pull>::Item,)>>::Output == _`
    |             unsatisfied requirement introduced here: `_: FnMut(<_ as dfir_rs::dfir_pipes::pull::Pull>::Item)`
    = note: required for `dfir_rs::dfir_pipes::pull::Map<impl dfir_rs::dfir_pipes::pull::Pull<Item = _, Meta = (), CanPend = <dfir_rs::dfir_pipes::pull::Iter<&mut impl Iterator<Item = _>> as dfir_rs::dfir_pipes::pull::Pull>::CanPend, CanEnd = <dfir_rs::dfir_pipes::pull::Iter<&mut impl Iterator<Item = _>> as dfir_rs::dfir_pipes::pull::Pull>::CanEnd>, fn(Shape) -> <Shape as SingleVariant>::Output {<Shape as SingleVariant>::single_variant}>` to implement `dfir_rs::dfir_pipes::pull::Pull`
-note: required by a bound in `main::{closure#1}::{closure#0}::{closure#0}::op_2v1__demux_enum__loc_dfir_rs_tests_compile_fail_nightly_surface_demuxenum_port_extra_zero_rs_10_39_10_60`
+note: required by a bound in `op_2v1__demux_enum__loc_dfir_rs_tests_compile_fail_nightly_surface_demuxenum_port_extra_zero_rs_10_39_10_60`
   --> tests/compile-fail/nightly/surface_demuxenum_port_extra_zero.rs:10:39
    |
 10 |         my_demux = source_iter([]) -> demux_enum::<Shape>();
