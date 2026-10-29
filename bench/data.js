@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1793182469169,
+  "lastUpdate": 1793270408405,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -319714,6 +319714,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 208200,
             "range": "± 635.61",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kostiantyn Dementiev",
+            "username": "konstde00",
+            "email": "68417998+konstde00@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "0eca5d85fe7d08230d4d9375c78c938e826be4a6",
+          "message": "ci: extend the sim fuzzer test timeout [ci-full] (#3252)\n\nMain CI has passed in only 4 of its last 40 runs (2026-10-05 to\n2026-10-24). In 30 of the 34 failures, `All tests (macos-latest,\nlatest-stable, ci-heavy)` failed because `hydro_lang::sim_fuzzer\nfuzz_with_cargo_sim` hit the 600 s limit from `.config/nextest.toml:2`,\nand in 19 of those `fuzz_with_cargo_sim_continue_if` hit it too (for\nexample\nhttps://github.com/hydro-project/hydro/actions/runs/40077623623). In 16\nruns the timeout was the only failure. PR CI skips macOS unless the\ntitle has `[ci-full]`, which is why this only shows up on main.\n\nAlmost all of the test time is compilation: `cargo sim` rebuilds\n`hydro_lang` and its dependencies with sancov instrumentation at\n`-Copt-level=3 -Ccodegen-units=1`. On a Linux machine with 8 build jobs,\n`fuzz_with_cargo_sim` took 396 s to build the instrumented test binary,\n47 s to build the generated program and 6 s to fuzz and shrink. In the\npassing macOS runs on main, `fuzz_with_cargo_sim` took 370 to 583 s and\n`fuzz_with_cargo_sim_continue_if` 325 to 543 s, so the slower runs get\nclose to the limit.\n\nThis adds `slow-timeout = { period = \"60s\", terminate-after = 20 }` to\nthe existing `test(fuzz_with_cargo_sim)` override, which matches both\nfuzzer tests. Other tests keep the 10-minute limit. The trade-off is\nthat a real hang in these two now takes 20 minutes to show up instead of\n10.\n\nTests\n- `cargo nextest show-config test-groups --profile ci-heavy` (nextest\n0.9.149) accepts the config and lists both fuzzer tests.\n- Full CI matrix on my fork with workflow_dispatch:\nhttps://github.com/konstde00/hydro/actions/runs/40109787711. Both macOS\nci-heavy jobs pass, and `fuzz_with_cargo_sim` took 526 s on\nlatest-stable and 684 s on latest-nightly (the old limit would have\nkilled the nightly one). The two red jobs are unrelated: the Windows\nraft tests (`generate.rs:782` PermissionDenied, red on main since\n2026-10-23) and the snapshot PR job, which needs a secret the fork\ndoesn't have.\n\nHappy to change the limit, or move the override into\n`[profile.ci-heavy]` only, if you'd prefer.",
+          "timestamp": "2026-10-28T22:24:57Z",
+          "url": "https://github.com/hydro-project/hydro/commit/0eca5d85fe7d08230d4d9375c78c938e826be4a6"
+        },
+        "date": 1793270408343,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311535,
+            "range": "± 5361",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6536339,
+            "range": "± 21161",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6914095,
+            "range": "± 161876",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 47053,
+            "range": "± 2349",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 11360166,
+            "range": "± 66778",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1278737,
+            "range": "± 28259",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1346389,
+            "range": "± 22896",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 43540013,
+            "range": "± 949446",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6836579,
+            "range": "± 25352",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 45415311,
+            "range": "± 5775728",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6537134,
+            "range": "± 9574",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 7003496,
+            "range": "± 13714",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 40089219,
+            "range": "± 381615",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 3801,
+            "range": "± 91",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22688,
+            "range": "± 402",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4111,
+            "range": "± 70",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6721,
+            "range": "± 100",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 531529,
+            "range": "± 5048",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 55675,
+            "range": "± 311",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 41791,
+            "range": "± 1040",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 17144,
+            "range": "± 675",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 7005,
+            "range": "± 66",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1853,
+            "range": "± 65",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72905,
+            "range": "± 1053",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 77961,
+            "range": "± 1692",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7267,
+            "range": "± 171",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15459,
+            "range": "± 106",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 26932,
+            "range": "± 531",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7506,
+            "range": "± 123",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 210200,
+            "range": "± 1404.28",
             "unit": "ops/s"
           }
         ]
