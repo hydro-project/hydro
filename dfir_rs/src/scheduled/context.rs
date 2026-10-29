@@ -80,11 +80,12 @@ pub struct Context<M: MetricsState = DfirMetrics> {
     /// Live-updating DFIR runtime metrics via interior mutability (`Rc<DfirMetrics>`), or `()`
     /// when metrics are not tracked.
     metrics: M::Handle,
-    /// Tasks buffered via [`Self::request_task`], spawned by [`Dfir::spawn_tasks`]
-    /// once the runtime is running inside a tokio `LocalSet`.
+    /// Tasks buffered via [`Self::request_task`], spawned via [`tokio::spawn`] by
+    /// [`Dfir::spawn_tasks`] once the runtime is running inside a tokio runtime.
     ///
     /// Futures are required to be `Send` so that `Context` (and therefore [`Dfir`]) can be moved
-    /// between threads before being run.
+    /// between threads before being run, and so that the tasks can be spawned onto any tokio
+    /// runtime (no `LocalSet` required).
     #[cfg(feature = "tokio")]
     tasks_to_spawn: Vec<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
 }
@@ -133,12 +134,13 @@ impl<M: MetricsState> Context<M> {
     /// Buffers an async task to be spawned later by `Dfir::spawn_tasks`.
     ///
     /// Tasks are deferred because `write_prologue` runs during graph construction,
-    /// which may occur before a tokio `LocalSet` is entered. Buffered tasks are
-    /// drained and spawned via `tokio::task::spawn_local` at the start of
+    /// which may occur before a tokio runtime is entered. Buffered tasks are
+    /// drained and spawned via [`tokio::spawn`] at the start of
     /// [`Dfir::run_tick`]. Tasks requested after that point remain buffered until
     /// the next call to [`Dfir::run_tick`].
     ///
-    /// The future must be `Send` so that the `Context` remains `Send`.
+    /// The future must be `Send` so that the `Context` remains `Send` and so the task can be
+    /// spawned onto any tokio runtime.
     #[cfg(feature = "tokio")]
     pub fn request_task<Fut>(&mut self, future: Fut)
     where
@@ -421,13 +423,17 @@ impl<Tick: TickClosure<Metrics = DfirMetrics>> Dfir<Tick> {
 }
 
 impl<Tick: TickClosure> Dfir<Tick> {
-    /// Spawns all tasks buffered via [`Context::request_task`].
+    /// Spawns all tasks buffered via [`Context::request_task`] onto the current tokio runtime.
     ///
     /// This drains the buffer, so subsequent calls are no-ops until new tasks are requested.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there are buffered tasks and this is called outside of a tokio runtime.
     #[cfg(feature = "tokio")]
     fn spawn_tasks(&mut self) {
         for task in self.context.tasks_to_spawn.drain(..) {
-            tokio::task::spawn_local(task);
+            tokio::spawn(task);
         }
     }
 

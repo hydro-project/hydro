@@ -128,14 +128,6 @@ mod tests {
     use hydro_lang::location::MembershipEvent;
     use hydro_lang::location::member_id::TaglessMemberId;
 
-    async fn run_flow(
-        flow: &mut dfir_rs::scheduled::context::Dfir<impl dfir_rs::scheduled::context::TickClosure>,
-    ) {
-        tokio::task::LocalSet::new()
-            .run_until(flow.run_tick())
-            .await;
-    }
-
     /// Runs the generated `capitalize` dataflow from the given generated module and checks its
     /// output. The same Hydro program is generated into several modules with different codegen
     /// options (see `build.rs`), so this body is shared between them.
@@ -154,7 +146,7 @@ mod tests {
                 crate::$module::capitalize::EmbeddedInputs { input },
                 &mut outputs,
             );
-            run_flow(&mut flow).await;
+            flow.run_tick().await;
             drop(flow);
             assert_eq!(collected, vec!["HELLO", "WORLD", "HYDRO"]);
         }};
@@ -192,7 +184,7 @@ mod tests {
             crate::unordered_output::capitalize_unordered::EmbeddedInputs { input },
             &mut outputs,
         );
-        run_flow(&mut flow).await;
+        flow.run_tick().await;
         drop(flow);
         // The output is unordered, so compare contents only.
         collected.sort();
@@ -218,7 +210,7 @@ mod tests {
             crate::at_least_once_input::unique_names::EmbeddedInputs { input },
             &mut outputs,
         );
-        run_flow(&mut flow).await;
+        flow.run_tick().await;
         drop(flow);
         // The output is unordered, so compare contents only.
         collected.sort();
@@ -241,7 +233,7 @@ mod tests {
             },
             &mut outputs,
         );
-        run_flow(&mut flow).await;
+        flow.run_tick().await;
         drop(flow);
         assert_eq!(collected, vec!["Hello Alice", "Hello Bob"]);
     }
@@ -264,7 +256,7 @@ mod tests {
             crate::echo_network::echo_sender::EmbeddedInputs { input },
             &mut net_out,
         );
-        run_flow(&mut flow_sender).await;
+        flow_sender.run_tick().await;
         drop(flow_sender);
 
         let mut bytes_vec = vec![];
@@ -282,7 +274,7 @@ mod tests {
             output: |s: String| received.push(s),
         };
         let mut flow_receiver = crate::echo_network::echo_receiver(&mut outputs, net_in);
-        run_flow(&mut flow_receiver).await;
+        flow_receiver.run_tick().await;
         drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
     }
@@ -305,7 +297,7 @@ mod tests {
             crate::echo_network_embedded::echo_sender::EmbeddedInputs { input },
             &mut net_out,
         );
-        run_flow(&mut flow_sender).await;
+        flow_sender.run_tick().await;
         drop(flow_sender);
 
         // The transport delivers raw `String`s (an `EMBEDDED` channel has no transport `Result`).
@@ -324,7 +316,7 @@ mod tests {
             output: |s: String| received.push(s),
         };
         let mut flow_receiver = crate::echo_network_embedded::echo_receiver(&mut outputs, net_in);
-        run_flow(&mut flow_receiver).await;
+        flow_receiver.run_tick().await;
         drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
     }
@@ -352,7 +344,7 @@ mod tests {
             crate::o2m_broadcast::o2m_sender::EmbeddedInputs { input },
             &mut net_out,
         );
-        run_flow(&mut flow_sender).await;
+        flow_sender.run_tick().await;
         drop(flow_sender);
 
         let mut tagged_bytes = vec![];
@@ -372,7 +364,7 @@ mod tests {
         };
         let mut flow_receiver =
             crate::o2m_broadcast::o2m_receiver(&member_id, &mut outputs, net_in);
-        run_flow(&mut flow_receiver).await;
+        flow_receiver.run_tick().await;
         drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
     }
@@ -401,7 +393,7 @@ mod tests {
             crate::o2m_demux_embedded::o2m_demux_sender::EmbeddedInputs { input },
             &mut net_out,
         );
-        run_flow(&mut flow_sender).await;
+        flow_sender.run_tick().await;
         drop(flow_sender);
 
         let mut payloads = vec![];
@@ -421,7 +413,7 @@ mod tests {
         };
         let mut flow_receiver =
             crate::o2m_demux_embedded::o2m_demux_receiver(&member_id, &mut outputs, net_in);
-        run_flow(&mut flow_receiver).await;
+        flow_receiver.run_tick().await;
         drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
     }
@@ -446,7 +438,7 @@ mod tests {
             crate::m2o_send::m2o_sender::EmbeddedInputs { input },
             &mut net_out,
         );
-        run_flow(&mut flow_sender).await;
+        flow_sender.run_tick().await;
         drop(flow_sender);
 
         let mut tagged_bytes = vec![];
@@ -465,7 +457,7 @@ mod tests {
             output: |s| received.push(s),
         };
         let mut flow_receiver = crate::m2o_send::m2o_receiver(&mut outputs, net_in);
-        run_flow(&mut flow_receiver).await;
+        flow_receiver.run_tick().await;
         drop(flow_receiver);
         assert_eq!(received.len(), 2);
         // Values are uppercased; entries() gives (MemberId, String)
@@ -498,7 +490,7 @@ mod tests {
             crate::m2m_broadcast::m2m_sender::EmbeddedInputs { input },
             &mut net_out,
         );
-        run_flow(&mut flow_sender).await;
+        flow_sender.run_tick().await;
         drop(flow_sender);
 
         let mut tagged_bytes = vec![];
@@ -517,7 +509,7 @@ mod tests {
             output: |s| received.push(s),
         };
         let mut flow_receiver = crate::m2m_broadcast::m2m_receiver(&dst_id, &mut outputs, net_in);
-        run_flow(&mut flow_receiver).await;
+        flow_receiver.run_tick().await;
         drop(flow_receiver);
         assert_eq!(received.len(), 1);
         assert_eq!(received[0].1, "PING");

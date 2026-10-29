@@ -130,10 +130,10 @@ fn generate_op_docs() -> Result<()> {
 const DOCTEST_PREFIX: &str = "\
 # {
 # let __rt = ::dfir_rs::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
-# __rt.block_on(async { ::dfir_rs::tokio::task::LocalSet::new().run_until(async {
+# __rt.block_on(async {
 # let mut __hf = ::dfir_rs::dfir_syntax! {";
 const DOCTEST_SUFFIX: &str = "\
 # };
-# __hf.run_available();
-# }).await})
+# __hf.run_available().await;
+# })
 # }";
