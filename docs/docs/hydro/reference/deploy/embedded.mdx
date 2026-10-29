@@ -37,7 +37,7 @@ pub fn capitalize<'a>(input: Stream<String, Process<'a, ()>>) {
 }
 ```
 
-[`embedded_input`](rust:hydro_lang::location::Location::embedded_input) creates a field on a generated `EmbeddedInputs` struct — the name you pass (`"input"`) becomes the field name. Similarly, [`embedded_output`](rust:hydro_lang::live_collections::Stream::embedded_output) creates a field on a generated `EmbeddedOutputs` struct — the name (`"output"`) becomes the field name. The output field accepts an `impl FnMut(T)` closure that will be called for each emitted element.
+[`embedded_input`](rust:hydro_lang::location::Location::embedded_input) creates a field on a generated `EmbeddedInputs` struct — the name you pass (`"input"`) becomes the field name. Its element type, ordering, and retries (`embedded_input::<T, O, R>`) are usually inferred from where the stream is used; they are what the dataflow relies on, and so what the host must promise (see [Promising and Requiring Guarantees](#promising-and-requiring-guarantees)). Similarly, [`embedded_output`](rust:hydro_lang::live_collections::Stream::embedded_output) creates a field on a generated `EmbeddedOutputs` struct — the name (`"output"`) becomes the field name. The output field accepts an `impl FnMut(T)` closure, wrapped in an [`OutputChannel`](rust:hydro_lang::compile::embedded_runtime::OutputChannel), that will be called for each emitted element.
 
 Your base crate also needs to declare an empty `stageleft_macro_entrypoint` feature. This is required by the Stageleft code generation machinery to set up the correct re-exports:
 
@@ -123,13 +123,22 @@ async fn run() {
     // Collect outputs via a closure.
     let mut results = vec![];
     let mut outputs = embedded::capitalize::EmbeddedOutputs {
-        output: |s: String| {
+        output: OutputChannel::new(|s: String| {
             results.push(s);
-        },
+        }),
     };
 
     // Build and run the dataflow.
-    let inputs = embedded::capitalize::EmbeddedInputs { input };
+    // Every input states what the host promises about its stream (see Promising and Requiring
+    // Guarantees).
+    let inputs = embedded::capitalize::EmbeddedInputs {
+        input: InputChannel::new(
+            input,
+            Promises::new()
+                .total_order(manual_proof!(/** the list's order is the order to process */))
+                .exactly_once(manual_proof!(/** each element appears once in the list */)),
+        ),
+    };
     let mut flow = embedded::capitalize(inputs, &mut outputs);
     tokio::task::LocalSet::new()
         .run_until(flow.run_available())
@@ -140,7 +149,7 @@ async fn run() {
 }
 ```
 
-The generated function accepts an `EmbeddedInputs` struct, with one named field per input (each stream input is any `Stream<Item = T> + Unpin`), and a mutable reference to the `EmbeddedOutputs` struct. It returns a [`Dfir`](rust:dfir_rs::scheduled::context::Dfir) graph that you run with [`run_available()`](rust:dfir_rs::scheduled::context::Dfir::run_available) (or tick manually).
+The generated function accepts an `EmbeddedInputs` struct, with one named field per input (each stream input is any `Stream<Item = T> + Unpin`), and a mutable reference to the `EmbeddedOutputs` struct, with one named `FnMut` closure per output, wrapped in an `OutputChannel` (see [Promising and Requiring Guarantees](#promising-and-requiring-guarantees)). It returns a [`Dfir`](rust:dfir_rs::scheduled::context::Dfir) graph that you run with [`run_available()`](rust:dfir_rs::scheduled::context::Dfir::run_available) (or tick manually).
 
 
 ## Singleton Inputs
@@ -178,7 +187,7 @@ The generated `EmbeddedInputs` struct holds `greeting` as a plain `String`:
 ```rust,ignore
 pub mod greet {
     pub struct EmbeddedInputs<In0: Stream<Item = String> + Unpin> {
-        pub names: In0,
+        pub names: InputChannel<inputs::names, In0>,
         pub greeting: String,
     }
 }
@@ -195,10 +204,10 @@ Call it like any other Rust function:
 let input = futures::stream::iter(vec!["Alice".to_owned(), "Bob".to_owned()]);
 let mut results = vec![];
 let mut outputs = embedded::greet::EmbeddedOutputs {
-    output: |s: String| results.push(s),
+    output: OutputChannel::new(|s: String| results.push(s)),
 };
 let inputs = embedded::greet::EmbeddedInputs {
-    names: input,
+    names: InputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))),
     greeting: "Hello".to_owned(),
 };
 let mut flow = embedded::greet(inputs, &mut outputs);
@@ -214,16 +223,16 @@ A function generated for a cluster location receives a `__cluster_self_id` param
 
 ```rust,ignore
 let member_id = TaglessMemberId::from_raw_id(0);
-let mut flow = my_cluster_fn(&member_id, my_cluster_fn::EmbeddedInputs { input }, &mut outputs);
+let mut flow = my_cluster_fn(&member_id, my_cluster_fn::EmbeddedInputs { input: InputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, &mut outputs);
 ```
 
 ### Membership Streams
-When a location (process or cluster) needs to know the members of another cluster — for example, to broadcast to it — the generated function receives an `EmbeddedMembershipStreams` struct parameter. This struct has one field per cluster whose membership is needed, named after that cluster's function name. Each field is a stream of ([`TaglessMemberId`](rust:hydro_lang::location::member_id::TaglessMemberId), [`MembershipEvent`](rust:hydro_lang::location::MembershipEvent)) pairs:
+When a location (process or cluster) needs to know the members of another cluster — for example, to broadcast to it — the generated function receives an `EmbeddedMembershipStreams` struct parameter. This struct has one field per cluster whose membership is needed, named after that cluster's function name. Each field is a stream of ([`TaglessMemberId`](rust:hydro_lang::location::member_id::TaglessMemberId), [`MembershipEvent`](rust:hydro_lang::location::MembershipEvent)) pairs, wrapped in an `InputChannel` like a stream input (see [Promising and Requiring Guarantees](#promising-and-requiring-guarantees)):
 
 ```rust,ignore
 pub mod my_sender {
     pub struct EmbeddedMembershipStreams<S: Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin> {
-        pub my_receiver: S,
+        pub my_receiver: InputChannel<membership::my_receiver, S>,
     }
 }
 ```
@@ -236,15 +245,20 @@ use hydro_lang::location::member_id::TaglessMemberId;
 
 let member_id = TaglessMemberId::from_raw_id(0);
 let membership = my_sender::EmbeddedMembershipStreams {
-    my_receiver: futures::stream::iter(vec![(member_id.clone(), MembershipEvent::Joined)]),
+    my_receiver: InputChannel::new(
+        futures::stream::iter(vec![(member_id.clone(), MembershipEvent::Joined)]),
+        Promises::new()
+            .total_order(manual_proof!(/** the events are listed in order */))
+            .exactly_once(manual_proof!(/** each event is listed once */)),
+    ),
 };
-let mut flow = my_sender(membership, my_sender::EmbeddedInputs { input }, &mut net_out);
+let mut flow = my_sender(membership, my_sender::EmbeddedInputs { input: InputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, &mut net_out);
 ```
 
 A cluster that sends to another cluster receives both `__cluster_self_id` and the membership struct:
 
 ```rust,ignore
-let mut flow = m2m_sender(&src_id, membership, m2m_sender::EmbeddedInputs { input }, &mut net_out);
+let mut flow = m2m_sender(&src_id, membership, m2m_sender::EmbeddedInputs { input: InputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, &mut net_out);
 ```
 
 In `build.rs`, use `with_cluster` instead of `with_process` to register cluster locations:
@@ -276,7 +290,7 @@ Consider a two-process program where `Sender` sends to `Receiver` over a channel
 ```rust,ignore
 pub mod echo_sender {
     pub struct EmbeddedNetworkOut<F: FnMut(Bytes)> {
-        pub messages: F,
+        pub messages: OutputChannel<outgoing::messages, F>,
     }
 }
 
@@ -291,7 +305,7 @@ On the other side, `Receiver` gets an `EmbeddedNetworkIn` struct parameter with 
 ```rust,ignore
 pub mod echo_receiver {
     pub struct EmbeddedNetworkIn<S: Stream<Item = Result<BytesMut, io::Error>> + Unpin> {
-        pub messages: S,
+        pub messages: InputChannel<incoming::messages, S>,
     }
 }
 
@@ -312,7 +326,7 @@ When a process sends to a cluster, the sender's `EmbeddedNetworkOut` fields beco
 ```rust,ignore
 pub mod o2m_sender {
     pub struct EmbeddedNetworkOut<F: FnMut((TaglessMemberId, Bytes))> {
-        pub data: F,
+        pub data: OutputChannel<outgoing::data, F>,
     }
 }
 ```
@@ -322,7 +336,7 @@ The receiving cluster's `EmbeddedNetworkIn` fields use untagged `Stream<Item = R
 ```rust,ignore
 pub mod o2m_receiver {
     pub struct EmbeddedNetworkIn<S: Stream<Item = Result<BytesMut, io::Error>> + Unpin> {
-        pub data: S,
+        pub data: InputChannel<incoming::data, S>,
     }
 }
 ```
@@ -336,7 +350,7 @@ When a cluster sends to a process, the sender's `EmbeddedNetworkOut` fields are 
 ```rust,ignore
 pub mod m2o_sender {
     pub struct EmbeddedNetworkOut<F: FnMut(Bytes)> {
-        pub data: F,
+        pub data: OutputChannel<outgoing::data, F>,
     }
 }
 ```
@@ -346,7 +360,7 @@ The receiving process's `EmbeddedNetworkIn` fields become `Stream<Item = Result<
 ```rust,ignore
 pub mod m2o_receiver {
     pub struct EmbeddedNetworkIn<S: Stream<Item = Result<(TaglessMemberId, BytesMut), io::Error>> + Unpin> {
-        pub data: S,
+        pub data: InputChannel<incoming::data, S>,
     }
 }
 ```
@@ -360,7 +374,7 @@ When a cluster sends to another cluster, both sides are tagged. The sender's `Em
 ```rust,ignore
 pub mod m2m_sender {
     pub struct EmbeddedNetworkOut<F: FnMut((TaglessMemberId, Bytes))> {
-        pub data: F,
+        pub data: OutputChannel<outgoing::data, F>,
     }
 }
 ```
@@ -370,12 +384,41 @@ The receiver's `EmbeddedNetworkIn` fields are `Stream<Item = Result<(TaglessMemb
 ```rust,ignore
 pub mod m2m_receiver {
     pub struct EmbeddedNetworkIn<S: Stream<Item = Result<(TaglessMemberId, BytesMut), io::Error>> + Unpin> {
-        pub data: S,
+        pub data: InputChannel<incoming::data, S>,
     }
 }
 ```
 
 Your transport layer must handle both directions: route outgoing `(target_id, bytes)` to the correct destination member, and tag incoming messages with the `source_id` of the sender.
+
+### Promising and Requiring Guarantees
+
+Every stream crossing the boundary between the host and the embedded dataflow carries its ordering and retries guarantees (`TotalOrder` / `NoOrder`, `ExactlyOnce` / `AtLeastOnce`):
+
+- Into the dataflow (stream inputs, membership streams, and the receiving end of a network channel), the dataflow relies on the guarantees, so the host **promises** them. The field is an [`InputChannel`](rust:hydro_lang::compile::embedded_runtime::InputChannel) around your stream.
+- Out of the dataflow (outputs and the sending end of a network channel), the dataflow provides the guarantees, so the host may **require** the guarantees it depends on. The field is an [`OutputChannel`](rust:hydro_lang::compile::embedded_runtime::OutputChannel) around your closure.
+
+```rust,ignore
+use hydro_lang::compile::embedded_runtime::{InputChannel, OutputChannel, Promises};
+use hydro_lang::prelude::manual_proof;
+
+let net_in = echo_receiver::EmbeddedNetworkIn {
+    messages: InputChannel::new(
+        my_stream,
+        Promises::new()
+            .total_order(manual_proof!(/** one TCP connection per sender, read in order */))
+            .exactly_once(manual_proof!(/** nothing is ever resent */)),
+    ),
+};
+let mut outputs = echo_receiver::EmbeddedOutputs {
+    // Appends to a log, so it needs order and no duplicates.
+    output: OutputChannel::new(my_log_sink).require_total_order().require_exactly_once(),
+};
+```
+
+Promising less than the dataflow relies on, or requiring more than it provides, is a compile error at that field; promising more or requiring less is fine. The generated docs of each incoming marker list the promises it needs. A network channel's guarantees come from its declared transport and the stream the dataflow sends, and are promised once, at its receiving end. For a stream input, they are what `embedded_input::<T, O, R>` declares, so declare only what the dataflow relies on.
+
+Each wrapper is over a generated marker type implementing [`EmbeddedChannel`](rust:hydro_lang::compile::embedded_runtime::EmbeddedChannel), named after its field, under `inputs`, `membership`, `outputs`, `incoming`, or `outgoing` (for example `echo_receiver::incoming::messages`). The marker is inferred from the field, and a reusable transport can be generic over it: `fn source<C: SatisfiedBy<TotalOrder, ExactlyOnce>>() -> InputChannel<C, _>` serves every channel needing at most those guarantees.
 
 ### Host-Implemented Channels (`EMBEDDED`)
 
@@ -403,15 +446,19 @@ For example, the `echo_sender` / `echo_receiver` pair from the [o2o example abov
 ```rust,no_run
 # fn main() {}
 pub mod echo_sender {
+    # use hydro_lang::compile::embedded_runtime::OutputChannel;
+    # pub mod outgoing { #[allow(non_camel_case_types)] pub struct messages; }
     pub struct EmbeddedNetworkOut<F: FnMut(String)> {
-        pub messages: F,
+        pub messages: OutputChannel<outgoing::messages, F>,
     }
 }
 
 pub mod echo_receiver {
     # use dfir_rs::futures::Stream;
+    # use hydro_lang::compile::embedded_runtime::InputChannel;
+    # pub mod incoming { #[allow(non_camel_case_types)] pub struct messages; }
     pub struct EmbeddedNetworkIn<S: Stream<Item = String> + Unpin> {
-        pub messages: S,
+        pub messages: InputChannel<incoming::messages, S>,
     }
 }
 ```
