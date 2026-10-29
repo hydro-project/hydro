@@ -309,7 +309,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         }
 
         // Process sidecar declarations — compile-time directives that
-        // produce futures to spawn on each location's LocalSet.
+        // produce futures to spawn on each location's tokio runtime.
         let mut sidecars: SparseSecondaryMap<LocationKey, Vec<syn::Expr>> =
             SparseSecondaryMap::new();
         for decl in std::mem::take(&mut self.sidecars) {
