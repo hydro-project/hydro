@@ -159,7 +159,7 @@
 //! Loader search paths (rpath / `LD_LIBRARY_PATH`) for `libX_dylib` are computed by
 //! [`dylib_search_dirs`] and only ever name state that outlives the build: the
 //! job's `debug/` and the shared location (`deps/` on legacy, the shared unit `out/`
-//! dirs on new) — never `jobs/<JOB>/debug/build/`, which is repopulated on every
+//! dirs on new) — never `jobs/<JOB>/debug/build/`, which is re-synced on every
 //! build (and job dirs are shared by tests whose generated programs are identical).
 
 use std::collections::HashMap;
@@ -491,9 +491,11 @@ pub fn populate_job_build_dir(job_debug: &Path, shared_debug: &Path) -> JobBuild
     // `build/` wholesale; `remove_dir_all` would follow it into the shared dir.
     if job_build.symlink_metadata().is_ok_and(|m| m.is_symlink()) {
         let _ = fs::remove_file(&job_build);
-    } else {
-        let _ = fs::remove_dir_all(&job_build);
     }
+    // Sync incrementally rather than recreating the mirror: under the new layout
+    // the job's own units (e.g. the simulator's example, with its fingerprint and
+    // output) live in here as real directories, and wiping them would force a
+    // rebuild on every final build, even when the flow was just built.
     fs::create_dir_all(&job_build).unwrap();
     if shared_build.exists() {
         for entry in fs::read_dir(&shared_build).unwrap() {
@@ -506,6 +508,11 @@ pub fn populate_job_build_dir(job_debug: &Path, shared_debug: &Path) -> JobBuild
             for file in fs::read_dir(entry.path()).unwrap() {
                 let file = file.unwrap();
                 let file_dest = dest.join(file.file_name());
+                // Already mirrored (or replaced by a job-local file, as cargo does
+                // for `build-script-build` under the legacy layout).
+                if file_dest.symlink_metadata().is_ok() {
+                    continue;
+                }
                 #[cfg(unix)]
                 std::os::unix::fs::symlink(file.path(), &file_dest).unwrap();
                 #[cfg(windows)]

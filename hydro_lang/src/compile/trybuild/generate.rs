@@ -597,6 +597,16 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<PathBu
 
     command.arg("--");
 
+    // Give this job its own cargo unit. The simulator builds the fixed `sim-dylib` example in
+    // every job, varying only `TRYBUILD_LIB_NAME` — which affects the unit's *freshness* but
+    // not its hash. Cargo folds these extra rustc args into the unit hash, so without a
+    // per-job argument every flow shares one `.fingerprint/` entry and one `deps/` output
+    // (both symlinked to the shared `target/debug/` under the legacy layout) and flows
+    // invalidate each other on every switch: a full relink per test, and the previous flow's
+    // artifact gets replaced while another test process may still have it loaded. (On Linux
+    // and macOS the per-job rpath arguments below happened to do this implicitly.)
+    command.arg(format!("-Cmetadata={bin_name}"));
+
     if cfg!(any(target_os = "linux", target_os = "macos")) {
         let (debug_path, shared_debug_path) =
             if let Ok(target) = std::env::var("CARGO_BUILD_TARGET") {
@@ -764,6 +774,16 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<PathBu
     let artifact_name = out.file_name().unwrap().to_str().unwrap();
     let fingerprint = hydro_concurrent_cargo::toolchain_fingerprint(ENCODED_RUSTFLAGS);
     let persisted = path!(coverage_dir / format!("{bin_name}-{fingerprint}-{artifact_name}"));
+
+    // Job dirs are keyed by `bin_name`, so a concurrent test process building the same flow
+    // shares this job. If cargo found that build up to date, `persisted` already links the very
+    // file cargo just reported and there is nothing left to do. Skipping the relink matters on
+    // Windows, where that other process has `persisted` loaded (mapped as an image) and the
+    // `rename` below would fail with "Access is denied".
+    if same_file::is_same_file(&out, &persisted).unwrap_or(false) {
+        return Ok(persisted);
+    }
+
     // Link under a unique name, then rename over the final one, so concurrent test processes
     // loading the same flow never observe a missing or partially-written artifact.
     let staging = path!(
@@ -782,7 +802,17 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<PathBu
         // private snapshot of this build, at the cost of a copy.
         fs::copy(&out, &staging).unwrap();
     }
-    fs::rename(&staging, &persisted).unwrap();
+    fs::rename(&staging, &persisted).unwrap_or_else(|err| {
+        // Windows refuses to replace a file that another process has mapped as an image. A
+        // concurrent test of the same flow having `persisted` loaded is expected (see above),
+        // but then cargo should have found the job's build up to date and we would not be
+        // here; reaching this means something rebuilt the example.
+        panic!(
+            "failed to rename {} to {}: {err}",
+            staging.display(),
+            persisted.display()
+        )
+    });
     // If `persisted` already links the same inode (an up-to-date build linked again), POSIX
     // `rename` succeeds without removing `staging`.
     match fs::remove_file(&staging) {
