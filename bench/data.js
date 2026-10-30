@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1793270408405,
+  "lastUpdate": 1793356669387,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -319916,6 +319916,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 210200,
             "range": "± 1404.28",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mingwei Samuel",
+            "username": "MingweiSamuel",
+            "email": "mingwei.samuel@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "735e2d1299c60ed72bea1cbb12341a05e8466f07",
+          "message": "fix(dfir_rs): drop `LocalSet` boilerplate from op doctests, make them actually run (#3264)\n\nBuilds on the earlier `Send` work (`tasks_to_spawn: + Send`,\n`meta_graph_json`,\n`_counter` → `Arc<AtomicU64>`). Since `request_task` futures are now\n`Send`,\nthe one thing that forced a `tokio::task::LocalSet` around every `Dfir`\nrun\ncan go away.\n\n- `dfir_rs/src/scheduled/context.rs`\n  - `Dfir::spawn_tasks` now uses `tokio::spawn` instead of\n`tokio::task::spawn_local`. `Dfir::run*` therefore only requires a tokio\nruntime, not a `LocalSet`. Docs on `tasks_to_spawn`, `request_task`, and\n    `spawn_tasks` updated accordingly (incl. a `# Panics` note).\n\n- `dfir_lang/build.rs`\n  - `DOCTEST_PREFIX`/`DOCTEST_SUFFIX` (the wrapper injected around every\n    ```` ```dfir ```` operator doc example) no longer wraps in\n`LocalSet::new().run_until(..)`. This removes the duplicated boilerplate\n    from all 90 generated `docs/docgen/*.md` files and the 67 copies in\n    `docs/docs/dfir/syntax/surface_ops_gen.md` (both gitignored build\n    artifacts, regenerated on build).\n- **Bug fix:** the suffix called `__hf.run_available();` without\n`.await`,\nso since `run_available` became `async` every operator doc test has been\nsilently dropping the future and never executing the dataflow (verified:\na doc-test-shaped test with a deliberately wrong `assert_eq` passed).\n    Now `__hf.run_available().await;`. All 90 doc tests pass with the\n    dataflows actually running.\n\n- `hydro_test_embedded/src/lib.rs`\n- Removed the `run_flow` helper\n(`LocalSet::new().run_until(flow.run_tick())`);\n    the 16 call sites now just do `flow.run_tick().await` /\n    `flow_sender.run_tick().await` etc.\n\n- `docs/docs/hydro/reference/deploy/embedded.mdx`\n  - Example now calls `flow.run_available().await` directly.\n\nLeft intentionally unchanged:\n- `hydro_lang/src/compile/trybuild/generate.rs` (3 generated `main`s):\nthe\n`LocalSet` there is still needed because sidecars are `spawn_local`ed\nand\nthe EMF sidecar captures `DfirMetricsIntervals` (`Rc<DfirMetrics>`,\n`!Send`).\n- `#[dfir_rs::test]` / `#[dfir_rs::main]` in `dfir_macro`: still wrap in\na\n`LocalSet` because `dfir_rs::util::tcp` etc. call `spawn_local`\ndirectly.\n\nVerified: workspace `cargo check --tests` clean; `dfir_rs` doc tests\n(90),\n`surface_counter` (13), `surface_async` (4); `hydro_test_embedded\n--features test_embedded` (11) all pass.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-10-29T21:02:25Z",
+          "url": "https://github.com/hydro-project/hydro/commit/735e2d1299c60ed72bea1cbb12341a05e8466f07"
+        },
+        "date": 1793356669323,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311310,
+            "range": "± 370",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6537798,
+            "range": "± 67742",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6968145,
+            "range": "± 166964",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 11318,
+            "range": "± 66",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 8455166,
+            "range": "± 21373",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 948296,
+            "range": "± 2810",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1014755,
+            "range": "± 15407",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 50734971,
+            "range": "± 2253672",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6537325,
+            "range": "± 29318",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 44821068,
+            "range": "± 1310110",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6535739,
+            "range": "± 22229",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6849195,
+            "range": "± 23259",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 40081273,
+            "range": "± 104803",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 6380,
+            "range": "± 134",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22182,
+            "range": "± 351",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 3885,
+            "range": "± 61",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6596,
+            "range": "± 43",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 374160,
+            "range": "± 1056",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 54187,
+            "range": "± 235",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 40791,
+            "range": "± 619",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 15044,
+            "range": "± 2761",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6917,
+            "range": "± 461",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1074,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 74919,
+            "range": "± 849",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 77992,
+            "range": "± 435",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 6825,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15811,
+            "range": "± 130",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 27012,
+            "range": "± 642",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 6974,
+            "range": "± 104",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 216620,
+            "range": "± 1410.53",
             "unit": "ops/s"
           }
         ]
