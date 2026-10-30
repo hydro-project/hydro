@@ -97,6 +97,10 @@ mod tests {
             let _ = get_out_port.collect_sorted::<Vec<_>>().await;
         });
 
-        assert_eq!(instances, 3);
+        // One instance per schedule: the get request can be batched into a tick where the
+        // counter snapshot does or does not yet include the increment. (Snapshots are
+        // lazy: a counter change alone never fires the tick, so there is no third
+        // schedule with an empty get batch.)
+        assert_eq!(instances, 2);
     }
 }

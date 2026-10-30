@@ -2874,28 +2874,36 @@ fn run_hooks<W: std::fmt::Write>(
 
     if !hooks.is_empty() {
         let mut decided = vec![false; hooks.len()];
-        let mut remaining_decision_count = hooks.len();
+        // Snapshot hooks never trigger ([`TickInputHook::can_trigger_tick`] is false), so
+        // forcing must land on a hook that *can* trigger: track how many undecided hooks
+        // remain capable of triggering, and force the last one when nothing has triggered.
+        let can_trigger: Vec<bool> = hooks.iter().map(|hook| hook.can_trigger_tick()).collect();
+        let mut remaining_trigger_capable = can_trigger.iter().filter(|&&c| c).count();
         bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
             // First, resolve every hook that faces no choice (its decision consumes no
             // entropy). Doing this before the second pass lets the final undecided hook
-            // be forced to trigger when no earlier hook made a triggering decision.
-            for (hook, decided) in hooks.iter_mut().zip(decided.iter_mut()) {
+            // that can trigger be forced to do so when no earlier hook made a triggering
+            // decision.
+            for ((hook, decided), can_trigger) in
+                hooks.iter_mut().zip(decided.iter_mut()).zip(&can_trigger)
+            {
                 if hook.only_one_possible_decision() {
                     // The no-choice decision can still trigger the tick (the passthrough
                     // singleton always releases the latest value), so its result counts.
                     made_triggering_decision |= hook.autonomous_decision(driver, false);
                     *decided = true;
-                    remaining_decision_count -= 1;
+                    remaining_trigger_capable -= usize::from(*can_trigger);
                 }
             }
 
-            for (hook, decided) in hooks.iter_mut().zip(decided.iter()) {
+            for ((hook, decided), can_trigger) in
+                hooks.iter_mut().zip(decided.iter()).zip(&can_trigger)
+            {
                 if !decided {
-                    made_triggering_decision |= hook.autonomous_decision(
-                        driver,
-                        !made_triggering_decision && remaining_decision_count == 1,
-                    );
-                    remaining_decision_count -= 1;
+                    let force_trigger =
+                        *can_trigger && !made_triggering_decision && remaining_trigger_capable == 1;
+                    made_triggering_decision |= hook.autonomous_decision(driver, force_trigger);
+                    remaining_trigger_capable -= usize::from(*can_trigger);
                 }
 
                 hook.release_decision(
