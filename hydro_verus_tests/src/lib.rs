@@ -1,5 +1,6 @@
 //! Test fixtures for Verus-checked proofs of algebraic properties
-//! (`verus_proof_commutative_fold!` / `verus_proof_commutative_map!`).
+//! (`verus_proof_commutative_*!`, `verus_proof_monotone_fold!`, and
+//! `verus_proof_order_preserving_map!`).
 //!
 //! The flows in this crate are never executed; they exist so that the proof obligations
 //! generated at their `q!(...)` call sites are verified (or rejected) by Verus. Run:
@@ -9,11 +10,11 @@
 //! ```
 //!
 //! The `accepted` module must verify. Each module under `rejected` is gated behind a
-//! `reject_*` cargo feature and contains a *bogus* commutativity annotation that Verus
-//! must refuse to verify; the `verus_rejects` test harness enables them one at a time
-//! and asserts that verification fails.
+//! `reject_*` cargo feature and contains a *bogus* property annotation that Verus must
+//! refuse to verify; the `verus_rejects` test harness enables them one at a time and
+//! asserts that verification fails.
 
-/// Flows whose commutativity annotations must be accepted by Verus.
+/// Flows whose property annotations must be accepted by Verus.
 pub mod accepted {
     use hydro_lang::live_collections::stream::NoOrder;
     use hydro_lang::prelude::*;
@@ -229,9 +230,189 @@ pub mod accepted {
                 ),
             );
     }
+
+    // === Monotonicity ===
+
+    /// `max` is monotone: the accumulator never decreases. The resulting singleton is
+    /// `Monotonic`, so it can be used with `threshold_greater_or_equal`.
+    pub fn max_monotone_fold<'a>(process: &Process<'a, ()>) {
+        let max = process.source_iter(q!(vec![1u32, 2, 3])).fold(
+            q!(|| 0u32),
+            q!(
+                |curr, new| {
+                    if new > *curr {
+                        *curr = new;
+                    }
+                },
+                monotone = verus_proof_monotone_fold!(acc = u32, item = u32)
+            ),
+        );
+        let _reached = max.threshold_greater_or_equal(process.singleton(q!(2u32)));
+    }
+
+    /// Both commutativity and monotonicity can be proven on the same closure; each
+    /// macro generates its own, independent obligation.
+    pub fn max_commutative_monotone_fold<'a>(process: &Process<'a, ()>) {
+        let max = process
+            .source_iter(q!(vec![1u32, 2, 3]))
+            .weaken_ordering::<NoOrder>()
+            .fold(
+                q!(|| 0u32),
+                q!(
+                    |curr, new| {
+                        if new > *curr {
+                            *curr = new;
+                        }
+                    },
+                    commutative = verus_proof_commutative_fold!(acc = u32, item = u32),
+                    monotone = verus_proof_monotone_fold!(acc = u32, item = u32)
+                ),
+            );
+        let _reached = max.threshold_greater_or_equal(process.singleton(q!(2u32)));
+    }
+
+    /// A guarded sum is monotone: on the paths that continue, `acc + x >= acc`.
+    pub fn guarded_sum_monotone_fold<'a>(process: &Process<'a, ()>) {
+        let _sum = process.source_iter(q!(vec![1u32, 2, 3])).fold(
+            q!(|| 0u32),
+            q!(
+                |acc, x| {
+                    if *acc > u32::MAX - x {
+                        verus_panic!("sum overflowed");
+                    }
+                    *acc += x;
+                },
+                monotone = verus_proof_monotone_fold!(acc = u32, item = u32)
+            ),
+        );
+    }
+
+    /// A counter that stops at a captured cap: monotone for every value of the capture.
+    pub fn capped_count_monotone_fold<'a>(process: &Process<'a, ()>) {
+        let cap = 100u32;
+        let _count = process.source_iter(q!(vec![1u32, 2, 3])).fold(
+            q!(|| 0u32),
+            q!(
+                move |count, _x| {
+                    if *count < cap {
+                        *count += 1;
+                    }
+                },
+                monotone = verus_proof_monotone_fold!(acc = u32, item = u32, captures = |cap: u32|)
+            ),
+        );
+    }
+
+    /// Bitwise `or` only ever sets bits, so it is monotone, but the solver needs the
+    /// `bit_vector` hint. The script receives the initial accumulator and the item.
+    pub fn bitor_monotone_fold<'a>(process: &Process<'a, ()>) {
+        let _flags = process.source_iter(q!(vec![1u32, 2, 4])).fold(
+            q!(|| 0u32),
+            q!(
+                |flags, x| {
+                    *flags |= x;
+                },
+                monotone = verus_proof_monotone_fold!(
+                    acc = u32,
+                    item = u32,
+                    proof = |s, x| {
+                        assert(s <= (s | x)) by (bit_vector);
+                    }
+                )
+            ),
+        );
+    }
+
+    /// A tuple accumulator `(count, sum)` is ordered lexicographically, so incrementing
+    /// the count makes it grow regardless of how the (wrapping) sum changes. The proof
+    /// script may also bind the final accumulator.
+    pub fn tuple_monotone_fold<'a>(process: &Process<'a, ()>) {
+        let _stats = process.source_iter(q!(vec![1u32, 2, 3])).fold(
+            q!(|| (0u32, 0u32)),
+            q!(
+                |stats, x| {
+                    if stats.0 == u32::MAX {
+                        verus_panic!("count overflowed");
+                    }
+                    stats.0 += 1;
+                    stats.1 = stats.1.wrapping_add(x);
+                },
+                monotone = verus_proof_monotone_fold!(
+                    acc = (u32, u32),
+                    item = u32,
+                    proof = |before, _x, after| {
+                        assert(before.0 < after.0);
+                    }
+                )
+            ),
+        );
+    }
+
+    // === Order preservation ===
+
+    /// Integer halving preserves order, so a `Monotonic` singleton stays `Monotonic`
+    /// through the `map` and can still be thresholded.
+    pub fn halving_order_preserving_map<'a>(process: &Process<'a, ()>) {
+        let count = process.source_iter(q!(vec![1u32, 2, 3])).count();
+        let halved = count.map(q!(
+            |v| v / 2,
+            order_preserving = verus_proof_order_preserving_map!(input = usize, output = usize)
+        ));
+        let _reached = halved.threshold_greater_or_equal(process.singleton(q!(1usize)));
+    }
+
+    /// A widening cast preserves order across different input and output types.
+    pub fn widening_order_preserving_map<'a>(process: &Process<'a, ()>) {
+        let count = process.source_iter(q!(vec![1u32, 2, 3])).count();
+        let _wide = count.map(q!(
+            |v| v as u128,
+            order_preserving = verus_proof_order_preserving_map!(input = usize, output = u128)
+        ));
+    }
+
+    /// Clamping to a captured cap preserves order for every value of the capture.
+    pub fn capped_order_preserving_map<'a>(process: &Process<'a, ()>) {
+        let cap = 2usize;
+        let count = process.source_iter(q!(vec![1u32, 2, 3])).count();
+        let _capped = count.map(q!(
+            move |v| if v > cap { cap } else { v },
+            order_preserving = verus_proof_order_preserving_map!(
+                input = usize,
+                output = usize,
+                captures = |cap: usize|
+            )
+        ));
+    }
+
+    /// A right shift preserves order, but the solver needs the `bit_vector` hint. The
+    /// script receives the two inputs (and may also bind the two outputs).
+    pub fn shift_order_preserving_map<'a>(process: &Process<'a, ()>) {
+        let max = process.source_iter(q!(vec![1u32, 2, 3])).fold(
+            q!(|| 0u32),
+            q!(
+                |curr, new| {
+                    if new > *curr {
+                        *curr = new;
+                    }
+                },
+                monotone = verus_proof_monotone_fold!(acc = u32, item = u32)
+            ),
+        );
+        let _shifted = max.map(q!(
+            |v| v >> 1,
+            order_preserving = verus_proof_order_preserving_map!(
+                input = u32,
+                output = u32,
+                proof = |x, y, fx, fy| {
+                    assert(x <= y ==> (x >> 1u32) <= (y >> 1u32)) by (bit_vector);
+                    assert(fx <= fy);
+                }
+            )
+        ));
+    }
 }
 
-/// Flows whose commutativity annotations must be **rejected** by Verus. Each is behind a
+/// Flows whose property annotations must be **rejected** by Verus. Each is behind a
 /// cargo feature so the `verus_rejects` harness can check them one at a time.
 pub mod rejected {
     /// Last-writer-wins overwrite is not commutative.
@@ -443,6 +624,91 @@ pub mod rejected {
                         commutative = verus_proof_commutative_fold!(acc = u32, item = u32)
                     ),
                 );
+        }
+    }
+
+    /// Last-writer-wins overwrite is not monotone: the new value may be smaller.
+    #[cfg(feature = "reject_overwrite_monotone_fold")]
+    pub mod overwrite_monotone_fold {
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let _last = process.source_iter(q!(vec![1u32, 2, 3])).fold(
+                q!(|| 0u32),
+                q!(
+                    |curr, new| {
+                        *curr = new;
+                    },
+                    monotone = verus_proof_monotone_fold!(acc = u32, item = u32)
+                ),
+            );
+        }
+    }
+
+    /// A wrapping sum is panic-free but not monotone: it decreases when it wraps around.
+    #[cfg(feature = "reject_wrapping_sum_monotone_fold")]
+    pub mod wrapping_sum_monotone_fold {
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let _sum = process.source_iter(q!(vec![1u32, 2, 3])).fold(
+                q!(|| 0u32),
+                q!(
+                    |acc, x| {
+                        *acc = acc.wrapping_add(x);
+                    },
+                    monotone = verus_proof_monotone_fold!(acc = u32, item = u32)
+                ),
+            );
+        }
+    }
+
+    /// Plain `+=` is monotone whenever it completes, but Verus requires the closure to be
+    /// panic-free, so the potential overflow is rejected (see `guarded_sum_monotone_fold`
+    /// for the accepted version using `verus_panic!`).
+    #[cfg(feature = "reject_overflowing_monotone_fold")]
+    pub mod overflowing_monotone_fold {
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let _sum = process.source_iter(q!(vec![1u32, 2, 3])).fold(
+                q!(|| 0u32),
+                q!(
+                    |acc, x| {
+                        *acc += x;
+                    },
+                    monotone = verus_proof_monotone_fold!(acc = u32, item = u32)
+                ),
+            );
+        }
+    }
+
+    /// `MAX - v` reverses the order, so it is not order-preserving.
+    #[cfg(feature = "reject_reversing_map")]
+    pub mod reversing_map {
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let count = process.source_iter(q!(vec![1u32, 2, 3])).count();
+            let _reversed = count.map(q!(
+                |v| usize::MAX - v,
+                order_preserving = verus_proof_order_preserving_map!(input = usize, output = usize)
+            ));
+        }
+    }
+
+    /// Wrapping doubling is panic-free but not order-preserving: it wraps around for
+    /// large inputs, so `x <= y` does not imply `2x <= 2y`.
+    #[cfg(feature = "reject_wrapping_double_map")]
+    pub mod wrapping_double_map {
+        use hydro_lang::prelude::*;
+
+        pub fn flow<'a>(process: &Process<'a, ()>) {
+            let count = process.source_iter(q!(vec![1u32, 2, 3])).count();
+            let _doubled = count.map(q!(
+                |v| v.wrapping_mul(2),
+                order_preserving = verus_proof_order_preserving_map!(input = usize, output = usize)
+            ));
         }
     }
 }
