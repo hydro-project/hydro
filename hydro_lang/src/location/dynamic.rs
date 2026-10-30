@@ -148,6 +148,7 @@ impl LocationId {
                 network_recv_cpu_usage: None,
                 id: None,
                 sim_hook_id: None,
+                sim_deterministic_snapshot: false,
             },
         }
     }

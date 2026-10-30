@@ -8,7 +8,7 @@ use syn::parse_quote;
 use crate::compile::builder::{HandoffId, StmtId};
 use crate::compile::ir::{
     CollectionKind, DebugExpr, DfirBuilder, HydroIrOpMetadata, KeyedSingletonBoundKind,
-    OptionalBoundKind, StreamOrder, StreamRetry,
+    OptionalBoundKind, SingletonBoundKind, StreamOrder, StreamRetry,
 };
 use crate::location::dynamic::LocationId;
 use crate::staging_util::get_this_crate;
@@ -859,6 +859,45 @@ impl DfirBuilder for SimBuilder {
         let out_location = tick_of_out_location(out_location);
         let (batch_location, line, caret) = location_for_op(op_meta);
         let root = get_this_crate();
+
+        if op_meta.sim_deterministic_snapshot {
+            // A bounded value is released into every tick without any choice (see
+            // `BoundedSnapshotHook`), so no scripted hook can be attached.
+            assert!(
+                matches!(
+                    in_kind,
+                    CollectionKind::Singleton {
+                        bound: SingletonBoundKind::Bounded,
+                        ..
+                    } | CollectionKind::Optional {
+                        bound: OptionalBoundKind::Bounded,
+                        ..
+                    }
+                ) && op_meta.sim_hook_id.is_none(),
+                "deterministic snapshots are only defined for bounded singletons and optionals \
+                 without sim hooks, but got {in_kind:?} (at {batch_location})"
+            );
+            debug_assert!(in_location.is_top_level());
+            let plumbing = self.tick_input_plumbing(in_location, TickInputBuffer::Queue);
+            let TickInputPlumbing {
+                buffered_ident,
+                hoff_send_ident,
+                ..
+            } = &plumbing;
+            self.add_hook(
+                in_location,
+                out_location,
+                syn::parse_quote!(
+                    Box::new(#root::sim::runtime::BoundedSnapshotHook::<_>::new(
+                        #buffered_ident.clone(),
+                        #hoff_send_ident,
+                        #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
+                    ))
+                ),
+            );
+            self.connect_tick_input(in_ident, in_location, out_ident, out_location, &plumbing);
+            return;
+        }
 
         match in_kind {
             CollectionKind::Singleton { element_type, .. } => {
