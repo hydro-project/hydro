@@ -10,7 +10,7 @@ use super::Slicable;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
 use crate::forward_handle::{TickCycle, TickCycleHandle};
-use crate::live_collections::boundedness::{Bounded, Boundedness, Unbounded};
+use crate::live_collections::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use crate::live_collections::keyed_singleton::{
     BoundedValue, KeyedSingletonBound, KeyedSingletonSnapshotBound,
 };
@@ -111,6 +111,61 @@ impl<T> Atomic<T> {
 /// Wraps a live collection to be treated atomically during slicing.
 pub fn atomic<T>(t: T, nondet: NonDet) -> Atomic<T> {
     Atomic::new(t, nondet)
+}
+
+/// Clone style wrapper that stores a bounded singleton-like collection.
+///
+/// This is used by the `sliced!` macro when `use::clone(...)` is specified.
+pub struct Cloned<T> {
+    pub(crate) collection: T,
+}
+
+impl<T> Cloned<T> {
+    /// Creates a new clone-styled wrapper.
+    pub fn new(collection: T) -> Self {
+        Self { collection }
+    }
+}
+
+/// Wraps a top-level **bounded** singleton-like live collection (a
+/// [`Singleton`](crate::live_collections::Singleton) or an
+/// [`Optional`](crate::live_collections::Optional)), such as a configuration value fixed when
+/// the flow is built, to be read in every slice.
+///
+/// Unlike [`snapshot`], this takes no non-determinism guard: a bounded collection has a single
+/// immutable value, so every slice observes that same value. Unbounded collections are
+/// rejected at compile time (use [`snapshot`] for those).
+///
+/// The slice is a bounded [`Singleton`](crate::live_collections::Singleton) (or
+/// [`Optional`](crate::live_collections::Optional)) on the tick of the `sliced!` body, as
+/// produced by [`Singleton::clone_into_tick`](crate::live_collections::Singleton::clone_into_tick).
+/// The value is **cloned into every tick**, so `T` must implement [`Clone`]; reading it by
+/// reference instead requires snapshots of singleton-like collections to return references
+/// ([hydro#2415](https://github.com/hydro-project/hydro/issues/2415)), and a `use::reference`
+/// style is planned for that.
+///
+/// ```rust
+/// # #[cfg(feature = "deploy")] {
+/// # use hydro_lang::prelude::*;
+/// # use futures::StreamExt;
+/// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+/// let offset = process.singleton(q!(100));
+/// let input = process.source_iter(q!(vec![1, 2, 3]));
+/// sliced! {
+///     let batch = use::batch(input, nondet!(/** test */));
+///     let offset = use::clone(offset);
+///     batch.cross_singleton(offset).map(q!(|(x, offset)| x + offset))
+/// }
+/// # }, |mut stream| async move {
+/// // 101, 102, 103
+/// # for w in vec![101, 102, 103] {
+/// #     assert_eq!(stream.next().await.unwrap(), w);
+/// # }
+/// # }));
+/// # }
+/// ```
+pub fn clone<T>(t: T) -> Cloned<T> {
+    Cloned::new(t)
 }
 
 /// Creates a stateful cycle with an initial value for use in `sliced!`.
@@ -564,6 +619,59 @@ impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
     fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
+        out
+    }
+}
+
+// ============================================================================
+// Clone style Slicable implementations (bounded singleton-like collections)
+//
+// These drop consistency so that they compose with the other styles in the same `sliced!`
+// block, but they introduce no non-determinism: a bounded collection has a single immutable
+// value, which is cloned into every slice. The snapshot is marked `sim_deterministic_snapshot`
+// so that the simulator releases the value into every tick without exploring any choices.
+// ============================================================================
+
+impl<'a, T: Clone, L: Location<'a>, B: SingletonBound + IsBounded> Slicable<'a, L::DropConsistency>
+    for Cloned<crate::live_collections::Singleton<T, L, B>>
+{
+    type Slice = crate::live_collections::Singleton<T, Tick<L::DropConsistency>, Bounded>;
+    type Backtrace = crate::compile::ir::backtrace::Backtrace;
+
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
+    }
+
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
+        let out = self.collection.clone_into_tick(tick);
+        {
+            let mut node = out.ir_node.borrow_mut();
+            let op_meta = node.op_metadata_mut();
+            op_meta.backtrace = backtrace;
+            op_meta.sim_deterministic_snapshot = true;
+        }
+        out
+    }
+}
+
+impl<'a, T: Clone, L: Location<'a>, B: OptionalBound + IsBounded> Slicable<'a, L::DropConsistency>
+    for Cloned<crate::live_collections::Optional<T, L, B>>
+{
+    type Slice = crate::live_collections::Optional<T, Tick<L::DropConsistency>, Bounded>;
+    type Backtrace = crate::compile::ir::backtrace::Backtrace;
+
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
+    }
+
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
+        let out = self.collection.weaken_consistency().clone_into_tick(tick);
+        {
+            let mut node = out.ir_node.borrow_mut();
+            let op_meta = node.op_metadata_mut();
+            op_meta.backtrace = backtrace;
+            op_meta.sim_deterministic_snapshot = true;
+        }
         out
     }
 }

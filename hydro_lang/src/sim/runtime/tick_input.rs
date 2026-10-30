@@ -1399,6 +1399,78 @@ impl<T> TickInputHook for PassthroughSingletonHook<T> {
     }
 }
 
+/// A hook for a deterministic snapshot of a **bounded** top-level singleton or optional into a
+/// tick (e.g. one read via `use::clone` in `sliced!`).
+///
+/// A bounded collection has a single, immutable value, so this hook never faces a choice and
+/// never triggers its tick on its own: whenever the tick runs for some other reason, it releases
+/// that value (or nothing, for an empty optional). Since there is no decision, nothing is logged.
+pub struct BoundedSnapshotHook<T> {
+    input: Rc<RefCell<VecDeque<T>>>,
+    value: Option<T>,
+    to_release: Option<T>,
+    output: Sender<T>,
+    batch_location: HookLocationMeta,
+}
+
+impl<T> BoundedSnapshotHook<T> {
+    pub fn new(
+        input: Rc<RefCell<VecDeque<T>>>,
+        output: Sender<T>,
+        batch_location: HookLocationMeta,
+    ) -> Self {
+        Self {
+            input,
+            value: None,
+            to_release: None,
+            output,
+            batch_location,
+        }
+    }
+}
+
+impl<T: Clone> RuntimeHook for BoundedSnapshotHook<T> {
+    fn has_pending_input(&self) -> bool {
+        !self.input.borrow().is_empty()
+    }
+
+    fn only_one_possible_decision(&self) -> bool {
+        // The bounded value is the only thing this hook ever releases.
+        true
+    }
+
+    fn release_decision(&mut self, _log_writer: Option<&mut dyn std::fmt::Write>) {
+        if let Some(to_release) = self.to_release.take() {
+            self.output.try_send(to_release).unwrap();
+        }
+    }
+
+    fn location_meta(&self) -> HookLocationMeta {
+        self.batch_location
+    }
+}
+
+impl<T: Clone> TickInputHook for BoundedSnapshotHook<T> {
+    fn can_trigger_tick(&self) -> bool {
+        // The arrival of a bounded value is not a reason to run the tick.
+        false
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        _driver: &mut Borrowed<'a>,
+        _force_trigger: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+        if let Some(item) = current_input.pop_back() {
+            current_input.clear();
+            self.value = Some(item);
+        }
+        self.to_release.clone_from(&self.value);
+        false
+    }
+}
+
 pub struct KeyedSingletonHook<K: Hash + Eq + Clone, V: Clone> {
     input: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>, // FxHasher is deterministic
     to_release: Option<Vec<(K, V, bool)>>,         // (key, data, is new)
