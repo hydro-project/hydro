@@ -2730,6 +2730,7 @@ dependencies = [
  "quote",
  "regex",
  "rmp-serde",
+ "same-file",
  "sealed",
  "serde",
  "serde_json",
