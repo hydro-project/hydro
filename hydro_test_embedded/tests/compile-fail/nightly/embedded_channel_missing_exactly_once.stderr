@@ -1,0 +1,19 @@
+error[E0271]: type mismatch resolving `<ExactlyOnce as MinRetries<AtLeastOnce>>::Min == ExactlyOnce`
+  --> tests/compile-fail/nightly/embedded_channel_missing_exactly_once.rs:13:13
+   |
+11 |         messages: InputChannel::new(
+   |                   ----------------- required by a bound introduced by this call
+12 |             stream::iter(Vec::<String>::new()),
+13 |             Promises::new().total_order(manual_proof!(/** an in-memory list keeps its order */)),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `ExactlyOnce`, found `AtLeastOnce`
+   |
+   = note: required for `hydro_lang::live_collections::stream::ExactlyOnce` to implement `WeakerRetryThan<hydro_lang::live_collections::stream::AtLeastOnce>`
+   = note: required for `hydro_test_embedded::echo_network_embedded::echo_receiver::incoming::messages` to implement `SatisfiedBy<hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::AtLeastOnce>`
+note: required by a bound in `InputChannel::<C, S>::new`
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   |     pub fn new<O, R>(inner: S, promises: Promises<O, R>) -> Self
+   |            --- required by a bound in this associated function
+   |     where
+   |         C: SatisfiedBy<O, R>,
+   |            ^^^^^^^^^^^^^^^^^ required by this bound in `InputChannel::<C, S>::new`

@@ -1,0 +1,20 @@
+error[E0271]: type mismatch resolving `<TotalOrder as MinOrder<NoOrder>>::Min == TotalOrder`
+  --> tests/compile-fail/nightly/embedded_channel_missing_order.rs:14:13
+   |
+12 |           messages: InputChannel::new(
+   |                     ----------------- required by a bound introduced by this call
+13 |               stream::iter(Vec::<String>::new()),
+14 | /             Promises::new()
+15 | |                 .exactly_once(manual_proof!(/** each message appears once in the list */)),
+   | |__________________________________________________________________________________________^ expected `TotalOrder`, found `NoOrder`
+   |
+   = note: required for `hydro_lang::live_collections::stream::TotalOrder` to implement `WeakerOrderingThan<hydro_lang::live_collections::stream::NoOrder>`
+   = note: required for `hydro_test_embedded::echo_network_embedded::echo_receiver::incoming::messages` to implement `SatisfiedBy<hydro_lang::live_collections::stream::NoOrder, hydro_lang::live_collections::stream::ExactlyOnce>`
+note: required by a bound in `InputChannel::<C, S>::new`
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   |     pub fn new<O, R>(inner: S, promises: Promises<O, R>) -> Self
+   |            --- required by a bound in this associated function
+   |     where
+   |         C: SatisfiedBy<O, R>,
+   |            ^^^^^^^^^^^^^^^^^ required by this bound in `InputChannel::<C, S>::new`

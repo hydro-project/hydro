@@ -1768,10 +1768,8 @@ impl HydroRoot {
                         .into();
                     };
                 } else if let HydroRoot::EmbeddedOutput { ident, input, .. } = l {
-                    let element_type = match &input.metadata().collection_kind {
-                        CollectionKind::Stream { element_type, .. } => element_type.0.as_ref().clone(),
-                        _ => panic!("Embedded output must have Stream collection kind"),
-                    };
+                    let (element_type, guarantees) =
+                        embedded_input_output_guarantees(input.metadata(), "Embedded output");
                     let location_key = match input.metadata().location_id.root() {
                         LocationId::Process(key) | LocationId::Cluster(key) => *key,
                         _ => panic!("Embedded output must be on a process or cluster"),
@@ -1781,6 +1779,7 @@ impl HydroRoot {
                         location_key,
                         ident,
                         &element_type,
+                        &guarantees,
                     );
                 }
             },
@@ -1817,6 +1816,14 @@ impl HydroRoot {
 
                         DebugInstantiate::Finalized(_) => panic!("network already finalized"),
                     };
+                    D::register_embedded_network_guarantees(
+                        &mut refcell_env.borrow_mut(),
+                        input.metadata().location_id.root().key(),
+                        metadata.location_id.root().key(),
+                        name.as_deref(),
+                        &network_stream_guarantees(input.metadata()),
+                        &network_stream_guarantees(metadata),
+                    );
 
                     *instantiate_fn = DebugInstantiateFinalized {
                         sink: sink_expr,
@@ -1925,10 +1932,8 @@ impl HydroRoot {
                     }
                     .into();
                 } else if let HydroNode::Source { source: HydroSource::Embedded(ident), metadata } = n {
-                    let element_type = match &metadata.collection_kind {
-                        CollectionKind::Stream { element_type, .. } => element_type.0.as_ref().clone(),
-                        _ => panic!("Embedded source must have Stream collection kind"),
-                    };
+                    let (element_type, guarantees) =
+                        embedded_input_output_guarantees(metadata, "Embedded source");
                     let location_key = match metadata.location_id.root() {
                         LocationId::Process(key) | LocationId::Cluster(key) => *key,
                         _ => panic!("Embedded source must be on a process or cluster"),
@@ -1938,6 +1943,7 @@ impl HydroRoot {
                         location_key,
                         ident,
                         &element_type,
+                        &guarantees,
                     );
                 } else if let HydroNode::Source { source: HydroSource::EmbeddedSingleton(ident), metadata } = n {
                     let element_type = match &metadata.collection_kind {
@@ -2902,6 +2908,53 @@ impl serde::Serialize for AccessCounter {
             AccessCounter::Frozen(count) => *count,
         };
         count.serialize(serializer)
+    }
+}
+
+/// The element type and guarantees of an embedded input or output (`what`), whose stream
+/// `metadata` describes.
+#[cfg(feature = "build")]
+fn embedded_input_output_guarantees(
+    metadata: &HydroIrMetadata,
+    what: &str,
+) -> (
+    syn::Type,
+    crate::compile::deploy_provider::EmbeddedStreamGuarantees,
+) {
+    match &metadata.collection_kind {
+        CollectionKind::Stream {
+            order,
+            retry,
+            element_type,
+            ..
+        } => (
+            element_type.0.as_ref().clone(),
+            crate::compile::deploy_provider::EmbeddedStreamGuarantees {
+                order: order.clone(),
+                retry: retry.clone(),
+            },
+        ),
+        _ => panic!("{what} must have Stream collection kind"),
+    }
+}
+
+/// The guarantees of a stream sent or received on a network channel, whose `metadata` describes
+/// it.
+#[cfg(feature = "build")]
+fn network_stream_guarantees(
+    metadata: &HydroIrMetadata,
+) -> crate::compile::deploy_provider::EmbeddedStreamGuarantees {
+    match &metadata.collection_kind {
+        CollectionKind::Stream { order, retry, .. }
+        | CollectionKind::KeyedStream {
+            value_order: order,
+            value_retry: retry,
+            ..
+        } => crate::compile::deploy_provider::EmbeddedStreamGuarantees {
+            order: order.clone(),
+            retry: retry.clone(),
+        },
+        kind => panic!("a network channel must send a stream or keyed stream, not {kind:?}"),
     }
 }
 
@@ -7250,7 +7303,7 @@ where
     if external_types.is_some() {
         assert!(
             D::SUPPORTS_EXTERNAL_SERIALIZATION,
-            "`EMBEDDED` channels are implemented by the host of an embedded program and are \
+            "`EMBEDDED` channels are implemented by the host of an embedded dataflow and are \
              only supported by the embedded deployment backend (and the simulator). Use `TCP` \
              or `UDP` (with `.bincode()`) for this deployment target instead."
         );

@@ -1,4 +1,6 @@
 fn main() {
+    hydro_build_utils::emit_nightly_configuration!();
+
     #[cfg(feature = "test_embedded")]
     generate_embedded();
 }
@@ -83,6 +85,72 @@ fn generate_embedded() {
 
         std::fs::write(
             format!("{out_dir}/at_least_once_input.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- weak_stream_channel (o2o; the stream sent is unordered and may repeat messages, so the
+    // channel has no order to keep and may duplicate them) ---
+    {
+        use hydro_lang::live_collections::stream::{AtLeastOnce, NoOrder};
+        use hydro_lang::networking::EMBEDDED;
+
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let sender = flow.process::<()>();
+        let receiver = flow.process::<()>();
+        sender
+            .embedded_input::<String, NoOrder, AtLeastOnce>("input")
+            .send(
+                &receiver,
+                EMBEDDED
+                    .exactly_once()
+                    .total_order()
+                    .fail_stop()
+                    .name("messages"),
+            )
+            .embedded_output("output");
+
+        let code = flow
+            .with_process(&sender, "weak_stream_sender")
+            .with_process(&receiver, "weak_stream_receiver")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/weak_stream_channel.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- weak_channel (o2o; the channel is declared to reorder and duplicate an ordered,
+    // exactly-once stream) ---
+    {
+        use hydro_lang::live_collections::stream::{ExactlyOnce, TotalOrder};
+        use hydro_lang::networking::EMBEDDED;
+
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let sender = flow.process::<()>();
+        let receiver = flow.process::<()>();
+        sender
+            .embedded_input::<String, TotalOrder, ExactlyOnce>("input")
+            .send(
+                &receiver,
+                EMBEDDED
+                    .at_least_once()
+                    .no_order()
+                    .fail_stop()
+                    .name("messages"),
+            )
+            .embedded_output("output");
+
+        let code = flow
+            .with_process(&sender, "weak_channel_sender")
+            .with_process(&receiver, "weak_channel_receiver")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/weak_channel.rs"),
             prettyplease::unparse(&code),
         )
         .unwrap();
