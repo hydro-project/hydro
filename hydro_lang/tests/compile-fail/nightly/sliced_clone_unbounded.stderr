@@ -1,0 +1,65 @@
+error[E0277]: the input collection must be bounded (`Bounded`), but has bound `hydro_lang::prelude::Unbounded`
+  --> tests/compile-fail/nightly/sliced_clone_unbounded.rs:16:13
+   |
+16 |       let _ = sliced! {
+   |  _____________^
+17 | |         let batch = use::batch(input, nondet!(/** test */));
+18 | |         let count = use::clone(count);
+19 | |         batch.cross_singleton(count)
+20 | |     };
+   | |     ^
+   | |     |
+   | |_____required here
+   |       required by a bound introduced by this call
+   |
+   = help: the trait `IsBounded` is not implemented for `hydro_lang::prelude::Unbounded`
+   = note: strengthen the boundedness upstream, or consider a different API
+   = note: to intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region; this introduces non-determinism, so avoid it unless necessary
+   = help: the following other types implement trait `Slicable<'a, L>`:
+             (T₁, T₂, …, Tₙ) up to tuples of arity 12
+   = note: required for `hydro_lang::live_collections::sliced::style::Cloned<hydro_lang::prelude::Singleton<i32, hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Unbounded>>` to implement `Slicable<'_, hydro_lang::prelude::Process<'a, P1>>`
+   = note: 1 redundant requirement hidden
+   = note: required for `(hydro_lang::live_collections::sliced::style::Batch<hydro_lang::prelude::Stream<i32, hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Bounded>, Option<BatchHook<i32, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::ExactlyOnce, OnProcess<P1>>>>, hydro_lang::live_collections::sliced::style::Cloned<hydro_lang::prelude::Singleton<i32, hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Unbounded>>)` to implement `Slicable<'_, hydro_lang::prelude::Process<'a, P1>>`
+   = note: this error originates in the macro `$crate::__sliced_parse_uses__` which comes from the expansion of the macro `sliced` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the input collection must be bounded (`Bounded`), but has bound `hydro_lang::prelude::Unbounded`
+  --> tests/compile-fail/nightly/sliced_clone_unbounded.rs:16:13
+   |
+16 |       let _ = sliced! {
+   |  _____________^
+17 | |         let batch = use::batch(input, nondet!(/** test */));
+18 | |         let count = use::clone(count);
+19 | |         batch.cross_singleton(count)
+20 | |     };
+   | |_____^ required here
+   |
+   = help: the trait `IsBounded` is not implemented for `hydro_lang::prelude::Unbounded`
+   = note: strengthen the boundedness upstream, or consider a different API
+   = note: to intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region; this introduces non-determinism, so avoid it unless necessary
+   = help: the following other types implement trait `Slicable<'a, L>`:
+             (T₁, T₂, …, Tₙ) up to tuples of arity 12
+   = note: required for `hydro_lang::live_collections::sliced::style::Cloned<hydro_lang::prelude::Singleton<i32, hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Unbounded>>` to implement `Slicable<'a, hydro_lang::prelude::Process<'a, P1>>`
+   = note: 1 redundant requirement hidden
+   = note: required for `(hydro_lang::live_collections::sliced::style::Batch<hydro_lang::prelude::Stream<i32, hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Bounded>, Option<BatchHook<i32, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::ExactlyOnce, OnProcess<P1>>>>, hydro_lang::live_collections::sliced::style::Cloned<hydro_lang::prelude::Singleton<i32, hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Unbounded>>)` to implement `Slicable<'a, hydro_lang::prelude::Process<'a, P1>>`
+   = note: this error originates in the macro `$crate::__sliced_parse_uses__` which comes from the expansion of the macro `sliced` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the input collection must be bounded (`Bounded`), but has bound `hydro_lang::prelude::Unbounded`
+  --> tests/compile-fail/nightly/sliced_clone_unbounded.rs:16:13
+   |
+16 |       let _ = sliced! {
+   |  _____________^
+17 | |         let batch = use::batch(input, nondet!(/** test */));
+18 | |         let count = use::clone(count);
+19 | |         batch.cross_singleton(count)
+20 | |     };
+   | |_____^ required here
+   |
+   = help: the trait `IsBounded` is not implemented for `hydro_lang::prelude::Unbounded`
+   = note: strengthen the boundedness upstream, or consider a different API
+   = note: to intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region; this introduces non-determinism, so avoid it unless necessary
+   = help: the following other types implement trait `Slicable<'a, L>`:
+             (T₁, T₂, …, Tₙ) up to tuples of arity 12
+   = note: required for `hydro_lang::live_collections::sliced::style::Cloned<hydro_lang::prelude::Singleton<i32, hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Unbounded>>` to implement `Slicable<'a, hydro_lang::prelude::Process<'a, P1>>`
+   = note: 1 redundant requirement hidden
+   = note: required for `(hydro_lang::live_collections::sliced::style::Batch<hydro_lang::prelude::Stream<i32, hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Bounded>, Option<BatchHook<i32, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::ExactlyOnce, OnProcess<P1>>>>, hydro_lang::live_collections::sliced::style::Cloned<hydro_lang::prelude::Singleton<i32, hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Unbounded>>)` to implement `Slicable<'a, hydro_lang::prelude::Process<'a, P1>>`
+   = note: this error originates in the macro `$crate::__sliced_parse_uses__` which comes from the expansion of the macro `sliced` (in Nightly builds, run with -Z macro-backtrace for more info)
