@@ -15,8 +15,7 @@ use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
-    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, OptionalBoundKind, SharedNode,
-    SingletonBoundKind,
+    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode, SingletonBoundKind,
 };
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
@@ -270,13 +269,35 @@ where
     }
 }
 
+/// [`Singleton::zip`] of two bounded singletons (see [`super::optional::zip_bounded`]).
 #[cfg(stageleft_runtime)]
-fn zip_inside_tick<'a, T, L: Location<'a>, B: SingletonBound, O>(
-    me: Singleton<T, Tick<L>, B>,
-    other: Optional<O, Tick<L>, B::UnderlyingBound>,
-) -> Optional<(T, O), Tick<L>, B::UnderlyingBound> {
-    let me_as_optional: Optional<T, Tick<L>, B::UnderlyingBound> = me.into();
-    super::optional::zip_inside_tick(me_as_optional, other)
+fn zip_singletons<'a, T, U, L: Location<'a>, B: SingletonBound>(
+    me: Singleton<T, L, B>,
+    other: Singleton<U, L, B>,
+) -> Singleton<(T, U), L, B> {
+    let location = me.location.clone();
+    let me: Optional<T, L, Bounded> = Optional::new(
+        location.clone(),
+        HydroNode::Cast {
+            inner: Box::new(me.ir_node.replace(HydroNode::Placeholder)),
+            metadata: location.new_node_metadata(Optional::<T, L, Bounded>::collection_kind()),
+        },
+    );
+    let other: Optional<U, L, Bounded> = Optional::new(
+        location.clone(),
+        HydroNode::Cast {
+            inner: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
+            metadata: location.new_node_metadata(Optional::<U, L, Bounded>::collection_kind()),
+        },
+    );
+    let out = super::optional::zip_bounded(me, other);
+    Singleton::new(
+        location.clone(),
+        HydroNode::Cast {
+            inner: Box::new(out.ir_node.replace(HydroNode::Placeholder)),
+            metadata: location.new_node_metadata(Singleton::<(T, U), L, B>::collection_kind()),
+        },
+    )
 }
 
 impl<'a, T, L, B: SingletonBound> Singleton<T, L, B>
@@ -301,6 +322,52 @@ where
             bound: B::bound_kind(),
             element_type: stageleft::quote_type::<T>().into(),
         }
+    }
+
+    /// Exposes this collection's top-level update feed as a stream whose elements are exactly
+    /// the feed's updates, in the order they were emitted.
+    ///
+    /// **Contract.** Relative to "every version of the collection, exactly once, in order", the
+    /// stream may *stutter* (repeat the current version, consecutively) and *skip*
+    /// (omit non-final versions); the final version is always eventually delivered. Which
+    /// versions appear depends on timing, so the caller's `nondet` must justify that its use is
+    /// invariant to stuttering and skipping (e.g. an idempotent "latest value" fold, or a
+    /// monotone threshold).
+    ///
+    /// **Simulator soundness.** The simulator emits every version exactly once and does not
+    /// explore skips, so a caller must never expose these updates (or anything derived from
+    /// them update-by-update) to user code or an output. It must route them into logic that
+    /// keeps the full trajectory of versions available and then through a simulator hook that
+    /// picks among them nondeterministically: fold them back into a singleton-like state that
+    /// is later snapshotted, or batch them into a tick. When combining several feeds, batch each
+    /// one into the same tick rather than interleaving them deterministically (e.g. with
+    /// `chain`), so the simulator explores every pairing of their versions. See
+    /// [`HydroNode::CastUpdateStream`] for the full contract.
+    ///
+    /// The collection must be located at a root (process or cluster) location.
+    pub(crate) fn into_update_stream(
+        self,
+        _nondet: NonDet,
+    ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, ExactlyOnce> {
+        assert!(
+            self.location.id().is_root(),
+            "`into_update_stream` requires a root location, got {:?}",
+            self.location.id()
+        );
+        let target_location = self.location.drop_consistency();
+        Stream::new(
+            target_location.clone(),
+            HydroNode::CastUpdateStream {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: target_location.new_node_metadata(Stream::<
+                    T,
+                    L::DropConsistency,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
     }
 
     /// Returns the [`Location`] where this singleton is being materialized.
@@ -835,46 +902,28 @@ where
     {
         check_matching_location(&self.location, &Self::other_location(&other));
 
-        if L::is_top_level()
-            && let Some(tick) = self.location.try_tick()
-        {
-            let self_location = self.location().clone();
-            let other_location = <Self as ZipResult<'a, O>>::other_location(&other);
-            let out = zip_inside_tick(
-                self.snapshot(&tick, nondet!(/** eventually stabilizes */)),
-                Optional::<<Self as ZipResult<'a, O>>::OtherType, L, B>::new(
-                    other_location.clone(),
-                    HydroNode::Cast {
-                        inner: Box::new(Self::other_ir_node(other)),
-                        metadata: other_location.new_node_metadata(Optional::<
-                            <Self as ZipResult<'a, O>>::OtherType,
-                            Tick<L>,
-                            Bounded,
-                        >::collection_kind(
-                        )),
-                    },
-                )
-                .snapshot(&tick, nondet!(/** eventually stabilizes */)),
-            )
-            .latest();
-
-            Self::make(self_location, out.ir_node.replace(HydroNode::Placeholder))
-        } else {
-            Self::make(
-                self.location.clone(),
-                HydroNode::CrossSingleton {
-                    left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    right: Box::new(Self::other_ir_node(other)),
-                    metadata: self.location.new_node_metadata(CollectionKind::Optional {
-                        bound: OptionalBoundKind::Bounded,
-                        element_type: stageleft::quote_type::<
-                            <Self as ZipResult<'a, O>>::ElementType,
-                        >()
-                        .into(),
-                    }),
-                },
-            )
-        }
+        let location = self.location().clone();
+        let other_location = <Self as ZipResult<'a, O>>::other_location(&other);
+        let me: Optional<T, L, Bounded> = Optional::new(
+            location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: location.new_node_metadata(Optional::<T, L, Bounded>::collection_kind()),
+            },
+        );
+        let other: Optional<<Self as ZipResult<'a, O>>::OtherType, L, Bounded> = Optional::new(
+            other_location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(Self::other_ir_node(other)),
+                metadata: other_location.new_node_metadata(Optional::<
+                    <Self as ZipResult<'a, O>>::OtherType,
+                    L,
+                    Bounded,
+                >::collection_kind()),
+            },
+        );
+        let out = super::optional::zip_bounded(me, other);
+        Self::make(location, out.ir_node.replace(HydroNode::Placeholder))
     }
 
     /// Filters this singleton into an [`Optional`], passing through the singleton value if the
@@ -1082,6 +1131,36 @@ where
                     uncasted.ir_node.replace(HydroNode::Placeholder),
                 )
             }
+            Err(me) if me.location.id().is_root() => {
+                let updates = me.into_update_stream(nondet!(
+                    /// The singleton is monotone, so a version crosses the threshold iff every
+                    /// later version does: stuttering and skipping intermediate versions cannot
+                    /// change whether (or when the final version shows that) it is crossed.
+                ));
+                let uncasted = sliced! {
+                    let batch = use::batch(updates, nondet!(/** thresholds are deterministic */));
+                    let mut remaining_threshold = use::state(|l| {
+                        let as_option: Optional<_, _, _> = threshold.clone_into_tick(l).into();
+                        as_option
+                    });
+                    let latest = batch.last();
+
+                    // A firing without new versions (`latest` is null) must keep the remaining
+                    // threshold: drop it only once it has been passed.
+                    let passed = remaining_threshold
+                        .clone()
+                        .zip(latest)
+                        .filter(q!(|(t, m)| m >= t))
+                        .map(q!(|(t, _)| t));
+                    remaining_threshold = remaining_threshold.filter_if(!passed.clone().is_some());
+                    passed.into_stream()
+                };
+
+                Stream::new(
+                    self_location,
+                    uncasted.ir_node.replace(HydroNode::Placeholder),
+                )
+            }
             Err(me) => {
                 let uncasted = sliced! {
                     let me = use::snapshot(me, nondet!(/** thresholds are deterministic */));
@@ -1185,7 +1264,9 @@ where
     where
         B: IsBounded,
     {
-        self.zip(other).map(q!(|(a, b)| a && b)).make_bounded()
+        zip_singletons(self, other)
+            .map(q!(|(a, b)| a && b))
+            .make_bounded()
     }
 
     /// Returns a [`Singleton`] containing the logical OR of this and another boolean singleton.
@@ -1215,7 +1296,9 @@ where
     where
         B: IsBounded,
     {
-        self.zip(other).map(q!(|(a, b)| a || b)).make_bounded()
+        zip_singletons(self, other)
+            .map(q!(|(a, b)| a || b))
+            .make_bounded()
     }
 }
 
@@ -1311,14 +1394,33 @@ where
         mut nondet: NonDet<Option<crate::sim_hooks::SnapshotHook<T, L::SimHookScope>>>,
     ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce> {
         let snapshot_hook = nondet.take_hook();
-        sliced! {
-            let snapshot = use::snapshot(self, nondet!(
-                /// which snapshots are sampled is captured by the caller's guard
-                hook = snapshot_hook
+        if self.location.id().is_root() {
+            assert!(
+                snapshot_hook.is_none(),
+                "sim hooks are not supported on `sample_eager` of a root-located singleton"
+            );
+            let updates = self.into_update_stream(nondet!(
+                /// which versions are sampled is captured by the caller's guard
             ));
-            snapshot.into_stream()
+            // Sample the latest version in each batch of updates. Batching (explored by the
+            // simulator) determines which versions are skipped.
+            sliced! {
+                let batch = use::batch(updates, nondet!(
+                    /// which versions are sampled is captured by the caller's guard
+                ));
+                batch.last().into_stream()
+            }
+            .weaken_retries()
+        } else {
+            sliced! {
+                let snapshot = use::snapshot(self, nondet!(
+                    /// which snapshots are sampled is captured by the caller's guard
+                    hook = snapshot_hook
+                ));
+                snapshot.into_stream()
+            }
+            .weaken_retries()
         }
-        .weaken_retries()
     }
 
     /// Given a time interval, returns a stream corresponding to snapshots of the singleton
@@ -1724,8 +1826,10 @@ mod tests {
 
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::compile::builder::FlowBuilder;
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::live_collections::stream::ExactlyOnce;
+    #[cfg(feature = "sim")]
+    use crate::live_collections::stream::TotalOrder;
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
     #[cfg(any(feature = "deploy", feature = "sim"))]
@@ -2164,5 +2268,124 @@ mod tests {
             // runs (total = 3 * 2 = 6). Output is second.chain(first) => [6, 3].
             assert_eq!(results, vec![6, 3]);
         });
+    }
+
+    /// `threshold_greater_or_equal` of a root monotone singleton emits the threshold exactly
+    /// once, however the singleton's versions are batched (including several crossing versions
+    /// in one batch).
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_threshold_greater_or_equal() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_port, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+        let output = input
+            .count()
+            .threshold_greater_or_equal(node.singleton(q!(2usize)))
+            .sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            input_port.send(1);
+            input_port.send(2);
+            input_port.send(3);
+
+            assert_eq!(output.collect::<Vec<_>>().await, vec![2]);
+        });
+
+        assert!(count > 1);
+    }
+
+    /// `zip` of two root bounded singletons produces the pair once both sides are present.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_singleton_zip() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (trigger_port, trigger) = node.sim_input::<(), TotalOrder, ExactlyOnce>();
+
+        let result = node.singleton(q!(1u32)).zip(node.singleton(q!(2u32)));
+
+        let tick = node.tick();
+        let output = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(result.snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|(_, result)| result))
+            .all_ticks()
+            .sim_output();
+
+        let mut observed = std::collections::HashSet::new();
+        let instances = flow.sim().exhaustive(async || {
+            trigger_port.send(());
+
+            observed.insert(output.collect::<Vec<_>>().await);
+        });
+        assert_eq!(instances, 11);
+
+        // The trigger may fire before the result has a value, in which case nothing is observed.
+        assert_eq!(observed, [vec![], vec![(1, 2)]].into_iter().collect());
+    }
+
+    /// `and` of two root bounded `bool` singletons (via the internal `zip_bounded`).
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_singleton_and() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (trigger_port, trigger) = node.sim_input::<(), TotalOrder, ExactlyOnce>();
+
+        let result = node.singleton(q!(true)).and(node.singleton(q!(false)));
+
+        let tick = node.tick();
+        let output = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(result.snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|(_, result)| result))
+            .all_ticks()
+            .sim_output();
+
+        let mut observed = std::collections::HashSet::new();
+        let instances = flow.sim().exhaustive(async || {
+            trigger_port.send(());
+
+            observed.insert(output.collect::<Vec<_>>().await);
+        });
+        assert_eq!(instances, 11);
+
+        // The trigger may fire before the result has a value, in which case nothing is observed.
+        assert_eq!(observed, [vec![], vec![false]].into_iter().collect());
+    }
+
+    /// `or` of two root bounded `bool` singletons (via the internal `zip_bounded`).
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_singleton_or() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (trigger_port, trigger) = node.sim_input::<(), TotalOrder, ExactlyOnce>();
+
+        let result = node.singleton(q!(true)).or(node.singleton(q!(false)));
+
+        let tick = node.tick();
+        let output = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(result.snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|(_, result)| result))
+            .all_ticks()
+            .sim_output();
+
+        let mut observed = std::collections::HashSet::new();
+        let instances = flow.sim().exhaustive(async || {
+            trigger_port.send(());
+
+            observed.insert(output.collect::<Vec<_>>().await);
+        });
+        assert_eq!(instances, 11);
+
+        // The trigger may fire before the result has a value, in which case nothing is observed.
+        assert_eq!(observed, [vec![], vec![true]].into_iter().collect());
     }
 }

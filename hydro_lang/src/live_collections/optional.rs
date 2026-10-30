@@ -12,6 +12,7 @@ use syn::parse_quote;
 use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::singleton::Singleton;
+use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
@@ -21,12 +22,10 @@ use crate::compile::ir::{
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::singleton::SingletonBound;
-#[cfg(feature = "tokio")]
-use crate::location::TopLevel;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, DeferTick};
-use crate::location::{Location, Tick, check_matching_location};
+use crate::location::{Location, Tick, TopLevel, check_matching_location};
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::KeyedSingleton;
 use crate::properties::{StreamMapFuncAlgebra, ValidMutCommutativityFor, ValidMutIdempotenceFor};
@@ -47,12 +46,19 @@ pub trait OptionalBound {
     /// The [`Boundedness`] that this [`Optional`] would be erased to.
     type UnderlyingBound: Boundedness;
 
+    /// The type of each update in this optional's top-level update feed (see
+    /// [`CollectionKind::root_repr_is_tombstoned_update_feed`](crate::compile::ir::CollectionKind::root_repr_is_tombstoned_update_feed)):
+    /// `Option<T>` (where `None` is a tombstone) for [`Unbounded`] optionals, which may become
+    /// null after having a value, and plain `T` otherwise.
+    type Update<T>;
+
     /// Returns the [`OptionalBoundKind`] corresponding to this type.
     fn bound_kind() -> OptionalBoundKind;
 }
 
 impl OptionalBound for Unbounded {
     type UnderlyingBound = Unbounded;
+    type Update<T> = Option<T>;
 
     fn bound_kind() -> OptionalBoundKind {
         OptionalBoundKind::Unbounded
@@ -61,6 +67,7 @@ impl OptionalBound for Unbounded {
 
 impl OptionalBound for Bounded {
     type UnderlyingBound = Bounded;
+    type Update<T> = T;
 
     fn bound_kind() -> OptionalBoundKind {
         OptionalBoundKind::Bounded
@@ -75,6 +82,7 @@ pub enum InitNone {}
 
 impl OptionalBound for InitNone {
     type UnderlyingBound = Unbounded;
+    type Update<T> = T;
 
     fn bound_kind() -> OptionalBoundKind {
         OptionalBoundKind::InitNone
@@ -302,6 +310,224 @@ pub(super) fn zip_inside_tick<'a, T, O, L: Location<'a>, B: Boundedness>(
     )
 }
 
+/// How [`Optional::or`] combines two [`Unbounded`] optionals located at `L`.
+///
+/// This is implemented for every type inside ticks and atomic regions. At root (process and
+/// cluster) locations, the result holds the latest value of each side across updates, which
+/// requires `T: Clone`.
+#[sealed]
+pub trait OrAt<'a, L: Location<'a>>: Sized {
+    #[doc(hidden)]
+    fn or_unbounded(
+        me: Optional<Self, L, Unbounded>,
+        other: Optional<Self, L, Unbounded>,
+    ) -> Optional<Self, L, Unbounded>;
+}
+
+#[sealed]
+impl<'a, T, L: Location<'a>> OrAt<'a, Tick<L>> for T {
+    fn or_unbounded(
+        me: Optional<T, Tick<L>, Unbounded>,
+        other: Optional<T, Tick<L>, Unbounded>,
+    ) -> Optional<T, Tick<L>, Unbounded> {
+        or_inside_tick(me, other)
+    }
+}
+
+#[sealed]
+impl<'a, T, L: Location<'a>> OrAt<'a, Atomic<L>> for T {
+    fn or_unbounded(
+        me: Optional<T, Atomic<L>, Unbounded>,
+        other: Optional<T, Atomic<L>, Unbounded>,
+    ) -> Optional<T, Atomic<L>, Unbounded> {
+        // An atomic region is fused into its tick's loop: snapshot both sides into that tick.
+        let self_location = me.location.clone();
+        let tick = self_location.try_tick().unwrap();
+        let out = or_inside_tick(
+            me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
+            other.snapshot(&tick, nondet!(/** eventually stabilizes */)),
+        )
+        .latest();
+        Optional::new(self_location, out.ir_node.replace(HydroNode::Placeholder))
+    }
+}
+
+#[sealed]
+impl<'a, T: Clone + 'a, L: TopLevel<'a>> OrAt<'a, L> for T {
+    fn or_unbounded(
+        me: Optional<T, L, Unbounded>,
+        other: Optional<T, L, Unbounded>,
+    ) -> Optional<T, L, Unbounded> {
+        let location = me.location.clone();
+        let out = or_at_root(me, other);
+        Optional::new(location, out.ir_node.replace(HydroNode::Placeholder))
+    }
+}
+
+/// Casts the `Unbounded` result of a top-level zip back to the (bounded) output kind of `zip`.
+/// The cast is not just metadata: at the root, unbounded optionals are tombstoned update feeds
+/// while bounded ones are plain values.
+#[cfg(stageleft_runtime)]
+fn cast_unbounded_zip_to_bounded<'a, T, O, L: Location<'a>, L2: Location<'a>>(
+    location: L,
+    out: Optional<(T, O), L2, Unbounded>,
+) -> Optional<(T, O), L, Bounded> {
+    Optional::new(
+        location.clone(),
+        HydroNode::Cast {
+            inner: Box::new(out.ir_node.replace(HydroNode::Placeholder)),
+            metadata: location.new_node_metadata(Optional::<(T, O), L, Bounded>::collection_kind()),
+        },
+    )
+}
+
+/// [`Optional::zip`] of two bounded optionals, dispatching on the location at build time: inside
+/// a tick it is a per-firing cross, in an atomic region both sides are snapshotted into its tick,
+/// and at a root location it is [`zip_at_root`]. None of these clone the values.
+#[cfg(stageleft_runtime)]
+pub(crate) fn zip_bounded<'a, T, O, L: Location<'a>>(
+    me: Optional<T, L, Bounded>,
+    other: Optional<O, L, Bounded>,
+) -> Optional<(T, O), L, Bounded> {
+    check_matching_location(&me.location, &other.location);
+    let location = me.location.clone();
+    if !L::is_top_level() {
+        zip_inside_tick(me, other)
+    } else if location.id().is_root() {
+        zip_at_root(me, other)
+    } else {
+        // An atomic region is fused into its tick's loop: snapshot both sides into that tick.
+        let tick = location.try_tick().unwrap();
+        let out = zip_inside_tick(
+            me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
+            other.snapshot(&tick, nondet!(/** eventually stabilizes */)),
+        )
+        .latest();
+        cast_unbounded_zip_to_bounded(location, out)
+    }
+}
+
+/// [`OrAt`] at a root location: batch the update streams of both sides into a tick, hold the
+/// latest value of each side across ticks, and emit the first non-null one.
+#[cfg(stageleft_runtime)]
+fn or_at_root<'a, T: Clone + 'a, L: Location<'a>>(
+    me: Optional<T, L, Unbounded>,
+    other: Optional<T, L, Unbounded>,
+) -> Optional<T, L::DropConsistency, Unbounded> {
+    let left_updates = me.into_update_stream(nondet!(
+        /// Only the latest update of each side is held, so stuttering re-sets the same value and
+        /// skipping only skips intermediate results.
+    ));
+    let right_updates = other.into_update_stream(nondet!(
+        /// Only the latest update of each side is held, so stuttering re-sets the same value and
+        /// skipping only skips intermediate results.
+    ));
+    sliced! {
+        let left_batch = use::batch(left_updates, nondet!(
+            /// Batching only affects which intermediate results are produced.
+        ));
+        let right_batch = use::batch(right_updates, nondet!(
+            /// Batching only affects which intermediate results are produced.
+        ));
+        let mut latest_left = use::state(|l| l.singleton(q!(None)));
+        let mut latest_right = use::state(|l| l.singleton(q!(None)));
+        latest_left = left_batch.last().unwrap_or(latest_left);
+        latest_right = right_batch.last().unwrap_or(latest_right);
+
+        latest_left
+            .clone()
+            .zip(latest_right.clone())
+            .map(q!(|(left, right)| left.or(right)))
+    }
+    // The tick yields a (non-null) `Singleton<Option<_>>`; convert it to an optional at the top
+    // level, where a `None` result becomes a tombstone (and the result is null until the tick
+    // first runs).
+    .filter_map(q!(|result| result))
+}
+
+/// [`Optional::zip`] at a root location.
+///
+/// Both sides are bounded, so each update feed carries that side's single value (possibly
+/// stuttered). Batch both feeds into a tick, keep whichever side has arrived as pending state, and
+/// emit the pair once the other side arrives. The values are *moved* through the tick (a per-tick
+/// `fold` and a `partition`), never cloned. The pairs form a bounded optional's (plain) update feed,
+/// so the result is a metadata-only cast of them.
+#[cfg(stageleft_runtime)]
+fn zip_at_root<'a, T, O, L: Location<'a>>(
+    me: Optional<T, L, Bounded>,
+    other: Optional<O, L, Bounded>,
+) -> Optional<(T, O), L, Bounded> {
+    let location = me.location.clone();
+    let left_updates = me.into_update_stream(nondet!(
+        /// A bounded side has a single value: stuttering re-delivers it (at worst re-emitting the
+        /// same pair, which a bounded optional's feed may do) and there is nothing to skip.
+    ));
+    let right_updates = other.into_update_stream(nondet!(
+        /// A bounded side has a single value: stuttering re-delivers it (at worst re-emitting the
+        /// same pair, which a bounded optional's feed may do) and there is nothing to skip.
+    ));
+    let pairs = sliced! {
+        let left_batch = use::batch(left_updates, nondet!(
+            /// Batching only affects in which tick the pair is emitted.
+        ));
+        let right_batch = use::batch(right_updates, nondet!(
+            /// Batching only affects in which tick the pair is emitted.
+        ));
+        // The side(s) that have arrived while the other has not (at most one element).
+        let mut pending = use::state_null::<Stream<(Option<T>, Option<O>), _, Bounded, TotalOrder>>();
+
+        let (complete, incomplete) = pending
+            .chain(left_batch.map(q!(|left| (Some(left), None))))
+            .chain(right_batch.map(q!(|right| (None, Some(right)))))
+            .fold(
+                q!(|| (None, None)),
+                q!(|acc, (left, right)| {
+                    if left.is_some() {
+                        acc.0 = left;
+                    }
+                    if right.is_some() {
+                        acc.1 = right;
+                    }
+                }),
+            )
+            .into_stream()
+            .partition(q!(|(left, right)| left.is_some() && right.is_some()));
+        pending = incomplete;
+
+        complete.map(q!(|(left, right)| (left.unwrap(), right.unwrap())))
+    };
+    Optional::new(
+        location.clone(),
+        HydroNode::Cast {
+            inner: Box::new(pairs.ir_node.replace(HydroNode::Placeholder)),
+            metadata: location.new_node_metadata(Optional::<(T, O), L, Bounded>::collection_kind()),
+        },
+    )
+}
+
+/// [`Optional::unwrap_or`] for a location that is fused into a tick's loop (an atomic region,
+/// where presence is re-derived on every firing), without the [`OrAt`] dispatch: a per-firing
+/// `ChainFirst`, cast to a [`Singleton`].
+#[cfg(stageleft_runtime)]
+pub(super) fn unwrap_or_in_atomic<'a, T, L: Location<'a>, B: OptionalBound, B2: SingletonBound>(
+    me: Optional<T, L, B>,
+    other: Singleton<T, L, B2>,
+) -> Singleton<T, L, B2> {
+    check_matching_location(&me.location, &other.location);
+    let location = me.location.clone();
+    Singleton::new(
+        location.clone(),
+        HydroNode::Cast {
+            inner: Box::new(HydroNode::ChainFirst {
+                first: Box::new(me.ir_node.replace(HydroNode::Placeholder)),
+                second: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
+                metadata: location.new_node_metadata(Optional::<T, L, B>::collection_kind()),
+            }),
+            metadata: location.new_node_metadata(Singleton::<T, L, B2>::collection_kind()),
+        },
+    )
+}
+
 #[cfg(stageleft_runtime)]
 fn or_inside_tick<'a, T, L: Location<'a>, B: Boundedness>(
     me: Optional<T, L, B>,
@@ -376,6 +602,55 @@ where
             bound: <B as OptionalBound>::bound_kind(),
             element_type: stageleft::quote_type::<T>().into(),
         }
+    }
+
+    /// Exposes this collection's top-level update feed as a stream whose elements are exactly
+    /// the feed's updates, in the order they were emitted.
+    ///
+    /// **Contract.** Relative to "every version of the collection, exactly once, in order", the
+    /// stream may *stutter* (repeat the current version, consecutively) and *skip*
+    /// (omit non-final versions); the final version is always eventually delivered. Which
+    /// versions appear depends on timing, so the caller's `nondet` must justify that its use is
+    /// invariant to stuttering and skipping (e.g. an idempotent "latest value" fold, or a
+    /// monotone threshold).
+    ///
+    /// **Simulator soundness.** The simulator emits every version exactly once and does not
+    /// explore skips, so a caller must never expose these updates (or anything derived from
+    /// them update-by-update) to user code or an output. It must route them into logic that
+    /// keeps the full trajectory of versions available and then through a simulator hook that
+    /// picks among them nondeterministically: fold them back into a singleton-like state that
+    /// is later snapshotted, or batch them into a tick. When combining several feeds, batch each
+    /// one into the same tick rather than interleaving them deterministically (e.g. with
+    /// `chain`), so the simulator explores every pairing of their versions. See
+    /// [`HydroNode::CastUpdateStream`] for the full contract.
+    ///
+    /// The collection must be located at a root (process or cluster) location.
+    ///
+    /// Each update is a [`OptionalBound::Update`]: `Option<T>` (with `None` a tombstone) for an
+    /// [`Unbounded`] optional, and plain `T` otherwise.
+    pub(crate) fn into_update_stream(
+        self,
+        _nondet: NonDet,
+    ) -> Stream<B::Update<T>, L::DropConsistency, Unbounded, TotalOrder, ExactlyOnce> {
+        assert!(
+            self.location.id().is_root(),
+            "`into_update_stream` requires a root location, got {:?}",
+            self.location.id()
+        );
+        let target_location = self.location.drop_consistency();
+        Stream::new(
+            target_location.clone(),
+            HydroNode::CastUpdateStream {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: target_location.new_node_metadata(Stream::<
+                    B::Update<T>,
+                    L::DropConsistency,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
     }
 
     /// Returns the [`Location`] where this optional is being materialized.
@@ -807,30 +1082,17 @@ where
         let other: Optional<O, L, B> = other.into();
         check_matching_location(&self.location, &other.location);
 
-        if L::is_top_level()
-            && let Some(tick) = self.location.try_tick()
-        {
-            let self_location = self.location().clone();
-            let out = zip_inside_tick(
-                self.snapshot(&tick, nondet!(/** eventually stabilizes */)),
-                other.snapshot(&tick, nondet!(/** eventually stabilizes */)),
-            )
-            .latest();
-
-            // `latest()` produces an `Unbounded` optional; cast it back to this method's
-            // (bounded) output kind. The cast is not just metadata: at the root, unbounded
-            // optionals are tombstoned update feeds while bounded ones are plain values.
-            Optional::new(
-                self_location.clone(),
-                HydroNode::Cast {
-                    inner: Box::new(out.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: self_location
-                        .new_node_metadata(Optional::<(T, O), L, B>::collection_kind()),
-                },
-            )
-        } else {
-            zip_inside_tick(self, other)
-        }
+        let location = self.location.clone();
+        let me: Optional<T, L, Bounded> = Optional::new(
+            location.clone(),
+            self.ir_node.replace(HydroNode::Placeholder),
+        );
+        let other: Optional<O, L, Bounded> = Optional::new(
+            other.location.clone(),
+            other.ir_node.replace(HydroNode::Placeholder),
+        );
+        let out = zip_bounded(me, other);
+        Optional::new(location, out.ir_node.replace(HydroNode::Placeholder))
     }
 
     /// Passes through `self` when it has a value, otherwise passes through `other`.
@@ -863,26 +1125,14 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn or(
-        self,
-        other: Optional<T, L, B::UnderlyingBound>,
-    ) -> Optional<T, L, B::UnderlyingBound> {
+    pub fn or(self, other: Optional<T, L, B::UnderlyingBound>) -> Optional<T, L, B::UnderlyingBound>
+    where
+        T: OrAt<'a, L>,
+    {
         let me = self.ignore_init_none();
         check_matching_location(&me.location, &other.location);
 
-        if L::is_top_level()
-            && !<B::UnderlyingBound as Boundedness>::BOUNDED // only if unbounded we need to use a tick
-            && let Some(tick) = me.location.try_tick()
-        {
-            let self_location = me.location().clone();
-            let out = or_inside_tick(
-                me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
-                other.snapshot(&tick, nondet!(/** eventually stabilizes */)),
-            )
-            .latest();
-
-            Optional::new(self_location, out.ir_node.replace(HydroNode::Placeholder))
-        } else {
+        if <B::UnderlyingBound as Boundedness>::BOUNDED {
             Optional::new(
                 me.location.clone(),
                 HydroNode::ChainFirst {
@@ -893,7 +1143,132 @@ where
                         .new_node_metadata(Optional::<T, L, B::UnderlyingBound>::collection_kind()),
                 },
             )
+        } else {
+            let location = me.location.clone();
+            let me: Optional<T, L, Unbounded> =
+                Optional::new(location.clone(), me.ir_node.replace(HydroNode::Placeholder));
+            let other: Optional<T, L, Unbounded> = Optional::new(
+                other.location.clone(),
+                other.ir_node.replace(HydroNode::Placeholder),
+            );
+            let out = T::or_unbounded(me, other);
+            Optional::new(location, out.ir_node.replace(HydroNode::Placeholder))
         }
+    }
+
+    /// [`Optional::or`] for a `T: Clone`, dispatching on the location at build time instead of
+    /// through [`OrAt`]. Used by internal combinators whose element type is always `Clone`
+    /// (e.g. `()`), so that they do not need an [`OrAt`] bound for a generic location.
+    pub(crate) fn or_cloned(
+        self,
+        other: Optional<T, L, B::UnderlyingBound>,
+    ) -> Optional<T, L, B::UnderlyingBound>
+    where
+        T: Clone + 'a,
+    {
+        let me = self.ignore_init_none();
+        check_matching_location(&me.location, &other.location);
+
+        if <B::UnderlyingBound as Boundedness>::BOUNDED || !L::is_top_level() {
+            Optional::new(
+                me.location.clone(),
+                HydroNode::ChainFirst {
+                    first: Box::new(me.ir_node.replace(HydroNode::Placeholder)),
+                    second: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: me
+                        .location
+                        .new_node_metadata(Optional::<T, L, B::UnderlyingBound>::collection_kind()),
+                },
+            )
+        } else {
+            let location = me.location.clone();
+            let me: Optional<T, L, Unbounded> =
+                Optional::new(location.clone(), me.ir_node.replace(HydroNode::Placeholder));
+            let other: Optional<T, L, Unbounded> = Optional::new(
+                other.location.clone(),
+                other.ir_node.replace(HydroNode::Placeholder),
+            );
+            let out = if location.id().is_root() {
+                let out = or_at_root(me, other);
+                Optional::new(
+                    location.clone(),
+                    out.ir_node.replace(HydroNode::Placeholder),
+                )
+            } else {
+                // An atomic region is fused into its tick's loop: snapshot both sides into
+                // that tick.
+                let tick = location.try_tick().unwrap();
+                let out = or_inside_tick(
+                    me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
+                    other.snapshot(&tick, nondet!(/** eventually stabilizes */)),
+                )
+                .latest();
+                Optional::<T, L, Unbounded>::new(
+                    location.clone(),
+                    out.ir_node.replace(HydroNode::Placeholder),
+                )
+            };
+            Optional::new(location, out.ir_node.replace(HydroNode::Placeholder))
+        }
+    }
+
+    /// [`Optional::into_singleton`] for a `T: Clone`, via [`Optional::or_cloned`].
+    pub(crate) fn into_singleton_cloned(self) -> Singleton<Option<T>, L, B::UnderlyingBound>
+    where
+        T: Clone + 'a,
+    {
+        if self.location.id().is_root() && !<B::UnderlyingBound as Boundedness>::BOUNDED {
+            // At the root, the singleton's versions are exactly the optional's updates (as
+            // `Option<T>`, with a tombstone becoming `None`), starting from `None`: hold the
+            // latest update.
+            let location = self.location.clone();
+            let ir_node = self.ir_node.replace(HydroNode::Placeholder);
+            let updates: Stream<Option<T>, L::DropConsistency, Unbounded, TotalOrder, ExactlyOnce> =
+                if <B as OptionalBound>::bound_kind() == OptionalBoundKind::Unbounded {
+                    let me: Optional<T, L, Unbounded> = Optional::new(location.clone(), ir_node);
+                    me.into_update_stream(nondet!(
+                        /// The singleton holds the latest update, so stuttering re-sets the same
+                        /// value and skipping only skips intermediate versions.
+                    ))
+                } else {
+                    let me: Optional<T, L, InitNone> = Optional::new(location.clone(), ir_node);
+                    me.into_update_stream(nondet!(
+                        /// The singleton holds the latest update, so stuttering re-sets the same
+                        /// value and skipping only skips intermediate versions.
+                    ))
+                    .map(q!(|v| Some(v)))
+                };
+            let singleton: Singleton<Option<T>, _, Unbounded> =
+                updates.fold(q!(|| None), q!(|current, update| *current = update));
+            return Singleton::new(location, singleton.ir_node.replace(HydroNode::Placeholder));
+        }
+
+        let none: syn::Expr = parse_quote!(::std::option::Option::None);
+        let none_singleton: Singleton<Option<T>, L, B::UnderlyingBound> = Singleton::new(
+            self.location.clone(),
+            HydroNode::SingletonSource {
+                value: none.into(),
+                first_tick_only: false,
+                metadata: self.location.new_node_metadata(Singleton::<
+                    Option<T>,
+                    L,
+                    B::UnderlyingBound,
+                >::collection_kind()),
+            },
+        );
+        let res_option = self.map(q!(|v| Some(v))).or_cloned(none_singleton.into());
+        Singleton::new(
+            res_option.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(res_option.ir_node.replace(HydroNode::Placeholder)),
+                metadata: res_option.location.new_node_metadata(Singleton::<
+                    Option<T>,
+                    L,
+                    B::UnderlyingBound,
+                >::collection_kind(
+                )),
+            },
+        )
     }
 
     /// Gets the contents of `self` when it has a value, otherwise passes through `other`.
@@ -929,7 +1304,10 @@ where
     pub fn unwrap_or(
         self,
         other: Singleton<T, L, B::UnderlyingBound>,
-    ) -> Singleton<T, L, B::UnderlyingBound> {
+    ) -> Singleton<T, L, B::UnderlyingBound>
+    where
+        T: OrAt<'a, L>,
+    {
         let res_option = self.or(other.into());
         Singleton::new(
             res_option.location.clone(),
@@ -972,7 +1350,7 @@ where
     /// ```
     pub fn unwrap_or_default(self) -> Singleton<T, L, B::UnderlyingBound>
     where
-        T: Default + Clone,
+        T: Default + Clone + 'a,
     {
         self.into_singleton().map(q!(|v| v.unwrap_or_default()))
     }
@@ -1005,24 +1383,9 @@ where
     /// ```
     pub fn into_singleton(self) -> Singleton<Option<T>, L, B::UnderlyingBound>
     where
-        T: Clone,
+        T: Clone + 'a,
     {
-        let none: syn::Expr = parse_quote!(::std::option::Option::None);
-
-        let none_singleton = Singleton::new(
-            self.location.clone(),
-            HydroNode::SingletonSource {
-                value: none.into(),
-                first_tick_only: false,
-                metadata: self.location.new_node_metadata(Singleton::<
-                    Option<T>,
-                    L,
-                    B::UnderlyingBound,
-                >::collection_kind()),
-            },
-        );
-
-        self.map(q!(|v| Some(v))).unwrap_or(none_singleton)
+        self.into_singleton_cloned()
     }
 
     /// Returns a [`Singleton`] containing `true` if this optional has a value, `false` otherwise.
@@ -1050,7 +1413,7 @@ where
     #[expect(clippy::wrong_self_convention, reason = "Stream naming")]
     pub fn is_some(self) -> Singleton<bool, L, B::UnderlyingBound> {
         self.map(q!(|_| ()))
-            .into_singleton()
+            .into_singleton_cloned()
             .map(q!(|o| o.is_some()))
     }
 
@@ -1079,7 +1442,7 @@ where
     #[expect(clippy::wrong_self_convention, reason = "Stream naming")]
     pub fn is_none(self) -> Singleton<bool, L, B::UnderlyingBound> {
         self.map(q!(|_| ()))
-            .into_singleton()
+            .into_singleton_cloned()
             .map(q!(|o| o.is_none()))
     }
 
@@ -1110,7 +1473,7 @@ where
     #[expect(clippy::wrong_self_convention, reason = "Stream naming")]
     pub fn is_some_and_equals(self, other: Optional<T, L, B>) -> Singleton<bool, L, B>
     where
-        T: PartialEq + Clone,
+        T: PartialEq + Clone + 'a,
         B: IsBounded,
     {
         self.into_singleton()
@@ -1517,8 +1880,25 @@ where
     where
         B: IsInitNone,
     {
-        let tick = self.location.tick();
-        self.snapshot(&tick, nondet).all_ticks().weaken_retries()
+        if self.location.id().is_root() {
+            let me: Optional<T, L, InitNone> = Optional::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            );
+            let updates = me.into_update_stream(nondet);
+            // Sample the latest version in each batch of updates. Batching (explored by the
+            // simulator) determines which versions are skipped.
+            sliced! {
+                let batch = use::batch(updates, nondet!(
+                    /// which versions are sampled is captured by the caller's guard
+                ));
+                batch.last().into_stream()
+            }
+            .weaken_retries()
+        } else {
+            let tick = self.location.tick();
+            self.snapshot(&tick, nondet).all_ticks().weaken_retries()
+        }
     }
 
     /// Given a time interval, returns a stream corresponding to snapshots of the optional
@@ -1745,7 +2125,7 @@ mod tests {
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use stageleft::q;
 
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use super::Optional;
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::compile::builder::FlowBuilder;
@@ -2029,5 +2409,206 @@ mod tests {
         ref_results.sort();
         // reduce(0..5) = 10, so 1+10=11, 2+10=12
         assert_eq!(ref_results, vec![11, 12]);
+    }
+
+    /// A root `Unbounded` optional (a tombstoned update feed) that holds the latest value sent
+    /// on `input`, where `None` makes it null again. Built from a `sliced!` state singleton so
+    /// that it can be simulated.
+    #[cfg(feature = "sim")]
+    pub(crate) fn sim_unbounded_optional<'a>(
+        node: &crate::location::Process<'a>,
+        input: crate::live_collections::Stream<
+            Option<u32>,
+            crate::location::Process<'a>,
+            crate::live_collections::boundedness::Unbounded,
+        >,
+    ) -> Optional<u32, crate::location::Process<'a>, crate::live_collections::boundedness::Unbounded>
+    {
+        use crate::live_collections::sliced::sliced;
+        use crate::nondet::nondet;
+
+        let _ = node;
+        sliced! {
+            let batch = use::batch(input, nondet!(/** test */));
+            let mut latest = use::state(|l| l.singleton(q!(None)));
+            latest = batch.last().unwrap_or(latest);
+            latest.clone()
+        }
+        .filter_map(q!(|v| v))
+    }
+
+    /// `or` of two root `Unbounded` optionals switches to the fallback once the left side becomes
+    /// null again, and both sides' values are observable.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_or_unbounded() {
+        use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
+        use crate::nondet::nondet;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (left_port, left_input) = node.sim_input::<Option<u32>, TotalOrder, ExactlyOnce>();
+        let (right_port, right_input) = node.sim_input::<Option<u32>, TotalOrder, ExactlyOnce>();
+        let (trigger_port, trigger) = node.sim_input::<(), TotalOrder, ExactlyOnce>();
+
+        let left = sim_unbounded_optional(&node, left_input);
+        let right = sim_unbounded_optional(&node, right_input);
+        let result = left.or(right).into_singleton();
+
+        let tick = node.tick();
+        let output = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(result.snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|(_, v)| v))
+            .all_ticks()
+            .sim_output();
+
+        let mut observed = std::collections::HashSet::new();
+        let instances = flow.sim().exhaustive(async || {
+            left_port.send(Some(1));
+            left_port.send(None);
+            right_port.send(Some(2));
+            trigger_port.send(());
+            trigger_port.send(());
+
+            observed.insert(output.collect::<Vec<_>>().await);
+        });
+        assert_eq!(instances, 207069);
+
+        // Every trajectory production allows. The left side goes null -> 1 -> null (covering
+        // both the override and the fallback), the right side null -> 2, independently, so the
+        // result moves along a monotone path through the (left, right) version grid. The two
+        // trigger firings observe the result at two points `p <= q` along that path (equal if
+        // they fire together). So e.g. `[Some(2), Some(1)]` (left overrides) and
+        // `[Some(1), Some(2)]` (fallback) are possible, but `[Some(2), None]` is not.
+        let left_versions = [None, Some(1), None];
+        let right_versions = [None, Some(2)];
+        let points = (0..left_versions.len())
+            .flat_map(|l| (0..right_versions.len()).map(move |r| (l, r)))
+            .collect::<Vec<_>>();
+        let value = |(l, r): (usize, usize)| left_versions[l].or(right_versions[r]);
+        let mut expected = std::collections::HashSet::new();
+        for &p in &points {
+            for &q in &points {
+                if p.0 <= q.0 && p.1 <= q.1 {
+                    expected.insert(vec![value(p), value(q)]);
+                }
+            }
+        }
+        assert_eq!(observed, expected);
+    }
+
+    /// `zip` of two root bounded optionals produces the pair once both are present (never a
+    /// partial pair), and `is_some` of a root `Unbounded` optional tracks presence, including
+    /// becoming null again.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_zip_bounded_and_is_some() {
+        use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
+        use crate::nondet::nondet;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_port, input) = node.sim_input::<Option<u32>, TotalOrder, ExactlyOnce>();
+        let (trigger_port, trigger) = node.sim_input::<(), TotalOrder, ExactlyOnce>();
+
+        let zipped = node
+            .source_iter(q!([1u32]))
+            .first()
+            .zip(node.source_iter(q!([2u32])).first())
+            .into_singleton();
+        let present = sim_unbounded_optional(&node, input).is_some();
+
+        let tick = node.tick();
+        let output = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(zipped.snapshot(&tick, nondet!(/** test */)))
+            .cross_singleton(present.snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|((_, zipped), present)| (zipped, present)))
+            .all_ticks()
+            .sim_output();
+
+        let mut observed = std::collections::HashSet::new();
+        let instances = flow.sim().exhaustive(async || {
+            input_port.send(Some(7));
+            input_port.send(None);
+            trigger_port.send(());
+            trigger_port.send(());
+
+            observed.insert(output.collect::<Vec<_>>().await);
+        });
+        assert_eq!(instances, 76299);
+
+        // Every trajectory production allows. `zipped` goes null -> (1, 2) and `present` goes
+        // false -> true -> false, independently; the two trigger firings observe both at two
+        // points `p <= q` of the (zipped, present) version grid. In particular the pair is
+        // never retracted.
+        let zipped_versions = [None, Some((1, 2))];
+        let present_versions = [false, true, false];
+        let points = (0..zipped_versions.len())
+            .flat_map(|z| (0..present_versions.len()).map(move |p| (z, p)))
+            .collect::<Vec<_>>();
+        let value = |(z, p): (usize, usize)| (zipped_versions[z], present_versions[p]);
+        let mut expected = std::collections::HashSet::new();
+        for &p in &points {
+            for &q in &points {
+                if p.0 <= q.0 && p.1 <= q.1 {
+                    expected.insert(vec![value(p), value(q)]);
+                }
+            }
+        }
+        assert_eq!(observed, expected);
+    }
+
+    /// `sample_eager` of a root `InitNone` optional samples versions in order: every run's
+    /// samples (ignoring stutters) are an increasing subsequence of the possible versions ending
+    /// with the final one, and the simulator explores skipping intermediate versions.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_optional_sample_eager() {
+        use crate::live_collections::sliced::sliced;
+        use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
+        use crate::nondet::nondet;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_port, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+        // A running sum, null until the first input arrives.
+        let sum = sliced! {
+            let batch = use::batch(input, nondet!(/** test */));
+            let mut sum = use::state(|l| l.singleton(q!(0u32)));
+            sum = sum.zip(batch.fold(q!(|| 0u32), q!(|acc, v| *acc += v)))
+                .map(q!(|(sum, batch)| sum + batch));
+            sum.clone()
+        };
+        let output = sum
+            .sample_eager(nondet!(/** test */))
+            // Samples may repeat (stutter); the samples are strictly increasing versions, so
+            // dropping repeats is exactly de-duplication.
+            .unique()
+            .sim_output();
+
+        let mut observed = std::collections::BTreeSet::new();
+        flow.sim().exhaustive(async || {
+            input_port.send(1);
+            input_port.send(2);
+            input_port.send(3);
+
+            let samples = output.collect::<Vec<_>>().await;
+            assert!(
+                samples.windows(2).all(|w| w[0] < w[1]),
+                "samples are not increasing: {samples:?}"
+            );
+            assert!(samples.iter().all(|v| [0, 1, 3, 6].contains(v)));
+            assert_eq!(samples.last(), Some(&6));
+            observed.insert(samples);
+        });
+
+        // Skipping intermediate versions is explored.
+        assert!(observed.iter().any(|samples| samples.len() > 1));
+        assert!(observed.contains(&vec![6]));
     }
 }
