@@ -16,7 +16,7 @@ use super::ir::HydroIrOpMetadata;
 use super::ir::{HydroNode, HydroRoot};
 use crate::location::{Cluster, External, LocationKey, LocationType, Process};
 
-/// A compile-time directive to spawn a future on a location's `LocalSet`
+/// A compile-time directive to spawn a future (via `tokio::spawn`) on a location's runtime
 /// alongside the DFIR scheduler.
 pub enum Sidecar {
     /// A ready-to-go future expression (e.g. telemetry metrics collection).

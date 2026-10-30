@@ -6,7 +6,6 @@
 use std::future::Future;
 use std::marker::PhantomData;
 use std::pin::Pin;
-use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::task::Wake;
@@ -67,7 +66,7 @@ impl Wake for WakeState {
 /// context tracks runtime metrics:
 ///
 /// - `Context<DfirMetrics>` (the default) is created via [`Context::new_with_metrics`] and holds
-///   a shared `Rc<DfirMetrics>` handle, accessible via [`Context::metrics`].
+///   a shared `Arc<DfirMetrics>` handle, accessible via [`Context::metrics`].
 /// - `Context<()>` is created via [`Context::new`] and holds no metrics state whatsoever. The
 ///   `metrics()` accessor does not exist on it, so it is a compile error to try to read metrics
 ///   from a context which never tracked them.
@@ -77,7 +76,7 @@ pub struct Context<M: MetricsState = DfirMetrics> {
     /// Coordinates waking between [`Context`] (inside the tick closure) and [`Dfir`]
     /// (the external runner). Shared via `Arc` between both. Implements [`Wake`].
     wake_state: Arc<WakeState>,
-    /// Live-updating DFIR runtime metrics via interior mutability (`Rc<DfirMetrics>`), or `()`
+    /// Live-updating DFIR runtime metrics via atomics (`Arc<DfirMetrics>`), or `()`
     /// when metrics are not tracked.
     metrics: M::Handle,
     /// Tasks buffered via [`Self::request_task`], spawned via [`tokio::spawn`] by
@@ -109,11 +108,11 @@ impl Default for Context<()> {
 impl Context<DfirMetrics> {
     /// Create a new inline context with a fresh wake state and the given (pre-populated) metrics.
     pub fn new_with_metrics(metrics: DfirMetrics) -> Self {
-        Self::with_metrics_handle(Rc::new(metrics))
+        Self::with_metrics_handle(Arc::new(metrics))
     }
 
     /// Returns a reference to the runtime metrics.
-    pub fn metrics(&self) -> &Rc<DfirMetrics> {
+    pub fn metrics(&self) -> &Arc<DfirMetrics> {
         &self.metrics
     }
 }
@@ -400,8 +399,8 @@ impl<Tick: TickClosure<Metrics = DfirMetrics>> Dfir<Tick> {
     /// Returns a reference-counted handle to the continually-updated runtime metrics for this DFIR instance.
     ///
     /// Only available when metrics tracking is enabled, see [`MetricsState`].
-    pub fn metrics(&self) -> Rc<DfirMetrics> {
-        Rc::clone(self.context.metrics())
+    pub fn metrics(&self) -> Arc<DfirMetrics> {
+        Arc::clone(self.context.metrics())
     }
 
     /// Returns a [`DfirMetricsIntervals`] handle where each call to
@@ -554,7 +553,10 @@ mod tests {
 
     use static_assertions::assert_impl_all;
 
-    use super::{Context, Dfir, TickClosure};
+    use super::{Context, Dfir, NullTickClosure, TickClosure};
+    use crate::scheduled::metrics::{
+        AtomicCount, AtomicDuration, DfirMetrics, DfirMetricsIntervals,
+    };
 
     struct SendTick;
 
@@ -569,6 +571,15 @@ mod tests {
         }
     }
 
+    // Without metrics tracking.
     assert_impl_all!(Context<()>: Send);
     assert_impl_all!(Dfir<SendTick>: Send);
+
+    // With metrics tracking (`NullTickClosure` has `Metrics = DfirMetrics`).
+    assert_impl_all!(AtomicCount: Send, Sync);
+    assert_impl_all!(AtomicDuration: Send, Sync);
+    assert_impl_all!(DfirMetrics: Send, Sync);
+    assert_impl_all!(DfirMetricsIntervals: Send);
+    assert_impl_all!(Context<DfirMetrics>: Send);
+    assert_impl_all!(Dfir<NullTickClosure>: Send);
 }
