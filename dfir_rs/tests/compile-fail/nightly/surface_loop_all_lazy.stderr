@@ -1,0 +1,11 @@
+error: Root-level `loop { ... }` can never fire: all of its windowing inputs are lazy (`batch_lazy()` / `snapshot()`), which never cause the loop to fire on their own, and it has no `defer_tick()` back-edge. Add at least one non-lazy windowing input (`batch()` / `batch_eager()`) or a `defer_tick()`.
+ --> tests/compile-fail/nightly/surface_loop_all_lazy.rs:7:18
+  |
+7 |             a -> snapshot() -> m;
+  |                  ^^^^^^^^^^
+
+error: Root-level `loop { ... }` can never fire: all of its windowing inputs are lazy (`batch_lazy()` / `snapshot()`), which never cause the loop to fire on their own, and it has no `defer_tick()` back-edge. Add at least one non-lazy windowing input (`batch()` / `batch_eager()`) or a `defer_tick()`.
+ --> tests/compile-fail/nightly/surface_loop_all_lazy.rs:8:18
+  |
+8 |             b -> batch_lazy() -> m;
+  |                  ^^^^^^^^^^^^
