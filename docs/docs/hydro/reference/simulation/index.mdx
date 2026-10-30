@@ -19,7 +19,7 @@ The simulator uses the exact same Hydro code you will run in production, and req
 | Networking                    | Full                | Simulated networking is supported for both `Process` and `Cluster` locations         |
 | Batching / Snapshotting             | Partial             | Supported on all live collections except `Optional` |
 | Unordered Reductions                        | Full             | Built-in operators like `count` are accelerated, but not arbitrary `{fold/reduce}` |
-| Non-Deterministic Observations | Limited             | `assume_ordering::<TotalOrder>` is supported, `assume_retries::<ExactlyOnce>` is not supported |
+| Non-Deterministic Observations | Partial             | `assume_ordering::<TotalOrder>` is supported; `assume_retries::<ExactlyOnce>` and `assume_ordering` / `batch` on `AtLeastOnce` streams are [explored](./writing.mdx#retries-on-atleastonce-streams) by `fuzz` (unbounded) and by `exhaustive` when bounded with `.retries_depth(n)`, or [scripted with a hook](./scripting.mdx#retries-hooks) |
 
 ## Code Coverage
 Simulation tests execute your Hydro code inside a dynamic library that is compiled on the fly when the test runs, rather than inside the test binary itself. The simulator compiles that library with exactly the rustflags your crate was compiled with — including `-C instrument-coverage`, whether it came from `RUSTFLAGS`, cargo config, or `--config` — so lines exercised only through the simulator are attributed to your source files like any other test coverage.

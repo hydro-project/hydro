@@ -5,10 +5,12 @@
 //! [`ScriptableInlineHook`] impls live alongside them.
 //!
 //! The retry kinds ([`NoOrderStreamRetriesHook`], [`OrderedStreamRetriesHook`],
-//! [`AtLeastOnceStreamOrderHook`]) implement only the scriptable surface, never
-//! [`InlineHook`]: their decision spaces are infinite (every element admits arbitrarily
-//! many retries), so no autonomous exploration is possible and the builder requires them
-//! to be bound to a sim hook.
+//! [`AtLeastOnceStreamOrderHook`]) have an infinite decision space (every element admits
+//! arbitrarily many retries). Each carries a [`RetryBudget`]: [`RetryBudget::Scripted`]
+//! when bound to a sim hook (the script decides), otherwise the run's autonomous budget:
+//! [`RetryBudget::Bounded`] (the extra copies / slots the hook may inject into *each*
+//! tick's input, from `SimFlow::retries_depth`) or [`RetryBudget::Unbounded`] (fuzzing:
+//! counts are drawn from the fuzzer).
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -21,8 +23,9 @@ use dfir_rs::rustc_hash::{FxHashMap, FxHashSet};
 use dfir_rs::util::unsync::mpsc::Sender;
 
 use super::{
-    HookLocationMeta, InlineHook, ManualDebug, MergeStatus, OrderingStatus, RuntimeHook,
-    ScriptDecision, ScriptableInlineHook, TruncatedLabeledVecDebug, TruncatedVecDebug, log_release,
+    HookLocationMeta, InlineHook, ManualDebug, MergeStatus, OrderingStatus, RetryBudget,
+    RuntimeHook, ScriptDecision, ScriptableInlineHook, TruncatedLabeledVecDebug, TruncatedVecDebug,
+    log_release,
 };
 
 pub struct StreamOrderHook<T> {
@@ -1150,11 +1153,13 @@ where
 /// value may appear that was not received. The scripted order is irrelevant — the output
 /// is `NoOrder`.
 ///
-/// There is no autonomous ([`InlineHook`]) implementation: cardinalities make the
-/// decision space infinite, so this hook exists only bound to a sim hook handle.
+/// Autonomously, the per-tick retry budget's worth of extra copies is distributed over the
+/// tick's input.
 pub struct NoOrderStreamRetriesHook<T> {
     input: Rc<RefCell<Option<Vec<T>>>>,
     to_release: Option<Vec<T>>,
+    /// How retries are decided (see [`RetryBudget`]); the per-tick budget when bounded.
+    budget: RetryBudget,
     output: Sender<Vec<T>>,
     batch_location: HookLocationMeta,
     format_debug: fn(&T) -> Option<String>,
@@ -1166,10 +1171,12 @@ impl<T> NoOrderStreamRetriesHook<T> {
         output: Sender<Vec<T>>,
         batch_location: HookLocationMeta,
         format_debug: fn(&T) -> Option<String>,
+        budget: RetryBudget,
     ) -> Self {
         Self {
             input,
             to_release: None,
+            budget,
             output,
             batch_location,
             format_debug,
@@ -1183,11 +1190,13 @@ impl<T> NoOrderStreamRetriesHook<T> {
 /// (`n >= 1` copies per slot) — see [`TopLevelOrderedStreamRetriesHook`](super::TopLevelOrderedStreamRetriesHook)
 /// for why delayed redeliveries are not this observation's dimension.
 ///
-/// There is no autonomous ([`InlineHook`]) implementation: cardinalities make the
-/// decision space infinite, so this hook exists only bound to a sim hook handle.
+/// Autonomously, the per-tick retry budget's worth of extra copies is distributed over the
+/// tick's input.
 pub struct OrderedStreamRetriesHook<T> {
     input: Rc<RefCell<Option<Vec<T>>>>,
     to_release: Option<Vec<T>>,
+    /// How retries are decided (see [`RetryBudget`]); the per-tick budget when bounded.
+    budget: RetryBudget,
     output: Sender<Vec<T>>,
     batch_location: HookLocationMeta,
     format_debug: fn(&T) -> Option<String>,
@@ -1199,10 +1208,12 @@ impl<T> OrderedStreamRetriesHook<T> {
         output: Sender<Vec<T>>,
         batch_location: HookLocationMeta,
         format_debug: fn(&T) -> Option<String>,
+        budget: RetryBudget,
     ) -> Self {
         Self {
             input,
             to_release: None,
+            budget,
             output,
             batch_location,
             format_debug,
@@ -1223,11 +1234,14 @@ impl<T> OrderedStreamRetriesHook<T> {
 /// redundant — the adjacent duplicate denotes the same at-least-once collection, and
 /// per-slot cardinality belongs to the downstream `assume_retries` observation.
 ///
-/// There is no autonomous ([`InlineHook`]) implementation: re-emission makes the
-/// decision space infinite, so this hook exists only bound to a sim hook handle.
+/// Autonomously, the per-tick retry budget's worth of extra slots is inserted into the
+/// slot sequence: each input instance gets at least one slot, and an instance may take
+/// additional, non-adjacent slots while budget remains.
 pub struct AtLeastOnceStreamOrderHook<T> {
     input: Rc<RefCell<Option<Vec<T>>>>,
     to_release: Option<Vec<T>>,
+    /// How retries are decided (see [`RetryBudget`]); the per-tick budget when bounded.
+    budget: RetryBudget,
     output: Sender<Vec<T>>,
     batch_location: HookLocationMeta,
     format_debug: fn(&T) -> Option<String>,
@@ -1239,10 +1253,12 @@ impl<T> AtLeastOnceStreamOrderHook<T> {
         output: Sender<Vec<T>>,
         batch_location: HookLocationMeta,
         format_debug: fn(&T) -> Option<String>,
+        budget: RetryBudget,
     ) -> Self {
         Self {
             input,
             to_release: None,
+            budget,
             output,
             batch_location,
             format_debug,
@@ -1253,19 +1269,20 @@ impl<T> AtLeastOnceStreamOrderHook<T> {
 /// The shared [`RuntimeHook`] surface of the in-tick retry kinds (they differ only in
 /// how a decision is validated against the pending input).
 macro_rules! inline_retries_runtime_hook {
-    ($hook:ident, $note:literal) => {
+    ($hook:ident, $note:literal, $unique_when_spent:expr) => {
         impl<T> RuntimeHook for $hook<T> {
             fn has_pending_input(&self) -> bool {
                 self.input.borrow().is_some()
             }
 
             fn only_one_possible_decision(&self) -> bool {
-                // Even a sole element admits infinitely many decisions (its cardinality /
-                // slot count), so only an empty input is unique.
-                self.input
-                    .borrow()
-                    .as_ref()
-                    .is_none_or(|inputs| inputs.is_empty())
+                // Scripted, even a sole element admits infinitely many decisions (its
+                // cardinality / slot count), so only an empty input is unique.
+                // Autonomously, a zero budget leaves only the kind's retry-free choices
+                // (none for the retry kinds, the ordering for the at-least-once ordering).
+                let len = self.input.borrow().as_ref().map_or(0, Vec::len);
+                let unique_when_spent: fn(usize) -> bool = $unique_when_spent;
+                len == 0 || (self.budget.is_spent() && unique_when_spent(len))
             }
 
             fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
@@ -1312,16 +1329,97 @@ macro_rules! inline_retries_runtime_hook {
 
 inline_retries_runtime_hook!(
     NoOrderStreamRetriesHook,
-    "observed non-deterministic retries"
+    "observed non-deterministic retries",
+    |_len| true
 );
 inline_retries_runtime_hook!(
     OrderedStreamRetriesHook,
-    "observed non-deterministic retries"
+    "observed non-deterministic retries",
+    |_len| true
 );
 inline_retries_runtime_hook!(
     AtLeastOnceStreamOrderHook,
-    "observed non-deterministic order"
+    "observed non-deterministic order",
+    |len| len <= 1
 );
+
+/// Distributes the tick's retry budget as extra copies over `input`, element by element in
+/// order: each element gets `extra` additional adjacent copies drawn from the budget
+/// (`0..=remaining` when bounded). Every multiset of extra copies corresponds to exactly
+/// one sequence of draws. The budget is per tick, so the hook's own is copied, not spent.
+fn expand_with_budget<T: Clone>(
+    input: Vec<T>,
+    mut budget: RetryBudget,
+    driver: &mut Borrowed<'_>,
+) -> Vec<T> {
+    let mut out = Vec::with_capacity(input.len());
+    for item in input {
+        let extra = budget.draw_extra(driver);
+        for _ in 0..extra {
+            out.push(item.clone());
+        }
+        out.push(item);
+    }
+    out
+}
+
+impl<T: Clone> InlineHook for NoOrderStreamRetriesHook<T> {
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let input = self.input.borrow_mut().take().unwrap();
+        self.to_release = Some(expand_with_budget(input, self.budget, driver));
+    }
+}
+
+impl<T: Clone> InlineHook for OrderedStreamRetriesHook<T> {
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let input = self.input.borrow_mut().take().unwrap();
+        self.to_release = Some(expand_with_budget(input, self.budget, driver));
+    }
+}
+
+impl<T: Clone> InlineHook for AtLeastOnceStreamOrderHook<T> {
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let input = self.input.borrow_mut().take().unwrap();
+        // The budget is per tick, so the hook's own is copied, not spent.
+        let mut budget = self.budget.autonomous();
+
+        // Build the slot sequence one slot at a time over element *instances*: a slot
+        // may go to any instance other than the one holding the previous slot (an
+        // adjacent repeat is the downstream `assume_retries`'s dimension), either as its
+        // first slot or, while budget remains, as an extra slot. Once every instance
+        // has a slot, the sequence may also stop. Every valid sequence corresponds to
+        // exactly one sequence of draws.
+        let mut slots: Vec<usize> = vec![0; input.len()];
+        let mut last: Option<usize> = None;
+        let mut sequence: Vec<usize> = Vec::with_capacity(input.len());
+        loop {
+            let candidates: Vec<usize> = (0..input.len())
+                .filter(|index| Some(*index) != last)
+                .filter(|index| slots[*index] == 0 || budget.allows_retry())
+                .collect();
+            if candidates.is_empty() {
+                break;
+            }
+            let all_placed = slots.iter().all(|count| *count > 0);
+            if all_placed && produce::<bool>().generate(driver).unwrap() {
+                break;
+            }
+            let index = if candidates.len() == 1 {
+                candidates[0]
+            } else {
+                candidates[(0..candidates.len()).generate(driver).unwrap()]
+            };
+            if slots[index] > 0 {
+                budget.spend(1);
+            }
+            slots[index] += 1;
+            last = Some(index);
+            sequence.push(index);
+        }
+
+        self.to_release = Some(sequence.iter().map(|index| input[*index].clone()).collect());
+    }
+}
 
 /// Renders a list of values for the retry validators' error messages.
 fn fmt_values<T>(items: &[&T], format_debug: fn(&T) -> Option<String>) -> String {

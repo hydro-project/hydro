@@ -5,10 +5,12 @@
 //! [`ScriptableHook`] impls live alongside them.
 //!
 //! The retry kinds ([`TopLevelNoOrderStreamRetriesHook`], [`TopLevelOrderedStreamRetriesHook`],
-//! [`TopLevelAtLeastOnceOrderHook`]) implement only the scriptable surface, never
-//! [`ObservationHook`]: their decision spaces are infinite (every element admits
-//! arbitrarily many retries), so no autonomous exploration is possible and the builder
-//! requires them to be bound to a sim hook.
+//! [`TopLevelAtLeastOnceOrderHook`]) have an infinite decision space (every element admits
+//! arbitrarily many retries). Each carries a [`RetryBudget`]: [`RetryBudget::Scripted`]
+//! when bound to a sim hook (the script decides), otherwise the run's autonomous budget:
+//! [`RetryBudget::Bounded`] (the retries the hook may still generate over the run, from
+//! `SimFlow::retries_depth`) or [`RetryBudget::Unbounded`] (fuzzing: counts are drawn from
+//! the fuzzer).
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -21,9 +23,9 @@ use dfir_rs::rustc_hash::FxHashMap;
 use dfir_rs::util::unsync::mpsc::Sender;
 
 use super::{
-    HookLocationMeta, ObservationHook, RuntimeHook, ScriptDecision, ScriptableHook,
-    ScriptableObservationHook, TruncatedLabeledVecDebug, TruncatedVecDebug, abort,
-    describe_keyed_pending, keyed_buffer_len, log_release,
+    HookLocationMeta, ObservationHook, RetryBudget, RuntimeHook, ScriptDecision, ScriptableHook,
+    ScriptableObservationHook, TruncatedLabeledVecDebug, TruncatedVecDebug, describe_keyed_pending,
+    draw_unbounded_extra, keyed_buffer_len, log_release,
 };
 
 /// Top-level (outside-tick) `assume_ordering` hooks release elements **one at a
@@ -1087,11 +1089,17 @@ where
 /// copies become distinct elements of a `NoOrder + ExactlyOnce` multiset, and the
 /// downstream ordering observation arranges that multiset arbitrarily.
 ///
-/// There is no autonomous ([`ObservationHook`]) implementation: copy counts make the
-/// decision space infinite, so this hook exists only bound to a sim hook handle.
+/// Autonomously, under a retry budget, a decision is either a **retry** (one buffered
+/// element released `copies >= 2` times, spending `copies - 1` budget) or, once the
+/// budget is spent (or by choice), a **flush** releasing every buffered element exactly
+/// once. Elements are never released singly without a retry: on a `NoOrder` output the
+/// release order is unobservable (downstream hooks arrange the elements), so finer
+/// release granularity would only add redundant schedules.
 pub struct TopLevelNoOrderStreamRetriesHook<T> {
     pub input: Rc<RefCell<VecDeque<T>>>,
     pub to_release: Option<Vec<T>>,
+    /// How retries are decided (see [`RetryBudget`]).
+    pub budget: RetryBudget,
     pub output: Sender<T>,
     pub location: HookLocationMeta,
     pub format_item_debug: fn(&T) -> Option<String>,
@@ -1130,8 +1138,11 @@ pub struct TopLevelNoOrderStreamRetriesHook<T> {
 /// `assume_retries().assume_ordering()` explore the same state space: any sequence in
 /// which every input instance appears at least once.
 ///
-/// There is no autonomous ([`ObservationHook`]) implementation: cardinalities make the
-/// decision space infinite, so this hook exists only bound to a sim hook handle.
+/// Autonomously, under a retry budget, a decision releases the **front** element with
+/// `copies ∈ 1..=1 + budget` (spending `copies - 1`) and consumes it; once the budget is
+/// spent, every buffered element is flushed once. Releasing one element per decision
+/// forgoes nothing here either (see above), and spending copies at the decision rather
+/// than through non-final releases avoids redundant "left open, never repeated" schedules.
 pub struct TopLevelOrderedStreamRetriesHook<T> {
     pub input: Rc<RefCell<VecDeque<T>>>,
     pub to_release: Option<Vec<T>>,
@@ -1142,6 +1153,8 @@ pub struct TopLevelOrderedStreamRetriesHook<T> {
     /// `release`: the next decision may repeat it without re-starting it, and a
     /// `release_final` with no values may consume it as-is.
     pub front_started: bool,
+    /// How retries are decided (see [`RetryBudget`]).
+    pub budget: RetryBudget,
     pub output: Sender<T>,
     pub location: HookLocationMeta,
     pub format_item_debug: fn(&T) -> Option<String>,
@@ -1153,9 +1166,10 @@ impl<T> RuntimeHook for TopLevelNoOrderStreamRetriesHook<T> {
     }
 
     fn only_one_possible_decision(&self) -> bool {
-        // Even a sole buffered element admits infinitely many decisions (its
-        // cardinality), so only an empty buffer is unique.
-        self.input.borrow().is_empty()
+        // Scripted, even a sole buffered element admits infinitely many decisions (its
+        // cardinality), so only an empty buffer is unique. Autonomously, a spent budget
+        // leaves only the flush.
+        self.input.borrow().is_empty() || self.budget.is_spent()
     }
 
     fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
@@ -1207,9 +1221,10 @@ impl<T> RuntimeHook for TopLevelOrderedStreamRetriesHook<T> {
     }
 
     fn only_one_possible_decision(&self) -> bool {
-        // Even a sole buffered element admits infinitely many decisions (its
-        // cardinality), so only an empty buffer is unique.
-        self.input.borrow().is_empty()
+        // Scripted, even a sole buffered element admits infinitely many decisions (its
+        // cardinality), so only an empty buffer is unique. Autonomously, a spent budget
+        // leaves only the flush.
+        self.input.borrow().is_empty() || self.budget.is_spent()
     }
 
     fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
@@ -1258,6 +1273,48 @@ impl<T> RuntimeHook for TopLevelOrderedStreamRetriesHook<T> {
 
     fn location_meta(&self) -> HookLocationMeta {
         self.location
+    }
+}
+
+impl<T: Clone> ObservationHook for TopLevelNoOrderStreamRetriesHook<T> {
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let mut input = self.input.borrow_mut();
+        let retry = match self.budget.remaining() {
+            Some(0) => None,
+            Some(remaining) => {
+                // Decision 0 is the flush; decision `1 + i * remaining + (c - 2)` retries
+                // element `i` with `c ∈ 2..=1 + remaining` copies.
+                let choice = (0..=input.len() * remaining).generate(driver).unwrap();
+                (choice > 0).then(|| ((choice - 1) / remaining, 2 + (choice - 1) % remaining))
+            }
+            None => produce::<bool>().generate(driver).unwrap().then(|| {
+                let index = (0..input.len()).generate(driver).unwrap();
+                (index, 2 + draw_unbounded_extra(driver))
+            }),
+        };
+        match retry {
+            None => self.to_release = Some(input.drain(..).collect()),
+            Some((index, copies)) => {
+                let item = input.remove(index).unwrap();
+                self.budget.spend(copies - 1);
+                self.to_release = Some(expand_retries(item, copies));
+            }
+        }
+    }
+}
+
+impl<T: Clone> ObservationHook for TopLevelOrderedStreamRetriesHook<T> {
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let mut input = self.input.borrow_mut();
+        if self.budget.autonomous().is_spent() {
+            self.to_release = Some(input.drain(..).collect());
+        } else {
+            let copies = 1 + self.budget.draw_extra(driver);
+            let item = input.pop_front().unwrap();
+            self.to_release = Some(expand_retries(item, copies));
+        }
+        self.release_provisional = false;
+        self.front_started = false;
     }
 }
 
@@ -1589,8 +1646,14 @@ impl<T> ScriptableObservationHook for TopLevelOrderedStreamRetriesHook<T> where
 /// least once; at-least-once permits duplicates, not losses). Two adjacent slots of the
 /// same value are legitimate exactly when two or more buffered elements share it.
 ///
-/// There is no autonomous ([`ObservationHook`]) implementation: re-emission makes the
-/// decision space infinite, so this hook exists only bound to a sim hook handle.
+/// Autonomously, under a retry budget, decisions work at the element-**instance** level
+/// instead (the fuzzer can tell equal elements apart by position, and this is what makes
+/// the budget count only genuine retries): each decision picks a buffered instance other
+/// than the one emitted by the immediately-preceding provisional decision, and either
+/// emits it finally (consuming it) or, while budget remains, provisionally, spending
+/// one unit and keeping it for a later slot. A sole buffered instance that was just
+/// emitted provisionally leaves the hook with nothing releasable until another element
+/// arrives (see [`ObservationHook::can_release`]).
 pub struct TopLevelAtLeastOnceOrderHook<T> {
     pub input: Rc<RefCell<VecDeque<T>>>,
     pub to_release: Option<Vec<T>>,
@@ -1608,9 +1671,26 @@ pub struct TopLevelAtLeastOnceOrderHook<T> {
     /// `emit_final` to check that every buffered element of the class got a slot.
     /// An entry lives from a class's first `emit` until its `emit_final` consumes it.
     pub emitted_counts: Vec<(T, usize)>,
+    /// How retries (provisional emissions) are decided (see [`RetryBudget`]).
+    pub budget: RetryBudget,
+    /// Autonomous counterpart of `last_emitted`: the buffer position of the instance
+    /// emitted by the immediately-preceding provisional decision, which may not take the
+    /// next slot too. Positions are stable until the next final emission (arrivals only
+    /// append), which resets this.
+    pub last_emitted_index: Option<usize>,
     pub output: Sender<T>,
     pub location: HookLocationMeta,
     pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> TopLevelAtLeastOnceOrderHook<T> {
+    /// The buffered instances an autonomous decision may emit: every instance except the
+    /// one the preceding provisional decision emitted.
+    fn autonomous_candidates(&self) -> Vec<usize> {
+        (0..self.input.borrow().len())
+            .filter(|index| Some(*index) != self.last_emitted_index)
+            .collect()
+    }
 }
 
 impl<T> RuntimeHook for TopLevelAtLeastOnceOrderHook<T> {
@@ -1619,9 +1699,15 @@ impl<T> RuntimeHook for TopLevelAtLeastOnceOrderHook<T> {
     }
 
     fn only_one_possible_decision(&self) -> bool {
-        // Even a sole buffered element admits more than one decision (emit it
-        // provisionally or finally), so only an empty buffer is unique.
-        self.input.borrow().is_empty()
+        if self.budget == RetryBudget::Scripted {
+            // Scripted: even a sole buffered element admits more than one decision (emit
+            // it provisionally or finally), so only an empty buffer is unique.
+            self.input.borrow().is_empty()
+        } else {
+            // Autonomous: with the budget spent every emission is final, so the choice
+            // is only which instance.
+            self.budget.is_spent() && self.autonomous_candidates().len() <= 1
+        }
     }
 
     fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
@@ -1666,6 +1752,50 @@ impl<T> RuntimeHook for TopLevelAtLeastOnceOrderHook<T> {
 
     fn location_meta(&self) -> HookLocationMeta {
         self.location
+    }
+}
+
+impl<T: Clone> ObservationHook for TopLevelAtLeastOnceOrderHook<T> {
+    fn can_release(&self) -> bool {
+        !self.autonomous_candidates().is_empty()
+    }
+
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let allows_retry = self.budget.autonomous().allows_retry();
+        let candidates = self.autonomous_candidates();
+        if candidates.is_empty() {
+            abort!("at-least-once ordering observation ran without a releasable instance");
+        }
+        // Decision `k * 2 + f`: candidate `k`, final (`f == 1`) or provisional (`f == 0`,
+        // only while budget remains).
+        let choices = if allows_retry {
+            candidates.len() * 2
+        } else {
+            candidates.len()
+        };
+        let choice = if choices == 1 {
+            0
+        } else {
+            (0..choices).generate(driver).unwrap()
+        };
+        let (index, is_final) = if allows_retry {
+            (candidates[choice / 2], choice % 2 == 1)
+        } else {
+            (candidates[choice], true)
+        };
+
+        let mut input = self.input.borrow_mut();
+        if is_final {
+            let item = input.remove(index).unwrap();
+            self.to_release = Some(vec![item]);
+            self.release_provisional = false;
+            self.last_emitted_index = None;
+        } else {
+            self.to_release = Some(vec![input[index].clone()]);
+            self.release_provisional = true;
+            self.last_emitted_index = Some(index);
+            self.budget.spend(1);
+        }
     }
 }
 

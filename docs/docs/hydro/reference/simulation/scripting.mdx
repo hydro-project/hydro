@@ -376,12 +376,13 @@ The remaining hook kinds follow the same top-level / in-tick split as `OrderingH
 
 ## Retries Hooks
 
-An `AtLeastOnce` stream may deliver each element more than once. `RetriesHook` scripts the `assume_retries::<ExactlyOnce>` where those duplicates become visible, and `OrderingHook<T, _, AtLeastOnce>` scripts an `assume_ordering` on a stream that still carries them. The number of possible duplicates is unbounded, so these operators cannot be explored by `fuzz()` or `exhaustive()`: in a simulated flow they **must** be bound to a hook, and an unhooked one is a build-time error.
+An `AtLeastOnce` stream may deliver each element more than once. `RetriesHook` scripts the `assume_retries::<ExactlyOnce>` where those duplicates become visible, `OrderingHook<T, _, AtLeastOnce>` scripts an `assume_ordering` on a stream that still carries them, and `BatchHook<T, _, AtLeastOnce>` scripts a `batch` of such a stream, where an element may show up in more than one batch. The number of possible duplicates is unbounded. `fuzz()` explores an unhooked one freely, drawing retry counts from the fuzzer; `exhaustive()` needs a **retries depth** to bound them (see [Retries on `AtLeastOnce` streams](./writing.mdx#retries-on-atleastonce-streams)); and `deterministic()` requires every such operator to be bound to a hook.
 
-The two hooks split the work as follows. An at-least-once stream `[A, B]` may be delivered as `A B`, `A A B`, `A B B B`, and so on — each element repeats **in place**. A sequence like `A B A B`, where a redelivery comes after a different element, involves a choice of *order*, so:
+The hooks split the work as follows. An at-least-once stream `[A, B]` may be delivered as `A B`, `A A B`, `A B B B`, and so on: each element repeats **in place**. A sequence like `A B A B`, where a redelivery comes after a different element, involves a choice of *order*, and a redelivery that lands in a later tick involves a choice of *batching*, so:
 
-- the **retries hook** decides how many times each element repeats in place, and
-- the **ordering hook** decides where each element appears, including appearing again later.
+- the **retries hook** decides how many times each element repeats in place,
+- the **ordering hook** decides where each element appears, including appearing again later, and
+- the **batch hook** decides which batch each element appears in, including appearing again in a later batch.
 
 ### Retries on a `TotalOrder` stream
 
@@ -493,3 +494,42 @@ As with other in-tick hooks, a single decision covers everything the operator re
 
 - `RetriesHook<T, O, Bounded>::release(values)` lists every received value at least once and nothing else. On a `TotalOrder` stream, the values must stay in input order, repeating only back-to-back.
 - `OrderingHook<T, Bounded, AtLeastOnce>::order(values)` lists the output in order, and may include a value more than once.
+
+### Batching an `AtLeastOnce` stream
+
+A `batch` of an `AtLeastOnce` stream decides not only which buffered elements enter the next tick but also whether an element is delivered **again in a later batch**, a redelivery that arrives after the tick that first processed it. `BatchHook<T, O, AtLeastOnce>` offers the usual `release`, `release_values`, `release_all`, and `release_empty` decisions, which consume what they release, plus decisions that *keep* released elements buffered for redelivery:
+
+- On a `TotalOrder` stream, a redelivery must stay in place, so only the trailing element of a batch can be kept: **`release_keep_last(n)`** and **`release_values_keep_last(values)`** release a prefix but leave its last element at the front of the buffer, where it becomes the first element of a later batch.
+- On a `NoOrder` stream, any released element may be redelivered: **`release_values_keep(values, keep)`** releases `values` and keeps the elements matching `keep` (a sub-multiset of `values`) buffered for some later batch.
+
+A kept element is ordinary pending input: the script must release it again (consuming it, or keeping it once more) or declare the buffering with the pause family. The batches themselves are still `AtLeastOnce` inside the tick, so a downstream in-tick `assume_retries` is scripted as above:
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::stream::{AtLeastOnce, ExactlyOnce, TotalOrder};
+# use hydro_lang::sim_hooks::{BatchHook, RetriesHook};
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+let batch_hook: BatchHook<u32, TotalOrder, AtLeastOnce> = flow.sim_hook();
+let retries: RetriesHook<u32, TotalOrder, Bounded> = flow.sim_hook();
+let (input_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+let output = sliced! {
+    let b = use::batch(
+        input.weaken_retries::<AtLeastOnce>(),
+        nondet!(/** scripted */ hook = batch_hook)
+    );
+    b.assume_retries::<ExactlyOnce>(nondet!(/** scripted */ hook = retries))
+        .fold(q!(|| Vec::new()), q!(|acc, v| acc.push(v)))
+        .into_stream()
+}
+.sim_output();
+
+flow.sim().deterministic(async || {
+    input_send.send_many([1, 2, 3]);
+    batch_hook.release_values_keep_last([1, 2]).await; // 2 stays buffered
+    retries.release([1, 2]).await;
+    batch_hook.release_values([2, 3]).await; // 2 is delivered again, then 3
+    retries.release([2, 3]).await;
+    output.assert_yields_only([vec![1, 2], vec![2, 3]]).await;
+});
+```

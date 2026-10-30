@@ -29,6 +29,17 @@ use colored::Colorize;
 
 use crate::location::dynamic::LocationId;
 
+/// Aborts the process with an internal-error message. Used instead of `panic!` for
+/// invariant violations inside code that may be monomorphized into the generated dylib:
+/// a panic must not unwind across the dylib boundary (Rust aborts on foreign exceptions,
+/// with a far less useful message).
+macro_rules! abort {
+    ($($arg:tt)*) => {{
+        eprintln!("Simulator internal error: {}", format_args!($($arg)*));
+        std::process::abort();
+    }};
+}
+
 mod inline;
 mod observation;
 mod scripted;
@@ -55,6 +66,98 @@ pub struct SimLocation {
 #[doc(hidden)]
 pub fn parse_location(serialized: &str) -> LocationId {
     serde_json::from_str(serialized).unwrap()
+}
+
+/// How an at-least-once hook (`assume_retries`, or `assume_ordering` / `batch` on an
+/// `AtLeastOnce` stream) decides its retries. Every such hook carries one; generated code
+/// constructs scripted hooks with [`Self::Scripted`] and autonomous ones with the budget
+/// the host passes for the current run, chosen by the simulation mode (see
+/// `CompiledSim`): `fuzz` is [`Self::Unbounded`] unless `SimFlow::retries_depth` bounds
+/// it, while `exhaustive` and `deterministic` require a bound.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RetryBudget {
+    /// The hook is bound to a sim hook handle: the script decides, and the hook is never
+    /// driven autonomously (doing so is an internal error that aborts).
+    Scripted,
+    /// Autonomous, with at most this many more retries: over the whole run for a top-level
+    /// hook, per tick execution for an in-tick hook.
+    Bounded(usize),
+    /// Autonomous and unbounded: retry counts are drawn from the fuzzer, biased towards
+    /// small values but with every count reachable (see `draw_unbounded_extra`).
+    Unbounded,
+}
+
+impl RetryBudget {
+    /// The budget as seen by an autonomous decision, aborting (the hook lives in the
+    /// generated dylib, so no unwinding) if the hook is scripted.
+    pub(crate) fn autonomous(self) -> Self {
+        if self == RetryBudget::Scripted {
+            abort!("an at-least-once hook bound to a sim hook was driven autonomously");
+        }
+        self
+    }
+
+    /// Whether at least one more retry may be generated.
+    pub(crate) fn allows_retry(self) -> bool {
+        match self {
+            RetryBudget::Scripted | RetryBudget::Bounded(0) => false,
+            RetryBudget::Bounded(_) | RetryBudget::Unbounded => true,
+        }
+    }
+
+    /// Whether this is an autonomous budget with nothing left to spend, so the hook's
+    /// retry choices have collapsed.
+    pub(crate) fn is_spent(self) -> bool {
+        self == RetryBudget::Bounded(0)
+    }
+
+    /// The bound, if any (`None` for [`Self::Unbounded`]; must not be scripted).
+    pub(crate) fn remaining(self) -> Option<usize> {
+        match self.autonomous() {
+            RetryBudget::Bounded(remaining) => Some(remaining),
+            RetryBudget::Unbounded => None,
+            RetryBudget::Scripted => unreachable!(),
+        }
+    }
+
+    /// Records `retries` generated retries.
+    pub(crate) fn spend(&mut self, retries: usize) {
+        if let RetryBudget::Bounded(remaining) = self {
+            *remaining = remaining
+                .checked_sub(retries)
+                .unwrap_or_else(|| abort!("at-least-once hook overspent its retry budget"));
+        }
+    }
+
+    /// Draws a number of extra copies / slots from the fuzzer: `0..=remaining` when
+    /// bounded, or an unbounded draw (see [`draw_unbounded_extra`]). Spends the result.
+    pub(crate) fn draw_extra(&mut self, driver: &mut Borrowed<'_>) -> usize {
+        use bolero::ValueGenerator;
+        let extra = match self.autonomous() {
+            RetryBudget::Bounded(0) => 0,
+            RetryBudget::Bounded(remaining) => (0..=remaining).generate(driver).unwrap(),
+            RetryBudget::Unbounded => draw_unbounded_extra(driver),
+            RetryBudget::Scripted => unreachable!(),
+        };
+        self.spend(extra);
+        extra
+    }
+}
+
+/// Draws an unbounded count from the fuzzer, biased towards small values but with every
+/// count reachable: the count is a sum of `u8` chunks, where a chunk of `255` means "and
+/// more". A single mutated byte already yields hundreds of copies, which is what lets the
+/// fuzzer reach bugs that need many retries; shrinking walks the chunks back down.
+pub(crate) fn draw_unbounded_extra(driver: &mut Borrowed<'_>) -> usize {
+    use bolero::ValueGenerator;
+    let mut total = 0;
+    loop {
+        let chunk: u8 = (0..=u8::MAX).generate(driver).unwrap();
+        total += usize::from(chunk);
+        if chunk < u8::MAX {
+            return total;
+        }
+    }
 }
 
 pub type Hooks = HashMap<SimLocation, Vec<Box<dyn TickInputHook>>>;
@@ -166,9 +269,18 @@ pub trait TickInputHook: RuntimeHook {
 /// *is* releasing data. There is consequently no `force` parameter here: an observation
 /// is only ever scheduled when it can release, and its autonomous decision must release.
 pub trait ObservationHook: RuntimeHook {
+    /// Whether the scheduler may select this observation right now, i.e. the hook holds
+    /// input for which an autonomous decision can stage a release. Defaults to
+    /// [`RuntimeHook::has_pending_input`]; overridden by hooks whose buffered input is not
+    /// always releasable (e.g. an at-least-once ordering hook whose sole buffered element
+    /// was just emitted provisionally, so re-emitting it adjacently would be redundant).
+    fn can_release(&self) -> bool {
+        self.has_pending_input()
+    }
+
     /// Make an autonomous decision from fuzzer entropy. Must stage a releasing decision:
-    /// the scheduler only runs an observation that reported pending input
-    /// ([`RuntimeHook::has_pending_input`]).
+    /// the scheduler only runs an observation that reported releasable input
+    /// ([`Self::can_release`]).
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>);
 }
 
@@ -291,18 +403,6 @@ pub struct HookLocationMeta {
     /// The whitespace that positions a `^` marker under the operator within `line`.
     pub caret_indent: &'static str,
 }
-
-/// Aborts the process with an internal-error message. Used instead of `panic!` for
-/// invariant violations inside code that may be monomorphized into the generated dylib:
-/// a panic must not unwind across the dylib boundary (Rust aborts on foreign exceptions,
-/// with a far less useful message).
-macro_rules! abort {
-    ($($arg:tt)*) => {{
-        eprintln!("Simulator internal error: {}", format_args!($($arg)*));
-        std::process::abort();
-    }};
-}
-pub(crate) use abort;
 
 /// The total number of buffered items across a keyed hook's per-key queues.
 pub(crate) fn keyed_buffer_len<K: std::hash::Hash + Eq, V>(
