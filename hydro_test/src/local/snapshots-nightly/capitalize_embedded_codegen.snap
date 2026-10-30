@@ -23,12 +23,13 @@ pub mod capitalize {
         use super::*;
         /**The `input` stream input.
 
-Promise its guarantees with `EmbeddedInputChannel::new(.., Promises::new().total_order(proof).exactly_once(proof))`.*/
+Promise its guarantees with `EmbeddedInputChannel::new(.., Promises::new().total_order(proof).exactly_once(proof).no_drops(proof))`.*/
         #[allow(non_camel_case_types, reason = "named after its field")]
         pub struct input;
         impl hydro_lang::compile::embedded_runtime::EmbeddedChannel for input {
             type Ordering = hydro_lang::live_collections::stream::TotalOrder;
             type Retries = hydro_lang::live_collections::stream::ExactlyOnce;
+            type Drops = hydro_lang::live_collections::stream::NoDrop;
         }
     }
     pub struct EmbeddedOutputs<__Out0: FnMut(std::string::String)> {
@@ -49,6 +50,7 @@ Acknowledge what it may do with `EmbeddedOutputChannel::new(.., Acknowledgements
         impl hydro_lang::compile::embedded_runtime::EmbeddedChannel for output {
             type Ordering = hydro_lang::live_collections::stream::TotalOrder;
             type Retries = hydro_lang::live_collections::stream::ExactlyOnce;
+            type Drops = hydro_lang::live_collections::stream::NoDrop;
         }
     }
 }

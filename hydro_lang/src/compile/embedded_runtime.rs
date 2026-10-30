@@ -9,7 +9,7 @@ use futures::Stream;
 use stageleft::{QuotedWithContext, RuntimeData, q};
 
 use crate::live_collections::stream::{
-    AtLeastOnce, ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder,
+    AtLeastOnce, Drops, ExactlyOnce, MayDrop, NoDrop, NoOrder, Ordering, Retries, TotalOrder,
 };
 use crate::location::MembershipEvent;
 use crate::location::member_id::TaglessMemberId;
@@ -70,19 +70,24 @@ pub trait EmbeddedChannel {
     /// channel, the one the dataflow provides): `ExactlyOnce` (nothing delivered twice) or
     /// `AtLeastOnce`.
     type Retries: Retries;
+
+    /// The drops guarantee the host must keep (for an output or the sending end of a network
+    /// channel, the one the dataflow provides): `NoDrop` (every element is eventually delivered)
+    /// or `MayDrop`.
+    type Drops: Drops;
 }
 
-/// What a host promises about something it supplies, each guarantee promised separately with
-/// a [`manual_proof!`](crate::prelude::manual_proof) saying why it holds. An [`EmbeddedInputChannel`] or
-/// [`EmbeddedNetworkInputChannel`] is built from a stream and the `Promises` that meet its marker's
-/// guarantees.
-pub struct Promises<O, R> {
-    _promised: PhantomData<fn() -> (O, R)>,
+/// What a host promises about something it supplies, each guarantee promised separately with a
+/// [`manual_proof!`](crate::prelude::manual_proof) saying why it holds: the order, the retries,
+/// and that nothing is missing (every element is eventually delivered). An [`EmbeddedInputChannel`] or [`EmbeddedNetworkInputChannel`] is built from a
+/// stream and the `Promises` that meet its marker's guarantees.
+pub struct Promises<O, R, D> {
+    _promised: PhantomData<fn() -> (O, R, D)>,
 }
 
-impl Promises<NoOrder, AtLeastOnce> {
-    /// Promises nothing: elements may arrive in any order, and any may be delivered more than
-    /// once.
+impl Promises<NoOrder, AtLeastOnce, MayDrop> {
+    /// Promises nothing: elements may arrive in any order, any may be delivered more than once,
+    /// and any may never be delivered.
     pub fn new() -> Self {
         Promises {
             _promised: PhantomData,
@@ -90,50 +95,61 @@ impl Promises<NoOrder, AtLeastOnce> {
     }
 }
 
-impl Default for Promises<NoOrder, AtLeastOnce> {
+impl Default for Promises<NoOrder, AtLeastOnce, MayDrop> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<O, R> Promises<O, R> {
-    fn retag<O2, R2>(self) -> Promises<O2, R2> {
+impl<O, R, D> Promises<O, R, D> {
+    fn retag<O2, R2, D2>(self) -> Promises<O2, R2, D2> {
         Promises {
             _promised: PhantomData,
         }
     }
 }
 
-impl<R> Promises<NoOrder, R> {
+impl<R, D> Promises<NoOrder, R, D> {
     /// Promises the order: for a channel, each sender's messages are delivered in the order it
     /// sent them; for an input, the stream's order is the order to process; for a membership
     /// stream, each member's events arrive in the order they happened.
-    pub fn total_order(self, _proof: ManualProof) -> Promises<TotalOrder, R> {
+    pub fn total_order(self, _proof: ManualProof) -> Promises<TotalOrder, R, D> {
         self.retag()
     }
 }
 
-impl<O> Promises<O, AtLeastOnce> {
+impl<O, D> Promises<O, AtLeastOnce, D> {
     /// Promises that nothing is delivered twice: a channel never duplicates a message (for
     /// example by resending it after a reconnect), and every element of an input is a distinct
     /// event.
-    pub fn exactly_once(self, _proof: ManualProof) -> Promises<O, ExactlyOnce> {
+    pub fn exactly_once(self, _proof: ManualProof) -> Promises<O, ExactlyOnce, D> {
         self.retag()
     }
 }
 
-/// A channel whose guarantees promises of ordering `O` and retries `R` meet: each guarantee the
-/// channel needs is weaker than (or the same as) the one promised. It is what [`EmbeddedInputChannel::new`]
-/// requires, and lets a reusable transport state once what it provides:
-/// `fn source<C: SatisfiedBy<TotalOrder, ExactlyOnce>>()` serves every channel that needs at
-/// most that.
-pub trait SatisfiedBy<O, R>: EmbeddedChannel {}
+impl<O, R> Promises<O, R, MayDrop> {
+    /// Promises that nothing is missing: every element is eventually delivered (for example
+    /// because a channel retransmits each message until it is acknowledged). Like the other
+    /// promises, it strengthens a guarantee, so the
+    /// [`manual_proof!`](crate::prelude::manual_proof) says why it holds.
+    pub fn no_drops(self, _proof: ManualProof) -> Promises<O, R, NoDrop> {
+        self.retag()
+    }
+}
 
-impl<K, O, R> SatisfiedBy<O, R> for K
+/// A channel whose guarantees promises of ordering `O`, retries `R`, and drops `D` meet: each
+/// guarantee the channel needs is weaker than (or the same as) the one promised. It is what
+/// [`EmbeddedInputChannel::new`] requires, and lets a reusable transport state once what it provides:
+/// `fn source<C: SatisfiedBy<TotalOrder, ExactlyOnce, NoDrop>>()` serves every channel that needs
+/// at most that.
+pub trait SatisfiedBy<O, R, D>: EmbeddedChannel {}
+
+impl<K, O, R, D> SatisfiedBy<O, R, D> for K
 where
     K: EmbeddedChannel,
     K::Ordering: OrderPromisedBy<O, K>,
     K::Retries: RetriesPromisedBy<R, K>,
+    K::Drops: DropsPromisedBy<D, K>,
 {
 }
 
@@ -160,6 +176,17 @@ trait RetriesPromisedBy<Promised, End> {}
 impl<Promised: Retries, End> RetriesPromisedBy<Promised, End> for AtLeastOnce {}
 impl<End> RetriesPromisedBy<ExactlyOnce, End> for ExactlyOnce {}
 
+/// Needed drops (`Self`) that the promised drops `Promised` meet, for `End`.
+#[diagnostic::on_unimplemented(
+    message = "`{End}` relies on every element arriving, but the host does not promise it",
+    label = "does not promise `NoDrop`",
+    note = "add `.no_drops(manual_proof!(/** why every element arrives */))` to its `Promises`"
+)]
+trait DropsPromisedBy<Promised, End> {}
+
+impl<Promised: Drops, End> DropsPromisedBy<Promised, End> for MayDrop {}
+impl<End> DropsPromisedBy<NoDrop, End> for NoDrop {}
+
 /// A channel flowing into an embedded dataflow, as the host provides it: a `Stream` for a stream
 /// input or a membership stream, for the channel `C` (its generated marker type, see
 /// [`EmbeddedChannel`]). The receiving end of a network channel is a [`EmbeddedNetworkInputChannel`] instead.
@@ -175,9 +202,9 @@ pub struct EmbeddedInputChannel<C, S> {
 
 impl<C: EmbeddedChannel, S> EmbeddedInputChannel<C, S> {
     /// Wraps a host stream for channel `C`, with `promises` that must meet its guarantees.
-    pub fn new<O, R>(inner: S, promises: Promises<O, R>) -> Self
+    pub fn new<O, R, D>(inner: S, promises: Promises<O, R, D>) -> Self
     where
-        C: SatisfiedBy<O, R>,
+        C: SatisfiedBy<O, R, D>,
     {
         let _ = promises;
         EmbeddedInputChannel {
@@ -282,13 +309,13 @@ pub struct EmbeddedNetworkOutputChannel<C, S> {
 impl<C: EmbeddedNetworkChannel, S> EmbeddedNetworkOutputChannel<C, S> {
     /// Wraps a host sink for the channel end `C`, with the acknowledgements of its
     /// configuration (`channel`) and of the stream sent on it (`acknowledgements`).
-    pub fn new<Tr, Ser, O, R>(
+    pub fn new<Tr, Ser, O, R, D>(
         inner: S,
         channel: ChannelConfiguration<Tr, Ser>,
-        acknowledgements: Acknowledgements<O, R>,
+        acknowledgements: Acknowledgements<O, R, D>,
     ) -> Self
     where
-        C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<O, R>,
+        C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<O, R, D>,
     {
         let _ = (channel, acknowledgements);
         EmbeddedNetworkOutputChannel {
@@ -325,13 +352,13 @@ pub struct EmbeddedNetworkInputChannel<C, S> {
 impl<C: EmbeddedNetworkChannel, S> EmbeddedNetworkInputChannel<C, S> {
     /// Wraps a host stream for the channel end `C`, with the acknowledgement of its
     /// configuration (`channel`) and the promises of the stream it delivers (`promises`).
-    pub fn new<Tr, Ser, O, R>(
+    pub fn new<Tr, Ser, O, R, D>(
         inner: S,
         channel: ChannelConfiguration<Tr, Ser>,
-        promises: Promises<O, R>,
+        promises: Promises<O, R, D>,
     ) -> Self
     where
-        C: ConfiguredAs<Tr, Ser> + SatisfiedBy<O, R>,
+        C: ConfiguredAs<Tr, Ser> + SatisfiedBy<O, R, D>,
     {
         let _ = (channel, promises);
         EmbeddedNetworkInputChannel {
@@ -356,13 +383,13 @@ impl<C, S> EmbeddedNetworkInputChannel<C, S> {
 /// acknowledges the change. An
 /// [`EmbeddedOutputChannel`] or [`EmbeddedNetworkOutputChannel`] is built from a sink and the `Acknowledgements` that
 /// cover what its marker's stream may do.
-pub struct Acknowledgements<O, R> {
-    _acknowledged: PhantomData<fn() -> (O, R)>,
+pub struct Acknowledgements<O, R, D> {
+    _acknowledged: PhantomData<fn() -> (O, R, D)>,
 }
 
-impl Acknowledgements<TotalOrder, ExactlyOnce> {
-    /// Acknowledges nothing: the sink relies on receiving elements in the dataflow's order, each
-    /// exactly once.
+impl Acknowledgements<TotalOrder, ExactlyOnce, NoDrop> {
+    /// Acknowledges nothing: the sink relies on receiving every element, in the dataflow's
+    /// order, each exactly once.
     pub fn new() -> Self {
         Acknowledgements {
             _acknowledged: PhantomData,
@@ -370,45 +397,52 @@ impl Acknowledgements<TotalOrder, ExactlyOnce> {
     }
 }
 
-impl Default for Acknowledgements<TotalOrder, ExactlyOnce> {
+impl Default for Acknowledgements<TotalOrder, ExactlyOnce, NoDrop> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<O, R> Acknowledgements<O, R> {
-    fn retag<O2, R2>(self) -> Acknowledgements<O2, R2> {
+impl<O, R, D> Acknowledgements<O, R, D> {
+    fn retag<O2, R2, D2>(self) -> Acknowledgements<O2, R2, D2> {
         Acknowledgements {
             _acknowledged: PhantomData,
         }
     }
 }
 
-impl<R> Acknowledgements<TotalOrder, R> {
+impl<R, D> Acknowledgements<TotalOrder, R, D> {
     /// Acknowledges that elements may arrive in any order.
-    pub fn no_order(self) -> Acknowledgements<NoOrder, R> {
+    pub fn no_order(self) -> Acknowledgements<NoOrder, R, D> {
         self.retag()
     }
 }
 
-impl<O> Acknowledgements<O, ExactlyOnce> {
+impl<O, D> Acknowledgements<O, ExactlyOnce, D> {
     /// Acknowledges that an element may arrive more than once.
-    pub fn at_least_once(self) -> Acknowledgements<O, AtLeastOnce> {
+    pub fn at_least_once(self) -> Acknowledgements<O, AtLeastOnce, D> {
         self.retag()
     }
 }
 
-/// An output whose guarantees acknowledgements of ordering `O` and retries `R` cover: each
-/// acknowledged guarantee is weaker than (or the same as) the one the output provides. It is
-/// what [`EmbeddedOutputChannel::new`]
-/// requires.
-pub trait AcknowledgedBy<O, R>: EmbeddedChannel {}
+impl<O, R> Acknowledgements<O, R, NoDrop> {
+    /// Acknowledges that an element may never arrive.
+    pub fn may_drop(self) -> Acknowledgements<O, R, MayDrop> {
+        self.retag()
+    }
+}
 
-impl<K, O, R> AcknowledgedBy<O, R> for K
+/// An output whose guarantees acknowledgements of ordering `O`, retries `R`, and drops `D` cover:
+/// each acknowledged guarantee is weaker than (or the same as) the one the output provides. It is
+/// what [`EmbeddedOutputChannel::new`] requires.
+pub trait AcknowledgedBy<O, R, D>: EmbeddedChannel {}
+
+impl<K, O, R, D> AcknowledgedBy<O, R, D> for K
 where
     K: EmbeddedChannel,
     K::Ordering: OrderAcknowledgedBy<O, K>,
     K::Retries: RetriesAcknowledgedBy<R, K>,
+    K::Drops: DropsAcknowledgedBy<D, K>,
 {
 }
 
@@ -435,6 +469,17 @@ trait RetriesAcknowledgedBy<Acknowledged, End> {}
 impl<Acknowledged: Retries, End> RetriesAcknowledgedBy<Acknowledged, End> for ExactlyOnce {}
 impl<End> RetriesAcknowledgedBy<AtLeastOnce, End> for AtLeastOnce {}
 
+/// Provided drops (`Self`) that the acknowledged drops `Acknowledged` cover, for `End`.
+#[diagnostic::on_unimplemented(
+    message = "`{End}` may be missing elements, which the host must acknowledge",
+    label = "does not acknowledge `MayDrop`",
+    note = "add `.may_drop()` to its `Acknowledgements`"
+)]
+trait DropsAcknowledgedBy<Acknowledged, End> {}
+
+impl<Acknowledged: Drops, End> DropsAcknowledgedBy<Acknowledged, End> for NoDrop {}
+impl<End> DropsAcknowledgedBy<MayDrop, End> for MayDrop {}
+
 /// An output of an embedded dataflow, as the host provides it: an `FnMut` sink for the channel
 /// `M` (its generated marker type, under `outputs`), whose [`EmbeddedChannel`] guarantees are
 /// what the dataflow's output stream provides.
@@ -450,9 +495,9 @@ pub struct EmbeddedOutputChannel<M, S> {
 
 impl<M: EmbeddedChannel, S> EmbeddedOutputChannel<M, S> {
     /// Wraps a host sink for output `M`, with `acknowledgements` that cover what `M` may do.
-    pub fn new<O, R>(inner: S, acknowledgements: Acknowledgements<O, R>) -> Self
+    pub fn new<O, R, D>(inner: S, acknowledgements: Acknowledgements<O, R, D>) -> Self
     where
-        M: AcknowledgedBy<O, R>,
+        M: AcknowledgedBy<O, R, D>,
     {
         let _ = acknowledgements;
         EmbeddedOutputChannel {

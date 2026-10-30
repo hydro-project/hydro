@@ -1,0 +1,22 @@
+error[E0277]: this collection is `MayDrop`: it may be missing elements, so this operator is not available on it
+  --> tests/compile-fail/nightly/may_drop_snapshot.rs:16:10
+   |
+16 |         .snapshot(&tick, nondet!(/** test */));
+   |          ^^^^^^^^ may be missing elements
+   |
+   = help: the trait `NoMissingElements` is not implemented for `hydro_lang::prelude::Singleton<usize, hydro_lang::prelude::Process<'a, P1>, hydro_lang::live_collections::singleton::Monotonic, hydro_lang::live_collections::stream::MayDrop>`
+   = note: observe which elements are missing first with `.observe_drops(..)`: an unordered stream, a singleton, an optional, or a keyed singleton takes a `nonlive!(/** .. */)`, and an ordered stream also a `nondet!(/** .. */)`
+help: the trait `NoMissingElements` is implemented for `hydro_lang::prelude::Singleton<T, L, B>`
+  --> src/live_collections/stream/mod.rs
+   |
+   | impl<T, L, B: SingletonBound> NoMissingElements for Singleton<T, L, B, NoDrop> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `hydro_lang::prelude::Singleton::<T, L, B, hydro_lang::live_collections::stream::MayDrop>::snapshot`
+  --> src/live_collections/singleton.rs
+   |
+   | impl<'a, T, L, B: SingletonBound> Singleton<T, L, B, MayDrop>
+...
+   |     pub fn snapshot<Tk, N>(self, _tick: Tk, _nondet: N) -> std::convert::Infallible
+   |     where
+   |         Self: NoMissingElements,
+   |               ^^^^^^^^^^^^^^^^^ required by this bound in `Singleton::<T, L, B, MayDrop>::snapshot`

@@ -16,6 +16,7 @@
 //! - `observation`: top-level hooks that are their own scheduling unit (e.g.
 //!   `assume_ordering` or a hooked `fold` on a non-tick stream).
 //! - `inline`: hooks resolved *during* a tick's execution (in-tick ordering).
+//! - `drops`: the hooks that decide which elements of an `AtMostOnce` stream are missing.
 //! - `scripted`: the script layer — decision traits, the [`Scripted`] /
 //!   [`ScriptedInline`] shells that bind hooks to test-side handles, and the registry
 //!   types.
@@ -29,11 +30,13 @@ use colored::Colorize;
 
 use crate::location::dynamic::LocationId;
 
+mod drops;
 mod inline;
 mod observation;
 mod scripted;
 mod tick_input;
 
+pub use drops::*;
 pub use inline::*;
 pub use observation::*;
 pub use scripted::*;

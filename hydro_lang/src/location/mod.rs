@@ -55,7 +55,7 @@ use crate::live_collections::singleton::Singleton;
 #[cfg(stageleft_runtime)]
 use crate::live_collections::stream::networking::serialize_bincode;
 use crate::live_collections::stream::{
-    ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
+    Drops, ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
 };
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
@@ -563,7 +563,7 @@ pub trait Location<'a>: DynLocation {
         Self: TopLevel<'a> + Sized,
     {
         let target_consistency = self.drop_consistency();
-        Stream::new(
+        let members: Stream<_, _, Unbounded> = Stream::new(
             target_consistency.clone(),
             HydroNode::Source {
                 source: HydroSource::ClusterMembers(cluster.id(), ClusterMembersState::Uninit),
@@ -576,9 +576,10 @@ pub trait Location<'a>: DynLocation {
                 >::collection_kind(
                 )),
             },
-        )
-        .map(q!(|(k, v)| (MemberId::from_tagless(k), v)))
-        .into_keyed()
+        );
+        members
+            .map(q!(|(k, v)| (MemberId::from_tagless(k), v)))
+            .into_keyed()
     }
 
     /// Creates a one-way connection from an external process to receive raw bytes.
@@ -697,14 +698,15 @@ pub trait Location<'a>: DynLocation {
     /// The `name` parameter specifies the name of the field in the generated `EmbeddedInputs`
     /// struct that will supply data to this stream at runtime: a
     /// [`EmbeddedInputChannel`](crate::compile::embedded_runtime::EmbeddedInputChannel) around the host's
-    /// `Stream<Item = T> + Unpin`. The stream's ordering `O` and retries `R` are what the
-    /// dataflow relies on, so they are what the host must promise: declare only what the
-    /// dataflow relies on (for example `NoOrder` if it does not use the stream's order), and the
-    /// host promises nothing more.
-    fn embedded_input<T, O: Ordering, R: Retries>(
+    /// `Stream<Item = T> + Unpin`. The stream's ordering `O`, retries `R`, and drops `D` are what
+    /// the dataflow relies on, so they are what the host must promise: declare only what the
+    /// dataflow relies on (for example `NoOrder` if it does not use the stream's order, or
+    /// `MayDrop` if it tolerates elements that never arrive), and the host promises nothing
+    /// more.
+    fn embedded_input<T, O: Ordering, R: Retries, D: Drops>(
         &self,
         name: impl Into<String>,
-    ) -> Stream<T, Self::DropConsistency, Unbounded, O, R>
+    ) -> Stream<T, Self::DropConsistency, Unbounded, O, R, D>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -716,7 +718,7 @@ pub trait Location<'a>: DynLocation {
             HydroNode::Source {
                 source: HydroSource::Embedded(ident),
                 metadata: target_location
-                    .new_node_metadata(Stream::<T, Self, Unbounded, O, R>::collection_kind()),
+                    .new_node_metadata(Stream::<T, Self, Unbounded, O, R, D>::collection_kind()),
             },
         )
     }

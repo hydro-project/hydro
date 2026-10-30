@@ -16,7 +16,9 @@ use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
 use super::sliced::sliced;
-use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
+use super::stream::{
+    Drops, ExactlyOnce, MayDrop, NoDrop, NoMissingElements, NoOrder, Stream, TotalOrder,
+};
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, KeyedSingletonBoundKind, SharedNode,
@@ -25,6 +27,7 @@ use crate::compile::ir::{
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::stream::{Ordering, Retries};
+use crate::liveness::NonLive;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::DeferTick;
@@ -211,15 +214,19 @@ impl KeyedSingletonSnapshotBound for Bounded {}
 ///     - [`Bounded`] (local and finite)
 ///     - [`Unbounded`] (asynchronous with entries added / removed / changed over time)
 ///     - [`BoundedValue`] (asynchronous with immutable values for each key and no removals)
-pub struct KeyedSingleton<K, V, Loc, Bound: KeyedSingletonBound> {
+/// - `Drops`: whether the keyed singleton was aggregated from a keyed stream that may be missing
+///   values ([`MayDrop`]), so that a key may never appear or never reach its final value, or not
+///   ([`NoDrop`], the default); reading a `MayDrop` keyed singleton from a tick first requires
+///   `observe_drops`
+pub struct KeyedSingleton<K, V, Loc, Bound: KeyedSingletonBound, Dropping: Drops = NoDrop> {
     pub(crate) location: Loc,
     pub(crate) ir_node: Rc<RefCell<HydroNode>>,
     pub(crate) flow_state: FlowState,
 
-    _phantom: PhantomData<(K, V, Loc, Bound)>,
+    _phantom: PhantomData<(K, V, Loc, Bound, Dropping)>,
 }
 
-impl<K, V, L, B: KeyedSingletonBound> Drop for KeyedSingleton<K, V, L, B> {
+impl<K, V, L, B: KeyedSingletonBound, D: Drops> Drop for KeyedSingleton<K, V, L, B, D> {
     fn drop(&mut self) {
         let ir_node = self.ir_node.replace(HydroNode::Placeholder);
         if !matches!(ir_node, HydroNode::Placeholder) && !ir_node.is_shared_with_others() {
@@ -231,8 +238,8 @@ impl<K, V, L, B: KeyedSingletonBound> Drop for KeyedSingleton<K, V, L, B> {
     }
 }
 
-impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: KeyedSingletonBound> Clone
-    for KeyedSingleton<K, V, Loc, Bound>
+impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: KeyedSingletonBound, D: Drops> Clone
+    for KeyedSingleton<K, V, Loc, Bound, D>
 {
     fn clone(&self) -> Self {
         if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
@@ -355,7 +362,7 @@ where
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound, D: Drops> KeyedSingleton<K, V, L, B, D> {
     pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
         debug_assert_eq!(ir_node.metadata().location_id, Location::id(&location));
         debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
@@ -377,7 +384,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
 
     /// Weakens the consistency of this live collection to not guarantee any consistency across
     /// cluster members (if this collection is on a cluster).
-    pub fn weaken_consistency(self) -> KeyedSingleton<K, V, L::DropConsistency, B>
+    pub fn weaken_consistency(self) -> KeyedSingleton<K, V, L::DropConsistency, B, D>
     where
         L: Location<'a>,
     {
@@ -398,7 +405,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                         .location
                         .drop_consistency()
                         .new_node_metadata(
-                            KeyedSingleton::<K, V, L::DropConsistency, B>::collection_kind(),
+                            KeyedSingleton::<K, V, L::DropConsistency, B, D>::collection_kind(),
                         ),
                 },
             )
@@ -411,7 +418,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     pub fn assert_has_consistency_of<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         _proof: impl crate::properties::ConsistencyProof,
-    ) -> KeyedSingleton<K, V, L2, B>
+    ) -> KeyedSingleton<K, V, L2, B, D>
     where
         L: Location<'a>,
     {
@@ -431,48 +438,16 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                         .location
                         .clone()
                         .with_consistency_of::<L2>()
-                        .new_node_metadata(KeyedSingleton::<K, V, L2, B>::collection_kind()),
+                        .new_node_metadata(KeyedSingleton::<K, V, L2, B, D>::collection_kind()),
                 },
             )
         }
     }
-}
 
-#[cfg(stageleft_runtime)]
-fn key_count_inside_tick<'a, K, V, L: Location<'a>>(
-    me: KeyedSingleton<K, V, L, Bounded>,
-) -> Singleton<usize, L, Bounded> {
-    me.entries().count()
-}
-
-#[cfg(stageleft_runtime)]
-fn into_singleton_inside_tick<'a, K, V, L: Location<'a>>(
-    me: KeyedSingleton<K, V, L, Bounded>,
-) -> Singleton<HashMap<K, V>, L, Bounded>
-where
-    K: Eq + Hash,
-{
-    me.entries()
-        .assume_ordering_trusted(nondet!(
-            /// There is only one element associated with each key. The closure technically
-            /// isn't commutative in the case where both passed entries have the same key
-            /// but different values.
-            ///
-            /// In the future, we may want to have an `assume!(...)` statement in the UDF that
-            /// the key is never already present in the map.
-        ))
-        .fold(
-            q!(|| HashMap::new()),
-            q!(|map, (k, v)| {
-                map.insert(k, v);
-            }),
-        )
-}
-
-impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
     pub(crate) fn collection_kind() -> CollectionKind {
         CollectionKind::KeyedSingleton {
             bound: B::bound_kind(),
+            drops: D::DROPS_KIND,
             key_type: stageleft::quote_type::<K>().into(),
             value_type: stageleft::quote_type::<V>().into(),
         }
@@ -511,7 +486,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     pub fn map<U, F>(
         self,
         f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>> + Copy,
-    ) -> KeyedSingleton<K, U, L, B::EraseMonotonic>
+    ) -> KeyedSingleton<K, U, L, B::EraseMonotonic, D>
     where
         F: Fn(V) -> U + 'a,
     {
@@ -538,6 +513,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                     U,
                     L,
                     B::EraseMonotonic,
+                    D,
                 >::collection_kind()),
             },
         )
@@ -576,7 +552,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     pub fn map_with_key<U, F>(
         self,
         f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>> + Copy,
-    ) -> KeyedSingleton<K, U, L, B::EraseMonotonic>
+    ) -> KeyedSingleton<K, U, L, B::EraseMonotonic, D>
     where
         F: Fn((K, V)) -> U + 'a,
         K: Clone,
@@ -607,11 +583,82 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                     U,
                     L,
                     B::EraseMonotonic,
+                    D,
                 >::collection_kind()),
             },
         )
     }
+}
 
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B, MayDrop> {
+    /// Treats this keyed singleton, folded from a keyed stream that may be missing values, as one
+    /// whose keys all eventually appear and reach the value of the fold over all of their values.
+    ///
+    /// The value of each key is always on some trajectory of its fold (the one where the missing
+    /// values arrive last), so nothing is observed and no `nondet!` is needed. The
+    /// [`nonlive!`](crate::liveness::nonlive) explains why the program is acceptable without the
+    /// promise that every key eventually reaches its final value.
+    ///
+    /// The Hydro simulator cannot tell a missing value from a late one here, so it requires
+    /// `SimFlow::test_safety_only`: it exercises safety, but not liveness.
+    pub fn observe_drops(self, nonlive: NonLive) -> KeyedSingleton<K, V, L, B, NoDrop> {
+        let _ = nonlive;
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::ObserveNonDet {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                trusted: false,
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, V, L, B, NoDrop>::collection_kind()),
+            },
+        )
+    }
+
+    // Reading a `MayDrop` keyed singleton from a tick is not available. This stand-in exists only
+    // so that calling `snapshot` explains why, through `NoMissingElements`, instead of not finding
+    // the method.
+    #[doc(hidden)]
+    pub fn snapshot<Tk, N>(self, _tick: Tk, _nondet: N) -> std::convert::Infallible
+    where
+        Self: NoMissingElements,
+    {
+        unreachable!()
+    }
+}
+
+#[cfg(stageleft_runtime)]
+fn key_count_inside_tick<'a, K, V, L: Location<'a>>(
+    me: KeyedSingleton<K, V, L, Bounded>,
+) -> Singleton<usize, L, Bounded> {
+    me.entries().count()
+}
+
+#[cfg(stageleft_runtime)]
+fn into_singleton_inside_tick<'a, K, V, L: Location<'a>>(
+    me: KeyedSingleton<K, V, L, Bounded>,
+) -> Singleton<HashMap<K, V>, L, Bounded>
+where
+    K: Eq + Hash,
+{
+    me.entries()
+        .assume_ordering_trusted(nondet!(
+            /// There is only one element associated with each key. The closure technically
+            /// isn't commutative in the case where both passed entries have the same key
+            /// but different values.
+            ///
+            /// In the future, we may want to have an `assume!(...)` statement in the UDF that
+            /// the key is never already present in the map.
+        ))
+        .fold(
+            q!(|| HashMap::new()),
+            q!(|map, (k, v)| {
+                map.insert(k, v);
+            }),
+        )
+}
+
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
     /// Gets the number of keys in the keyed singleton.
     ///
     /// The output singleton will be unbounded if the input is [`Unbounded`] or [`BoundedValue`],

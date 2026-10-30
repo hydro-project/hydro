@@ -174,5 +174,65 @@ Use `assume_ordering` sparingly. Once you cast a stream to `TotalOrder`, the typ
 
 :::
 
+## Missing Elements (Drops)
+Streams also have a `Drops` type parameter that tracks whether elements may be missing, for example because a network may drop messages: [`NoDrop`](rust:hydro_lang::live_collections::stream::NoDrop) (the default) or [`MayDrop`](rust:hydro_lang::live_collections::stream::MayDrop). It is independent of the ordering and retries, and changes what each run of the stream may look like relative to the ideal stream (the one the source sent):
+
+| | `NoDrop` | `MayDrop` |
+|---|---|---|
+| `TotalOrder` | a prefix of the sequence: `a b` of `a b c` | a subsequence: `a c` |
+| `NoOrder` | a sub-multiset: `c a` of `c a b` | a sub-multiset: `c a` |
+| eventually | reaches the ideal stream | no promise |
+
+A stream received over a network config that may lose messages (`lossy()` or `lossy_delayed_forever()`, see [Network Configuration](../locations/network-configuration.md)) is `MayDrop`, and a `NoDrop` stream can always be treated as `MayDrop` with [`weaken_drops`](rust:hydro_lang::live_collections::Stream::weaken_drops). Only unbounded streams may be `MayDrop`: a bounded collection is complete.
+
+### Operators on `MayDrop` streams
+An operator is available on a `MayDrop` stream when its output on any subsequence (or sub-multiset) of the input is a possible output on the ideal stream, and its output then carries the drop type:
+
+- **Element-wise operators** (`map`, `filter`, `filter_map`, `flat_map_*`, `inspect`, `unique`, `into_keyed`, `merge_unordered`, `join`, and the like) apply to each element that arrives, with closures that do not mutably capture state.
+- **Commutative aggregations** (`fold` and `reduce` with a `commutative = manual_proof!(..)` closure, `count`, `max`, `min`) produce a `MayDrop` [`Singleton`](../state-management/singletons-optionals.md) or `Optional` (and the keyed ones, on a [keyed stream](./keyed-streams.mdx#missing-values-drops), a `MayDrop` keyed singleton). A commutative fold admits every ordering of its input, so its value on any subset of the elements is on the trajectory where the missing elements arrive last. On an ordered stream, a fold whose closure is not proven commutative is refused: its value after a missing element lies on no trajectory of the fold over the ideal stream.
+- **`last`** is available, since the last element to arrive ends a prefix of the stream; **`first`** and **`enumerate`** are not.
+- **`batch`** (and `snapshot` of a `MayDrop` singleton or optional) is not available: a `MayDrop` collection never enters a tick.
+- **[`delayed_forever`](rust:hydro_lang::live_collections::Stream::delayed_forever)** forgets the order of an ordered `MayDrop` stream with no guard: once the order is gone, no operator can tell a missing element from a late one.
+
+### Observing drops
+[`observe_drops`](rust:hydro_lang::live_collections::Stream::observe_drops) converts a `MayDrop` collection back to `NoDrop`, restoring the promise that it eventually reaches the ideal. Whether that is acceptable (something retransmits, or the application tolerates the loss) is a liveness judgement, which a *liveness guard* [`nonlive!`](rust:hydro_lang::liveness::nonlive) documents, as `nondet!` documents non-determinism. On an ordered stream, `observe_drops` also takes a `nondet!`: downstream, the elements that survived are taken as the whole stream, and which ones survived is not determined by the ideal stream.
+
+| collection | guards |
+|---|---|
+| `TotalOrder` stream (or keyed stream with ordered values) | `observe_drops(nondet!(..), nonlive!(..))` |
+| `NoOrder` stream (or keyed stream with unordered values), `Singleton`, `Optional` | `observe_drops(nonlive!(..))` |
+
+The [Hydro simulator](../simulation/index.mdx) explores the drops at an ordered `observe_drops`: each element reaching it is either kept or dropped, and exhaustive simulation tries every combination, so it finds the runs where a missing element breaks an invariant. An unordered `observe_drops` observes nothing: the simulator delivers every element, as if the missing ones were delayed until the end of the execution, which tests safety but not liveness, so it requires [`test_safety_only`](rust:hydro_lang::sim::flow::SimFlow::test_safety_only).
+
+```rust,no_run
+# use hydro_lang::prelude::*;
+# let mut flow = FlowBuilder::new();
+use hydro_lang::live_collections::stream::{ExactlyOnce, MayDrop, TotalOrder};
+let process: Process<()> = flow.process::<()>();
+let tick = process.tick();
+# let deposits: Stream<i32, Process<_>> = process.source_iter(q!(vec![10, 20])).into();
+let deposits: Stream<i32, Process<_>, Unbounded, TotalOrder, ExactlyOnce, MayDrop> =
+    deposits.weaken_drops(); // standing in for a channel that may drop messages
+
+// A commutative aggregation needs no guard; it is `MayDrop` too.
+let total = deposits
+    .clone()
+    .map(q!(|amount| amount * 100)) // element-wise: applies to each deposit that arrives
+    .fold(
+        q!(|| 0),
+        q!(|acc, amount| *acc += amount, commutative = manual_proof!(/** addition */)),
+    )
+    .observe_drops(nonlive!(
+        /// A lower bound on the total is enough here.
+    ));
+let latest_total = total.snapshot(&tick, nondet!(/** any version of the total */));
+
+// Observing the order of what arrived needs a `nondet!` as well.
+let in_order = deposits.observe_drops(
+    nondet!(/** a missing deposit is reported, not asserted */),
+    nonlive!(/** the sender retransmits until acknowledged */),
+);
+```
+
 ## Bounded and Unbounded Streams
 Like all live collections, streams have a type parameter that tracks whether their contents are final (`Bounded`) or may continue to grow asynchronously (`Unbounded`). A stream created from a fixed in-memory collection with `source_iter` is bounded, while streams of network requests are unbounded. Several APIs — such as those that need to observe the _end_ of the stream — are only available on bounded streams. See [Bounded and Unbounded Types](../correctness/bounded-unbounded.md) for how boundedness is tracked and converted.

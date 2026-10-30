@@ -139,7 +139,8 @@ async fn run() {
             input,
             Promises::new()
                 .total_order(manual_proof!(/** the list's order is the order to process */))
-                .exactly_once(manual_proof!(/** each element appears once in the list */)),
+                .exactly_once(manual_proof!(/** each element appears once in the list */))
+                .no_drops(manual_proof!(/** nothing is ever lost */)),
         ),
     };
     let mut flow = embedded::capitalize(inputs, outputs);
@@ -208,7 +209,7 @@ let outputs = embedded::greet::EmbeddedOutputs {
     output: EmbeddedOutputChannel::new(|s: String| results.push(s), Acknowledgements::new()),
 };
 let inputs = embedded::greet::EmbeddedInputs {
-    names: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))),
+    names: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */)).no_drops(manual_proof!(/** ... */))),
     greeting: "Hello".to_owned(),
 };
 let mut flow = embedded::greet(inputs, outputs);
@@ -224,7 +225,7 @@ If a cluster's code reads its own member ID ([`CLUSTER_SELF_ID`](rust:hydro_lang
 
 ```rust,ignore
 let member_id = TaglessMemberId::from_raw_id(0);
-let mut flow = my_cluster_fn(member_id, my_cluster_fn::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, outputs);
+let mut flow = my_cluster_fn(&member_id, my_cluster_fn::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */)).no_drops(manual_proof!(/** ... */))) }, outputs);
 ```
 
 ### Membership Streams
@@ -250,16 +251,17 @@ let membership = my_sender::EmbeddedMembershipStreams {
         futures::stream::iter(vec![(member_id.clone(), MembershipEvent::Joined)]),
         Promises::new()
             .total_order(manual_proof!(/** the events are listed in order */))
-            .exactly_once(manual_proof!(/** each event is listed once */)),
+            .exactly_once(manual_proof!(/** each event is listed once */))
+            .no_drops(manual_proof!(/** nothing is ever lost */)),
     ),
 };
-let mut flow = my_sender(membership, my_sender::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, net_out);
+let mut flow = my_sender(membership, my_sender::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */)).no_drops(manual_proof!(/** ... */))) }, net_out);
 ```
 
 A cluster that sends to another cluster receives the membership struct:
 
 ```rust,ignore
-let mut flow = m2m_sender(membership, m2m_sender::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, net_out);
+let mut flow = m2m_sender(membership, m2m_sender::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */)).no_drops(manual_proof!(/** ... */))) }, net_out);
 ```
 
 In `build.rs`, use `with_cluster` instead of `with_process` to register cluster locations:
@@ -394,13 +396,15 @@ Your transport layer must handle both directions: route outgoing `(target_id, by
 
 ### Promising and Acknowledging Guarantees
 
-Every stream crossing the boundary between the host and the embedded dataflow needs to be annotated with appropriate ordering and retries guarantees.
+Every stream crossing the boundary between the host and the embedded dataflow needs to be annotated with appropriate ordering, retries, and drops guarantees.
 
 For streams that are moving from the host into the dataflow (Inputs, membership inputs), the dataflow depends on the guarantees being provided, and so the host must **promise** to uphold the guarantees. For example, if a stream is being passed into the dataflow, and the dataflow is expecting the stream to have `TotalOrder`, the host must promise this.
 
 For streams that are moving from the data flow into the host (Outputs), the dataflow is providing the guarantees about the ordering and the retries. The host must **acknowledge** these guarantees when they are weaker than the strongest guarantees. For example, if the type of the stream moving from the dataflow to the host has ordering `NoOrder`, the host must acknowledge that this guarantee has been weakened.
 
 For networking, embedded mode intercepts send, demux, broadcast, and other operators that move data from one location to another, and allow the host to add their own implementation and networking code to actually physically move the data around. This idea is represented by the 'Channel' concept. Channels may have anomalies that they introduce to data flowing along the channel. The dataflow specifies these anomalies when it configures the channel to use. This channel configuration must be duplicated exactly in the host program when instantiating the dataflow. This is to force the host and embedded dataflow to stay in sync with regards to what a channel may do to data flowing along it.
+
+Drops work the same way: the host promises `.no_drops(manual_proof!(..))` for an input that relies on every element arriving, and acknowledges `.may_drop()` for an output that may be missing elements. A channel that may drop messages or delay them forever (`.may_drop()` or `.may_delay_forever()`, or `TCP.lossy()`) delivers a `MayDrop` stream, so its receiving end needs no `.no_drops(..)` promise, and an output it feeds must acknowledge `.may_drop()`.
 
 ```rust,ignore
 use hydro_lang::compile::embedded_runtime::{
@@ -425,7 +429,8 @@ let net_in = echo_receiver::EmbeddedNetworkIn {
         ChannelConfiguration::new(TCP.fail_stop().bincode()),
         Promises::new()
             .total_order(manual_proof!(/** one TCP connection per sender, read in order */))
-            .exactly_once(manual_proof!(/** nothing is ever resent */)),
+            .exactly_once(manual_proof!(/** nothing is ever resent */))
+            .no_drops(manual_proof!(/** nothing is ever lost */)),
     ),
 };
 let outputs = my_process::EmbeddedOutputs {
@@ -439,9 +444,9 @@ let outputs = my_process::EmbeddedOutputs {
 };
 ```
 
-Promising less than the dataflow relies on, leaving unacknowledged something an output or a sent stream may do, or having a different network config, is a compile error at that field; promising or acknowledging more of a stream is fine. The generated docs of each marker list the promises or acknowledgements it needs. For a stream input, the guarantees are what `embedded_input::<T, O, R>` declares, so declare only what the dataflow relies on.
+Promising less than the dataflow relies on, leaving unacknowledged something an output or a sent stream may do, or having a different network config, is a compile error at that field; promising or acknowledging more of a stream is fine. The generated docs of each marker list the promises or acknowledgements it needs. For a stream input, the guarantees are what `embedded_input::<T, O, R, D>` declares, so declare only what the dataflow relies on: an input declared `MayDrop` needs no `.no_drops(..)` promise.
 
-Each wrapper is over a generated marker type implementing [`EmbeddedChannel`](rust:hydro_lang::compile::embedded_runtime::EmbeddedChannel), named after its field, under `inputs`, `membership`, `outputs`, `incoming`, or `outgoing` (for example `echo_receiver::incoming::messages`); the markers of network channel ends also implement [`EmbeddedNetworkChannel`](rust:hydro_lang::compile::embedded_runtime::EmbeddedNetworkChannel), with the channel's network config. The marker is inferred from the field, and a reusable transport can be generic over it: `fn source<C: SatisfiedBy<TotalOrder, ExactlyOnce>>() -> EmbeddedInputChannel<C, _>` serves every input needing at most those guarantees, and `fn receive<C: ConfiguredAs<Tr, Ser> + SatisfiedBy<TotalOrder, ExactlyOnce>>(..) -> EmbeddedNetworkInputChannel<C, _>` every receiving end with one network config.
+Each wrapper is over a generated marker type implementing [`EmbeddedChannel`](rust:hydro_lang::compile::embedded_runtime::EmbeddedChannel), named after its field, under `inputs`, `membership`, `outputs`, `incoming`, or `outgoing` (for example `echo_receiver::incoming::messages`); the markers of network channel ends also implement [`EmbeddedNetworkChannel`](rust:hydro_lang::compile::embedded_runtime::EmbeddedNetworkChannel), with the channel's network config. The marker is inferred from the field, and a reusable transport can be generic over it: `fn source<C: SatisfiedBy<TotalOrder, ExactlyOnce, NoDrop>>() -> EmbeddedInputChannel<C, _>` serves every input needing at most those guarantees, and `fn receive<C: ConfiguredAs<Tr, Ser> + SatisfiedBy<TotalOrder, ExactlyOnce, NoDrop>>(..) -> EmbeddedNetworkInputChannel<C, _>` every receiving end with one network config.
 
 ### Host-Implemented Channels (`EMBEDDED`)
 

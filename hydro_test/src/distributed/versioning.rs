@@ -62,6 +62,7 @@ fn hash_demux<'a, F, N: NetworkFor<Request>>(
         Unbounded,
         N::OrderingGuarantee,
         N::RetriesGuarantee,
+        N::DropsGuarantee,
     >,
     Stream<Vec<MemberId<GossipServer>>, Cluster<'a, GossipServer>, Unbounded>,
 )

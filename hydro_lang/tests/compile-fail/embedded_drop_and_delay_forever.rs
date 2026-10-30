@@ -12,7 +12,7 @@ fn test<'a>(p1: &Process<'a, P1>, p2: &Process<'a, P2>) {
         EMBEDDED
             .never_reorders()
             .never_duplicates()
-            .may_drop(nondet!(/** test */))
+            .may_drop()
             .may_delay_forever()
             .name("data"),
     );

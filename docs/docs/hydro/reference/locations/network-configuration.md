@@ -44,8 +44,8 @@ The `.bincode()` API configures the channel to use the [`bincode`](https://docs.
 |---|---|---|---|
 | Reordering | `.never_reorders()` | `.may_reorder()`: deliver a sender's messages out of order | `NoOrder` |
 | Duplication | `.never_duplicates()` | `.may_duplicate()`: deliver a message more than once | `AtLeastOnce` |
-| Loss | `.never_drops()` | `.may_drop(nondet!(..))`: lose messages and keep delivering later ones, like `TCP.lossy(..)` | as `TCP.lossy(..)` |
-| | | `.may_delay_forever()`: never deliver a message, treated as delayed forever, like `TCP.lossy_delayed_forever()` | `NoOrder` |
+| Loss | `.never_drops()` | `.may_drop()`: lose messages and keep delivering later ones, like `TCP.lossy()` | [`MayDrop`](rust:hydro_lang::live_collections::stream::MayDrop), and replicated outputs are only `NoConsistency` |
+| | | `.may_delay_forever()`: never deliver a message, treated as delayed forever, like `TCP.lossy_delayed_forever()` | `NoOrder` and `MayDrop` |
 
 Like every guarantee of a channel, the `never_*` declarations hold as long as the channel remains live: a channel that `.never_drops()` delivers every message while it is up, and nothing more once it fails, like `TCP.fail_stop()`. A channel that leaves an anomaly undeclared does not compile.
 
@@ -56,7 +56,7 @@ let config = EMBEDDED.may_reorder().never_duplicates().never_drops().name("messa
 
 Each embedded channel is unidirectional and has two ends, an input and an output. For channels that move data from the dataflow to the embedded host, the network configuration dictates what guarantees and behavior the embedded host can expect from the channel. For channels that move data from the embedded host to the data flow, the network configuration determines what guarantees and behavior the embedded host must uphold.
 
-As with TCP and UDP, the Hydro simulator requires [`.test_safety_only()`](rust:hydro_lang::sim::flow::SimFlow::test_safety_only) for `may_delay_forever()`, and does not support `may_drop` yet.
+As with TCP and UDP, the Hydro simulator delivers every message of a `may_drop()` or `may_delay_forever()` channel and explores the drops where the program observes them, which requires [`.test_safety_only()`](rust:hydro_lang::sim::flow::SimFlow::test_safety_only) for an unordered stream.
 
 `EMBEDDED` channels are never serialized by Hydro: the raw element type `T` is exposed at the channel boundary, so the generated sender side hands the host `T` values directly, and the receiver side accepts a stream of `T` values. The host encodes them only if its transport needs to (an in-memory queue never does). Because no transport managed by Hydro is involved, the receiving side gets the raw payload with no transport `Result` to unwrap: the host decides how to handle serialization and delivery faults before feeding elements into the receiver.
 
@@ -96,17 +96,28 @@ The Hydro simulator will not simulate connection failures that block **liveness*
 let config = TCP.lossy_delayed_forever().bincode();
 ```
 
-With `lossy_delayed_forever`, messages may be **dropped**, but dropped messages are modeled as being **indefinitely delayed** rather than lost. This mode does **not** require a `nondet!` annotation because the output stream is unordered, so even if messages are lost the output will have a subset of the intended elements.
+With `lossy_delayed_forever`, messages may be **dropped**, but dropped messages are modeled as being **indefinitely delayed** rather than lost. The output stream is [`NoOrder`](rust:hydro_lang::live_collections::stream::NoOrder) and [`MayDrop`](rust:hydro_lang::live_collections::stream::MayDrop) (see [Missing Elements](../streaming-data/streams.md#missing-elements-drops)): without an order, a dropped message cannot be told from one that is merely late, so consumers observe the drops with only a [`nonlive!`](rust:hydro_lang::liveness::nonlive), saying why the program is acceptable even if some messages never arrive:
+
+```rust,no_run
+# use hydro_lang::prelude::*;
+# let mut flow = FlowBuilder::new();
+# let p1 = flow.process::<()>();
+# let p2 = flow.process::<()>();
+let received = p1
+    .source_iter(q!(vec![1, 2, 3]))
+    .send(&p2, TCP.lossy_delayed_forever().bincode())
+    .observe_drops(nonlive!(/** the sender retransmits until acknowledged */));
+```
 
 The tradeoff is that the output stream has a [`NoOrder`](rust:hydro_lang::live_collections::stream::NoOrder) guarantee, imposing stricter conditions on downstream consumers. For example, you cannot use order-dependent operators like `fold` without proving commutativity.
 
 This is the **preferred** mode for protocols that tolerate message loss, because:
-- It does not require `nondet!`, making it easier to reason about correctness.
+- Its drops need only a `nonlive!`, not a `nondet!`, making it easier to reason about correctness.
 - It can be easily simulated in exhaustive mode without running into fairness issues, so you can write simulator tests for your protocol.
 
 :::note
 
-When using `lossy_delayed_forever` in the Hydro simulator, you must call `.test_safety_only()` on the simulation:
+When the drops of a `lossy_delayed_forever` channel are observed in the Hydro simulator, you must call `.test_safety_only()` on the simulation:
 
 ```rust,ignore
 flow.sim().test_safety_only().exhaustive(async || { /* ... */ });
@@ -128,26 +139,26 @@ This is appropriate for gossip protocols, retransmission-based protocols, or any
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
-let config = TCP.lossy(nondet!(/** messages may be dropped, explanation... */)).bincode();
+let config = TCP.lossy().bincode();
 ```
 
 With `lossy`, messages may be **arbitrarily dropped**. Unlike `fail_stop`, there is no guarantee that a prefix of messages is delivered—any individual message may be lost. But the network connection can still be used to send future messages, even after a message loss.
 
 :::tip
 
-In most cases, prefer [`lossy_delayed_forever`](#lossy-delayed-forever) over `lossy`. The `lossy_delayed_forever` mode does not require `nondet!` and can be simulated in exhaustive mode, making it much easier to test. Use `lossy` only if you specifically need to preserve the ordering guarantee of the input stream (since `lossy` preserves `TotalOrder` while `lossy_delayed_forever` weakens to `NoOrder`).
+In most cases, prefer [`lossy_delayed_forever`](#lossy-delayed-forever) over `lossy`: its drops need only a `nonlive!`. Use `lossy` only if you specifically need to preserve the ordering guarantee of the input stream (since `lossy` preserves `TotalOrder` while `lossy_delayed_forever` weakens to `NoOrder`).
 
 :::
 
 :::caution
 
-The `lossy` fault model is currently available for [embedded deployments](../deploy/embedded.mdx) (the only production deployment option) and Maelstrom testing. It is **not supported in the Hydro simulator**—use `lossy_delayed_forever` if you want to simulate message loss. Support in Hydro Deploy will be available in the near future.
+The `lossy` fault model is currently available for [embedded deployments](../deploy/embedded.mdx) (the only production deployment option), Maelstrom testing, and the Hydro simulator. Support in Hydro Deploy will be available in the near future.
 
 :::
 
 This is appropriate for protocols that are designed to tolerate message loss, such as gossip protocols or systems running under network partition testing (e.g. [Maelstrom](https://github.com/jepsen-io/maelstrom)).
 
-Because message loss is non-deterministic, `lossy` requires a `nondet!` marker to make this explicit in your code. You should document why your protocol is correct despite potential message loss.
+The output stream keeps the input's order and is [`MayDrop`](rust:hydro_lang::live_collections::stream::MayDrop): an in-order subsequence of the messages sent. Observing which messages arrived is non-deterministic, so consumers that rely on the order call [`observe_drops`](rust:hydro_lang::live_collections::Stream::observe_drops) with both a `nondet!` (why observing the survivors is harmless) and a `nonlive!` (why the program is acceptable even if some messages never arrive); commutative folds, `map`, `filter`, and the like need neither. The Hydro simulator explores the drops at `observe_drops`, keeping or dropping each message.
 
 ## UDP
 
@@ -162,18 +173,18 @@ Like `TCP`, you **must** choose a fault tolerance policy before configuring seri
 let config = UDP.lossy_delayed_forever().bincode();
 ```
 
-With `lossy_delayed_forever`, dropped messages are modeled as being **indefinitely delayed** rather than lost. Like the TCP mode of the same name, this does **not** require a `nondet!` annotation because the output stream is unordered, so even if messages are lost the output will have a subset of the intended elements.
+With `lossy_delayed_forever`, dropped messages are modeled as being **indefinitely delayed** rather than lost. Like the TCP mode of the same name, the output stream is unordered and [`MayDrop`](rust:hydro_lang::live_collections::stream::MayDrop), observed with only a `nonlive!`.
 
-This is the **preferred** UDP mode, for the same reasons as [TCP's `lossy_delayed_forever`](#lossy-delayed-forever): it does not require `nondet!` and can be simulated in exhaustive mode (with `.test_safety_only()`).
+This is the **preferred** UDP mode, for the same reasons as [TCP's `lossy_delayed_forever`](#lossy-delayed-forever): its drops need only a `nonlive!`, and it can be simulated in exhaustive mode (with `.test_safety_only()`).
 
 ### Lossy
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
-let config = UDP.lossy(nondet!(/** messages may be dropped, explanation... */)).bincode();
+let config = UDP.lossy().bincode();
 ```
 
-With `lossy`, messages may be **arbitrarily dropped and reordered**. Because message loss is non-deterministic, this requires a `nondet!` marker to make it explicit in your code.
+With `lossy`, messages may be **arbitrarily dropped and reordered**: the output stream is `NoOrder` and `MayDrop`, so like `lossy_delayed_forever` its drops are observed with a `nonlive!`. Unlike `lossy_delayed_forever`, a closed broadcast over it only guarantees `NoConsistency`.
 
 Unlike TCP's `lossy` mode, UDP's `lossy` mode does **not** preserve the ordering of the input stream—the output is always `NoOrder`.
 
@@ -181,6 +192,6 @@ Unlike TCP's `lossy` mode, UDP's `lossy` mode does **not** preserve the ordering
 
 UDP is **not yet available** in "deploy" deployment mode (via Hydro Deploy, including Docker and ECS deployments)—attempting to deploy a UDP channel there will panic at compile time.
 
-Both UDP modes are available for [embedded deployments](../deploy/embedded.mdx) (the only production deployment option) and Maelstrom testing. In the Hydro simulator, only `lossy_delayed_forever` is supported, and it requires `.test_safety_only()`: the simulator will not actually drop packets—it delays "dropped" messages until the end of the execution, which catches safety bugs but cannot test liveness.
+Both UDP modes are available for [embedded deployments](../deploy/embedded.mdx) (the only production deployment option), Maelstrom testing, and the Hydro simulator, where observing their drops requires `.test_safety_only()`: the simulator will not actually drop packets—it delays "dropped" messages until the end of the execution, which catches safety bugs but cannot test liveness.
 
 :::

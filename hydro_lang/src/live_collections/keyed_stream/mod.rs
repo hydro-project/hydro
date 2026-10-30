@@ -18,7 +18,8 @@ use super::stream::{
 };
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
-    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode, StreamOrder, StreamRetry,
+    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode, StreamDrops, StreamOrder,
+    StreamRetry,
 };
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
@@ -26,8 +27,10 @@ use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::batch_atomic::BatchAtomic;
 use crate::live_collections::keyed_singleton::KeyedSingletonBound;
 use crate::live_collections::stream::{
-    AtLeastOnce, Ordering, Retries, WeakerOrderingThan, WeakerRetryThan,
+    AtLeastOnce, Drops, MayDrop, NoDrop, NoMissingElements, Ordering, Retries, WeakerDropsThan,
+    WeakerOrderingThan, WeakerRetryThan,
 };
+use crate::liveness::NonLive;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::DeferTick;
@@ -36,7 +39,7 @@ use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::properties::{
     AggFuncAlgebra, ApplyMonotoneKeyedStream, NotProved, ValidCommutativityFor,
-    ValidIdempotenceFor, manual_proof,
+    ValidCommutativityForDrops, ValidIdempotenceFor, manual_proof,
 };
 
 pub mod networking;
@@ -59,6 +62,10 @@ pub mod networking;
 ///   ([`TotalOrder`]) or not ([`NoOrder`])
 /// - `Retries`: tracks whether the elements within each group have deterministic cardinality
 ///   ([`ExactlyOnce`]) or may have non-deterministic retries ([`crate::live_collections::stream::AtLeastOnce`])
+/// - `Drops`: tracks whether values may be missing ([`MayDrop`]) or not ([`NoDrop`], the
+///   default); a key whose values are all missing is missing too. A `MayDrop` keyed stream
+///   supports element-wise operators and commutative keyed aggregations (which produce a
+///   `MayDrop` [`KeyedSingleton`]); see [`MayDrop`] and [`KeyedStream::observe_drops`]
 pub struct KeyedStream<
     K,
     V,
@@ -66,15 +73,18 @@ pub struct KeyedStream<
     Bound: Boundedness = Unbounded,
     Order: Ordering = TotalOrder,
     Retry: Retries = ExactlyOnce,
+    Dropping: Drops = NoDrop,
 > {
     pub(crate) location: Loc,
     pub(crate) ir_node: Rc<RefCell<HydroNode>>,
     pub(crate) flow_state: FlowState,
 
-    _phantom: PhantomData<(K, V, Loc, Bound, Order, Retry)>,
+    _phantom: PhantomData<(K, V, Loc, Bound, Order, Retry, Dropping)>,
 }
 
-impl<K, V, L, B: Boundedness, O: Ordering, R: Retries> Drop for KeyedStream<K, V, L, B, O, R> {
+impl<K, V, L, B: Boundedness, O: Ordering, R: Retries, D: Drops> Drop
+    for KeyedStream<K, V, L, B, O, R, D>
+{
     fn drop(&mut self) {
         let ir_node = self.ir_node.replace(HydroNode::Placeholder);
         if !matches!(ir_node, HydroNode::Placeholder) && !ir_node.is_shared_with_others() {
@@ -227,8 +237,16 @@ where
     }
 }
 
-impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order: Ordering, R: Retries>
-    Clone for KeyedStream<K, V, Loc, Bound, Order, R>
+impl<
+    'a,
+    K: Clone,
+    V: Clone,
+    Loc: Location<'a>,
+    Bound: Boundedness,
+    Order: Ordering,
+    R: Retries,
+    D: Drops,
+> Clone for KeyedStream<K, V, Loc, Bound, Order, R, D>
 {
     fn clone(&self) -> Self {
         if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
@@ -271,8 +289,8 @@ pub enum Generate<T> {
     Break,
 }
 
-impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
-    KeyedStream<K, V, L, B, O, R>
+impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries, D: Drops>
+    KeyedStream<K, V, L, B, O, R, D>
 {
     pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
         debug_assert_eq!(ir_node.metadata().location_id, Location::id(&location));
@@ -294,6 +312,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             bound: B::BOUND_KIND,
             value_order: O::ORDERING_KIND,
             value_retry: R::RETRIES_KIND,
+            value_drops: D::DROPS_KIND,
             key_type: stageleft::quote_type::<K>().into(),
             value_type: stageleft::quote_type::<V>().into(),
         }
@@ -304,505 +323,21 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         &self.location
     }
 
-    /// Weakens the consistency of this live collection to not guarantee any consistency across
-    /// cluster members (if this collection is on a cluster).
-    pub fn weaken_consistency(self) -> KeyedStream<K, V, L::DropConsistency, B, O, R>
-    where
-        L: Location<'a>,
-    {
-        if L::consistency()
-            .is_none_or(|c| c == crate::location::dynamic::ClusterConsistency::NoConsistency)
-        {
-            // already no consistency
-            KeyedStream::new(
-                self.location.drop_consistency(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
-        } else {
-            KeyedStream::new(
-                self.location.drop_consistency(),
-                HydroNode::Cast {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: self
-                        .location
-                        .drop_consistency()
-                        .new_node_metadata(
-                            KeyedStream::<K, V, L::DropConsistency, B>::collection_kind(),
-                        ),
-                },
-            )
-        }
-    }
-
-    /// Casts this live collection to have the consistency guarantees specified in the given
-    /// location type parameter. The developer must ensure that the strengthened consistency
-    /// is actually guaranteed, via the proof field (see [`crate::prelude::manual_proof`]).
-    pub fn assert_has_consistency_of<L2: Location<'a, DropConsistency = L::DropConsistency>>(
+    /// The `observe_drops` node from this `MayDrop` keyed stream to the `NoDrop` keyed stream on
+    /// `location`.
+    fn observe_drops_node<L2: Location<'a>>(
         self,
-        _proof: impl crate::properties::ConsistencyProof,
-    ) -> KeyedStream<K, V, L2, B, O, R>
-    where
-        L: Location<'a>,
-    {
-        if L::consistency() == L2::consistency() {
-            KeyedStream::new(
-                self.location.with_consistency_of(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
-        } else {
-            KeyedStream::new(
-                self.location.with_consistency_of(),
-                HydroNode::AssertIsConsistent {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    trusted: false,
-                    metadata: self
-                        .location
-                        .clone()
-                        .with_consistency_of::<L2>()
-                        .new_node_metadata(KeyedStream::<K, V, L2, B, O, R>::collection_kind()),
-                },
-            )
-        }
-    }
-
-    pub(crate) fn assert_has_consistency_of_trusted<
-        L2: Location<'a, DropConsistency = L::DropConsistency>,
-    >(
-        self,
-        _proof: impl crate::properties::ConsistencyProof,
-    ) -> KeyedStream<K, V, L2, B, O, R>
-    where
-        L: Location<'a>,
-    {
-        if L::consistency() == L2::consistency() {
-            KeyedStream::new(
-                self.location.with_consistency_of(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
-        } else {
-            KeyedStream::new(
-                self.location.with_consistency_of(),
-                HydroNode::AssertIsConsistent {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    trusted: true,
-                    metadata: self
-                        .location
-                        .clone()
-                        .with_consistency_of::<L2>()
-                        .new_node_metadata(KeyedStream::<K, V, L2, B, O, R>::collection_kind()),
-                },
-            )
-        }
-    }
-
-    /// Turns this [`KeyedStream`] into a [`Stream`] preserving ordering, under the invariant
-    /// assumption that there is at most one key. If this invariant is broken, the program
-    /// may exhibit undefined behavior, so uses must be carefully vetted.
-    pub(crate) fn cast_at_most_one_key(self) -> Stream<(K, V), L, B, O, R> {
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Cast {
-                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(Stream::<(K, V), L, B, O, R>::collection_kind()),
-            },
-        )
-    }
-
-    /// Turns this [`KeyedStream`] into a [`KeyedSingleton`], under the invariant assumption that
-    /// there is at most one entry per key. If this invariant is broken, the program may exhibit
-    /// undefined behavior, so uses must be carefully vetted.
-    pub(crate) fn cast_at_most_one_entry_per_key(
-        self,
-    ) -> KeyedSingleton<K, V, L, B::WithBoundedValue> {
-        KeyedSingleton::new(
-            self.location.clone(),
-            HydroNode::Cast {
-                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    V,
-                    L,
-                    B::WithBoundedValue,
-                >::collection_kind()),
-            },
-        )
-    }
-
-    pub(crate) fn use_ordering_type<O2: Ordering>(self) -> KeyedStream<K, V, L, B, O2, R> {
-        if O::ORDERING_KIND == O2::ORDERING_KIND {
-            KeyedStream::new(
-                self.location.clone(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
-        } else {
-            panic!(
-                "Runtime ordering {:?} did not match requested cast {:?}.",
-                O::ORDERING_KIND,
-                O2::ORDERING_KIND
-            )
-        }
-    }
-
-    /// Explicitly "casts" the keyed stream to a type with a different ordering
-    /// guarantee for each group. Useful in unsafe code where the ordering cannot be proven
-    /// by the type-system.
-    ///
-    /// # Non-Determinism
-    /// This function is used as an escape hatch, and any mistakes in the
-    /// provided ordering guarantee will propagate into the guarantees
-    /// for the rest of the program.
-    ///
-    /// In simulation tests, the ordering decisions can be scripted by attaching a
-    /// [`KeyedOrderingHook`](crate::sim_hooks::KeyedOrderingHook) to the guard via
-    /// `nondet!(/** reason */ hook = my_hook)`.
-    pub fn assume_ordering<O2: Ordering>(
-        self,
-        mut nondet: NonDet<Option<crate::sim_hooks::KeyedOrderingHook<K, V, B, L::SimHookScope>>>,
-    ) -> KeyedStream<K, V, L::DropConsistency, B, O2, R> {
-        if O::ORDERING_KIND == O2::ORDERING_KIND {
-            self.use_ordering_type().weaken_consistency()
-        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
-            // We can always weaken the ordering guarantee
-            let target_location = self.location.drop_consistency();
-            KeyedStream::new(
-                target_location.clone(),
-                HydroNode::Cast {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: target_location
-                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
-                },
-            )
-        } else {
-            let target_location = self.location.drop_consistency();
-            let mut metadata = target_location
-                .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind());
-            metadata.op.sim_hook_id = nondet.take_hook().map(|hook| hook.id);
-            KeyedStream::new(
-                target_location,
-                HydroNode::ObserveNonDet {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    trusted: false,
-                    metadata,
-                },
-            )
-        }
-    }
-
-    fn assume_ordering_trusted<O2: Ordering>(
-        self,
-        _nondet: NonDet,
-    ) -> KeyedStream<K, V, L, B, O2, R> {
-        if O::ORDERING_KIND == O2::ORDERING_KIND {
-            KeyedStream::new(
-                self.location.clone(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
-        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
-            // We can always weaken the ordering guarantee
-            KeyedStream::new(
-                self.location.clone(),
-                HydroNode::Cast {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: self
-                        .location
-                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
-                },
-            )
-        } else {
-            KeyedStream::new(
-                self.location.clone(),
-                HydroNode::ObserveNonDet {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    trusted: true,
-                    metadata: self
-                        .location
-                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
-                },
-            )
-        }
-    }
-
-    #[deprecated = "use `weaken_ordering::<NoOrder>()` instead"]
-    /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
-    /// which is always safe because that is the weakest possible guarantee.
-    pub fn weakest_ordering(self) -> KeyedStream<K, V, L, B, NoOrder, R> {
-        self.weaken_ordering::<NoOrder>()
-    }
-
-    /// Weakens the ordering guarantee provided by the stream to `O2`, with the type-system
-    /// enforcing that `O2` is weaker than the input ordering guarantee.
-    pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> KeyedStream<K, V, L, B, O2, R> {
-        let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
-        self.assume_ordering_trusted::<O2>(nondet)
-    }
-
-    /// Strengthens the ordering guarantee to `TotalOrder`, given that `O: IsOrdered`, which
-    /// implies that `O == TotalOrder`.
-    pub fn make_totally_ordered(self) -> KeyedStream<K, V, L, B, TotalOrder, R>
-    where
-        O: IsOrdered,
-    {
-        self.assume_ordering_trusted(nondet!(/** no-op */))
-    }
-
-    /// Explicitly "casts" the keyed stream to a type with a different retries
-    /// guarantee for each group. Useful in unsafe code where the lack of retries cannot
-    /// be proven by the type-system.
-    ///
-    /// # Non-Determinism
-    /// This function is used as an escape hatch, and any mistakes in the
-    /// provided retries guarantee will propagate into the guarantees
-    /// for the rest of the program.
-    pub fn assume_retries<R2: Retries>(
-        self,
-        _nondet: NonDet,
-    ) -> KeyedStream<K, V, L::DropConsistency, B, O, R2> {
-        if R::RETRIES_KIND == R2::RETRIES_KIND {
-            KeyedStream::new(
-                self.location.drop_consistency(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
-        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
-            // We can always weaken the retries guarantee
-            let target_location = self.location.drop_consistency();
-            KeyedStream::new(
-                target_location.clone(),
-                HydroNode::Cast {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: target_location
-                        .new_node_metadata(KeyedStream::<K, V, L, B, O, R2>::collection_kind()),
-                },
-            )
-        } else {
-            let target_location = self.location.drop_consistency();
-            KeyedStream::new(
-                target_location.clone(),
-                HydroNode::ObserveNonDet {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    trusted: false,
-                    metadata: target_location
-                        .new_node_metadata(KeyedStream::<K, V, L, B, O, R2>::collection_kind()),
-                },
-            )
-        }
-    }
-
-    // only for internal APIs that have been carefully vetted to ensure that the non-determinism
-    // is not observable
-    fn assume_retries_trusted<R2: Retries>(
-        self,
-        _nondet: NonDet,
-    ) -> KeyedStream<K, V, L, B, O, R2> {
-        if R::RETRIES_KIND == R2::RETRIES_KIND {
-            KeyedStream::new(
-                self.location.clone(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
-        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
-            // We can always weaken the retries guarantee
-            KeyedStream::new(
-                self.location.clone(),
-                HydroNode::Cast {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: self
-                        .location
-                        .new_node_metadata(KeyedStream::<K, V, L, B, O, R2>::collection_kind()),
-                },
-            )
-        } else {
-            KeyedStream::new(
-                self.location.clone(),
-                HydroNode::ObserveNonDet {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    trusted: true,
-                    metadata: self
-                        .location
-                        .new_node_metadata(KeyedStream::<K, V, L, B, O, R2>::collection_kind()),
-                },
-            )
-        }
-    }
-
-    #[deprecated = "use `weaken_retries::<AtLeastOnce>()` instead"]
-    /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
-    /// which is always safe because that is the weakest possible guarantee.
-    pub fn weakest_retries(self) -> KeyedStream<K, V, L, B, O, AtLeastOnce> {
-        self.weaken_retries::<AtLeastOnce>()
-    }
-
-    /// Weakens the retries guarantee provided by the stream to `R2`, with the type-system
-    /// enforcing that `R2` is weaker than the input retries guarantee.
-    pub fn weaken_retries<R2: WeakerRetryThan<R>>(self) -> KeyedStream<K, V, L, B, O, R2> {
-        let nondet = nondet!(/** this is a weaker retries guarantee, so it is safe to assume */);
-        self.assume_retries_trusted::<R2>(nondet)
-    }
-
-    /// Strengthens the retry guarantee to `ExactlyOnce`, given that `R: IsExactlyOnce`, which
-    /// implies that `R == ExactlyOnce`.
-    pub fn make_exactly_once(self) -> KeyedStream<K, V, L, B, O, ExactlyOnce>
-    where
-        R: IsExactlyOnce,
-    {
-        self.assume_retries_trusted(nondet!(/** no-op */))
-    }
-
-    /// Strengthens the boundedness guarantee to `Bounded`, given that `B: IsBounded`, which
-    /// implies that `B == Bounded`.
-    pub fn make_bounded(self) -> KeyedStream<K, V, L, Bounded, O, R>
-    where
-        B: IsBounded,
-    {
-        self.weaken_boundedness()
-    }
-
-    /// Weakens the boundedness guarantee to an arbitrary boundedness `B2`, given that `B: IsBounded`,
-    /// which implies that `B == Bounded`.
-    pub fn weaken_boundedness<B2: Boundedness>(self) -> KeyedStream<K, V, L, B2, O, R> {
-        if B::BOUNDED == B2::BOUNDED {
-            KeyedStream::new(
-                self.location.clone(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
-        } else {
-            // We can always weaken the boundedness
-            KeyedStream::new(
-                self.location.clone(),
-                HydroNode::Cast {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: self
-                        .location
-                        .new_node_metadata(KeyedStream::<K, V, L, B2, O, R>::collection_kind()),
-                },
-            )
-        }
-    }
-
-    /// Flattens the keyed stream into an unordered stream of key-value pairs.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
-    ///     .into_keyed()
-    ///     .entries()
-    /// # }, |mut stream| async move {
-    /// // (1, 2), (1, 3), (2, 4) in any order
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..3 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn entries(self) -> Stream<(K, V), L, B, NoOrder, R> {
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Cast {
-                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(Stream::<(K, V), L, B, NoOrder, R>::collection_kind()),
-            },
-        )
-    }
-
-    /// Flattens the keyed stream into a totally ordered stream of key-value pairs,
-    /// preserving the order of values within each key group but non-deterministically
-    /// interleaving across keys.
-    ///
-    /// Requires the keyed stream to be totally ordered within each group (`O: IsOrdered`).
-    ///
-    /// # Non-Determinism
-    /// The interleaving of entries across different keys is non-deterministic.
-    /// Within each key, the original order is preserved.
-    ///
-    /// In simulation tests, the interleaving decisions can be scripted by attaching a
-    /// [`PartialOrderingHook`](crate::sim_hooks::PartialOrderingHook) to the guard via
-    /// `nondet!(/** reason */ hook = my_hook)`.
-    pub fn entries_partially_ordered(
-        self,
-        mut nondet: NonDet<Option<crate::sim_hooks::PartialOrderingHook<K, V, B, L::SimHookScope>>>,
-    ) -> Stream<(K, V), L::DropConsistency, B, TotalOrder, R>
-    where
-        O: IsOrdered,
-    {
-        let target_location = self.location.drop_consistency();
-        let mut metadata = target_location
-            .new_node_metadata(Stream::<(K, V), L, B, TotalOrder, R>::collection_kind());
-        metadata.op.sim_hook_id = nondet.take_hook().map(|hook| hook.id);
-        Stream::new(
-            target_location,
+        location: L2,
+    ) -> KeyedStream<K, V, L2, B, O, R, NoDrop> {
+        KeyedStream::new(
+            location.clone(),
             HydroNode::ObserveNonDet {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 trusted: false,
-                metadata,
+                metadata: location
+                    .new_node_metadata(KeyedStream::<K, V, L2, B, O, R, NoDrop>::collection_kind()),
             },
         )
-    }
-
-    /// Flattens the keyed stream into an unordered stream of only the values.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
-    ///     .into_keyed()
-    ///     .values()
-    /// # }, |mut stream| async move {
-    /// // 2, 3, 4 in any order
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..3 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![2, 3, 4]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn values(self) -> Stream<V, L, B, NoOrder, R> {
-        self.entries().map(q!(|(_, v)| v))
-    }
-
-    /// Flattens the keyed stream into an unordered stream of just the keys.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # process
-    /// #     .source_iter(q!(vec![(1, 2), (2, 4), (1, 5)]))
-    /// #     .into_keyed()
-    /// #     .keys()
-    /// # }, |mut stream| async move {
-    /// // 1, 2 in any order
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![1, 2]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn keys(self) -> Stream<K, L, B, NoOrder, ExactlyOnce>
-    where
-        K: Eq + Hash,
-    {
-        self.entries().map(q!(|(k, _)| k)).unique()
     }
 
     /// Transforms each value by invoking `f` on each element, with keys staying the same
@@ -836,7 +371,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     pub fn map<U, F>(
         self,
         f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
-    ) -> KeyedStream<K, U, L, B, O, R>
+    ) -> KeyedStream<K, U, L, B, O, R, D>
     where
         F: Fn(V) -> U + 'a,
     {
@@ -856,7 +391,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .new_node_metadata(KeyedStream::<K, U, L, B, O, R>::collection_kind()),
+                    .new_node_metadata(KeyedStream::<K, U, L, B, O, R, D>::collection_kind()),
             },
         )
     }
@@ -892,7 +427,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     pub fn map_with_key<U, F>(
         self,
         f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
-    ) -> KeyedStream<K, U, L, B, O, R>
+    ) -> KeyedStream<K, U, L, B, O, R, D>
     where
         F: Fn((K, V)) -> U + 'a,
         K: Clone,
@@ -916,7 +451,1232 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .new_node_metadata(KeyedStream::<K, U, L, B, O, R>::collection_kind()),
+                    .new_node_metadata(KeyedStream::<K, U, L, B, O, R, D>::collection_kind()),
+            },
+        )
+    }
+
+    /// Creates a stream containing only the elements of each group stream that satisfy a predicate
+    /// `f`, preserving the order of the elements within the group.
+    ///
+    /// The closure `f` receives a reference `&V` rather than an owned value `v` because filtering does
+    /// not modify or take ownership of the values. If you need to modify the values while filtering
+    /// use [`KeyedStream::filter_map`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///     .into_keyed()
+    ///     .filter(q!(|&x| x > 2))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [3], 2: [4] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 3), (2, 4)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn filter<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
+    ) -> KeyedStream<K, V, L, B, O, R, D>
+    where
+        F: Fn(&V) -> bool + 'a,
+    {
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_borrow_ctx(ctx));
+        let filter_f = q!({
+            let orig = f;
+            move |t: &(_, _)| orig(&t.1)
+        })
+        .splice_fn1_borrow_ctx::<(K, V), bool>(&OperatorContext::<L, B>::new(&self.location))
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Filter {
+                f: filter_f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
+            },
+        )
+    }
+
+    /// An operator that both filters and maps each value, with keys staying the same.
+    /// It yields only the items for which the supplied closure `f` returns `Some(value)`.
+    /// If you need access to the key, see [`KeyedStream::filter_map_with_key`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, "2"), (1, "hello"), (2, "4")]))
+    ///     .into_keyed()
+    ///     .filter_map(q!(|s| s.parse::<usize>().ok()))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [2], 2: [4] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (2, 4)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn filter_map<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
+    ) -> KeyedStream<K, U, L, B, O, R, D>
+    where
+        F: Fn(V) -> Option<U> + 'a,
+    {
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
+        let filter_map_f = q!({
+            let orig = f;
+            move |(k, v)| orig(v).map(|o| (k, o))
+        })
+        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&OperatorContext::<L, B>::new(&self.location))
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::FilterMap {
+                f: filter_map_f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedStream::<K, U, L, B, O, R, D>::collection_kind()),
+            },
+        )
+    }
+
+    /// An operator that both filters and maps each key-value pair. The resulting values are **not**
+    /// re-grouped even they are tuples; instead they will be grouped under the original key.
+    /// It yields only the items for which the supplied closure `f` returns `Some(value)`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, "2"), (1, "hello"), (2, "2")]))
+    ///     .into_keyed()
+    ///     .filter_map_with_key(q!(|(k, s)| s.parse::<usize>().ok().filter(|v| v == &k)))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 2: [2] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..1 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(2, 2)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn filter_map_with_key<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
+    ) -> KeyedStream<K, U, L, B, O, R, D>
+    where
+        F: Fn((K, V)) -> Option<U> + 'a,
+        K: Clone,
+    {
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
+        let filter_map_f = q!({
+            let orig = f;
+            move |(k, v)| {
+                let out = orig((Clone::clone(&k), v));
+                out.map(|o| (k, o))
+            }
+        })
+        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&OperatorContext::<L, B>::new(&self.location))
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::FilterMap {
+                f: filter_map_f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedStream::<K, U, L, B, O, R, D>::collection_kind()),
+            },
+        )
+    }
+
+    /// For each value `v` in each group, transform `v` using `f` and then treat the
+    /// result as an [`Iterator`] to produce values one by one within the same group.
+    /// The implementation for [`Iterator`] for the output type `I` must produce items
+    /// in a **deterministic** order.
+    ///
+    /// For example, `I` could be a `Vec`, but not a `HashSet`. If the order of the items in `I` is
+    /// not deterministic, use [`KeyedStream::flat_map_unordered`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, vec![2, 3]), (1, vec![4]), (2, vec![5, 6])]))
+    ///     .into_keyed()
+    ///     .flat_map_ordered(q!(|x| x))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [2, 3, 4], 2: [5, 6] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..5 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (1, 4), (2, 5), (2, 6)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn flat_map_ordered<U, I, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
+    ) -> KeyedStream<K, U, L, B, O, R, D>
+    where
+        I: IntoIterator<Item = U>,
+        F: Fn(V) -> I + 'a,
+        K: Clone,
+    {
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
+        let flat_map_f = q!({
+            let orig = f;
+            move |(k, v)| orig(v).into_iter().map(move |u| (Clone::clone(&k), u))
+        })
+        .splice_fn1_ctx::<(K, V), _>(&OperatorContext::<L, B>::new(&self.location))
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::FlatMap {
+                f: flat_map_f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedStream::<K, U, L, B, O, R, D>::collection_kind()),
+            },
+        )
+    }
+
+    /// Like [`KeyedStream::flat_map_ordered`], but allows the implementation of [`Iterator`]
+    /// for the output type `I` to produce items in any order.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
+    /// process
+    ///     .source_iter(q!(vec![
+    ///         (1, std::collections::HashSet::<i32>::from_iter(vec![2, 3])),
+    ///         (2, std::collections::HashSet::from_iter(vec![4, 5]))
+    ///     ]))
+    ///     .into_keyed()
+    ///     .flat_map_unordered(q!(|x| x))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [2, 3], 2: [4, 5] } with values in each group in unknown order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4), (2, 5)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn flat_map_unordered<U, I, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
+    ) -> KeyedStream<K, U, L, B, NoOrder, R, D>
+    where
+        I: IntoIterator<Item = U>,
+        F: Fn(V) -> I + 'a,
+        K: Clone,
+    {
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
+        let flat_map_f = q!({
+            let orig = f;
+            move |(k, v)| orig(v).into_iter().map(move |u| (Clone::clone(&k), u))
+        })
+        .splice_fn1_ctx::<(K, V), _>(&OperatorContext::<L, B>::new(&self.location))
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::FlatMap {
+                f: flat_map_f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedStream::<K, U, L, B, NoOrder, R, D>::collection_kind()),
+            },
+        )
+    }
+
+    /// An operator which allows you to "inspect" each element of a stream without
+    /// modifying it. The closure `f` is called on a reference to each value. This is
+    /// mainly useful for debugging, and should not be used to generate side-effects.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///     .into_keyed()
+    ///     .inspect(q!(|v| println!("{}", v)))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy) -> Self
+    where
+        F: Fn(&V) + 'a,
+    {
+        let f: ManualExpr<F, _> =
+            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_borrow_ctx(ctx));
+        let inspect_f = q!({
+            let orig = f;
+            move |t: &(_, _)| orig(&t.1)
+        })
+        .splice_fn1_borrow_ctx::<(K, V), ()>(&OperatorContext::<L, B>::new(&self.location))
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Inspect {
+                f: inspect_f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
+            },
+        )
+    }
+
+    /// Deduplicates values within each key group, emitting each unique value per key
+    /// exactly once.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 10), (2, 20), (1, 10), (2, 30), (1, 20)]))
+    ///     .into_keyed()
+    ///     .unique()
+    /// # .entries()
+    /// # }, |mut stream| async move {
+    /// // unique values per key: { 1: [10, 20], 2: [20, 30] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # let mut key1: Vec<_> = results.iter().filter(|(k, _)| *k == 1).map(|(_, v)| *v).collect();
+    /// # let mut key2: Vec<_> = results.iter().filter(|(k, _)| *k == 2).map(|(_, v)| *v).collect();
+    /// # key1.sort();
+    /// # key2.sort();
+    /// # assert_eq!(key1, vec![10, 20]);
+    /// # assert_eq!(key2, vec![20, 30]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn unique(self) -> KeyedStream<K, V, L, B, NoOrder, ExactlyOnce, D>
+    where
+        K: Eq + Hash + Clone,
+        V: Eq + Hash + Clone,
+    {
+        self.entries().unique().into_keyed()
+    }
+
+    /// Flattens the keyed stream into an unordered stream of key-value pairs.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///     .into_keyed()
+    ///     .entries()
+    /// # }, |mut stream| async move {
+    /// // (1, 2), (1, 3), (2, 4) in any order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn entries(self) -> Stream<(K, V), L, B, NoOrder, R, D> {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<(K, V), L, B, NoOrder, R, D>::collection_kind()),
+            },
+        )
+    }
+
+    /// Flattens the keyed stream into an unordered stream of only the values.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///     .into_keyed()
+    ///     .values()
+    /// # }, |mut stream| async move {
+    /// // 2, 3, 4 in any order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![2, 3, 4]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn values(self) -> Stream<V, L, B, NoOrder, R, D> {
+        self.entries().map(q!(|(_, v)| v))
+    }
+
+    /// Flattens the keyed stream into an unordered stream of just the keys.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4), (1, 5)]))
+    /// #     .into_keyed()
+    /// #     .keys()
+    /// # }, |mut stream| async move {
+    /// // 1, 2 in any order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![1, 2]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn keys(self) -> Stream<K, L, B, NoOrder, ExactlyOnce, D>
+    where
+        K: Eq + Hash,
+    {
+        self.entries().map(q!(|(k, _)| k)).unique()
+    }
+
+    /// Weakens the ordering guarantee provided by the stream to `O2`, with the type-system
+    /// enforcing that `O2` is weaker than the input ordering guarantee.
+    pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> KeyedStream<K, V, L, B, O2, R, D> {
+        let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
+        self.assume_ordering_trusted::<O2>(nondet)
+    }
+
+    /// Weakens the retries guarantee provided by the stream to `R2`, with the type-system
+    /// enforcing that `R2` is weaker than the input retries guarantee.
+    pub fn weaken_retries<R2: WeakerRetryThan<R>>(self) -> KeyedStream<K, V, L, B, O, R2, D> {
+        let nondet = nondet!(/** this is a weaker retries guarantee, so it is safe to assume */);
+        self.assume_retries_trusted::<R2>(nondet)
+    }
+
+    /// Explicitly "casts" the keyed stream to a type with a different ordering
+    /// guarantee for each group. Useful in unsafe code where the ordering cannot be proven
+    /// by the type-system.
+    ///
+    /// # Non-Determinism
+    /// This function is used as an escape hatch, and any mistakes in the
+    /// provided ordering guarantee will propagate into the guarantees
+    /// for the rest of the program.
+    ///
+    /// In simulation tests, the ordering decisions can be scripted by attaching a
+    /// [`KeyedOrderingHook`](crate::sim_hooks::KeyedOrderingHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
+    pub fn assume_ordering<O2: Ordering>(
+        self,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedOrderingHook<K, V, B, L::SimHookScope>>>,
+    ) -> KeyedStream<K, V, L::DropConsistency, B, O2, R, D> {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
+            self.use_ordering_type().weaken_consistency()
+        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
+            // We can always weaken the ordering guarantee
+            let target_location = self.location.drop_consistency();
+            KeyedStream::new(
+                target_location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: target_location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R, D>::collection_kind()),
+                },
+            )
+        } else {
+            let target_location = self.location.drop_consistency();
+            let mut metadata = target_location
+                .new_node_metadata(KeyedStream::<K, V, L, B, O2, R, D>::collection_kind());
+            metadata.op.sim_hook_id = nondet.take_hook().map(|hook| hook.id);
+            KeyedStream::new(
+                target_location,
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: false,
+                    metadata,
+                },
+            )
+        }
+    }
+
+    /// Explicitly "casts" the keyed stream to a type with a different retries
+    /// guarantee for each group. Useful in unsafe code where the lack of retries cannot
+    /// be proven by the type-system.
+    ///
+    /// # Non-Determinism
+    /// This function is used as an escape hatch, and any mistakes in the
+    /// provided retries guarantee will propagate into the guarantees
+    /// for the rest of the program.
+    pub fn assume_retries<R2: Retries>(
+        self,
+        _nondet: NonDet,
+    ) -> KeyedStream<K, V, L::DropConsistency, B, O, R2, D> {
+        if R::RETRIES_KIND == R2::RETRIES_KIND {
+            KeyedStream::new(
+                self.location.drop_consistency(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
+            // We can always weaken the retries guarantee
+            let target_location = self.location.drop_consistency();
+            KeyedStream::new(
+                target_location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: target_location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O, R2, D>::collection_kind()),
+                },
+            )
+        } else {
+            let target_location = self.location.drop_consistency();
+            KeyedStream::new(
+                target_location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: false,
+                    metadata: target_location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O, R2, D>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    /// Given a tick, returns a keyed stream corresponding to a batch of elements segmented by
+    /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
+    /// the order of the input.
+    ///
+    /// # Non-Determinism
+    /// The batch boundaries are non-deterministic and may change across executions.
+    ///
+    /// Batching requires a [`NoDrop`] stream: a bounded batch would expose which elements are
+    /// missing. Use `observe_drops` first.
+    ///
+    /// In simulation tests, the batching decisions can be scripted by attaching a
+    /// [`KeyedBatchHook`](crate::sim_hooks::KeyedBatchHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
+    pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
+        self,
+        tick: &Tick<L2>,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedBatchHook<K, V, O, R, L::SimHookScope>>>,
+    ) -> KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R, NoDrop>
+    where
+        Self: NoMissingElements,
+    {
+        assert_eq!(
+            Location::id(tick.parent_location()),
+            Location::id(&self.location)
+        );
+        let mut metadata =
+            tick.new_node_metadata(
+                KeyedStream::<K, V, Tick<L>, Bounded, O, R, NoDrop>::collection_kind(),
+            );
+        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
+        KeyedStream::new(
+            tick.drop_consistency(),
+            HydroNode::Batch {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata,
+            },
+        )
+    }
+
+    fn assume_ordering_trusted<O2: Ordering>(
+        self,
+        _nondet: NonDet,
+    ) -> KeyedStream<K, V, L, B, O2, R, D> {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
+            KeyedStream::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
+            // We can always weaken the ordering guarantee
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self
+                        .location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R, D>::collection_kind()),
+                },
+            )
+        } else {
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: true,
+                    metadata: self
+                        .location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R, D>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    // only for internal APIs that have been carefully vetted to ensure that the non-determinism
+    // is not observable
+    fn assume_retries_trusted<R2: Retries>(
+        self,
+        _nondet: NonDet,
+    ) -> KeyedStream<K, V, L, B, O, R2, D> {
+        if R::RETRIES_KIND == R2::RETRIES_KIND {
+            KeyedStream::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
+            // We can always weaken the retries guarantee
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self
+                        .location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O, R2, D>::collection_kind()),
+                },
+            )
+        } else {
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: true,
+                    metadata: self
+                        .location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O, R2, D>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    pub(crate) fn use_ordering_type<O2: Ordering>(self) -> KeyedStream<K, V, L, B, O2, R, D> {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
+            KeyedStream::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            panic!(
+                "Runtime ordering {:?} did not match requested cast {:?}.",
+                O::ORDERING_KIND,
+                O2::ORDERING_KIND
+            )
+        }
+    }
+
+    /// Weakens the consistency of this live collection to not guarantee any consistency across
+    /// cluster members (if this collection is on a cluster).
+    pub fn weaken_consistency(self) -> KeyedStream<K, V, L::DropConsistency, B, O, R, D>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency()
+            .is_none_or(|c| c == crate::location::dynamic::ClusterConsistency::NoConsistency)
+        {
+            // already no consistency
+            KeyedStream::new(
+                self.location.drop_consistency(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            KeyedStream::new(
+                self.location.drop_consistency(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self
+                        .location
+                        .drop_consistency()
+                        .new_node_metadata(
+                            KeyedStream::<K, V, L::DropConsistency, B>::collection_kind(),
+                        ),
+                },
+            )
+        }
+    }
+
+    /// Strengthens the retry guarantee to `ExactlyOnce`, given that `R: IsExactlyOnce`, which
+    /// implies that `R == ExactlyOnce`.
+    pub fn make_exactly_once(self) -> KeyedStream<K, V, L, B, O, ExactlyOnce, D>
+    where
+        R: IsExactlyOnce,
+    {
+        self.assume_retries_trusted(nondet!(/** no-op */))
+    }
+
+    /// Counts the number of elements in each group, producing a [`KeyedSingleton`] with the counts.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4), (1, 5)]))
+    ///     .into_keyed();
+    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// batch
+    ///     .value_counts()
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, 3), (2, 2)
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 3), (2, 2)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn value_counts(
+        self,
+    ) -> KeyedSingleton<K, usize, L, <B as KeyedSingletonBound>::KeyedStreamToMonotone, D>
+    where
+        R: IsExactlyOnce,
+        K: Eq + Hash,
+    {
+        self.make_exactly_once()
+            .assume_ordering_trusted(
+                nondet!(/** ordering within each group affects neither result nor intermediates */),
+            )
+            .fold_trusted(
+                q!(|| 0),
+                q!(
+                    |acc, _| *acc += 1,
+                    monotone = manual_proof!(/** += 1 is monotonic */)
+                ),
+            )
+    }
+
+    /// Like [`Stream::fold`] but in the spirit of SQL `GROUP BY`, aggregates the values in each
+    /// group via the `comb` closure.
+    ///
+    /// Depending on the input stream guarantees, the closure may need to be commutative
+    /// (for unordered streams) or idempotent (for streams with non-deterministic duplicates).
+    ///
+    /// If the input and output value types are the same and do not require initialization then use
+    /// [`KeyedStream::reduce`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]))
+    ///     .into_keyed();
+    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// batch
+    ///     .fold(q!(|| false), q!(|acc, x| *acc |= x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, false), (2, true)
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, false), (2, true)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn fold<A, I: Fn() -> A + 'a, F: 'a + Fn(&mut A, V), C, Idemp, M, B2: KeyedSingletonBound>(
+        self,
+        init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>>,
+        comb: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            AggFuncAlgebra<V, B, C, Idemp, M, L::SimHookScope>,
+        >,
+    ) -> KeyedSingleton<K, A, L, B2, D>
+    where
+        K: Eq + Hash,
+        C: ValidCommutativityFor<O> + ValidCommutativityForDrops<D>,
+        Idemp: ValidIdempotenceFor<R>,
+        B: ApplyMonotoneKeyedStream<M, B2>,
+    {
+        self.fold_trusted(init, comb)
+    }
+
+    // `fold`, without requiring the closure to be commutative over a `MayDrop` keyed stream;
+    // for the aggregations whose closure is commutative though it is not marked as such.
+    fn fold_trusted<
+        A,
+        I: Fn() -> A + 'a,
+        F: 'a + Fn(&mut A, V),
+        C,
+        Idemp,
+        M,
+        B2: KeyedSingletonBound,
+    >(
+        self,
+        init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>>,
+        comb: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            AggFuncAlgebra<V, B, C, Idemp, M, L::SimHookScope>,
+        >,
+    ) -> KeyedSingleton<K, A, L, B2, D>
+    where
+        K: Eq + Hash,
+        C: ValidCommutativityFor<O>,
+        Idemp: ValidIdempotenceFor<R>,
+        B: ApplyMonotoneKeyedStream<M, B2>,
+    {
+        let init = init
+            .splice_fn0_ctx(&OperatorContext::<L, B>::new(&self.location))
+            .into();
+        let (comb, proof) =
+            comb.splice_fn2_borrow_mut_ctx_props(&OperatorContext::<L, B>::new(&self.location));
+        proof.register_proof(&comb);
+
+        let retried = self
+            .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */));
+
+        KeyedSingleton::new(
+            retried.location.clone(),
+            HydroNode::FoldKeyed {
+                init,
+                acc: comb.into(),
+                input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
+                metadata: retried
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, A, L, B2, D>::collection_kind()),
+            },
+        )
+        .assert_has_consistency_of(manual_proof!(/** algebraic properties */))
+    }
+
+    /// Like [`Stream::reduce`] but in the spirit of SQL `GROUP BY`, aggregates the values in each
+    /// group via the `comb` closure.
+    ///
+    /// Depending on the input stream guarantees, the closure may need to be commutative
+    /// (for unordered streams) or idempotent (for streams with non-deterministic duplicates).
+    ///
+    /// If you need the accumulated value to have a different type than the input, use [`KeyedStream::fold`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]))
+    ///     .into_keyed();
+    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// batch
+    ///     .reduce(q!(|acc, x| *acc |= x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, false), (2, true)
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, false), (2, true)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn reduce<F: Fn(&mut V, V) + 'a, C, Idemp>(
+        self,
+        comb: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            AggFuncAlgebra<V, B, C, Idemp, NotProved, L::SimHookScope>,
+        >,
+    ) -> KeyedSingleton<K, V, L, B, D>
+    where
+        K: Eq + Hash,
+        C: ValidCommutativityFor<O> + ValidCommutativityForDrops<D>,
+        Idemp: ValidIdempotenceFor<R>,
+    {
+        self.reduce_trusted(comb)
+    }
+
+    // `reduce`, without requiring the closure to be commutative over a `MayDrop` keyed stream;
+    // for the aggregations whose closure is commutative though it is not marked as such.
+    fn reduce_trusted<F: Fn(&mut V, V) + 'a, C, Idemp>(
+        self,
+        comb: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, B>,
+            AggFuncAlgebra<V, B, C, Idemp, NotProved, L::SimHookScope>,
+        >,
+    ) -> KeyedSingleton<K, V, L, B, D>
+    where
+        K: Eq + Hash,
+        C: ValidCommutativityFor<O>,
+        Idemp: ValidIdempotenceFor<R>,
+    {
+        let (f, proof) =
+            comb.splice_fn2_borrow_mut_ctx_props(&OperatorContext::<L, B>::new(&self.location));
+        proof.register_proof(&f);
+
+        let ordered = self
+            .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
+            .assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */));
+
+        KeyedSingleton::new(
+            ordered.location.clone(),
+            HydroNode::ReduceKeyed {
+                f: f.into(),
+                input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
+                metadata: ordered
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, V, L, B, D>::collection_kind()),
+            },
+        )
+        .assert_has_consistency_of(manual_proof!(/** algebraic properties */))
+    }
+
+    pub(crate) fn assert_has_consistency_of_trusted<
+        L2: Location<'a, DropConsistency = L::DropConsistency>,
+    >(
+        self,
+        _proof: impl crate::properties::ConsistencyProof,
+    ) -> KeyedStream<K, V, L2, B, O, R, D>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency() == L2::consistency() {
+            KeyedStream::new(
+                self.location.with_consistency_of(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            KeyedStream::new(
+                self.location.with_consistency_of(),
+                HydroNode::AssertIsConsistent {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: true,
+                    metadata: self
+                        .location
+                        .clone()
+                        .with_consistency_of::<L2>()
+                        .new_node_metadata(KeyedStream::<K, V, L2, B, O, R, D>::collection_kind()),
+                },
+            )
+        }
+    }
+    /// Casts this live collection to have the consistency guarantees specified in the given
+    /// location type parameter. The developer must ensure that the strengthened consistency
+    /// is actually guaranteed, via the proof field (see [`crate::prelude::manual_proof`]).
+    pub fn assert_has_consistency_of<L2: Location<'a, DropConsistency = L::DropConsistency>>(
+        self,
+        _proof: impl crate::properties::ConsistencyProof,
+    ) -> KeyedStream<K, V, L2, B, O, R, D>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency() == L2::consistency() {
+            KeyedStream::new(
+                self.location.with_consistency_of(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            KeyedStream::new(
+                self.location.with_consistency_of(),
+                HydroNode::AssertIsConsistent {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: false,
+                    metadata: self
+                        .location
+                        .clone()
+                        .with_consistency_of::<L2>()
+                        .new_node_metadata(KeyedStream::<K, V, L2, B, O, R, D>::collection_kind()),
+                },
+            )
+        }
+    }
+}
+
+impl<'a, K, V, L: Location<'a>, O: Ordering, R: Retries, D: Drops>
+    KeyedStream<K, V, L, Unbounded, O, R, D>
+{
+    /// Weakens the drops guarantee provided by the keyed stream to `D2`, with the type-system
+    /// enforcing that `D2` is weaker than the input drops guarantee. Only unbounded keyed
+    /// streams may be `MayDrop`.
+    pub fn weaken_drops<D2: WeakerDropsThan<D>>(self) -> KeyedStream<K, V, L, Unbounded, O, R, D2> {
+        if D::DROPS_KIND == D2::DROPS_KIND {
+            KeyedStream::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self.location.new_node_metadata(KeyedStream::<
+                        K,
+                        V,
+                        L,
+                        Unbounded,
+                        O,
+                        R,
+                        D2,
+                    >::collection_kind(
+                    )),
+                },
+            )
+        }
+    }
+}
+
+impl<'a, K, V, L: Location<'a>, B: Boundedness, R: Retries, D: Drops>
+    KeyedStream<K, V, L, B, NoOrder, R, D>
+{
+    /// Treats this keyed stream, whose values may be missing, as one whose values are not (and
+    /// does nothing if they are not missing to begin with, as for streams). The
+    /// values of each key are unordered, so nothing is observed; the
+    /// [`nonlive!`](crate::liveness::nonlive) explains why the program is acceptable even though
+    /// some values (and so keys) may never arrive. See
+    /// [`Stream::observe_drops`](crate::live_collections::stream::Stream::observe_drops).
+    pub fn observe_drops(self, nonlive: NonLive) -> KeyedStream<K, V, L, B, NoOrder, R, NoDrop> {
+        let _ = nonlive;
+        let location = self.location.clone();
+        if D::DROPS_KIND == StreamDrops::NoDrop {
+            KeyedStream::new(location, self.ir_node.replace(HydroNode::Placeholder))
+        } else {
+            self.observe_drops_node(location)
+        }
+    }
+}
+
+impl<'a, K, V, L: Location<'a>, B: Boundedness, R: Retries>
+    KeyedStream<K, V, L, B, TotalOrder, R, MayDrop>
+{
+    /// Treats this keyed stream, whose ordered values may be missing anywhere, as one whose values
+    /// are not. The `nondet!` explains why observing *which* values of each key survived is
+    /// harmless, and the [`nonlive!`](crate::liveness::nonlive) why the program is acceptable even
+    /// though not every value may survive. See
+    /// [`Stream::observe_drops`](crate::live_collections::stream::Stream::observe_drops).
+    pub fn observe_drops(
+        self,
+        nondet: NonDet,
+        nonlive: NonLive,
+    ) -> KeyedStream<K, V, L::DropConsistency, B, TotalOrder, R, NoDrop> {
+        let _ = (nondet, nonlive);
+        let location = self.location.drop_consistency();
+        self.observe_drops_node(location)
+    }
+}
+
+impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<K, V, L, B, O, R>
+{
+    /// Turns this [`KeyedStream`] into a [`Stream`] preserving ordering, under the invariant
+    /// assumption that there is at most one key. If this invariant is broken, the program
+    /// may exhibit undefined behavior, so uses must be carefully vetted.
+    pub(crate) fn cast_at_most_one_key(self) -> Stream<(K, V), L, B, O, R> {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<(K, V), L, B, O, R>::collection_kind()),
+            },
+        )
+    }
+
+    /// Turns this [`KeyedStream`] into a [`KeyedSingleton`], under the invariant assumption that
+    /// there is at most one entry per key. If this invariant is broken, the program may exhibit
+    /// undefined behavior, so uses must be carefully vetted.
+    pub(crate) fn cast_at_most_one_entry_per_key(
+        self,
+    ) -> KeyedSingleton<K, V, L, B::WithBoundedValue> {
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    V,
+                    L,
+                    B::WithBoundedValue,
+                >::collection_kind()),
+            },
+        )
+    }
+
+    #[deprecated = "use `weaken_ordering::<NoOrder>()` instead"]
+    /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
+    /// which is always safe because that is the weakest possible guarantee.
+    pub fn weakest_ordering(self) -> KeyedStream<K, V, L, B, NoOrder, R> {
+        self.weaken_ordering::<NoOrder>()
+    }
+
+    /// Strengthens the ordering guarantee to `TotalOrder`, given that `O: IsOrdered`, which
+    /// implies that `O == TotalOrder`.
+    pub fn make_totally_ordered(self) -> KeyedStream<K, V, L, B, TotalOrder, R>
+    where
+        O: IsOrdered,
+    {
+        self.assume_ordering_trusted(nondet!(/** no-op */))
+    }
+
+    #[deprecated = "use `weaken_retries::<AtLeastOnce>()` instead"]
+    /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
+    /// which is always safe because that is the weakest possible guarantee.
+    pub fn weakest_retries(self) -> KeyedStream<K, V, L, B, O, AtLeastOnce> {
+        self.weaken_retries::<AtLeastOnce>()
+    }
+
+    /// Strengthens the boundedness guarantee to `Bounded`, given that `B: IsBounded`, which
+    /// implies that `B == Bounded`.
+    pub fn make_bounded(self) -> KeyedStream<K, V, L, Bounded, O, R>
+    where
+        B: IsBounded,
+    {
+        self.weaken_boundedness()
+    }
+
+    /// Weakens the boundedness guarantee to an arbitrary boundedness `B2`, given that `B: IsBounded`,
+    /// which implies that `B == Bounded`.
+    pub fn weaken_boundedness<B2: Boundedness>(self) -> KeyedStream<K, V, L, B2, O, R> {
+        if B::BOUNDED == B2::BOUNDED {
+            KeyedStream::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            // We can always weaken the boundedness
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self
+                        .location
+                        .new_node_metadata(KeyedStream::<K, V, L, B2, O, R>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    /// Flattens the keyed stream into a totally ordered stream of key-value pairs,
+    /// preserving the order of values within each key group but non-deterministically
+    /// interleaving across keys.
+    ///
+    /// Requires the keyed stream to be totally ordered within each group (`O: IsOrdered`).
+    ///
+    /// # Non-Determinism
+    /// The interleaving of entries across different keys is non-deterministic.
+    /// Within each key, the original order is preserved.
+    ///
+    /// In simulation tests, the interleaving decisions can be scripted by attaching a
+    /// [`PartialOrderingHook`](crate::sim_hooks::PartialOrderingHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
+    pub fn entries_partially_ordered(
+        self,
+        mut nondet: NonDet<Option<crate::sim_hooks::PartialOrderingHook<K, V, B, L::SimHookScope>>>,
+    ) -> Stream<(K, V), L::DropConsistency, B, TotalOrder, R>
+    where
+        O: IsOrdered,
+    {
+        let target_location = self.location.drop_consistency();
+        let mut metadata = target_location
+            .new_node_metadata(Stream::<(K, V), L, B, TotalOrder, R>::collection_kind());
+        metadata.op.sim_hook_id = nondet.take_hook().map(|hook| hook.id);
+        Stream::new(
+            target_location,
+            HydroNode::ObserveNonDet {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                trusted: false,
+                metadata,
             },
         )
     }
@@ -979,61 +1739,6 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
-    /// `f`, preserving the order of the elements within the group.
-    ///
-    /// The closure `f` receives a reference `&V` rather than an owned value `v` because filtering does
-    /// not modify or take ownership of the values. If you need to modify the values while filtering
-    /// use [`KeyedStream::filter_map`] instead.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
-    ///     .into_keyed()
-    ///     .filter(q!(|&x| x > 2))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 1: [3], 2: [4] }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 3), (2, 4)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn filter<F>(
-        self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
-    ) -> KeyedStream<K, V, L, B, O, R>
-    where
-        F: Fn(&V) -> bool + 'a,
-    {
-        let f: ManualExpr<F, _> =
-            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_borrow_ctx(ctx));
-        let filter_f = q!({
-            let orig = f;
-            move |t: &(_, _)| orig(&t.1)
-        })
-        .splice_fn1_borrow_ctx::<(K, V), bool>(&OperatorContext::<L, B>::new(&self.location))
-        .into();
-
-        KeyedStream::new(
-            self.location.clone(),
-            HydroNode::Filter {
-                f: filter_f,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self.location.new_node_metadata(Self::collection_kind()),
-            },
-        )
-    }
-
-    /// Creates a stream containing only the elements of each group stream that satisfy a predicate
     /// `f` (which receives the key-value tuple), preserving the order of the elements within the group.
     ///
     /// The closure `f` receives a reference `&(K, V)` rather than an owned value `(K, V)` because filtering does
@@ -1079,118 +1784,6 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 f: filter_f,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
-            },
-        )
-    }
-
-    /// An operator that both filters and maps each value, with keys staying the same.
-    /// It yields only the items for which the supplied closure `f` returns `Some(value)`.
-    /// If you need access to the key, see [`KeyedStream::filter_map_with_key`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![(1, "2"), (1, "hello"), (2, "4")]))
-    ///     .into_keyed()
-    ///     .filter_map(q!(|s| s.parse::<usize>().ok()))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 1: [2], 2: [4] }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 2), (2, 4)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn filter_map<U, F>(
-        self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
-    ) -> KeyedStream<K, U, L, B, O, R>
-    where
-        F: Fn(V) -> Option<U> + 'a,
-    {
-        let f: ManualExpr<F, _> =
-            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
-        let filter_map_f = q!({
-            let orig = f;
-            move |(k, v)| orig(v).map(|o| (k, o))
-        })
-        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&OperatorContext::<L, B>::new(&self.location))
-        .into();
-
-        KeyedStream::new(
-            self.location.clone(),
-            HydroNode::FilterMap {
-                f: filter_map_f,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(KeyedStream::<K, U, L, B, O, R>::collection_kind()),
-            },
-        )
-    }
-
-    /// An operator that both filters and maps each key-value pair. The resulting values are **not**
-    /// re-grouped even they are tuples; instead they will be grouped under the original key.
-    /// It yields only the items for which the supplied closure `f` returns `Some(value)`.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![(1, "2"), (1, "hello"), (2, "2")]))
-    ///     .into_keyed()
-    ///     .filter_map_with_key(q!(|(k, s)| s.parse::<usize>().ok().filter(|v| v == &k)))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 2: [2] }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..1 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(2, 2)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn filter_map_with_key<U, F>(
-        self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
-    ) -> KeyedStream<K, U, L, B, O, R>
-    where
-        F: Fn((K, V)) -> Option<U> + 'a,
-        K: Clone,
-    {
-        let f: ManualExpr<F, _> =
-            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
-        let filter_map_f = q!({
-            let orig = f;
-            move |(k, v)| {
-                let out = orig((Clone::clone(&k), v));
-                out.map(|o| (k, o))
-            }
-        })
-        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&OperatorContext::<L, B>::new(&self.location))
-        .into();
-
-        KeyedStream::new(
-            self.location.clone(),
-            HydroNode::FilterMap {
-                f: filter_map_f,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(KeyedStream::<K, U, L, B, O, R>::collection_kind()),
             },
         )
     }
@@ -1245,124 +1838,6 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         )
         .map(q!(|((k, v), o2)| (k, (v, o2))))
         .into_keyed()
-    }
-
-    /// For each value `v` in each group, transform `v` using `f` and then treat the
-    /// result as an [`Iterator`] to produce values one by one within the same group.
-    /// The implementation for [`Iterator`] for the output type `I` must produce items
-    /// in a **deterministic** order.
-    ///
-    /// For example, `I` could be a `Vec`, but not a `HashSet`. If the order of the items in `I` is
-    /// not deterministic, use [`KeyedStream::flat_map_unordered`] instead.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![(1, vec![2, 3]), (1, vec![4]), (2, vec![5, 6])]))
-    ///     .into_keyed()
-    ///     .flat_map_ordered(q!(|x| x))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 1: [2, 3, 4], 2: [5, 6] }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..5 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 2), (1, 3), (1, 4), (2, 5), (2, 6)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn flat_map_ordered<U, I, F>(
-        self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
-    ) -> KeyedStream<K, U, L, B, O, R>
-    where
-        I: IntoIterator<Item = U>,
-        F: Fn(V) -> I + 'a,
-        K: Clone,
-    {
-        let f: ManualExpr<F, _> =
-            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
-        let flat_map_f = q!({
-            let orig = f;
-            move |(k, v)| orig(v).into_iter().map(move |u| (Clone::clone(&k), u))
-        })
-        .splice_fn1_ctx::<(K, V), _>(&OperatorContext::<L, B>::new(&self.location))
-        .into();
-
-        KeyedStream::new(
-            self.location.clone(),
-            HydroNode::FlatMap {
-                f: flat_map_f,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(KeyedStream::<K, U, L, B, O, R>::collection_kind()),
-            },
-        )
-    }
-
-    /// Like [`KeyedStream::flat_map_ordered`], but allows the implementation of [`Iterator`]
-    /// for the output type `I` to produce items in any order.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
-    /// process
-    ///     .source_iter(q!(vec![
-    ///         (1, std::collections::HashSet::<i32>::from_iter(vec![2, 3])),
-    ///         (2, std::collections::HashSet::from_iter(vec![4, 5]))
-    ///     ]))
-    ///     .into_keyed()
-    ///     .flat_map_unordered(q!(|x| x))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 1: [2, 3], 2: [4, 5] } with values in each group in unknown order
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..4 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4), (2, 5)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn flat_map_unordered<U, I, F>(
-        self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy,
-    ) -> KeyedStream<K, U, L, B, NoOrder, R>
-    where
-        I: IntoIterator<Item = U>,
-        F: Fn(V) -> I + 'a,
-        K: Clone,
-    {
-        let f: ManualExpr<F, _> =
-            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_ctx(ctx));
-        let flat_map_f = q!({
-            let orig = f;
-            move |(k, v)| orig(v).into_iter().map(move |u| (Clone::clone(&k), u))
-        })
-        .splice_fn1_ctx::<(K, V), _>(&OperatorContext::<L, B>::new(&self.location))
-        .into();
-
-        KeyedStream::new(
-            self.location.clone(),
-            HydroNode::FlatMap {
-                f: flat_map_f,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(KeyedStream::<K, U, L, B, NoOrder, R>::collection_kind()),
-            },
-        )
     }
 
     /// For each value `v` in each group, treat `v` as an [`Iterator`] and produce its items one by one
@@ -1436,54 +1911,6 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         K: Clone,
     {
         self.flat_map_unordered(q!(|d| d))
-    }
-
-    /// An operator which allows you to "inspect" each element of a stream without
-    /// modifying it. The closure `f` is called on a reference to each value. This is
-    /// mainly useful for debugging, and should not be used to generate side-effects.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
-    ///     .into_keyed()
-    ///     .inspect(q!(|v| println!("{}", v)))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..3 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, OperatorContext<L, B>> + Copy) -> Self
-    where
-        F: Fn(&V) + 'a,
-    {
-        let f: ManualExpr<F, _> =
-            ManualExpr::new(move |ctx: &OperatorContext<L, B>| f.splice_fn1_borrow_ctx(ctx));
-        let inspect_f = q!({
-            let orig = f;
-            move |t: &(_, _)| orig(&t.1)
-        })
-        .splice_fn1_borrow_ctx::<(K, V), ()>(&OperatorContext::<L, B>::new(&self.location))
-        .into();
-
-        KeyedStream::new(
-            self.location.clone(),
-            HydroNode::Inspect {
-                f: inspect_f,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self.location.new_node_metadata(Self::collection_kind()),
-            },
-        )
     }
 
     /// An operator which allows you to "inspect" each element of a stream without
@@ -1962,198 +2389,6 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         )
     }
 
-    /// Counts the number of elements in each group, producing a [`KeyedSingleton`] with the counts.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process
-    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4), (1, 5)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch
-    ///     .value_counts()
-    ///     .entries()
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (1, 3), (2, 2)
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 3), (2, 2)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn value_counts(
-        self,
-    ) -> KeyedSingleton<K, usize, L, <B as KeyedSingletonBound>::KeyedStreamToMonotone>
-    where
-        R: IsExactlyOnce,
-        K: Eq + Hash,
-    {
-        self.make_exactly_once()
-            .assume_ordering_trusted(
-                nondet!(/** ordering within each group affects neither result nor intermediates */),
-            )
-            .fold(
-                q!(|| 0),
-                q!(
-                    |acc, _| *acc += 1,
-                    monotone = manual_proof!(/** += 1 is monotonic */)
-                ),
-            )
-    }
-
-    /// Like [`Stream::fold`] but in the spirit of SQL `GROUP BY`, aggregates the values in each
-    /// group via the `comb` closure.
-    ///
-    /// Depending on the input stream guarantees, the closure may need to be commutative
-    /// (for unordered streams) or idempotent (for streams with non-deterministic duplicates).
-    ///
-    /// If the input and output value types are the same and do not require initialization then use
-    /// [`KeyedStream::reduce`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process
-    ///     .source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch
-    ///     .fold(q!(|| false), q!(|acc, x| *acc |= x))
-    ///     .entries()
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (1, false), (2, true)
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, false), (2, true)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn fold<A, I: Fn() -> A + 'a, F: 'a + Fn(&mut A, V), C, Idemp, M, B2: KeyedSingletonBound>(
-        self,
-        init: impl IntoQuotedMut<'a, I, OperatorContext<L, B>>,
-        comb: impl IntoQuotedMut<
-            'a,
-            F,
-            OperatorContext<L, B>,
-            AggFuncAlgebra<V, B, C, Idemp, M, L::SimHookScope>,
-        >,
-    ) -> KeyedSingleton<K, A, L, B2>
-    where
-        K: Eq + Hash,
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
-        B: ApplyMonotoneKeyedStream<M, B2>,
-    {
-        let init = init
-            .splice_fn0_ctx(&OperatorContext::<L, B>::new(&self.location))
-            .into();
-        let (comb, proof) =
-            comb.splice_fn2_borrow_mut_ctx_props(&OperatorContext::<L, B>::new(&self.location));
-        proof.register_proof(&comb);
-
-        let retried = self
-            .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */));
-
-        KeyedSingleton::new(
-            retried.location.clone(),
-            HydroNode::FoldKeyed {
-                init,
-                acc: comb.into(),
-                input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
-                metadata: retried
-                    .location
-                    .new_node_metadata(KeyedSingleton::<K, A, L, B2>::collection_kind()),
-            },
-        )
-        .assert_has_consistency_of(manual_proof!(/** algebraic properties */))
-    }
-
-    /// Like [`Stream::reduce`] but in the spirit of SQL `GROUP BY`, aggregates the values in each
-    /// group via the `comb` closure.
-    ///
-    /// Depending on the input stream guarantees, the closure may need to be commutative
-    /// (for unordered streams) or idempotent (for streams with non-deterministic duplicates).
-    ///
-    /// If you need the accumulated value to have a different type than the input, use [`KeyedStream::fold`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process
-    ///     .source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch
-    ///     .reduce(q!(|acc, x| *acc |= x))
-    ///     .entries()
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (1, false), (2, true)
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, false), (2, true)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn reduce<F: Fn(&mut V, V) + 'a, C, Idemp>(
-        self,
-        comb: impl IntoQuotedMut<
-            'a,
-            F,
-            OperatorContext<L, B>,
-            AggFuncAlgebra<V, B, C, Idemp, NotProved, L::SimHookScope>,
-        >,
-    ) -> KeyedSingleton<K, V, L, B>
-    where
-        K: Eq + Hash,
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
-    {
-        let (f, proof) =
-            comb.splice_fn2_borrow_mut_ctx_props(&OperatorContext::<L, B>::new(&self.location));
-        proof.register_proof(&f);
-
-        let ordered = self
-            .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
-            .assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */));
-
-        KeyedSingleton::new(
-            ordered.location.clone(),
-            HydroNode::ReduceKeyed {
-                f: f.into(),
-                input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
-                metadata: ordered
-                    .location
-                    .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
-            },
-        )
-        .assert_has_consistency_of(manual_proof!(/** algebraic properties */))
-    }
-
     /// A special case of [`KeyedStream::reduce`] where tuples with keys less than the watermark
     /// are automatically deleted.
     ///
@@ -2323,43 +2558,6 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         V2: Clone,
     {
         self.entries().join(other.entries()).into_keyed()
-    }
-
-    /// Deduplicates values within each key group, emitting each unique value per key
-    /// exactly once.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![(1, 10), (2, 20), (1, 10), (2, 30), (1, 20)]))
-    ///     .into_keyed()
-    ///     .unique()
-    /// # .entries()
-    /// # }, |mut stream| async move {
-    /// // unique values per key: { 1: [10, 20], 2: [20, 30] }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..4 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # let mut key1: Vec<_> = results.iter().filter(|(k, _)| *k == 1).map(|(_, v)| *v).collect();
-    /// # let mut key2: Vec<_> = results.iter().filter(|(k, _)| *k == 2).map(|(_, v)| *v).collect();
-    /// # key1.sort();
-    /// # key2.sort();
-    /// # assert_eq!(key1, vec![10, 20]);
-    /// # assert_eq!(key2, vec![20, 30]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn unique(self) -> KeyedStream<K, V, L, B, NoOrder, ExactlyOnce>
-    where
-        K: Eq + Hash + Clone,
-        V: Eq + Hash + Clone,
-    {
-        self.entries().unique().into_keyed()
     }
 
     /// Sorts the values within each key group in ascending order.
@@ -2709,37 +2907,6 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             },
         )
     }
-
-    /// Given a tick, returns a keyed stream corresponding to a batch of elements segmented by
-    /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
-    /// the order of the input.
-    ///
-    /// # Non-Determinism
-    /// The batch boundaries are non-deterministic and may change across executions.
-    ///
-    /// In simulation tests, the batching decisions can be scripted by attaching a
-    /// [`KeyedBatchHook`](crate::sim_hooks::KeyedBatchHook) to the guard via
-    /// `nondet!(/** reason */ hook = my_hook)`.
-    pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
-        self,
-        tick: &Tick<L2>,
-        mut nondet: NonDet<Option<crate::sim_hooks::KeyedBatchHook<K, V, O, R, L::SimHookScope>>>,
-    ) -> KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R> {
-        assert_eq!(
-            Location::id(tick.parent_location()),
-            Location::id(&self.location)
-        );
-        let mut metadata =
-            tick.new_node_metadata(KeyedStream::<K, V, Tick<L>, Bounded, O, R>::collection_kind());
-        metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
-        KeyedStream::new(
-            tick.drop_consistency(),
-            HydroNode::Batch {
-                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata,
-            },
-        )
-    }
 }
 
 impl<'a, K1, K2, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
@@ -2974,22 +3141,6 @@ impl<'a, K, V, L, O: Ordering, R: Retries> KeyedStream<K, V, Tick<L>, Bounded, O
 where
     L: Location<'a>,
 {
-    /// Asynchronously yields this batch of keyed elements outside the tick as an unbounded keyed stream,
-    /// which will stream all the elements across _all_ tick iterations by concatenating the batches for
-    /// each key.
-    pub fn all_ticks(self) -> KeyedStream<K, V, L, Unbounded, O, R> {
-        KeyedStream::new(
-            self.location.parent_location().clone(),
-            HydroNode::YieldConcat {
-                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .parent_location()
-                    .new_node_metadata(KeyedStream::<K, V, L, Unbounded, O, R>::collection_kind()),
-            },
-        )
-    }
-
     /// Synchronously yields this batch of keyed elements outside the tick as an unbounded keyed stream,
     /// which will stream all the elements across _all_ tick iterations by concatenating the batches for
     /// each key.
@@ -3147,6 +3298,29 @@ where
                     O,
                     R,
                 >::collection_kind()),
+            },
+        )
+    }
+}
+
+impl<'a, K, V, L, O: Ordering, R: Retries, D: Drops> KeyedStream<K, V, Tick<L>, Bounded, O, R, D>
+where
+    L: Location<'a>,
+{
+    /// Asynchronously yields this batch of keyed elements outside the tick as an unbounded keyed stream,
+    /// which will stream all the elements across _all_ tick iterations by concatenating the batches for
+    /// each key.
+    pub fn all_ticks(self) -> KeyedStream<K, V, L, Unbounded, O, R, D> {
+        KeyedStream::new(
+            self.location.parent_location().clone(),
+            HydroNode::YieldConcat {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .parent_location()
+                    .new_node_metadata(
+                        KeyedStream::<K, V, L, Unbounded, O, R, D>::collection_kind(),
+                    ),
             },
         )
     }

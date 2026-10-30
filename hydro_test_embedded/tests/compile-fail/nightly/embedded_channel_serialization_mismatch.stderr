@@ -15,7 +15,7 @@ note: required by a bound in `EmbeddedNetworkOutputChannel::<C, S>::new`
    |
    | impl<C: EmbeddedNetworkChannel, S> EmbeddedNetworkOutputChannel<C, S> {
 ...
-   |     pub fn new<Tr, Ser, O, R>(
+   |     pub fn new<Tr, Ser, O, R, D>(
 ...
-   |         C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<O, R>,
+   |         C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<O, R, D>,
    |            ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `EmbeddedNetworkOutputChannel::<C, S>::new`

@@ -2932,6 +2932,12 @@ pub enum StreamRetry {
     ExactlyOnce,
 }
 
+#[derive(serde::Serialize, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum StreamDrops {
+    NoDrop,
+    MayDrop,
+}
+
 #[cfg(feature = "build")]
 impl StreamOrder {
     /// The `Ordering` type for this order.
@@ -2952,6 +2958,18 @@ impl StreamRetry {
         match self {
             StreamRetry::ExactlyOnce => quote! { #root::live_collections::stream::ExactlyOnce },
             StreamRetry::AtLeastOnce => quote! { #root::live_collections::stream::AtLeastOnce },
+        }
+    }
+}
+
+#[cfg(feature = "build")]
+impl StreamDrops {
+    /// The `Drops` type for this drops guarantee.
+    pub fn type_tokens(&self) -> TokenStream {
+        let root = crate::staging_util::get_this_crate();
+        match self {
+            StreamDrops::NoDrop => quote! { #root::live_collections::stream::NoDrop },
+            StreamDrops::MayDrop => quote! { #root::live_collections::stream::MayDrop },
         }
     }
 }
@@ -2978,25 +2996,30 @@ pub enum CollectionKind {
         bound: BoundKind,
         order: StreamOrder,
         retry: StreamRetry,
+        drops: StreamDrops,
         element_type: DebugType,
     },
     Singleton {
         bound: SingletonBoundKind,
+        drops: StreamDrops,
         element_type: DebugType,
     },
     Optional {
         bound: OptionalBoundKind,
+        drops: StreamDrops,
         element_type: DebugType,
     },
     KeyedStream {
         bound: BoundKind,
         value_order: StreamOrder,
         value_retry: StreamRetry,
+        value_drops: StreamDrops,
         key_type: DebugType,
         value_type: DebugType,
     },
     KeyedSingleton {
         bound: KeyedSingletonBoundKind,
+        drops: StreamDrops,
         key_type: DebugType,
         value_type: DebugType,
     },
@@ -3025,19 +3048,30 @@ impl CollectionKind {
         )
     }
 
-    /// Returns whether this collection kind is already "strict" (`TotalOrder` + `ExactlyOnce`),
+    /// Returns whether this collection kind is already "strict" (`TotalOrder` + `ExactlyOnce` +
+    /// `NoDrop`),
     /// meaning no non-determinism needs to be observed for mut closures.
     pub fn is_strict(&self) -> bool {
         match self {
-            CollectionKind::Stream { order, retry, .. } => {
-                *order == StreamOrder::TotalOrder && *retry == StreamRetry::ExactlyOnce
+            CollectionKind::Stream {
+                order,
+                retry,
+                drops,
+                ..
+            } => {
+                *order == StreamOrder::TotalOrder
+                    && *retry == StreamRetry::ExactlyOnce
+                    && *drops == StreamDrops::NoDrop
             }
             CollectionKind::KeyedStream {
                 value_order,
                 value_retry,
+                value_drops,
                 ..
             } => {
-                *value_order == StreamOrder::TotalOrder && *value_retry == StreamRetry::ExactlyOnce
+                *value_order == StreamOrder::TotalOrder
+                    && *value_retry == StreamRetry::ExactlyOnce
+                    && *value_drops == StreamDrops::NoDrop
             }
             // Singletons/Optionals/KeyedSingletons do not have observable
             // non-determinism other than snapshots / batching
@@ -3085,7 +3119,7 @@ impl CollectionKind {
         )
     }
 
-    /// Creates a "strict" version of this kind with `TotalOrder` and `ExactlyOnce`.
+    /// Creates a "strict" version of this kind with `TotalOrder`, `ExactlyOnce`, and `NoDrop`.
     pub fn strict_kind(&self) -> CollectionKind {
         match self {
             CollectionKind::Stream {
@@ -3096,6 +3130,7 @@ impl CollectionKind {
                 bound: bound.clone(),
                 order: StreamOrder::TotalOrder,
                 retry: StreamRetry::ExactlyOnce,
+                drops: StreamDrops::NoDrop,
                 element_type: element_type.clone(),
             },
             CollectionKind::KeyedStream {
@@ -3107,6 +3142,7 @@ impl CollectionKind {
                 bound: bound.clone(),
                 value_order: StreamOrder::TotalOrder,
                 value_retry: StreamRetry::ExactlyOnce,
+                value_drops: StreamDrops::NoDrop,
                 key_type: key_type.clone(),
                 value_type: value_type.clone(),
             },

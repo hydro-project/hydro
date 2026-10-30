@@ -8,6 +8,7 @@ use crate::nondet::nondet;
 use crate::prelude::FlowBuilder;
 use crate::sim::{SimReceiver, SimSender};
 
+mod drops;
 mod trophies;
 
 // Test is currently broken in nightly.

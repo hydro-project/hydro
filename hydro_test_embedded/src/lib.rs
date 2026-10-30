@@ -67,6 +67,16 @@ pub mod weak_channel {
 }
 
 #[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod lossy_channel {
+    include!(concat!(env!("OUT_DIR"), "/lossy_channel.rs"));
+}
+
 #[cfg(feature = "test_embedded")]
 #[expect(
     clippy::allow_attributes,
@@ -175,7 +185,7 @@ mod tests {
         EmbeddedNetworkInputChannel, EmbeddedNetworkOutputChannel, EmbeddedOutputChannel, Promises,
         SatisfiedBy,
     };
-    use hydro_lang::live_collections::stream::{ExactlyOnce, TotalOrder};
+    use hydro_lang::live_collections::stream::{ExactlyOnce, NoDrop, TotalOrder};
     use hydro_lang::location::MembershipEvent;
     use hydro_lang::location::member_id::TaglessMemberId;
     use hydro_lang::networking::{EMBEDDED, NetworkingConfig, TCP};
@@ -185,7 +195,7 @@ mod tests {
     /// its order and delivers each element once, so it serves any `C` needing at most that.
     fn in_memory<C, S>(inner: S) -> EmbeddedInputChannel<C, S>
     where
-        C: SatisfiedBy<TotalOrder, ExactlyOnce>,
+        C: SatisfiedBy<TotalOrder, ExactlyOnce, NoDrop>,
     {
         EmbeddedInputChannel::new(
             inner,
@@ -195,6 +205,9 @@ mod tests {
                 ))
                 .exactly_once(manual_proof!(
                     /// An in-memory list or queue holds each element once.
+                ))
+                .no_drops(manual_proof!(
+                    /// An in-memory list or queue loses nothing.
                 )),
         )
     }
@@ -207,7 +220,7 @@ mod tests {
         inner: S,
     ) -> EmbeddedNetworkInputChannel<C, S>
     where
-        C: ConfiguredAs<Tr, Ser> + SatisfiedBy<TotalOrder, ExactlyOnce>,
+        C: ConfiguredAs<Tr, Ser> + SatisfiedBy<TotalOrder, ExactlyOnce, NoDrop>,
     {
         EmbeddedNetworkInputChannel::new(
             inner,
@@ -218,6 +231,9 @@ mod tests {
                 ))
                 .exactly_once(manual_proof!(
                     /// An in-memory queue never resends a message.
+                ))
+                .no_drops(manual_proof!(
+                    /// An in-memory queue loses nothing.
                 )),
         )
     }
@@ -230,7 +246,7 @@ mod tests {
         inner: F,
     ) -> EmbeddedNetworkOutputChannel<C, F>
     where
-        C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<TotalOrder, ExactlyOnce>,
+        C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<TotalOrder, ExactlyOnce, NoDrop>,
     {
         EmbeddedNetworkOutputChannel::new(
             inner,
@@ -332,8 +348,12 @@ mod tests {
         };
         let mut flow = crate::at_least_once_input::unique_names(
             crate::at_least_once_input::unique_names::EmbeddedInputs {
-                // The dataflow relies on nothing about this input, so no promises are needed.
-                input: EmbeddedInputChannel::new(input, Promises::new()),
+                // The dataflow relies only on every element arriving, so that is all the host
+                // promises.
+                input: EmbeddedInputChannel::new(
+                    input,
+                    Promises::new().no_drops(manual_proof!(/** the list loses nothing */)),
+                ),
             },
             outputs,
         );
@@ -370,7 +390,7 @@ mod tests {
                 ChannelConfiguration::new(
                     EMBEDDED.never_reorders().never_duplicates().never_drops(),
                 ),
-                Promises::new(),
+                Promises::new().no_drops(manual_proof!(/** the test delivers nothing */)),
             ),
         };
     }
@@ -386,7 +406,7 @@ mod tests {
             messages: EmbeddedNetworkInputChannel::new(
                 stream::empty::<String>(),
                 ChannelConfiguration::new(EMBEDDED.may_reorder().may_duplicate().never_drops()),
-                Promises::new(),
+                Promises::new().no_drops(manual_proof!(/** the test delivers nothing */)),
             ),
         };
         let _net_out = weak_channel_sender::EmbeddedNetworkOut {
@@ -396,6 +416,72 @@ mod tests {
                 Acknowledgements::new(),
             ),
         };
+    }
+
+    // --- lossy_channel (a lossy channel and an input that may be missing elements) ---
+    // `messages` is declared `may_drop()`, so its received stream may be missing messages: its
+    // receiving end needs no promise that nothing is missing, and the output it feeds must
+    // acknowledge that it may be. The `hints` input is declared `MayDrop`, so it needs no such
+    // promise either.
+    #[tokio::test]
+    async fn test_lossy_channel_acknowledges_drops() {
+        use crate::lossy_channel::{lossy_receiver, lossy_sender};
+
+        let mut sent = vec![];
+        let net_out = lossy_sender::EmbeddedNetworkOut {
+            messages: EmbeddedNetworkOutputChannel::new(
+                |s: String| sent.push(s),
+                ChannelConfiguration::new(EMBEDDED.never_reorders().never_duplicates().may_drop()),
+                Acknowledgements::new(),
+            ),
+        };
+        let mut flow = lossy_sender(
+            lossy_sender::EmbeddedInputs {
+                input: in_memory(stream::iter(vec!["a".to_owned(), "b".to_owned()])),
+            },
+            net_out,
+        );
+        flow.run_tick().await;
+        drop(flow);
+
+        let mut received = vec![];
+        let mut hints = vec![];
+        let outputs = lossy_receiver::EmbeddedOutputs {
+            output: EmbeddedOutputChannel::new(
+                |s: String| received.push(s),
+                Acknowledgements::new().may_drop(),
+            ),
+            hints_out: EmbeddedOutputChannel::new(
+                |s: String| hints.push(s),
+                Acknowledgements::new().may_drop(),
+            ),
+        };
+        let mut flow = lossy_receiver(
+            lossy_receiver::EmbeddedInputs {
+                hints: EmbeddedInputChannel::new(
+                    stream::iter(vec!["hint".to_owned()]),
+                    Promises::new()
+                        .total_order(manual_proof!(/** a list keeps its order */))
+                        .exactly_once(manual_proof!(/** a list holds each element once */)),
+                ),
+            },
+            outputs,
+            lossy_receiver::EmbeddedNetworkIn {
+                messages: EmbeddedNetworkInputChannel::new(
+                    stream::iter(sent),
+                    ChannelConfiguration::new(
+                        EMBEDDED.never_reorders().never_duplicates().may_drop(),
+                    ),
+                    Promises::new()
+                        .total_order(manual_proof!(/** a list keeps its order */))
+                        .exactly_once(manual_proof!(/** a list holds each element once */)),
+                ),
+            },
+        );
+        flow.run_tick().await;
+        drop(flow);
+        assert_eq!(received, vec!["a", "b"]);
+        assert_eq!(hints, vec!["hint"]);
     }
 
     // --- singleton_input (singleton + stream, no networking) ---

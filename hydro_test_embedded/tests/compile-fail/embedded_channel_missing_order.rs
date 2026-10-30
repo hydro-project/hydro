@@ -16,7 +16,8 @@ fn main() {
             stream::iter(Vec::<String>::new()),
             ChannelConfiguration::new(EMBEDDED.never_reorders().never_duplicates().never_drops()),
             Promises::new()
-                .exactly_once(manual_proof!(/** each message appears once in the list */)),
+                .exactly_once(manual_proof!(/** each message appears once in the list */))
+                .no_drops(manual_proof!(/** the list loses nothing */)),
         ),
     };
 }

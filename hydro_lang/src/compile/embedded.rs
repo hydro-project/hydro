@@ -288,14 +288,14 @@ fn config_doc(networking_info: &crate::networking::NetworkingInfo, external: boo
         NetworkingInfo::Tcp { fault } => {
             let fault = match fault {
                 TcpFault::FailStop => ".fail_stop()",
-                TcpFault::Lossy => ".lossy(nondet)",
+                TcpFault::Lossy => ".lossy()",
                 TcpFault::LossyDelayedForever => ".lossy_delayed_forever()",
             };
             format!("TCP{fault}{serialization}")
         }
         NetworkingInfo::Udp { fault } => {
             let fault = match fault {
-                UdpFault::Lossy => ".lossy(nondet)",
+                UdpFault::Lossy => ".lossy()",
                 UdpFault::LossyDelayedForever => ".lossy_delayed_forever()",
             };
             format!("UDP{fault}{serialization}")
@@ -316,7 +316,7 @@ fn config_doc(networking_info: &crate::networking::NetworkingInfo, external: boo
             };
             let loss = match fault {
                 EmbeddedFault::FailStop => ".never_drops()",
-                EmbeddedFault::Lossy => ".may_drop(nondet)",
+                EmbeddedFault::Lossy => ".may_drop()",
                 EmbeddedFault::LossyDelayedForever => ".may_delay_forever()",
             };
             format!("EMBEDDED{reorder}{duplicate}{loss}")
@@ -351,25 +351,33 @@ pub struct EmbeddedInstantiateEnv {
     boundary: BoundaryGuarantees,
 }
 
-/// The ordering and retries of a stream crossing the boundary.
+/// The ordering, retries, and drops of a stream crossing the boundary.
 #[derive(Clone, Debug)]
 struct EmbeddedStreamGuarantees {
     order: crate::compile::ir::StreamOrder,
     retry: crate::compile::ir::StreamRetry,
+    drops: crate::compile::ir::StreamDrops,
 }
 
 impl EmbeddedStreamGuarantees {
     fn of(metadata: &crate::compile::ir::HydroIrMetadata, what: &str) -> Self {
         use crate::compile::ir::CollectionKind;
         match &metadata.collection_kind {
-            CollectionKind::Stream { order, retry, .. }
+            CollectionKind::Stream {
+                order,
+                retry,
+                drops,
+                ..
+            }
             | CollectionKind::KeyedStream {
                 value_order: order,
                 value_retry: retry,
+                value_drops: drops,
                 ..
             } => EmbeddedStreamGuarantees {
                 order: order.clone(),
                 retry: retry.clone(),
+                drops: drops.clone(),
             },
             kind => panic!("{what} must be a stream or keyed stream, not {kind:?}"),
         }
@@ -914,6 +922,7 @@ fn marker_def(
 ) -> proc_macro2::TokenStream {
     let ordering = guarantees.order.type_tokens();
     let retries = guarantees.retry.type_tokens();
+    let drops = guarantees.drops.type_tokens();
     quote! {
         #[doc = #doc]
         #[allow(non_camel_case_types, reason = "named after its field")]
@@ -922,6 +931,7 @@ fn marker_def(
         impl #root::compile::embedded_runtime::EmbeddedChannel for #marker {
             type Ordering = #ordering;
             type Retries = #retries;
+            type Drops = #drops;
         }
     }
 }
@@ -936,10 +946,11 @@ fn promise_doc(guarantees: &EmbeddedStreamGuarantees, wrapper: &str) -> String {
 
 /// The `Promises` builder calls that promise exactly `guarantees`.
 fn promises_chain(guarantees: &EmbeddedStreamGuarantees) -> String {
-    use crate::compile::ir::{StreamOrder, StreamRetry};
+    use crate::compile::ir::{StreamDrops, StreamOrder, StreamRetry};
     [
         (guarantees.order == StreamOrder::TotalOrder).then_some(".total_order(proof)"),
         (guarantees.retry == StreamRetry::ExactlyOnce).then_some(".exactly_once(proof)"),
+        (guarantees.drops == StreamDrops::NoDrop).then_some(".no_drops(proof)"),
     ]
     .into_iter()
     .flatten()
@@ -957,10 +968,11 @@ fn acknowledge_doc(guarantees: &EmbeddedStreamGuarantees) -> String {
 
 /// The `Acknowledgements` calls for what a stream with `guarantees` may do.
 fn acknowledgements_chain(guarantees: &EmbeddedStreamGuarantees) -> String {
-    use crate::compile::ir::{StreamOrder, StreamRetry};
+    use crate::compile::ir::{StreamDrops, StreamOrder, StreamRetry};
     [
         (guarantees.order == StreamOrder::NoOrder).then_some(".no_order()"),
         (guarantees.retry == StreamRetry::AtLeastOnce).then_some(".at_least_once()"),
+        (guarantees.drops == StreamDrops::MayDrop).then_some(".may_drop()"),
     ]
     .into_iter()
     .flatten()
@@ -1193,10 +1205,11 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 let mem_item = quote! {
                     (#root::location::member_id::TaglessMemberId, #root::location::MembershipEvent)
                 };
-                // Each member's events, in the order they happened, each once.
+                // Each member's events, in the order they happened, each once, none missing.
                 let mem_guarantees = EmbeddedStreamGuarantees {
                     order: crate::compile::ir::StreamOrder::TotalOrder,
                     retry: crate::compile::ir::StreamRetry::ExactlyOnce,
+                    drops: crate::compile::ir::StreamDrops::NoDrop,
                 };
                 let mem_marker_defs = mem_field_names.iter().map(|field| {
                     marker_def(

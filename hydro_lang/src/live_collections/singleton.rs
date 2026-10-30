@@ -12,15 +12,19 @@ use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::optional::{InitNone, Optional};
 use super::sliced::sliced;
-use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
+use super::stream::{
+    AtLeastOnce, Drops, ExactlyOnce, MayDrop, NoDrop, NoMissingElements, NoOrder, Stream,
+    TotalOrder,
+};
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, OptionalBoundKind, SharedNode,
-    SingletonBoundKind,
+    SingletonBoundKind, StreamDrops,
 };
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
+use crate::liveness::NonLive;
 #[cfg(feature = "tokio")]
 use crate::location::TopLevel;
 #[cfg(stageleft_runtime)]
@@ -113,15 +117,18 @@ impl<B: IsBounded> IsMonotonic for B {}
 /// - `Type`: the type of the value in this singleton
 /// - `Loc`: the [`Location`] where the singleton is materialized
 /// - `Bound`: tracks whether the value is [`Bounded`] (fixed) or [`Unbounded`] (changing asynchronously)
-pub struct Singleton<Type, Loc, Bound: SingletonBound> {
+/// - `Drops`: whether the singleton was aggregated from a stream that may be missing elements
+///   ([`MayDrop`]), so that it may never reach its final value, or not ([`NoDrop`], the default);
+///   reading a `MayDrop` singleton from a tick first requires `observe_drops`
+pub struct Singleton<Type, Loc, Bound: SingletonBound, Dropping: Drops = NoDrop> {
     pub(crate) location: Loc,
     pub(crate) ir_node: Rc<RefCell<HydroNode>>,
     pub(crate) flow_state: FlowState,
 
-    _phantom: PhantomData<(Type, Loc, Bound)>,
+    _phantom: PhantomData<(Type, Loc, Bound, Dropping)>,
 }
 
-impl<T, L, B: SingletonBound> Drop for Singleton<T, L, B> {
+impl<T, L, B: SingletonBound, D: Drops> Drop for Singleton<T, L, B, D> {
     fn drop(&mut self) {
         let ir_node = self.ir_node.replace(HydroNode::Placeholder);
         if !matches!(ir_node, HydroNode::Placeholder) && !ir_node.is_shared_with_others() {
@@ -237,7 +244,7 @@ where
     }
 }
 
-impl<'a, T, L, B: SingletonBound> Clone for Singleton<T, L, B>
+impl<'a, T, L, B: SingletonBound, D: Drops> Clone for Singleton<T, L, B, D>
 where
     T: Clone,
     L: Location<'a>,
@@ -279,7 +286,7 @@ fn zip_inside_tick<'a, T, L: Location<'a>, B: SingletonBound, O>(
     super::optional::zip_inside_tick(me_as_optional, other)
 }
 
-impl<'a, T, L, B: SingletonBound> Singleton<T, L, B>
+impl<'a, T, L, B: SingletonBound, D: Drops> Singleton<T, L, B, D>
 where
     L: Location<'a>,
 {
@@ -295,19 +302,203 @@ where
             _phantom: PhantomData,
         }
     }
-
     pub(crate) fn collection_kind() -> CollectionKind {
         CollectionKind::Singleton {
             bound: B::bound_kind(),
+            drops: D::DROPS_KIND,
             element_type: stageleft::quote_type::<T>().into(),
         }
     }
-
     /// Returns the [`Location`] where this singleton is being materialized.
     pub fn location(&self) -> &L {
         &self.location
     }
+    /// Weakens the consistency of this live collection to not guarantee any consistency across
+    /// cluster members (if this collection is on a cluster).
+    pub fn weaken_consistency(self) -> Singleton<T, L::DropConsistency, B, D>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency()
+            .is_none_or(|c| c == crate::location::dynamic::ClusterConsistency::NoConsistency)
+        {
+            // already no consistency
+            Singleton::new(
+                self.location.drop_consistency(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            Singleton::new(
+                self.location.drop_consistency(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self.location.clone().drop_consistency().new_node_metadata(
+                        Singleton::<T, L::DropConsistency, B, D>::collection_kind(),
+                    ),
+                },
+            )
+        }
+    }
+    /// Casts this live collection to have the consistency guarantees specified in the given
+    /// location type parameter. The developer must ensure that the strengthened consistency
+    /// is actually guaranteed, via the proof field (see [`crate::prelude::manual_proof`]).
+    pub fn assert_has_consistency_of<L2: Location<'a, DropConsistency = L::DropConsistency>>(
+        self,
+        _proof: impl crate::properties::ConsistencyProof,
+    ) -> Singleton<T, L2, B, D>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency() == L2::consistency() {
+            Singleton::new(
+                self.location.with_consistency_of(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            Singleton::new(
+                self.location.with_consistency_of(),
+                HydroNode::AssertIsConsistent {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: false,
+                    metadata: self
+                        .location
+                        .clone()
+                        .with_consistency_of::<L2>()
+                        .new_node_metadata(Singleton::<T, L2, B, D>::collection_kind()),
+                },
+            )
+        }
+    }
+    /// Drops the monotonicity property of the [`Singleton`].
+    pub fn ignore_monotonic(self) -> Singleton<T, L, B::UnderlyingBound, D> {
+        if B::bound_kind() == B::UnderlyingBound::bound_kind() {
+            Singleton::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            Singleton::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self.location.new_node_metadata(Singleton::<
+                        T,
+                        L,
+                        B::UnderlyingBound,
+                        D,
+                    >::collection_kind(
+                    )),
+                },
+            )
+        }
+    }
+    /// Transforms the singleton value by applying a function `f` to it,
+    /// continuously as the input is updated.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let singleton = tick.singleton(q!(5));
+    /// singleton.map(q!(|v| v * 2)).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 10
+    /// # assert_eq!(stream.next().await.unwrap(), 10);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn map<U, F, OP, B2: SingletonBound>(
+        self,
+        f: impl IntoQuotedMut<
+            'a,
+            F,
+            OperatorContext<L, <B as SingletonBound>::UnderlyingBound>,
+            SingletonMapFuncAlgebra<T, <B as SingletonBound>::UnderlyingBound, OP>,
+        >,
+    ) -> Singleton<U, L, B2, D>
+    where
+        F: Fn(T) -> U + 'a,
+        B: ApplyOrderPreservingSingleton<OP, B2>,
+    {
+        let (f, proof) = f
+            .splice_fn1_ctx_props(
+                &OperatorContext::<L, <B as SingletonBound>::UnderlyingBound>::new(&self.location),
+            );
+        let _ = proof.register_proof(&f);
+        let f = f.into();
+        Singleton::new(
+            self.location.clone(),
+            HydroNode::Map {
+                f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(Singleton::<U, L, B2, D>::collection_kind()),
+            },
+        )
+    }
+    /// An operator which allows you to "name" a `HydroNode`.
+    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
+    pub fn ir_node_named(self, name: &str) -> Singleton<T, L, B, D> {
+        {
+            let mut node = self.ir_node.borrow_mut();
+            let metadata = node.metadata_mut();
+            metadata.tag = Some(name.to_owned());
+        }
+        self
+    }
+}
 
+impl<'a, T, L, B: SingletonBound> Singleton<T, L, B, MayDrop>
+where
+    L: Location<'a>,
+{
+    /// Treats this singleton, folded from a stream that may be missing elements, as one that
+    /// eventually reaches the value of the fold over the whole stream.
+    ///
+    /// Its value is always on some trajectory of the fold (the one where the missing elements
+    /// arrive last), so nothing is observed and no `nondet!` is needed. What a `MayDrop`
+    /// singleton withholds is the promise that it eventually reaches the end of a trajectory;
+    /// the [`nonlive!`](crate::liveness::nonlive) explains why the program is acceptable
+    /// without it (the missing elements are retransmitted elsewhere, or the application
+    /// tolerates a value that stops short).
+    ///
+    /// The Hydro simulator cannot tell a missing element from a late one here, so it requires
+    /// `SimFlow::test_safety_only`: it exercises
+    /// safety, holding the dropped elements back, but not liveness.
+    pub fn observe_drops(self, nonlive: NonLive) -> Singleton<T, L, B, NoDrop> {
+        let _ = nonlive;
+        Singleton::new(
+            self.location.clone(),
+            HydroNode::ObserveNonDet {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                trusted: false,
+                metadata: self
+                    .location
+                    .new_node_metadata(Singleton::<T, L, B, NoDrop>::collection_kind()),
+            },
+        )
+    }
+
+    // Reading a `MayDrop` value from a tick is not available. This stand-in exists only so that
+    // calling `snapshot` explains why, through `NoMissingElements`, instead of not finding the
+    // method.
+    #[doc(hidden)]
+    pub fn snapshot<Tk, N>(self, _tick: Tk, _nondet: N) -> std::convert::Infallible
+    where
+        Self: NoMissingElements,
+    {
+        unreachable!()
+    }
+}
+
+impl<'a, T, L, B: SingletonBound> Singleton<T, L, B>
+where
+    L: Location<'a>,
+{
     /// Creates a lightweight reference handle to this singleton that can be captured
     /// inside `q!()` closures. The handle resolves to `&T` at runtime.
     ///
@@ -409,138 +600,6 @@ where
         B: IsBounded,
     {
         crate::handoff_ref::SingletonMut::new(&self.ir_node)
-    }
-
-    /// Weakens the consistency of this live collection to not guarantee any consistency across
-    /// cluster members (if this collection is on a cluster).
-    pub fn weaken_consistency(self) -> Singleton<T, L::DropConsistency, B>
-    where
-        L: Location<'a>,
-    {
-        if L::consistency()
-            .is_none_or(|c| c == crate::location::dynamic::ClusterConsistency::NoConsistency)
-        {
-            // already no consistency
-            Singleton::new(
-                self.location.drop_consistency(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
-        } else {
-            Singleton::new(
-                self.location.drop_consistency(),
-                HydroNode::Cast {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata:
-                        self.location
-                            .clone()
-                            .drop_consistency()
-                            .new_node_metadata(
-                                Singleton::<T, L::DropConsistency, B>::collection_kind(),
-                            ),
-                },
-            )
-        }
-    }
-
-    /// Casts this live collection to have the consistency guarantees specified in the given
-    /// location type parameter. The developer must ensure that the strengthened consistency
-    /// is actually guaranteed, via the proof field (see [`crate::prelude::manual_proof`]).
-    pub fn assert_has_consistency_of<L2: Location<'a, DropConsistency = L::DropConsistency>>(
-        self,
-        _proof: impl crate::properties::ConsistencyProof,
-    ) -> Singleton<T, L2, B>
-    where
-        L: Location<'a>,
-    {
-        if L::consistency() == L2::consistency() {
-            Singleton::new(
-                self.location.with_consistency_of(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
-        } else {
-            Singleton::new(
-                self.location.with_consistency_of(),
-                HydroNode::AssertIsConsistent {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    trusted: false,
-                    metadata: self
-                        .location
-                        .clone()
-                        .with_consistency_of::<L2>()
-                        .new_node_metadata(Singleton::<T, L2, B>::collection_kind()),
-                },
-            )
-        }
-    }
-
-    /// Drops the monotonicity property of the [`Singleton`].
-    pub fn ignore_monotonic(self) -> Singleton<T, L, B::UnderlyingBound> {
-        if B::bound_kind() == B::UnderlyingBound::bound_kind() {
-            Singleton::new(
-                self.location.clone(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
-        } else {
-            Singleton::new(
-                self.location.clone(),
-                HydroNode::Cast {
-                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata:
-                        self.location.new_node_metadata(
-                            Singleton::<T, L, B::UnderlyingBound>::collection_kind(),
-                        ),
-                },
-            )
-        }
-    }
-
-    /// Transforms the singleton value by applying a function `f` to it,
-    /// continuously as the input is updated.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let singleton = tick.singleton(q!(5));
-    /// singleton.map(q!(|v| v * 2)).all_ticks()
-    /// # }, |mut stream| async move {
-    /// // 10
-    /// # assert_eq!(stream.next().await.unwrap(), 10);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn map<U, F, OP, B2: SingletonBound>(
-        self,
-        f: impl IntoQuotedMut<
-            'a,
-            F,
-            OperatorContext<L, <B as SingletonBound>::UnderlyingBound>,
-            SingletonMapFuncAlgebra<T, <B as SingletonBound>::UnderlyingBound, OP>,
-        >,
-    ) -> Singleton<U, L, B2>
-    where
-        F: Fn(T) -> U + 'a,
-        B: ApplyOrderPreservingSingleton<OP, B2>,
-    {
-        let (f, proof) = f
-            .splice_fn1_ctx_props(
-                &OperatorContext::<L, <B as SingletonBound>::UnderlyingBound>::new(&self.location),
-            );
-        let _ = proof.register_proof(&f);
-        let f = f.into();
-        Singleton::new(
-            self.location.clone(),
-            HydroNode::Map {
-                f,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(Singleton::<U, L, B2>::collection_kind()),
-            },
-        )
     }
 
     /// Transforms the singleton value by applying a function `f` to it and then flattening
@@ -867,6 +926,7 @@ where
                     right: Box::new(Self::other_ir_node(other)),
                     metadata: self.location.new_node_metadata(CollectionKind::Optional {
                         bound: OptionalBoundKind::Bounded,
+                        drops: StreamDrops::NoDrop,
                         element_type: stageleft::quote_type::<
                             <Self as ZipResult<'a, O>>::ElementType,
                         >()
@@ -1101,17 +1161,6 @@ where
                 )
             }
         }
-    }
-
-    /// An operator which allows you to "name" a `HydroNode`.
-    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
-    pub fn ir_node_named(self, name: &str) -> Singleton<T, L, B> {
-        {
-            let mut node = self.ir_node.borrow_mut();
-            let metadata = node.metadata_mut();
-            metadata.tag = Some(name.to_owned());
-        }
-        self
     }
 }
 
