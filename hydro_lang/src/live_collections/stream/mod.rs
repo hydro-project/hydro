@@ -3611,6 +3611,9 @@ mod tests {
         let external = flow.external::<()>();
 
         let node_tick = node.tick();
+        // Tick-located constants are lazy and never fire the tick on their own, so a spinning
+        // batch drives `node_tick`.
+        node_tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
         let count = node_tick
             .singleton(q!([1, 2, 3]))
             .into_stream()
@@ -4086,23 +4089,40 @@ mod tests {
         let node = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
+        // Snapshot ingress is lazy and never wakes the tick on its own, so an auxiliary
+        // trigger stream drives the tick.
+        let (trigger_send, trigger) = node.sim_input::<i32, TotalOrder, _>();
 
         let tick = node.tick();
-        let out_recv = input
-            .count()
-            .snapshot(&tick, nondet!(/** test */))
+        let out_recv = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(input.count().snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|(_, v)| v))
             .all_ticks()
             .sim_output();
 
+        let mut observed = std::collections::HashSet::new();
+
         let instance_count = flow.sim().exhaustive(async || {
             in_send.send_many_unordered([1, 2, 3, 4]);
-            assert_eq!(out_recv.collect::<Vec<_>>().await.last(), Some(&4));
+            trigger_send.send(1);
+            let out = out_recv.collect::<Vec<_>>().await;
+            // The single trigger drives exactly one tick, which observes one snapshot of
+            // the count.
+            assert_eq!(out.len(), 1);
+            observed.insert(out[0]);
         });
 
         assert_eq!(
             instance_count,
-            16 // 2^4, { 0, 1, 2, 3 } can be a snapshot and 4 is always included
-        )
+            5 // one instance per intermediate count (including the initial state 0)
+        );
+        assert_eq!(
+            observed,
+            [0, 1, 2, 3, 4]
+                .into_iter()
+                .collect::<std::collections::HashSet<_>>()
+        );
     }
 
     #[cfg(feature = "sim")]

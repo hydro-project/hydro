@@ -2591,24 +2591,52 @@ mod tests {
         let node = flow.process::<()>();
 
         let (input_port, input) = node.sim_input();
+        // Snapshot ingress is lazy and never wakes the tick on its own, so an auxiliary
+        // trigger stream drives the tick.
+        let (trigger_port, trigger) = node.sim_input::<i32, _, _>();
+
+        let tick = node.tick();
         let output = input
             .into_keyed()
             .fold(q!(|| 0), q!(|acc, _| *acc += 1))
-            .snapshot(&node.tick(), nondet!(/** test */))
+            .snapshot(&tick, nondet!(/** test */))
             .entries()
+            .cross_singleton(trigger.batch(&tick, nondet!(/** test */)).count())
+            .map(q!(|(entry, _)| entry))
             .all_ticks()
             .sim_output();
+
+        let mut saw_final_state = false;
 
         let count = flow.sim().exhaustive(async || {
             input_port.send((1, 123));
             input_port.send((1, 456));
             input_port.send((2, 123));
+            trigger_port.send(1);
 
+            // The single trigger drives exactly one tick, which observes a per-key
+            // snapshot of the keyed fold (each key may be withheld or revealed at any
+            // of its buffered versions).
             let all = output.collect_sorted::<Vec<_>>().await;
-            assert_eq!(all.last().unwrap(), &(2, 1));
+            let mut last_by_key = std::collections::HashMap::new();
+            for (k, v) in all {
+                match k {
+                    1 => assert!([1, 2].contains(&v), "invalid version for key 1: {v}"),
+                    2 => assert_eq!(v, 1, "invalid version for key 2"),
+                    _ => panic!("unexpected key: {k}"),
+                }
+                last_by_key.insert(k, v);
+            }
+            if last_by_key.get(&1) == Some(&2) && last_by_key.get(&2) == Some(&1) {
+                saw_final_state = true;
+            }
         });
 
-        assert_eq!(count, 8);
+        // Some schedule must reveal the fully folded value for every key.
+        assert!(saw_final_state);
+        // 3 choices for key 1 (withheld, reveal 1, reveal 2) × 2 choices for key 2
+        // (withheld, reveal 1).
+        assert_eq!(count, 6);
     }
 
     #[cfg(feature = "deploy")]

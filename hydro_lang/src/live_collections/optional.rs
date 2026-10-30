@@ -2202,6 +2202,9 @@ mod tests {
         let external = flow.external::<()>();
 
         let node_tick = node.tick();
+        // Tick-located constants are lazy and never fire the tick on their own, so a spinning
+        // batch drives `node_tick`.
+        node_tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
         let tick_singleton = node_tick.singleton(q!(123));
         let tick_optional_inhabited: Optional<_, _, _> = tick_singleton.into();
         let counts = tick_optional_inhabited
@@ -2275,8 +2278,11 @@ mod tests {
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let top_level_none = node
-            .tick()
+        let none_tick = node.tick();
+        // Tick-located constants are lazy and never fire the tick on their own, so a spinning
+        // batch drives `none_tick`.
+        none_tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+        let top_level_none = none_tick
             .singleton(q!(123))
             .latest()
             .filter(q!(|_| false));

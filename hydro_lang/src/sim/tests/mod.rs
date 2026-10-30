@@ -855,22 +855,28 @@ fn sim_fold_commutative_explores_all_subset_sums() {
 fn sim_fold_total_order_no_permutation() {
     // Non-commutative fold on TotalOrder: no hook emitted, order is fixed.
     // Every intermediate must be a prefix-concatenation of "a","b","c".
+    //
+    // Snapshot ingress is lazy: a new accumulator version never wakes the tick on its
+    // own, so an auxiliary trigger stream drives the tick and the snapshot is revealed
+    // only when the tick fires on the trigger's account.
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
 
+    let (trigger_send, trigger) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
     let source = node.source_stream(q!(tokio_stream::iter(vec!["a", "b", "c"])));
     let folded = source.fold(q!(|| String::new()), q!(|acc, v| acc.push_str(v)));
     let out_recv = sliced! {
+        let trigger = use::batch(trigger, nondet!(/** test */));
         let snapshot = use::snapshot(folded, nondet!(/** test */));
-        snapshot.into_stream()
+        trigger.cross_singleton(snapshot).map(q!(|(_, s)| s))
     }
     .sim_output();
 
     let mut all_observed = std::collections::HashSet::new();
 
     flow.sim().exhaustive(async || {
+        trigger_send.send_many([1, 2]);
         let all: Vec<String> = out_recv.collect().await;
-        assert_eq!(all.last().unwrap(), "abc");
         for v in all {
             all_observed.insert(v);
         }
@@ -884,6 +890,12 @@ fn sim_fold_total_order_no_permutation() {
             v
         );
     }
+    // Some schedule must reveal the fully folded value.
+    assert!(
+        all_observed.contains("abc"),
+        "the final accumulator state was never observed: {:?}",
+        all_observed
+    );
 }
 
 #[test]
@@ -891,9 +903,13 @@ fn sim_fold_keyed_no_order() {
     use crate::live_collections::stream::NoOrder;
     use crate::properties::manual_proof;
 
+    // Snapshot ingress is lazy: new per-key accumulator versions never wake the tick on
+    // their own, so an auxiliary trigger stream drives the tick and the keyed snapshot
+    // is revealed only when the tick fires on the trigger's account.
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
     let (in_send, input) = node.sim_input::<(u32, i32), NoOrder, ExactlyOnce>();
+    let (trigger_send, trigger) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
 
     let folded = input.into_keyed().fold(
         q!(|| 0),
@@ -903,21 +919,41 @@ fn sim_fold_keyed_no_order() {
         ),
     );
     let out_recv = sliced! {
+        let trigger = use::batch(trigger, nondet!(/** test */));
         let snapshot = use::snapshot(folded, nondet!(/** test */));
-        snapshot.entries()
+        snapshot
+            .entries()
+            .cross_singleton(trigger.count())
+            .map(q!(|(entry, _)| entry))
     }
     .sim_output();
 
+    let mut saw_final_state = false;
+
     flow.sim().exhaustive(async || {
         in_send.send_many_unordered([(1, 10), (2, 20), (1, 30)]);
+        trigger_send.send_many([1, 2]);
         let all: Vec<(u32, i32)> = out_recv.collect_sorted().await;
         let mut last_by_key = std::collections::HashMap::new();
         for (k, v) in all {
+            // Every revealed version must be a valid partial sum for its key.
+            match k {
+                1 => assert!([10, 30, 40].contains(&v), "invalid version for key 1: {v}"),
+                2 => assert_eq!(v, 20, "invalid version for key 2"),
+                _ => panic!("unexpected key: {k}"),
+            }
             last_by_key.insert(k, v);
         }
-        assert_eq!(last_by_key.get(&1), Some(&40));
-        assert_eq!(last_by_key.get(&2), Some(&20));
+        if last_by_key.get(&1) == Some(&40) && last_by_key.get(&2) == Some(&20) {
+            saw_final_state = true;
+        }
     });
+
+    // Some schedule must reveal the fully folded value for every key.
+    assert!(
+        saw_final_state,
+        "the final accumulator state was never observed for both keys"
+    );
 }
 
 /// Batching a `BoundedValue` keyed singleton (each key's value is fixed once it appears) is
@@ -999,48 +1035,63 @@ fn sim_fold_tee_downstream_sees_different_subsets() {
     use std::collections::HashSet;
 
     // Two downstream consumers of the same fold([1, 2, 3]) accumulator can
-    // independently snapshot at different times. One might see {3, 6} while
-    // the other sees {1, 3, 6} — they are not forced to observe the same
-    // intermediate states.
+    // independently snapshot at different times. One might see 3 while the other sees
+    // 6 — they are not forced to observe the same intermediate states.
+    //
+    // Snapshot ingress is lazy: new accumulator versions never wake either tick on
+    // their own, so an auxiliary trigger stream (cloned into both slices) drives the
+    // ticks and each snapshot is revealed only when its tick fires on the trigger's
+    // account.
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
 
+    let (trigger_send, trigger) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
     let source = node.source_stream(q!(tokio_stream::iter(vec![1, 2, 3])));
     let folded = source.fold(q!(|| 0), q!(|acc, v| *acc += v));
 
     let out_a = sliced! {
+        let trigger = use::batch(trigger.clone(), nondet!(/** test */));
         let snapshot = use::snapshot(folded.clone(), nondet!(/** test */));
-        snapshot.into_stream()
+        trigger.cross_singleton(snapshot).map(q!(|(_, s)| s))
     }
     .sim_output();
 
     let out_b = sliced! {
+        let trigger = use::batch(trigger, nondet!(/** test */));
         let snapshot = use::snapshot(folded, nondet!(/** test */));
-        snapshot.into_stream()
+        trigger.cross_singleton(snapshot).map(q!(|(_, s)| s))
     }
     .sim_output();
 
     let mut observed_pairs: HashSet<(Vec<i32>, Vec<i32>)> = HashSet::new();
 
     flow.sim().exhaustive(async || {
+        trigger_send.send(0);
         let a_values: Vec<i32> = out_a.collect().await;
         let b_values: Vec<i32> = out_b.collect().await;
 
-        // Both must end at 6 (1+2+3)
-        assert_eq!(*a_values.last().unwrap(), 6);
-        assert_eq!(*b_values.last().unwrap(), 6);
+        // Every observed value must be a valid intermediate state of the fold.
+        for v in a_values.iter().chain(b_values.iter()) {
+            assert!([0, 1, 3, 6].contains(v), "Unexpected intermediate: {v}");
+        }
 
         observed_pairs.insert((a_values, b_values));
     });
 
     // There must exist at least one execution where the two downstreams
-    // observed different sequences of intermediate states.
+    // observed different intermediate states.
     #[expect(clippy::disallowed_methods, reason = "order is not used in test")]
     let has_divergent = observed_pairs.iter().any(|(a, b)| a != b);
     assert!(
         has_divergent,
         "Expected at least one execution where downstream consumers see different intermediate states, \
          but all observed pairs were identical: {:?}",
+        observed_pairs
+    );
+    // Some schedule must reveal the fully folded value to both consumers.
+    assert!(
+        observed_pairs.contains(&(vec![6], vec![6])),
+        "the final accumulator state was never observed by both consumers: {:?}",
         observed_pairs
     );
 }

@@ -3229,11 +3229,17 @@ mod tests {
 
         let node_tick = node.tick();
         let watermark = node_tick.singleton(q!(2));
+        // Tick-located constants are lazy and never fire the tick on their own, so a spinning
+        // batch drives `node_tick`.
+        node_tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
 
         // The reduce produces a top-level value driven by `node_tick`'s watermark. Snapshot it
         // in a *distinct* tick so we don't re-enter `node_tick` (which supplied an input to the
         // reduce), which is not representable as a DFIR loop.
         let snapshot_tick = node.tick();
+        // Snapshot ingress is lazy and never fires the tick on its own, so a spinning
+        // driver stream fires `snapshot_tick` every tick.
+        let tick_driver = node.spin();
         let sum = node
             .source_stream(q!(tokio_stream::iter([
                 (0, 100),
@@ -3250,6 +3256,12 @@ mod tests {
             )
             .snapshot(&snapshot_tick, nondet!(/** test */))
             .entries()
+            .cross_singleton(
+                tick_driver
+                    .batch(&snapshot_tick, nondet!(/** test */))
+                    .count(),
+            )
+            .map(q!(|(entry, _)| entry))
             .all_ticks()
             .send_bincode_external(&external);
 
@@ -3278,6 +3290,9 @@ mod tests {
 
         let node_tick = node.tick();
         let watermark = node_tick.singleton(q!(2));
+        // Tick-located constants are lazy and never fire the tick on their own, so a spinning
+        // batch drives `node_tick`.
+        node_tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
 
         let sum = node
             .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
@@ -3339,13 +3354,21 @@ mod tests {
         // `node_tick` — a value that already exited that tick coming back into it is not
         // representable as a DFIR loop.
         let snapshot_tick = node.tick();
-        let sum = node
-            .source_stream(q!(tokio_stream::iter([
-                (0, 100),
-                (1, 101),
-                (2, 102),
-                (2, 102)
-            ])))
+        let input = node.source_stream(q!(tokio_stream::iter([
+            (0, 100),
+            (1, 101),
+            (2, 102),
+            (2, 102)
+        ])));
+        // Snapshot ingress is lazy and never fires the tick on its own, so the test's own
+        // inputs (the source and the trigger) fire `snapshot_tick`. A spinning driver would
+        // not work here: it would advance `node_tick`'s watermark cycle every tick, garbage
+        // collecting key 3 before the trigger's `(3, 103)` arrives.
+        let tick_driver = input
+            .clone()
+            .map(q!(|_| ()))
+            .merge_unordered(tick_trigger.clone());
+        let sum = input
             .merge_unordered(tick_triggered_input)
             .into_keyed()
             .reduce_watermark(
@@ -3359,6 +3382,12 @@ mod tests {
             )
             .snapshot(&snapshot_tick, nondet!(/** test */))
             .entries()
+            .cross_singleton(
+                tick_driver
+                    .batch(&snapshot_tick, nondet!(/** test */))
+                    .count(),
+            )
+            .map(q!(|(entry, _)| entry))
             .all_ticks()
             .send_bincode_external(&external);
 
