@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1793356669387,
+  "lastUpdate": 1793441327674,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -320117,6 +320117,208 @@
             "name": "paxos_bench",
             "value": 216620,
             "range": "± 1410.53",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "2dd1788574a55435fd2c9b5bff6958e32a85415f",
+          "message": "fix(hydro_lang, hydro_concurrent_cargo): give each trybuild flow its own cargo unit and skip relinking unchanged artifacts [ci-full] (#3263)\n\n[ci-full]\n\nFixes the Windows `Access is denied` failures in the `ci-main` test jobs\nof #3254 (`cluster::raft::tests::{heartbeats_converge_leader_views,\nconcurrent_elections_never_fork_the_committed_log}`), and removes a\nneedless relink of the simulator's generated program on every flow\nswitch, on all platforms.\n\n## Symptom\n\nSince #3250, `compile_trybuild_example` hard-links cargo's artifact to\n`debug/deps/hydro-coverage/{bin_name}-{fingerprint}-{artifact}` via a\nstaging name and a `rename` over the final name. On Windows CI (stable\nand nightly) the `rename` failed whenever a concurrent test process had\nalready built the same flow and had that `.dll` loaded: Windows refuses\nto unlink the last link of a mapped image.\n\nThat should never have happened: a concurrent build of the same flow\nshares the job dir (keyed by `bin_name`) and should find cargo's build\nup to date, in which case the persisted link already *is* cargo's\noutput. Capturing cargo's fingerprint log in CI showed the real cause —\nthe `sim-dylib` example was being rebuilt even though nothing about the\nflow had changed:\n\n```\nstale: changed env \"TRYBUILD_LIB_NAME\"   Some(\"4AE0DA04\") != Some(\"A88A2B93\")\n```\n\n## Root causes (one per build-dir layout)\n\n- **Legacy layout (stable).** The simulator builds the fixed `sim-dylib`\nexample in every job, varying only `TRYBUILD_LIB_NAME`, which affects\nthe unit's *freshness* but not its *hash*. All jobs therefore shared one\n`.fingerprint/` entry and one `deps/` output (both symlinked to the\nshared `target/debug/`), so every flow switch invalidated and relinked\nthe example (~8s each) and replaced the previous flow's inode. Linux and\nmacOS escaped this only because the per-job `-rpath` link args happen to\nbe folded into cargo's unit hash. **Fix:** the final `cargo rustc` now\npasses `-Cmetadata={bin_name}` on every platform, giving each flow its\nown cargo unit deliberately.\n\n- **New layout (nightly).** `populate_job_build_dir` wiped the job's\n`build/` on every final build — which under this layout is where the\njob's own example unit (fingerprint and output) lives — so every build\nrelinked. **Fix:** it now syncs the symlink mirror incrementally and\nleaves job-local entries alone.\n\n## Also\n\n- `compile_trybuild_example` skips relinking when `persisted` already is\nthe file cargo reported (`same_file::is_same_file`): the correct no-op\nfor the concurrent-build case, and on Windows the only thing that works\nwhile another process has it mapped. `same-file = \"1\"` (already in\n`Cargo.lock` via `walkdir`) becomes an optional dependency of the\n`trybuild` feature.\n- A `rename` failure now reports both paths instead of a bare `unwrap`.\n\n## Testing\n\n- Building flow A, then B, then A again keeps A's inode (link count 3)\nand the third run takes 0.4s instead of relinking — on both stable\n(legacy layout) and nightly (new layout, which previously relinked every\ntime).\n- `cargo clippy -p hydro_lang -p hydro_concurrent_cargo --features\nhydro_lang/sim,hydro_lang/maelstrom,hydro_lang/deploy --all-targets --\n-D warnings` is clean; sim tests pass with no leftover `.tmp` files.\n- Full CI matrix, including the previously failing Windows jobs, is\ngreen.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-10-30T16:47:21Z",
+          "url": "https://github.com/hydro-project/hydro/commit/2dd1788574a55435fd2c9b5bff6958e32a85415f"
+        },
+        "date": 1793441327591,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311466,
+            "range": "± 9658",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6537015,
+            "range": "± 7038",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6850206,
+            "range": "± 6613",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 11311,
+            "range": "± 393",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 8450268,
+            "range": "± 248810",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 947979,
+            "range": "± 2045",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1014761,
+            "range": "± 18951",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 54224768,
+            "range": "± 1527657",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6539605,
+            "range": "± 7298",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 41798426,
+            "range": "± 186906",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6537820,
+            "range": "± 49422",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6849868,
+            "range": "± 23464",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 39527933,
+            "range": "± 213467",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 6382,
+            "range": "± 79",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22378,
+            "range": "± 99",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 3889,
+            "range": "± 45",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6624,
+            "range": "± 84",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 373877,
+            "range": "± 771",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 62045,
+            "range": "± 1137",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 40847,
+            "range": "± 334",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 15000,
+            "range": "± 634",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6913,
+            "range": "± 142",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1050,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 75072,
+            "range": "± 187",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 77889,
+            "range": "± 188",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 6813,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15771,
+            "range": "± 315",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 26843,
+            "range": "± 475",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7036,
+            "range": "± 76",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 209820,
+            "range": "± 10413.34",
             "unit": "ops/s"
           }
         ]
