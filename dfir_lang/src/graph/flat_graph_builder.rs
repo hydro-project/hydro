@@ -1243,6 +1243,56 @@ impl FlatGraphBuilder {
                 }
             }
         }
+
+        // A root-level loop only ever fires on account of a non-lazy windowing input
+        // (`batch()` / `batch_eager()`) or a non-lazy `defer_tick()` back-edge. Lazy
+        // windowing inputs (`batch_lazy()` / `snapshot()`) deliberately never fire the
+        // loop, so a root-level loop whose inputs are *all* lazy could never fire — a
+        // logical bug. Reject it here instead of silently generating a loop body that
+        // never runs.
+        for (loop_id, loop_nodes) in self.flat_graph.loops() {
+            if self.flat_graph.loop_parent(loop_id).is_some() {
+                // Nested loops iterate within a single firing of their parent, driven by
+                // the parent's data; this check is about tick-level (root) scheduling.
+                continue;
+            }
+
+            let mut lazy_entry_spans = Vec::new();
+            let mut has_firing_cause = false;
+            for &node_id in loop_nodes {
+                let Some(op_inst) = self.flat_graph.node_op_inst(node_id) else {
+                    continue;
+                };
+                match op_inst.op_constraints.flo_type {
+                    Some(FloType::Windowing | FloType::WindowingEager) => {
+                        has_firing_cause = true;
+                    }
+                    Some(FloType::WindowingLazy | FloType::WindowingRetain) => {
+                        lazy_entry_spans.push(self.flat_graph.node(node_id).span());
+                    }
+                    _ => {
+                        // A non-lazy `defer_tick()` back-edge fires the loop on the next
+                        // tick whenever it holds deferred data.
+                        let delay_type = (op_inst.op_constraints.input_delaytype_fn)(
+                            &PortIndexValue::Elided(None),
+                        );
+                        if Some(DelayType::Tick) == delay_type {
+                            has_firing_cause = true;
+                        }
+                    }
+                }
+            }
+
+            if !has_firing_cause && !lazy_entry_spans.is_empty() {
+                for span in lazy_entry_spans {
+                    self.diagnostics.push(Diagnostic::spanned(
+                        span,
+                        Level::Error,
+                        "Root-level `loop { ... }` can never fire: all of its windowing inputs are lazy (`batch_lazy()` / `snapshot()`), which never cause the loop to fire on their own, and it has no `defer_tick()` back-edge. Add at least one non-lazy windowing input (`batch()` / `batch_eager()`) or a `defer_tick()`.",
+                    ));
+                }
+            }
+        }
     }
 }
 

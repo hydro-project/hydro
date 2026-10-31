@@ -487,13 +487,17 @@ pub trait DfirBuilder {
     ///
     /// * `source_rhs` is the source pipeline (the right-hand side of the `=` assignment, e.g.
     ///   `source_iter([123])`).
+    /// * `kind` is the collection kind of the source's output: production windows replayed
+    ///   stream-like sources in with `snapshot_prefix()` and singleton-like ones with
+    ///   `snapshot()`.
     /// * `replay_each_tick` selects whether the value is re-emitted on every tick/firing
     ///   (persisted) or delivered only on the first tick/firing.
     ///
     /// TODO(#2902): eventually this should not be an option here; instead the IR should model
     /// the source as living outside the tick, windowed in through a `batch_persist()` loop
     /// ingress operator when it should replay on every firing (the production impl already
-    /// lowers to exactly that shape: a root-level source + `persist()` + windowing).
+    /// lowers to exactly that shape: a root-level source + a persistent lazy windowing
+    /// operator).
     ///
     /// The default (simulation) emission places the source directly in the tick's own graph.
     /// Production overrides this since DFIR sources must be at the root level, outside of the
@@ -504,6 +508,7 @@ pub trait DfirBuilder {
         location: &LocationId,
         source_rhs: TokenStream,
         out_ident: &syn::Ident,
+        kind: &CollectionKind,
         replay_each_tick: bool,
         operator_tag: Option<&str>,
     );
@@ -810,28 +815,47 @@ impl DfirBuilder for ProdDfirBuilder {
         location: &LocationId,
         source_rhs: TokenStream,
         out_ident: &syn::Ident,
+        kind: &CollectionKind,
         replay_each_tick: bool,
         operator_tag: Option<&str>,
     ) {
         // DFIR sources must be at the root level, not inside a `loop { ... }` context. Emit the
-        // source at the root (persisting it there when it should replay every tick, since
-        // `persist` is not permitted inside a loop), then window it into the tick's loop.
+        // source at the root, then window it into the tick's loop. Every windowing choice here
+        // is lazy: a tick-located source never causes its tick to fire on its own (only
+        // stream inputs batched in from outside the tick do).
         let source_ident = self.intermediate_ident();
-        let source_stmt = if replay_each_tick {
-            parse_quote! {
-                #source_ident = #source_rhs -> persist::<'static>();
-            }
-        } else {
+        self.graph_mut(location).add_dfir(
             parse_quote! {
                 #source_ident = #source_rhs;
+            },
+            None,
+            operator_tag,
+        );
+        let windowing: syn::Ident = if !replay_each_tick {
+            // Delivered only on the first tick: the root source emits only on the first DFIR
+            // tick, and the value is observed only if the tick fires during it.
+            parse_quote!(batch_lazy)
+        } else {
+            match kind {
+                // A replayed stream: `snapshot_prefix()` retains every element in a persistent
+                // buffer that each firing observes in full (so no `persist` is needed).
+                CollectionKind::Stream { .. } | CollectionKind::KeyedStream { .. } => {
+                    parse_quote!(snapshot_prefix)
+                }
+                // A replayed singleton-like value: `snapshot()` holds it in a persistent cell
+                // that each firing observes (so no `persist` is needed).
+                CollectionKind::Singleton { .. } | CollectionKind::Optional { .. } => {
+                    parse_quote!(snapshot)
+                }
+                CollectionKind::KeyedSingleton { .. } => {
+                    unimplemented!("tick-located keyed singleton sources are not supported")
+                }
             }
         };
-        self.graph_mut(location)
-            .add_dfir(source_stmt, None, operator_tag);
         self.add_dfir_in(
             location,
             parse_quote! {
-                #out_ident = #source_ident -> batch_eager();
+                #out_ident = #source_ident -> #windowing();
             },
             operator_tag,
         );
@@ -950,79 +974,52 @@ impl DfirBuilder for ProdDfirBuilder {
             }
             (None, Some(_)) => {
                 // Entering the tick's loop from the top level: emit a windowing operator.
-                // `batch_eager()` preserves the pre-loop tick semantics: the loop fires on every
-                // tick even when the windowed input is empty.
-                //
                 // NOTE: this is the single point deciding how singleton-like values are windowed
-                // into a tick; when ticks become lazy (#2902 phase 2), the windowing operator
-                // for the held-state paths below should become `batch_lazy()` (snapshots must
-                // not cause the tick to fire on their own).
+                // into a tick. Snapshot ingress never causes the tick to fire on its own — the
+                // tick runs only when gated by a stream batch, a `defer_tick` back-edge, or a
+                // source. All arms window in with DFIR `snapshot()`: a persistent last-write-wins
+                // cell that is *not* consumed when the loop fires, so every firing observes the
+                // latest value, no matter how many ticks passed without the loop firing, and no
+                // update is ever missed (even for emit-on-change producers such as
+                // `Optional::latest()` yields or watermark deltas). Memory is bounded by the
+                // single held value.
                 //
-                // TODO: the held-state paths below (`batch_eager()` + cross-firing `fold`)
-                // could eventually be a dedicated `snapshot_last()`-style windowing operator,
-                // which would let each firing observe the held value by reference instead of
-                // `fold` cloning its accumulator to emit it downstream every firing.
+                // `snapshot()` holds exactly one item, so it fits singleton-like feeds (each item
+                // is the whole current value). Keyed feeds carry one entry per item, so they use
+                // `snapshot_keyed()`, which holds the latest value per key.
                 match in_kind {
-                    // A singleton (any bound), or a bounded / `InitNone` optional, which share the
-                    // plain `T`-update representation, arrives as a feed of updated values (a
-                    // bounded value or a constant arrives exactly once, and root feeds are not
-                    // replayed). Hold the latest update across firings so each firing observes
-                    // the current value even if no update arrived since the previous firing. Until
-                    // the first update arrives the state is `None`: for a singleton the first
-                    // update arrives before any consumer could observe it (the upstream
+                    // Singletons and optionals whose root representation is a feed of plain `T`
+                    // updates (or a single value, if bounded). The cell holds the latest one.
+                    // Until the first update arrives the snapshot is empty: for a singleton the
+                    // first update arrives before any consumer could observe it (the upstream
                     // aggregation emits its initial value immediately), and for an optional
-                    // "no update yet" genuinely means null.
+                    // "no value yet" genuinely means null.
                     CollectionKind::Singleton { .. }
                     | CollectionKind::Optional {
                         bound: OptionalBoundKind::Bounded | OptionalBoundKind::InitNone,
                         ..
                     } => {
-                        let batched_ident = self.intermediate_ident();
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
-                                #batched_ident = #in_ident -> batch_eager();
-                            },
-                            None,
-                        );
-                        let lifetime: TokenStream = self.cross_tick_state_lifetime(out_location);
-                        let lifetime: syn::Lifetime = syn::parse2(lifetime).unwrap();
-                        self.add_dfir_in(
-                            out_location,
-                            parse_quote! {
-                                #out_ident = #batched_ident
-                                    -> fold::<#lifetime>(|| None, |current, update| { *current = Some(update); })
-                                    -> filter_map(|current| current);
+                                #out_ident = #in_ident -> snapshot();
                             },
                             None,
                         );
                     }
 
                     // A root unbounded optional is a tombstoned update feed of `Option<T>`
-                    // (see [`CollectionKind::root_repr_is_tombstoned_update_feed`]). Hold the
-                    // latest update across firings directly as the current `Option<T>` value:
-                    // "no update yet" and "latest update is a tombstone" both leave the state
-                    // `None`, and both mean the optional is currently null.
+                    // (see [`CollectionKind::root_repr_is_tombstoned_update_feed`]). The cell
+                    // holds the latest `Option<T>`: a tombstone (or no update yet) means the
+                    // optional is currently null.
                     CollectionKind::Optional {
                         bound: OptionalBoundKind::Unbounded,
                         ..
                     } => {
-                        let batched_ident = self.intermediate_ident();
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
-                                #batched_ident = #in_ident -> batch_eager();
-                            },
-                            None,
-                        );
-                        let lifetime: TokenStream = self.cross_tick_state_lifetime(out_location);
-                        let lifetime: syn::Lifetime = syn::parse2(lifetime).unwrap();
-                        self.add_dfir_in(
-                            out_location,
-                            parse_quote! {
-                                #out_ident = #batched_ident
-                                    -> fold::<#lifetime>(|| None, |current, update| { *current = update; })
-                                    -> filter_map(|current| current);
+                                #out_ident = #in_ident -> snapshot() -> flatten();
                             },
                             None,
                         );
@@ -1030,48 +1027,25 @@ impl DfirBuilder for ProdDfirBuilder {
 
                     // A root unbounded keyed singleton is a tombstoned update feed of
                     // `(K, Option<V>)` (see
-                    // [`CollectionKind::root_repr_is_tombstoned_update_feed`]). Hold the
-                    // current entry map across firings by applying upserts and tombstones,
-                    // then emit the entries each firing.
+                    // [`CollectionKind::root_repr_is_tombstoned_update_feed`]), which is exactly
+                    // the update feed `snapshot_keyed()` applies (upserts and removals).
                     CollectionKind::KeyedSingleton {
                         bound: KeyedSingletonBoundKind::Unbounded,
                         ..
                     } => {
-                        let batched_ident = self.intermediate_ident();
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
-                                #batched_ident = #in_ident -> batch_eager();
-                            },
-                            None,
-                        );
-                        let lifetime: TokenStream = self.cross_tick_state_lifetime(out_location);
-                        let lifetime: syn::Lifetime = syn::parse2(lifetime).unwrap();
-                        self.add_dfir_in(
-                            out_location,
-                            parse_quote! {
-                                #out_ident = #batched_ident
-                                    -> fold::<#lifetime>(|| ::std::collections::HashMap::new(), |current, (key, update)| {
-                                        match update {
-                                            ::std::option::Option::Some(value) => {
-                                                current.insert(key, value);
-                                            }
-                                            ::std::option::Option::None => {
-                                                current.remove(&key);
-                                            }
-                                        }
-                                    })
-                                    -> flat_map(|current| current);
+                                #out_ident = #in_ident -> snapshot_keyed();
                             },
                             None,
                         );
                     }
 
-                    // The keyed-singleton kinds that never remove keys (`Bounded`, `MonotonicKeys`,
-                    // `MonotonicValue`) are a plain `(K, V)` entry feed in which a later entry for a
-                    // key supersedes earlier ones (root feeds are not replayed, so an entry arrives
-                    // only when it changes). Hold the current entry map across firings by
-                    // upserting each entry, then emit the entries each firing.
+                    // The keyed-singleton kinds that never remove keys (`Bounded`,
+                    // `MonotonicKeys`, `MonotonicValue`) are a plain `(K, V)` entry feed, where a
+                    // later entry for a key supersedes earlier ones (whether the producer replays
+                    // all entries every tick or emits only changed ones). Each entry is an upsert.
                     CollectionKind::KeyedSingleton {
                         bound:
                             KeyedSingletonBoundKind::Bounded
@@ -1079,24 +1053,21 @@ impl DfirBuilder for ProdDfirBuilder {
                             | KeyedSingletonBoundKind::MonotonicValue,
                         ..
                     } => {
-                        let batched_ident = self.intermediate_ident();
+                        // The upsert `map` runs at the root: the windowing operator must be the
+                        // first operator inside the loop.
+                        let upserts_ident = self.intermediate_ident();
                         self.add_dfir_in(
-                            out_location,
+                            in_location,
                             parse_quote! {
-                                #batched_ident = #in_ident -> batch_eager();
+                                #upserts_ident = #in_ident
+                                    -> map(|(key, value)| (key, ::std::option::Option::Some(value)));
                             },
                             None,
                         );
-                        let lifetime: TokenStream = self.cross_tick_state_lifetime(out_location);
-                        let lifetime: syn::Lifetime = syn::parse2(lifetime).unwrap();
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
-                                #out_ident = #batched_ident
-                                    -> fold::<#lifetime>(|| ::std::collections::HashMap::new(), |current, (key, value)| {
-                                        current.insert(key, value);
-                                    })
-                                    -> flat_map(|current| current);
+                                #out_ident = #upserts_ident -> snapshot_keyed();
                             },
                             None,
                         );
@@ -4777,8 +4748,10 @@ impl HydroNode {
                                         // it into the loop.
                                         // TODO(shadaj): a more natural semantics would be to re-evaluate the expression on each tick
                                         tick_source_rhs = Some(quote! { source_iter(#expr) });
+                                        // Unused: `tick_source_rhs` is emitted via
+                                        // `add_tick_source` instead.
                                         parse_quote! {
-                                            #source_ident = source_iter(#expr) -> persist::<'static>();
+                                            #source_ident = source_iter(#expr);
                                         }
                                     }
                                 }
@@ -4838,6 +4811,7 @@ impl HydroNode {
                                             &out_location,
                                             source_rhs,
                                             &source_ident,
+                                            &metadata.collection_kind,
                                             true,
                                             Some(&stmt_id.to_string()),
                                         );
@@ -4875,14 +4849,15 @@ impl HydroNode {
                                         &out_location,
                                         quote! { source_iter([#value]) },
                                         &source_ident,
+                                        &metadata.collection_kind,
                                         false,
                                         Some(&stmt_id.to_string()),
                                     );
                                 } else if metadata.location_id.is_root() {
                                     // Bounded or not, a root singleton's update feed for a
                                     // constant is the single update carrying it: consumers of the
-                                    // feed hold the latest update, so it need not be replayed on
-                                    // every tick.
+                                    // feed (snapshots, update-stream combinators) hold the latest
+                                    // update, so it need not be replayed on every tick.
                                     graph_builders.add_dfir_at(
                                         &out_location,
                                         parse_quote! {
@@ -4899,6 +4874,7 @@ impl HydroNode {
                                         &out_location,
                                         quote! { source_iter([#value]) },
                                         &source_ident,
+                                        &metadata.collection_kind,
                                         true,
                                         Some(&stmt_id.to_string()),
                                     );

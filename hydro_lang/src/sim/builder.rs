@@ -660,6 +660,7 @@ impl DfirBuilder for SimBuilder {
         location: &LocationId,
         source_rhs: proc_macro2::TokenStream,
         out_ident: &syn::Ident,
+        _kind: &CollectionKind,
         replay_each_tick: bool,
         operator_tag: Option<&str>,
     ) {

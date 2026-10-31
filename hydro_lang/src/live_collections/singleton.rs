@@ -1890,11 +1890,19 @@ mod tests {
         let source = node.source_stream(q!(tokio_stream::iter(vec![1, 2, 3, 4])));
         let folded = source.fold(q!(|| 0), q!(|a, b| *a += b));
 
+        // Snapshot ingress is lazy and never wakes the tick on its own, so an auxiliary
+        // trigger stream drives the tick.
+        let (trigger_port, trigger) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
+
         let tick = node.tick();
-        let batch = folded.snapshot(&tick, nondet!(/** test */));
+        let batch = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(folded.snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|(_, v)| v));
         let out_recv = batch.all_ticks().sim_output();
 
         flow.sim().exhaustive(async || {
+            trigger_port.send(1);
             assert_eq!(out_recv.next().await, 10);
         });
     }
@@ -1908,25 +1916,46 @@ mod tests {
         let source = node.source_stream(q!(tokio_stream::iter(vec![1, 2, 3, 4])));
         let folded = source.fold(q!(|| 0), q!(|a, b| *a += b));
 
+        // Snapshot ingress is lazy and never wakes the tick on its own, so an auxiliary
+        // trigger stream drives the tick.
+        let (trigger_port, trigger) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
+
         let tick = node.tick();
-        let batch = folded.snapshot(&tick, nondet!(/** test */));
+        let batch = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(folded.snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|(_, v)| v));
         let out_recv = batch.all_ticks().sim_output();
 
+        let mut observed = std::collections::HashSet::new();
+
         let instance_count = flow.sim().exhaustive(async || {
+            trigger_port.send(1);
             let out = out_recv.collect::<Vec<_>>().await;
-            assert_eq!(out.last(), Some(&10));
+            // The single trigger drives exactly one tick, which observes exactly one
+            // intermediate state of the fold.
+            assert_eq!(out.len(), 1);
+            observed.insert(out[0]);
         });
 
         assert_eq!(
             instance_count,
-            16 // 2^4 possible subsets of intermediates (including initial state)
-        )
+            5 // one instance per intermediate state (including the initial state)
+        );
+        // Every intermediate state (and only those) must be observable.
+        assert_eq!(
+            observed,
+            [0, 1, 3, 6, 10].into_iter().collect::<std::collections::HashSet<_>>()
+        );
     }
 
     #[cfg(feature = "sim")]
     #[test]
-    fn sim_fold_no_repeat_initial() {
-        // check that we don't repeat the initial state of the fold in autonomous decisions
+    fn sim_fold_snapshot_alone_never_fires_tick() {
+        // Snapshot ingress is lazy: a new fold version never wakes the tick on its own,
+        // so a tick whose only ingress is a snapshot never fires and produces no output.
+        // (Before snapshots were lazy, this program released the initial state and then
+        // each new state exactly once, without repeats.)
 
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
@@ -1939,11 +1968,9 @@ mod tests {
         let out_recv = batch.all_ticks().sim_output();
 
         flow.sim().exhaustive(async || {
-            assert_eq!(out_recv.next().await, 0);
-
             in_port.send(123);
 
-            assert_eq!(out_recv.next().await, 123);
+            assert_eq!(out_recv.collect::<Vec<_>>().await, Vec::<i32>::new());
         });
     }
 
@@ -1994,7 +2021,11 @@ mod tests {
             let _ = out_recv.collect::<Vec<_>>().await;
         });
 
-        assert_eq!(count, 52);
+        // Snapshots are lazy (they never fire the tick on their own), so every tick is
+        // driven by a non-empty batch of the source: the explored schedules are the ways
+        // to split [1, 2] into non-empty batches, crossed with the snapshot's
+        // keep/reveal choices at each firing.
+        assert_eq!(count, 9);
     }
 
     #[cfg(feature = "sim")]
@@ -2038,7 +2069,8 @@ mod tests {
 
         assert_eq!(
             instance_count,
-            16 // 2^4 ways to split up (including a possibly empty first batch)
+            8 // 2^3 ways to split up into non-empty batches (the static snapshot is lazy,
+              // so it never fires the tick with an empty batch)
         )
     }
 
@@ -2070,18 +2102,35 @@ mod tests {
         let source_iter: Stream<_, _> = node.source_iter(q!(vec![1, 2])).into();
         let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
 
+        // Snapshot ingress is lazy and never wakes the tick on its own, so an auxiliary
+        // trigger stream drives the tick.
+        let (trigger_port, trigger) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
+
         let out_recv = sliced! {
+            let t = use::batch(trigger, nondet!(/** test */));
             let v = use::snapshot(folded, nondet!(/** test */));
-            v.clone().zip(v).into_stream()
+            t.cross_singleton(v.clone().zip(v)).map(q!(|(_, v)| v))
         }
         .sim_output();
 
+        let mut observed = std::collections::HashSet::new();
+
         let count = flow.sim().exhaustive(async || {
+            trigger_port.send(1);
             let out = out_recv.collect::<Vec<_>>().await;
-            assert_eq!(out.last(), Some(&(3, 3)));
+            // The single trigger drives exactly one tick; both zipped uses of the
+            // snapshot must observe the *same* version.
+            assert_eq!(out.len(), 1);
+            let (a, b) = out[0];
+            assert_eq!(a, b);
+            observed.insert(a);
         });
 
-        assert_eq!(count, 4);
+        assert_eq!(count, 3); // one instance per intermediate state (0, 1, 3)
+        assert_eq!(
+            observed,
+            [0, 1, 3].into_iter().collect::<std::collections::HashSet<_>>()
+        );
     }
 
     /// Reproducer for simulator hang when using `cross_singleton` on a top-level

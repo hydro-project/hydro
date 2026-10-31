@@ -148,16 +148,16 @@ pub trait TickInputHook: RuntimeHook {
     /// Whether this hook can make a decision that would trigger its tick, making the
     /// tick runnable on this hook's account. Deliberately separate from
     /// [`RuntimeHook::only_one_possible_decision`]: [`PassthroughSingletonHook`] can
-    /// trigger without facing any choice, and snapshot hooks are planned to face a
-    /// choice (reveal or keep) without ever offering to trigger — revealing only when
-    /// the tick runs for some other reason.
+    /// trigger without facing any choice, and snapshot hooks face a choice (reveal or
+    /// keep) without ever offering to trigger — snapshot ingress is lazy, so a new
+    /// version is revealed only when the tick runs for some other reason.
     fn can_trigger_tick(&self) -> bool;
 
     /// Make an autonomous decision from fuzzer entropy. When `force_trigger` is true,
     /// the decision must trigger the tick: the scheduler only runs a tick to do
     /// meaningful work, so when no other hook has triggered and this is the last
-    /// undecided hook, it is forced to make the run count. Returns whether the decision
-    /// triggers the tick.
+    /// undecided hook that can trigger ([`TickInputHook::can_trigger_tick`]), it is
+    /// forced to make the run count. Returns whether the decision triggers the tick.
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool;
 }
 
