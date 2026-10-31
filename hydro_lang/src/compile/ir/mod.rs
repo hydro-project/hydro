@@ -3286,6 +3286,30 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
+    /// Exposes the top-level update feed of a singleton-like collection (a [`Singleton`],
+    /// [`Optional`], or [`KeyedSingleton`](crate::live_collections::KeyedSingleton) at a root
+    /// location) as a stream-like collection whose elements are exactly the feed's updates.
+    ///
+    /// The updates use the input's top-level representation (see
+    /// [`CollectionKind::root_repr_is_tombstoned_update_feed`]): plain values, or `Option`
+    /// updates where `None` is a tombstone. In both production and simulation this is an
+    /// identity on the generated dataflow.
+    ///
+    /// Unlike [`HydroNode::Cast`], this is *not* deterministic: which versions of the
+    /// collection appear in its update feed depends on timing. Relative to "every version,
+    /// exactly once", the feed may *stutter* (repeat the current version, consecutively per
+    /// key) and *skip* (omit non-final versions). Consumers must therefore be invariant to
+    /// stuttering and skipping, which each use justifies with a `nondet!`. The simulator
+    /// emits every version exactly once, which covers all such behaviors given that
+    /// invariance.
+    ///
+    /// [`Singleton`]: crate::live_collections::Singleton
+    /// [`Optional`]: crate::live_collections::Optional
+    CastUpdateStream {
+        inner: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
     /// Strengthens the guarantees of a stream by non-deterministically selecting a possible
     /// interpretation of the input stream.
     ///
@@ -3747,6 +3771,7 @@ impl HydroNode {
             }
 
             HydroNode::Cast { inner, .. }
+            | HydroNode::CastUpdateStream { inner, .. }
             | HydroNode::ObserveNonDet { inner, .. }
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
@@ -3863,6 +3888,10 @@ impl HydroNode {
         match self {
             HydroNode::Placeholder => HydroNode::Placeholder,
             HydroNode::Cast { inner, metadata } => HydroNode::Cast {
+                inner: Box::new(inner.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::CastUpdateStream { inner, metadata } => HydroNode::CastUpdateStream {
                 inner: Box::new(inner.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -4302,6 +4331,27 @@ impl HydroNode {
                 match node {
                     HydroNode::Placeholder => {
                         panic!()
+                    }
+
+                    HydroNode::CastUpdateStream { inner, metadata } => {
+                        // The input's top-level update feed *is* the output stream: identity.
+                        // The input ident is already on the stack from processing the child.
+                        debug_assert!(
+                            inner.metadata().location_id.is_root(),
+                            "CastUpdateStream requires a root-located input, got {:?}",
+                            inner.metadata().location_id
+                        );
+                        debug_assert!(matches!(
+                            metadata.collection_kind,
+                            CollectionKind::Stream { .. } | CollectionKind::KeyedStream { .. }
+                        ));
+                        let _ = next_stmt_id.get_and_increment();
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(_) => {}
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
                     }
 
                     HydroNode::Cast { inner, metadata } => {
@@ -6816,6 +6866,7 @@ impl HydroNode {
                 panic!()
             }
             HydroNode::Cast { .. }
+            | HydroNode::CastUpdateStream { .. }
             | HydroNode::ObserveNonDet { .. }
             | HydroNode::UnboundSingleton { .. }
             | HydroNode::AssertIsConsistent { .. } => {}
@@ -6917,6 +6968,7 @@ impl HydroNode {
             HydroNode::VersionedNetworkFork { metadata, .. }
             | HydroNode::VersionedNetwork { metadata, .. } => metadata,
             HydroNode::Cast { metadata, .. }
+            | HydroNode::CastUpdateStream { metadata, .. }
             | HydroNode::ObserveNonDet { metadata, .. }
             | HydroNode::AssertIsConsistent { metadata, .. }
             | HydroNode::UnboundSingleton { metadata, .. }
@@ -6979,6 +7031,7 @@ impl HydroNode {
             HydroNode::VersionedNetworkFork { metadata, .. }
             | HydroNode::VersionedNetwork { metadata, .. } => metadata,
             HydroNode::Cast { metadata, .. }
+            | HydroNode::CastUpdateStream { metadata, .. }
             | HydroNode::ObserveNonDet { metadata, .. }
             | HydroNode::AssertIsConsistent { metadata, .. }
             | HydroNode::UnboundSingleton { metadata, .. }
@@ -7046,6 +7099,7 @@ impl HydroNode {
                 vec![]
             }
             HydroNode::Cast { inner, .. }
+            | HydroNode::CastUpdateStream { inner, .. }
             | HydroNode::ObserveNonDet { inner, .. }
             | HydroNode::YieldConcat { inner, .. }
             | HydroNode::BeginAtomic { inner, .. }
@@ -7134,6 +7188,7 @@ impl HydroNode {
                 panic!()
             }
             HydroNode::Cast { .. } => "Cast()".to_owned(),
+            HydroNode::CastUpdateStream { .. } => "CastUpdateStream()".to_owned(),
             HydroNode::UnboundSingleton { .. } => "UnboundSingleton()".to_owned(),
             HydroNode::ObserveNonDet { .. } => "ObserveNonDet()".to_owned(),
             HydroNode::AssertIsConsistent { .. } => "AssertIsConsistent()".to_owned(),

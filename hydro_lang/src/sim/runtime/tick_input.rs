@@ -879,7 +879,10 @@ where
 
 pub struct SingletonHook<T> {
     input: Rc<RefCell<VecDeque<T>>>,
-    to_release: Option<(T, bool)>, // (data, is new)
+    /// `Some(None)` releases an empty snapshot: the tick fired before the singleton had any
+    /// version (e.g. it was triggered by another input), and, like production's snapshot
+    /// ingress, nothing is delivered.
+    to_release: Option<Option<(T, bool)>>, // (data, is new)
     last_released: Option<T>,
     skipped_states: Vec<T>,
     output: Sender<T>,
@@ -921,7 +924,27 @@ impl<T: Clone> RuntimeHook for SingletonHook<T> {
     }
 
     fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
-        if let Some((to_release, is_new)) = self.to_release.take() {
+        if let Some(None) = self.to_release {
+            self.to_release = None;
+            if let Some(log_writer) = log_writer {
+                let HookLocationMeta {
+                    location: batch_location,
+                    line,
+                    caret_indent,
+                } = self.batch_location;
+                log_release(
+                    log_writer,
+                    batch_location,
+                    line,
+                    caret_indent,
+                    "^ releasing empty snapshot (no version yet)",
+                    colored::Color::Green,
+                );
+            }
+            return;
+        }
+
+        if let Some(Some((to_release, is_new))) = self.to_release.take() {
             self.last_released = Some(to_release.clone());
 
             if let Some(log_writer) = log_writer {
@@ -990,24 +1013,25 @@ impl<T: Clone> TickInputHook for SingletonHook<T> {
 
             if let Some(last) = &self.last_released {
                 // Re-release the last item
-                self.to_release = Some((last.clone(), false));
-                false
+                self.to_release = Some(Some((last.clone(), false)));
             } else {
-                panic!("No input and no last released item to re-release");
+                // No version yet: the snapshot is empty.
+                self.to_release = Some(None);
             }
+            false
         } else if !force_trigger
             && let Some(last) = &self.last_released
             && produce().generate(driver).unwrap()
         {
             // Re-release the last item
-            self.to_release = Some((last.clone(), false));
+            self.to_release = Some(Some((last.clone(), false)));
             false
         } else {
             // Release a new item
             let idx_to_release = (0..current_input.len()).generate(driver).unwrap();
             self.skipped_states = current_input.drain(0..idx_to_release).collect(); // Drop earlier items
             let item = current_input.pop_front().unwrap();
-            self.to_release = Some((item, true));
+            self.to_release = Some(Some((item, true)));
             true
         }
     }
@@ -1234,29 +1258,29 @@ impl<T: Clone + PartialEq + serde::Serialize + serde::de::DeserializeOwned> Scri
                 let idx = input.iter().position(|version| *version == target).unwrap();
                 self.skipped_states = input.drain(0..idx).collect();
                 let item = input.pop_front().unwrap();
-                self.to_release = Some((item, true));
+                self.to_release = Some(Some((item, true)));
             }
             SnapshotDecision::RevealNext => {
                 let mut input = self.input.borrow_mut();
                 self.skipped_states = vec![];
                 let item = input.pop_front().unwrap();
-                self.to_release = Some((item, true));
+                self.to_release = Some(Some((item, true)));
             }
             SnapshotDecision::RevealLatest => {
                 let mut input = self.input.borrow_mut();
                 if input.is_empty() {
                     self.skipped_states = vec![];
-                    self.to_release = Some((self.last_released.clone().unwrap(), false));
+                    self.to_release = Some(Some((self.last_released.clone().unwrap(), false)));
                 } else {
                     let skip_count = input.len() - 1;
                     self.skipped_states = input.drain(0..skip_count).collect();
                     let item = input.pop_front().unwrap();
-                    self.to_release = Some((item, true));
+                    self.to_release = Some(Some((item, true)));
                 }
             }
             SnapshotDecision::Keep => {
                 self.skipped_states = vec![];
-                self.to_release = Some((self.last_released.clone().unwrap(), false));
+                self.to_release = Some(Some((self.last_released.clone().unwrap(), false)));
             }
         }
     }
@@ -1264,7 +1288,7 @@ impl<T: Clone + PartialEq + serde::Serialize + serde::de::DeserializeOwned> Scri
     fn implicit(&mut self) {
         if let Some(last) = &self.last_released {
             self.skipped_states = vec![];
-            self.to_release = Some((last.clone(), false));
+            self.to_release = Some(Some((last.clone(), false)));
         } else {
             // `is_ready()` prevents the tick from running before the singleton has a
             // value, so this is unreachable.

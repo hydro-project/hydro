@@ -65,6 +65,12 @@ pub trait KeyedSingletonBound {
     /// The type of the keyed singleton if the value for each key is no longer monotonic.
     type EraseMonotonic: KeyedSingletonBound<UnderlyingBound = Self::UnderlyingBound, ValueBound = Self::ValueBound>;
 
+    /// The type of each per-key update value in this keyed singleton's top-level update feed
+    /// (see [`CollectionKind::root_repr_is_tombstoned_update_feed`](crate::compile::ir::CollectionKind::root_repr_is_tombstoned_update_feed)):
+    /// `Option<V>` (where `None` is a tombstone removing the key) for [`Unbounded`] keyed
+    /// singletons, which may remove keys, and plain `V` otherwise.
+    type UpdateValue<V>;
+
     /// Returns the [`KeyedSingletonBoundKind`] corresponding to this type.
     fn bound_kind() -> KeyedSingletonBoundKind;
 }
@@ -76,6 +82,7 @@ impl KeyedSingletonBound for Unbounded {
     type KeyedStreamToMonotone = MonotonicValue;
     type KeyedStreamToNonMonotone = MonotonicKeys;
     type EraseMonotonic = Unbounded;
+    type UpdateValue<V> = Option<V>;
 
     fn bound_kind() -> KeyedSingletonBoundKind {
         KeyedSingletonBoundKind::Unbounded
@@ -89,6 +96,7 @@ impl KeyedSingletonBound for Bounded {
     type KeyedStreamToMonotone = Bounded;
     type KeyedStreamToNonMonotone = Bounded;
     type EraseMonotonic = Bounded;
+    type UpdateValue<V> = V;
 
     fn bound_kind() -> KeyedSingletonBoundKind {
         KeyedSingletonBoundKind::Bounded
@@ -106,6 +114,7 @@ impl KeyedSingletonBound for BoundedValue {
     type KeyedStreamToMonotone = BoundedValue;
     type KeyedStreamToNonMonotone = BoundedValue;
     type EraseMonotonic = BoundedValue;
+    type UpdateValue<V> = V;
 
     fn bound_kind() -> KeyedSingletonBoundKind {
         KeyedSingletonBoundKind::BoundedValue
@@ -123,6 +132,7 @@ impl KeyedSingletonBound for MonotonicValue {
     type KeyedStreamToMonotone = MonotonicValue;
     type KeyedStreamToNonMonotone = MonotonicKeys;
     type EraseMonotonic = MonotonicKeys;
+    type UpdateValue<V> = V;
 
     fn bound_kind() -> KeyedSingletonBoundKind {
         KeyedSingletonBoundKind::MonotonicValue
@@ -140,6 +150,7 @@ impl KeyedSingletonBound for MonotonicKeys {
     type KeyedStreamToMonotone = MonotonicKeys;
     type KeyedStreamToNonMonotone = MonotonicKeys;
     type EraseMonotonic = MonotonicKeys;
+    type UpdateValue<V> = V;
 
     fn bound_kind() -> KeyedSingletonBoundKind {
         KeyedSingletonBoundKind::MonotonicKeys
@@ -478,6 +489,49 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         }
     }
 
+    /// Exposes this collection's top-level update feed as a stream whose elements are exactly
+    /// the feed's updates, in the order they were emitted.
+    ///
+    /// **Contract.** Relative to "every version of the collection, exactly once, in order", the
+    /// stream may *stutter* (repeat the current version, consecutively per key) and *skip*
+    /// (omit non-final versions); the final version is always eventually delivered. Which
+    /// versions appear depends on timing, so the caller's `nondet` must justify that its use is
+    /// invariant to stuttering and skipping (e.g. an idempotent "latest value" fold, or a
+    /// monotone threshold). The simulator emits every version exactly once.
+    ///
+    /// The collection must be located at a root (process or cluster) location.
+    ///
+    /// Each update is a `(key, value)` entry whose value is a
+    /// [`KeyedSingletonBound::UpdateValue`]: `Option<V>` (with `None` a tombstone removing the
+    /// key) for an [`Unbounded`] keyed singleton, and plain `V` otherwise. Updates are ordered
+    /// within each key; there is no ordering across keys.
+    pub(crate) fn into_update_stream(
+        self,
+        _nondet: NonDet,
+    ) -> KeyedStream<K, B::UpdateValue<V>, L::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>
+    {
+        assert!(
+            self.location.id().is_root(),
+            "`into_update_stream` requires a root location, got {:?}",
+            self.location.id()
+        );
+        let target_location = self.location.drop_consistency();
+        KeyedStream::new(
+            target_location.clone(),
+            HydroNode::CastUpdateStream {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: target_location.new_node_metadata(KeyedStream::<
+                    K,
+                    B::UpdateValue<V>,
+                    L::DropConsistency,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
+    }
+
     /// Transforms each value by invoking `f` on each element, with keys staying the same
     /// after transformation. If you need access to the key, see [`KeyedSingleton::map_with_key`].
     ///
@@ -639,7 +693,10 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// # }));
     /// # }
     /// ```
-    pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
+    pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound>
+    where
+        K: Clone + Eq + Hash + 'a,
+    {
         if B::ValueBound::BOUNDED {
             let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
                 location: self.location.clone(),
@@ -652,24 +709,81 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             };
 
             me.entries().count().ignore_monotonic()
+        } else if self.location.id().is_root() {
+            let location = self.location.clone();
+            let ir_node = self.ir_node.replace(HydroNode::Placeholder);
+            // Apply the updates, in order per key, to the set of current keys (removed keys are
+            // dropped, so it holds only the current keys), emitting its size after each update.
+            // The latest emitted size is the key count (0 before any updates).
+            let counts = if B::bound_kind() == KeyedSingletonBoundKind::Unbounded {
+                let me: KeyedSingleton<K, V, L, Unbounded> =
+                    KeyedSingleton::new(location.clone(), ir_node);
+                me.into_update_stream(nondet!(
+                    /// Applying an update to the set of current keys is idempotent, so
+                    /// stuttering does not change it, and the set only depends on each key's
+                    /// latest update, so skipping intermediate updates only skips intermediate
+                    /// counts.
+                ))
+                .entries_partially_ordered(nondet!(
+                    /// Updates are applied in order within each key; updates to different keys
+                    /// commute, so the interleaving across keys only affects intermediate counts.
+                ))
+                .scan(
+                    q!(|| std::collections::HashSet::new()),
+                    q!(|keys, (k, update)| {
+                        if update.is_some() {
+                            keys.insert(k);
+                        } else {
+                            keys.remove(&k);
+                        }
+                        Some(keys.len())
+                    }),
+                )
+            } else {
+                let me: KeyedSingleton<K, V, L, MonotonicKeys> =
+                    KeyedSingleton::new(location.clone(), ir_node);
+                me.into_update_stream(nondet!(
+                    /// Keys are never removed and only their presence is observed, which
+                    /// neither stuttering nor skipping intermediate updates can change.
+                ))
+                .entries_partially_ordered(nondet!(
+                    /// Set insertion commutes, so the interleaving across keys only affects
+                    /// intermediate counts.
+                ))
+                .scan(
+                    q!(|| std::collections::HashSet::new()),
+                    q!(|keys, (k, _)| {
+                        keys.insert(k);
+                        Some(keys.len())
+                    }),
+                )
+            };
+            let count: Singleton<usize, _, Unbounded> =
+                counts.fold(q!(|| 0usize), q!(|count, latest| *count = latest));
+            // Re-tag the node from the concrete `Unbounded` singleton to the `B::UnderlyingBound`
+            // that this method returns (equal at runtime for this branch).
+            Singleton::new(location, count.ir_node.replace(HydroNode::Placeholder))
         } else if L::is_top_level()
             && let Some(tick) = self.location.try_tick()
             && (B::bound_kind() == KeyedSingletonBoundKind::Unbounded
                 || B::bound_kind() == KeyedSingletonBoundKind::MonotonicKeys
                 || B::bound_kind() == KeyedSingletonBoundKind::MonotonicValue)
         {
+            // A non-root top-level location (an atomic region): snapshot into its own tick.
             let location = self.location.clone();
             let ir_node = self.ir_node.replace(HydroNode::Placeholder);
             let me: KeyedSingleton<K, V, L, MonotonicKeys> =
                 KeyedSingleton::new(location.clone(), ir_node);
 
-            let out =
+            // The key count is folded with an initial value, so it is always present (0 when
+            // there are no keys). `latest()` is null until the producing tick first runs; fill
+            // that prefix with 0 to recover an always-present count. The atomic region is fused
+            // into its tick's loop, so this is a plain per-firing `or`.
+            let out = super::optional::unwrap_or_in_atomic(
                 key_count_inside_tick(me.snapshot(&tick, nondet!(/** eventually stabilizes */)))
-                    .latest()
-                    // The key count is folded with an initial value, so it is always present
-                    // (0 when there are no keys). `latest()` is null until the producing tick
-                    // first runs; fill that prefix with 0 to recover an always-present count.
-                    .unwrap_or(location.singleton(q!(0usize)).into());
+                    .latest(),
+                location.singleton(q!(0usize)),
+            );
             // Re-tag the node from the concrete `Unbounded` singleton to the `B::UnderlyingBound`
             // that this method returns (equal at runtime for this branch).
             Singleton::new(location, out.ir_node.replace(HydroNode::Placeholder))
@@ -735,25 +849,80 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                         map.insert(k, v);
                     }),
                 )
+        } else if self.location.id().is_root() {
+            let location = self.location.clone();
+            let ir_node = self.ir_node.replace(HydroNode::Placeholder);
+            // Apply the updates, in order per key, to the current map (empty before any updates).
+            let map: Singleton<HashMap<K, V>, _, Unbounded> =
+                if B::bound_kind() == KeyedSingletonBoundKind::Unbounded {
+                    let me: KeyedSingleton<K, V, L, Unbounded> =
+                        KeyedSingleton::new(location.clone(), ir_node);
+                    me.into_update_stream(nondet!(
+                        /// Applying an update to the map is idempotent, so stuttering does not
+                        /// change it, and the map only depends on each key's latest update, so
+                        /// skipping intermediate updates only skips intermediate maps.
+                    ))
+                    .entries_partially_ordered(nondet!(
+                        /// Updates are applied in order within each key; updates to different
+                        /// keys commute, so the interleaving across keys only affects
+                        /// intermediate maps.
+                    ))
+                    .fold(
+                        q!(|| HashMap::new()),
+                        q!(|map, (k, update)| {
+                            match update {
+                                Some(v) => {
+                                    map.insert(k, v);
+                                }
+                                None => {
+                                    map.remove(&k);
+                                }
+                            }
+                        }),
+                    )
+                } else {
+                    let me: KeyedSingleton<K, V, L, MonotonicKeys> =
+                        KeyedSingleton::new(location.clone(), ir_node);
+                    me.into_update_stream(nondet!(
+                        /// Applying an update to the map is idempotent, so stuttering does not
+                        /// change it, and the map only depends on each key's latest update, so
+                        /// skipping intermediate updates only skips intermediate maps.
+                    ))
+                    .entries_partially_ordered(nondet!(
+                        /// Updates are applied in order within each key; updates to different
+                        /// keys commute, so the interleaving across keys only affects
+                        /// intermediate maps.
+                    ))
+                    .fold(
+                        q!(|| HashMap::new()),
+                        q!(|map, (k, v)| {
+                            map.insert(k, v);
+                        }),
+                    )
+                };
+            Singleton::new(location, map.ir_node.replace(HydroNode::Placeholder))
         } else if L::is_top_level()
             && let Some(tick) = self.location.try_tick()
             && (B::bound_kind() == KeyedSingletonBoundKind::Unbounded
                 || B::bound_kind() == KeyedSingletonBoundKind::MonotonicKeys
                 || B::bound_kind() == KeyedSingletonBoundKind::MonotonicValue)
         {
+            // A non-root top-level location (an atomic region): snapshot into its own tick.
             let location = self.location.clone();
             let ir_node = self.ir_node.replace(HydroNode::Placeholder);
             let me: KeyedSingleton<K, V, L, MonotonicKeys> =
                 KeyedSingleton::new(location.clone(), ir_node);
 
-            let out = into_singleton_inside_tick(
-                me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
-            )
-            .latest()
             // The map is folded with an initial value, so it is always present (empty when
             // there are no keys). `latest()` is null until the producing tick first runs; fill
             // that prefix with an empty map to recover an always-present map.
-            .unwrap_or(location.singleton(q!(HashMap::new())).into());
+            let out = super::optional::unwrap_or_in_atomic(
+                into_singleton_inside_tick(
+                    me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
+                )
+                .latest(),
+                location.singleton(q!(HashMap::new())),
+            );
             // Re-tag the node from the concrete `Unbounded` singleton to the `B::UnderlyingBound`
             // that this method returns (equal at runtime for this branch).
             Singleton::new(location, out.ir_node.replace(HydroNode::Placeholder))
@@ -1100,6 +1269,68 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                     result.ir_node.replace(HydroNode::Placeholder),
                 )
             }
+            KeyedSingletonBoundKind::MonotonicValue if self.location.id().is_root() => {
+                let me: KeyedSingleton<K, V, L, MonotonicValue> = KeyedSingleton::new(
+                    self.location.clone(),
+                    self.ir_node.replace(HydroNode::Placeholder),
+                );
+                let value_updates = me.into_update_stream(nondet!(
+                    /// Each key's value is monotone, so a version crosses its threshold iff
+                    /// every later version does: stuttering and skipping intermediate versions
+                    /// cannot change whether a key is (eventually) emitted, and each key is
+                    /// emitted at most once.
+                ));
+
+                let result = sliced! {
+                    let value_batch =
+                        use::batch(value_updates, nondet!(/** thresholds are deterministic */));
+                    let thresh_batch =
+                        use::batch(thresholds, nondet!(/** thresholds are deterministic */));
+                    // A key's threshold may arrive after its value has already crossed it, so the
+                    // latest value of every key that has not crossed yet is held across ticks.
+                    // Values are monotone, so the latest value is the maximum one. Each threshold
+                    // arrives in exactly one batch, so it is held as pending until the key's
+                    // value reaches it. Once a key has crossed, it is dropped from both pending
+                    // sets (and its later value updates are ignored), so it is emitted once.
+                    let mut pending_values =
+                        use::state_null::<Stream<(K, V), Tick<_>, Bounded, NoOrder>>();
+                    let mut pending_thresholds =
+                        use::state_null::<Stream<(K, V), Tick<_>, Bounded, NoOrder>>();
+                    let mut crossed_keys =
+                        use::state_null::<Stream<K, Tick<_>, Bounded, NoOrder>>();
+
+                    pending_values = pending_values
+                        .chain(value_batch.entries().anti_join(crossed_keys.clone()))
+                        .into_keyed()
+                        .reduce(q!(
+                            |latest, value| {
+                                if value > *latest {
+                                    *latest = value;
+                                }
+                            },
+                            commutative = manual_proof!(/** max is commutative */)
+                        ))
+                        .entries();
+                    pending_thresholds = pending_thresholds.chain(thresh_batch.entries());
+
+                    let crossed = pending_thresholds
+                        .clone()
+                        .join(pending_values.clone())
+                        .filter(q!(|(_, (thresh, val))| *val >= *thresh))
+                        .map(q!(|(k, (thresh, _))| (k, thresh)));
+                    let newly_crossed_keys = crossed.clone().map(q!(|(k, _)| k));
+                    pending_values = pending_values.anti_join(newly_crossed_keys.clone());
+                    pending_thresholds = pending_thresholds.anti_join(newly_crossed_keys.clone());
+                    crossed_keys = crossed_keys.chain(newly_crossed_keys);
+
+                    crossed.into_keyed()
+                };
+
+                KeyedStream::new(
+                    self_location,
+                    result.ir_node.replace(HydroNode::Placeholder),
+                )
+            }
             KeyedSingletonBoundKind::MonotonicValue => {
                 let me: KeyedSingleton<K, V, L, MonotonicValue> = KeyedSingleton::new(
                     self.location.clone(),
@@ -1241,6 +1472,55 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                     .into_keyed();
                 KeyedStream::new(
                     result.location.clone(),
+                    result.ir_node.replace(HydroNode::Placeholder),
+                )
+            }
+            KeyedSingletonBoundKind::MonotonicValue if self.location.id().is_root() => {
+                let me: KeyedSingleton<K, V, L, MonotonicValue> = KeyedSingleton::new(
+                    self.location.clone(),
+                    self.ir_node.replace(HydroNode::Placeholder),
+                );
+                let value_updates = me.into_update_stream(nondet!(
+                    /// Each key's value is monotone, so a version crosses the threshold iff
+                    /// every later version does: stuttering and skipping intermediate versions
+                    /// cannot change whether a key is (eventually) emitted, and each key is
+                    /// emitted at most once.
+                ));
+
+                let result = sliced! {
+                    // Only the changed entries are checked against the threshold; no per-key
+                    // values are held. A key may cross in several updates of one batch (or
+                    // stutter), so crossing keys are de-duplicated, and keys that have already
+                    // crossed are remembered so that each key is emitted once.
+                    let value_batch =
+                        use::batch(value_updates, nondet!(/** thresholds are deterministic */));
+                    let mut already_crossed =
+                        use::state_null::<Stream<K, Tick<_>, Bounded, NoOrder>>();
+
+                    let tick = value_batch.location().clone();
+                    let thresh_in_tick = threshold.clone_into_tick(&tick);
+
+                    let newly_crossed_keys = value_batch
+                        .entries()
+                        .cross_singleton(thresh_in_tick.clone())
+                        .filter_map(q!(|((k, val), thresh)| {
+                            if val >= thresh {
+                                Some(k)
+                            } else {
+                                None
+                            }
+                        }))
+                        .unique()
+                        .filter_not_in(already_crossed.clone());
+                    already_crossed = already_crossed.chain(newly_crossed_keys.clone());
+
+                    newly_crossed_keys
+                        .cross_singleton(thresh_in_tick)
+                        .into_keyed()
+                };
+
+                KeyedStream::new(
+                    self_location,
                     result.ir_node.replace(HydroNode::Placeholder),
                 )
             }
@@ -2587,5 +2867,225 @@ mod tests {
         });
 
         assert!(count > 0);
+    }
+
+    /// A root `MonotonicKeys` keyed singleton's update stream re-sends a key's value whenever it
+    /// changes. `key_count` must count each key once (repeated updates must not inflate it), and
+    /// every intermediate count is a valid count of a prefix of the inputs.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_key_count_monotonic() {
+        use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_port, input) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+        let (trigger_port, trigger) = node.sim_input::<(), TotalOrder, ExactlyOnce>();
+
+        let count = input
+            .into_keyed()
+            .fold(q!(|| 0u32), q!(|acc, v| *acc += v))
+            .key_count();
+
+        let tick = node.tick();
+        let output = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(count.snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|(_, count)| count))
+            .all_ticks()
+            .sim_output();
+
+        let mut observed = std::collections::HashSet::new();
+        flow.sim().exhaustive(async || {
+            input_port.send((1, 10));
+            input_port.send((1, 20));
+            input_port.send((1, 30));
+            input_port.send((2, 40));
+            trigger_port.send(());
+
+            let out = output.collect::<Vec<_>>().await;
+            assert_eq!(out.len(), 1);
+            assert!(out[0] <= 2, "key count inflated by repeated updates: {}", out[0]);
+            observed.insert(out[0]);
+        });
+
+        assert_eq!(observed, [0, 1, 2].into_iter().collect());
+    }
+
+    /// `into_singleton` of a root `MonotonicKeys` keyed singleton applies each key's updates in
+    /// order: every observed map holds, for each key, some version of that key's value, and the
+    /// final map is reachable.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_into_singleton_monotonic() {
+        use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_port, input) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+        let (trigger_port, trigger) = node.sim_input::<(), TotalOrder, ExactlyOnce>();
+
+        let map = input
+            .into_keyed()
+            .fold(q!(|| 0u32), q!(|acc, v| *acc += v))
+            .into_singleton();
+
+        let tick = node.tick();
+        let output = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(map.snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|(_, map)| {
+                let mut entries = map.into_iter().collect::<Vec<_>>();
+                entries.sort();
+                entries
+            }))
+            .all_ticks()
+            .sim_output();
+
+        let mut saw_final = false;
+        flow.sim().exhaustive(async || {
+            input_port.send((1, 10));
+            input_port.send((1, 20));
+            input_port.send((2, 5));
+            trigger_port.send(());
+
+            let out = output.collect::<Vec<_>>().await;
+            assert_eq!(out.len(), 1);
+            for (k, v) in &out[0] {
+                match k {
+                    1 => assert!([10, 30].contains(v), "invalid version for key 1: {v}"),
+                    2 => assert_eq!(*v, 5, "invalid version for key 2"),
+                    _ => panic!("unexpected key {k}"),
+                }
+            }
+            if out[0] == vec![(1, 30), (2, 5)] {
+                saw_final = true;
+            }
+        });
+
+        assert!(saw_final);
+    }
+
+    /// A root `Unbounded` keyed singleton (a tombstoned update feed) that holds the latest entry
+    /// sent on `input`: when the entry moves to a different key, `into_keyed_singleton`
+    /// tombstones the previous key. Built from a `sliced!` state singleton so that it can be
+    /// simulated.
+    #[cfg(feature = "sim")]
+    fn sim_unbounded_keyed_singleton<'a>(
+        input: crate::live_collections::Stream<
+            Option<(u32, u32)>,
+            crate::location::Process<'a>,
+            crate::live_collections::boundedness::Unbounded,
+        >,
+    ) -> super::KeyedSingleton<
+        u32,
+        u32,
+        crate::location::Process<'a>,
+        crate::live_collections::boundedness::Unbounded,
+    > {
+        crate::live_collections::sliced::sliced! {
+            let batch = use::batch(input, nondet!(/** test */));
+            let mut latest = use::state(|l| l.singleton(q!(None)));
+            latest = batch.last().unwrap_or(latest);
+            latest.clone()
+        }
+        .filter_map(q!(|v| v))
+        .into_keyed_singleton()
+    }
+
+    /// `key_count` of a root `Unbounded` keyed singleton applies removals (tombstones): moving
+    /// the only entry from key 1 to key 2 never counts more than both keys, and a count of 1 is
+    /// reached after the removal.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_key_count_unbounded() {
+        use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_port, input) = node.sim_input::<Option<(u32, u32)>, TotalOrder, ExactlyOnce>();
+        let (trigger_port, trigger) = node.sim_input::<(), TotalOrder, ExactlyOnce>();
+
+        let count = sim_unbounded_keyed_singleton(input).key_count();
+
+        let tick = node.tick();
+        let output = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(count.snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|(_, count)| count))
+            .all_ticks()
+            .sim_output();
+
+        let mut observed = std::collections::HashSet::new();
+        flow.sim().exhaustive(async || {
+            input_port.send(Some((1, 10)));
+            // Moves to key 2, tombstoning key 1.
+            input_port.send(Some((2, 20)));
+            trigger_port.send(());
+
+            let out = output.collect::<Vec<_>>().await;
+            assert!(out.len() <= 1);
+            for count in out {
+                // Keys evolve independently (updates are only ordered per key), so both keys
+                // may be counted at once, but never more.
+                assert!(count <= 2, "key count inflated: {count}");
+                observed.insert(count);
+            }
+        });
+
+        assert!(observed.contains(&1));
+    }
+
+    /// `into_singleton` of a root `Unbounded` keyed singleton applies removals (tombstones):
+    /// every observed map holds valid versions of each key, and the final map (with key 1
+    /// removed) is reachable.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_into_singleton_unbounded() {
+        use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_port, input) = node.sim_input::<Option<(u32, u32)>, TotalOrder, ExactlyOnce>();
+        let (trigger_port, trigger) = node.sim_input::<(), TotalOrder, ExactlyOnce>();
+
+        let map = sim_unbounded_keyed_singleton(input).into_singleton();
+
+        let tick = node.tick();
+        let output = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(map.snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|(_, map)| {
+                let mut entries = map.into_iter().collect::<Vec<_>>();
+                entries.sort();
+                entries
+            }))
+            .all_ticks()
+            .sim_output();
+
+        let mut saw_final = false;
+        flow.sim().exhaustive(async || {
+            input_port.send(Some((1, 10)));
+            // Moves to key 2, tombstoning key 1.
+            input_port.send(Some((2, 20)));
+            trigger_port.send(());
+
+            let out = output.collect::<Vec<_>>().await;
+            assert!(out.len() <= 1);
+            for entries in out {
+                for (k, v) in &entries {
+                    assert_eq!(*v, *k * 10, "invalid value for key {k}");
+                }
+                if entries == vec![(2, 20)] {
+                    saw_final = true;
+                }
+            }
+        });
+
+        assert!(saw_final);
     }
 }
