@@ -10,12 +10,16 @@ use super::{
 /// has data), the lazy-batched data is available. If the loop never fires that
 /// tick, the data is simply dropped (reclaimed by the bump allocator at tick end).
 ///
-/// `batch_lazy()` is one of three loop-ingress ("windowing") operators, which differ only in
-/// whether they cause the surrounding `loop { ... }` to fire:
+/// `batch_lazy()` is one of the loop-ingress ("windowing") operators, which differ in whether
+/// they cause the surrounding `loop { ... }` to fire and whether pending data is retained:
 /// - `batch()` triggers the loop only when its windowed input is non-empty.
 /// - `batch_lazy()` never triggers the loop on its own; its data is only observed if the loop
 ///   fires for some other reason (otherwise dropped at tick end).
 /// - `batch_eager()` always triggers the loop, even when the windowed input is empty.
+/// - `snapshot()` never triggers the loop on its own, but retains the latest value
+///   (last-write-wins) across ticks and emits it every time the loop fires.
+/// - `snapshot_prefix()` never triggers the loop on its own, but retains every element received
+///   so far across ticks and replays the whole prefix every time the loop fires.
 pub const BATCH_LAZY: OperatorConstraints = OperatorConstraints {
     name: "batch_lazy",
     categories: &[OperatorCategory::Windowing],
