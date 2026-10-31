@@ -963,52 +963,18 @@ impl DfirBuilder for ProdDfirBuilder {
                 // which would let each firing observe the held value by reference instead of
                 // `fold` cloning its accumulator to emit it downstream every firing.
                 match in_kind {
-                    // A *bounded* singleton-like value is produced exactly once. Persist it at
-                    // the root (a `loop { ... }` context cannot contain `persist`) so it remains
-                    // available, then window it into the loop on each firing.
-                    CollectionKind::Singleton {
-                        bound: SingletonBoundKind::Bounded,
-                        ..
-                    }
-                    | CollectionKind::Optional {
-                        bound: OptionalBoundKind::Bounded,
-                        ..
-                    }
-                    | CollectionKind::KeyedSingleton {
-                        bound: KeyedSingletonBoundKind::Bounded,
-                        ..
-                    } => {
-                        let persisted_ident = self.intermediate_ident();
-                        self.add_dfir_in(
-                            in_location,
-                            parse_quote! {
-                                #persisted_ident = #in_ident -> persist::<'static>();
-                            },
-                            None,
-                        );
-                        self.add_dfir_in(
-                            out_location,
-                            parse_quote! {
-                                #out_ident = #persisted_ident -> batch_eager();
-                            },
-                            None,
-                        );
-                    }
-
-                    // An unbounded singleton (or `InitNone` optional, which shares the plain
-                    // `T`-update representation) arrives as a feed of updated values. Hold the
-                    // latest update across firings so each firing observes the current value
-                    // even if no update arrived since the previous firing. Until the first
-                    // update arrives the state is `None`: for a singleton the first update
-                    // arrives before any consumer could observe it (the upstream aggregation
-                    // emits its initial value immediately), and for an `InitNone` optional
+                    // A singleton (any bound), or a bounded / `InitNone` optional, which share the
+                    // plain `T`-update representation, arrives as a feed of updated values (a
+                    // bounded value or a constant arrives exactly once, and root feeds are not
+                    // replayed). Hold the latest update across firings so each firing observes
+                    // the current value even if no update arrived since the previous firing. Until
+                    // the first update arrives the state is `None`: for a singleton the first
+                    // update arrives before any consumer could observe it (the upstream
+                    // aggregation emits its initial value immediately), and for an optional
                     // "no update yet" genuinely means null.
-                    CollectionKind::Singleton {
-                        bound: SingletonBoundKind::Unbounded | SingletonBoundKind::Monotonic,
-                        ..
-                    }
+                    CollectionKind::Singleton { .. }
                     | CollectionKind::Optional {
-                        bound: OptionalBoundKind::InitNone,
+                        bound: OptionalBoundKind::Bounded | OptionalBoundKind::InitNone,
                         ..
                     } => {
                         let batched_ident = self.intermediate_ident();
@@ -1101,20 +1067,36 @@ impl DfirBuilder for ProdDfirBuilder {
                         );
                     }
 
-                    // The value-unbounded keyed-singleton kinds that never remove keys
-                    // (`MonotonicKeys`/`MonotonicValue`) keep the plain `(K, V)` entry feed:
-                    // upstream keyed aggregations re-emit an entry's current value eagerly
-                    // whenever it changes, so the snapshot is the feed of changed entries.
+                    // The keyed-singleton kinds that never remove keys (`Bounded`, `MonotonicKeys`,
+                    // `MonotonicValue`) are a plain `(K, V)` entry feed in which a later entry for a
+                    // key supersedes earlier ones (root feeds are not replayed, so an entry arrives
+                    // only when it changes). Hold the current entry map across firings by
+                    // upserting each entry, then emit the entries each firing.
                     CollectionKind::KeyedSingleton {
                         bound:
-                            KeyedSingletonBoundKind::MonotonicKeys
+                            KeyedSingletonBoundKind::Bounded
+                            | KeyedSingletonBoundKind::MonotonicKeys
                             | KeyedSingletonBoundKind::MonotonicValue,
                         ..
                     } => {
+                        let batched_ident = self.intermediate_ident();
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
-                                #out_ident = #in_ident -> batch_eager();
+                                #batched_ident = #in_ident -> batch_eager();
+                            },
+                            None,
+                        );
+                        let lifetime: TokenStream = self.cross_tick_state_lifetime(out_location);
+                        let lifetime: syn::Lifetime = syn::parse2(lifetime).unwrap();
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #batched_ident
+                                    -> fold::<#lifetime>(|| ::std::collections::HashMap::new(), |current, (key, value)| {
+                                        current.insert(key, value);
+                                    })
+                                    -> flat_map(|current| current);
                             },
                             None,
                         );
@@ -4492,23 +4474,16 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                if graph_builders.singleton_intermediates() {
-                                    graph_builders.add_dfir_at(
-                                        &out_location,
-                                        parse_quote! {
-                                            #out_ident = #inner_ident;
-                                        },
-                                        None,
-                                    );
-                                } else {
-                                    graph_builders.add_dfir_at(
-                                        &out_location,
-                                        parse_quote! {
-                                            #out_ident = #inner_ident -> persist::<'static>();
-                                        },
-                                        None,
-                                    );
-                                }
+                                // A bounded value's update feed is already a valid feed of
+                                // the unbounded singleton: consumers hold the latest update, so
+                                // it need not be replayed on every tick.
+                                graph_builders.add_dfir_at(
+                                    &out_location,
+                                    parse_quote! {
+                                        #out_ident = #inner_ident;
+                                    },
+                                    None,
+                                );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
@@ -4854,23 +4829,17 @@ impl HydroNode {
                                         Some(&stmt_id.to_string()),
                                     );
                                 } else if metadata.location_id.is_root() {
-                                    if metadata.collection_kind.is_bounded() {
-                                        graph_builders.add_dfir_at(
-                                            &out_location,
-                                            parse_quote! {
-                                                #source_ident = source_iter([#value]);
-                                            },
-                                            Some(&stmt_id.to_string()),
-                                        );
-                                    } else {
-                                        graph_builders.add_dfir_at(
-                                            &out_location,
-                                            parse_quote! {
-                                                #source_ident = source_iter([#value]) -> persist::<'static>();
-                                            },
-                                            Some(&stmt_id.to_string()),
-                                        );
-                                    }
+                                    // Bounded or not, a root singleton's update feed for a
+                                    // constant is the single update carrying it: consumers of the
+                                    // feed hold the latest update, so it need not be replayed on
+                                    // every tick.
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
+                                        parse_quote! {
+                                            #source_ident = source_iter([#value]);
+                                        },
+                                        Some(&stmt_id.to_string()),
+                                    );
                                 } else {
                                     // A tick- or atomic-located singleton source (the atomic
                                     // region is fused into its tick's loop) that yields its value
@@ -6109,6 +6078,24 @@ impl HydroNode {
 
                                 if matches!(node, HydroNode::Fold { .. })
                                     && node.metadata().location_id.is_root()
+                                    && !graph_builders.singleton_intermediates()
+                                    && !node.metadata().collection_kind.is_bounded()
+                                {
+                                    // At the root, the singleton is an update feed: emit the initial
+                                    // value once, then the accumulator only on ticks with new input
+                                    // (consumers hold the latest update), instead of replaying it on
+                                    // every tick.
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
+                                        parse_quote! {
+                                            source_iter([(#init_tokens)()]) -> [0]#fold_ident;
+                                            #input_ident -> fold_no_replay::<#lifetime>(#init_tokens, #acc_tokens) -> [1]#fold_ident;
+                                            #fold_ident = chain();
+                                        },
+                                        Some(&stmt_id.to_string()),
+                                    );
+                                } else if matches!(node, HydroNode::Fold { .. })
+                                    && node.metadata().location_id.is_root()
                                     && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
                                 {
@@ -6166,9 +6153,12 @@ impl HydroNode {
                                     }
                                 } else if matches!(node, HydroNode::FoldKeyed { .. })
                                     && node.metadata().location_id.is_root()
-                                    && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
                                 {
+                                    // At the root, the keyed singleton is an update feed: emit only
+                                    // the entry each input updates (consumers hold the latest value
+                                    // per key), not every entry every tick. (In production
+                                    // `emit_fold_hook` is a no-op.)
                                     let HydroNode::FoldKeyed { input, .. } = &*node else { unreachable!() };
                                     let hooked_input_ident = graph_builders.emit_fold_hook(
                                         &input.metadata().location_id,
@@ -6265,9 +6255,9 @@ impl HydroNode {
 
                     HydroNode::Reduce { .. } | HydroNode::ReduceKeyed { .. } => {
                         let operator: syn::Ident = if let HydroNode::Reduce { input, .. } = node {
-                            if input.metadata().location_id.is_root()
-                                && input.metadata().collection_kind.is_bounded()
-                            {
+                            // At the root, the result is an update feed: emit it only on ticks with
+                            // new input (consumers hold the latest update), bounded or not.
+                            if input.metadata().location_id.is_root() {
                                 parse_quote!(reduce_no_replay)
                             } else {
                                 parse_quote!(reduce)
@@ -6345,13 +6335,45 @@ impl HydroNode {
                                     } else {
                                         quote! {}
                                     };
-                                    graph_builders.add_dfir_at(
-                                        &out_location,
-                                        parse_quote! {
-                                            #reduce_ident = #input_ident -> #operator::<#lifetime>(#f_tokens) #wrap_op;
-                                        },
-                                        Some(&stmt_id.to_string()),
-                                    );
+                                    if matches!(node, HydroNode::ReduceKeyed { .. })
+                                        && node.metadata().location_id.is_root()
+                                        && !node.metadata().collection_kind.is_bounded()
+                                    {
+                                        // At the root, the keyed singleton is an update feed:
+                                        // emit only the entry each input updates (consumers hold
+                                        // the latest value per key), not every entry every tick.
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
+                                            parse_quote! {
+                                                #reduce_ident = #input_ident -> scan::<#lifetime>(
+                                                    || ::std::collections::HashMap::new(),
+                                                    {
+                                                        let __reduce_keyed_fn = #f_tokens;
+                                                        move |__state, (__key, __value)| {
+                                                            let __acc = match __state.entry(::std::clone::Clone::clone(&__key)) {
+                                                                ::std::collections::hash_map::Entry::Occupied(e) => {
+                                                                    let __acc = e.into_mut();
+                                                                    __reduce_keyed_fn(__acc, __value);
+                                                                    __acc
+                                                                }
+                                                                ::std::collections::hash_map::Entry::Vacant(e) => e.insert(__value),
+                                                            };
+                                                            Some((__key, ::std::clone::Clone::clone(&*__acc)))
+                                                        }
+                                                    },
+                                                ) #wrap_op;
+                                            },
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    } else {
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
+                                            parse_quote! {
+                                                #reduce_ident = #input_ident -> #operator::<#lifetime>(#f_tokens) #wrap_op;
+                                            },
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    }
                                 }
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
