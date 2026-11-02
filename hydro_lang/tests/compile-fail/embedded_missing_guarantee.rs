@@ -5,27 +5,25 @@ use hydro_lang::prelude::*;
 struct P1 {}
 struct P2 {}
 
-// An `EMBEDDED` channel must declare its retries, ordering, and failure policy.
+// An `EMBEDDED` channel must declare, for each anomaly, whether it may introduce it.
 
-fn missing_retries<'a>(p1: &Process<'a, P1>, p2: &Process<'a, P2>) {
+fn missing_duplication<'a>(p1: &Process<'a, P1>, p2: &Process<'a, P2>) {
     let _ = p1
         .source_iter(q!(vec![1, 2, 3]))
-        .send(p2, EMBEDDED.total_order().fail_stop().name("no_retries"));
+        .send(p2, EMBEDDED.never_reorders().never_drops().name("no_dups"));
 }
 
-fn missing_ordering<'a>(p1: &Process<'a, P1>, p2: &Process<'a, P2>) {
-    let _ = p1
-        .source_iter(q!(vec![1, 2, 3]))
-        .send(p2, EMBEDDED.exactly_once().fail_stop().name("no_ordering"));
-}
-
-fn missing_failure_policy<'a>(p1: &Process<'a, P1>, p2: &Process<'a, P2>) {
+fn missing_reordering<'a>(p1: &Process<'a, P1>, p2: &Process<'a, P2>) {
     let _ = p1.source_iter(q!(vec![1, 2, 3])).send(
         p2,
-        EMBEDDED
-            .exactly_once()
-            .total_order()
-            .name("no_failure_policy"),
+        EMBEDDED.never_duplicates().never_drops().name("no_order"),
+    );
+}
+
+fn missing_loss<'a>(p1: &Process<'a, P1>, p2: &Process<'a, P2>) {
+    let _ = p1.source_iter(q!(vec![1, 2, 3])).send(
+        p2,
+        EMBEDDED.never_reorders().never_duplicates().name("no_loss"),
     );
 }
 

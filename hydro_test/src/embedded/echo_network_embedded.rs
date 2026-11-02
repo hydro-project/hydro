@@ -14,9 +14,9 @@ pub fn echo_network_embedded<'a>(
         .send(
             receiver,
             EMBEDDED
-                .exactly_once()
-                .total_order()
-                .fail_stop()
+                .never_reorders()
+                .never_duplicates()
+                .never_drops()
                 .name("messages"),
         )
         .map(q!(|s| s.to_uppercase()))

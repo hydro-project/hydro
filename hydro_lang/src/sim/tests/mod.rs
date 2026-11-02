@@ -292,7 +292,11 @@ fn sim_embedded_send() {
     let out_recv = input
         .send(
             &p2,
-            EMBEDDED.exactly_once().total_order().fail_stop().name("ch"),
+            EMBEDDED
+                .never_reorders()
+                .never_duplicates()
+                .never_drops()
+                .name("ch"),
         )
         .map(q!(|x| x * 10))
         .sim_output();
