@@ -275,7 +275,7 @@ where
     L: Location<'a>,
 {
     fn defer_tick(self) -> Self {
-        Stream::defer_tick(self)
+        Stream::<T, Tick<L>, Bounded, O, R>::defer_tick(self)
     }
 }
 
@@ -3548,6 +3548,46 @@ where
     }
 }
 
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
+where
+    L: TopLevel<'a>,
+{
+    /// Delays every element of this top-level stream by one (internal) tick.
+    ///
+    /// A top-level stream has no observable ticks, so this does not change *which* elements the
+    /// stream contains, only that each one arrives slightly later. Its purpose is to break
+    /// dataflow cycles at the top level, e.g. a stream that is batched into a tick, yielded back
+    /// out, and fed back (through a [`Location::forward_ref`]) into the same tick, which would
+    /// otherwise be cyclical within a single tick.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!(vec![1, 2, 3])).defer_tick()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3
+    /// # for w in vec![1, 2, 3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn defer_tick(self) -> Stream<T, L, B, O, R> {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::DeferTick {
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<T, L, B, O, R>::collection_kind()),
+            },
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "deploy")]
@@ -5270,5 +5310,53 @@ mod tests {
             "Expected 2 simulation instances due to mut on unordered input, got {}",
             count
         );
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_defer_tick() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let out_recv = node
+            .source_iter(q!(vec![1, 2, 3]))
+            .defer_tick()
+            .sim_output();
+
+        flow.sim().exhaustive(async || {
+            out_recv.assert_yields_only([1, 2, 3]).await;
+        });
+    }
+
+    /// A top-level `defer_tick` breaks a cycle that is batched into a tick, yielded back out,
+    /// and fed back into the same tick.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_defer_tick_breaks_tick_cycle() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (back_complete, back) = node.forward_ref::<super::Stream<
+            u32,
+            _,
+            crate::live_collections::boundedness::Unbounded,
+        >>();
+        let tick = node.tick();
+        let out = node
+            .source_iter(q!(vec![0u32]))
+            .batch(&tick, nondet!(/** test */))
+            .chain(back.batch(&tick, nondet!(/** test */)))
+            .all_ticks();
+        back_complete.complete(
+            out.clone()
+                .filter(q!(|x| *x < 3))
+                .map(q!(|x| x + 1))
+                .defer_tick(),
+        );
+        let out_recv = out.sim_output();
+
+        flow.sim().exhaustive(async || {
+            out_recv.assert_yields_only([0, 1, 2, 3]).await;
+        });
     }
 }
