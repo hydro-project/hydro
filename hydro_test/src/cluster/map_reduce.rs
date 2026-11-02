@@ -32,13 +32,17 @@ pub fn map_reduce<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, Leader>, Clust
         .send(&process, TCP.fail_stop().bincode())
         .values();
 
-    let reduced = batches.into_keyed().reduce(q!(
-        |total, count| *total += count,
-        commutative = manual_proof!(/** integer add is commutative */)
-    ));
-
-    reduced
-        .snapshot(&process.tick(), nondet!(/** intentional output */))
+    // Batch the partial counts into the leader's tick (which drives it), fold them into the
+    // running totals in the matching atomic region, and snapshot those totals back into the
+    // same tick, so every batch prints the totals that include it.
+    batches
+        .batch(&process.tick(), nondet!(/** intentional output */))
+        .across_ticks(|batches| {
+            batches.into_keyed().reduce(q!(
+                |total, count| *total += count,
+                commutative = manual_proof!(/** integer add is commutative */)
+            ))
+        })
         .entries()
         .all_ticks()
         .assume_ordering::<TotalOrder>(nondet!(/** unordered logs across keys are okay */))
