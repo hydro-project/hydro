@@ -77,27 +77,38 @@ where
     Input: Clone,
     Output: 'a + Clone,
 {
-    let new_payload_ids = sliced! {
-        let num_clients_per_node = use::snapshot(num_clients_per_node, nondet!(/** This is a constant */));
-        let mut next_virtual_client = use::state(|l| Optional::from(l.singleton(q!((0u32, None)))));
-
-        // Set up virtual clients - spawn new ones each tick until we reach the limit
-        let new_virtual_client = next_virtual_client.clone();
-        next_virtual_client = new_virtual_client
-            .clone()
-            .zip(num_clients_per_node)
-            .filter_map(q!(move |((virtual_id, _), num_clients_per_node)| {
-                assert!(num_clients_per_node > 0, "Must have at least 1 virtual client per node");
-                if virtual_id + 1 < num_clients_per_node as u32 {
-                    Some((virtual_id + 1, None))
-                } else {
-                    None
-                }
-            }),
+    // Set up virtual clients: a one-shot source spawns the first virtual client, and each newly
+    // spawned client spawns the next one a tick later (fed back through a top-level
+    // `defer_tick`), until `num_clients_per_node` clients exist. The slice only fires while
+    // clients are still being spawned.
+    let (spawn_next_complete, spawn_next) =
+        clients.forward_ref::<Stream<u32, Cluster<'a, Client, Id>, Unbounded, NoOrder>>();
+    let new_virtual_clients = sliced! {
+        let to_spawn = use::batch(
+            clients
+                .source_iter(q!([0u32]))
+                .weaken_boundedness::<Unbounded>()
+                .merge_unordered(spawn_next),
+            nondet!(/** each virtual client is spawned exactly once, in some tick */)
         );
+        let num_clients_per_node = use::snapshot(num_clients_per_node, nondet!(/** This is a constant */));
 
-        new_virtual_client.into_stream().into_keyed()
+        to_spawn
+            .cross_singleton(num_clients_per_node)
+            .filter_map(q!(|(virtual_id, num_clients_per_node)| {
+                assert!(num_clients_per_node > 0, "Must have at least 1 virtual client per node");
+                (virtual_id < num_clients_per_node as u32).then_some(virtual_id)
+            }))
     };
+    spawn_next_complete.complete(
+        new_virtual_clients
+            .clone()
+            .map(q!(|virtual_id| virtual_id + 1))
+            .defer_tick(),
+    );
+    let new_payload_ids = new_virtual_clients
+        .map(q!(|virtual_id| (virtual_id, None)))
+        .into_keyed();
 
     let (protocol_outputs_complete, protocol_outputs) =
         clients
