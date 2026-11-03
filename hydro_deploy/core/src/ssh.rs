@@ -22,7 +22,7 @@ use nanoid::nanoid;
 use tokio::fs::File;
 #[cfg(feature = "profile-folding")]
 use tokio::io::BufReader;
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::StreamExt;
@@ -284,6 +284,27 @@ pub trait LaunchedSshHost: Send + Sync {
     }
 }
 
+/// Accept connections on `local_port` and forward each one through `open_channel`.
+///
+/// Copies run concurrently so a connection that stays open does not block the next
+/// accept. The loop ends when the listener stops accepting.
+async fn forward_accepted_connections<F, S>(local_port: TcpListener, mut open_channel: F)
+where
+    F: AsyncFnMut() -> S + Send,
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    // TODO(shadaj): we should be returning an Arc so that we know
+    // if anyone wants to connect to this forwarded port
+    while let Ok((mut local_stream, _)) = local_port.accept().await {
+        let mut channel = open_channel().await;
+        tokio::spawn(async move {
+            let _ = tokio::io::copy_bidirectional(&mut local_stream, &mut channel).await;
+        });
+    }
+
+    ProgressTracker::println("[hydro] closing forwarded port");
+}
+
 async fn create_channel<H>(session: &AsyncSession<H>) -> Result<AsyncChannel>
 where
     H: 'static + Handler,
@@ -500,22 +521,79 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         let port = addr.port();
 
         tokio::spawn(async move {
-            #[expect(clippy::never_loop, reason = "tcp accept loop pattern")]
-            while let Ok((mut local_stream, _)) = local_port.accept().await {
-                let mut channel = session
-                    .channel_open_direct_tcpip(internal_ip, port.into(), "127.0.0.1", 22)
+            forward_accepted_connections(local_port, async move || {
+                session
+                    .channel_open_direct_tcpip(internal_ip.clone(), port.into(), "127.0.0.1", 22)
                     .await
                     .unwrap()
-                    .into_stream();
-                let _ = tokio::io::copy_bidirectional(&mut local_stream, &mut channel).await;
-                break;
-                // TODO(shadaj): we should be returning an Arc so that we know
-                // if anyone wants to connect to this forwarded port
-            }
-
-            ProgressTracker::println("[hydro] closing forwarded port");
+                    .into_stream()
+            })
+            .await;
         });
 
         Ok(local_addr)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpStream;
+
+    use super::*;
+
+    /// A connection that stays open must not stop the next local connection
+    /// from being forwarded.
+    #[tokio::test]
+    async fn forwards_each_accepted_connection() {
+        let remote = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let remote_addr = remote.local_addr().unwrap();
+
+        let local = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let local_addr = local.local_addr().unwrap();
+
+        let _forwarder = tokio::spawn(async move {
+            forward_accepted_connections(local, async move || {
+                TcpStream::connect(remote_addr).await.unwrap()
+            })
+            .await;
+        });
+
+        let remote_task = tokio::spawn(async move {
+            let mut held = Vec::new();
+            let mut payloads = Vec::new();
+            for i in 0..2 {
+                let (mut sock, _) = tokio::time::timeout(Duration::from_secs(2), remote.accept())
+                    .await
+                    .unwrap_or_else(|_| panic!("timed out waiting for forwarded connection {i}"))
+                    .unwrap();
+                let mut buf = [0u8; 4];
+                tokio::time::timeout(Duration::from_secs(2), sock.read_exact(&mut buf))
+                    .await
+                    .unwrap_or_else(|_| panic!("timed out waiting for forwarded bytes {i}"))
+                    .unwrap();
+                payloads.push(buf);
+                // Keep the upstream socket open so the first copy cannot finish
+                // before the second connection is accepted.
+                held.push(sock);
+            }
+            payloads
+        });
+
+        let mut first = TcpStream::connect(local_addr).await.unwrap();
+        first.set_nodelay(true).unwrap();
+        first.write_all(b"one!").await.unwrap();
+
+        let mut second = TcpStream::connect(local_addr).await.unwrap();
+        second.set_nodelay(true).unwrap();
+        second.write_all(b"two!").await.unwrap();
+
+        let payloads = remote_task.await.unwrap();
+        assert_eq!(payloads, vec![*b"one!", *b"two!"]);
+
+        drop(first);
+        drop(second);
     }
 }
