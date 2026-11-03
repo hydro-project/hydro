@@ -265,8 +265,7 @@ where
     const HEIGHT: usize = 0;
 
     fn insert(&mut self, row: Self::Schema) -> bool {
-        self.elements.insert(row);
-        true
+        self.elements.insert(row)
     }
 
     fn contains<'a>(&'a self, row: <Self::Schema as VariadicExt>::AsRefVar<'a>) -> bool {
@@ -332,8 +331,7 @@ where
     const HEIGHT: usize = 0;
 
     fn insert(&mut self, row: Self::Schema) -> bool {
-        self.elements.insert(row);
-        true
+        self.elements.insert(row)
     }
 
     fn contains<'a>(&'a self, row: <Self::Schema as VariadicExt>::AsRefVar<'a>) -> bool {
