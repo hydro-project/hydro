@@ -18,14 +18,14 @@ When your Hydro program sends data between processes, the generated functions ga
 ## How It Works
 Embedded mode uses a `build.rs` script to compile your Hydro program at build time. The generated code is then `include!`-ed into your crate. The workflow has three parts:
 
-1. **Define your Hydro logic** using [`Location::embedded_input`](rust:hydro_lang::location::Location::embedded_input) and [`Stream::embedded_output`](rust:hydro_lang::live_collections::Stream::embedded_output) to mark where data enters and leaves the dataflow.
-2. **Generate code** in `build.rs` using [`generate_embedded`](rust:hydro_lang::compile::deploy::DeployFlow::generate_embedded).
+1. **Define your Hydro logic** as a function that takes a [`Stream`](rust:hydro_lang::live_collections::Stream) and uses [`Stream::embedded_output`](rust:hydro_lang::live_collections::Stream::embedded_output) to mark where results leave the dataflow.
+2. **Generate code** in `build.rs` using [`generate_embedded`](rust:hydro_lang::compile::deploy::DeployFlow::generate_embedded), wiring each input with [`Location::embedded_input`](rust:hydro_lang::location::Location::embedded_input) on the process.
 3. **Call the generated function** from your application, passing in streams and output callbacks.
 
 Let's walk through a complete example that capitalizes strings using Hydro in embedded mode.
 
 ### 1. Define the Hydro Logic
-Write your Hydro function as usual, but use `embedded_input` to create an input stream and `embedded_output` to mark where results should be emitted:
+Write your Hydro function as usual. It takes a `Stream` for data entering the dataflow and uses `embedded_output` to mark where results should be emitted:
 
 ```rust title="my_hydro_crate/src/lib.rs"
 use hydro_lang::prelude::*;
@@ -37,7 +37,7 @@ pub fn capitalize<'a>(input: Stream<String, Process<'a, ()>>) {
 }
 ```
 
-[`embedded_input`](rust:hydro_lang::location::Location::embedded_input) creates a field on a generated `EmbeddedInputs` struct — the name you pass (`"input"`) becomes the field name. Similarly, [`embedded_output`](rust:hydro_lang::live_collections::Stream::embedded_output) creates a field on a generated `EmbeddedOutputs` struct — the name (`"output"`) becomes the field name. The output field accepts an `impl FnMut(T)` closure that will be called for each emitted element.
+[`embedded_output`](rust:hydro_lang::live_collections::Stream::embedded_output) creates a field on a generated `EmbeddedOutputs` struct — the name (`"output"`) becomes the field name. The output field accepts an `impl FnMut(T)` closure that will be called for each emitted element. The input is not created in this function: [`embedded_input`](rust:hydro_lang::location::Location::embedded_input) is called on the process in `build.rs`, and the name you pass there (`"input"`) becomes a field on the generated `EmbeddedInputs` struct.
 
 Your base crate also needs to declare an empty `stageleft_macro_entrypoint` feature. This is required by the Stageleft code generation machinery to set up the correct re-exports:
 
@@ -55,6 +55,7 @@ Your wrapper crate needs the following dependencies:
 [dependencies]
 hydro_lang = { version = "...", features = ["runtime_support"] }
 my_hydro_crate = { path = "../my_hydro_crate", features = ["stageleft_macro_entrypoint"] }
+stageleft = "0.16.0"
 
 [build-dependencies]
 hydro_lang = { version = "...", features = ["build"] }
@@ -66,7 +67,7 @@ dfir_rs = { version = "..." }
 tokio = { version = "1", features = ["full"] }
 ```
 
-The `runtime_support` feature is needed at runtime to provide the DFIR runtime. The `build` feature is needed in `build-dependencies` for the code generation APIs.
+The `runtime_support` feature is needed at runtime to provide the DFIR runtime. The `build` feature is needed in `build-dependencies` for the code generation APIs. `stageleft` is needed in `[dependencies]` because the generated source calls `stageleft::runtime_support` directly. That source reaches DFIR and `Stream` through `hydro_lang::runtime_support::dfir_rs`, not a direct `futures` import, so the example below depends on `dfir_rs` only to call `dfir_rs::futures`.
 
 In its `build.rs`, construct a [`FlowBuilder`](rust:hydro_lang::compile::builder::FlowBuilder), wire up the logic, and call [`generate_embedded`](rust:hydro_lang::compile::deploy::DeployFlow::generate_embedded):
 
