@@ -4,7 +4,7 @@ use syn::parse_quote;
 use super::join_fused::make_joindata;
 use super::{
     OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence,
-    RANGE_0, RANGE_1, WriteContextArgs,
+    RANGE_0, RANGE_1, WriteContextArgs, hoist_top_level_place,
 };
 
 /// See `join_fused`
@@ -68,7 +68,8 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
 
-        let lhs_accum = &arguments[0];
+        let (lhs_once_prologue, lhs_accum) =
+            hoist_top_level_place(wc, &arguments[0], "lhs_accum_once");
 
         let write_iterator = match persistences[1] {
             Persistence::Tick => quote_spanned! {op_span=>
@@ -113,6 +114,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue: quote_spanned! {op_span=>
+                #lhs_once_prologue
                 #lhs_prologue
                 #rhs_prologue
             },

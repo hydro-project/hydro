@@ -6,12 +6,12 @@ use std::ops::{Bound, RangeBounds};
 use std::sync::OnceLock;
 
 use documented::DocumentedVariants;
-use proc_macro2::{Ident, Literal, Span, TokenStream};
+use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
 use quote::quote_spanned;
 use serde::{Deserialize, Serialize};
 use slotmap::Key;
 use syn::punctuated::Punctuated;
-use syn::{Expr, Token, parse_quote_spanned};
+use syn::{Block, Expr, Pat, Path, Stmt, Token, parse_quote_spanned};
 
 use super::{
     AsCodeOptions, GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics,
@@ -489,6 +489,259 @@ impl WriteContextArgs<'_> {
             });
         out
     }
+}
+
+/// Argument indices of owned-item closures that are safe to build once per run.
+///
+/// Only `for_each` today. It consumes owned items and is how a program holds a run-long sink
+/// (an open file, a channel sender). Closures that borrow their argument (`map`, `filter`,
+/// `inspect`, `flat_map`, `partition`, `sort_by_key`) or that unify integer literals with both
+/// neighbors (`fold(|old, s| ...)`) stay in the tick: moving them breaks inference or
+/// higher-ranked borrow checking. `join_fused*` hoists its accumulator value separately.
+fn top_level_closure_arg_indices(op_name: &str) -> &'static [usize] {
+    match op_name {
+        "for_each" => &[0],
+        _ => &[],
+    }
+}
+
+/// `true` when `expr` names something that exists only inside a tick (`context`, `df`, or a
+/// handoff buffer). Those expressions cannot be built in the prologue.
+pub(crate) fn expr_references_tick_local(expr: &Expr) -> bool {
+    fn walk(tokens: TokenStream) -> bool {
+        tokens.into_iter().any(|tt| match tt {
+            TokenTree::Ident(ident) => {
+                let name = ident.to_string();
+                // `context` / `df` match [`super::CONTEXT`] / [`super::GRAPH`].
+                name == super::CONTEXT || name == super::GRAPH || name.starts_with("hoff_")
+            }
+            TokenTree::Group(group) => walk(group.stream()),
+            TokenTree::Punct(_) | TokenTree::Literal(_) => false,
+        })
+    }
+    walk(quote::ToTokens::to_token_stream(expr))
+}
+
+/// `true` when `expr` names a local from the surrounding function.
+///
+/// Those captures borrow the caller's stack. Building the closure in the prologue would put that
+/// borrow on the tick closure and break `Dfir::into_erased`, which
+/// needs a `'static` tick. Statics (no lowercase letters, e.g. `COUNT`) and locals bound inside
+/// `expr` are not captures. Unknown syntax is treated as capturing so we skip the hoist.
+fn expr_has_free_captures(expr: &Expr) -> bool {
+    fn is_local_name(name: &str) -> bool {
+        name.chars().any(|c| c.is_ascii_lowercase())
+    }
+    fn path_is_capture(path: &Path, bound: &[String]) -> bool {
+        if path.leading_colon.is_some() || path.segments.len() != 1 {
+            return false;
+        }
+        let name = path.segments[0].ident.to_string();
+        if !is_local_name(&name) || bound.iter().any(|b| b == &name) {
+            return false;
+        }
+        true
+    }
+    fn bind_pat(pat: &Pat, bound: &mut Vec<String>) {
+        match pat {
+            Pat::Ident(pat) => bound.push(pat.ident.to_string()),
+            Pat::Reference(pat) => bind_pat(&pat.pat, bound),
+            Pat::Type(pat) => bind_pat(&pat.pat, bound),
+            Pat::Tuple(pat) => pat.elems.iter().for_each(|p| bind_pat(p, bound)),
+            Pat::TupleStruct(pat) => pat.elems.iter().for_each(|p| bind_pat(p, bound)),
+            Pat::Slice(pat) => pat.elems.iter().for_each(|p| bind_pat(p, bound)),
+            Pat::Struct(pat) => pat
+                .fields
+                .iter()
+                .for_each(|field| bind_pat(&field.pat, bound)),
+            Pat::Or(pat) => pat.cases.iter().for_each(|p| bind_pat(p, bound)),
+            Pat::Paren(pat) => bind_pat(&pat.pat, bound),
+            _ => {}
+        }
+    }
+    fn walk_block(block: &Block, bound: &mut Vec<String>) -> bool {
+        let start = bound.len();
+        let mut free = false;
+        for stmt in &block.stmts {
+            free |= match stmt {
+                Stmt::Local(local) => {
+                    let init_free = local
+                        .init
+                        .as_ref()
+                        .is_some_and(|init| walk_expr(&init.expr, bound));
+                    bind_pat(&local.pat, bound);
+                    init_free
+                }
+                Stmt::Expr(expr, _) => walk_expr(expr, bound),
+                // `static` / items / macros: don't try to understand them.
+                Stmt::Item(_) | Stmt::Macro(_) => true,
+            };
+        }
+        bound.truncate(start);
+        free
+    }
+    fn walk_expr(expr: &Expr, bound: &mut Vec<String>) -> bool {
+        match expr {
+            Expr::Path(path) => path_is_capture(&path.path, bound),
+            Expr::Lit(_) | Expr::Continue(_) | Expr::Infer(_) | Expr::Verbatim(_) => false,
+            Expr::Paren(expr) => walk_expr(&expr.expr, bound),
+            Expr::Group(expr) => walk_expr(&expr.expr, bound),
+            Expr::Reference(expr) => walk_expr(&expr.expr, bound),
+            Expr::Unary(expr) => walk_expr(&expr.expr, bound),
+            Expr::Try(expr) => walk_expr(&expr.expr, bound),
+            Expr::Await(expr) => walk_expr(&expr.base, bound),
+            Expr::Field(expr) => walk_expr(&expr.base, bound),
+            Expr::Cast(expr) => walk_expr(&expr.expr, bound),
+            Expr::Binary(expr) => walk_expr(&expr.left, bound) || walk_expr(&expr.right, bound),
+            Expr::Assign(expr) => walk_expr(&expr.left, bound) || walk_expr(&expr.right, bound),
+            Expr::Index(expr) => walk_expr(&expr.expr, bound) || walk_expr(&expr.index, bound),
+            Expr::Range(expr) => {
+                expr.start.as_ref().is_some_and(|e| walk_expr(e, bound))
+                    || expr.end.as_ref().is_some_and(|e| walk_expr(e, bound))
+            }
+            Expr::Call(expr) => {
+                walk_expr(&expr.func, bound) || expr.args.iter().any(|arg| walk_expr(arg, bound))
+            }
+            Expr::MethodCall(expr) => {
+                walk_expr(&expr.receiver, bound)
+                    || expr.args.iter().any(|arg| walk_expr(arg, bound))
+            }
+            Expr::Array(expr) => expr.elems.iter().any(|elem| walk_expr(elem, bound)),
+            Expr::Tuple(expr) => expr.elems.iter().any(|elem| walk_expr(elem, bound)),
+            Expr::Repeat(expr) => walk_expr(&expr.expr, bound) || walk_expr(&expr.len, bound),
+            Expr::Struct(expr) => {
+                path_is_capture(&expr.path, bound)
+                    || expr
+                        .fields
+                        .iter()
+                        .any(|field| walk_expr(&field.expr, bound))
+                    || expr
+                        .rest
+                        .as_ref()
+                        .is_some_and(|rest| walk_expr(rest, bound))
+            }
+            Expr::Closure(expr) => {
+                let start = bound.len();
+                expr.inputs.iter().for_each(|pat| bind_pat(pat, bound));
+                let free = walk_expr(&expr.body, bound);
+                bound.truncate(start);
+                free
+            }
+            Expr::Block(expr) => walk_block(&expr.block, bound),
+            Expr::Unsafe(expr) => walk_block(&expr.block, bound),
+            Expr::Const(expr) => walk_block(&expr.block, bound),
+            Expr::If(expr) => {
+                walk_expr(&expr.cond, bound)
+                    || walk_block(&expr.then_branch, bound)
+                    || expr
+                        .else_branch
+                        .as_ref()
+                        .is_some_and(|(_, else_expr)| walk_expr(else_expr, bound))
+            }
+            Expr::Loop(expr) => walk_block(&expr.body, bound),
+            Expr::While(expr) => walk_expr(&expr.cond, bound) || walk_block(&expr.body, bound),
+            Expr::ForLoop(expr) => {
+                let iter_free = walk_expr(&expr.expr, bound);
+                let start = bound.len();
+                bind_pat(&expr.pat, bound);
+                let body_free = walk_block(&expr.body, bound);
+                bound.truncate(start);
+                iter_free || body_free
+            }
+            Expr::Break(expr) => expr
+                .expr
+                .as_ref()
+                .is_some_and(|expr| walk_expr(expr, bound)),
+            Expr::Return(expr) => expr
+                .expr
+                .as_ref()
+                .is_some_and(|expr| walk_expr(expr, bound)),
+            Expr::Let(expr) => walk_expr(&expr.expr, bound),
+            // Macros can hide captures (`println!("{}", local)`).
+            Expr::Macro(_) => true,
+            _ => true,
+        }
+    }
+    let mut bound = Vec::new();
+    walk_expr(expr, &mut bound)
+}
+
+/// One-argument wrapper around the closure stored in `slot`.
+///
+/// Rebuilt every tick; the stored closure is not. `&mut` of the stored closure is not
+/// higher-ranked, so the operator must see this fresh wrapper instead.
+fn forwarding_closure(slot: &Ident, span: Span) -> Expr {
+    parse_quote_spanned! {span=>
+        |__dfir_once_item| (#slot)(__dfir_once_item)
+    }
+}
+
+/// Like the closure hoist, but the use-site tokens are the place itself.
+///
+/// Callers that already write `&mut #argument` (fused join accumulators) should use this so the
+/// borrow is not doubled.
+pub(crate) fn hoist_top_level_place(
+    wc: &WriteContextArgs<'_>,
+    expr: &Expr,
+    suffix: &str,
+) -> (TokenStream, TokenStream) {
+    if wc.loop_id.is_some() || expr_references_tick_local(expr) || expr_has_free_captures(expr) {
+        return (TokenStream::new(), quote_spanned!(wc.op_span=> #expr));
+    }
+    let ident = wc.make_ident(suffix);
+    let prologue = quote_spanned! {wc.op_span=>
+        #[allow(unused_mut, reason = "accumulator may be a Fn or a struct")]
+        let mut #ident = #expr;
+    };
+    let use_tokens = quote_spanned! {wc.op_span=> #ident };
+    (prologue, use_tokens)
+}
+
+/// Rewrite closure arguments of a top-level operator so each is constructed once per run.
+///
+/// Returns prologue statements declaring the bindings. `arguments` is updated to a forwarding
+/// closure for each hoisted argument.
+pub(crate) fn hoist_top_level_closure_args(
+    loop_id: Option<GraphLoopId>,
+    op_name: &str,
+    subgraph_id: GraphSubgraphId,
+    node_id: GraphNodeId,
+    op_span: Span,
+    arguments: &mut Punctuated<Expr, Token![,]>,
+) -> TokenStream {
+    if loop_id.is_some() {
+        return TokenStream::new();
+    }
+    let indices = top_level_closure_arg_indices(op_name);
+    if indices.is_empty() {
+        return TokenStream::new();
+    }
+
+    let mut prologue = TokenStream::new();
+    for (index, expr) in arguments.iter_mut().enumerate() {
+        if !indices.contains(&index)
+            || expr_references_tick_local(expr)
+            || expr_has_free_captures(expr)
+        {
+            continue;
+        }
+        let slot = Ident::new(
+            &format!(
+                "sg_{:?}_node_{:?}_fn_once_{}",
+                subgraph_id.data(),
+                node_id.data(),
+                index
+            ),
+            op_span,
+        );
+        let original = expr.clone();
+        prologue.extend(quote_spanned! {op_span=>
+            #[allow(unused_mut, reason = "Fn closures need not be mutated")]
+            let mut #slot = #original;
+        });
+        *expr = forwarding_closure(&slot, op_span);
+    }
+    prologue
 }
 
 /// An object-safe version of [`RangeBounds`].

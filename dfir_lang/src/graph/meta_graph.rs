@@ -16,7 +16,7 @@ use syn::spanned::Spanned;
 use super::graph_write::{Dot, GraphWrite, Mermaid};
 use super::ops::{
     DelayType, FloType, OPERATORS, OperatorWriteOutput, WriteContextArgs, find_op_op_constraints,
-    null_write_iterator_fn,
+    hoist_top_level_closure_args, null_write_iterator_fn,
 };
 use super::{
     CONTEXT, Color, DiMulGraph, GRAPH, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId,
@@ -1675,10 +1675,21 @@ impl DfirGraph {
                             let singletons_resolved =
                                 self.helper_resolve_singletons(node_id, op_span);
 
-                            let arguments = &process_singletons::postprocess_singletons(
+                            let mut arguments = process_singletons::postprocess_singletons(
                                 op_inst.arguments_raw.clone(),
                                 singletons_resolved,
                             );
+                            // Capture-free top-level `for_each` closures are built once per run.
+                            // See `hoist_top_level_closure_args`.
+                            let closure_once_prologue = hoist_top_level_closure_args(
+                                loop_id,
+                                op_name,
+                                subgraph_id,
+                                node_id,
+                                op_span,
+                                &mut arguments,
+                            );
+                            let arguments = &arguments;
 
                             let source_tag = 'a: {
                                 if let Some(tag) = self.operator_tag.get(node_id).cloned() {
@@ -1797,6 +1808,7 @@ impl DfirGraph {
                                     }
                                 });
                             }
+                            op_prologue_code.push(closure_once_prologue);
                             op_prologue_code.push(write_prologue);
                             op_tick_end_code.push(write_tick_end);
                             subgraph_op_iter_code.push(write_iterator);

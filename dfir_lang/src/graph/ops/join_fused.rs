@@ -4,7 +4,7 @@ use syn::{Ident, parse_quote};
 
 use super::{
     OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0, RANGE_1,
-    WriteContextArgs,
+    WriteContextArgs, hoist_top_level_place,
 };
 use crate::diagnostic::Diagnostic;
 
@@ -134,8 +134,10 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
 
-        let lhs_accum = &arguments[0];
-        let rhs_accum = &arguments[1];
+        let (lhs_once_prologue, lhs_accum) =
+            hoist_top_level_place(wc, &arguments[0], "lhs_accum_once");
+        let (rhs_once_prologue, rhs_accum) =
+            hoist_top_level_place(wc, &arguments[1], "rhs_accum_once");
 
         // Since both inputs are fully accumulated before emitting, we don't need to keep track of ticks to avoid emitting the same thing twice in the same tick.
         let write_iterator = quote_spanned! {op_span=>
@@ -170,6 +172,8 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue: quote_spanned! {op_span=>
+                #lhs_once_prologue
+                #rhs_once_prologue
                 #lhs_prologue
                 #rhs_prologue
             },
