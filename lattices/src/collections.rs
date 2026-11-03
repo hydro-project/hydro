@@ -998,11 +998,113 @@ impl<K, OldVal> MapMapValues<OldVal> for OptionMap<K, OldVal> {
     }
 }
 
+// Serde implements `Serialize`/`Deserialize` for arrays of length 0..=32 only,
+// not for a generic `[T; N]`. The container derives match the other collections;
+// the array elements go through this helper.
+#[cfg(feature = "serde")]
+mod serde_array {
+    use core::fmt;
+    use core::marker::PhantomData;
+    use core::mem::MaybeUninit;
+
+    use serde::de::{self, SeqAccess, Visitor};
+    use serde::ser::SerializeTuple;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<T, S, const N: usize>(array: &[T; N], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: Serialize,
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_tuple(N)?;
+        for element in array {
+            seq.serialize_element(element)?;
+        }
+        seq.end()
+    }
+
+    pub fn deserialize<'de, T, D, const N: usize>(deserializer: D) -> Result<[T; N], D::Error>
+    where
+        T: Deserialize<'de>,
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_tuple(N, ArrayVisitor::<T, N>(PhantomData))
+    }
+
+    struct ArrayVisitor<T, const N: usize>(PhantomData<T>);
+
+    impl<'de, T, const N: usize> Visitor<'de> for ArrayVisitor<T, N>
+    where
+        T: Deserialize<'de>,
+    {
+        type Value = [T; N];
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            if N == 0 {
+                formatter.write_str("an empty array")
+            } else {
+                formatter.write_fmt(format_args!("an array of length {N}"))
+            }
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let mut uninit = core::array::from_fn(|_| MaybeUninit::<T>::uninit());
+            {
+                let mut guard = PartialInit {
+                    slots: &mut uninit,
+                    initialized: 0,
+                };
+                for index in 0..N {
+                    let Some(value) = seq.next_element()? else {
+                        return Err(de::Error::invalid_length(index, &self));
+                    };
+                    guard.slots[index].write(value);
+                    guard.initialized += 1;
+                }
+                guard.initialized = 0;
+            }
+            // SAFETY: the loop wrote every slot, then disarmed `PartialInit` so
+            // those values are not dropped before this move.
+            Ok(unsafe { MaybeUninit::<[T; N]>::from(uninit).assume_init() })
+        }
+    }
+
+    /// Drops array slots that were initialized if deserialization stops early.
+    struct PartialInit<'a, T> {
+        slots: &'a mut [MaybeUninit<T>],
+        initialized: usize,
+    }
+
+    impl<T> Drop for PartialInit<'_, T> {
+        fn drop(&mut self) {
+            for slot in &mut self.slots[..self.initialized] {
+                // SAFETY: `initialized` counts slots written by `MaybeUninit::write`.
+                unsafe { slot.assume_init_drop() }
+            }
+        }
+    }
+}
+
 /// An array wrapper representing a fixed-size set (modulo duplicate items).
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-// TODO(mingwei): #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))] // https://stackoverflow.com/a/76695397/2398020
-pub struct ArraySet<T, const N: usize>(pub [T; N]);
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ArraySet<T, const N: usize>(
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            with = "serde_array",
+            bound(
+                serialize = "T: serde::Serialize",
+                deserialize = "T: serde::Deserialize<'de>"
+            )
+        )
+    )]
+    pub [T; N],
+);
 impl<T, const N: usize> IntoIterator for ArraySet<T, N> {
     type Item = T;
     type IntoIter = core::array::IntoIter<T, N>;
@@ -1080,11 +1182,31 @@ impl<T, const N: usize> Iter for ArraySet<T, N> {
 
 /// An array wrapper representing a fixed-size map.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-// TODO(mingwei): #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))] // https://stackoverflow.com/a/76695397/2398020
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ArrayMap<K, V, const N: usize> {
     /// Keys, corresponding 1:1 with `vals`.
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            with = "serde_array",
+            bound(
+                serialize = "K: serde::Serialize",
+                deserialize = "K: serde::Deserialize<'de>"
+            )
+        )
+    )]
     pub keys: [K; N],
     /// Values, corresponding 1:1 with `keys`.
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            with = "serde_array",
+            bound(
+                serialize = "V: serde::Serialize",
+                deserialize = "V: serde::Deserialize<'de>"
+            )
+        )
+    )]
     pub vals: [V; N],
 }
 impl<K, V, const N: usize> IntoIterator for ArrayMap<K, V, N> {
@@ -1232,6 +1354,30 @@ impl<K, OldVal, const N: usize> MapMapValues<OldVal> for ArrayMap<K, OldVal, N> 
         let Self { keys, vals } = self;
         let vals = vals.map(map_fn);
         ArrayMap { keys, vals }
+    }
+}
+
+#[cfg(all(test, feature = "serde"))]
+mod test {
+    use super::{ArrayMap, ArraySet};
+
+    #[test]
+    fn array_set_and_array_map_serde_json_roundtrip() {
+        let set = ArraySet([1_i32, 2, 3]);
+        let json = serde_json::to_string(&set).unwrap();
+        assert_eq!(json, "[1,2,3]");
+        let back: ArraySet<i32, 3> = serde_json::from_str(&json).unwrap();
+        assert_eq!(set.0, back.0);
+
+        let map = ArrayMap {
+            keys: [10_i32, 20],
+            vals: [1_i32, 2],
+        };
+        let json = serde_json::to_string(&map).unwrap();
+        assert_eq!(json, "{\"keys\":[10,20],\"vals\":[1,2]}");
+        let back: ArrayMap<i32, i32, 2> = serde_json::from_str(&json).unwrap();
+        assert_eq!(map.keys, back.keys);
+        assert_eq!(map.vals, back.vals);
     }
 }
 

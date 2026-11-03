@@ -3328,6 +3328,7 @@ dependencies = [
  "roaring",
  "sealed",
  "serde",
+ "serde_json",
  "variadics",
  "variadics_macro",
 ]
