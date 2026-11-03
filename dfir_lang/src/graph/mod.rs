@@ -276,28 +276,35 @@ impl OpInstGenerics {
 pub fn get_operator_generics(diagnostics: &mut Diagnostics, operator: &Operator) -> OpInstGenerics {
     // Generic arguments.
     let generic_args = operator.type_arguments().cloned();
-    let persistence_args = generic_args.iter().flatten().map_while(|generic_arg| match generic_arg {
-            GenericArgument::Lifetime(lifetime) => {
-                match &*lifetime.ident.to_string() {
-                    "tick" => Some(Persistence::Tick),
-                    "static" => Some(Persistence::Static),
-                    _ => {
-                        diagnostics.push(Diagnostic::spanned(
-                            generic_arg.span(),
-                            Level::Error,
-                            format!("Unknown lifetime generic argument `'{}`, expected `'tick` or `'static`.", lifetime.ident),
-                        ));
-                        // TODO(mingwei): should really keep going and not short circuit?
-                        None
-                    }
-                }
-            },
-            _ => None,
-        }).collect::<Vec<_>>();
+    // Leading lifetimes are the persistence prefix. A non-lifetime ends that prefix.
+    // An unknown lifetime is reported and not stored, but does not end the prefix, so
+    // following type arguments are still collected and checked.
+    let mut persistence_args = Vec::new();
+    let mut persistence_prefix_len = 0usize;
+    for generic_arg in generic_args.iter().flatten() {
+        let GenericArgument::Lifetime(lifetime) = generic_arg else {
+            break;
+        };
+        persistence_prefix_len += 1;
+        match &*lifetime.ident.to_string() {
+            "tick" => persistence_args.push(Persistence::Tick),
+            "static" => persistence_args.push(Persistence::Static),
+            _ => {
+                diagnostics.push(Diagnostic::spanned(
+                    generic_arg.span(),
+                    Level::Error,
+                    format!(
+                        "Unknown lifetime generic argument `'{}`, expected `'tick` or `'static`.",
+                        lifetime.ident
+                    ),
+                ));
+            }
+        }
+    }
     let type_args = generic_args
         .iter()
         .flatten()
-        .skip(persistence_args.len())
+        .skip(persistence_prefix_len)
         .map_while(|generic_arg| match generic_arg {
             GenericArgument::Type(typ) => Some(typ),
             _ => None,
@@ -554,4 +561,122 @@ fn change_spans(tokens: TokenStream, span: Span) -> TokenStream {
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod test {
+    use syn::parse_quote;
+
+    use super::*;
+
+    /// A bad persistence lifetime must be reported without dropping later type arguments.
+    #[test]
+    fn unknown_lifetime_does_not_drop_following_type_args() {
+        let operator: Operator = parse_quote! {
+            identity::<'a, usize>()
+        };
+        let mut diagnostics = Diagnostics::new();
+        let generics = get_operator_generics(&mut diagnostics, &operator);
+
+        assert!(
+            diagnostics.iter().any(|diagnostic| {
+                Level::Error == diagnostic.level
+                    && diagnostic
+                        .message
+                        .contains("Unknown lifetime generic argument `'a`")
+            }),
+            "expected an unknown-lifetime diagnostic, got: {diagnostics:?}",
+        );
+        assert!(
+            generics.persistence_args.is_empty(),
+            "a bad lifetime must not be stored as Tick or Static, got: {:?}",
+            generics.persistence_args,
+        );
+        assert_eq!(
+            1,
+            generics.type_args.len(),
+            "type argument `usize` must still be collected, got: {:?}",
+            generics
+                .type_args
+                .iter()
+                .map(|ty| ty.to_token_stream().to_string())
+                .collect::<Vec<_>>(),
+        );
+        assert_eq!("usize", generics.type_args[0].to_token_stream().to_string(),);
+    }
+
+    /// A type argument still ends the persistence prefix. Lifetimes after that are not
+    /// persistence and are not reported as unknown persistence lifetimes.
+    #[test]
+    fn non_lifetime_ends_persistence_prefix() {
+        let operator: Operator = parse_quote! {
+            identity::<usize, 'a>()
+        };
+        let mut diagnostics = Diagnostics::new();
+        let generics = get_operator_generics(&mut diagnostics, &operator);
+
+        assert!(
+            diagnostics.is_empty(),
+            "a lifetime after a type is outside the persistence prefix, got: {diagnostics:?}",
+        );
+        assert!(generics.persistence_args.is_empty());
+        assert_eq!("usize", generics.type_args[0].to_token_stream().to_string(),);
+    }
+
+    /// A bad lifetime between a real persistence lifetime and a type does not hide either.
+    #[test]
+    fn bad_lifetime_in_prefix_keeps_neighboring_generics() {
+        let operator: Operator = parse_quote! {
+            identity::<'tick, 'a, usize>()
+        };
+        let mut diagnostics = Diagnostics::new();
+        let generics = get_operator_generics(&mut diagnostics, &operator);
+
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic
+                .message
+                .contains("Unknown lifetime generic argument `'a`")
+        }));
+        assert_eq!(&[Persistence::Tick], generics.persistence_args.as_slice());
+        assert_eq!("usize", generics.type_args[0].to_token_stream().to_string(),);
+    }
+
+    /// Operators that reject type arguments still report the extra type after a bad lifetime.
+    #[test]
+    fn bad_lifetime_still_reports_extra_type_argument() {
+        let mut builder = FlatGraphBuilder::new();
+        builder.add_dfir(
+            parse_quote! {
+                source_iter(0..10) -> inspect::<'a, usize>(std::mem::drop) -> for_each(std::mem::drop);
+            },
+            None,
+            None,
+        );
+        let Err(diagnostics) = builder.build() else {
+            panic!("expected diagnostics for an unknown lifetime and an extra type argument");
+        };
+        let messages = diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.message.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            2,
+            messages.len(),
+            "expected only the unknown lifetime and the extra type argument, got: {messages:?}",
+        );
+        assert!(
+            messages
+                .iter()
+                .any(|message| message.contains("Unknown lifetime generic argument `'a`")),
+            "missing unknown-lifetime diagnostic, got: {messages:?}",
+        );
+        assert!(
+            messages.iter().any(|message| {
+                message.contains(
+                    "`inspect` should have exactly 0 generic type arguments, actually has 1.",
+                )
+            }),
+            "missing extra-type diagnostic, got: {messages:?}",
+        );
+    }
 }
