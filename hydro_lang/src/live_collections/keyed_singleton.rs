@@ -16,7 +16,7 @@ use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
 use super::sliced::sliced;
-use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
+use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, KeyedSingletonBoundKind, SharedNode,
@@ -1846,6 +1846,34 @@ where
             },
         )
     }
+
+    /// Eagerly samples the keyed singleton as fast as possible, returning a keyed stream of
+    /// snapshots with order corresponding to increasing prefixes of data contributing to the
+    /// keyed singleton. Keys are preserved: every key that has appeared so far is present in
+    /// each snapshot, so an unchanged entry may be observed again.
+    ///
+    /// # Non-Determinism
+    /// At runtime, the keyed singleton will be arbitrarily sampled as fast as possible, but due
+    /// to non-deterministic batching and arrival of inputs, the output stream is
+    /// non-deterministic.
+    ///
+    /// In simulation tests, the internal snapshot decisions can be scripted by attaching
+    /// a [`KeyedSnapshotHook`](crate::sim_hooks::KeyedSnapshotHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`.
+    pub fn sample_eager(
+        self,
+        mut nondet: NonDet<Option<crate::sim_hooks::KeyedSnapshotHook<K, V, L::SimHookScope>>>,
+    ) -> KeyedStream<K, V, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce> {
+        let snapshot_hook = nondet.take_hook();
+        sliced! {
+            let snapshot = use::snapshot(self, nondet!(
+                /// which snapshots are sampled is captured by the caller's guard
+                hook = snapshot_hook
+            ));
+            snapshot.into_keyed_stream()
+        }
+        .weaken_retries()
+    }
 }
 
 impl<'a, K, V, L, B: KeyedSingletonSnapshotBound> KeyedSingleton<K, V, Atomic<L>, B>
@@ -2301,6 +2329,62 @@ mod tests {
         assert_eq!(
             external_out.next().await.unwrap(),
             vec![(1, 3), (2, 1), (3, 1)].into_iter().collect()
+        );
+    }
+
+    /// Eager samples of a keyed fold keep each key attached to its latest count.
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn sample_eager_preserves_keys() {
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) = node.source_external_bincode(&external);
+        let out = input
+            .into_keyed()
+            .fold(q!(|| 0), q!(|acc, _| *acc += 1))
+            .sample_eager(nondet!(/** test */))
+            .entries()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send((1, 1)).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (1, 1));
+
+        external_in.send((1, 2)).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (1, 2));
+
+        external_in.send((2, 2)).await.unwrap();
+        // The next snapshot still contains key 1, alongside the new key.
+        let mut results = Vec::new();
+        while !results.contains(&(2, 1)) {
+            results.push(external_out.next().await.unwrap());
+            assert!(
+                results.len() <= 4,
+                "expected key 2 in the next snapshot, got {results:?}"
+            );
+        }
+        assert!(
+            results.contains(&(1, 2)),
+            "unchanged key was dropped from the snapshot: {results:?}"
+        );
+        assert!(
+            results.iter().all(|e| *e == (1, 2) || *e == (2, 1)),
+            "snapshot contained a stale entry: {results:?}"
         );
     }
 
