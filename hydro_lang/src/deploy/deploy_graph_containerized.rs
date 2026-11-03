@@ -79,6 +79,8 @@ pub struct DockerDeployProcess {
     linux_compile_type: LinuxCompileType,
 
     features: Vec<String>,
+
+    container: DockerContainerOptions,
 }
 
 impl Node for DockerDeployProcess {
@@ -168,6 +170,8 @@ pub struct DockerDeployCluster {
     linux_compile_type: LinuxCompileType,
 
     features: Vec<String>,
+
+    container: DockerContainerOptions,
 }
 
 impl Node for DockerDeployCluster {
@@ -583,28 +587,109 @@ pub struct DockerDeploy {
     deployment_instance: String,
 }
 
-#[instrument(level = "trace", skip_all, fields(%image_name, %container_name, %network_name, %deployment_instance))]
-async fn create_and_start_container(
-    docker: &Docker,
+/// Per-container options forwarded into `ContainerCreateBody`.
+///
+/// Populated by [`DockerDeployProcessSpec`] and [`DockerDeployClusterSpec`] builders.
+#[derive(Clone, Debug, Default)]
+struct DockerContainerOptions {
+    binds: Vec<String>,
+    env: Vec<(String, String)>,
+    user: Option<String>,
+    extra_hosts: Vec<String>,
+}
+
+impl DockerContainerOptions {
+    fn bind(&mut self, bind: impl Into<String>) {
+        self.binds.push(bind.into());
+    }
+
+    fn binds(&mut self, binds: impl IntoIterator<Item = impl Into<String>>) {
+        self.binds.extend(binds.into_iter().map(Into::into));
+    }
+
+    fn env(&mut self, key: impl Into<String>, value: impl Into<String>) {
+        self.env.push((key.into(), value.into()));
+    }
+
+    fn user(&mut self, user: impl Into<String>) {
+        self.user = Some(user.into());
+    }
+
+    fn extra_host(&mut self, host: impl Into<String>) {
+        self.extra_hosts.push(host.into());
+    }
+
+    fn extra_hosts(&mut self, hosts: impl IntoIterator<Item = impl Into<String>>) {
+        self.extra_hosts.extend(hosts.into_iter().map(Into::into));
+    }
+}
+
+fn env_key(entry: &str) -> &str {
+    if let Some((name, _)) = entry.split_once('=') {
+        name
+    } else {
+        entry
+    }
+}
+
+/// Built-ins are always present. A user entry with the same name replaces the built-in.
+fn container_env(
+    container_name: &str,
+    deployment_instance: &str,
+    user_env: &[(String, String)],
+) -> Vec<String> {
+    let mut env = vec![
+        format!("CONTAINER_NAME={container_name}"),
+        format!("DEPLOYMENT_INSTANCE={deployment_instance}"),
+        "RUST_LOG=trace".to_owned(),
+    ];
+
+    for (name, value) in user_env {
+        let entry = format!("{name}={value}");
+        if let Some(existing) = env.iter_mut().find(|item| env_key(item) == name) {
+            *existing = entry;
+        } else {
+            env.push(entry);
+        }
+    }
+
+    env
+}
+
+fn container_create_body(
     container_name: &str,
     image_name: &str,
     network_name: &str,
     deployment_instance: &str,
-) -> Result<(), anyhow::Error> {
-    let config = ContainerCreateBody {
+    options: &DockerContainerOptions,
+) -> ContainerCreateBody {
+    // Peer discovery still mounts the engine socket. #3157 may remove it; user binds follow it.
+    let mut binds = Vec::with_capacity(1 + options.binds.len());
+    binds.push("/var/run/docker.sock:/var/run/docker.sock".to_owned());
+    binds.extend(options.binds.iter().cloned());
+
+    let extra_hosts = if options.extra_hosts.is_empty() {
+        None
+    } else {
+        Some(options.extra_hosts.clone())
+    };
+
+    ContainerCreateBody {
         image: Some(image_name.to_owned()),
         hostname: Some(container_name.to_owned()),
+        user: options.user.clone(),
         host_config: Some(HostConfig {
-            binds: Some(vec!["/var/run/docker.sock:/var/run/docker.sock".to_owned()]),
+            binds: Some(binds),
+            extra_hosts,
             publish_all_ports: Some(true),
             port_bindings: Some(HashMap::new()), /* Due to a bug in docker, if you don't send empty port bindings with publish_all_ports set to true and with a docker image that has EXPOSE directives in it, docker will crash because it will try to write to a map in memory that it has not initialized yet. Setting port_bindings explicitly to an empty map will initialize it first so that it does not break. */
             ..Default::default()
         }),
-        env: Some(vec![
-            format!("CONTAINER_NAME={container_name}"),
-            format!("DEPLOYMENT_INSTANCE={deployment_instance}"),
-            "RUST_LOG=trace".to_owned(),
-        ]),
+        env: Some(container_env(
+            container_name,
+            deployment_instance,
+            &options.env,
+        )),
         networking_config: Some(NetworkingConfig {
             endpoints_config: Some(HashMap::from([(
                 network_name.to_owned(),
@@ -615,7 +700,25 @@ async fn create_and_start_container(
         }),
         tty: Some(true),
         ..Default::default()
-    };
+    }
+}
+
+#[instrument(level = "trace", skip_all, fields(%image_name, %container_name, %network_name, %deployment_instance))]
+async fn create_and_start_container(
+    docker: &Docker,
+    container_name: &str,
+    image_name: &str,
+    network_name: &str,
+    deployment_instance: &str,
+    container: &DockerContainerOptions,
+) -> Result<(), anyhow::Error> {
+    let config = container_create_body(
+        container_name,
+        image_name,
+        network_name,
+        deployment_instance,
+        container,
+    );
 
     let options = CreateContainerOptions {
         name: Some(container_name.to_owned()),
@@ -796,6 +899,7 @@ impl DockerDeploy {
             base_image: None,
             linux_compile_type: LinuxCompileType::Musl,
             features: vec![],
+            container: DockerContainerOptions::default(),
         };
 
         self.docker_processes.push(process.clone());
@@ -818,6 +922,7 @@ impl DockerDeploy {
             base_image: None,
             linux_compile_type: LinuxCompileType::Musl,
             features: vec![],
+            container: DockerContainerOptions::default(),
         };
 
         self.docker_clusters.push(cluster.clone());
@@ -899,6 +1004,7 @@ impl DockerDeploy {
                 &process.name,
                 &self.network.name,
                 &self.deployment_instance,
+                &process.container,
             )
             .await?;
         }
@@ -917,6 +1023,7 @@ impl DockerDeploy {
                     &cluster.name,
                     &self.network.name,
                     &self.deployment_instance,
+                    &cluster.container,
                 )
                 .await?;
             }
@@ -1391,6 +1498,7 @@ pub struct DockerDeployProcessSpec {
     base_image: Option<String>,
     linux_compile_type: LinuxCompileType,
     features: Vec<String>,
+    container: DockerContainerOptions,
 }
 
 impl<'a> ProcessSpec<'a, DockerDeploy> for DockerDeployProcessSpec {
@@ -1415,6 +1523,7 @@ impl<'a> ProcessSpec<'a, DockerDeploy> for DockerDeployProcessSpec {
             base_image: self.base_image,
             linux_compile_type: self.linux_compile_type,
             features: self.features,
+            container: self.container,
         }
     }
 }
@@ -1429,6 +1538,7 @@ pub struct DockerDeployClusterSpec {
     base_image: Option<String>,
     linux_compile_type: LinuxCompileType,
     features: Vec<String>,
+    container: DockerContainerOptions,
 }
 
 impl<'a> ClusterSpec<'a, DockerDeploy> for DockerDeployClusterSpec {
@@ -1453,6 +1563,7 @@ impl<'a> ClusterSpec<'a, DockerDeploy> for DockerDeployClusterSpec {
             base_image: self.base_image,
             linux_compile_type: self.linux_compile_type,
             features: self.features,
+            container: self.container,
         }
     }
 }
@@ -1483,6 +1594,59 @@ impl DockerDeployProcessSpec {
         self.features.push(feature.into());
         self
     }
+
+    /// Bind-mount a host path into this process's container.
+    ///
+    /// `bind` uses Docker's `host-src:container-dest[:options]` form and is
+    /// appended after the built-in `/var/run/docker.sock` mount.
+    pub fn bind(mut self, bind: impl Into<String>) -> Self {
+        self.container.bind(bind);
+        self
+    }
+
+    /// Bind-mount host paths into this process's container.
+    ///
+    /// Each entry uses Docker's `host-src:container-dest[:options]` form.
+    /// Mounts are appended after the built-in `/var/run/docker.sock` mount.
+    pub fn binds(mut self, binds: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.container.binds(binds);
+        self
+    }
+
+    /// Set an environment variable inside this process's container.
+    ///
+    /// `CONTAINER_NAME`, `DEPLOYMENT_INSTANCE`, and `RUST_LOG` (default `trace`)
+    /// are always set. An entry with the same name replaces the built-in.
+    /// Later entries with the same name win.
+    pub fn env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.container.env(key, value);
+        self
+    }
+
+    /// Run this process's container as `user`.
+    ///
+    /// Accepts a user name or UID, with an optional group (`user:group` or
+    /// `uid:gid`). If unset, the image default is used.
+    pub fn user(mut self, user: impl Into<String>) -> Self {
+        self.container.user(user);
+        self
+    }
+
+    /// Add a hostname mapping to this process's container `/etc/hosts`.
+    ///
+    /// `host` is `hostname:ip`, for example `host.docker.internal:host-gateway`.
+    pub fn extra_host(mut self, host: impl Into<String>) -> Self {
+        self.container.extra_host(host);
+        self
+    }
+
+    /// Add hostname mappings to this process's container `/etc/hosts`.
+    ///
+    /// Each entry is `hostname:ip`, for example `host.docker.internal:host-gateway`.
+    pub fn extra_hosts(mut self, hosts: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.container.extra_hosts(hosts);
+        self
+    }
 }
 
 impl DockerDeployClusterSpec {
@@ -1511,6 +1675,59 @@ impl DockerDeployClusterSpec {
         self.features.push(feature.into());
         self
     }
+
+    /// Bind-mount a host path into each container in this cluster.
+    ///
+    /// `bind` uses Docker's `host-src:container-dest[:options]` form and is
+    /// appended after the built-in `/var/run/docker.sock` mount.
+    pub fn bind(mut self, bind: impl Into<String>) -> Self {
+        self.container.bind(bind);
+        self
+    }
+
+    /// Bind-mount host paths into each container in this cluster.
+    ///
+    /// Each entry uses Docker's `host-src:container-dest[:options]` form.
+    /// Mounts are appended after the built-in `/var/run/docker.sock` mount.
+    pub fn binds(mut self, binds: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.container.binds(binds);
+        self
+    }
+
+    /// Set an environment variable inside each container in this cluster.
+    ///
+    /// `CONTAINER_NAME`, `DEPLOYMENT_INSTANCE`, and `RUST_LOG` (default `trace`)
+    /// are always set. An entry with the same name replaces the built-in.
+    /// Later entries with the same name win.
+    pub fn env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.container.env(key, value);
+        self
+    }
+
+    /// Run each container in this cluster as `user`.
+    ///
+    /// Accepts a user name or UID, with an optional group (`user:group` or
+    /// `uid:gid`). If unset, the image default is used.
+    pub fn user(mut self, user: impl Into<String>) -> Self {
+        self.container.user(user);
+        self
+    }
+
+    /// Add a hostname mapping to each container's `/etc/hosts`.
+    ///
+    /// `host` is `hostname:ip`, for example `host.docker.internal:host-gateway`.
+    pub fn extra_host(mut self, host: impl Into<String>) -> Self {
+        self.container.extra_host(host);
+        self
+    }
+
+    /// Add hostname mappings to each container's `/etc/hosts`.
+    ///
+    /// Each entry is `hostname:ip`, for example `host.docker.internal:host-gateway`.
+    pub fn extra_hosts(mut self, hosts: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.container.extra_hosts(hosts);
+        self
+    }
 }
 
 /// Represents an external process outside of the management of hydro deploy.
@@ -1528,6 +1745,188 @@ impl<'a> ExternalSpec<'a, DockerDeploy> for DockerDeployExternalSpec {
             next_external_port_id: Rc::new(RefCell::new(crate::Counter::default())),
             ports: Rc::new(RefCell::new(HashMap::new())),
             connection_info: Rc::new(RefCell::new(HashMap::new())),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DockerContainerOptions, container_create_body};
+
+    fn options(
+        binds: &[&str],
+        env: &[(&str, &str)],
+        user: Option<&str>,
+        extra_hosts: &[&str],
+    ) -> DockerContainerOptions {
+        DockerContainerOptions {
+            binds: binds.iter().copied().map(str::to_owned).collect(),
+            env: env
+                .iter()
+                .copied()
+                .map(|(key, value)| (key.to_owned(), value.to_owned()))
+                .collect(),
+            user: user.map(str::to_owned),
+            extra_hosts: extra_hosts.iter().copied().map(str::to_owned).collect(),
+        }
+    }
+
+    fn body(options: &DockerContainerOptions) -> bollard::models::ContainerCreateBody {
+        container_create_body("ctr", "img", "net", "dep", options)
+    }
+
+    #[test]
+    fn user_binds_appended_after_docker_sock() {
+        let created = body(&options(
+            &["/host/state:/state", "/host/sock:/run/sock"],
+            &[],
+            None,
+            &[],
+        ));
+        let binds = created
+            .host_config
+            .expect("host config")
+            .binds
+            .expect("binds");
+        assert_eq!(
+            binds,
+            vec![
+                "/var/run/docker.sock:/var/run/docker.sock".to_owned(),
+                "/host/state:/state".to_owned(),
+                "/host/sock:/run/sock".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn user_env_overrides_rust_log_and_keeps_unset_builtins() {
+        let created = body(&options(
+            &[],
+            &[
+                ("RUST_LOG", "debug"),
+                ("HOME", "/home/app"),
+                ("RUST_LOG", "info"),
+            ],
+            None,
+            &[],
+        ));
+        assert_eq!(
+            created.env.expect("env"),
+            vec![
+                "CONTAINER_NAME=ctr".to_owned(),
+                "DEPLOYMENT_INSTANCE=dep".to_owned(),
+                "RUST_LOG=info".to_owned(),
+                "HOME=/home/app".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn user_and_extra_hosts_set_when_provided() {
+        let created = body(&options(
+            &[],
+            &[],
+            Some("1000:1000"),
+            &["host.docker.internal:host-gateway"],
+        ));
+        assert_eq!(created.user.as_deref(), Some("1000:1000"));
+        assert_eq!(
+            created.host_config.expect("host config").extra_hosts,
+            Some(vec!["host.docker.internal:host-gateway".to_owned()])
+        );
+    }
+
+    #[test]
+    fn user_and_extra_hosts_absent_when_omitted() {
+        let created = body(&options(&[], &[], None, &[]));
+        assert_eq!(created.user, None);
+        let host_config = created.host_config.expect("host config");
+        assert_eq!(host_config.extra_hosts, None);
+        assert_eq!(
+            host_config.binds,
+            Some(vec!["/var/run/docker.sock:/var/run/docker.sock".to_owned()])
+        );
+        assert_eq!(
+            created.env.expect("env"),
+            vec![
+                "CONTAINER_NAME=ctr".to_owned(),
+                "DEPLOYMENT_INSTANCE=dep".to_owned(),
+                "RUST_LOG=trace".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn user_env_replaces_container_name_when_set() {
+        let created = body(&options(&[], &[("CONTAINER_NAME", "custom")], None, &[]));
+        assert_eq!(
+            created.env.expect("env"),
+            vec![
+                "CONTAINER_NAME=custom".to_owned(),
+                "DEPLOYMENT_INSTANCE=dep".to_owned(),
+                "RUST_LOG=trace".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn spec_builders_reach_container_create_body() {
+        use crate::compile::deploy_provider::{ClusterSpec, ProcessSpec};
+        use crate::location::LocationKey;
+
+        let mut deployment = super::DockerDeploy::new(super::DockerNetwork::new("net".to_owned()));
+        let process = ProcessSpec::build(
+            deployment
+                .add_localhost_docker(None, vec![])
+                .bind("/host/state:/state")
+                .env("RUST_LOG", "info")
+                .env("HOME", "/home/app")
+                .user("1000:1000")
+                .extra_host("host.docker.internal:host-gateway"),
+            LocationKey::TEST_KEY_1,
+            "Proc",
+        );
+        let cluster = ClusterSpec::build(
+            deployment
+                .add_localhost_docker_cluster(None, vec![], 2)
+                .binds(["/host/state:/state"])
+                .env("HOME", "/home/app")
+                .env("RUST_LOG", "info")
+                .user("1000:1000")
+                .extra_hosts(["host.docker.internal:host-gateway"]),
+            LocationKey::TEST_KEY_2,
+            "Cluster",
+        );
+
+        for container in [&process.container, &cluster.container] {
+            let created = container_create_body("ctr", "img", "net", "dep", container);
+            assert_eq!(
+                created
+                    .host_config
+                    .as_ref()
+                    .unwrap()
+                    .binds
+                    .as_ref()
+                    .unwrap(),
+                &vec![
+                    "/var/run/docker.sock:/var/run/docker.sock".to_owned(),
+                    "/host/state:/state".to_owned(),
+                ]
+            );
+            assert_eq!(
+                created.env.as_ref().unwrap(),
+                &vec![
+                    "CONTAINER_NAME=ctr".to_owned(),
+                    "DEPLOYMENT_INSTANCE=dep".to_owned(),
+                    "RUST_LOG=info".to_owned(),
+                    "HOME=/home/app".to_owned(),
+                ]
+            );
+            assert_eq!(created.user.as_deref(), Some("1000:1000"));
+            assert_eq!(
+                created.host_config.unwrap().extra_hosts,
+                Some(vec!["host.docker.internal:host-gateway".to_owned()])
+            );
         }
     }
 }
