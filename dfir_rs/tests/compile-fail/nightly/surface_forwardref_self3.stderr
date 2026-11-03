@@ -1,3 +1,9 @@
+error: Port `f` is linked to itself with no operator.
+ --> tests/compile-fail/nightly/surface_forwardref_self3.rs:5:13
+  |
+5 |         f = f;
+  |             ^
+
 error: Name `f` forms or references an illegal self-referential cycle (1/1).
  --> tests/compile-fail/nightly/surface_forwardref_self3.rs:6:9
   |

@@ -171,12 +171,15 @@ impl FlatGraphBuilder {
             }
             DfirStatement::Named(named) => {
                 let stmt_span = named.span();
+                let links_before = self.links.len();
                 let ends = self.add_pipeline(
                     named.pipeline,
                     Some(&named.name),
                     current_loop,
                     operator_tag,
                 );
+                // `c = c` never pushes a link, so it would otherwise build as a silent no-op.
+                self.reject_degenerate_self_link(&named.name, links_before, &ends);
                 self.assign_varname_checked(named.name, stmt_span, ends);
             }
             DfirStatement::Pipeline(pipeline_stmt) => {
@@ -242,6 +245,32 @@ impl FlatGraphBuilder {
 
 /// Internal methods.
 impl FlatGraphBuilder {
+    /// Reject a statement whose source and destination are the same port and that contains no
+    /// operator, such as `c = c` or `c = (c)`.
+    ///
+    /// Real forward references (`c = identity() -> c`, `c = c -> tee()`, and so on) push a link
+    /// and are left to name resolution.
+    fn reject_degenerate_self_link(&mut self, name: &Ident, links_before: usize, ends: &Ends) {
+        if self.links.len() != links_before {
+            return;
+        }
+        let (
+            Some((inn_port, GraphDet::Undetermined(inn_ident))),
+            Some((out_port, GraphDet::Undetermined(out_ident))),
+        ) = (&ends.inn, &ends.out)
+        else {
+            return;
+        };
+        if inn_ident != name || out_ident != name || inn_port != out_port {
+            return;
+        }
+        self.diagnostics.push(Diagnostic::spanned(
+            inn_ident.span(),
+            Level::Error,
+            format!("Port `{name}` is linked to itself with no operator."),
+        ));
+    }
+
     /// Assign a variable name to a pipeline, checking for conflicts.
     fn assign_varname_checked(&mut self, name: Ident, stmt_span: Span, ends: Ends) {
         match self.varname_ends.entry(name) {
@@ -1319,6 +1348,61 @@ mod test {
         assert_eq!(2, flat_graph.loops().count());
         assert_eq!(None, flat_graph.loop_parent(outer_loop));
         assert_eq!(Some(outer_loop), flat_graph.loop_parent(inner_loop));
+    }
+
+    /// `c = c` names one port on both sides and has no operator, so graph building must fail.
+    #[test]
+    fn test_reject_degenerate_forward_ref() {
+        for (label, code) in [
+            ("c = c;", "c = c;"),
+            ("c = (c);", "c = (c);"),
+            ("c = [0]c[0];", "c = [0]c[0];"),
+        ] {
+            let code: DfirCode = syn::parse_str(code).unwrap();
+            let built = FlatGraphBuilder::from_dfir(code).build();
+            let Err(diagnostics) = built else {
+                panic!(
+                    "degenerate forward reference `{label}` should be rejected, but parsing succeeded"
+                );
+            };
+            assert!(
+                diagnostics.iter().any(|diagnostic| {
+                    Level::Error == diagnostic.level
+                        && diagnostic.message == "Port `c` is linked to itself with no operator."
+                }),
+                "expected a spanned error naming port `c` for `{label}`, got: {diagnostics:?}"
+            );
+        }
+    }
+
+    /// Forward references that actually contain an operator are not degenerate self-links.
+    #[test]
+    fn test_forward_ref_with_operator_not_degenerate() {
+        FlatGraphBuilder::from_dfir(parse_quote! {
+            c = identity() -> c;
+        })
+        .build()
+        .expect("`c = identity() -> c` should build");
+
+        FlatGraphBuilder::from_dfir(parse_quote! {
+            c = c -> identity();
+        })
+        .build()
+        .expect("`c = c -> identity()` should build");
+
+        FlatGraphBuilder::from_dfir(parse_quote! {
+            a = identity() -> b;
+            b = identity() -> a;
+        })
+        .build()
+        .expect("mutual forward references should build");
+
+        FlatGraphBuilder::from_dfir(parse_quote! {
+            c = c -> tee();
+            c -> for_each(std::mem::drop);
+        })
+        .build()
+        .expect("`c = c -> tee()` should build");
     }
 
     /// Test that loop validation (windowing operator required at loop entry) applies to

@@ -1,3 +1,6 @@
+use dfir_lang::diagnostic::Level;
+use dfir_lang::graph::FlatGraphBuilder;
+use dfir_lang::parse::DfirCode;
 use dfir_rs::dfir_parser;
 use multiplatform_test::multiplatform_test;
 
@@ -190,12 +193,20 @@ pub fn test_parser_forwardref_mutual() {
 
 #[multiplatform_test]
 pub fn test_parser_forwardref_degen() {
-    // TODO(mingwei):
-    // This works because no links are created, so it does nothing.
-    // But it would obviously be a mistake to write seriously...
-    dfir_parser! {
-        c = c;
+    // `c = c` is the same port on both sides and contains no operator, so it must be rejected
+    // instead of building a silent no-op.
+    let code: DfirCode = syn::parse_str("c = c;").unwrap();
+    let built = FlatGraphBuilder::from_dfir(code).build();
+    let Err(diagnostics) = built else {
+        panic!("degenerate forward reference `c = c;` should be rejected, but parsing succeeded");
     };
+    assert!(
+        diagnostics.iter().any(|diagnostic| {
+            Level::Error == diagnostic.level
+                && diagnostic.message == "Port `c` is linked to itself with no operator."
+        }),
+        "expected a spanned error naming port `c`, got: {diagnostics:?}"
+    );
 }
 
 #[multiplatform_test]

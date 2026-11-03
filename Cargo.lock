@@ -1845,6 +1845,7 @@ dependencies = [
  "slotmap",
  "smallvec",
  "static_assertions",
+ "syn 2.0.111",
  "time",
  "tokio",
  "tokio-stream",
