@@ -5983,8 +5983,9 @@ impl HydroNode {
                             syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
 
                         // A tombstoned update feed (root unbounded Optional/KeyedSingleton)
-                        // cannot reach this arm today: no `Optional`/`Singleton` API
-                        // constructs `Inspect` nodes, and `KeyedSingleton::inspect` /
+                        // cannot reach this arm today: `Singleton::inspect` /
+                        // `Optional::inspect` require `Bounded` (plain values, not a
+                        // `latest()` tombstone feed), and `KeyedSingleton::inspect` /
                         // `inspect_with_key` are only available for `ValueBound = Bounded`
                         // kinds (`BoundedValue`/`Bounded`), which keep the plain entry
                         // representation. Guard against silently inspecting raw update

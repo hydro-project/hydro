@@ -706,6 +706,60 @@ where
         self.flat_map_unordered(q!(|x| x))
     }
 
+    /// An operator which allows you to "inspect" the value of this singleton without
+    /// modifying it. The closure `f` is called on a reference to the value. This is
+    /// mainly useful for debugging, and should not be used to generate side-effects.
+    ///
+    /// Only [`Bounded`] singletons can be inspected. An [`Unbounded`] or [`Monotonic`]
+    /// singleton changes asynchronously, so the closure would observe a nondeterministic
+    /// sample. [`Singleton::latest`] is also not inspectable: it yields an [`InitNone`]
+    /// optional, not a bounded singleton.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let batch = process
+    ///     .source_iter(q!(vec![1, 2, 3, 4]))
+    ///     .batch(&tick, nondet!(/** test */));
+    /// // prints "count = 4"
+    /// batch
+    ///     .count()
+    ///     .inspect(q!(|c| println!("count = {}", c)))
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 4
+    /// # assert_eq!(stream.next().await.unwrap(), 4);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn inspect<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, <B as SingletonBound>::UnderlyingBound>>,
+    ) -> Self
+    where
+        F: Fn(&T) + 'a,
+        B: IsBounded,
+    {
+        let f = f
+            .splice_fn1_borrow_ctx(
+                &OperatorContext::<L, <B as SingletonBound>::UnderlyingBound>::new(&self.location),
+            )
+            .into();
+
+        Singleton::new(
+            self.location.clone(),
+            HydroNode::Inspect {
+                f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
+            },
+        )
+    }
+
     /// Creates an optional containing the singleton value if it satisfies a predicate `f`.
     ///
     /// If the predicate returns `true`, the output optional contains the same value.
@@ -2118,5 +2172,62 @@ mod tests {
             // runs (total = 3 * 2 = 6). Output is second.chain(first) => [6, 3].
             assert_eq!(results, vec![6, 3]);
         });
+    }
+
+    /// `Singleton::inspect` on a tick-bounded singleton runs the closure on each tick's
+    /// value and leaves that value unchanged.
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn inspect_tick_bounded_singleton() {
+        use crate::deploy::DeployCrateWrapper;
+
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let process = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let tick = process.tick();
+        // ticks are lazy by default, forces the second tick to run
+        tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+
+        let batch_first_tick = process
+            .source_iter(q!(vec![1]))
+            .batch(&tick, nondet!(/** test */));
+        let batch_second_tick = process
+            .source_iter(q!(vec![1, 2, 3]))
+            .batch(&tick, nondet!(/** test */))
+            .defer_tick();
+
+        let out_port = batch_first_tick
+            .chain(batch_second_tick)
+            .count()
+            .inspect(q!(|c| println!("inspect: {}", c)))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&process, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut stdout = nodes.get_process(&process).stdout();
+        let mut out_recv = nodes.connect(out_port).await;
+
+        deployment.start().await.unwrap();
+
+        let mut seen = Vec::new();
+        for _ in 0..2 {
+            seen.push(stdout.recv().await.unwrap());
+        }
+        assert_eq!(seen, vec!["inspect: 1", "inspect: 3"]);
+
+        let mut values = Vec::new();
+        for _ in 0..2 {
+            values.push(out_recv.next().await.unwrap());
+        }
+        assert_eq!(values, vec![1usize, 3]);
     }
 }

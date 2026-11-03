@@ -677,6 +677,60 @@ where
         self.flat_map_unordered(q!(|v| v))
     }
 
+    /// An operator which allows you to "inspect" the value of this optional without
+    /// modifying it. The closure `f` is called on a reference to the value when the
+    /// optional is non-null, and is not called when it is null. This is mainly useful
+    /// for debugging, and should not be used to generate side-effects.
+    ///
+    /// Only [`Bounded`] optionals can be inspected. An [`Unbounded`] optional, including
+    /// one produced by [`Optional::latest`], changes asynchronously. At the root, an
+    /// unbounded optional is a tombstoned update feed, which `inspect` does not accept.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let batch = process
+    ///     .source_iter(q!(vec![1, 2, 3, 4]))
+    ///     .batch(&tick, nondet!(/** test */));
+    /// // prints "max = 4"
+    /// batch
+    ///     .max()
+    ///     .inspect(q!(|v| println!("max = {}", v)))
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 4
+    /// # assert_eq!(stream.next().await.unwrap(), 4);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn inspect<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, <B as OptionalBound>::UnderlyingBound>>,
+    ) -> Self
+    where
+        F: Fn(&T) + 'a,
+        B: IsBounded,
+    {
+        let f = f
+            .splice_fn1_borrow_ctx(
+                &OperatorContext::<L, <B as OptionalBound>::UnderlyingBound>::new(&self.location),
+            )
+            .into();
+
+        Optional::new(
+            self.location.clone(),
+            HydroNode::Inspect {
+                f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
+            },
+        )
+    }
+
     /// Creates an optional containing only the value if it satisfies a predicate `f`.
     ///
     /// If the optional is empty, the output optional is also empty. If the optional contains
@@ -2029,5 +2083,56 @@ mod tests {
         ref_results.sort();
         // reduce(0..5) = 10, so 1+10=11, 2+10=12
         assert_eq!(ref_results, vec![11, 12]);
+    }
+
+    /// `Optional::inspect` on a tick-bounded optional runs the closure only when a value
+    /// is present, and still emits that value.
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn inspect_tick_bounded_optional() {
+        use crate::deploy::DeployCrateWrapper;
+
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let process = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let tick = process.tick();
+        // ticks are lazy by default, forces the second tick to run
+        tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+
+        let batch_first_tick = process
+            .source_iter(q!(vec![]))
+            .batch(&tick, nondet!(/** test */));
+        let batch_second_tick = process
+            .source_iter(q!(vec![1, 2, 3]))
+            .batch(&tick, nondet!(/** test */))
+            .defer_tick();
+
+        let out_port = batch_first_tick
+            .chain(batch_second_tick)
+            .max()
+            .inspect(q!(|v| println!("inspect: {}", v)))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&process, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut stdout = nodes.get_process(&process).stdout();
+        let mut out_recv = nodes.connect(out_port).await;
+
+        deployment.start().await.unwrap();
+
+        let mut seen = Vec::new();
+        seen.push(stdout.recv().await.unwrap());
+        assert_eq!(seen, vec!["inspect: 3"]);
+
+        assert_eq!(out_recv.next().await.unwrap(), 3);
     }
 }
