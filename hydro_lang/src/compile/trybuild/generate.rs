@@ -1,3 +1,4 @@
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -1030,6 +1031,16 @@ pub fn create_trybuild()
         manifest.workspace = None;
     }
 
+    // `Runner::make_manifest` copies every workspace `[profile.*.package.<name>]`
+    // table. Cargo warns when `<name>` is not in this generated project
+    // (`website_playground` is the workspace case). `package."*"` stays.
+    let dylib_examples_package = format!("{project_name}-dylib-examples");
+    let package_names = trybuild_package_names(
+        &manifest,
+        &[dylib_package_name.as_str(), dylib_examples_package.as_str()],
+    );
+    filter_copied_trybuild_profiles(&mut manifest.profile, &package_names);
+
     let project = Project {
         dir: project_dir,
         source_dir,
@@ -1346,6 +1357,101 @@ members = ["dylib", "dylib-examples"]
     ))
 }
 
+/// Packages whose `[profile.*.package.<name>]` overrides still apply to the
+/// generated trybuild project: the project itself, its direct dependencies, and
+/// the dylib workspace members.
+fn trybuild_package_names(
+    manifest: &trybuild_internals_api::manifest::Manifest,
+    extra_packages: &[&str],
+) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    names.insert(manifest.package.name.clone());
+    names.extend(extra_packages.iter().map(|name| (*name).to_owned()));
+    collect_dependency_package_names(&mut names, &manifest.dependencies, manifest);
+    for target in manifest.target.values() {
+        collect_dependency_package_names(&mut names, &target.dependencies, manifest);
+        collect_dependency_package_names(&mut names, &target.dev_dependencies, manifest);
+    }
+    names
+}
+
+fn collect_dependency_package_names<'a>(
+    names: &mut BTreeSet<String>,
+    dependencies: impl IntoIterator<Item = (&'a String, &'a dependencies::Dependency)>,
+    manifest: &'a trybuild_internals_api::manifest::Manifest,
+) {
+    for (key, dep) in dependencies {
+        names.insert(dependency_package_name(key, dep, manifest).to_owned());
+    }
+}
+
+/// Cargo matches profile package overrides against the real package name, which
+/// `package = "..."` (including on a `workspace = true` dependency) can rename.
+fn dependency_package_name<'a>(
+    key: &'a str,
+    dep: &'a dependencies::Dependency,
+    manifest: &'a trybuild_internals_api::manifest::Manifest,
+) -> &'a str {
+    if let Some(name) = explicit_package_name(dep) {
+        return name;
+    }
+    if dep.workspace
+        && let Some(workspace_dep) = manifest
+            .workspace
+            .as_ref()
+            .and_then(|workspace| workspace.dependencies.get(key))
+        && let Some(name) = explicit_package_name(workspace_dep)
+    {
+        return name;
+    }
+    key
+}
+
+fn explicit_package_name(dep: &dependencies::Dependency) -> Option<&str> {
+    dep.rest.get("package").and_then(|value| value.as_str())
+}
+
+fn filter_copied_trybuild_profiles<V>(
+    profile: &mut BTreeMap<String, V>,
+    package_names: &BTreeSet<String>,
+) where
+    V: serde::Serialize + serde::de::DeserializeOwned,
+{
+    if profile.is_empty() {
+        return;
+    }
+
+    let mut profile_value =
+        toml::Value::try_from(&*profile).expect("workspace profile should serialize to toml");
+    retain_trybuild_package_profiles(&mut profile_value, package_names);
+    let serialized = toml::to_string(&profile_value).expect("filtered profile should serialize");
+    *profile = toml::from_str(&serialized).expect("filtered profile should deserialize");
+}
+
+/// Drops `[profile.*.package.<name>]` when `<name>` is not in `package_names`.
+/// `profile` is the `[profile]` table (`dev`, `release`, ...). The `"*"` wildcard
+/// and every non-package profile key are kept.
+fn retain_trybuild_package_profiles(profile: &mut toml::Value, package_names: &BTreeSet<String>) {
+    let Some(profiles) = profile.as_table_mut() else {
+        return;
+    };
+    for (_, profile_config) in profiles.iter_mut() {
+        let Some(config) = profile_config.as_table_mut() else {
+            continue;
+        };
+        let Some(packages) = config
+            .get_mut("package")
+            .and_then(toml::Value::as_table_mut)
+        else {
+            continue;
+        };
+        packages.retain(|name, _| name == "*" || package_names.contains(name));
+        if packages.is_empty() {
+            config.remove("package");
+        }
+    }
+}
+
 fn check_contents(contents: &[u8], path: &Path) -> Result<bool, std::io::Error> {
     let mut file = File::options()
         .read(true)
@@ -1378,4 +1484,143 @@ pub(crate) fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use super::retain_trybuild_package_profiles;
+
+    #[test]
+    fn drops_package_profiles_absent_from_the_trybuild_crate() {
+        // Shape of the `[profile]` table copied from the workspace manifest.
+        let mut profile: toml::Value = toml::from_str(
+            r#"
+[dev]
+debug = "line-tables-only"
+
+[dev.package."*"]
+debug = false
+
+[dev.package.website_playground]
+debug-assertions = false
+
+[dev.package.hydro_lang]
+opt-level = 1
+
+[release]
+opt-level = 3
+lto = "fat"
+
+[release.package.website_playground]
+opt-level = "s"
+
+[profile]
+inherits = "release"
+debug = 2
+"#,
+        )
+        .unwrap();
+
+        let dev_packages = profile
+            .get("dev")
+            .and_then(|dev| dev.get("package"))
+            .unwrap();
+        assert!(
+            dev_packages.get("website_playground").is_some(),
+            "website_playground package profile is present before filtering"
+        );
+        assert!(dev_packages.get("*").is_some());
+
+        let mut package_names = BTreeSet::new();
+        package_names.insert("hydro_lang".to_owned());
+        package_names.insert("hydro_lang-hydro-trybuild".to_owned());
+        retain_trybuild_package_profiles(&mut profile, &package_names);
+
+        let dev = profile.get("dev").unwrap();
+        assert_eq!(
+            dev.get("debug").and_then(toml::Value::as_str),
+            Some("line-tables-only")
+        );
+        let dev_packages = dev
+            .get("package")
+            .expect("wildcard package table should remain");
+        assert!(dev_packages.get("website_playground").is_none());
+        assert!(dev_packages.get("*").is_some());
+        assert_eq!(
+            dev_packages
+                .get("hydro_lang")
+                .and_then(|pkg| pkg.get("opt-level"))
+                .and_then(toml::Value::as_integer),
+            Some(1)
+        );
+
+        let release = profile.get("release").unwrap();
+        assert_eq!(
+            release.get("opt-level").and_then(toml::Value::as_integer),
+            Some(3)
+        );
+        assert_eq!(
+            release.get("lto").and_then(toml::Value::as_str),
+            Some("fat")
+        );
+        assert!(
+            release
+                .get("package")
+                .and_then(|packages| packages.get("website_playground"))
+                .is_none()
+        );
+
+        let custom = profile.get("profile").unwrap();
+        assert_eq!(
+            custom.get("inherits").and_then(toml::Value::as_str),
+            Some("release")
+        );
+        assert_eq!(
+            custom.get("debug").and_then(toml::Value::as_integer),
+            Some(2)
+        );
+
+        // Same tables, as `Runner::make_manifest` receives them (`serde_json` values
+        // on the workspace manifest) and as `create_trybuild` filters them.
+        let mut workspace: trybuild_internals_api::dependencies::WorkspaceManifest =
+            toml::from_str(
+                r#"
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.dev.package.website_playground]
+debug-assertions = false
+
+[profile.release.package.website_playground]
+opt-level = "s"
+"#,
+            )
+            .unwrap();
+        assert!(
+            workspace.profile["dev"]["package"]
+                .get("website_playground")
+                .is_some()
+        );
+        super::filter_copied_trybuild_profiles(&mut workspace.profile, &package_names);
+        let dev_packages = &workspace.profile["dev"]["package"];
+        assert!(dev_packages.get("website_playground").is_none());
+        assert_eq!(
+            dev_packages
+                .get("*")
+                .and_then(|spec| spec.get("debug"))
+                .and_then(|v| v.as_bool()),
+            Some(false)
+        );
+        assert!(
+            workspace.profile["release"]
+                .get("package")
+                .and_then(|packages| packages.get("website_playground"))
+                .is_none()
+        );
+    }
 }
