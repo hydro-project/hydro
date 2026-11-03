@@ -27,6 +27,7 @@ codegen = [
     "dep:quote",
     "dep:serde_json",
     "dep:syn",
+    "dep:tracing",
 ]
 debugging = [ "codegen", "dep:data-encoding", "dep:webbrowser", "clap-derive" ]
 clap-derive = [ "codegen", "dep:clap" ]
@@ -48,6 +49,7 @@ serde = { version = "1.0.197", default-features = false, optional = true }
 serde_json = { version = "1.0.115", optional = true }
 slotmap = { version = "1.1.0", default-features = false }
 syn = { version = "2.0.46", features = [ "extra-traits", "full", "parsing", "visit-mut" ], optional = true }
+tracing = { version = "0.1.37", optional = true }
 webbrowser = { version = "1.0.3", optional = true }
 
 # coax cargo-smart-release into publishing this crate.

@@ -116,18 +116,247 @@ pub const DEST_SINK: OperatorConstraints = OperatorConstraints {
                 fn sink_guard<Si, Item>(sink: Si) -> impl #root::dfir_pipes::push::Push<Item, ()>
                 where
                     Si: #root::futures::sink::Sink<Item>,
-                    Si::Error: ::std::fmt::Debug,
+                    Si::Error: ::std::error::Error + 'static,
                 {
-                    #root::dfir_pipes::push::sink(<Si as #root::futures::sink::SinkExt<Item>>::sink_map_err(sink, |e| panic!("{:?}", e)))
+                    #root::pin_project_lite::pin_project! {
+                        struct IgnoreBrokenPipe<Si> {
+                            #[pin]
+                            sink: Si,
+                            failed: bool,
+                        }
+                    }
+
+                    fn recover<E>(
+                        result: ::std::result::Result<(), E>,
+                        failed: &mut bool,
+                    ) -> ::std::result::Result<(), ::std::convert::Infallible>
+                    where
+                        E: ::std::error::Error + 'static,
+                    {
+                        match result {
+                            Ok(()) => Ok(()),
+                            Err(err) => {
+                                *failed = true;
+                                #root::dfir_lang::handle_dest_sink_error(err);
+                                Ok(())
+                            }
+                        }
+                    }
+
+                    fn recover_poll<E>(
+                        poll: ::std::task::Poll<::std::result::Result<(), E>>,
+                        failed: &mut bool,
+                    ) -> ::std::task::Poll<::std::result::Result<(), ::std::convert::Infallible>>
+                    where
+                        E: ::std::error::Error + 'static,
+                    {
+                        match poll {
+                            ::std::task::Poll::Pending => ::std::task::Poll::Pending,
+                            ::std::task::Poll::Ready(result) => {
+                                ::std::task::Poll::Ready(recover(result, failed))
+                            }
+                        }
+                    }
+
+                    impl<Si, Item> #root::futures::sink::Sink<Item> for IgnoreBrokenPipe<Si>
+                    where
+                        Si: #root::futures::sink::Sink<Item>,
+                        Si::Error: ::std::error::Error + 'static,
+                    {
+                        type Error = ::std::convert::Infallible;
+
+                        fn poll_ready(
+                            self: ::std::pin::Pin<&mut Self>,
+                            cx: &mut ::std::task::Context<'_>,
+                        ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                            let mut this = self.project();
+                            if *this.failed {
+                                return ::std::task::Poll::Ready(Ok(()));
+                            }
+                            recover_poll(
+                                <Si as #root::futures::sink::Sink<Item>>::poll_ready(
+                                    this.sink.as_mut(),
+                                    cx,
+                                ),
+                                this.failed,
+                            )
+                        }
+
+                        fn start_send(
+                            self: ::std::pin::Pin<&mut Self>,
+                            item: Item,
+                        ) -> ::std::result::Result<(), Self::Error> {
+                            let mut this = self.project();
+                            if *this.failed {
+                                ::std::mem::drop(item);
+                                return Ok(());
+                            }
+                            recover(
+                                <Si as #root::futures::sink::Sink<Item>>::start_send(
+                                    this.sink.as_mut(),
+                                    item,
+                                ),
+                                this.failed,
+                            )
+                        }
+
+                        fn poll_flush(
+                            self: ::std::pin::Pin<&mut Self>,
+                            cx: &mut ::std::task::Context<'_>,
+                        ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                            let mut this = self.project();
+                            if *this.failed {
+                                return ::std::task::Poll::Ready(Ok(()));
+                            }
+                            recover_poll(
+                                <Si as #root::futures::sink::Sink<Item>>::poll_flush(
+                                    this.sink.as_mut(),
+                                    cx,
+                                ),
+                                this.failed,
+                            )
+                        }
+
+                        fn poll_close(
+                            self: ::std::pin::Pin<&mut Self>,
+                            cx: &mut ::std::task::Context<'_>,
+                        ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                            let mut this = self.project();
+                            if *this.failed {
+                                return ::std::task::Poll::Ready(Ok(()));
+                            }
+                            recover_poll(
+                                <Si as #root::futures::sink::Sink<Item>>::poll_close(
+                                    this.sink.as_mut(),
+                                    cx,
+                                ),
+                                this.failed,
+                            )
+                        }
+                    }
+
+                    #root::dfir_pipes::push::sink(IgnoreBrokenPipe {
+                        sink,
+                        failed: false,
+                    })
                 }
                 sink_guard(&mut #sink_ident)
             };
         };
+        let write_iterator_after = quote_spanned! {op_span=>};
+        let write_tick_end = quote_spanned! {op_span=>};
 
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
-            ..Default::default()
+            write_iterator_after,
+            write_tick_end,
         })
     },
 };
+
+/// Whether `err` or any [`std::error::Error::source`] is a broken pipe.
+///
+/// `'static` lets us downcast to [`std::io::Error`] instead of matching `Debug` text.
+pub(crate) fn is_broken_pipe(err: &(dyn std::error::Error + 'static)) -> bool {
+    let mut next = Some(err);
+    while let Some(err) = next {
+        if err
+            .downcast_ref::<std::io::Error>()
+            .is_some_and(|io_err| io_err.kind() == std::io::ErrorKind::BrokenPipe)
+        {
+            return true;
+        }
+        next = err.source();
+    }
+    false
+}
+
+/// Logs a broken pipe and panics on any other `dest_sink` error.
+///
+/// A broken pipe means the receiver closed first, which is normal during shutdown.
+/// The failed send is dropped so the process can finish.
+pub(crate) fn handle_dest_sink_error<E>(err: E)
+where
+    E: std::error::Error + 'static,
+{
+    if is_broken_pipe(&err) {
+        tracing::debug!("dest_sink: broken pipe, dropping send: {err:?}");
+    } else {
+        panic!("{:?}", err);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+    use std::fmt::{self, Display};
+    use std::io::ErrorKind;
+    use std::panic::{AssertUnwindSafe, catch_unwind};
+
+    use super::is_broken_pipe;
+    use crate::handle_dest_sink_error;
+
+    fn io_error(kind: ErrorKind) -> std::io::Error {
+        std::io::Error::new(kind, "dest_sink test")
+    }
+
+    /// `Display` + `Error` wrapper so the broken-pipe check has to walk `source`.
+    #[derive(Debug)]
+    struct Wrap(std::io::Error);
+
+    impl Display for Wrap {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("wrapped io error")
+        }
+    }
+
+    impl Error for Wrap {
+        fn source(&self) -> Option<&(dyn Error + 'static)> {
+            Some(&self.0)
+        }
+    }
+
+    fn panic_message<E>(err: E) -> String
+    where
+        E: Error + 'static,
+    {
+        let expected = format!("{err:?}");
+        let payload = catch_unwind(AssertUnwindSafe(|| handle_dest_sink_error(err)))
+            .expect_err("sink error should panic");
+        payload
+            .downcast_ref::<String>()
+            .unwrap_or_else(|| panic!("panic payload was not the Debug string {expected}"))
+            .clone()
+    }
+
+    #[test]
+    fn broken_pipe_is_quiet() {
+        let err = io_error(ErrorKind::BrokenPipe);
+        assert!(is_broken_pipe(&err));
+        handle_dest_sink_error(err);
+    }
+
+    #[test]
+    fn not_found_panics_with_debug_string() {
+        let err = io_error(ErrorKind::NotFound);
+        assert!(!is_broken_pipe(&err));
+        let expected = format!("{err:?}");
+        assert_eq!(expected, panic_message(err));
+    }
+
+    #[test]
+    fn broken_pipe_source_is_quiet() {
+        let err = Wrap(io_error(ErrorKind::BrokenPipe));
+        assert!(is_broken_pipe(&err));
+        handle_dest_sink_error(err);
+    }
+
+    #[test]
+    fn not_found_source_panics_with_debug_string() {
+        let err = Wrap(io_error(ErrorKind::NotFound));
+        assert!(!is_broken_pipe(&err));
+        let expected = format!("{err:?}");
+        assert_eq!(expected, panic_message(err));
+    }
+}
