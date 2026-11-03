@@ -107,9 +107,11 @@ impl Debug for OperatorConstraints {
 }
 
 /// The code generated and returned by a [`OperatorConstraints::write_fn`].
-/// **Important**: When destructuring this struct in delegating operators, list all fields
-/// explicitly rather than using `..` to ensure new fields are not silently dropped.
-#[derive(Default)]
+///
+/// This type intentionally does not implement [`Default`]. Constructing it with
+/// `..` or `..Default::default()` silently drops newly added fields (this once
+/// dropped `write_tick_end` from `lattice_reduce`). List every field explicitly
+/// when constructing or destructuring.
 pub struct OperatorWriteOutput {
     /// Code which runs once outside any subgraphs to set up external state
     /// (channels, network connections, etc.) to be used by the subgraph.
@@ -205,8 +207,10 @@ pub fn identity_write_iterator_fn(
 pub const IDENTITY_WRITE_FN: WriteFn = |write_context_args, _| {
     let write_iterator = identity_write_iterator_fn(write_context_args);
     Ok(OperatorWriteOutput {
+        write_prologue: Default::default(),
         write_iterator,
-        ..Default::default()
+        write_iterator_after: Default::default(),
+        write_tick_end: Default::default(),
     })
 };
 
@@ -270,8 +274,10 @@ pub fn null_write_iterator_fn(
 pub const NULL_WRITE_FN: WriteFn = |write_context_args, _| {
     let write_iterator = null_write_iterator_fn(write_context_args);
     Ok(OperatorWriteOutput {
+        write_prologue: Default::default(),
         write_iterator,
-        ..Default::default()
+        write_iterator_after: Default::default(),
+        write_tick_end: Default::default(),
     })
 };
 
