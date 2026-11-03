@@ -408,3 +408,42 @@ pub fn test_multi_tick() {
     df.run_available_sync();
     assert_eq!(0, collect_ready::<Vec<_>, _>(&mut max_recv).len());
 }
+
+/// `( &#name ).as_reveal_ref()` must compile; binding the reference first is not required.
+/// <https://github.com/hydro-project/hydro/issues/1459>
+#[multiplatform_test]
+pub fn test_singleton_ref_immediate_borrow() {
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
+
+    let mut df = dfir_rs::dfir_syntax! {
+        namespaces = source_iter([Max::new(10usize)]) -> singleton();
+
+        source_iter([()]) -> for_each(|_| {
+            let all_data: &usize = (&#namespaces).as_reveal_ref();
+            out_send.send(*all_data).unwrap();
+        });
+    };
+
+    df.run_available_sync();
+    assert_eq!(&[10], &*collect_ready::<Vec<_>, _>(&mut out_recv));
+}
+
+/// `(&mut #mut name).as_reveal_mut()` must compile; binding the reference first is not required.
+/// <https://github.com/hydro-project/hydro/issues/1459>
+#[multiplatform_test]
+pub fn test_singleton_mut_ref_immediate_borrow() {
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
+
+    let mut df = dfir_rs::dfir_syntax! {
+        namespaces = source_iter([Max::new(10usize)]) -> singleton();
+
+        source_iter([2usize]) -> map(|x| {
+            let all_data: &mut usize = (&mut #mut namespaces).as_reveal_mut();
+            *all_data += x;
+            *all_data
+        }) -> for_each(|v| out_send.send(v).unwrap());
+    };
+
+    df.run_available_sync();
+    assert_eq!(&[12], &*collect_ready::<Vec<_>, _>(&mut out_recv));
+}
