@@ -171,27 +171,28 @@
 <a href=#171 id=171 data-nosnippet>171</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
 <a href=#172 id=172 data-nosnippet>172</a>            write_prologue,
 <a href=#173 id=173 data-nosnippet>173</a>            write_iterator,
-<a href=#174 id=174 data-nosnippet>174</a>            ..Default::default()
-<a href=#175 id=175 data-nosnippet>175</a>        })
-<a href=#176 id=176 data-nosnippet>176</a>    },
-<a href=#177 id=177 data-nosnippet>177</a>};
-<a href=#178 id=178 data-nosnippet>178</a>
-<a href=#179 id=179 data-nosnippet>179</a><span class="doccomment">/// Ensure enum type has double colon turbofish syntax.
-<a href=#180 id=180 data-nosnippet>180</a>/// `my_mod::MyType&lt;MyGeneric&gt;` becomes `my_mod::MyType::&lt;MyGeneric&gt;`.
-<a href=#181 id=181 data-nosnippet>181</a></span><span class="kw">fn </span>ensure_turbofish(ty: <span class="kw-2">&amp;</span>Type) -&gt; Type {
-<a href=#182 id=182 data-nosnippet>182</a>    <span class="kw">let </span><span class="kw-2">mut </span>ty = ty.clone();
-<a href=#183 id=183 data-nosnippet>183</a>    <span class="comment">// If type is path.
-<a href=#184 id=184 data-nosnippet>184</a>    </span><span class="kw">if let </span>Type::Path(TypePath { qself: <span class="kw">_</span>, path }) = <span class="kw-2">&amp;mut </span>ty {
-<a href=#185 id=185 data-nosnippet>185</a>        <span class="comment">// If path ends in angle bracketed generics.
-<a href=#186 id=186 data-nosnippet>186</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(PathSegment {
-<a href=#187 id=187 data-nosnippet>187</a>            ident: <span class="kw">_</span>,
-<a href=#188 id=188 data-nosnippet>188</a>            arguments: PathArguments::AngleBracketed(angle_bracketed),
-<a href=#189 id=189 data-nosnippet>189</a>        }) = path.segments.last_mut()
-<a href=#190 id=190 data-nosnippet>190</a>        {
-<a href=#191 id=191 data-nosnippet>191</a>            <span class="comment">// Ensure the final turbofish double-colon is set.
-<a href=#192 id=192 data-nosnippet>192</a>            </span>angle_bracketed.colon2_token = <span class="prelude-val">Some</span>(&lt;<span class="macro">Token!</span>[::]&gt;::default());
-<a href=#193 id=193 data-nosnippet>193</a>        }
-<a href=#194 id=194 data-nosnippet>194</a>    };
-<a href=#195 id=195 data-nosnippet>195</a>    ty
-<a href=#196 id=196 data-nosnippet>196</a>}
+<a href=#174 id=174 data-nosnippet>174</a>            write_iterator_after: Default::default(),
+<a href=#175 id=175 data-nosnippet>175</a>            write_tick_end: Default::default(),
+<a href=#176 id=176 data-nosnippet>176</a>        })
+<a href=#177 id=177 data-nosnippet>177</a>    },
+<a href=#178 id=178 data-nosnippet>178</a>};
+<a href=#179 id=179 data-nosnippet>179</a>
+<a href=#180 id=180 data-nosnippet>180</a><span class="doccomment">/// Ensure enum type has double colon turbofish syntax.
+<a href=#181 id=181 data-nosnippet>181</a>/// `my_mod::MyType&lt;MyGeneric&gt;` becomes `my_mod::MyType::&lt;MyGeneric&gt;`.
+<a href=#182 id=182 data-nosnippet>182</a></span><span class="kw">fn </span>ensure_turbofish(ty: <span class="kw-2">&amp;</span>Type) -&gt; Type {
+<a href=#183 id=183 data-nosnippet>183</a>    <span class="kw">let </span><span class="kw-2">mut </span>ty = ty.clone();
+<a href=#184 id=184 data-nosnippet>184</a>    <span class="comment">// If type is path.
+<a href=#185 id=185 data-nosnippet>185</a>    </span><span class="kw">if let </span>Type::Path(TypePath { qself: <span class="kw">_</span>, path }) = <span class="kw-2">&amp;mut </span>ty {
+<a href=#186 id=186 data-nosnippet>186</a>        <span class="comment">// If path ends in angle bracketed generics.
+<a href=#187 id=187 data-nosnippet>187</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(PathSegment {
+<a href=#188 id=188 data-nosnippet>188</a>            ident: <span class="kw">_</span>,
+<a href=#189 id=189 data-nosnippet>189</a>            arguments: PathArguments::AngleBracketed(angle_bracketed),
+<a href=#190 id=190 data-nosnippet>190</a>        }) = path.segments.last_mut()
+<a href=#191 id=191 data-nosnippet>191</a>        {
+<a href=#192 id=192 data-nosnippet>192</a>            <span class="comment">// Ensure the final turbofish double-colon is set.
+<a href=#193 id=193 data-nosnippet>193</a>            </span>angle_bracketed.colon2_token = <span class="prelude-val">Some</span>(&lt;<span class="macro">Token!</span>[::]&gt;::default());
+<a href=#194 id=194 data-nosnippet>194</a>        }
+<a href=#195 id=195 data-nosnippet>195</a>    };
+<a href=#196 id=196 data-nosnippet>196</a>    ty
+<a href=#197 id=197 data-nosnippet>197</a>}
 </code></pre></div></section></main></body></html>

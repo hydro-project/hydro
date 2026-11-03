@@ -38,9 +38,11 @@
 <a href=#38 id=38 data-nosnippet>38</a>    </span>write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs { .. }, _diagnostics| {
 <a href=#39 id=39 data-nosnippet>39</a>        <span class="kw">let </span>write_iterator = identity_write_iterator_fn(wc);
 <a href=#40 id=40 data-nosnippet>40</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#41 id=41 data-nosnippet>41</a>            write_iterator,
-<a href=#42 id=42 data-nosnippet>42</a>            ..Default::default()
-<a href=#43 id=43 data-nosnippet>43</a>        })
-<a href=#44 id=44 data-nosnippet>44</a>    },
-<a href=#45 id=45 data-nosnippet>45</a>};
+<a href=#41 id=41 data-nosnippet>41</a>            write_prologue: Default::default(),
+<a href=#42 id=42 data-nosnippet>42</a>            write_iterator,
+<a href=#43 id=43 data-nosnippet>43</a>            write_iterator_after: Default::default(),
+<a href=#44 id=44 data-nosnippet>44</a>            write_tick_end: Default::default(),
+<a href=#45 id=45 data-nosnippet>45</a>        })
+<a href=#46 id=46 data-nosnippet>46</a>    },
+<a href=#47 id=47 data-nosnippet>47</a>};
 </code></pre></div></section></main></body></html>
