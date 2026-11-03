@@ -45,6 +45,16 @@ jobs:
           RUSTDOCFLAGS: --cfg docsrs -Dwarnings
         run: cargo +nightly doc --no-deps --all-features
 
+      # Hand the compiled rustdoc to the `build-website` job below so the website build does not
+      # have to run `cargo doc` a second time.
+      - name: Upload rustdoc artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: rustdoc
+          path: target/doc/
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Move design docs to output
         shell: bash
         run: |
@@ -71,3 +81,35 @@ jobs:
           else
             echo 'No changes to commit'
           fi
+
+  build-website:
+    name: Build Website
+    # Skipped automatically (via `needs`) if the `docs` job is skipped or fails.
+    timeout-minutes: 25
+    needs: docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: "docs/package-lock.json"
+
+      # Reuse the rustdoc built by the `docs` job. `build_docs.bash` expects it at
+      # `docs/static/rustdoc` (where it would otherwise `cp` it from `target/doc`).
+      - name: Download rustdoc artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: rustdoc
+          path: docs/static/rustdoc
+
+      - name: Build Website
+        env:
+          SKIP_RUSTDOC: "1"
+        run: bash build_docs.bash x86_64-linux-gnu-ubuntu-20.04
+
+      - name: Check README Links
+        run: bash scripts/check_readme_links.sh
