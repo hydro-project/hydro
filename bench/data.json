@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1793620086197,
+  "lastUpdate": 1793705588849,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -320723,6 +320723,208 @@
             "name": "paxos_bench",
             "value": 387380,
             "range": "± 1586.69",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "luckyworkama",
+            "username": "luckyworkama",
+            "email": "220770177+luckyworkama@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "3964c60936c2a7c41c7c6aa9ff5d4facaaae9cc6",
+          "message": "feat(hydro_lang)!: `EMBEDDED` channels declare the anomalies they may introduce (#3274)\n\nRecently we changed `EMBEDDED` to declare the guarantees it is providing\n(before that it was really just completely confused). But I think what\nwe have figured out is that it makes more sense to declare what\nanomalies the channel might introduce rather than the guarantees that\nthe channel provides. This PR just reframes `EMBEDDED` in these terms.\n\n`EMBEDDED` alone is now a channel that introduces no anomalies: it\ndelivers each\nsender's messages once, in order, and stops only when it fails,\nsimilarly like\n`TCP.fail_stop()`. The dataflow declares each anomaly the channel may\nintroduce, and the received stream is weakened accordingly:\n\n- `.may_reorder()`: the received stream is `NoOrder`.\n- `.may_duplicate()`: the received stream is `AtLeastOnce`.\n- `.may_drop(nondet!(..))`: like `TCP.lossy(..)`.\n- `.may_delay_forever()`: like `TCP.lossy_delayed_forever()`\n(`NoOrder`).\n\nBREAKING CHANGE: `EMBEDDED`'s guarantee builders are replaced by anomaly\ndeclarations, and every anomaly axis must now be declared:\n`.exactly_once()` / `.at_least_once()` become `.never_duplicates()` /\n`.may_duplicate()`, `.total_order()` / `.no_order()` become\n`.never_reorders()` / `.may_reorder()`, and `.fail_stop()` /\n`.lossy(nondet!(..))` / `.lossy_delayed_forever()` become\n`.never_drops()` /\n`.may_drop(nondet!(..))` / `.may_delay_forever()`. For example,\n`EMBEDDED.exactly_once().total_order().fail_stop()` is now\n`EMBEDDED.never_reorders().never_duplicates().never_drops()`.",
+          "timestamp": "2026-11-02T21:32:25Z",
+          "url": "https://github.com/hydro-project/hydro/commit/3964c60936c2a7c41c7c6aa9ff5d4facaaae9cc6"
+        },
+        "date": 1793705588778,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 286937,
+            "range": "± 2479",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 14449048,
+            "range": "± 59571",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 14025018,
+            "range": "± 345793",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 10481,
+            "range": "± 215",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 7843908,
+            "range": "± 13274",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 861371,
+            "range": "± 4032",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 933242,
+            "range": "± 10783",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 47456802,
+            "range": "± 543293",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 3529519,
+            "range": "± 10664",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 38808880,
+            "range": "± 309548",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 13085605,
+            "range": "± 287719",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 13490681,
+            "range": "± 217181",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 39755973,
+            "range": "± 268663",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 5878,
+            "range": "± 86",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 24348,
+            "range": "± 447",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4233,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6331,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 424729,
+            "range": "± 1134",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 60757,
+            "range": "± 305",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 47577,
+            "range": "± 131",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 51063,
+            "range": "± 154",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 7302,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1634,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 79897,
+            "range": "± 252",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 86060,
+            "range": "± 250",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 6745,
+            "range": "± 129",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 17704,
+            "range": "± 159",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 13758,
+            "range": "± 343",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 5121,
+            "range": "± 61",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 235160,
+            "range": "± 8146.8",
             "unit": "ops/s"
           }
         ]
