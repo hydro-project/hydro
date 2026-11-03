@@ -8,6 +8,10 @@ edition = "2024"
 hydro_lang = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}" }
 hydro_std = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}" }
 stageleft = "*"
+# Normal dependencies so `DockerDeploy` trybuild binaries can name `tokio`
+# and `bytes`. Dev-dependencies are not linked into that binary.
+bytes = "1.1.0"
+tokio = { version = "1.29.0", features = ["full"] }
 
 [build-dependencies]
 stageleft_tool = "*"
@@ -16,10 +20,10 @@ stageleft_tool = "*"
 hydro_deploy = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}" }
 hydro_lang = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}", features = [
     "deploy",
+    "docker_deploy",
     "sim",
     "viz",
 ] }
-tokio = { version = "1.29.0", features = ["full"] }
 tokio-util = { version = "0.7.5", features = [ "codec" ] }
 tokio-stream = { version = "0.1.3", default-features = false }
 futures = "0.3.0"

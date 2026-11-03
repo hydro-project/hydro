@@ -22,9 +22,11 @@ stageleft_tool.workspace = true
 hydro_deploy = { path = "../hydro_deploy/core", version = "=0.17.0-alpha.5" }
 hydro_lang = { path = "../hydro_lang", version = "=0.17.0-alpha.6", features = [
     "deploy",
+    "docker_deploy",
     "sim",
     "viz",
 ] }
+bytes = "1.1.0"
 tokio = { version = "1.29.0", features = ["full"] }
 tokio-util = { version = "0.7.5", features = [ "codec" ] }
 tokio-test = "0.4.4"

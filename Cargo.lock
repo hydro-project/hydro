@@ -2814,6 +2814,7 @@ dependencies = [
 name = "hydro_test_template"
 version = "0.0.0"
 dependencies = [
+ "bytes",
  "example_test",
  "futures",
  "hydro_deploy",
