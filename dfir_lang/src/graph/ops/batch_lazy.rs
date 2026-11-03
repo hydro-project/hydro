@@ -35,8 +35,10 @@ pub const BATCH_LAZY: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs { .. }, _diagnostics| {
         let write_iterator = identity_write_iterator_fn(wc);
         Ok(OperatorWriteOutput {
+            write_prologue: Default::default(),
             write_iterator,
-            ..Default::default()
+            write_iterator_after: Default::default(),
+            write_tick_end: Default::default(),
         })
     },
 };

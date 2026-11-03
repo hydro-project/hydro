@@ -1755,8 +1755,10 @@ impl DfirGraph {
                                     op_name,
                                 );
                                 OperatorWriteOutput {
+                                    write_prologue: Default::default(),
                                     write_iterator: null_write_iterator_fn(&context_args),
-                                    ..Default::default()
+                                    write_iterator_after: Default::default(),
+                                    write_tick_end: Default::default(),
                                 }
                             });
 

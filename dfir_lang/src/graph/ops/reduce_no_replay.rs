@@ -148,8 +148,8 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
+            write_iterator_after: Default::default(),
             write_tick_end,
-            ..Default::default()
         })
     },
 };

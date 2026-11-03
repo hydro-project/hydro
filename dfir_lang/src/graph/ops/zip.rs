@@ -92,11 +92,11 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
+            write_iterator_after: Default::default(),
             write_tick_end: quote_spanned! {op_span=>
                 #write_tick_end_lhs
                 #write_tick_end_rhs
             },
-            ..Default::default()
         })
     },
 };
