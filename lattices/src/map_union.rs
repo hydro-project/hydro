@@ -283,6 +283,10 @@ pub type MapUnionOptionMap<K, Val> = MapUnion<OptionMap<K, Val>>;
 /// Composable bimorphism, wraps an existing morphism by partitioning it per key.
 ///
 /// For example, `KeyedBimorphism<..., CartesianProduct<...>>` is a join.
+///
+/// A missing key is lattice bottom (`Default::default`). Keys that exist on only one
+/// side are still paired when that side is not itself bottom, so a nested bottom kept
+/// in one representation and collapsed by `Merge` in another cannot change the result.
 pub struct KeyedBimorphism<MapOut, Bimorphism> {
     bimorphism: Bimorphism,
     _phantom: PhantomData<fn() -> MapOut>,
@@ -296,31 +300,67 @@ impl<MapOut, Bimorphism> KeyedBimorphism<MapOut, Bimorphism> {
         }
     }
 }
-impl<MapA, MapB, MapOut, ValFunc> LatticeBimorphism<MapUnion<MapA>, MapUnion<MapB>>
+impl<MapA, MapB, MapOut, ValFunc, K> LatticeBimorphism<MapUnion<MapA>, MapUnion<MapB>>
     for KeyedBimorphism<MapOut, ValFunc>
 where
     ValFunc: LatticeBimorphism<MapA::Item, MapB::Item>,
-    MapA: MapIter + SimpleKeyedRef + SimpleCollectionRef,
-    MapB: for<'a> GetKeyValue<&'a MapA::Key, Key = MapA::Key> + SimpleCollectionRef,
-    MapA::Key: Clone + Eq,
-    MapA::Item: Clone,
-    MapB::Item: Clone,
-    MapOut: Default + MapInsert<MapA::Key> + Collection<Item = ValFunc::Output>,
+    // `K` avoids `MapA: GetKeyValue<&'a MapA::Key>`, which is a bounds cycle.
+    K: Clone + Eq,
+    MapA: MapIter
+        + SimpleKeyedRef
+        + SimpleCollectionRef
+        + Keyed<Key = K>
+        + for<'a> GetKeyValue<&'a K>,
+    MapB: MapIter
+        + SimpleKeyedRef
+        + SimpleCollectionRef
+        + Keyed<Key = K>
+        + for<'a> GetKeyValue<&'a K>,
+    MapA::Item: Clone + Default + IsBot,
+    MapB::Item: Clone + Default + IsBot,
+    MapOut: Default + MapInsert<K> + Collection<Item = ValFunc::Output>,
+    ValFunc::Output: IsBot,
 {
     type Output = MapUnion<MapOut>;
 
     fn call(&mut self, lat_a: MapUnion<MapA>, lat_b: MapUnion<MapB>) -> Self::Output {
         let mut output = MapUnion::<MapOut>::default();
-        for (key, val_a) in lat_a.as_reveal_ref().iter() {
+        let map_a = lat_a.as_reveal_ref();
+        let map_b = lat_b.as_reveal_ref();
+
+        for (key, val_a) in map_a.iter() {
             let key = <MapA as SimpleKeyedRef>::into_ref(key);
-            let Some((_key, val_b)) = lat_b.as_reveal_ref().get_key_value(key) else {
+            let val_a = <MapA as SimpleCollectionRef>::into_ref(val_a);
+            let val_b = if let Some((_key, val_b)) = map_b.get_key_value(key) {
+                <MapB as SimpleCollectionRef>::into_ref(val_b).clone()
+            } else if !val_a.is_bot() {
+                <MapB::Item as Default>::default()
+            } else {
                 continue;
             };
-            let val_a = <MapA as SimpleCollectionRef>::into_ref(val_a).clone();
-            let val_b = <MapB as SimpleCollectionRef>::into_ref(val_b).clone();
+            let val_out = LatticeBimorphism::call(&mut self.bimorphism, val_a.clone(), val_b);
+            if !val_out.is_bot() {
+                <MapOut as MapInsert<_>>::insert(output.as_reveal_mut(), key.clone(), val_out);
+            }
+        }
 
-            let val_out = LatticeBimorphism::call(&mut self.bimorphism, val_a, val_b);
-            <MapOut as MapInsert<_>>::insert(output.as_reveal_mut(), key.clone(), val_out);
+        for (key, val_b) in map_b.iter() {
+            let key = <MapB as SimpleKeyedRef>::into_ref(key);
+            if map_a.get_key_value(key).is_some() {
+                continue;
+            }
+            let val_b = <MapB as SimpleCollectionRef>::into_ref(val_b);
+            if val_b.is_bot() {
+                continue;
+            }
+            let val_out = LatticeBimorphism::call(
+                &mut self.bimorphism,
+                <MapA::Item as Default>::default(),
+                val_b.clone(),
+            );
+            if !val_out.is_bot() {
+                <MapOut as MapInsert<_>>::insert(output.as_reveal_mut(), key.clone(), val_out);
+            }
         }
         output
     }
@@ -395,6 +435,83 @@ mod test {
         assert_eq!(map_empty, map_a_bot);
         assert_eq!(map_empty, map_b_bot);
         assert_eq!(map_a_bot, map_b_bot);
+    }
+
+    /// A nested `()` kept under a key equals that key being absent after `Merge`
+    /// drops bottoms. Both argument orders must agree, including when the only
+    /// non-bottom value is on the other map.
+    #[test]
+    fn test_double_keyed() {
+        use std::collections::HashMap;
+
+        use crate::{IsBot, Pair, PairBimorphism};
+
+        let system_table_item = MapUnionSingletonMap::new_from((
+            "members",
+            MapUnionHashMap::new_from([("key", SetUnionHashSet::new_from(["value"]))]),
+        ));
+        let mut system_table_state: MapUnionHashMap<
+            &str,
+            MapUnionHashMap<&str, SetUnionHashSet<&str>>,
+        > = Default::default();
+        system_table_state.merge(system_table_item.clone());
+
+        // Explicit nested bottom. Not inserted via `merge`, which would delete it.
+        let mut gets_inner: MapUnionHashMap<&str, ()> = Default::default();
+        gets_inner.as_reveal_mut().insert("key", ());
+        let gets_item = MapUnionSingletonMap::new_from(("members", gets_inner));
+        let mut gets_state: MapUnionHashMap<&str, MapUnionHashMap<&str, ()>> = Default::default();
+        gets_state.merge(gets_item.clone());
+
+        let mut lattice_bimorphism = KeyedBimorphism::<
+            HashMap<&str, MapUnionHashMap<&str, Pair<SetUnionHashSet<&str>, ()>>>,
+            _,
+        >::new(KeyedBimorphism::<
+            HashMap<&str, Pair<SetUnionHashSet<&str>, ()>>,
+            _,
+        >::new(PairBimorphism));
+        let from_state_and_item =
+            lattice_bimorphism.call(system_table_state.clone(), gets_item.clone());
+        let from_item_and_state =
+            lattice_bimorphism.call(system_table_item.clone(), gets_state.clone());
+
+        let expected = MapUnionHashMap::new_from([(
+            "members",
+            MapUnionHashMap::new_from([(
+                "key",
+                Pair::new(SetUnionHashSet::new_from(["value"]), ()),
+            )]),
+        )]);
+        assert_eq!(
+            from_state_and_item, from_item_and_state,
+            "deep-bottom orientations diverged"
+        );
+        assert_eq!(from_state_and_item, expected);
+        assert!(!from_state_and_item.is_bot());
+
+        // The non-bottom payload sits only on `lat_b` when the collapsed bottom is `lat_a`.
+        let mut swapped = KeyedBimorphism::<
+            HashMap<&str, MapUnionHashMap<&str, Pair<(), SetUnionHashSet<&str>>>>,
+            _,
+        >::new(KeyedBimorphism::<
+            HashMap<&str, Pair<(), SetUnionHashSet<&str>>>,
+            _,
+        >::new(PairBimorphism));
+        let swapped_explicit = swapped.call(gets_item, system_table_item);
+        let swapped_collapsed = swapped.call(gets_state, system_table_state);
+        let expected_swapped = MapUnionHashMap::new_from([(
+            "members",
+            MapUnionHashMap::new_from([(
+                "key",
+                Pair::new((), SetUnionHashSet::new_from(["value"])),
+            )]),
+        )]);
+        assert_eq!(
+            swapped_explicit, swapped_collapsed,
+            "key present only on the other side was dropped"
+        );
+        assert_eq!(swapped_explicit, expected_swapped);
+        assert!(!swapped_explicit.is_bot());
     }
 
     #[test]
