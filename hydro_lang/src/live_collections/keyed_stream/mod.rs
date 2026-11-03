@@ -13,6 +13,7 @@ use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
 use super::optional::Optional;
+use super::singleton::Singleton;
 use super::stream::{
     ExactlyOnce, IsExactlyOnce, IsOrdered, MinOrder, MinRetries, NoOrder, Stream, TotalOrder,
 };
@@ -1245,6 +1246,144 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         )
         .map(q!(|((k, v), o2)| (k, (v, o2))))
         .into_keyed()
+    }
+
+    /// Passes entries in each group through if the boolean signal is `true`, otherwise the output is empty.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let signal = tick.optional_first_tick(q!(())).is_some(); // true on tick 1, false on tick 2
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///   .into_keyed()
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![(1, 5), (2, 6), (3, 7)]))
+    ///   .into_keyed()
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick();
+    /// batch_first_tick.chain(batch_second_tick)
+    ///   .filter_if(signal)
+    ///   .all_ticks()
+    /// # .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [2, 3], 2: [4] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn filter_if(self, signal: Singleton<bool, L, Bounded>) -> KeyedStream<K, V, L, B, O, R> {
+        self.cross_singleton(signal.filter(q!(|b| *b)))
+            .map(q!(|(d, _)| d))
+    }
+
+    /// Passes entries in each group through if the argument (a [`Bounded`] [`Optional`]) is non-null, otherwise the output is empty.
+    ///
+    /// Useful for gating the release of elements based on a condition, such as only processing requests if you are the
+    /// leader of a cluster.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///   .into_keyed()
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![(1, 5), (2, 6), (3, 7)]))
+    ///   .into_keyed()
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+    /// batch_first_tick.chain(batch_second_tick)
+    ///   .filter_if_some(some_on_first_tick)
+    ///   .all_ticks()
+    /// # .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [2, 3], 2: [4] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4)]);
+    /// # }));
+    /// # }
+    /// ```
+    #[deprecated(note = "use `filter_if` with `Optional::is_some()` instead")]
+    pub fn filter_if_some<U>(
+        self,
+        signal: Optional<U, L, Bounded>,
+    ) -> KeyedStream<K, V, L, B, O, R> {
+        self.filter_if(signal.is_some())
+    }
+
+    /// Passes entries in each group through if the argument (a [`Bounded`] [`Optional`]) is null, otherwise the output is empty.
+    ///
+    /// Useful for gating the release of elements based on a condition, such as triggering a protocol if you are missing
+    /// some local state.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///   .into_keyed()
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![(1, 5), (2, 6), (3, 7)]))
+    ///   .into_keyed()
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+    /// batch_first_tick.chain(batch_second_tick)
+    ///   .filter_if_none(some_on_first_tick)
+    ///   .all_ticks()
+    /// # .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [5], 2: [6], 3: [7] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 5), (2, 6), (3, 7)]);
+    /// # }));
+    /// # }
+    /// ```
+    #[deprecated(note = "use `filter_if` with `!Optional::is_some()` instead")]
+    pub fn filter_if_none<U>(
+        self,
+        other: Optional<U, L, Bounded>,
+    ) -> KeyedStream<K, V, L, B, O, R> {
+        self.filter_if(other.is_none())
     }
 
     /// For each value `v` in each group, transform `v` using `f` and then treat the
