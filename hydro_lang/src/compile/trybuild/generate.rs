@@ -1,3 +1,4 @@
+use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -922,6 +923,333 @@ pub(crate) fn write_staged_source_cached(source_dir: &Path, crate_name: &str, pr
     }
 }
 
+/// Features to enable on the trybuild crate for this invocation.
+///
+/// `running_as_example_test` is the `RUNNING_AS_EXAMPLE_TEST=1` re-exec of a test
+/// binary. That process's argv has a fingerprint hash, but the features belong to
+/// the test harness, not the example, so discovery is skipped.
+fn discover_trybuild_features(
+    running_as_example_test: bool,
+    args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+) -> Option<Vec<String>> {
+    if running_as_example_test {
+        return None;
+    }
+    enabled_features_for_trybuild(args)
+}
+
+fn enabled_features_for_trybuild(
+    args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+) -> Option<Vec<String>> {
+    let args: Vec<OsString> = args
+        .into_iter()
+        .map(|arg| arg.as_ref().to_os_string())
+        .collect();
+
+    // `cargo run --example echo --features foo,bar` is parsed directly when that
+    // argument list is what we were given. Cargo then execs the example, whose
+    // argv is only `target/<profile>/examples/echo` plus program args — no hash,
+    // and no `--features` — so `features::find` returns None. The features cargo
+    // actually enabled are in `.fingerprint/*/example-<name>.json`.
+    if let Some(from_cargo_args) = cargo_example_features(&args) {
+        return Some(from_cargo_args);
+    }
+
+    // `features::find` always reads the live argv. Skip it for a synthetic argv
+    // so unit tests do not observe this test binary's features.
+    let live = std::env::args_os().next();
+    if live.as_ref() == args.first()
+        && let Some(found) = features::find()
+    {
+        return Some(found);
+    }
+
+    let argv0 = PathBuf::from(args.first()?);
+    if let Some(found) = example_fingerprint_features(&argv0) {
+        return Some(found);
+    }
+    if live.as_ref() != args.first() {
+        return None;
+    }
+    let exe = std::env::current_exe().ok()?;
+    if exe == argv0 {
+        None
+    } else {
+        example_fingerprint_features(&exe)
+    }
+}
+
+/// `--features` / `-F` from a `cargo … --example …` argument list.
+///
+/// Returns `None` when `args` is not that shape. An example binary's own argv
+/// must not be scanned: program arguments after `--` are not cargo features.
+fn cargo_example_features(args: &[OsString]) -> Option<Vec<String>> {
+    let argv0 = args.first()?.to_string_lossy();
+    if !argv0_is_cargo(&argv0) {
+        return None;
+    }
+    let args: Vec<String> = args
+        .iter()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect();
+    let cargo_args = args_before_double_dash(&args);
+    if !cargo_args
+        .iter()
+        .any(|arg| arg == "--example" || arg.starts_with("--example="))
+        || !cargo_args.iter().any(|arg| is_features_selector(arg))
+    {
+        return None;
+    }
+    Some(parse_cargo_enabled_features(
+        cargo_args.iter().map(String::as_str),
+    ))
+}
+
+fn argv0_is_cargo(argv0: &str) -> bool {
+    matches!(
+        Path::new(argv0).file_name().and_then(|name| name.to_str()),
+        Some("cargo" | "cargo.exe")
+    )
+}
+
+fn is_features_selector(arg: &str) -> bool {
+    matches!(arg, "--features" | "--feature" | "-F") || feature_flag_inline_value(arg).is_some()
+}
+
+fn args_before_double_dash(args: &[String]) -> &[String] {
+    match args.iter().position(|arg| arg == "--") {
+        Some(index) => &args[..index],
+        None => args,
+    }
+}
+
+fn parse_cargo_enabled_features<'a>(args: impl IntoIterator<Item = &'a str>) -> Vec<String> {
+    let args: Vec<&str> = args.into_iter().collect();
+    let mut features = Vec::new();
+    let mut index = 0;
+    while index < args.len() {
+        let arg = args[index];
+        if arg == "--" {
+            break;
+        }
+        if let Some(value) = feature_flag_inline_value(arg) {
+            push_feature_list(&mut features, value);
+            index += 1;
+            continue;
+        }
+        if matches!(arg, "--features" | "--feature" | "-F")
+            && let Some(value) = args.get(index + 1)
+            && *value != "--"
+            && !value.starts_with('-')
+        {
+            push_feature_list(&mut features, value);
+            index += 2;
+            continue;
+        }
+        index += 1;
+    }
+    features
+}
+
+fn feature_flag_inline_value(arg: &str) -> Option<&str> {
+    if let Some(value) = arg
+        .strip_prefix("--features=")
+        .or_else(|| arg.strip_prefix("--feature="))
+        .or_else(|| arg.strip_prefix("-F="))
+    {
+        return Some(value);
+    }
+    let rest = arg.strip_prefix("-F")?;
+    if rest.is_empty() || !rest.chars().all(is_feature_list_char) {
+        return None;
+    }
+    Some(rest)
+}
+
+fn is_feature_list_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | ',' | '/' | ':' | '.' | '+')
+}
+
+fn push_feature_list(features: &mut Vec<String>, value: &str) {
+    for part in value.split([',', ' ', '\t']) {
+        if part.is_empty() || features.iter().any(|existing| existing == part) {
+            continue;
+        }
+        features.push(part.to_owned());
+    }
+}
+
+/// Enabled features recorded for an example binary.
+///
+/// Example executables are named `target/<profile>/examples/<name>` with no
+/// unit hash, so [`features::find`](trybuild_internals_api::features::find)
+/// cannot see them. Cargo still writes the feature list into
+/// `target/<profile>/.fingerprint/<pkg>-<hash>/example-<name>.json`.
+fn example_fingerprint_features(exe: &Path) -> Option<Vec<String>> {
+    let example = example_name(exe)?;
+    let fingerprint_root = exe.parent()?.parent()?.join(".fingerprint");
+    if !fingerprint_root.is_dir() {
+        return None;
+    }
+
+    let package = std::env::var("CARGO_PKG_NAME").ok();
+    let wanted = format!("example-{example}.json");
+    let mut matches: Vec<(Option<std::time::SystemTime>, PathBuf)> = Vec::new();
+    for entry in fingerprint_root.read_dir().ok()? {
+        let Ok(entry) = entry else {
+            continue;
+        };
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if !file_type.is_dir() {
+            continue;
+        }
+        let dir_name_owned = entry.file_name();
+        let Some(dir_name) = dir_name_owned.to_str() else {
+            continue;
+        };
+        if let Some(package) = &package
+            && !fingerprint_dir_is_package(dir_name, package)
+        {
+            continue;
+        }
+        let json_path = entry.path().join(&wanted);
+        if !json_path.is_file() {
+            continue;
+        }
+        let modified = json_path.metadata().and_then(|meta| meta.modified()).ok();
+        matches.push((modified, json_path));
+    }
+
+    // Newest write wins when several toolchains have built this example.
+    matches.sort_by_key(|candidate| candidate.0);
+    while let Some((_, path)) = matches.pop() {
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        if let Some(features) = features_from_fingerprint_json(&text) {
+            return Some(features);
+        }
+    }
+    None
+}
+
+fn example_name(exe: &Path) -> Option<&str> {
+    if exe.parent()?.file_name()? != OsStr::new("examples") {
+        return None;
+    }
+    let file_name = exe.file_name()?.to_str()?;
+    let name = file_name.strip_suffix(".exe").unwrap_or(file_name);
+    if name.is_empty() { None } else { Some(name) }
+}
+
+fn fingerprint_dir_is_package(dir_name: &str, package: &str) -> bool {
+    let Some((name, hash)) = dir_name.rsplit_once('-') else {
+        return false;
+    };
+    name == package
+        && hash.len() == 16
+        && hash
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+/// The `features` field of a cargo fingerprint is a JSON string containing a
+/// JSON array (`"features":"[\"foo\", \"bar\"]"`).
+fn features_from_fingerprint_json(text: &str) -> Option<Vec<String>> {
+    let key = "\"features\"";
+    let mut search_from = 0;
+    while let Some(relative) = text[search_from..].find(key) {
+        let after_key = search_from + relative + key.len();
+        let rest = text[after_key..].trim_start();
+        let Some(rest) = rest.strip_prefix(':') else {
+            search_from = after_key;
+            continue;
+        };
+        let rest = rest.trim_start();
+        let Some(rest) = rest.strip_prefix('"') else {
+            search_from = after_key;
+            continue;
+        };
+        let (encoded, _) = unescape_json_string(rest)?;
+        return parse_json_string_array(&encoded);
+    }
+    None
+}
+
+fn unescape_json_string(input: &str) -> Option<(String, usize)> {
+    let mut decoded = String::new();
+    let mut index = 0;
+    let bytes = input.as_bytes();
+    while index < bytes.len() {
+        match bytes[index] {
+            b'"' => return Some((decoded, index + 1)),
+            b'\\' => {
+                index += 1;
+                if index >= bytes.len() {
+                    return None;
+                }
+                match bytes[index] {
+                    b'"' => decoded.push('"'),
+                    b'\\' => decoded.push('\\'),
+                    b'/' => decoded.push('/'),
+                    b'n' => decoded.push('\n'),
+                    b't' => decoded.push('\t'),
+                    b'r' => decoded.push('\r'),
+                    b'u' => {
+                        if index + 4 >= bytes.len() {
+                            return None;
+                        }
+                        let hex = std::str::from_utf8(&bytes[index + 1..index + 5]).ok()?;
+                        let code = u32::from_str_radix(hex, 16).ok()?;
+                        decoded.push(char::from_u32(code)?);
+                        index += 4;
+                    }
+                    _ => return None,
+                }
+                index += 1;
+            }
+            _ => {
+                let ch = input[index..].chars().next()?;
+                decoded.push(ch);
+                index += ch.len_utf8();
+            }
+        }
+    }
+    None
+}
+
+fn parse_json_string_array(input: &str) -> Option<Vec<String>> {
+    let inner = input.trim().strip_prefix('[')?.strip_suffix(']')?;
+    let mut rest = inner.trim();
+    let mut values = Vec::new();
+    if rest.is_empty() {
+        return Some(values);
+    }
+    loop {
+        rest = rest.trim_start();
+        let encoded = rest.strip_prefix('"')?;
+        let (value, consumed) = unescape_json_string(encoded)?;
+        values.push(value);
+        rest = encoded[consumed..].trim_start();
+        if rest.is_empty() {
+            return Some(values);
+        }
+        rest = rest.strip_prefix(',')?.trim_start();
+        if rest.is_empty() {
+            return None;
+        }
+    }
+}
+
+fn retain_known_manifest_features(
+    enabled: &mut Vec<String>,
+    manifest_has_feature: impl Fn(&str) -> bool,
+) {
+    enabled.retain(|feature| feature == "default" || manifest_has_feature(feature));
+}
+
 pub fn create_trybuild()
 -> Result<(PathBuf, PathBuf, String, Option<Vec<String>>), trybuild_internals_api::error::Error> {
     let _span = tracing::debug_span!(target: "hydro_build", "create_trybuild").entered();
@@ -957,14 +1285,13 @@ pub fn create_trybuild()
 
     // When the example is re-executed from a test binary by `example_test` (signaled via this
     // env var), skip feature discovery: it would pick up the *test* binary's features (e.g.
-    // test-only harness features). A real `cargo run --example` invocation has no fingerprint
-    // hash in `argv[0]`, so discovery finds nothing there; emulating that here ensures the test
-    // exercises the example the same way it actually runs.
-    let mut features = if std::env::var("RUNNING_AS_EXAMPLE_TEST").is_ok_and(|v| v == "1") {
-        None
-    } else {
-        features::find()
-    };
+    // test-only harness features). A real `cargo run --example` has no fingerprint hash in
+    // `argv[0]`, so `features::find` finds nothing; `discover_trybuild_features` still recovers
+    // the features cargo enabled for that invocation.
+    let mut features = discover_trybuild_features(
+        std::env::var("RUNNING_AS_EXAMPLE_TEST").is_ok_and(|v| v == "1"),
+        std::env::args_os(),
+    );
 
     let path_dependencies = source_manifest
         .dependencies
@@ -1000,8 +1327,9 @@ pub fn create_trybuild()
     )?;
 
     if let Some(enabled_features) = &mut features {
-        enabled_features
-            .retain(|feature| manifest.features.contains_key(feature) || feature == "default");
+        retain_known_manifest_features(enabled_features, |feature| {
+            manifest.features.contains_key(feature)
+        });
     }
 
     for runtime_feature in HYDRO_RUNTIME_FEATURES {
@@ -1378,4 +1706,118 @@ pub(crate) fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        discover_trybuild_features, enabled_features_for_trybuild, retain_known_manifest_features,
+    };
+
+    #[test]
+    fn example_invocation_features_from_comma_separated_flag() {
+        let features = enabled_features_for_trybuild([
+            "cargo",
+            "run",
+            "--example",
+            "echo",
+            "--features",
+            "foo,bar",
+        ])
+        .expect("example features should not be dropped");
+        assert_eq!(features, vec!["foo".to_owned(), "bar".to_owned()]);
+    }
+
+    #[test]
+    fn example_invocation_features_from_repeated_flags() {
+        let features = enabled_features_for_trybuild([
+            "cargo",
+            "run",
+            "--example",
+            "echo",
+            "--features",
+            "foo",
+            "--features",
+            "bar",
+        ])
+        .expect("example features should not be dropped");
+        assert_eq!(features, vec!["foo".to_owned(), "bar".to_owned()]);
+    }
+
+    #[test]
+    fn example_invocation_features_retained_on_trybuild_manifest() {
+        let mut enabled = enabled_features_for_trybuild([
+            "cargo",
+            "run",
+            "--example",
+            "echo",
+            "--features",
+            "foo,bar,unknown",
+        ])
+        .unwrap_or_default();
+        // The generated manifest defines `foo` and `bar` only; unknown names are dropped.
+        retain_known_manifest_features(&mut enabled, |feature| matches!(feature, "foo" | "bar"));
+        assert_eq!(enabled, vec!["foo".to_owned(), "bar".to_owned()]);
+    }
+
+    #[test]
+    fn example_invocation_features_from_fingerprint_without_argv_hash() {
+        // `cargo run --example` execs `target/<profile>/examples/<name>` (no unit
+        // hash). Cargo records the enabled features in the example fingerprint.
+        // A program-level `--features` argument must not replace that record.
+        let scratch = std::env::temp_dir().join(format!(
+            "hydro-example-features-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time")
+                .as_nanos()
+        ));
+        let _cleanup = RemoveOnDrop(scratch.clone());
+        let exe = scratch.join("debug").join("examples").join("echo");
+        std::fs::create_dir_all(exe.parent().expect("examples parent")).expect("create examples");
+        std::fs::write(&exe, b"").expect("write example");
+        let package = std::env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "example_pkg".to_owned());
+        let fingerprint_dir = scratch
+            .join("debug")
+            .join(".fingerprint")
+            .join(format!("{package}-0123456789abcdef"));
+        std::fs::create_dir_all(&fingerprint_dir).expect("create fingerprint");
+        std::fs::write(
+            fingerprint_dir.join("example-echo.json"),
+            r#"{"rustc":1,"features":"[\"bar\", \"foo\"]","declared_features":"[\"bar\", \"foo\"]"}"#,
+        )
+        .expect("write fingerprint");
+
+        let features = enabled_features_for_trybuild([
+            exe.as_os_str(),
+            std::ffi::OsStr::new("--features"),
+            std::ffi::OsStr::new("not-a-cargo-feature"),
+        ])
+        .expect("example fingerprint features should not be dropped");
+        assert_eq!(features, vec!["bar".to_owned(), "foo".to_owned()]);
+
+        let mut retained = features;
+        retain_known_manifest_features(&mut retained, |feature| matches!(feature, "foo" | "bar"));
+        assert_eq!(retained, vec!["bar".to_owned(), "foo".to_owned()]);
+    }
+
+    #[test]
+    fn example_invocation_skips_features_when_running_as_example_test() {
+        let features = discover_trybuild_features(
+            true,
+            ["cargo", "run", "--example", "echo", "--features", "foo,bar"],
+        );
+        assert!(
+            features.is_none(),
+            "a test binary must not leak its features into the example, got {features:?}"
+        );
+    }
+
+    struct RemoveOnDrop(std::path::PathBuf);
+    impl Drop for RemoveOnDrop {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
 }
