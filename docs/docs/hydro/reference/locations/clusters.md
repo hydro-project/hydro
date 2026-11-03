@@ -151,7 +151,7 @@ let cluster_members = p1.source_cluster_membership_stream(&workers, nondet!(/** 
 ## Self-Identification
 In some programs, it may be necessary for cluster members to know their own ID (for example, to construct a ballot in Paxos). In Hydro, this can be achieved by using the `CLUSTER_SELF_ID` constant, which can be used inside `q!(...)` blocks to get the current cluster member's ID. Note that if used inside a closure, you will need to use the `move` keyword to work around borrow-checking limitations.
 
-Cluster IDs support the `Display` trait to be formatted as strings. In deployments using [Hydro Deploy](../deploy/rust.mdx), you can use `get_raw_id` to get an integer ID, but note that this API is not supported on other deployment backends so should be avoided when possible.
+Cluster IDs support the `Display` trait to be formatted as strings. `get_raw_id` returns an integer only for legacy numeric IDs and panics on Docker and ECS member IDs, which are not raw indexes, so it should be avoided.
 
 ```rust
 # use hydro_lang::prelude::*;

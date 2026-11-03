@@ -222,6 +222,10 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload + 'a>(
     clippy::too_many_arguments,
     reason = "internal paxos code // TODO"
 )]
+#[expect(
+    deprecated,
+    reason = "legacy numeric member ids in compartmentalized paxos"
+)]
 fn sequence_payload<'a, P: PaxosPayload>(
     proposers: &Cluster<'a, Proposer>,
     proxy_leaders: &Cluster<'a, ProxyLeader>,

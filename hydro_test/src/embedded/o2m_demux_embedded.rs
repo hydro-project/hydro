@@ -14,6 +14,10 @@ pub struct OpaquePayload {
 
 /// Like [`super::o2m_broadcast::o2m_broadcast`], but demuxes to explicit members with
 /// an `EMBEDDED` channel and a payload type that has no serde derives.
+#[expect(
+    deprecated,
+    reason = "embedded example addresses a member with a legacy numeric id"
+)]
 pub fn o2m_demux_embedded<'a>(
     cluster: &Cluster<'a, Dst>,
     input: Stream<String, Process<'a, Src>>,

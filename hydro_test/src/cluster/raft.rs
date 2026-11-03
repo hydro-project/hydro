@@ -1010,8 +1010,7 @@ where
         (outbound, committed, redirected, view_transitions)
     };
 
-    traffic_handle.complete(
-        outbound_messages
+    traffic_handle.complete(outbound_messages
             .into_keyed()
             // The channel's fault model is chosen by the caller: sim tests use
             // `TCP.fail_stop()` (the simulator cannot explore lossy channels without
@@ -1021,8 +1020,7 @@ where
             // heartbeat, and lost vote traffic is retried at the next election
             // timeout.
             .demux(cluster, net)
-            .entries(),
-    );
+            .entries());
 
     RaftOutputs {
         // The RAFT protocol itself is what justifies the consistency cast: every
@@ -1169,6 +1167,7 @@ mod tests {
     ///    satisfy (1) by never electing anyone.
     /// 3. Members whose timers never fire (2 and 3) never claim leadership.
     #[test]
+    #[expect(deprecated, reason = "tests construct legacy numeric member ids")]
     fn even_cluster_simultaneous_candidates_exactly_one_leader_per_term() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<Replica>();
@@ -1291,6 +1290,7 @@ mod tests {
     /// The existing invariant also holds across all histories: no term is ever
     /// self-claimed by two members.
     #[test]
+    #[expect(deprecated, reason = "tests construct legacy numeric member ids")]
     fn heartbeats_converge_leader_views() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<Replica>();
@@ -1486,6 +1486,7 @@ mod tests {
             }
         }
 
+        #[expect(deprecated, reason = "tests construct legacy numeric member ids")]
         fn id(member: usize) -> MemberId<Replica> {
             MemberId::from_raw_id(member as u32)
         }
@@ -2132,6 +2133,7 @@ mod tests {
     ///    suppressed (heartbeat-since-last-interrupt), so a further request commits
     ///    on every member still at term 1 — the leader was not deposed.
     #[test]
+    #[expect(deprecated, reason = "tests construct legacy numeric member ids")]
     fn composed_raft_elects_replicates_and_suppresses() {
         const N: usize = 3;
         const MAX_ROUNDS: usize = 16;

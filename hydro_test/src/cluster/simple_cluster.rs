@@ -211,6 +211,10 @@ mod tests {
     }
 
     #[tokio::test]
+    #[expect(
+        deprecated,
+        reason = "test addresses partitions with legacy numeric member ids"
+    )]
     async fn partition() {
         let mut deployment = Deployment::new();
 

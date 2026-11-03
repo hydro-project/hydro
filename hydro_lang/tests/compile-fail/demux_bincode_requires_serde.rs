@@ -1,4 +1,4 @@
-#![allow(unexpected_cfgs)]
+#![allow(unexpected_cfgs, deprecated, reason = "legacy id; expected error is missing Serialize")]
 
 use hydro_lang::location::MemberId;
 use hydro_lang::prelude::*;

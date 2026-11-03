@@ -208,6 +208,9 @@ impl Display for TaglessMemberId {
 
 /// A typed identifier for a member of a [`Cluster`](super::Cluster).
 ///
+/// Member IDs are opaque. Do not synthesize them from raw indexes: Docker and
+/// ECS IDs are container names, not numeric indexes.
+///
 /// The `Tag` type parameter ties this ID to a specific cluster, preventing
 /// accidental mixing of member IDs from different clusters at compile time.
 /// Under the hood, this wraps a [`TaglessMemberId`].
@@ -232,10 +235,19 @@ impl<Tag> MemberId<Tag> {
         }
     }
 
-    /// Creates a typed [`MemberId`] from a raw numeric ID.
+    /// Creates a typed [`MemberId`] from a raw numeric index.
+    ///
+    /// Member IDs are opaque. A raw index is not a member identity: Docker and
+    /// ECS member IDs are container names, not numeric indexes. Prefer an ID the
+    /// runtime already provided (for example [`super::cluster::CLUSTER_SELF_ID`],
+    /// a membership event, or the sender id on a keyed stream) instead of
+    /// synthesizing one.
     ///
     /// # Panics
     /// Panics if the `deploy_integration` feature is not enabled.
+    #[deprecated(
+        note = "member IDs are opaque; Docker and ECS IDs are not raw indexes. Use a runtime-provided MemberId instead of MemberId::from_raw_id"
+    )]
     pub fn from_raw_id(raw_id: u32) -> Self {
         #[expect(clippy::allow_attributes, reason = "Depends on features.")]
         #[allow(
@@ -249,6 +261,10 @@ impl<Tag> MemberId<Tag> {
     }
 
     /// Returns the raw numeric ID from this member identifier.
+    ///
+    /// This only succeeds for the legacy numeric representation. Docker and ECS
+    /// member IDs are container names, not raw indexes, and this method panics
+    /// on those IDs.
     ///
     /// # Panics
     /// Panics if the underlying [`TaglessMemberId`] is not the `Legacy` variant
@@ -340,5 +356,19 @@ impl<Tag> Hash for MemberId<Tag> {
         // This seems like the a good thing to do. This will ensure that two member ids that come from different
         // clusters but the same underlying host receive different hashes.
         std::any::type_name::<Tag>().hash(state);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MemberId;
+
+    /// Naming the constructor must trip `deprecated`. `deny` turns a missing
+    /// attribute into a compile error instead of a silent pass.
+    #[test]
+    #[deny(unfulfilled_lint_expectations)]
+    #[expect(deprecated, reason = "MemberId::from_raw_id must stay deprecated")]
+    fn from_raw_id_is_deprecated() {
+        let _construct: fn(u32) -> MemberId<()> = MemberId::from_raw_id;
     }
 }

@@ -1618,6 +1618,7 @@ mod tests {
 
     #[cfg(feature = "sim")]
     #[test]
+    #[expect(deprecated, reason = "sim tests construct legacy numeric member ids")]
     fn sim_send_bincode_m2o() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
@@ -1651,6 +1652,7 @@ mod tests {
 
     #[cfg(feature = "sim")]
     #[test]
+    #[expect(deprecated, reason = "sim tests construct legacy numeric member ids")]
     fn sim_send_bincode_multiple_m2o() {
         let mut flow = FlowBuilder::new();
         let cluster1 = flow.cluster::<()>();
@@ -1697,6 +1699,7 @@ mod tests {
 
     #[cfg(feature = "sim")]
     #[test]
+    #[expect(deprecated, reason = "sim tests construct legacy numeric member ids")]
     fn sim_send_bincode_o2m() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
@@ -1728,6 +1731,7 @@ mod tests {
 
     #[cfg(feature = "sim")]
     #[test]
+    #[expect(deprecated, reason = "sim tests construct legacy numeric member ids")]
     fn sim_broadcast_bincode_o2m() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
@@ -1778,6 +1782,7 @@ mod tests {
 
     #[cfg(feature = "sim")]
     #[test]
+    #[expect(deprecated, reason = "sim tests construct legacy numeric member ids")]
     fn sim_send_bincode_m2m() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
@@ -1926,6 +1931,7 @@ mod tests {
 
     #[cfg(feature = "sim")]
     #[test]
+    #[expect(deprecated, reason = "sim tests construct legacy numeric member ids")]
     fn sim_broadcast_closed_o2m() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
@@ -1955,6 +1961,7 @@ mod tests {
 
     #[cfg(feature = "sim")]
     #[test]
+    #[expect(deprecated, reason = "sim tests construct legacy numeric member ids")]
     fn sim_broadcast_closed_m2m() {
         let mut flow = FlowBuilder::new();
         let source = flow.cluster::<()>();

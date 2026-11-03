@@ -357,6 +357,7 @@ mod tests {
 
     #[cfg(feature = "sim")]
     #[test]
+    #[expect(deprecated, reason = "sim tests construct legacy numeric member ids")]
     fn sim_cluster_self_id() {
         let mut flow = FlowBuilder::new();
         let cluster1 = flow.cluster::<()>();
@@ -431,6 +432,7 @@ mod tests {
 
     #[cfg(feature = "sim")]
     #[test]
+    #[expect(deprecated, reason = "sim tests construct legacy numeric member ids")]
     fn sim_cluster_membership() {
         let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
