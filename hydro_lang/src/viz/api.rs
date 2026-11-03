@@ -40,6 +40,11 @@ impl<'a> GraphApi<'a> {
             crate::viz::config::GraphType::Mermaid => render_hydro_ir_mermaid(self.ir, config),
             crate::viz::config::GraphType::Dot => render_hydro_ir_dot(self.ir, config),
             crate::viz::config::GraphType::Json => render_hydro_ir_json(self.ir, config),
+            crate::viz::config::GraphType::Ir => {
+                crate::compile::ir::serialize_dedup_shared(|| {
+                    serde_json::to_string_pretty(self.ir).expect("failed to serialize IR")
+                })
+            }
         }
     }
 
