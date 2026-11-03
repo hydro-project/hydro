@@ -134,11 +134,6 @@ impl Default for TerraformBatch {
 
 impl TerraformBatch {
     pub async fn provision(self, pool: &mut TerraformPool) -> Result<TerraformResult> {
-        // Hack to quiet false-positive `clippy::needless_pass_by_ref_mut` on latest nightlies.
-        // TODO(mingwei): Remove this when it is no longer needed (current date 2023-08-30).
-        // https://github.com/rust-lang/rust-clippy/issues/11380
-        let pool = std::convert::identity(pool);
-
         if self.terraform.required_providers.is_empty()
             && self.resource.is_empty()
             && self.data.is_empty()
