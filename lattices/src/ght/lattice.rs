@@ -123,7 +123,7 @@ where
                 (true, false) => Some(Greater),
                 (false, true) => Some(Less),
                 (false, false) => Some(Equal),
-                (true, true) => unreachable!(),
+                (true, true) => None,
             }
         }
     }
