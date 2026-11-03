@@ -753,6 +753,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let optional = tick.optional_first_tick(q!(1));
     /// optional.map(q!(|v| v + 1)).all_ticks()
     /// # }, |mut stream| async move {
@@ -803,6 +805,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let optional = tick.optional_first_tick(q!(vec![1, 2, 3]));
     /// optional.flat_map_ordered(q!(|v| v)).all_ticks()
     /// # }, |mut stream| async move {
@@ -846,6 +850,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let optional = tick.optional_first_tick(q!(
     ///     std::collections::HashSet::<i32>::from_iter(vec![1, 2, 3])
     /// ));
@@ -897,6 +903,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let optional = tick.optional_first_tick(q!(vec![1, 2, 3]));
     /// optional.flatten_ordered().all_ticks()
     /// # }, |mut stream| async move {
@@ -929,6 +937,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let optional = tick.optional_first_tick(q!(
     ///     std::collections::HashSet::<i32>::from_iter(vec![1, 2, 3])
     /// ));
@@ -969,6 +979,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let optional = tick.optional_first_tick(q!(5));
     /// optional.filter(q!(|&x| x > 3)).all_ticks()
     /// # }, |mut stream| async move {
@@ -1015,6 +1027,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let optional = tick.optional_first_tick(q!("42"));
     /// optional
     ///     .filter_map(q!(|s| s.parse::<i32>().ok()))
@@ -2144,6 +2158,9 @@ mod tests {
         let external = flow.external::<()>();
 
         let node_tick = node.tick();
+        // Tick-located constants are lazy and never fire the tick on their own, so a spinning
+        // batch drives `node_tick`.
+        node_tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
         let tick_singleton = node_tick.singleton(q!(123));
         let tick_optional_inhabited: Optional<_, _, _> = tick_singleton.into();
         let counts = tick_optional_inhabited
@@ -2217,11 +2234,11 @@ mod tests {
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let top_level_none = node
-            .tick()
-            .singleton(q!(123))
-            .latest()
-            .filter(q!(|_| false));
+        let none_tick = node.tick();
+        // Tick-located constants are lazy and never fire the tick on their own, so a spinning
+        // batch drives `none_tick`.
+        none_tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+        let top_level_none = none_tick.singleton(q!(123)).latest().filter(q!(|_| false));
         let into_singleton = top_level_none.into_singleton();
 
         let tick_driver = node.spin();

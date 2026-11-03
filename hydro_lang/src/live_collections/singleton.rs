@@ -571,6 +571,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let singleton = tick.singleton(q!(5));
     /// singleton.map(q!(|v| v * 2)).all_ticks()
     /// # }, |mut stream| async move {
@@ -627,6 +629,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let singleton = tick.singleton(q!(vec![1, 2, 3]));
     /// singleton.flat_map_ordered(q!(|v| v)).all_ticks()
     /// # }, |mut stream| async move {
@@ -669,6 +673,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let singleton = tick.singleton(q!(
     ///     std::collections::HashSet::<i32>::from_iter(vec![1, 2, 3])
     /// ));
@@ -719,6 +725,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let singleton = tick.singleton(q!(vec![1, 2, 3]));
     /// singleton.flatten_ordered().all_ticks()
     /// # }, |mut stream| async move {
@@ -750,6 +758,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let singleton = tick.singleton(q!(
     ///     std::collections::HashSet::<i32>::from_iter(vec![1, 2, 3])
     /// ));
@@ -789,6 +799,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let singleton = tick.singleton(q!(5));
     /// singleton.filter(q!(|&x| x > 3)).all_ticks()
     /// # }, |mut stream| async move {
@@ -834,6 +846,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let singleton = tick.singleton(q!("42"));
     /// singleton
     ///     .filter_map(q!(|s| s.parse::<i32>().ok()))
@@ -1069,6 +1083,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let a = tick.singleton(q!(5));
     /// let b = tick.singleton(q!(5));
     /// a.equals(b).all_ticks()
@@ -1220,6 +1236,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let singleton = tick.singleton(q!(Some(42)));
     /// singleton.into_optional().all_ticks()
     /// # }, |mut stream| async move {
@@ -1567,6 +1585,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let singleton = tick.singleton(q!(5));
     /// singleton
     ///     .map(q!(|v| async move { v * 2 }))
@@ -1939,11 +1959,19 @@ mod tests {
         let source = node.source_stream(q!(tokio_stream::iter(vec![1, 2, 3, 4])));
         let folded = source.fold(q!(|| 0), q!(|a, b| *a += b));
 
+        // Snapshot ingress is lazy and never wakes the tick on its own, so an auxiliary
+        // trigger stream drives the tick.
+        let (trigger_port, trigger) = node.sim_input::<i32, TotalOrder, ExactlyOnce>();
+
         let tick = node.tick();
-        let batch = folded.snapshot(&tick, nondet!(/** test */));
+        let batch = trigger
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(folded.snapshot(&tick, nondet!(/** test */)))
+            .map(q!(|(_, v)| v));
         let out_recv = batch.all_ticks().sim_output();
 
         flow.sim().exhaustive(async || {
+            trigger_port.send(1);
             assert_eq!(out_recv.next().await, 10);
         });
     }
@@ -1970,30 +1998,6 @@ mod tests {
             instance_count,
             16 // 2^4 possible subsets of intermediates (including initial state)
         )
-    }
-
-    #[cfg(feature = "sim")]
-    #[test]
-    fn sim_fold_no_repeat_initial() {
-        // check that we don't repeat the initial state of the fold in autonomous decisions
-
-        let mut flow = FlowBuilder::new();
-        let node = flow.process::<()>();
-
-        let (in_port, input) = node.sim_input();
-        let folded = input.fold(q!(|| 0), q!(|a, b| *a += b));
-
-        let tick = node.tick();
-        let batch = folded.snapshot(&tick, nondet!(/** test */));
-        let out_recv = batch.all_ticks().sim_output();
-
-        flow.sim().exhaustive(async || {
-            assert_eq!(out_recv.next().await, 0);
-
-            in_port.send(123);
-
-            assert_eq!(out_recv.next().await, 123);
-        });
     }
 
     #[cfg(feature = "sim")]

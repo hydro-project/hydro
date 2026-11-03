@@ -237,6 +237,8 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
     /// let optional = tick.none::<i32>();
     /// optional.unwrap_or(tick.singleton(q!(123)))
     /// # .all_ticks()
