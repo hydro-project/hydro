@@ -3,7 +3,7 @@ sidebar_position: 1
 ---
 
 import CodeBlock from '@theme/CodeBlock';
-import firstTenExampleSrc from '!!raw-loader!../../../../../template/hydro/examples/echo_gcp.rs';
+import echoLocalSrc from '!!raw-loader!../../../../../template/hydro/examples/echo_local.rs';
 import perfComputePiSrc from '!!raw-loader!../../../../../hydro_test/examples/perf_compute_pi.rs';
 import { getLines } from '../../../../src/util';
 
@@ -16,9 +16,14 @@ Hydro app to a variety of platforms. With Hydro Deploy, you can spin up complex 
 We have actually already been using Hydro Deploy in all of the examples so far, but without any special
 configuration:
 
-<CodeBlock language="rust" title="examples/first_ten.rs">{firstTenExampleSrc}</CodeBlock>
+<CodeBlock language="rust" title="template/hydro/examples/echo_local.rs">{echoLocalSrc}</CodeBlock>
 
-TODO(mingwei): Explain the details/nuances of the example and simple configurations.
+The service and the external client both run on `deployment.Localhost()`, and
+`NetworkHint::TcpPort(Some(4000))` fixes the port the example tells you to connect to
+(`nc localhost 4000`). `Localhost` is the simple configuration: it does not take a cloud project,
+machine type, image, or region. `deploy` compiles and launches the program, and `start_ctrl_c`
+keeps it running until Ctrl+C. Hosts such as `GcpComputeEngineHost` are a separate configuration
+and are not used in this example.
 
 ## `TrybuildHost`
 
@@ -34,7 +39,12 @@ enabling [features](https://doc.rust-lang.org/cargo/reference/features.html), or
         // ...
 `)}</CodeBlock>
 
-TODO(mingwei)
+`TrybuildHost::new` wraps the host from `create_host`. In `perf_compute_pi` that host is localhost
+unless you pass `--gcp` or `--aws`. `--gcp` builds a `GcpComputeEngineHost` and sets its
+`machine_type`; `--aws` builds an EC2 host. `.rustflags` is forwarded to the service build, and
+`.additional_hydro_features` enables optional Hydro features such as `runtime_measure`. The `// ...`
+in the snippet is where further builder calls, including [`tracing`](#performance-profiling), are
+chained.
 
 ## Performance Profiling
 
