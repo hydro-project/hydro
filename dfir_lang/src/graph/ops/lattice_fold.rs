@@ -52,7 +52,10 @@ pub const LATTICE_FOLD: OperatorConstraints = OperatorConstraints {
 
         let arguments = &parse_quote_spanned! {op_span=>
             #first_arg,
-            |acc, item| { #root::lattices::Merge::<_>::merge(acc, item); }
+            |acc, item| {
+                // `Merge::merge` returns whether the value changed; fold only needs the write.
+                let _ = #root::lattices::Merge::<_>::merge(acc, item);
+            }
         };
 
         let wc = WriteContextArgs {

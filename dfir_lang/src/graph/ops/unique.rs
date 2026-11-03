@@ -86,7 +86,8 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
         let filter_fn = quote_spanned! {op_span=>
             |item| {
                 if !#uniquedata_ident.contains(item) {
-                    #uniquedata_ident.insert(::std::clone::Clone::clone(item));
+                    // `insert` reports whether the value was new; `contains` already decided that.
+                    let _ = #uniquedata_ident.insert(::std::clone::Clone::clone(item));
                     true
                 } else {
                     false
