@@ -164,19 +164,19 @@ pub async fn bind_udp_lines(addr: SocketAddr) -> (UdpLinesSink, UdpLinesStream, 
     udp_lines(socket)
 }
 
-/// Returns a newline-delimited bytes `Sender`, `Receiver`, and `SocketAddr` bound to the given address.
+/// Returns a length-delimited bytes `Sender`, `Receiver`, and `SocketAddr` bound to the given address.
 ///
-/// The input `addr` may have a port of `0`, the returned `SocketAddr` will be the address of the newly bound endpoint.
-/// The inbound connections can be used in full duplex mode. When a `(T, SocketAddr)` pair is fed to the `Sender`
-/// returned by this function, the `SocketAddr` will be looked up against the currently existing connections.
-/// If a match is found then the data will be sent on that connection. If no match is found then the data is silently dropped.
+/// The input `addr` may have a port of `0`; the returned `SocketAddr` is the local address of the newly bound endpoint.
+/// Inbound connections are full duplex. A `(T, TcpSessionId)` pair fed to the `Sender` is written to the
+/// accepted connection with that id. If the id is not a live connection, the data is dropped.
+/// Ids are taken from the `Receiver` and are not peer addresses: a reused `SocketAddr` is a new session.
 #[cfg(feature = "tokio")]
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn bind_tcp_bytes(
     addr: SocketAddr,
 ) -> (
-    unsync::mpsc::Sender<(bytes::Bytes, SocketAddr)>,
-    unsync::mpsc::Receiver<Result<(bytes::BytesMut, SocketAddr), std::io::Error>>,
+    unsync::mpsc::Sender<(bytes::Bytes, TcpSessionId)>,
+    unsync::mpsc::Receiver<Result<(bytes::BytesMut, TcpSessionId), std::io::Error>>,
     SocketAddr,
 ) {
     bind_tcp(addr, tokio_util::codec::LengthDelimitedCodec::new())
@@ -190,8 +190,8 @@ pub async fn bind_tcp_bytes(
 pub async fn bind_tcp_lines(
     addr: SocketAddr,
 ) -> (
-    unsync::mpsc::Sender<(String, SocketAddr)>,
-    unsync::mpsc::Receiver<Result<(String, SocketAddr), tokio_util::codec::LinesCodecError>>,
+    unsync::mpsc::Sender<(String, TcpSessionId)>,
+    unsync::mpsc::Receiver<Result<(String, TcpSessionId), tokio_util::codec::LinesCodecError>>,
     SocketAddr,
 ) {
     bind_tcp(addr, tokio_util::codec::LinesCodec::new())
