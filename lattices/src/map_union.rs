@@ -296,6 +296,36 @@ impl<MapOut, Bimorphism> KeyedBimorphism<MapOut, Bimorphism> {
         }
     }
 }
+
+fn keyed_bimorphism_on_refs<MapA, MapB, MapOut, ValFunc>(
+    bimorphism: &mut ValFunc,
+    map_a: &MapA,
+    map_b: &MapB,
+) -> MapUnion<MapOut>
+where
+    ValFunc: LatticeBimorphism<MapA::Item, MapB::Item>,
+    MapA: MapIter + SimpleKeyedRef + SimpleCollectionRef,
+    MapB: for<'a> GetKeyValue<&'a MapA::Key, Key = MapA::Key> + SimpleCollectionRef,
+    MapA::Key: Clone + Eq,
+    MapA::Item: Clone,
+    MapB::Item: Clone,
+    MapOut: Default + MapInsert<MapA::Key> + Collection<Item = ValFunc::Output>,
+{
+    let mut output = MapUnion::<MapOut>::default();
+    for (key, val_a) in map_a.iter() {
+        let key = <MapA as SimpleKeyedRef>::into_ref(key);
+        let Some((_key, val_b)) = map_b.get_key_value(key) else {
+            continue;
+        };
+        let val_a = <MapA as SimpleCollectionRef>::into_ref(val_a);
+        let val_b = <MapB as SimpleCollectionRef>::into_ref(val_b);
+
+        let val_out = LatticeBimorphism::call_ref(bimorphism, val_a, val_b);
+        <MapOut as MapInsert<_>>::insert(output.as_reveal_mut(), key.clone(), val_out);
+    }
+    output
+}
+
 impl<MapA, MapB, MapOut, ValFunc> LatticeBimorphism<MapUnion<MapA>, MapUnion<MapB>>
     for KeyedBimorphism<MapOut, ValFunc>
 where
@@ -310,19 +340,23 @@ where
     type Output = MapUnion<MapOut>;
 
     fn call(&mut self, lat_a: MapUnion<MapA>, lat_b: MapUnion<MapB>) -> Self::Output {
-        let mut output = MapUnion::<MapOut>::default();
-        for (key, val_a) in lat_a.as_reveal_ref().iter() {
-            let key = <MapA as SimpleKeyedRef>::into_ref(key);
-            let Some((_key, val_b)) = lat_b.as_reveal_ref().get_key_value(key) else {
-                continue;
-            };
-            let val_a = <MapA as SimpleCollectionRef>::into_ref(val_a).clone();
-            let val_b = <MapB as SimpleCollectionRef>::into_ref(val_b).clone();
+        keyed_bimorphism_on_refs(
+            &mut self.bimorphism,
+            lat_a.as_reveal_ref(),
+            lat_b.as_reveal_ref(),
+        )
+    }
 
-            let val_out = LatticeBimorphism::call(&mut self.bimorphism, val_a, val_b);
-            <MapOut as MapInsert<_>>::insert(output.as_reveal_mut(), key.clone(), val_out);
-        }
-        output
+    fn call_ref(&mut self, lat_a: &MapUnion<MapA>, lat_b: &MapUnion<MapB>) -> Self::Output
+    where
+        MapUnion<MapA>: Clone,
+        MapUnion<MapB>: Clone,
+    {
+        keyed_bimorphism_on_refs(
+            &mut self.bimorphism,
+            lat_a.as_reveal_ref(),
+            lat_b.as_reveal_ref(),
+        )
     }
 }
 
