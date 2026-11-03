@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 #[cfg(feature = "profile-folding")]
 use std::sync::OnceLock;
@@ -40,7 +40,20 @@ use crate::rust_crate::tracing_options::TracingOptions;
 use crate::util::{PriorityBroadcast, async_retry, prioritized_broadcast};
 use crate::{BaseServerStrategy, LaunchedBinary, LaunchedHost, ResourceResult};
 
-const PERF_OUTFILE: &str = "__profile.perf.data";
+/// Remote path for `perf record -o` and `perf script -i`.
+///
+/// Always a distinct file in the SSH host's `/tmp`. `local_outfile` is
+/// [`TracingOptions::perf_raw_outfile`], the local download destination, and is
+/// ignored: an absolute path such as `/Users/me/leader.perf.data` is not a path
+/// on the remote host. This is not [`std::env::temp_dir`], which is the deploy
+/// machine's temp dir (`/var/folders/...` on macOS).
+fn perf_data_path(_local_outfile: Option<&Path>) -> PathBuf {
+    PathBuf::from(format!("/tmp/hydro-{}.perf.data", nanoid!()))
+}
+
+fn shell_escape_path(path: &Path) -> String {
+    shell_escape::unix::escape(path.to_string_lossy()).into_owned()
+}
 
 struct LaunchedSshBinary {
     _resource_result: Arc<ResourceResult>,
@@ -53,6 +66,8 @@ struct LaunchedSshBinary {
     stdout_broadcast: PriorityBroadcast,
     stderr_broadcast: PriorityBroadcast,
     tracing: Option<TracingOptions>,
+    /// Remote `perf` data path. `Some` exactly when `tracing` is `Some`.
+    perf_outfile: Option<PathBuf>,
     #[cfg(feature = "profile-folding")]
     tracing_results: OnceLock<TracingResults>,
 }
@@ -123,12 +138,20 @@ impl LaunchedBinary for LaunchedSshBinary {
             );
 
             let session = self.session.as_ref().unwrap();
+            let perf_outfile = self
+                .perf_outfile
+                .as_ref()
+                .expect("perf outfile is set whenever tracing is enabled")
+                .clone();
             if let Some(local_raw_perf) = tracing.perf_raw_outfile.as_ref() {
+                let perf_outfile = perf_outfile.clone();
                 ProgressTracker::progress_leaf("downloading perf data", |progress, _| async move {
                     let sftp =
                         async_retry(&|| session.open_sftp(), 10, Duration::from_secs(1)).await?;
 
-                    let mut remote_raw_perf = sftp.open(PERF_OUTFILE).await?;
+                    let mut remote_raw_perf = sftp
+                        .open(perf_outfile.to_string_lossy().into_owned())
+                        .await?;
                     let mut local_raw_perf = File::create(local_raw_perf).await?;
 
                     let total_size = remote_raw_perf.metadata().await?.size.unwrap();
@@ -155,6 +178,11 @@ impl LaunchedBinary for LaunchedSshBinary {
             let script_channel = session.open_channel().await?;
             #[cfg(feature = "profile-folding")]
             let mut fold_er = Folder::from(tracing.fold_perf_options.clone().unwrap_or_default());
+            #[cfg(feature = "profile-folding")]
+            let perf_script_command = format!(
+                "perf script --symfs=/ -i {}",
+                shell_escape_path(&perf_outfile)
+            );
 
             #[cfg(feature = "profile-folding")]
             let fold_data = ProgressTracker::leaf("perf script & folding", async move {
@@ -184,9 +212,7 @@ impl LaunchedBinary for LaunchedSshBinary {
                     },
                     async move {
                         // Run command (last!).
-                        script_channel
-                            .exec(false, format!("perf script --symfs=/ -i {PERF_OUTFILE}"))
-                            .await?;
+                        script_channel.exec(false, perf_script_command).await?;
                         Ok(())
                     },
                 )?;
@@ -203,6 +229,24 @@ impl LaunchedBinary for LaunchedSshBinary {
 
             #[cfg(feature = "profile-folding")]
             handle_fold_data(tracing, fold_data).await?;
+
+            // Localhost drops its `NamedTempFile` after copying to `perf_raw_outfile`.
+            // The remote file is that temp file; the user's path is only local.
+            let perf_outfile = perf_outfile.to_string_lossy().into_owned();
+            ProgressTracker::leaf("removing temporary perf data", async move {
+                let sftp = async_retry(&|| session.open_sftp(), 10, Duration::from_secs(1)).await?;
+                match sftp.remove_file(perf_outfile).await {
+                    Ok(()) => {}
+                    Err(SftpError::Status(Status {
+                        status_code: StatusCode::NoSuchFile,
+                        ..
+                    })) => {}
+                    Err(err) => return Err(anyhow::Error::from(err)),
+                }
+                sftp.close().await?;
+                Result::<_, anyhow::Error>::Ok(())
+            })
+            .await?;
         };
 
         Ok(())
@@ -401,6 +445,10 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             command.push_str(&shell_escape::unix::escape(arg.into()))
         }
 
+        let perf_outfile = tracing
+            .as_ref()
+            .map(|opts| perf_data_path(opts.perf_raw_outfile.as_deref()));
+
         // Launch with tracing if specified.
         if let Some(TracingOptions {
             frequency,
@@ -408,6 +456,10 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             ..
         }) = tracing.clone()
         {
+            let perf_outfile = perf_outfile
+                .as_ref()
+                .expect("perf outfile is set whenever tracing is enabled");
+            let escaped_perf_outfile = shell_escape_path(perf_outfile);
             let id_clone = id.clone();
             ProgressTracker::leaf("install perf", async {
                 // Run setup command
@@ -441,7 +493,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             // Attach perf to the command
             // Note: `LaunchedSshHost` assumes `perf` on linux.
             command = format!(
-                "perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}",
+                "perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {escaped_perf_outfile} {command}",
             );
         }
 
@@ -485,6 +537,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             stdout_broadcast,
             stderr_broadcast,
             tracing,
+            perf_outfile,
             #[cfg(feature = "profile-folding")]
             tracing_results: OnceLock::new(),
         }))
@@ -517,5 +570,40 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         });
 
         Ok(local_addr)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::perf_data_path;
+
+    #[test]
+    fn remote_perf_data_path_is_unique_and_not_the_local_outfile() {
+        let local = PathBuf::from("/Users/me/leader.perf.data");
+        let first = perf_data_path(Some(&local));
+        let second = perf_data_path(Some(&local));
+        assert_ne!(
+            first, second,
+            "remote perf paths must differ even when the local outfile is the same"
+        );
+        assert_ne!(first, local);
+        assert_ne!(second, local);
+        assert!(
+            first.starts_with("/tmp"),
+            "remote perf path should be on the SSH host's /tmp, got {first:?}"
+        );
+        assert!(
+            second.starts_with("/tmp"),
+            "remote perf path should be on the SSH host's /tmp, got {second:?}"
+        );
+
+        let third = perf_data_path(None);
+        assert_ne!(third, first);
+        assert!(
+            third.starts_with("/tmp"),
+            "remote perf path should be on the SSH host's /tmp, got {third:?}"
+        );
     }
 }
