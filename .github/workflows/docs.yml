@@ -11,18 +11,28 @@ on:
 
 permissions: {}
 
+# Without a group, two runs for the same commit (which GitHub triggers for every stacked PR push) would
+# both run in full. Grouping them by commit makes the second wait for the first, after which `pre_job`
+# skips it as a duplicate. Deliberately no `cancel-in-progress`: see
+# https://github.com/hydro-project/hydro/pull/3344 and https://github.com/orgs/community/discussions/211754.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.base.sha }}-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha || github.ref }}
 
 jobs:
   pre_job:
     runs-on: ubuntu-slim
+    permissions:
+      actions: write # for `cancel_others`
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
+        with:
+          # Cancel still-running runs of this workflow for older commits of the same PR branch (instead of
+          # `concurrency.cancel-in-progress`, see the comment there). PRs only: a scheduled or manual
+          # run must not cancel an in-flight `main` run.
+          cancel_others: ${{ github.event_name == 'pull_request' }}
 
   docs:
     name: Docs (rustdoc)
