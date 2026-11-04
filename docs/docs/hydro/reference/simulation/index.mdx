@@ -5,6 +5,8 @@ In many cases, the Hydro simulator can perform **exhaustive** checks, which ensu
 
 Beyond automatic exploration, tests can take manual control of individual decision points with [simulator hooks](./scripting.mdx), pinning a specific scenario while everything else continues to be explored. A test that scripts every decision can run in [deterministic mode](./deterministic.mdx), which executes exactly one interleaving with no exploration at all.
 
+The simulator can also run [multiple versions of a program](./multi-version.mdx) together. This lets you test rolling deployments and catch compatibility bugs that only appear while old and new cluster members are communicating.
+
 Writing a simulation test involves three steps:
 1. Defining your Hydro application, with regular Hydro APIs
 2. Creating external inputs / outputs that you will use in the test

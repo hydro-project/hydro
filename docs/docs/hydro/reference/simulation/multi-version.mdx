@@ -1,0 +1,178 @@
+---
+sidebar_position: 3
+---
+
+# Multi-version Simulation Tests
+
+Rolling out a distributed system usually means that old and new code run at the same time. Testing each version in isolation does not catch bugs that only occur when, for example, a new client communicates with an old server.
+
+Hydro's multi-version simulator runs multiple implementations of the same logical cluster in one simulation. You choose how many members run each version, and the simulator connects corresponding network channels across versions. The test can then use the same [`exhaustive`](./writing.mdx) or [`fuzz`](./fuzzing.mdx) exploration as any other simulation test.
+
+## Defining Versions
+
+Create the first version of a cluster normally, then call `flow.next_version(&previous_version)` to create the next implementation of the same logical cluster:
+
+```rust
+# use hydro_lang::prelude::*;
+# let mut flow = FlowBuilder::new();
+# struct Server;
+let servers_v1 = flow.cluster::<Server>();
+// Wire the v1 dataflow to servers_v1.
+
+let servers_v2 = flow.next_version(&servers_v1);
+// Wire the v2 dataflow to servers_v2.
+
+let servers_v3 = flow.next_version(&servers_v2);
+// Wire the v3 dataflow to servers_v3.
+# flow.sim()
+#     .with_cluster_size(&servers_v1, 1)
+#     .with_cluster_size(&servers_v2, 1)
+#     .with_cluster_size(&servers_v3, 1);
+```
+
+`next_version` returns a fresh `Cluster`; it does not copy or modify the previous version's dataflow. Wire each returned cluster with the code that version runs. For every logical cluster that exists across versions, such as separate client and server clusters, create a separate version chain:
+
+```rust
+# use hydro_lang::prelude::*;
+# let mut flow = FlowBuilder::new();
+# struct Client;
+# struct Server;
+let clients_v1 = flow.cluster::<Client>();
+let servers_v1 = flow.cluster::<Server>();
+
+let clients_v2 = flow.next_version(&clients_v1);
+let servers_v2 = flow.next_version(&servers_v1);
+#
+# flow.sim()
+#     .with_cluster_size(&clients_v1, 1)
+#     .with_cluster_size(&servers_v1, 1)
+#     .with_cluster_size(&clients_v2, 1)
+#     .with_cluster_size(&servers_v2, 1);
+```
+
+The topology does not have to be identical in every version. A later version may add or remove unrelated locations and channels. Only locations explicitly linked with `next_version` are treated as versions of the same logical cluster; using the same Rust marker type for two separately created clusters does not link them.
+
+:::note
+
+Multi-version simulation currently supports `Cluster` locations. `Process` locations are always single-versioned.
+
+:::
+
+## Matching Channels Across Versions
+
+Network channels that correspond across versions must have the same stable name:
+
+```rust
+# use hydro_lang::prelude::*;
+# use serde::{Deserialize, Serialize};
+# #[derive(Clone, Serialize, Deserialize)]
+# struct Request;
+# let mut flow = FlowBuilder::new();
+# let clients = flow.cluster::<()>();
+# let servers = flow.cluster::<u8>();
+# let requests: Stream<Request, Cluster<()>, Bounded> = clients.source_iter(q!([]));
+let received = requests.broadcast(
+    &servers,
+    TCP.fail_stop().bincode().name("requests"),
+    nondet!(/** cluster membership discovery is non-deterministic */),
+);
+# drop(received);
+# flow.sim()
+#     .with_cluster_size(&clients, 1)
+#     .with_cluster_size(&servers, 1);
+```
+
+The simulator identifies a logical channel by its name and its corresponding source and destination locations. It combines all senders and receivers for that channel, allowing every live version of the source to communicate with every live version of the destination. Reusing a name between unrelated location pairs does not combine those channels.
+
+Channel names are an identity, not a compatibility layer. Versions using the same channel must still agree on a compatible serialization format and payload representation. Give a semantically different channel a new name. See [Network Configuration](../locations/network-configuration.md#naming-network-channels) for more about named channels.
+
+## Example
+
+The following deliberately incompatible change passes when either version is tested by itself:
+
+- Version 1 sends `0`, and the server transforms it with `value ^ 1`.
+- Version 2 sends `1`, and the server transforms it with `value ^ 0`.
+
+Both produce `1`. During a rolling deployment, however, a version 2 client can send `1` to a version 1 server, which produces `0`.
+
+```rust
+use hydro_lang::prelude::*;
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Serialize, Deserialize)]
+struct Request {
+    value: u32,
+}
+
+struct Client;
+struct Server;
+
+#[test]
+fn mixed_versions_preserve_response() {
+    let mut flow = FlowBuilder::new();
+
+    let clients_v1 = flow.cluster::<Client>();
+    let servers_v1 = flow.cluster::<Server>();
+    let output_v1 = clients_v1
+        .source_iter(q!([Request { value: 0 }]))
+        .broadcast(
+            &servers_v1,
+            TCP.fail_stop().bincode().name("requests"),
+            nondet!(/** cluster membership discovery is non-deterministic */),
+        )
+        .map(q!(|request| request.value ^ 1))
+        .values()
+        .sim_cluster_output();
+
+    let clients_v2 = flow.next_version(&clients_v1);
+    let servers_v2 = flow.next_version(&servers_v1);
+    clients_v2
+        .source_iter(q!([Request { value: 1 }]))
+        .broadcast(
+            &servers_v2,
+            TCP.fail_stop().bincode().name("requests"),
+            nondet!(/** cluster membership discovery is non-deterministic */),
+        )
+        .map(q!(|request| request.value ^ 0))
+        .values()
+        .sim_cluster_output();
+
+    flow.sim()
+        .with_cluster_size(&clients_v1, 0)
+        .with_cluster_size(&clients_v2, 1)
+        .with_cluster_size(&servers_v1, 1)
+        .with_cluster_size(&servers_v2, 0)
+        .exhaustive(async || {
+            let values = output_v1.collect_sorted::<Vec<_>>(0).await;
+            match values.as_slice() {
+                [] => {} // The client had not discovered the server.
+                [1] => {}
+                other => panic!("unexpected output: {other:?}"),
+            }
+        });
+}
+```
+
+This configuration represents a new client communicating with an old server. Exhaustive simulation finds an execution that ends with:
+
+```text
+unexpected output: [0]
+```
+
+The failure is a compatibility bug in application behavior, even though the serialized `Request` type is unchanged and each version works in isolation.
+
+## Configuring a Rollout
+
+Call `with_cluster_size` for every declared cluster version, including versions with zero members. The sizes describe one stage of a rollout:
+
+| Configuration | v1 size | v2 size |
+|---|---:|---:|
+| Before rollout | 2 | 0 |
+| Mixed-version rollout | 1 | 1 |
+| After rollout | 0 | 2 |
+
+Use separate tests or a small test helper to check the rollout stages that matter to your deployment. `with_cluster_size` configures a fixed population for one simulation; it does not move a member from one version to another while that simulation is running.
+
+Corresponding cluster versions share one member-ID space. IDs are assigned in version order, so if v1 has one member and v2 has two, v1 owns member `0` and v2 owns members `1` and `2`. Membership APIs expose the combined logical cluster, and simulation input and output handles for each version use these global IDs.
+
+Apart from defining and sizing the versions, write assertions exactly as you would in a single-version simulation test. Use exhaustive testing for a tractable state space and coverage-guided fuzzing when the combined versions introduce too many non-deterministic choices.
