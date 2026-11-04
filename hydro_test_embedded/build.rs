@@ -176,6 +176,25 @@ fn generate_embedded() {
         .unwrap();
     }
 
+    // --- singleton_only (local, a singleton input and nothing else) ---
+    {
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<()>();
+        hydro_test::local::singleton_only::consume_greeting(
+            process.embedded_singleton_input("greeting"),
+        );
+
+        let code = flow
+            .with_process(&process, "consume_greeting")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/singleton_only.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
     // --- echo_network (o2o networking) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();

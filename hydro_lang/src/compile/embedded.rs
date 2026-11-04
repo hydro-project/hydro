@@ -1577,20 +1577,11 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             let dfir_metrics_ty = crate::compile::dfir_metrics_state_type(&as_code_options, &root);
             let ret_type: syn::Type = syn::parse_quote! { #root::runtime_support::dfir_rs::scheduled::context::Dfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure<Metrics = #dfir_metrics_ty> + 'a> };
 
-            let func = if !extra_fn_generics.is_empty() {
-                syn::parse_quote! {
-                    #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
-                    pub fn #fn_ident<'a, #(#extra_fn_generics),*>(#(#all_params),*) -> #ret_type {
-                        #(#extra_destructure)*
-                        #dfir_tokens
-                    }
-                }
-            } else {
-                syn::parse_quote! {
-                    #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
-                    pub fn #fn_ident<'a>(#(#all_params),*) -> #ret_type {
-                        #dfir_tokens
-                    }
+            let func = syn::parse_quote! {
+                #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
+                pub fn #fn_ident<'a, #(#extra_fn_generics),*>(#(#all_params),*) -> #ret_type {
+                    #(#extra_destructure)*
+                    #dfir_tokens
                 }
             };
 
