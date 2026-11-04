@@ -74,6 +74,20 @@ jobs:
       - run: rustup component add --toolchain nightly rustfmt
       - run: cargo +nightly fmt --all -- --check
 
+  lint-all:
+    if: ${{ always() }}
+    runs-on: ubuntu-slim
+    name: Lint Result (Full Matrix)
+    needs: [lint]
+    steps:
+      - run: |
+          result="${{ needs.lint.result }}"
+          if [[ $result == "success" || $result == "skipped" ]]; then
+            exit 0
+          else
+            exit 1
+          fi
+
   verus:
     name: Verus proofs
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
