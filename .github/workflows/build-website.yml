@@ -6,6 +6,7 @@ on:
       - main
       - feature/**
   pull_request:
+  merge_group:
 
 permissions: {}
 

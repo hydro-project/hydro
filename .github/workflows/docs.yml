@@ -6,6 +6,7 @@ on:
       - main
       - feature/**
   pull_request:
+  merge_group:
   workflow_dispatch:
 
 permissions: {}
@@ -50,7 +51,7 @@ jobs:
           mv design_docs "$WWW_DIR/"
 
       - name: Push to gh-pages
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' }}
         shell: bash
         run: |
           git -C "$WWW_DIR" init -q
