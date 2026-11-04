@@ -1538,8 +1538,7 @@ impl DfirGraph {
                                 let hoff_metrics = &#metrics.handoffs[
                                     #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
                                 ];
-                                // `Cell::update` returns the new total; only the stored count is needed.
-                                let _ = hoff_metrics.total_items_count.update(|x| x + hoff_len);
+                                hoff_metrics.total_items_count.update(|x| x + hoff_len);
                                 hoff_metrics.curr_items_count.set(hoff_len);
                             }
                         });
@@ -2086,8 +2085,7 @@ impl DfirGraph {
                         #root::scheduled::metrics::InstrumentSubgraph::new(
                             #sg_fut_ident, sg_metrics
                         ).await;
-                        // `Cell::update` returns the new count; only the stored count is needed.
-                        let _ = sg_metrics.total_run_count.update(|x| x + 1);
+                        sg_metrics.total_run_count.update(|x| x + 1);
 
                         // Update send (output) handoff metrics.
                         #( #send_metrics_code )*
@@ -2179,8 +2177,7 @@ impl DfirGraph {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _, _)| {
                 let ffi = node_id.data().as_ffi();
                 quote! {
-                    // `insert` returns the previous entry; the map is empty here.
-                    let _ = dfir_metrics.handoffs.insert(
+                    dfir_metrics.handoffs.insert(
                         #root::slotmap::KeyData::from_ffi(#ffi).into(),
                         ::std::default::Default::default(),
                     );
@@ -2189,8 +2186,7 @@ impl DfirGraph {
             let subgraph_inits = all_subgraphs.iter().map(|&(sg_id, _)| {
                 let ffi = sg_id.data().as_ffi();
                 quote! {
-                    // `insert` returns the previous entry; the map is empty here.
-                    let _ = dfir_metrics.subgraphs.insert(
+                    dfir_metrics.subgraphs.insert(
                         #root::slotmap::KeyData::from_ffi(#ffi).into(),
                         ::std::default::Default::default(),
                     );
