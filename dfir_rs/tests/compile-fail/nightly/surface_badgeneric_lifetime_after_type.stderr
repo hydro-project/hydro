@@ -1,0 +1,11 @@
+error: Unexpected lifetime `'a` after a type argument. Persistence lifetimes (`'tick`, `'static`) must come before type arguments.
+ --> tests/compile-fail/nightly/surface_badgeneric_lifetime_after_type.rs:6:49
+  |
+6 |         source_iter(0..10) -> identity::<usize, 'a>() -> for_each(std::mem::drop);
+  |                                                 ^^
+
+error: Unexpected lifetime `'tick` after a type argument. Persistence lifetimes (`'tick`, `'static`) must come before type arguments.
+ --> tests/compile-fail/nightly/surface_badgeneric_lifetime_after_type.rs:7:49
+  |
+7 |         source_iter(0..10) -> identity::<usize, 'tick>() -> for_each(std::mem::drop);
+  |                                                 ^^^^^
