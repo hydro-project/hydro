@@ -86,3 +86,28 @@ $ LOAD_PLAYGROUND=1 npm run start
 1. Upload the paper PDF to the `static/papers` folder.
 2. Run the script `./extract-paper-thumbnails` (from this `docs` directory), which requires [ImageMagick to be installed](https://imagemagick.org/script/download.php).
 3. Go to `src/pages/research.js` and add the paper to the array at the top of the file.
+
+## Deployment
+The website is built by GitHub Actions and hosted on Cloudflare Pages using
+[Direct Upload](https://developers.cloudflare.com/pages/get-started/direct-upload/) — Cloudflare
+does not build anything itself.
+
+- `.github/workflows/docs.yml` builds the site (`build_docs.bash`) on every push and PR and uploads
+  the result as the `website` artifact. On pushes, its `deploy-website` job uploads that artifact
+  with `wrangler pages deploy`: `main` becomes the production deployment (hydro.run); other
+  branches (e.g. `feature/**`) become previews at `https://<branch>.hydro-website.pages.dev`.
+- `.github/workflows/website-preview.yml` deploys PR previews to
+  `https://pr-<N>.hydro-website.pages.dev` and posts the URL as a PR comment. It is a
+  `workflow_run` workflow so that it also works for PRs from forks without ever exposing the
+  Cloudflare credentials to PR code; see the comment at the top of that file for the security model.
+
+The workflows expect a Cloudflare Pages project named `hydro-website` (`CLOUDFLARE_PAGES_PROJECT`
+in both files) and two repository secrets:
+
+| Secret                  | Value                                                                     |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID (Workers & Pages → Overview, right sidebar)         |
+| `CLOUDFLARE_API_TOKEN`  | API token with the **Cloudflare Pages: Edit** permission on that account |
+
+The jobs run under the `website-production` / `website-preview` GitHub environments, so protection
+rules or environment-scoped secrets can be added there if desired.

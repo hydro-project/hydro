@@ -1,0 +1,153 @@
+name: website-preview
+
+# Deploys a Cloudflare Pages preview of the website for pull requests, at
+# `https://pr-<N>.<project>.pages.dev`.
+#
+# This lives in its own `workflow_run`-triggered workflow (instead of a job in `docs.yml`) so that it
+# also works for pull requests from forks: `pull_request` jobs have no access to secrets for fork PRs,
+# whereas `workflow_run` jobs run in the context of this repository's default branch and do.
+#
+# Security model (this is the "pwn request" safe pattern recommended by GitHub Security Lab):
+# - The untrusted PR code is only ever executed in the `pull_request` run of `docs.yml`, which has no
+#   secrets. That run uploads the built site as the `website` artifact.
+# - This workflow's definition always comes from the default branch, never from the PR.
+# - Nothing from the artifact is executed here; it is treated as opaque static files and uploaded to
+#   Cloudflare. `_worker.js`/`_routes.json`/`functions` are stripped first so a PR cannot ship a Pages
+#   Function into the preview environment.
+# - The PR number and commit are looked up through the GitHub API from the triggering run's
+#   `head_sha`, not from anything the PR controls, and the deploy always targets `--branch=pr-<N>`,
+#   never the production branch.
+# - Values from the PR (branch names, titles, commit messages) are never interpolated into scripts.
+
+on:
+  workflow_run:
+    workflows: [docs]
+    types: [completed]
+
+permissions: {}
+
+env:
+  # Must match `docs.yml`.
+  CLOUDFLARE_PAGES_PROJECT: hydro-website
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  info:
+    name: Find pull request
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' }}
+    timeout-minutes: 5
+    runs-on: ubuntu-slim
+    permissions:
+      actions: read
+      pull-requests: read
+    outputs:
+      deploy: ${{ steps.info.outputs.deploy }}
+      pr: ${{ steps.info.outputs.pr }}
+    steps:
+      - id: info
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const { owner, repo } = context.repo;
+
+            // `workflow_run.pull_requests` is empty for PRs from forks, so look the PR up by commit.
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner, repo, commit_sha: run.head_sha,
+            });
+            const pr = prs.find((pr) =>
+              pr.state === 'open'
+              && pr.head.sha === run.head_sha
+              && pr.head.repo?.full_name === run.head_repository.full_name
+            );
+            if (!pr) {
+              core.info(`No open PR found with head ${run.head_sha}; nothing to deploy.`);
+              core.setOutput('deploy', 'false');
+              return;
+            }
+
+            // The build job is skipped for duplicate runs (`skip-duplicate-actions`), in which case
+            // there is no artifact and nothing to do.
+            const { data: { artifacts } } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner, repo, run_id: run.id, name: 'website',
+            });
+            if (artifacts.length === 0) {
+              core.info(`Run ${run.id} produced no 'website' artifact; nothing to deploy.`);
+              core.setOutput('deploy', 'false');
+              return;
+            }
+
+            core.info(`Deploying preview for PR #${pr.number} (${run.head_sha}).`);
+            core.setOutput('deploy', 'true');
+            core.setOutput('pr', String(pr.number));
+
+  deploy:
+    name: Deploy Website Preview
+    needs: info
+    if: ${{ needs.info.outputs.deploy == 'true' }}
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read # download the `website` artifact from the triggering run
+      pull-requests: write # post the preview URL comment
+    environment:
+      name: website-preview
+      url: ${{ steps.deploy.outputs.pages-deployment-alias-url || steps.deploy.outputs.deployment-url }}
+    steps:
+      - name: Download website artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: website
+          path: website
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Static assets only: refuse to deploy anything Cloudflare Pages would execute server-side.
+      - name: Strip Pages Functions from artifact
+        run: rm -rf website/_worker.js website/_routes.json website/functions
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: pages deploy website --project-name=${{ env.CLOUDFLARE_PAGES_PROJECT }} --branch=pr-${{ needs.info.outputs.pr }} --commit-hash=${{ github.event.workflow_run.head_sha }}
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          PR_NUMBER: ${{ needs.info.outputs.pr }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          BUILD_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          ALIAS_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issue_number = Number(process.env.PR_NUMBER);
+            const previewUrl = process.env.ALIAS_URL || process.env.DEPLOYMENT_URL;
+            const deployRunUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const marker = '<!-- website-preview-comment -->';
+
+            const body = [
+              marker,
+              '### 🌐 Website preview',
+              '',
+              `**${previewUrl}**`,
+              '',
+              `<sub>Built from ${process.env.HEAD_SHA} ([build](${process.env.BUILD_RUN_URL}) · [deploy](${deployRunUrl})) · `
+                + `this exact deployment: ${process.env.DEPLOYMENT_URL}</sub>`,
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+            const existing = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
