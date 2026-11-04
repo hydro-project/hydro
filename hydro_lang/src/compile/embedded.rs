@@ -1173,7 +1173,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 && self.clusters_reading_self_id.contains(&location_key)
             {
                 cluster_params.push(quote! {
-                    __cluster_self_id: &'a #root::location::member_id::TaglessMemberId
+                    __cluster_self_id: #root::location::member_id::TaglessMemberId
                 });
                 // Alias to the name the generated DFIR code expects.
                 let self_id_ident = syn::Ident::new(

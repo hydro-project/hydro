@@ -220,11 +220,11 @@ let mut flow = embedded::greet(inputs, outputs);
 When a location is a cluster (registered with [`with_cluster`](rust:hydro_lang::compile::builder::FlowBuilder::with_cluster) in `build.rs`), the generated function receives additional parameters for the cluster's identity and membership information.
 
 ### Self ID
-If a cluster's code reads its own member ID ([`CLUSTER_SELF_ID`](rust:hydro_lang::location::cluster::CLUSTER_SELF_ID)), the function generated for it receives a `__cluster_self_id` parameter of type [`&TaglessMemberId`](rust:hydro_lang::location::member_id::TaglessMemberId). This tells the running instance which member of the cluster it is. You provide this when you call the generated function:
+If a cluster's code reads its own member ID ([`CLUSTER_SELF_ID`](rust:hydro_lang::location::cluster::CLUSTER_SELF_ID)), the function generated for it receives a `__cluster_self_id` parameter of type [`TaglessMemberId`](rust:hydro_lang::location::member_id::TaglessMemberId). This tells the running instance which member of the cluster it is. You provide this when you call the generated function:
 
 ```rust,ignore
 let member_id = TaglessMemberId::from_raw_id(0);
-let mut flow = my_cluster_fn(&member_id, my_cluster_fn::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, outputs);
+let mut flow = my_cluster_fn(member_id, my_cluster_fn::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, outputs);
 ```
 
 ### Membership Streams
