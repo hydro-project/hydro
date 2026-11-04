@@ -1168,8 +1168,10 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             let mut net_in_params: Vec<proc_macro2::TokenStream> = Vec::new();
             let mut extra_destructure: Vec<proc_macro2::TokenStream> = Vec::new();
 
-            // For cluster locations, add self_id parameter.
-            if self.clusters.contains_key(location_key) {
+            // For cluster locations whose code reads their own member ID, add a self_id parameter.
+            if self.clusters.contains_key(location_key)
+                && self.clusters_reading_self_id.contains(&location_key)
+            {
                 cluster_params.push(quote! {
                     __cluster_self_id: &'a #root::location::member_id::TaglessMemberId
                 });

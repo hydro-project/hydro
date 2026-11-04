@@ -44,6 +44,9 @@ where
     /// Compile-time sidecar directives (both simple futures and external TCP sidecars).
     pub(super) sidecars: Vec<super::builder::Sidecar>,
 
+    /// Clusters whose code reads their own member ID.
+    pub(super) clusters_reading_self_id: HashSet<LocationKey>,
+
     /// Per-location codegen options, edited by sidecars via [`Sidecar::edit_as_code_options`].
     /// Locations without an entry use [`AsCodeOptions::default`].
     pub(super) as_code_options: SparseSecondaryMap<LocationKey, AsCodeOptions>,

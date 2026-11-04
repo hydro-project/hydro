@@ -220,7 +220,7 @@ let mut flow = embedded::greet(inputs, outputs);
 When a location is a cluster (registered with [`with_cluster`](rust:hydro_lang::compile::builder::FlowBuilder::with_cluster) in `build.rs`), the generated function receives additional parameters for the cluster's identity and membership information.
 
 ### Self ID
-A function generated for a cluster location receives a `__cluster_self_id` parameter of type [`&TaglessMemberId`](rust:hydro_lang::location::member_id::TaglessMemberId). This tells the running instance which member of the cluster it is. You provide this when you call the generated function:
+If a cluster's code reads its own member ID ([`CLUSTER_SELF_ID`](rust:hydro_lang::location::cluster::CLUSTER_SELF_ID)), the function generated for it receives a `__cluster_self_id` parameter of type [`&TaglessMemberId`](rust:hydro_lang::location::member_id::TaglessMemberId). This tells the running instance which member of the cluster it is. You provide this when you call the generated function:
 
 ```rust,ignore
 let member_id = TaglessMemberId::from_raw_id(0);
@@ -256,10 +256,10 @@ let membership = my_sender::EmbeddedMembershipStreams {
 let mut flow = my_sender(membership, my_sender::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, net_out);
 ```
 
-A cluster that sends to another cluster receives both `__cluster_self_id` and the membership struct:
+A cluster that sends to another cluster receives the membership struct:
 
 ```rust,ignore
-let mut flow = m2m_sender(&src_id, membership, m2m_sender::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, net_out);
+let mut flow = m2m_sender(membership, m2m_sender::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, net_out);
 ```
 
 In `build.rs`, use `with_cluster` instead of `with_process` to register cluster locations:
@@ -342,7 +342,7 @@ pub mod o2m_receiver {
 }
 ```
 
-Your transport layer is responsible for routing: when the sender calls the `FnMut` with `(member_id, bytes)`, you deliver `bytes` to the instance running with that `__cluster_self_id`.
+Your transport layer is responsible for routing: when the sender calls the `FnMut` with `(member_id, bytes)`, you deliver `bytes` to the member with that ID.
 
 #### Cluster → Process (m2o)
 

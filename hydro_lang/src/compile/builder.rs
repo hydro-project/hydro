@@ -1,5 +1,6 @@
 use std::any::type_name;
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::rc::{Rc, Weak};
 
@@ -111,6 +112,9 @@ pub(crate) struct FlowStateInner {
     /// so that dataflow with side effects (e.g. `inspect`) is not silently lost just
     /// because the collection was dropped after finalization.
     pub(crate) live_collection_nodes: Vec<Weak<RefCell<HydroNode>>>,
+
+    /// Clusters whose code reads [`CLUSTER_SELF_ID`](crate::location::cluster::CLUSTER_SELF_ID).
+    pub(crate) clusters_reading_self_id: HashSet<LocationKey>,
 }
 
 impl FlowStateInner {
@@ -224,6 +228,7 @@ impl<'a> FlowBuilder<'a> {
                 next_sim_hook_id: 0,
                 sidecars: Vec::new(),
                 live_collection_nodes: Vec::new(),
+                clusters_reading_self_id: Default::default(),
             })),
             locations: SlotMap::with_key(),
             location_names: SecondaryMap::new(),
@@ -342,6 +347,7 @@ impl<'a> FlowBuilder<'a> {
 
         let mut ir = flow_state.roots.take().unwrap();
         let sidecars = std::mem::take(&mut flow_state.sidecars);
+        let clusters_reading_self_id = std::mem::take(&mut flow_state.clusters_reading_self_id);
         drop(flow_state);
 
         super::ir::unify_atomic_ticks(&mut ir);
@@ -351,6 +357,7 @@ impl<'a> FlowBuilder<'a> {
             locations: std::mem::take(&mut self.locations),
             location_names: std::mem::take(&mut self.location_names),
             sidecars,
+            clusters_reading_self_id,
             flow_name: std::mem::take(&mut self.flow_name),
             #[cfg(feature = "sim")]
             location_version: std::mem::take(&mut self.location_version),
@@ -439,6 +446,7 @@ impl<'a> FlowBuilder<'a> {
                 next_sim_hook_id: 0,
                 sidecars: Vec::new(),
                 live_collection_nodes: Vec::new(),
+                clusters_reading_self_id: Default::default(),
             })),
             locations: built.locations.clone(),
             location_names: built.location_names.clone(),

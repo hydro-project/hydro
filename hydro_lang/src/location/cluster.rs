@@ -305,6 +305,10 @@ where
         let LocationId::Cluster(cluster_id) = ctx.context_location().root().id() else {
             unreachable!()
         };
+        crate::location::dynamic::DynLocation::flow_state(ctx.context_location())
+            .borrow_mut()
+            .clusters_reading_self_id
+            .insert(cluster_id);
 
         let ident = syn::Ident::new(
             &format!("__hydro_lang_cluster_self_id_{}", cluster_id),
