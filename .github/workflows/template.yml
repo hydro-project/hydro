@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
 
 permissions: {}
 
@@ -114,7 +115,7 @@ jobs:
   push_dfir:
     name: Push to dfir template repo
     needs: test_dfir
-    if: ${{ needs.test_dfir.result == 'success' && github.event_name != 'pull_request' }}
+    if: ${{ needs.test_dfir.result == 'success' && github.event_name != 'pull_request' && github.event_name != 'merge_group' }}
     env:
       DIR: template/dfir
       REPO: dfir-template
@@ -157,7 +158,7 @@ jobs:
   push_hydro_lang:
     name: Push to hydro template repo
     needs: test_hydro_lang
-    if: ${{ needs.test_hydro_lang.result == 'success' && github.event_name != 'pull_request' }}
+    if: ${{ needs.test_hydro_lang.result == 'success' && github.event_name != 'pull_request' && github.event_name != 'merge_group' }}
     env:
       DIR: template/hydro
       REPO: hydro-template
