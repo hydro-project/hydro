@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["o2m_receiver"]};

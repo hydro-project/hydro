@@ -1,32 +1,472 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/compile/embedded_runtime.rs`."><title>embedded_runtime.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-5c590327.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (708c94ef0 2026-11-03)" data-channel="nightly" data-search-js="search-835b9732.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-9b351432.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-b2682d9c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-101b5a15.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/compile/</div>embedded_runtime.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-2"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Runtime helpers for the embedded deployment backend.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/compile/embedded_runtime.rs`."><title>embedded_runtime.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-5c590327.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (708c94ef0 2026-11-03)" data-channel="nightly" data-search-js="search-835b9732.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-9b351432.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-b2682d9c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-101b5a15.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/compile/</div>embedded_runtime.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Runtime helpers for the embedded deployment backend.
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! This module is NOT gated on the `build` feature so that the staged
 <a href=#4 id=4 data-nosnippet>4</a>//! re-exports are available at runtime in the generated code.
 <a href=#5 id=5 data-nosnippet>5</a>
-<a href=#6 id=6 data-nosnippet>6</a></span><span class="kw">use </span>futures::Stream;
-<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>stageleft::{QuotedWithContext, RuntimeData, q};
-<a href=#8 id=8 data-nosnippet>8</a>
-<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span><span class="kw">crate</span>::location::MembershipEvent;
-<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span><span class="kw">crate</span>::location::member_id::TaglessMemberId;
-<a href=#11 id=11 data-nosnippet>11</a>
-<a href=#12 id=12 data-nosnippet>12</a><span class="doccomment">/// Returns a [`QuotedWithContext`] that references the `__cluster_self_id` runtime variable.
-<a href=#13 id=13 data-nosnippet>13</a></span><span class="kw">pub fn </span>embedded_cluster_self_id&lt;<span class="lifetime">'a</span>&gt;() -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, TaglessMemberId, ()&gt; + Clone + <span class="lifetime">'a
-<a href=#14 id=14 data-nosnippet>14</a></span>{
-<a href=#15 id=15 data-nosnippet>15</a>    <span class="kw">let </span>self_id: RuntimeData&lt;<span class="kw-2">&amp;</span>TaglessMemberId&gt; = RuntimeData::new(<span class="string">"__cluster_self_id"</span>);
-<a href=#16 id=16 data-nosnippet>16</a>    <span class="macro">q!</span>(self_id.clone())
-<a href=#17 id=17 data-nosnippet>17</a>}
+<a href=#6 id=6 data-nosnippet>6</a></span><span class="kw">use </span>std::marker::PhantomData;
+<a href=#7 id=7 data-nosnippet>7</a>
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>futures::Stream;
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>stageleft::{QuotedWithContext, RuntimeData, q};
+<a href=#10 id=10 data-nosnippet>10</a>
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::{
+<a href=#12 id=12 data-nosnippet>12</a>    AtLeastOnce, ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder,
+<a href=#13 id=13 data-nosnippet>13</a>};
+<a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span><span class="kw">crate</span>::location::MembershipEvent;
+<a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span><span class="kw">crate</span>::location::member_id::TaglessMemberId;
+<a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span><span class="kw">crate</span>::networking::NetworkingConfig;
+<a href=#17 id=17 data-nosnippet>17</a><span class="kw">use </span><span class="kw">crate</span>::properties::ManualProof;
 <a href=#18 id=18 data-nosnippet>18</a>
-<a href=#19 id=19 data-nosnippet>19</a><span class="doccomment">/// Returns a [`QuotedWithContext`] that references a `__membership_{idx}` runtime variable.
-<a href=#20 id=20 data-nosnippet>20</a></span><span class="kw">pub fn </span>embedded_cluster_membership_stream&lt;<span class="lifetime">'a</span>&gt;(
-<a href=#21 id=21 data-nosnippet>21</a>    idx: usize,
-<a href=#22 id=22 data-nosnippet>22</a>) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, Box&lt;<span class="kw">dyn </span>Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin&gt;, ()&gt;
-<a href=#23 id=23 data-nosnippet>23</a>{
-<a href=#24 id=24 data-nosnippet>24</a>    <span class="comment">// TODO(shadaj): change `Deploy` trait to use `syn::Expr` to avoid leaking here
-<a href=#25 id=25 data-nosnippet>25</a>    // TODO(shadaj): this will not work if the same location reads the same membership stream multiple times
-<a href=#26 id=26 data-nosnippet>26</a>    </span><span class="kw">let </span>var_name: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str = Box::leak(<span class="macro">format!</span>(<span class="string">"__membership_{}"</span>, idx).into_boxed_str());
-<a href=#27 id=27 data-nosnippet>27</a>    <span class="kw">let </span>membership: RuntimeData&lt;
-<a href=#28 id=28 data-nosnippet>28</a>        Box&lt;<span class="kw">dyn </span>Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin&gt;,
-<a href=#29 id=29 data-nosnippet>29</a>    &gt; = RuntimeData::new(var_name);
-<a href=#30 id=30 data-nosnippet>30</a>    <span class="macro">q!</span>(membership)
-<a href=#31 id=31 data-nosnippet>31</a>}
+<a href=#19 id=19 data-nosnippet>19</a><span class="doccomment">/// Returns a [`QuotedWithContext`] that references the `__cluster_self_id` runtime variable.
+<a href=#20 id=20 data-nosnippet>20</a></span><span class="kw">pub fn </span>embedded_cluster_self_id&lt;<span class="lifetime">'a</span>&gt;() -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, TaglessMemberId, ()&gt; + Clone + <span class="lifetime">'a
+<a href=#21 id=21 data-nosnippet>21</a></span>{
+<a href=#22 id=22 data-nosnippet>22</a>    <span class="kw">let </span>self_id: RuntimeData&lt;<span class="kw-2">&amp;</span>TaglessMemberId&gt; = RuntimeData::new(<span class="string">"__cluster_self_id"</span>);
+<a href=#23 id=23 data-nosnippet>23</a>    <span class="macro">q!</span>(self_id.clone())
+<a href=#24 id=24 data-nosnippet>24</a>}
+<a href=#25 id=25 data-nosnippet>25</a>
+<a href=#26 id=26 data-nosnippet>26</a><span class="doccomment">/// Returns a [`QuotedWithContext`] that references a `__membership_{idx}` runtime variable.
+<a href=#27 id=27 data-nosnippet>27</a></span><span class="kw">pub fn </span>embedded_cluster_membership_stream&lt;<span class="lifetime">'a</span>&gt;(
+<a href=#28 id=28 data-nosnippet>28</a>    idx: usize,
+<a href=#29 id=29 data-nosnippet>29</a>) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, Box&lt;<span class="kw">dyn </span>Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin&gt;, ()&gt;
+<a href=#30 id=30 data-nosnippet>30</a>{
+<a href=#31 id=31 data-nosnippet>31</a>    <span class="comment">// TODO(shadaj): change `Deploy` trait to use `syn::Expr` to avoid leaking here
+<a href=#32 id=32 data-nosnippet>32</a>    // TODO(shadaj): this will not work if the same location reads the same membership stream multiple times
+<a href=#33 id=33 data-nosnippet>33</a>    </span><span class="kw">let </span>var_name: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str = Box::leak(<span class="macro">format!</span>(<span class="string">"__membership_{}"</span>, idx).into_boxed_str());
+<a href=#34 id=34 data-nosnippet>34</a>    <span class="kw">let </span>membership: RuntimeData&lt;
+<a href=#35 id=35 data-nosnippet>35</a>        Box&lt;<span class="kw">dyn </span>Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin&gt;,
+<a href=#36 id=36 data-nosnippet>36</a>    &gt; = RuntimeData::new(var_name);
+<a href=#37 id=37 data-nosnippet>37</a>    <span class="macro">q!</span>(membership)
+<a href=#38 id=38 data-nosnippet>38</a>}
+<a href=#39 id=39 data-nosnippet>39</a>
+<a href=#40 id=40 data-nosnippet>40</a><span class="doccomment">/// A channel crossing the boundary of an embedded dataflow: a network channel end, a stream
+<a href=#41 id=41 data-nosnippet>41</a>/// input, a membership stream, or an output, with its guarantees as marker types (`Ordering`
+<a href=#42 id=42 data-nosnippet>42</a>/// and `Retries`).
+<a href=#43 id=43 data-nosnippet>43</a>///
+<a href=#44 id=44 data-nosnippet>44</a>/// - For a stream input or membership stream, the guarantees are what the dataflow relies on,
+<a href=#45 id=45 data-nosnippet>45</a>///   which the host's [`Promises`] must meet.
+<a href=#46 id=46 data-nosnippet>46</a>/// - For the sending end of a network channel, they are what the dataflow sends, which the
+<a href=#47 id=47 data-nosnippet>47</a>///   host's [`Acknowledgements`] must cover, as for an output.
+<a href=#48 id=48 data-nosnippet>48</a>/// - For the receiving end of a network channel, they are what the dataflow relies on: the sent
+<a href=#49 id=49 data-nosnippet>49</a>///   stream, weakened by the channel's configuration. The host's [`Promises`] must meet them, as
+<a href=#50 id=50 data-nosnippet>50</a>///   for a stream input.
+<a href=#51 id=51 data-nosnippet>51</a>/// - For an output, they are what the dataflow provides. The host's [`Acknowledgements`] must
+<a href=#52 id=52 data-nosnippet>52</a>///   cover every way the output may be weaker than ordered and exactly-once.
+<a href=#53 id=53 data-nosnippet>53</a>///
+<a href=#54 id=54 data-nosnippet>54</a>/// Each location's generated module has a marker type implementing this for each
+<a href=#55 id=55 data-nosnippet>55</a>/// channel crossing it, named after its field: under `incoming` / `outgoing` for
+<a href=#56 id=56 data-nosnippet>56</a>/// network channel ends, `inputs` for stream inputs, `membership` for membership streams, and
+<a href=#57 id=57 data-nosnippet>57</a>/// `outputs` for outputs. Each field of the generated structs is an [`EmbeddedInputChannel`] (a stream
+<a href=#58 id=58 data-nosnippet>58</a>/// input or membership stream), a [`EmbeddedNetworkInputChannel`] (a receiving end), a [`EmbeddedNetworkOutputChannel`] (a
+<a href=#59 id=59 data-nosnippet>59</a>/// sending end), or an [`EmbeddedOutputChannel`] (an output) over its marker. The marker is inferred from
+<a href=#60 id=60 data-nosnippet>60</a>/// the field. The markers of network channel ends also implement [`EmbeddedNetworkChannel`].
+<a href=#61 id=61 data-nosnippet>61</a></span><span class="kw">pub trait </span>EmbeddedChannel {
+<a href=#62 id=62 data-nosnippet>62</a>    <span class="doccomment">/// The ordering the host must keep (for an output or the sending end of a network channel,
+<a href=#63 id=63 data-nosnippet>63</a>    /// the ordering the dataflow provides): `TotalOrder` or `NoOrder`. For a network channel,
+<a href=#64 id=64 data-nosnippet>64</a>    /// `TotalOrder` means each sender's messages in the order it sent them; for an input, that
+<a href=#65 id=65 data-nosnippet>65</a>    /// the stream's order is the order to process; for a membership stream, each member's events
+<a href=#66 id=66 data-nosnippet>66</a>    /// in the order they happened.
+<a href=#67 id=67 data-nosnippet>67</a>    </span><span class="kw">type </span>Ordering: Ordering;
+<a href=#68 id=68 data-nosnippet>68</a>
+<a href=#69 id=69 data-nosnippet>69</a>    <span class="doccomment">/// The retry guarantee the host must keep (for an output or the sending end of a network
+<a href=#70 id=70 data-nosnippet>70</a>    /// channel, the one the dataflow provides): `ExactlyOnce` (nothing delivered twice) or
+<a href=#71 id=71 data-nosnippet>71</a>    /// `AtLeastOnce`.
+<a href=#72 id=72 data-nosnippet>72</a>    </span><span class="kw">type </span>Retries: Retries;
+<a href=#73 id=73 data-nosnippet>73</a>}
+<a href=#74 id=74 data-nosnippet>74</a>
+<a href=#75 id=75 data-nosnippet>75</a><span class="doccomment">/// What a host promises about something it supplies, each guarantee promised separately with
+<a href=#76 id=76 data-nosnippet>76</a>/// a [`manual_proof!`](crate::prelude::manual_proof) saying why it holds. An [`EmbeddedInputChannel`] or
+<a href=#77 id=77 data-nosnippet>77</a>/// [`EmbeddedNetworkInputChannel`] is built from a stream and the `Promises` that meet its marker's
+<a href=#78 id=78 data-nosnippet>78</a>/// guarantees.
+<a href=#79 id=79 data-nosnippet>79</a></span><span class="kw">pub struct </span>Promises&lt;O, R&gt; {
+<a href=#80 id=80 data-nosnippet>80</a>    _promised: PhantomData&lt;<span class="kw">fn</span>() -&gt; (O, R)&gt;,
+<a href=#81 id=81 data-nosnippet>81</a>}
+<a href=#82 id=82 data-nosnippet>82</a>
+<a href=#83 id=83 data-nosnippet>83</a><span class="kw">impl </span>Promises&lt;NoOrder, AtLeastOnce&gt; {
+<a href=#84 id=84 data-nosnippet>84</a>    <span class="doccomment">/// Promises nothing: elements may arrive in any order, and any may be delivered more than
+<a href=#85 id=85 data-nosnippet>85</a>    /// once.
+<a href=#86 id=86 data-nosnippet>86</a>    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+<a href=#87 id=87 data-nosnippet>87</a>        Promises {
+<a href=#88 id=88 data-nosnippet>88</a>            _promised: PhantomData,
+<a href=#89 id=89 data-nosnippet>89</a>        }
+<a href=#90 id=90 data-nosnippet>90</a>    }
+<a href=#91 id=91 data-nosnippet>91</a>}
+<a href=#92 id=92 data-nosnippet>92</a>
+<a href=#93 id=93 data-nosnippet>93</a><span class="kw">impl </span>Default <span class="kw">for </span>Promises&lt;NoOrder, AtLeastOnce&gt; {
+<a href=#94 id=94 data-nosnippet>94</a>    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+<a href=#95 id=95 data-nosnippet>95</a>        <span class="self">Self</span>::new()
+<a href=#96 id=96 data-nosnippet>96</a>    }
+<a href=#97 id=97 data-nosnippet>97</a>}
+<a href=#98 id=98 data-nosnippet>98</a>
+<a href=#99 id=99 data-nosnippet>99</a><span class="kw">impl</span>&lt;O, R&gt; Promises&lt;O, R&gt; {
+<a href=#100 id=100 data-nosnippet>100</a>    <span class="kw">fn </span>retag&lt;O2, R2&gt;(<span class="self">self</span>) -&gt; Promises&lt;O2, R2&gt; {
+<a href=#101 id=101 data-nosnippet>101</a>        Promises {
+<a href=#102 id=102 data-nosnippet>102</a>            _promised: PhantomData,
+<a href=#103 id=103 data-nosnippet>103</a>        }
+<a href=#104 id=104 data-nosnippet>104</a>    }
+<a href=#105 id=105 data-nosnippet>105</a>}
+<a href=#106 id=106 data-nosnippet>106</a>
+<a href=#107 id=107 data-nosnippet>107</a><span class="kw">impl</span>&lt;R&gt; Promises&lt;NoOrder, R&gt; {
+<a href=#108 id=108 data-nosnippet>108</a>    <span class="doccomment">/// Promises the order: for a channel, each sender's messages are delivered in the order it
+<a href=#109 id=109 data-nosnippet>109</a>    /// sent them; for an input, the stream's order is the order to process; for a membership
+<a href=#110 id=110 data-nosnippet>110</a>    /// stream, each member's events arrive in the order they happened.
+<a href=#111 id=111 data-nosnippet>111</a>    </span><span class="kw">pub fn </span>total_order(<span class="self">self</span>, _proof: ManualProof) -&gt; Promises&lt;TotalOrder, R&gt; {
+<a href=#112 id=112 data-nosnippet>112</a>        <span class="self">self</span>.retag()
+<a href=#113 id=113 data-nosnippet>113</a>    }
+<a href=#114 id=114 data-nosnippet>114</a>}
+<a href=#115 id=115 data-nosnippet>115</a>
+<a href=#116 id=116 data-nosnippet>116</a><span class="kw">impl</span>&lt;O&gt; Promises&lt;O, AtLeastOnce&gt; {
+<a href=#117 id=117 data-nosnippet>117</a>    <span class="doccomment">/// Promises that nothing is delivered twice: a channel never duplicates a message (for
+<a href=#118 id=118 data-nosnippet>118</a>    /// example by resending it after a reconnect), and every element of an input is a distinct
+<a href=#119 id=119 data-nosnippet>119</a>    /// event.
+<a href=#120 id=120 data-nosnippet>120</a>    </span><span class="kw">pub fn </span>exactly_once(<span class="self">self</span>, _proof: ManualProof) -&gt; Promises&lt;O, ExactlyOnce&gt; {
+<a href=#121 id=121 data-nosnippet>121</a>        <span class="self">self</span>.retag()
+<a href=#122 id=122 data-nosnippet>122</a>    }
+<a href=#123 id=123 data-nosnippet>123</a>}
+<a href=#124 id=124 data-nosnippet>124</a>
+<a href=#125 id=125 data-nosnippet>125</a><span class="doccomment">/// A channel whose guarantees promises of ordering `O` and retries `R` meet: each guarantee the
+<a href=#126 id=126 data-nosnippet>126</a>/// channel needs is weaker than (or the same as) the one promised. It is what [`EmbeddedInputChannel::new`]
+<a href=#127 id=127 data-nosnippet>127</a>/// requires, and lets a reusable transport state once what it provides:
+<a href=#128 id=128 data-nosnippet>128</a>/// `fn source&lt;C: SatisfiedBy&lt;TotalOrder, ExactlyOnce&gt;&gt;()` serves every channel that needs at
+<a href=#129 id=129 data-nosnippet>129</a>/// most that.
+<a href=#130 id=130 data-nosnippet>130</a></span><span class="kw">pub trait </span>SatisfiedBy&lt;O, R&gt;: EmbeddedChannel {}
+<a href=#131 id=131 data-nosnippet>131</a>
+<a href=#132 id=132 data-nosnippet>132</a><span class="kw">impl</span>&lt;K, O, R&gt; SatisfiedBy&lt;O, R&gt; <span class="kw">for </span>K
+<a href=#133 id=133 data-nosnippet>133</a><span class="kw">where
+<a href=#134 id=134 data-nosnippet>134</a>    </span>K: EmbeddedChannel,
+<a href=#135 id=135 data-nosnippet>135</a>    K::Ordering: OrderPromisedBy&lt;O, K&gt;,
+<a href=#136 id=136 data-nosnippet>136</a>    K::Retries: RetriesPromisedBy&lt;R, K&gt;,
+<a href=#137 id=137 data-nosnippet>137</a>{
+<a href=#138 id=138 data-nosnippet>138</a>}
+<a href=#139 id=139 data-nosnippet>139</a>
+<a href=#140 id=140 data-nosnippet>140</a><span class="doccomment">/// A needed order (`Self`) that the promised order `Promised` meets, for the channel end `End`.
+<a href=#141 id=141 data-nosnippet>141</a>/// Only order is promised, so a promise is needed only for `TotalOrder`.
+<a href=#142 id=142 data-nosnippet>142</a></span><span class="attr">#[diagnostic::on_unimplemented(
+<a href=#143 id=143 data-nosnippet>143</a>    message = <span class="string">"`{End}` relies on its elements arriving in order, but the host does not promise it"</span>,
+<a href=#144 id=144 data-nosnippet>144</a>    label = <span class="string">"does not promise `TotalOrder`"</span>,
+<a href=#145 id=145 data-nosnippet>145</a>    note = <span class="string">"add `.total_order(manual_proof!(/** why the order is kept */))` to its `Promises`"
+<a href=#146 id=146 data-nosnippet>146</a></span>)]
+<a href=#147 id=147 data-nosnippet>147</a></span><span class="kw">trait </span>OrderPromisedBy&lt;Promised, End&gt; {}
+<a href=#148 id=148 data-nosnippet>148</a>
+<a href=#149 id=149 data-nosnippet>149</a><span class="kw">impl</span>&lt;Promised: Ordering, End&gt; OrderPromisedBy&lt;Promised, End&gt; <span class="kw">for </span>NoOrder {}
+<a href=#150 id=150 data-nosnippet>150</a><span class="kw">impl</span>&lt;End&gt; OrderPromisedBy&lt;TotalOrder, End&gt; <span class="kw">for </span>TotalOrder {}
+<a href=#151 id=151 data-nosnippet>151</a>
+<a href=#152 id=152 data-nosnippet>152</a><span class="doccomment">/// A needed retry guarantee (`Self`) that the promised one `Promised` meets, for `End`.
+<a href=#153 id=153 data-nosnippet>153</a></span><span class="attr">#[diagnostic::on_unimplemented(
+<a href=#154 id=154 data-nosnippet>154</a>    message = <span class="string">"`{End}` relies on each element arriving exactly once, but the host does not promise it"</span>,
+<a href=#155 id=155 data-nosnippet>155</a>    label = <span class="string">"does not promise `ExactlyOnce`"</span>,
+<a href=#156 id=156 data-nosnippet>156</a>    note = <span class="string">"add `.exactly_once(manual_proof!(/** why nothing is delivered twice */))` to its `Promises`"
+<a href=#157 id=157 data-nosnippet>157</a></span>)]
+<a href=#158 id=158 data-nosnippet>158</a></span><span class="kw">trait </span>RetriesPromisedBy&lt;Promised, End&gt; {}
+<a href=#159 id=159 data-nosnippet>159</a>
+<a href=#160 id=160 data-nosnippet>160</a><span class="kw">impl</span>&lt;Promised: Retries, End&gt; RetriesPromisedBy&lt;Promised, End&gt; <span class="kw">for </span>AtLeastOnce {}
+<a href=#161 id=161 data-nosnippet>161</a><span class="kw">impl</span>&lt;End&gt; RetriesPromisedBy&lt;ExactlyOnce, End&gt; <span class="kw">for </span>ExactlyOnce {}
+<a href=#162 id=162 data-nosnippet>162</a>
+<a href=#163 id=163 data-nosnippet>163</a><span class="doccomment">/// A channel flowing into an embedded dataflow, as the host provides it: a `Stream` for a stream
+<a href=#164 id=164 data-nosnippet>164</a>/// input or a membership stream, for the channel `C` (its generated marker type, see
+<a href=#165 id=165 data-nosnippet>165</a>/// [`EmbeddedChannel`]). The receiving end of a network channel is a [`EmbeddedNetworkInputChannel`] instead.
+<a href=#166 id=166 data-nosnippet>166</a>///
+<a href=#167 id=167 data-nosnippet>167</a>/// An `EmbeddedInputChannel` exists only with promises that meet `C`'s guarantees:
+<a href=#168 id=168 data-nosnippet>168</a>/// [`EmbeddedInputChannel::new`] takes the [`Promises`] and checks them, so wiring a channel always
+<a href=#169 id=169 data-nosnippet>169</a>/// states its guarantees and a mismatch with the dataflow is a type error at that call. Promising
+<a href=#170 id=170 data-nosnippet>170</a>/// more than a channel needs is fine. `C` is inferred from the field the `EmbeddedInputChannel` fills.
+<a href=#171 id=171 data-nosnippet>171</a></span><span class="kw">pub struct </span>EmbeddedInputChannel&lt;C, S&gt; {
+<a href=#172 id=172 data-nosnippet>172</a>    inner: S,
+<a href=#173 id=173 data-nosnippet>173</a>    _channel: PhantomData&lt;<span class="kw">fn</span>() -&gt; C&gt;,
+<a href=#174 id=174 data-nosnippet>174</a>}
+<a href=#175 id=175 data-nosnippet>175</a>
+<a href=#176 id=176 data-nosnippet>176</a><span class="kw">impl</span>&lt;C: EmbeddedChannel, S&gt; EmbeddedInputChannel&lt;C, S&gt; {
+<a href=#177 id=177 data-nosnippet>177</a>    <span class="doccomment">/// Wraps a host stream for channel `C`, with `promises` that must meet its guarantees.
+<a href=#178 id=178 data-nosnippet>178</a>    </span><span class="kw">pub fn </span>new&lt;O, R&gt;(inner: S, promises: Promises&lt;O, R&gt;) -&gt; <span class="self">Self
+<a href=#179 id=179 data-nosnippet>179</a>    </span><span class="kw">where
+<a href=#180 id=180 data-nosnippet>180</a>        </span>C: SatisfiedBy&lt;O, R&gt;,
+<a href=#181 id=181 data-nosnippet>181</a>    {
+<a href=#182 id=182 data-nosnippet>182</a>        <span class="kw">let _ </span>= promises;
+<a href=#183 id=183 data-nosnippet>183</a>        EmbeddedInputChannel {
+<a href=#184 id=184 data-nosnippet>184</a>            inner,
+<a href=#185 id=185 data-nosnippet>185</a>            _channel: PhantomData,
+<a href=#186 id=186 data-nosnippet>186</a>        }
+<a href=#187 id=187 data-nosnippet>187</a>    }
+<a href=#188 id=188 data-nosnippet>188</a>}
+<a href=#189 id=189 data-nosnippet>189</a>
+<a href=#190 id=190 data-nosnippet>190</a><span class="kw">impl</span>&lt;C, S&gt; EmbeddedInputChannel&lt;C, S&gt; {
+<a href=#191 id=191 data-nosnippet>191</a>    <span class="doccomment">/// The host's stream. Used by generated code.
+<a href=#192 id=192 data-nosnippet>192</a>    </span><span class="attr">#[doc(hidden)]
+<a href=#193 id=193 data-nosnippet>193</a>    </span><span class="kw">pub fn </span>into_inner(<span class="self">self</span>) -&gt; S {
+<a href=#194 id=194 data-nosnippet>194</a>        <span class="self">self</span>.inner
+<a href=#195 id=195 data-nosnippet>195</a>    }
+<a href=#196 id=196 data-nosnippet>196</a>}
+<a href=#197 id=197 data-nosnippet>197</a>
+<a href=#198 id=198 data-nosnippet>198</a><span class="doccomment">/// The configuration of a network channel crossing the boundary of an embedded dataflow: the
+<a href=#199 id=199 data-nosnippet>199</a>/// transport type `Transport` of the network config the dataflow sends with (for example
+<a href=#200 id=200 data-nosnippet>200</a>/// `Tcp&lt;FailStop&gt;` for `TCP.fail_stop()`, or `EmbeddedTransport&lt;ExactlyOnce, NoOrder, FailStop&gt;`
+<a href=#201 id=201 data-nosnippet>201</a>/// for `EMBEDDED.may_reorder().never_duplicates().never_drops()`), and its serialization `Serialization` (`Bincode`, or `Embedded`
+<a href=#202 id=202 data-nosnippet>202</a>/// for an unserialized `EMBEDDED` channel).
+<a href=#203 id=203 data-nosnippet>203</a>///
+<a href=#204 id=204 data-nosnippet>204</a>/// The markers of both ends of a network channel implement it, alongside [`EmbeddedChannel`]
+<a href=#205 id=205 data-nosnippet>205</a>/// for the stream at that end. The host acknowledges the configuration exactly at each end with
+<a href=#206 id=206 data-nosnippet>206</a>/// a [`ChannelConfiguration`], so that changing the channel's network config fails the host's
+<a href=#207 id=207 data-nosnippet>207</a>/// build at both ends until it acknowledges the change.
+<a href=#208 id=208 data-nosnippet>208</a></span><span class="kw">pub trait </span>EmbeddedNetworkChannel: EmbeddedChannel {
+<a href=#209 id=209 data-nosnippet>209</a>    <span class="doccomment">/// The transport type of the channel's network config.
+<a href=#210 id=210 data-nosnippet>210</a>    </span><span class="kw">type </span>Transport;
+<a href=#211 id=211 data-nosnippet>211</a>
+<a href=#212 id=212 data-nosnippet>212</a>    <span class="doccomment">/// The serialization of the channel's network config.
+<a href=#213 id=213 data-nosnippet>213</a>    </span><span class="kw">type </span>Serialization;
+<a href=#214 id=214 data-nosnippet>214</a>}
+<a href=#215 id=215 data-nosnippet>215</a>
+<a href=#216 id=216 data-nosnippet>216</a><span class="doccomment">/// The configuration of a network channel as the host acknowledges it: the transport `Tr` and
+<a href=#217 id=217 data-nosnippet>217</a>/// serialization `S` of its network config, which must match the channel's exactly (see
+<a href=#218 id=218 data-nosnippet>218</a>/// [`EmbeddedNetworkChannel`]). It is built from the same network config value the dataflow
+<a href=#219 id=219 data-nosnippet>219</a>/// sends with; the config's name is ignored.
+<a href=#220 id=220 data-nosnippet>220</a></span><span class="kw">pub struct </span>ChannelConfiguration&lt;Tr, S&gt; {
+<a href=#221 id=221 data-nosnippet>221</a>    _acknowledged: PhantomData&lt;<span class="kw">fn</span>() -&gt; (Tr, S)&gt;,
+<a href=#222 id=222 data-nosnippet>222</a>}
+<a href=#223 id=223 data-nosnippet>223</a>
+<a href=#224 id=224 data-nosnippet>224</a><span class="kw">impl</span>&lt;Tr, S&gt; ChannelConfiguration&lt;Tr, S&gt; {
+<a href=#225 id=225 data-nosnippet>225</a>    <span class="doccomment">/// Acknowledges a channel configured with `config`, the same network config the dataflow
+<a href=#226 id=226 data-nosnippet>226</a>    /// sends with (for example `TCP.fail_stop().bincode()`).
+<a href=#227 id=227 data-nosnippet>227</a>    </span><span class="kw">pub fn </span>new&lt;Name&gt;(config: NetworkingConfig&lt;Tr, S, Name&gt;) -&gt; <span class="self">Self </span>{
+<a href=#228 id=228 data-nosnippet>228</a>        <span class="kw">let _ </span>= config;
+<a href=#229 id=229 data-nosnippet>229</a>        ChannelConfiguration {
+<a href=#230 id=230 data-nosnippet>230</a>            _acknowledged: PhantomData,
+<a href=#231 id=231 data-nosnippet>231</a>        }
+<a href=#232 id=232 data-nosnippet>232</a>    }
+<a href=#233 id=233 data-nosnippet>233</a>}
+<a href=#234 id=234 data-nosnippet>234</a>
+<a href=#235 id=235 data-nosnippet>235</a><span class="doccomment">/// A network channel end whose configuration is exactly the acknowledged transport `Tr` and
+<a href=#236 id=236 data-nosnippet>236</a>/// serialization `S`. Each part is checked separately, so a mismatch names the part the host
+<a href=#237 id=237 data-nosnippet>237</a>/// acknowledges wrongly. It is what [`EmbeddedNetworkOutputChannel::new`] and [`EmbeddedNetworkInputChannel::new`] require.
+<a href=#238 id=238 data-nosnippet>238</a></span><span class="kw">pub trait </span>ConfiguredAs&lt;Tr, S&gt;: EmbeddedNetworkChannel {}
+<a href=#239 id=239 data-nosnippet>239</a>
+<a href=#240 id=240 data-nosnippet>240</a><span class="kw">impl</span>&lt;C, Tr, S&gt; ConfiguredAs&lt;Tr, S&gt; <span class="kw">for </span>C
+<a href=#241 id=241 data-nosnippet>241</a><span class="kw">where
+<a href=#242 id=242 data-nosnippet>242</a>    </span>C: EmbeddedNetworkChannel,
+<a href=#243 id=243 data-nosnippet>243</a>    Tr: AcknowledgesTransport&lt;C::Transport, C&gt;,
+<a href=#244 id=244 data-nosnippet>244</a>    S: AcknowledgesSerialization&lt;C::Serialization, C&gt;,
+<a href=#245 id=245 data-nosnippet>245</a>{
+<a href=#246 id=246 data-nosnippet>246</a>}
+<a href=#247 id=247 data-nosnippet>247</a>
+<a href=#248 id=248 data-nosnippet>248</a><span class="doccomment">/// Checks the acknowledged transport separately, so a mismatch names it.
+<a href=#249 id=249 data-nosnippet>249</a></span><span class="attr">#[diagnostic::on_unimplemented(
+<a href=#250 id=250 data-nosnippet>250</a>    message = <span class="string">"the channel end `{End}` is configured with `{Declared}`, but the host acknowledges `{Self}`"</span>,
+<a href=#251 id=251 data-nosnippet>251</a>    label = <span class="string">"acknowledges `{Self}`"</span>,
+<a href=#252 id=252 data-nosnippet>252</a>    note = <span class="string">"acknowledge the same network config the dataflow sends with; the marker's docs give it"
+<a href=#253 id=253 data-nosnippet>253</a></span>)]
+<a href=#254 id=254 data-nosnippet>254</a></span><span class="kw">trait </span>AcknowledgesTransport&lt;Declared, End&gt; {}
+<a href=#255 id=255 data-nosnippet>255</a>
+<a href=#256 id=256 data-nosnippet>256</a><span class="kw">impl</span>&lt;X, End&gt; AcknowledgesTransport&lt;X, End&gt; <span class="kw">for </span>X {}
+<a href=#257 id=257 data-nosnippet>257</a>
+<a href=#258 id=258 data-nosnippet>258</a><span class="doccomment">/// Checks the acknowledged serialization separately, so a mismatch names it.
+<a href=#259 id=259 data-nosnippet>259</a></span><span class="attr">#[diagnostic::on_unimplemented(
+<a href=#260 id=260 data-nosnippet>260</a>    message = <span class="string">"the channel end `{End}` is serialized with `{Declared}`, but the host acknowledges `{Self}`"</span>,
+<a href=#261 id=261 data-nosnippet>261</a>    label = <span class="string">"acknowledges `{Self}`"</span>,
+<a href=#262 id=262 data-nosnippet>262</a>    note = <span class="string">"acknowledge the same network config the dataflow sends with; the marker's docs give it"
+<a href=#263 id=263 data-nosnippet>263</a></span>)]
+<a href=#264 id=264 data-nosnippet>264</a></span><span class="kw">trait </span>AcknowledgesSerialization&lt;Declared, End&gt; {}
+<a href=#265 id=265 data-nosnippet>265</a>
+<a href=#266 id=266 data-nosnippet>266</a><span class="kw">impl</span>&lt;X, End&gt; AcknowledgesSerialization&lt;X, End&gt; <span class="kw">for </span>X {}
+<a href=#267 id=267 data-nosnippet>267</a>
+<a href=#268 id=268 data-nosnippet>268</a><span class="doccomment">/// The sending end of a network channel, as the host provides it: an `FnMut` sink that hands
+<a href=#269 id=269 data-nosnippet>269</a>/// each message to the host's transport, for the channel end `C` (its generated marker type,
+<a href=#270 id=270 data-nosnippet>270</a>/// under `outgoing`).
+<a href=#271 id=271 data-nosnippet>271</a>///
+<a href=#272 id=272 data-nosnippet>272</a>/// The host agrees to both inputs of the dataflow's send: [`EmbeddedNetworkOutputChannel::new`] takes the
+<a href=#273 id=273 data-nosnippet>273</a>/// [`ChannelConfiguration`] the host acknowledges, which must match the channel's exactly, and the
+<a href=#274 id=274 data-nosnippet>274</a>/// [`Acknowledgements`] of the stream the dataflow sends, which must cover every way it may be
+<a href=#275 id=275 data-nosnippet>275</a>/// weaker than ordered and exactly-once, as for an [`EmbeddedOutputChannel`]. `C` is inferred from the
+<a href=#276 id=276 data-nosnippet>276</a>/// field the `EmbeddedNetworkOutputChannel` fills.
+<a href=#277 id=277 data-nosnippet>277</a></span><span class="kw">pub struct </span>EmbeddedNetworkOutputChannel&lt;C, S&gt; {
+<a href=#278 id=278 data-nosnippet>278</a>    inner: S,
+<a href=#279 id=279 data-nosnippet>279</a>    _channel: PhantomData&lt;<span class="kw">fn</span>() -&gt; C&gt;,
+<a href=#280 id=280 data-nosnippet>280</a>}
+<a href=#281 id=281 data-nosnippet>281</a>
+<a href=#282 id=282 data-nosnippet>282</a><span class="kw">impl</span>&lt;C: EmbeddedNetworkChannel, S&gt; EmbeddedNetworkOutputChannel&lt;C, S&gt; {
+<a href=#283 id=283 data-nosnippet>283</a>    <span class="doccomment">/// Wraps a host sink for the channel end `C`, with the acknowledgements of its
+<a href=#284 id=284 data-nosnippet>284</a>    /// configuration (`channel`) and of the stream sent on it (`acknowledgements`).
+<a href=#285 id=285 data-nosnippet>285</a>    </span><span class="kw">pub fn </span>new&lt;Tr, Ser, O, R&gt;(
+<a href=#286 id=286 data-nosnippet>286</a>        inner: S,
+<a href=#287 id=287 data-nosnippet>287</a>        channel: ChannelConfiguration&lt;Tr, Ser&gt;,
+<a href=#288 id=288 data-nosnippet>288</a>        acknowledgements: Acknowledgements&lt;O, R&gt;,
+<a href=#289 id=289 data-nosnippet>289</a>    ) -&gt; <span class="self">Self
+<a href=#290 id=290 data-nosnippet>290</a>    </span><span class="kw">where
+<a href=#291 id=291 data-nosnippet>291</a>        </span>C: ConfiguredAs&lt;Tr, Ser&gt; + AcknowledgedBy&lt;O, R&gt;,
+<a href=#292 id=292 data-nosnippet>292</a>    {
+<a href=#293 id=293 data-nosnippet>293</a>        <span class="kw">let _ </span>= (channel, acknowledgements);
+<a href=#294 id=294 data-nosnippet>294</a>        EmbeddedNetworkOutputChannel {
+<a href=#295 id=295 data-nosnippet>295</a>            inner,
+<a href=#296 id=296 data-nosnippet>296</a>            _channel: PhantomData,
+<a href=#297 id=297 data-nosnippet>297</a>        }
+<a href=#298 id=298 data-nosnippet>298</a>    }
+<a href=#299 id=299 data-nosnippet>299</a>}
+<a href=#300 id=300 data-nosnippet>300</a>
+<a href=#301 id=301 data-nosnippet>301</a><span class="kw">impl</span>&lt;C, S&gt; EmbeddedNetworkOutputChannel&lt;C, S&gt; {
+<a href=#302 id=302 data-nosnippet>302</a>    <span class="doccomment">/// The host's sink. Used by generated code.
+<a href=#303 id=303 data-nosnippet>303</a>    </span><span class="attr">#[doc(hidden)]
+<a href=#304 id=304 data-nosnippet>304</a>    </span><span class="kw">pub fn </span>inner_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>S {
+<a href=#305 id=305 data-nosnippet>305</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.inner
+<a href=#306 id=306 data-nosnippet>306</a>    }
+<a href=#307 id=307 data-nosnippet>307</a>}
+<a href=#308 id=308 data-nosnippet>308</a>
+<a href=#309 id=309 data-nosnippet>309</a><span class="doccomment">/// The receiving end of a network channel, as the host provides it: a `Stream` of the messages
+<a href=#310 id=310 data-nosnippet>310</a>/// its transport delivers, for the channel end `C` (its generated marker type, under
+<a href=#311 id=311 data-nosnippet>311</a>/// `incoming`).
+<a href=#312 id=312 data-nosnippet>312</a>///
+<a href=#313 id=313 data-nosnippet>313</a>/// The host agrees to the channel's configuration and to the stream it delivers:
+<a href=#314 id=314 data-nosnippet>314</a>/// [`EmbeddedNetworkInputChannel::new`] takes the [`ChannelConfiguration`] the host acknowledges,
+<a href=#315 id=315 data-nosnippet>315</a>/// which must match exactly, and the [`Promises`] of the stream it delivers, which must meet what
+<a href=#316 id=316 data-nosnippet>316</a>/// the dataflow relies on, as for an [`EmbeddedInputChannel`]. That stream is the sent stream weakened by
+<a href=#317 id=317 data-nosnippet>317</a>/// the channel's configuration (a channel that may reorder delivers a `NoOrder` stream), so it
+<a href=#318 id=318 data-nosnippet>318</a>/// may be weaker than what the sending end acknowledges. `C` is inferred from the field the
+<a href=#319 id=319 data-nosnippet>319</a>/// `EmbeddedNetworkInputChannel` fills.
+<a href=#320 id=320 data-nosnippet>320</a></span><span class="kw">pub struct </span>EmbeddedNetworkInputChannel&lt;C, S&gt; {
+<a href=#321 id=321 data-nosnippet>321</a>    inner: S,
+<a href=#322 id=322 data-nosnippet>322</a>    _channel: PhantomData&lt;<span class="kw">fn</span>() -&gt; C&gt;,
+<a href=#323 id=323 data-nosnippet>323</a>}
+<a href=#324 id=324 data-nosnippet>324</a>
+<a href=#325 id=325 data-nosnippet>325</a><span class="kw">impl</span>&lt;C: EmbeddedNetworkChannel, S&gt; EmbeddedNetworkInputChannel&lt;C, S&gt; {
+<a href=#326 id=326 data-nosnippet>326</a>    <span class="doccomment">/// Wraps a host stream for the channel end `C`, with the acknowledgement of its
+<a href=#327 id=327 data-nosnippet>327</a>    /// configuration (`channel`) and the promises of the stream it delivers (`promises`).
+<a href=#328 id=328 data-nosnippet>328</a>    </span><span class="kw">pub fn </span>new&lt;Tr, Ser, O, R&gt;(
+<a href=#329 id=329 data-nosnippet>329</a>        inner: S,
+<a href=#330 id=330 data-nosnippet>330</a>        channel: ChannelConfiguration&lt;Tr, Ser&gt;,
+<a href=#331 id=331 data-nosnippet>331</a>        promises: Promises&lt;O, R&gt;,
+<a href=#332 id=332 data-nosnippet>332</a>    ) -&gt; <span class="self">Self
+<a href=#333 id=333 data-nosnippet>333</a>    </span><span class="kw">where
+<a href=#334 id=334 data-nosnippet>334</a>        </span>C: ConfiguredAs&lt;Tr, Ser&gt; + SatisfiedBy&lt;O, R&gt;,
+<a href=#335 id=335 data-nosnippet>335</a>    {
+<a href=#336 id=336 data-nosnippet>336</a>        <span class="kw">let _ </span>= (channel, promises);
+<a href=#337 id=337 data-nosnippet>337</a>        EmbeddedNetworkInputChannel {
+<a href=#338 id=338 data-nosnippet>338</a>            inner,
+<a href=#339 id=339 data-nosnippet>339</a>            _channel: PhantomData,
+<a href=#340 id=340 data-nosnippet>340</a>        }
+<a href=#341 id=341 data-nosnippet>341</a>    }
+<a href=#342 id=342 data-nosnippet>342</a>}
+<a href=#343 id=343 data-nosnippet>343</a>
+<a href=#344 id=344 data-nosnippet>344</a><span class="kw">impl</span>&lt;C, S&gt; EmbeddedNetworkInputChannel&lt;C, S&gt; {
+<a href=#345 id=345 data-nosnippet>345</a>    <span class="doccomment">/// The host's stream. Used by generated code.
+<a href=#346 id=346 data-nosnippet>346</a>    </span><span class="attr">#[doc(hidden)]
+<a href=#347 id=347 data-nosnippet>347</a>    </span><span class="kw">pub fn </span>into_inner(<span class="self">self</span>) -&gt; S {
+<a href=#348 id=348 data-nosnippet>348</a>        <span class="self">self</span>.inner
+<a href=#349 id=349 data-nosnippet>349</a>    }
+<a href=#350 id=350 data-nosnippet>350</a>}
+<a href=#351 id=351 data-nosnippet>351</a>
+<a href=#352 id=352 data-nosnippet>352</a><span class="doccomment">/// What a host acknowledges about a stream the dataflow provides (an output, or the stream sent
+<a href=#353 id=353 data-nosnippet>353</a>/// on a network channel): each way it may be weaker than ordered and exactly-once. The stream's
+<a href=#354 id=354 data-nosnippet>354</a>/// type already says what it may do, so an acknowledgement needs no justification: calling it is
+<a href=#355 id=355 data-nosnippet>355</a>/// the host's agreement, and a stream that becomes weaker fails the host's build until the host
+<a href=#356 id=356 data-nosnippet>356</a>/// acknowledges the change. An
+<a href=#357 id=357 data-nosnippet>357</a>/// [`EmbeddedOutputChannel`] or [`EmbeddedNetworkOutputChannel`] is built from a sink and the `Acknowledgements` that
+<a href=#358 id=358 data-nosnippet>358</a>/// cover what its marker's stream may do.
+<a href=#359 id=359 data-nosnippet>359</a></span><span class="kw">pub struct </span>Acknowledgements&lt;O, R&gt; {
+<a href=#360 id=360 data-nosnippet>360</a>    _acknowledged: PhantomData&lt;<span class="kw">fn</span>() -&gt; (O, R)&gt;,
+<a href=#361 id=361 data-nosnippet>361</a>}
+<a href=#362 id=362 data-nosnippet>362</a>
+<a href=#363 id=363 data-nosnippet>363</a><span class="kw">impl </span>Acknowledgements&lt;TotalOrder, ExactlyOnce&gt; {
+<a href=#364 id=364 data-nosnippet>364</a>    <span class="doccomment">/// Acknowledges nothing: the sink relies on receiving elements in the dataflow's order, each
+<a href=#365 id=365 data-nosnippet>365</a>    /// exactly once.
+<a href=#366 id=366 data-nosnippet>366</a>    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+<a href=#367 id=367 data-nosnippet>367</a>        Acknowledgements {
+<a href=#368 id=368 data-nosnippet>368</a>            _acknowledged: PhantomData,
+<a href=#369 id=369 data-nosnippet>369</a>        }
+<a href=#370 id=370 data-nosnippet>370</a>    }
+<a href=#371 id=371 data-nosnippet>371</a>}
+<a href=#372 id=372 data-nosnippet>372</a>
+<a href=#373 id=373 data-nosnippet>373</a><span class="kw">impl </span>Default <span class="kw">for </span>Acknowledgements&lt;TotalOrder, ExactlyOnce&gt; {
+<a href=#374 id=374 data-nosnippet>374</a>    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+<a href=#375 id=375 data-nosnippet>375</a>        <span class="self">Self</span>::new()
+<a href=#376 id=376 data-nosnippet>376</a>    }
+<a href=#377 id=377 data-nosnippet>377</a>}
+<a href=#378 id=378 data-nosnippet>378</a>
+<a href=#379 id=379 data-nosnippet>379</a><span class="kw">impl</span>&lt;O, R&gt; Acknowledgements&lt;O, R&gt; {
+<a href=#380 id=380 data-nosnippet>380</a>    <span class="kw">fn </span>retag&lt;O2, R2&gt;(<span class="self">self</span>) -&gt; Acknowledgements&lt;O2, R2&gt; {
+<a href=#381 id=381 data-nosnippet>381</a>        Acknowledgements {
+<a href=#382 id=382 data-nosnippet>382</a>            _acknowledged: PhantomData,
+<a href=#383 id=383 data-nosnippet>383</a>        }
+<a href=#384 id=384 data-nosnippet>384</a>    }
+<a href=#385 id=385 data-nosnippet>385</a>}
+<a href=#386 id=386 data-nosnippet>386</a>
+<a href=#387 id=387 data-nosnippet>387</a><span class="kw">impl</span>&lt;R&gt; Acknowledgements&lt;TotalOrder, R&gt; {
+<a href=#388 id=388 data-nosnippet>388</a>    <span class="doccomment">/// Acknowledges that elements may arrive in any order.
+<a href=#389 id=389 data-nosnippet>389</a>    </span><span class="kw">pub fn </span>no_order(<span class="self">self</span>) -&gt; Acknowledgements&lt;NoOrder, R&gt; {
+<a href=#390 id=390 data-nosnippet>390</a>        <span class="self">self</span>.retag()
+<a href=#391 id=391 data-nosnippet>391</a>    }
+<a href=#392 id=392 data-nosnippet>392</a>}
+<a href=#393 id=393 data-nosnippet>393</a>
+<a href=#394 id=394 data-nosnippet>394</a><span class="kw">impl</span>&lt;O&gt; Acknowledgements&lt;O, ExactlyOnce&gt; {
+<a href=#395 id=395 data-nosnippet>395</a>    <span class="doccomment">/// Acknowledges that an element may arrive more than once.
+<a href=#396 id=396 data-nosnippet>396</a>    </span><span class="kw">pub fn </span>at_least_once(<span class="self">self</span>) -&gt; Acknowledgements&lt;O, AtLeastOnce&gt; {
+<a href=#397 id=397 data-nosnippet>397</a>        <span class="self">self</span>.retag()
+<a href=#398 id=398 data-nosnippet>398</a>    }
+<a href=#399 id=399 data-nosnippet>399</a>}
+<a href=#400 id=400 data-nosnippet>400</a>
+<a href=#401 id=401 data-nosnippet>401</a><span class="doccomment">/// An output whose guarantees acknowledgements of ordering `O` and retries `R` cover: each
+<a href=#402 id=402 data-nosnippet>402</a>/// acknowledged guarantee is weaker than (or the same as) the one the output provides. It is
+<a href=#403 id=403 data-nosnippet>403</a>/// what [`EmbeddedOutputChannel::new`]
+<a href=#404 id=404 data-nosnippet>404</a>/// requires.
+<a href=#405 id=405 data-nosnippet>405</a></span><span class="kw">pub trait </span>AcknowledgedBy&lt;O, R&gt;: EmbeddedChannel {}
+<a href=#406 id=406 data-nosnippet>406</a>
+<a href=#407 id=407 data-nosnippet>407</a><span class="kw">impl</span>&lt;K, O, R&gt; AcknowledgedBy&lt;O, R&gt; <span class="kw">for </span>K
+<a href=#408 id=408 data-nosnippet>408</a><span class="kw">where
+<a href=#409 id=409 data-nosnippet>409</a>    </span>K: EmbeddedChannel,
+<a href=#410 id=410 data-nosnippet>410</a>    K::Ordering: OrderAcknowledgedBy&lt;O, K&gt;,
+<a href=#411 id=411 data-nosnippet>411</a>    K::Retries: RetriesAcknowledgedBy&lt;R, K&gt;,
+<a href=#412 id=412 data-nosnippet>412</a>{
+<a href=#413 id=413 data-nosnippet>413</a>}
+<a href=#414 id=414 data-nosnippet>414</a>
+<a href=#415 id=415 data-nosnippet>415</a><span class="doccomment">/// A provided order (`Self`) that the acknowledged order `Acknowledged` covers, for `End`.
+<a href=#416 id=416 data-nosnippet>416</a>/// Only a weaker order is acknowledged, so an acknowledgement is needed only for `NoOrder`.
+<a href=#417 id=417 data-nosnippet>417</a></span><span class="attr">#[diagnostic::on_unimplemented(
+<a href=#418 id=418 data-nosnippet>418</a>    message = <span class="string">"`{End}` may deliver its elements in any order, which the host must acknowledge"</span>,
+<a href=#419 id=419 data-nosnippet>419</a>    label = <span class="string">"does not acknowledge `NoOrder`"</span>,
+<a href=#420 id=420 data-nosnippet>420</a>    note = <span class="string">"add `.no_order()` to its `Acknowledgements`"
+<a href=#421 id=421 data-nosnippet>421</a></span>)]
+<a href=#422 id=422 data-nosnippet>422</a></span><span class="kw">trait </span>OrderAcknowledgedBy&lt;Acknowledged, End&gt; {}
+<a href=#423 id=423 data-nosnippet>423</a>
+<a href=#424 id=424 data-nosnippet>424</a><span class="kw">impl</span>&lt;Acknowledged: Ordering, End&gt; OrderAcknowledgedBy&lt;Acknowledged, End&gt; <span class="kw">for </span>TotalOrder {}
+<a href=#425 id=425 data-nosnippet>425</a><span class="kw">impl</span>&lt;End&gt; OrderAcknowledgedBy&lt;NoOrder, End&gt; <span class="kw">for </span>NoOrder {}
+<a href=#426 id=426 data-nosnippet>426</a>
+<a href=#427 id=427 data-nosnippet>427</a><span class="doccomment">/// A provided retry guarantee (`Self`) that the acknowledged one `Acknowledged` covers, for `End`.
+<a href=#428 id=428 data-nosnippet>428</a></span><span class="attr">#[diagnostic::on_unimplemented(
+<a href=#429 id=429 data-nosnippet>429</a>    message = <span class="string">"`{End}` may deliver an element more than once, which the host must acknowledge"</span>,
+<a href=#430 id=430 data-nosnippet>430</a>    label = <span class="string">"does not acknowledge `AtLeastOnce`"</span>,
+<a href=#431 id=431 data-nosnippet>431</a>    note = <span class="string">"add `.at_least_once()` to its `Acknowledgements`"
+<a href=#432 id=432 data-nosnippet>432</a></span>)]
+<a href=#433 id=433 data-nosnippet>433</a></span><span class="kw">trait </span>RetriesAcknowledgedBy&lt;Acknowledged, End&gt; {}
+<a href=#434 id=434 data-nosnippet>434</a>
+<a href=#435 id=435 data-nosnippet>435</a><span class="kw">impl</span>&lt;Acknowledged: Retries, End&gt; RetriesAcknowledgedBy&lt;Acknowledged, End&gt; <span class="kw">for </span>ExactlyOnce {}
+<a href=#436 id=436 data-nosnippet>436</a><span class="kw">impl</span>&lt;End&gt; RetriesAcknowledgedBy&lt;AtLeastOnce, End&gt; <span class="kw">for </span>AtLeastOnce {}
+<a href=#437 id=437 data-nosnippet>437</a>
+<a href=#438 id=438 data-nosnippet>438</a><span class="doccomment">/// An output of an embedded dataflow, as the host provides it: an `FnMut` sink for the channel
+<a href=#439 id=439 data-nosnippet>439</a>/// `M` (its generated marker type, under `outputs`), whose [`EmbeddedChannel`] guarantees are
+<a href=#440 id=440 data-nosnippet>440</a>/// what the dataflow's output stream provides.
+<a href=#441 id=441 data-nosnippet>441</a>///
+<a href=#442 id=442 data-nosnippet>442</a>/// An `EmbeddedOutputChannel` exists only with acknowledgements that cover what the output may do:
+<a href=#443 id=443 data-nosnippet>443</a>/// [`EmbeddedOutputChannel::new`] takes the [`Acknowledgements`] and checks them, so a sink cannot
+<a href=#444 id=444 data-nosnippet>444</a>/// silently receive elements out of order or more than once. Acknowledging more than an output
+<a href=#445 id=445 data-nosnippet>445</a>/// may do is fine. `M` is inferred from the field the `EmbeddedOutputChannel` fills.
+<a href=#446 id=446 data-nosnippet>446</a></span><span class="kw">pub struct </span>EmbeddedOutputChannel&lt;M, S&gt; {
+<a href=#447 id=447 data-nosnippet>447</a>    inner: S,
+<a href=#448 id=448 data-nosnippet>448</a>    _output: PhantomData&lt;<span class="kw">fn</span>() -&gt; M&gt;,
+<a href=#449 id=449 data-nosnippet>449</a>}
+<a href=#450 id=450 data-nosnippet>450</a>
+<a href=#451 id=451 data-nosnippet>451</a><span class="kw">impl</span>&lt;M: EmbeddedChannel, S&gt; EmbeddedOutputChannel&lt;M, S&gt; {
+<a href=#452 id=452 data-nosnippet>452</a>    <span class="doccomment">/// Wraps a host sink for output `M`, with `acknowledgements` that cover what `M` may do.
+<a href=#453 id=453 data-nosnippet>453</a>    </span><span class="kw">pub fn </span>new&lt;O, R&gt;(inner: S, acknowledgements: Acknowledgements&lt;O, R&gt;) -&gt; <span class="self">Self
+<a href=#454 id=454 data-nosnippet>454</a>    </span><span class="kw">where
+<a href=#455 id=455 data-nosnippet>455</a>        </span>M: AcknowledgedBy&lt;O, R&gt;,
+<a href=#456 id=456 data-nosnippet>456</a>    {
+<a href=#457 id=457 data-nosnippet>457</a>        <span class="kw">let _ </span>= acknowledgements;
+<a href=#458 id=458 data-nosnippet>458</a>        EmbeddedOutputChannel {
+<a href=#459 id=459 data-nosnippet>459</a>            inner,
+<a href=#460 id=460 data-nosnippet>460</a>            _output: PhantomData,
+<a href=#461 id=461 data-nosnippet>461</a>        }
+<a href=#462 id=462 data-nosnippet>462</a>    }
+<a href=#463 id=463 data-nosnippet>463</a>}
+<a href=#464 id=464 data-nosnippet>464</a>
+<a href=#465 id=465 data-nosnippet>465</a><span class="kw">impl</span>&lt;M, S&gt; EmbeddedOutputChannel&lt;M, S&gt; {
+<a href=#466 id=466 data-nosnippet>466</a>    <span class="doccomment">/// The host's sink. Used by generated code.
+<a href=#467 id=467 data-nosnippet>467</a>    </span><span class="attr">#[doc(hidden)]
+<a href=#468 id=468 data-nosnippet>468</a>    </span><span class="kw">pub fn </span>inner_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>S {
+<a href=#469 id=469 data-nosnippet>469</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.inner
+<a href=#470 id=470 data-nosnippet>470</a>    }
+<a href=#471 id=471 data-nosnippet>471</a>}
 </code></pre></div></section></main></body></html>

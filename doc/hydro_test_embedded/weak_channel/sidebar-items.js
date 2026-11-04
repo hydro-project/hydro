@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["weak_channel_receiver","weak_channel_sender"],"mod":["weak_channel_receiver","weak_channel_sender"]};

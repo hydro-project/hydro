@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["m2o_data"]};

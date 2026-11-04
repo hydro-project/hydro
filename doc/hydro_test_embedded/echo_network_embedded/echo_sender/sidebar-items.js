@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["EmbeddedInputs","EmbeddedNetworkOut"]};
+window.SIDEBAR_ITEMS = {"mod":["inputs","outgoing"],"struct":["EmbeddedInputs","EmbeddedNetworkOut"]};
