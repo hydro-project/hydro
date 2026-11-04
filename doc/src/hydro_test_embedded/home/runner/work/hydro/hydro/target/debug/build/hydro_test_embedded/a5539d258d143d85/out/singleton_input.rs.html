@@ -56,7 +56,7 @@
 <a href=#56 id=56 data-nosnippet>56</a>    __Out0: FnMut(std::string::String) + <span class="lifetime">'a</span>,
 <a href=#57 id=57 data-nosnippet>57</a>&gt;(
 <a href=#58 id=58 data-nosnippet>58</a>    __inputs: prefix_names::EmbeddedInputs&lt;__In0&gt;,
-<a href=#59 id=59 data-nosnippet>59</a>    __outputs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>prefix_names::EmbeddedOutputs&lt;__Out0&gt;,
+<a href=#59 id=59 data-nosnippet>59</a>    __outputs: prefix_names::EmbeddedOutputs&lt;__Out0&gt;,
 <a href=#60 id=60 data-nosnippet>60</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
 <a href=#61 id=61 data-nosnippet>61</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure&lt;
 <a href=#62 id=62 data-nosnippet>62</a>        Metrics = (),
@@ -64,7 +64,7 @@
 <a href=#64 id=64 data-nosnippet>64</a>&gt; {
 <a href=#65 id=65 data-nosnippet>65</a>    <span class="kw">let </span>names = __inputs.names.into_inner();
 <a href=#66 id=66 data-nosnippet>66</a>    <span class="kw">let </span>prefix = __inputs.prefix;
-<a href=#67 id=67 data-nosnippet>67</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = __outputs.output.inner_mut();
+<a href=#67 id=67 data-nosnippet>67</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = __outputs.output.into_inner();
 <a href=#68 id=68 data-nosnippet>68</a>    {
 <a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};
 <a href=#70 id=70 data-nosnippet>70</a>        <span class="attr">#[allow(unused_mut)]

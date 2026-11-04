@@ -64,14 +64,14 @@
 <a href=#64 id=64 data-nosnippet>64</a>    __NetOut0: FnMut(std::string::String) + <span class="lifetime">'a</span>,
 <a href=#65 id=65 data-nosnippet>65</a>&gt;(
 <a href=#66 id=66 data-nosnippet>66</a>    __inputs: weak_channel_sender::EmbeddedInputs&lt;__In0&gt;,
-<a href=#67 id=67 data-nosnippet>67</a>    __network_out: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>weak_channel_sender::EmbeddedNetworkOut&lt;__NetOut0&gt;,
+<a href=#67 id=67 data-nosnippet>67</a>    __network_out: weak_channel_sender::EmbeddedNetworkOut&lt;__NetOut0&gt;,
 <a href=#68 id=68 data-nosnippet>68</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
 <a href=#69 id=69 data-nosnippet>69</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure&lt;
 <a href=#70 id=70 data-nosnippet>70</a>        Metrics = (),
 <a href=#71 id=71 data-nosnippet>71</a>    &gt; + <span class="lifetime">'a</span>,
 <a href=#72 id=72 data-nosnippet>72</a>&gt; {
 <a href=#73 id=73 data-nosnippet>73</a>    <span class="kw">let </span>input = __inputs.input.into_inner();
-<a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">let </span><span class="kw-2">mut </span>__network_out_messages = __network_out.messages.inner_mut();
+<a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">let </span><span class="kw-2">mut </span>__network_out_messages = __network_out.messages.into_inner();
 <a href=#75 id=75 data-nosnippet>75</a>    {
 <a href=#76 id=76 data-nosnippet>76</a>        <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};
 <a href=#77 id=77 data-nosnippet>77</a>        <span class="attr">#[allow(unused_mut)]
@@ -215,14 +215,14 @@
 <a href=#215 id=215 data-nosnippet>215</a>    __Out0: FnMut(std::string::String) + <span class="lifetime">'a</span>,
 <a href=#216 id=216 data-nosnippet>216</a>    __NetIn0: __root_dfir_rs::futures::Stream&lt;Item = std::string::String&gt; + Unpin + <span class="lifetime">'a</span>,
 <a href=#217 id=217 data-nosnippet>217</a>&gt;(
-<a href=#218 id=218 data-nosnippet>218</a>    __outputs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>weak_channel_receiver::EmbeddedOutputs&lt;__Out0&gt;,
+<a href=#218 id=218 data-nosnippet>218</a>    __outputs: weak_channel_receiver::EmbeddedOutputs&lt;__Out0&gt;,
 <a href=#219 id=219 data-nosnippet>219</a>    __network_in: weak_channel_receiver::EmbeddedNetworkIn&lt;__NetIn0&gt;,
 <a href=#220 id=220 data-nosnippet>220</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
 <a href=#221 id=221 data-nosnippet>221</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure&lt;
 <a href=#222 id=222 data-nosnippet>222</a>        Metrics = (),
 <a href=#223 id=223 data-nosnippet>223</a>    &gt; + <span class="lifetime">'a</span>,
 <a href=#224 id=224 data-nosnippet>224</a>&gt; {
-<a href=#225 id=225 data-nosnippet>225</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = __outputs.output.inner_mut();
+<a href=#225 id=225 data-nosnippet>225</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = __outputs.output.into_inner();
 <a href=#226 id=226 data-nosnippet>226</a>    <span class="kw">let </span>__network_in_messages = __network_in.messages.into_inner();
 <a href=#227 id=227 data-nosnippet>227</a>    {
 <a href=#228 id=228 data-nosnippet>228</a>        <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};

@@ -1407,11 +1407,11 @@
 <a href=#1407 id=1407 data-nosnippet>1407</a>                    });
 <a href=#1408 id=1408 data-nosnippet>1408</a>                    generics.push(generic);
 <a href=#1409 id=1409 data-nosnippet>1409</a>                    extra_destructure
-<a href=#1410 id=1410 data-nosnippet>1410</a>                        .push(<span class="macro">quote!</span> { <span class="kw">let </span><span class="kw-2">mut </span>#ident = __outputs.#ident.inner_mut(); });
+<a href=#1410 id=1410 data-nosnippet>1410</a>                        .push(<span class="macro">quote!</span> { <span class="kw">let </span><span class="kw-2">mut </span>#ident = __outputs.#ident.into_inner(); });
 <a href=#1411 id=1411 data-nosnippet>1411</a>                }
 <a href=#1412 id=1412 data-nosnippet>1412</a>
 <a href=#1413 id=1413 data-nosnippet>1413</a>                output_params.push(<span class="macro">quote!</span> {
-<a href=#1414 id=1414 data-nosnippet>1414</a>                    __outputs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>#fn_ident::#output_struct_ident&lt;#(#generics),<span class="kw-2">*</span>&gt;
+<a href=#1414 id=1414 data-nosnippet>1414</a>                    __outputs: #fn_ident::#output_struct_ident&lt;#(#generics),<span class="kw-2">*</span>&gt;
 <a href=#1415 id=1415 data-nosnippet>1415</a>                });
 <a href=#1416 id=1416 data-nosnippet>1416</a>
 <a href=#1417 id=1417 data-nosnippet>1417</a>                mod_items.push(<span class="macro">quote!</span> {
@@ -1463,14 +1463,14 @@
 <a href=#1463 id=1463 data-nosnippet>1463</a>                }
 <a href=#1464 id=1464 data-nosnippet>1464</a>
 <a href=#1465 id=1465 data-nosnippet>1465</a>                net_out_params.push(<span class="macro">quote!</span> {
-<a href=#1466 id=1466 data-nosnippet>1466</a>                    __network_out: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>#fn_ident::EmbeddedNetworkOut&lt;#(#generics),<span class="kw-2">*</span>&gt;
+<a href=#1466 id=1466 data-nosnippet>1466</a>                    __network_out: #fn_ident::EmbeddedNetworkOut&lt;#(#generics),<span class="kw-2">*</span>&gt;
 <a href=#1467 id=1467 data-nosnippet>1467</a>                });
 <a href=#1468 id=1468 data-nosnippet>1468</a>
 <a href=#1469 id=1469 data-nosnippet>1469</a>                <span class="kw">for </span>(port, field) <span class="kw">in </span>ports.iter().zip(fields) {
 <a href=#1470 id=1470 data-nosnippet>1470</a>                    <span class="kw">let </span>var_ident =
 <a href=#1471 id=1471 data-nosnippet>1471</a>                        syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__network_out_{}"</span>, port.name), Span::call_site());
 <a href=#1472 id=1472 data-nosnippet>1472</a>                    extra_destructure
-<a href=#1473 id=1473 data-nosnippet>1473</a>                        .push(<span class="macro">quote!</span> { <span class="kw">let </span><span class="kw-2">mut </span>#var_ident = __network_out.#field.inner_mut(); });
+<a href=#1473 id=1473 data-nosnippet>1473</a>                        .push(<span class="macro">quote!</span> { <span class="kw">let </span><span class="kw-2">mut </span>#var_ident = __network_out.#field.into_inner(); });
 <a href=#1474 id=1474 data-nosnippet>1474</a>                }
 <a href=#1475 id=1475 data-nosnippet>1475</a>
 <a href=#1476 id=1476 data-nosnippet>1476</a>                mod_items.push(<span class="macro">quote!</span> {

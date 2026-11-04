@@ -77,14 +77,14 @@
 <a href=#77 id=77 data-nosnippet>77</a>        ) + <span class="lifetime">'a</span>,
 <a href=#78 id=78 data-nosnippet>78</a>&gt;(
 <a href=#79 id=79 data-nosnippet>79</a>    __inputs: o2m_demux_sender::EmbeddedInputs&lt;__In0&gt;,
-<a href=#80 id=80 data-nosnippet>80</a>    __network_out: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>o2m_demux_sender::EmbeddedNetworkOut&lt;__NetOut0&gt;,
+<a href=#80 id=80 data-nosnippet>80</a>    __network_out: o2m_demux_sender::EmbeddedNetworkOut&lt;__NetOut0&gt;,
 <a href=#81 id=81 data-nosnippet>81</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
 <a href=#82 id=82 data-nosnippet>82</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure&lt;
 <a href=#83 id=83 data-nosnippet>83</a>        Metrics = (),
 <a href=#84 id=84 data-nosnippet>84</a>    &gt; + <span class="lifetime">'a</span>,
 <a href=#85 id=85 data-nosnippet>85</a>&gt; {
 <a href=#86 id=86 data-nosnippet>86</a>    <span class="kw">let </span>input = __inputs.input.into_inner();
-<a href=#87 id=87 data-nosnippet>87</a>    <span class="kw">let </span><span class="kw-2">mut </span>__network_out_demux_data = __network_out.demux_data.inner_mut();
+<a href=#87 id=87 data-nosnippet>87</a>    <span class="kw">let </span><span class="kw-2">mut </span>__network_out_demux_data = __network_out.demux_data.into_inner();
 <a href=#88 id=88 data-nosnippet>88</a>    {
 <a href=#89 id=89 data-nosnippet>89</a>        <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};
 <a href=#90 id=90 data-nosnippet>90</a>        <span class="attr">#[allow(unused_mut)]
@@ -262,7 +262,7 @@
 <a href=#262 id=262 data-nosnippet>262</a>        &gt; + Unpin + <span class="lifetime">'a</span>,
 <a href=#263 id=263 data-nosnippet>263</a>&gt;(
 <a href=#264 id=264 data-nosnippet>264</a>    __cluster_self_id: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>hydro_lang::location::member_id::TaglessMemberId,
-<a href=#265 id=265 data-nosnippet>265</a>    __outputs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>o2m_demux_receiver::EmbeddedOutputs&lt;__Out0&gt;,
+<a href=#265 id=265 data-nosnippet>265</a>    __outputs: o2m_demux_receiver::EmbeddedOutputs&lt;__Out0&gt;,
 <a href=#266 id=266 data-nosnippet>266</a>    __network_in: o2m_demux_receiver::EmbeddedNetworkIn&lt;__NetIn0&gt;,
 <a href=#267 id=267 data-nosnippet>267</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
 <a href=#268 id=268 data-nosnippet>268</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure&lt;
@@ -270,7 +270,7 @@
 <a href=#270 id=270 data-nosnippet>270</a>    &gt; + <span class="lifetime">'a</span>,
 <a href=#271 id=271 data-nosnippet>271</a>&gt; {
 <a href=#272 id=272 data-nosnippet>272</a>    <span class="kw">let </span>__hydro_lang_cluster_self_id_loc2v1 = __cluster_self_id;
-<a href=#273 id=273 data-nosnippet>273</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = __outputs.output.inner_mut();
+<a href=#273 id=273 data-nosnippet>273</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = __outputs.output.into_inner();
 <a href=#274 id=274 data-nosnippet>274</a>    <span class="kw">let </span>__network_in_demux_data = __network_in.demux_data.into_inner();
 <a href=#275 id=275 data-nosnippet>275</a>    {
 <a href=#276 id=276 data-nosnippet>276</a>        <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};

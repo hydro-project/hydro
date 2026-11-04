@@ -110,7 +110,7 @@
 <a href=#110 id=110 data-nosnippet>110</a>    __cluster_self_id: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>hydro_lang::location::member_id::TaglessMemberId,
 <a href=#111 id=111 data-nosnippet>111</a>    __membership: m2m_sender::EmbeddedMembershipStreams&lt;__Mem0&gt;,
 <a href=#112 id=112 data-nosnippet>112</a>    __inputs: m2m_sender::EmbeddedInputs&lt;__In0&gt;,
-<a href=#113 id=113 data-nosnippet>113</a>    __network_out: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>m2m_sender::EmbeddedNetworkOut&lt;__NetOut0&gt;,
+<a href=#113 id=113 data-nosnippet>113</a>    __network_out: m2m_sender::EmbeddedNetworkOut&lt;__NetOut0&gt;,
 <a href=#114 id=114 data-nosnippet>114</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
 <a href=#115 id=115 data-nosnippet>115</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure&lt;
 <a href=#116 id=116 data-nosnippet>116</a>        Metrics = (),
@@ -119,7 +119,7 @@
 <a href=#119 id=119 data-nosnippet>119</a>    <span class="kw">let </span>__hydro_lang_cluster_self_id_loc1v1 = __cluster_self_id;
 <a href=#120 id=120 data-nosnippet>120</a>    <span class="kw">let </span>__membership_0 = __membership.m2m_receiver.into_inner();
 <a href=#121 id=121 data-nosnippet>121</a>    <span class="kw">let </span>input = __inputs.input.into_inner();
-<a href=#122 id=122 data-nosnippet>122</a>    <span class="kw">let </span><span class="kw-2">mut </span>__network_out_m2m_data = __network_out.m2m_data.inner_mut();
+<a href=#122 id=122 data-nosnippet>122</a>    <span class="kw">let </span><span class="kw-2">mut </span>__network_out_m2m_data = __network_out.m2m_data.into_inner();
 <a href=#123 id=123 data-nosnippet>123</a>    {
 <a href=#124 id=124 data-nosnippet>124</a>        <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};
 <a href=#125 id=125 data-nosnippet>125</a>        <span class="attr">#[allow(unused_mut)]
@@ -587,7 +587,7 @@
 <a href=#587 id=587 data-nosnippet>587</a>        &gt; + Unpin + <span class="lifetime">'a</span>,
 <a href=#588 id=588 data-nosnippet>588</a>&gt;(
 <a href=#589 id=589 data-nosnippet>589</a>    __cluster_self_id: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>hydro_lang::location::member_id::TaglessMemberId,
-<a href=#590 id=590 data-nosnippet>590</a>    __outputs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>m2m_receiver::EmbeddedOutputs&lt;__Out0&gt;,
+<a href=#590 id=590 data-nosnippet>590</a>    __outputs: m2m_receiver::EmbeddedOutputs&lt;__Out0&gt;,
 <a href=#591 id=591 data-nosnippet>591</a>    __network_in: m2m_receiver::EmbeddedNetworkIn&lt;__NetIn0&gt;,
 <a href=#592 id=592 data-nosnippet>592</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
 <a href=#593 id=593 data-nosnippet>593</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure&lt;
@@ -595,7 +595,7 @@
 <a href=#595 id=595 data-nosnippet>595</a>    &gt; + <span class="lifetime">'a</span>,
 <a href=#596 id=596 data-nosnippet>596</a>&gt; {
 <a href=#597 id=597 data-nosnippet>597</a>    <span class="kw">let </span>__hydro_lang_cluster_self_id_loc2v1 = __cluster_self_id;
-<a href=#598 id=598 data-nosnippet>598</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = __outputs.output.inner_mut();
+<a href=#598 id=598 data-nosnippet>598</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = __outputs.output.into_inner();
 <a href=#599 id=599 data-nosnippet>599</a>    <span class="kw">let </span>__network_in_m2m_data = __network_in.m2m_data.into_inner();
 <a href=#600 id=600 data-nosnippet>600</a>    {
 <a href=#601 id=601 data-nosnippet>601</a>        <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};
