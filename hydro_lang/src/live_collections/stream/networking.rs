@@ -554,9 +554,11 @@ impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Stream<T, 
     /// Creates an external output for embedded deployment mode.
     ///
     /// The `name` parameter specifies the name of the field in the generated
-    /// `EmbeddedOutputs` struct that will receive elements from this stream.
-    /// The generated function will accept an `EmbeddedOutputs` struct with an
-    /// `impl FnMut(T)` field with this name.
+    /// `EmbeddedOutputs` struct that will receive elements from this stream: an
+    /// [`EmbeddedOutputChannel`](crate::compile::embedded_runtime::EmbeddedOutputChannel) around the host's
+    /// `FnMut(T)` callback. The stream's ordering `O` and retries `R` are what the host
+    /// receives; the host must acknowledge each way they may be weaker than `TotalOrder` and
+    /// `ExactlyOnce`, or it does not compile.
     pub fn embedded_output(self, name: impl Into<String>) {
         let ident = syn::Ident::new(&name.into(), proc_macro2::Span::call_site());
 

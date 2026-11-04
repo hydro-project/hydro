@@ -330,7 +330,7 @@ impl<R: EmbeddedRetries, O: EmbeddedOrdering, F: EmbeddedFailPolicy> TransportKi
     fn networking_info() -> NetworkingInfo {
         NetworkingInfo::Embedded {
             retries: R::RETRIES_KIND,
-            ordering: <Self as TransportKind>::OrderingGuarantee::ORDERING_KIND,
+            ordering: O::ORDERING_KIND,
             fault: F::embedded_fault(),
         }
     }
