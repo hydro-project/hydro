@@ -45,10 +45,12 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         rust_release: [latest-nightly, latest-stable]
         exclude:
-          # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
-          # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
-          # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
-          - rust_release: ${{ (((github.event_name != 'pull_request' && github.event_name != 'push') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
+          # Only run `latest-nightly` for the scheduled/manual nightly snapshot runs, or for PRs
+          # marked `[ci-full]`. For those, the condition is true and 'nothing' is truthy, so the
+          # entire && operator resolves to 'nothing'. Then the || operator resolves to 'nothing' so
+          # we exclude 'nothing'. For everything else (`pull_request`, `push`, `merge_group`), the
+          # condition is false so we exclude 'latest-nightly'. https://stackoverflow.com/a/73822998
+          - rust_release: ${{ (((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
           - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'windows-latest' }}
           - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'macos-latest' }}
 
@@ -128,10 +130,12 @@ jobs:
         # recompile many dependencies and take the target directory lock. See `.config/nextest.toml`.
         test_flavor: [ci-main, ci-heavy]
         exclude:
-          # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
-          # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
-          # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
-          - rust_release: ${{ (((github.event_name != 'pull_request' && github.event_name != 'push') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
+          # Only run `latest-nightly` for the scheduled/manual nightly snapshot runs, or for PRs
+          # marked `[ci-full]`. For those, the condition is true and 'nothing' is truthy, so the
+          # entire && operator resolves to 'nothing'. Then the || operator resolves to 'nothing' so
+          # we exclude 'nothing'. For everything else (`pull_request`, `push`, `merge_group`), the
+          # condition is false so we exclude 'latest-nightly'. https://stackoverflow.com/a/73822998
+          - rust_release: ${{ (((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
           - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'windows-latest' }}
           - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'macos-latest' }}
 
@@ -431,10 +435,12 @@ jobs:
       matrix:
         rust_release: [latest-nightly, latest-stable]
         exclude:
-          #   # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
-          #   # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
-          #   # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
-          - rust_release: ${{ (((github.event_name != 'pull_request' && github.event_name != 'push') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
+          # Only run `latest-nightly` for the scheduled/manual nightly snapshot runs, or for PRs
+          # marked `[ci-full]`. For those, the condition is true and 'nothing' is truthy, so the
+          # entire && operator resolves to 'nothing'. Then the || operator resolves to 'nothing' so
+          # we exclude 'nothing'. For everything else (`pull_request`, `push`, `merge_group`), the
+          # condition is false so we exclude 'latest-nightly'. https://stackoverflow.com/a/73822998
+          - rust_release: ${{ (((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
 
     env:
       RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-nightly' && 'nightly' || '' }}
