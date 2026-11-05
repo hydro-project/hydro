@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["consume_greeting"],"mod":["consume_greeting"]};

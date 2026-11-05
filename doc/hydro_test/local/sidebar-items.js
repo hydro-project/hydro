@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["capitalize","chat_app","count_elems","futures","graph_reachability","singleton_input","singleton_mut","singleton_ref","unique_names"]};
+window.SIDEBAR_ITEMS = {"mod":["capitalize","chat_app","count_elems","futures","graph_reachability","singleton_input","singleton_mut","singleton_only","singleton_ref","unique_names"]};
