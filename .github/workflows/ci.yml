@@ -149,9 +149,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         rust_release: [latest-nightly, latest-stable]
-        # `ci-main` runs most tests; `ci-heavy` runs tests which internally invoke `cargo`
-        # (trybuild compile-fail tests, the `cargo sim` fuzzer, Maelstrom deployments), which
-        # recompile many dependencies and take the target directory lock. See `.config/nextest.toml`.
+        # `ci-heavy` runs tests that internally invoke `cargo`; see `.config/nextest.toml`.
         test_flavor: [ci-main, ci-heavy]
         exclude:
           # Only run `latest-nightly` for the scheduled/manual nightly snapshot runs, or for PRs
