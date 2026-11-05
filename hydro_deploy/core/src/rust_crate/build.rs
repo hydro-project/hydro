@@ -135,12 +135,28 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         .or(params.example.as_deref())
                         .unwrap_or("default");
 
+                    // The `--target` passed to cargo, if any. Local builds pass none; cargo then
+                    // applies `CARGO_BUILD_TARGET` from the environment, if set.
+                    let explicit_target = match params.target_type {
+                        HostTargetType::Local => None,
+                        HostTargetType::Linux(crate::LinuxCompileType::Glibc) => Some("x86_64-unknown-linux-gnu"),
+                        HostTargetType::Linux(crate::LinuxCompileType::Musl) => Some("x86_64-unknown-linux-musl"),
+                    };
+                    let target_triple = explicit_target
+                        .map(str::to_owned)
+                        .or_else(|| std::env::var("CARGO_BUILD_TARGET").ok());
+
+                    // The target-dir layers this build uses (see `ArtifactDirs`).
+                    let dirs = hydro_concurrent_cargo::ArtifactDirs::new(
+                        hydro_concurrent_cargo::profile_dir_name(params.profile.as_deref()),
+                        target_triple.as_deref(),
+                    );
+
                     // Only use prebuild + per-job target dirs for dylib mode.
                     // Without dylib, build directly into the base target dir.
                     let (per_job_target_dir, _prebuild_guard, _cargo_lock) = if params.dylib_package.is_some() {
-                        let shared_debug = base_target_dir.join("debug");
                         let jobs_dir = base_target_dir.join("jobs");
-                        let per_job = hydro_concurrent_cargo::setup_job_dir(&jobs_dir, job_name, &shared_debug);
+                        let per_job = hydro_concurrent_cargo::setup_job_dir(&jobs_dir, job_name, &base_target_dir, &dirs);
 
                         let features = params.features.clone().unwrap_or_default();
                         let staged_paths = vec![
@@ -151,7 +167,6 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                         let src = params.src.clone();
                         let profile = params.profile.clone();
-                        let target_type = params.target_type;
                         let no_default_features = params.no_default_features;
                         let features_for_closure = features.clone();
                         let config = params.config.clone();
@@ -162,6 +177,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         let project_dir = params.src.parent().unwrap();
                         let (prebuild_guard, cargo_lock) = hydro_concurrent_cargo::run_prebuild(
                             &base_target_dir,
+                            &dirs,
                             project_dir.file_name().unwrap().to_str().unwrap(),
                             &features,
                             params.rustflags.as_deref().unwrap_or_default(),
@@ -189,14 +205,8 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                 if let Some(profile) = profile.as_ref() {
                                     lib_cmd.args(["--profile", profile]);
                                 }
-                                match target_type {
-                                    HostTargetType::Local => {}
-                                    HostTargetType::Linux(crate::LinuxCompileType::Glibc) => {
-                                        lib_cmd.args(["--target", "x86_64-unknown-linux-gnu"]);
-                                    }
-                                    HostTargetType::Linux(crate::LinuxCompileType::Musl) => {
-                                        lib_cmd.args(["--target", "x86_64-unknown-linux-musl"]);
-                                    }
+                                if let Some(target) = explicit_target {
+                                    lib_cmd.args(["--target", target]);
                                 }
                                 if no_default_features {
                                     lib_cmd.arg("--no-default-features");
@@ -231,8 +241,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     // Populate per-job build/ dir. Hold guard for entire final build.
                     let _job_build_guard = if params.dylib_package.is_some() {
-                        let shared_debug = base_target_dir.join("debug");
-                        Some(hydro_concurrent_cargo::populate_job_build_dir(&per_job_target_dir.join("debug"), &shared_debug))
+                        Some(hydro_concurrent_cargo::populate_job_build_dir(&per_job_target_dir, &base_target_dir, &dirs))
                     } else {
                         None
                     };
@@ -252,14 +261,8 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         command.args(["--example", example]);
                     }
 
-                    match params.target_type {
-                        HostTargetType::Local => {}
-                        HostTargetType::Linux(crate::LinuxCompileType::Glibc) => {
-                            command.args(["--target", "x86_64-unknown-linux-gnu"]);
-                        }
-                        HostTargetType::Linux(crate::LinuxCompileType::Musl) => {
-                            command.args(["--target", "x86_64-unknown-linux-musl"]);
-                        }
+                    if let Some(target) = explicit_target {
+                        command.args(["--target", target]);
                     }
 
                     if params.no_default_features {
@@ -350,8 +353,8 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                         shared_library_paths: if let Some(dylib_package) = &params.dylib_package {
                                             hydro_concurrent_cargo::dylib_search_dirs(
                                                 dylib_package,
-                                                &per_job_target_dir.join("debug"),
-                                                &base_target_dir.join("debug"),
+                                                &per_job_target_dir.join(&dirs.target),
+                                                &base_target_dir.join(&dirs.target),
                                             )
                                         } else {
                                             Vec::new()

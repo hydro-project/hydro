@@ -444,7 +444,6 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<PathB
         example_name: "sim-dylib".to_owned(),
         crate_type: Some("cdylib"),
         set_trybuild_lib_name: true,
-        allow_fuzz: true,
     })
 }
 
@@ -495,15 +494,8 @@ pub(super) fn create_sim_graph_trybuild(
     let (project_dir, target_dir, dylib_package_name, mut cur_bin_enabled_features) =
         create_trybuild().unwrap();
 
-    let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
-
-    // Sim builds use dynamic linking, so put examples in dylib-examples crate
-    // Fuzzing does not, so put them in the main trybuild project dir
-    let examples_dir = if is_fuzz {
-        path!(project_dir / "examples")
-    } else {
-        path!(project_dir / "dylib-examples" / "examples")
-    };
+    // Sim examples link the trybuild dylib dynamically, from the dylib-examples crate.
+    let examples_dir = path!(project_dir / "dylib-examples" / "examples");
 
     // TODO(shadaj): garbage collect this directory occasionally
     fs::create_dir_all(path!(project_dir / "src")).unwrap();

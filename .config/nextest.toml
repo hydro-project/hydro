@@ -7,10 +7,10 @@ default-filter = "not (package(hydro_test) & kind(bench))"
 # The Maelstrom tests build via `hydro_concurrent_cargo` (like the simulator) and run concurrently;
 # the rest run serially, see `serial-cargo` below.
 [profile.ci-heavy]
-default-filter = "not (package(hydro_test) & kind(bench)) & (binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | binary(rustflags_propagation) | (package(hydro_test) & test(maelstrom::)))"
+default-filter = "not (package(hydro_test) & kind(bench)) & (binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | (package(hydro_test) & test(maelstrom::)))"
 
 [profile.ci-main]
-default-filter = "not (package(hydro_test) & kind(bench)) & not (binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | binary(rustflags_propagation) | (package(hydro_test) & test(maelstrom::)))"
+default-filter = "not (package(hydro_test) & kind(bench)) & not (binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | (package(hydro_test) & test(maelstrom::)))"
 
 [test-groups]
 serial-integration = { max-threads = 1 }
@@ -18,7 +18,7 @@ serial-cargo = { max-threads = 1 }
 
 # Tests that run `cargo` directly in the shared target directory contend on its build lock.
 [[profile.default.overrides]]
-filter = 'binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer) | binary(rustflags_propagation)'
+filter = 'binary(compile_fail) | binary(surface_compile_fail) | binary(sim_fuzzer)'
 test-group = 'serial-cargo'
 
 # TODO(inline): deadlock_detector disabled (intra-tick cycles)

@@ -370,9 +370,6 @@ pub struct ExampleBuildConfig<'a> {
     /// Whether to set `TRYBUILD_LIB_NAME` to `bin_name` (the simulator uses this
     /// for its `include!`-based indirection).
     pub set_trybuild_lib_name: bool,
-    /// Whether to honor the `BOLERO_FUZZER` environment variable. Only the
-    /// simulator supports fuzzing; other targets should set this to `false`.
-    pub allow_fuzz: bool,
 }
 
 /// Returns the toolchain's target libdir (where the shared `libstd` lives), memoized.
@@ -392,35 +389,50 @@ fn rustc_target_libdir() -> Option<String> {
         .clone()
 }
 
-/// The `CARGO_ENCODED_RUSTFLAGS` this crate was compiled with, captured by `build.rs`.
-///
-/// Generated Hydro programs are compiled by a child `cargo`, which is handed exactly these
-/// flags (see [`forward_rustflags`]) so the generated code matches the crate that produced it:
-/// same cfgs, same instrumentation, same codegen options. Unlike reading `RUSTFLAGS` from the
-/// process environment, this also sees flags injected through cargo config (`build.rustflags`,
-/// `target.*.rustflags`, `--config`), which never reach the test process's environment.
-///
-/// Also keys the trybuild dylib's target name (see [`create_trybuild`]).
+/// The rustflags this crate was compiled with, in cargo's `CARGO_ENCODED_RUSTFLAGS` encoding,
+/// captured by `build.rs`. See [`forward_rustflags`]. Also keys the trybuild dylib's target name
+/// (see [`create_trybuild`]).
 const ENCODED_RUSTFLAGS: &str = env!("HYDRO_ENCODED_RUSTFLAGS");
 
-/// Gives a child `cargo` the same rustflags as [`ENCODED_RUSTFLAGS`].
+/// The triple the child `cargo` compiles for: `CARGO_BUILD_TARGET` from the environment, else
+/// the host.
+#[cfg(any(feature = "sim", feature = "maelstrom"))]
+fn child_target_triple() -> String {
+    static HOST: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    std::env::var("CARGO_BUILD_TARGET").unwrap_or_else(|_| {
+        HOST.get_or_init(|| {
+            let rustc = std::env::var("RUSTC").unwrap_or_else(|_| "rustc".to_owned());
+            let out = std::process::Command::new(rustc)
+                .arg("-vV")
+                .output()
+                .expect("failed to run `rustc -vV`");
+            String::from_utf8(out.stdout)
+                .unwrap()
+                .lines()
+                .find_map(|line| line.strip_prefix("host: "))
+                .expect("`rustc -vV` did not report a host triple")
+                .to_owned()
+        })
+        .clone()
+    })
+}
+
+/// Passes the rustflags this crate was compiled with to the child `cargo` compiling a generated
+/// program, so it gets the same `--cfg`s, instrumentation and codegen options.
 ///
-/// The flags are passed as CLI config (`--config build.rustflags=[...]`), not by setting
-/// `CARGO_ENCODED_RUSTFLAGS`/`RUSTFLAGS` in the child's environment, and the inherited
-/// environment is left untouched. Build scripts commonly emit
-/// `cargo:rerun-if-env-changed=CARGO_ENCODED_RUSTFLAGS` (e.g. `aws-lc-sys`), which cargo
-/// evaluates against *its own* process environment: a child whose environment differs from
-/// the outer build's — even by setting the variable to an empty string — gets different
-/// fingerprints and rebuilds those crates in the shared `deps/`, thrashing against the outer
-/// build and against sibling children that don't set it.
+/// Tests may be run with rustflags from cargo config (`--config`, `build.rustflags`,
+/// `target.*.rustflags`), which are not in the test process's environment. Cargo exposes the
+/// resolved flags to build scripts as `CARGO_ENCODED_RUSTFLAGS`, so `build.rs` bakes them into
+/// [`ENCODED_RUSTFLAGS`].
 ///
-/// Precedence is consistent by construction: if `RUSTFLAGS` or `CARGO_ENCODED_RUSTFLAGS` is
-/// in the inherited environment it wins over this config in the child, but then it is also
-/// what the outer build's encoded flags were derived from, so the flags agree either way.
-/// Cargo merges `--config` arrays with those from config files, so a workspace whose
-/// `.cargo/config.toml` sets `build.rustflags` gets those flags twice in the child (once from
-/// the copied config, once forwarded); harmless to rustc, but the child's flag string then
-/// differs from the outer build's, so its dependency rlibs are not shared with it.
+/// The child gets them as `--config target.<triple>.rustflags=[...]`, not as
+/// `CARGO_ENCODED_RUSTFLAGS` in its environment. Build scripts emitting
+/// `rerun-if-env-changed=CARGO_ENCODED_RUSTFLAGS` (e.g. `aws-lc-sys`) are fingerprinted on that
+/// variable in the *cargo process's* environment, not on the value cargo injects into the build
+/// script's. The outer `cargo` has none; a child `cargo` launched with it set would record a
+/// different fingerprint for those crates in the shared `deps/`, and the two builds would rebuild
+/// them back and forth. `target.<triple>.rustflags` is the highest-precedence config key, and the
+/// forwarded flags are cargo's own resolution of the config, so no configured flag is lost.
 #[cfg(any(feature = "sim", feature = "maelstrom"))]
 fn forward_rustflags(command: &mut std::process::Command) {
     let flags = toml::Value::try_from(
@@ -430,7 +442,8 @@ fn forward_rustflags(command: &mut std::process::Command) {
             .collect::<Vec<_>>(),
     )
     .unwrap();
-    command.args(["--config", &format!("build.rustflags={flags}")]);
+    let triple = child_target_triple();
+    command.args(["--config", &format!("target.{triple}.rustflags={flags}")]);
 }
 
 /// Compiles a generated trybuild example against the prebuilt dylib crate,
@@ -439,7 +452,8 @@ fn forward_rustflags(command: &mut std::process::Command) {
 ///
 /// Returns the path of a persistent hard link to the built artifact (a `cdylib`
 /// for the simulator, or an executable for Maelstrom) under the shared target
-/// dir's `debug/deps/hydro-coverage`. Cargo repoints the job's uplifted artifact
+/// dir's `debug/deps/hydro-coverage` (`<triple>/debug/...` when building for an
+/// explicit compilation target). Cargo repoints the job's uplifted artifact
 /// on every rebuild, so the caller must not load that path directly; the link is
 /// taken while the job's build lock is still held, so it names exactly the build
 /// this call produced, and a later rebuild (which unlinks and re-links the
@@ -456,31 +470,28 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<PathBu
         example_name,
         crate_type,
         set_trybuild_lib_name,
-        allow_fuzz,
     } = config;
 
-    let is_fuzz = allow_fuzz && std::env::var("BOLERO_FUZZER").is_ok();
+    // Run from the dylib-examples crate, which has the dylib as a dependency.
+    let crate_to_compile = path!(trybuild.project_dir / "dylib-examples");
 
-    // The parallel build machinery (per-job target dirs symlinking the shared `debug/`
-    // artifacts, fronted by a fingerprinted prebuild) assumes the host `debug/` layout and
-    // dynamically linked examples. Fuzz builds statically link examples from the base crate,
-    // and `CARGO_BUILD_TARGET` moves artifacts under `<triple>/debug/`; both build directly
-    // into the shared target dir instead, where cargo's own fingerprinting applies.
-    let use_prebuild = !is_fuzz && std::env::var_os("CARGO_BUILD_TARGET").is_none();
+    // With an explicit compilation target (`cargo sim` sets one, see `cargo-sim`) cargo keeps
+    // target artifacts under `<triple>/debug/` and host artifacts under `debug/`; the per-job
+    // dirs mirror both layers.
+    let build_target = std::env::var("CARGO_BUILD_TARGET").ok();
+    let dirs = hydro_concurrent_cargo::ArtifactDirs::new("debug", build_target.as_deref());
+    let shared_debug = trybuild.target_dir.join(&dirs.target);
 
-    // Run from dylib-examples crate which has the dylib as a dev-dependency (only if not fuzzing)
-    let crate_to_compile = if is_fuzz {
-        trybuild.project_dir.clone()
-    } else {
-        path!(trybuild.project_dir / "dylib-examples")
-    };
-
-    let (final_target_dir, _prebuild_guard, _cargo_lock) = if use_prebuild {
+    let (final_target_dir, _prebuild_guard, _cargo_lock) = {
         let prebuild_span =
             tracing::debug_span!(target: "hydro_build", "prebuild", bin_name = %bin_name).entered();
-        let shared_debug = trybuild.target_dir.join("debug");
         let jobs_dir = trybuild.target_dir.join("jobs");
-        let per_job = hydro_concurrent_cargo::setup_job_dir(&jobs_dir, &bin_name, &shared_debug);
+        let per_job = hydro_concurrent_cargo::setup_job_dir(
+            &jobs_dir,
+            &bin_name,
+            &trybuild.target_dir,
+            &dirs,
+        );
 
         let mut features: Vec<String> = trybuild.features.clone().unwrap_or_default();
         features.push(runtime_feature.to_owned());
@@ -499,6 +510,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<PathBu
         // final build links against them.
         let (guard, cargo_lock) = hydro_concurrent_cargo::run_prebuild(
             &trybuild.target_dir,
+            &dirs,
             trybuild.project_dir.file_name().unwrap().to_str().unwrap(),
             &features,
             ENCODED_RUSTFLAGS,
@@ -536,42 +548,37 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<PathBu
         // entire final build, but the prebuild phase (freshness check + possible dep build)
         // ends here.
         drop(prebuild_span);
-        (per_job, Some(guard), Some(cargo_lock))
-    } else {
-        (trybuild.target_dir.clone(), None, None)
+        (per_job, guard, cargo_lock)
     };
 
     // Populate per-job build/ dir right before final build. Hold guard for entire build.
-    let _job_build_guard = if use_prebuild {
+    let _job_build_guard = {
         let populate_span =
             tracing::debug_span!(target: "hydro_build", "populate_job_dir", bin_name = %bin_name)
                 .entered();
-        let shared_debug = trybuild.target_dir.join("debug");
         let guard = hydro_concurrent_cargo::populate_job_build_dir(
-            &final_target_dir.join("debug"),
-            &shared_debug,
+            &final_target_dir,
+            &trybuild.target_dir,
+            &dirs,
         );
         // Close the populate span here: the returned guard is held until the final build
         // finishes, but the population work itself ends here.
         drop(populate_span);
-        Some(guard)
-    } else {
-        None
+        guard
     };
 
     let final_build_span =
         tracing::debug_span!(target: "hydro_build", "final_build", bin_name = %bin_name).entered();
     let mut command = Command::new("cargo");
     command.current_dir(&crate_to_compile);
-    command.args(["rustc", if use_prebuild { "--frozen" } else { "--locked" }]);
+    command.args(["rustc", "--frozen"]);
     command.args(["--example", &example_name]);
     command.args(["--target-dir", final_target_dir.to_str().unwrap()]);
     // Never enable default features: the generated example gets exactly the
     // features it needs via `--features` (plus the runtime feature). This keeps
     // the feature set minimal and deterministic — matching what the deploy
     // backends and the base trybuild crate (which carries the source crate's
-    // `default`) would otherwise pull in — and matters for the `is_fuzz` path
-    // that builds from the base crate directly.
+    // `default`) would otherwise pull in.
     command.arg("--no-default-features");
     command.args([
         "--features",
@@ -608,27 +615,14 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<PathBu
     command.arg(format!("-Cmetadata={bin_name}"));
 
     if cfg!(any(target_os = "linux", target_os = "macos")) {
-        let (debug_path, shared_debug_path) =
-            if let Ok(target) = std::env::var("CARGO_BUILD_TARGET") {
-                (
-                    path!(final_target_dir / target / "debug"),
-                    path!(trybuild.target_dir / target / "debug"),
-                )
-            } else {
-                (
-                    path!(final_target_dir / "debug"),
-                    path!(trybuild.target_dir / "debug"),
-                )
-            };
-
         // The built example links the trybuild dylib dynamically. Bake rpath entries for
         // where cargo places it (which depends on the build-dir layout, see
         // `hydro_concurrent_cargo::dylib_search_dirs`) and for the toolchain's shared libstd,
         // so the artifact can be loaded/run without LD_LIBRARY_PATH.
         let mut rpaths = hydro_concurrent_cargo::dylib_search_dirs(
             &trybuild.dylib_package_name,
-            &debug_path,
-            &shared_debug_path,
+            &final_target_dir.join(&dirs.target),
+            &shared_debug,
         );
         if let Some(libdir) = rustc_target_libdir() {
             rpaths.push(PathBuf::from(libdir));
@@ -652,22 +646,6 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<PathBu
                 // https://github.com/rust-lang/rust/issues/91979
                 "-Clink-args=-Wl,-z,nodelete",
             );
-        }
-    }
-
-    if allow_fuzz && let Ok(fuzzer) = std::env::var("BOLERO_FUZZER") {
-        command.env_remove("BOLERO_FUZZER");
-
-        if fuzzer == "libfuzzer" {
-            #[cfg(target_os = "macos")]
-            {
-                command.args(["-Clink-arg=-undefined", "-Clink-arg=dynamic_lookup"]);
-            }
-
-            #[cfg(target_os = "linux")]
-            {
-                command.args(["-Clink-arg=-Wl,--unresolved-symbols=ignore-all"]);
-            }
         }
     }
 
@@ -741,15 +719,12 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<PathBu
     drop(final_build_span);
 
     // Check for unexpected recompilations — only dylib-examples should be compiled.
-    // (Only relevant when prebuild is active.)
-    if use_prebuild {
-        for line in stderr_output.lines() {
-            if line.contains("Compiling") {
-                assert!(
-                    line.contains("dylib-examples"),
-                    "unexpected recompilation in final build: {line}\nfull stderr:\n{stderr_output}"
-                );
-            }
+    for line in stderr_output.lines() {
+        if line.contains("Compiling") {
+            assert!(
+                line.contains("dylib-examples"),
+                "unexpected recompilation in final build: {line}\nfull stderr:\n{stderr_output}"
+            );
         }
     }
 
@@ -769,7 +744,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<PathBu
     // instrumentation may instrument the generated program but not `hydro_lang`.
     // See https://github.com/hydro-project/hydro/issues/3160.
     let out = out.unwrap();
-    let coverage_dir = path!(trybuild.target_dir / "debug" / "deps" / "hydro-coverage");
+    let coverage_dir = path!(shared_debug / "deps" / "hydro-coverage");
     fs::create_dir_all(&coverage_dir).unwrap();
     let artifact_name = out.file_name().unwrap().to_str().unwrap();
     let fingerprint = hydro_concurrent_cargo::toolchain_fingerprint(ENCODED_RUSTFLAGS);
@@ -1211,26 +1186,19 @@ crate-type = ["cdylib"]
             &path!(dylib_examples_dir / "Cargo.toml"),
         )?;
 
-        // sim-dylib.rs for the base crate and dylib-examples crate
+        // The simulator's `sim-dylib` example wrapper in the dylib-examples crate.
         let sim_dylib_contents = prettyplease::unparse(&syn::parse_quote! {
             #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case, unexpected_cfgs, unfulfilled_lint_expectations)]
             include!(std::concat!(env!("TRYBUILD_LIB_NAME"), ".rs"));
         });
         write_atomic(
             sim_dylib_contents.as_bytes(),
-            &path!(project.dir / "examples" / "sim-dylib.rs"),
-        )?;
-        write_atomic(
-            sim_dylib_contents.as_bytes(),
             &path!(dylib_examples_dir / "examples" / "sim-dylib.rs"),
         )?;
+        let _ = fs::remove_file(path!(project.dir / "examples" / "sim-dylib.rs"));
 
         let workspace_manifest = format!(
             r#"{}
-[[example]]
-name = "sim-dylib"
-crate-type = ["cdylib"]
-
 [workspace]
 members = ["dylib", "dylib-examples"]
 "#,
