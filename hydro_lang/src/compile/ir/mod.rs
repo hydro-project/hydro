@@ -508,6 +508,18 @@ pub trait DfirBuilder {
         operator_tag: Option<&str>,
     );
 
+    /// Emits the spin source for a tick (see [`crate::location::Tick::spin_batch`]), which drives
+    /// the tick at `location` on its own and emits exactly one `()` into `out_ident` per tick.
+    fn spin(
+        &mut self,
+        location: &LocationId,
+        out_ident: &syn::Ident,
+        _op_meta: &HydroIrOpMetadata,
+        operator_tag: Option<&str>,
+    ) {
+        self.add_tick_source(location, quote! { spin() }, out_ident, false, operator_tag);
+    }
+
     /// The DFIR persistence lifetime for operator state scoped to a single tick, for an operator
     /// at `op_location`.
     ///
@@ -4751,8 +4763,11 @@ impl HydroNode {
                             // production codegen can hoist it to the root and window it into the
                             // tick's loop (DFIR sources may not live inside a `loop { ... }`).
                             let mut tick_source_rhs: Option<TokenStream> = None;
+                            // The spin source is a tick-level primitive with its own lowering
+                            // (`DfirBuilder::spin`).
+                            let mut is_spin = false;
 
-                            let source_stmt = match source {
+                            let source_stmt: dfir_lang::parse::DfirCode = match source {
                                 HydroSource::Stream(expr) => {
                                     debug_assert!(metadata.location_id.is_top_level());
                                     parse_quote! {
@@ -4783,10 +4798,12 @@ impl HydroNode {
                                 }
 
                                 HydroSource::Spin() => {
-                                    debug_assert!(metadata.location_id.is_top_level());
-                                    parse_quote! {
-                                        #source_ident = spin();
-                                    }
+                                    debug_assert!(
+                                        matches!(metadata.location_id, LocationId::Tick { .. }),
+                                        "spin sources must be located in a tick"
+                                    );
+                                    is_spin = true;
+                                    parse_quote! {}
                                 }
 
                                 HydroSource::ClusterMembers(target_loc, state) => {
@@ -4832,7 +4849,14 @@ impl HydroNode {
 
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(graph_builders) => {
-                                    if let Some(source_rhs) = tick_source_rhs {
+                                    if is_spin {
+                                        graph_builders.spin(
+                                            &out_location,
+                                            &source_ident,
+                                            &metadata.op,
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    } else if let Some(source_rhs) = tick_source_rhs {
                                         graph_builders.add_tick_source(
                                             &out_location,
                                             source_rhs,

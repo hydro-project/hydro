@@ -358,19 +358,7 @@ pub trait Location<'a>: DynLocation {
     where
         Self: TopLevel<'a> + Sized,
     {
-        Stream::new(
-            self.clone(),
-            HydroNode::Source {
-                source: HydroSource::Spin(),
-                metadata: self.new_node_metadata(Stream::<
-                    (),
-                    Self,
-                    Unbounded,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
-            },
-        )
+        self.tick().spin_batch(q!(1)).all_ticks()
     }
 
     /// Creates a stream from an async [`FuturesStream`].
