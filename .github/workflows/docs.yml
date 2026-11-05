@@ -11,6 +11,10 @@ on:
 
 permissions: {}
 
+env:
+  # Cloudflare Pages (Direct Upload) project that hosts hydro.run. Must match `website-preview.yml`.
+  CLOUDFLARE_PAGES_PROJECT: hydro-website
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.base.sha }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -113,3 +117,47 @@ jobs:
 
       - name: Check README Links
         run: bash scripts/check_readme_links.sh
+
+      # Hand the built site to whichever job deploys it: `deploy-website` below for pushes, or the
+      # `website-preview` workflow (`.github/workflows/website-preview.yml`) for pull requests.
+      - name: Upload website artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: website
+          path: docs/build/
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy-website:
+    name: Deploy Website
+    # Pushes to `main` become the production deployment (hydro.run). Pushes to any other branch
+    # (`feature/**`) become preview deployments at `<branch>.<project>.pages.dev`.
+    #
+    # Deliberately `push` only: production should track `main` and nothing else. To redeploy after a
+    # failed deploy, re-run the failed job on the push run. (`workflow_dispatch` on this workflow still
+    # builds the site as a check, it just doesn't deploy it.)
+    #
+    # Pull request previews are deliberately *not* handled here: `pull_request` jobs have no access
+    # to secrets when the PR comes from a fork. See `website-preview.yml` for how those are deployed.
+    if: ${{ github.event_name == 'push' }}
+    timeout-minutes: 15
+    needs: build-website
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'main' && 'website-production' || 'website-preview' }}
+      url: ${{ steps.deploy.outputs.pages-deployment-alias-url || steps.deploy.outputs.deployment-url }}
+    steps:
+      - name: Download website artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: website
+          path: website
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: pages deploy website --project-name=${{ env.CLOUDFLARE_PAGES_PROJECT }} --branch=${{ github.ref_name }} --commit-hash=${{ github.sha }}
