@@ -1159,7 +1159,7 @@
 <a href=#1159 id=1159 data-nosnippet>1159</a>                &amp;&amp; <span class="self">self</span>.clusters_reading_self_id.contains(<span class="kw-2">&amp;</span>location_key)
 <a href=#1160 id=1160 data-nosnippet>1160</a>            {
 <a href=#1161 id=1161 data-nosnippet>1161</a>                cluster_params.push(<span class="macro">quote!</span> {
-<a href=#1162 id=1162 data-nosnippet>1162</a>                    __cluster_self_id: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>#root::location::member_id::TaglessMemberId
+<a href=#1162 id=1162 data-nosnippet>1162</a>                    __cluster_self_id: #root::location::member_id::TaglessMemberId
 <a href=#1163 id=1163 data-nosnippet>1163</a>                });
 <a href=#1164 id=1164 data-nosnippet>1164</a>                <span class="comment">// Alias to the name the generated DFIR code expects.
 <a href=#1165 id=1165 data-nosnippet>1165</a>                </span><span class="kw">let </span>self_id_ident = syn::Ident::new(
