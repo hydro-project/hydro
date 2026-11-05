@@ -640,7 +640,7 @@ mod tests {
             ),
         };
         let mut flow = crate::self_id::self_id_member(
-            &member_id,
+            member_id,
             crate::self_id::self_id_member::EmbeddedInputs {
                 input: in_memory(stream::iter(vec!["hello".to_owned()])),
             },
