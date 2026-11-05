@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded/a5539d258d143d85/out/o2m_broadcast.rs`."><title>o2m_broadcast.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../../../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/rustdoc-5c590327.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../../../../../../" data-static-root-path="../../../../../../../../../../../../../static.files/" data-current-crate="hydro_test_embedded" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (708c94ef0 2026-11-03)" data-channel="nightly" data-search-js="search-835b9732.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-9b351432.js" ><script src="../../../../../../../../../../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../../../../../../../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../../../../../../../../../../src-files.js"></script><script defer src="../../../../../../../../../../../../../static.files/main-b2682d9c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/noscript-101b5a15.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../../../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test_embedded/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded/a5539d258d143d85/out/</div>o2m_broadcast.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded/a5539d258d143d85/out/o2m_broadcast.rs`."><title>o2m_broadcast.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../../../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/rustdoc-5c590327.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../../../../../../" data-static-root-path="../../../../../../../../../../../../../static.files/" data-current-crate="hydro_test_embedded" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (2d20b42b8 2026-11-04)" data-channel="nightly" data-search-js="search-835b9732.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-9b351432.js" ><script src="../../../../../../../../../../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../../../../../../../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../../../../../../../../../../src-files.js"></script><script defer src="../../../../../../../../../../../../../static.files/main-b2682d9c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/noscript-101b5a15.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../../../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test_embedded/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded/a5539d258d143d85/out/</div>o2m_broadcast.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>hydro_lang::runtime_support::dfir_rs <span class="kw">as </span>__root_dfir_rs;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">pub use </span>hydro_test::__staged;
@@ -578,99 +578,97 @@
 <a href=#578 id=578 data-nosnippet>578</a>            Item = <span class="prelude-ty">Result</span>&lt;__root_dfir_rs::bytes::BytesMut, std::io::Error&gt;,
 <a href=#579 id=579 data-nosnippet>579</a>        &gt; + Unpin + <span class="lifetime">'a</span>,
 <a href=#580 id=580 data-nosnippet>580</a>&gt;(
-<a href=#581 id=581 data-nosnippet>581</a>    __cluster_self_id: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>hydro_lang::location::member_id::TaglessMemberId,
-<a href=#582 id=582 data-nosnippet>582</a>    __outputs: o2m_receiver::EmbeddedOutputs&lt;__Out0&gt;,
-<a href=#583 id=583 data-nosnippet>583</a>    __network_in: o2m_receiver::EmbeddedNetworkIn&lt;__NetIn0&gt;,
-<a href=#584 id=584 data-nosnippet>584</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
-<a href=#585 id=585 data-nosnippet>585</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure&lt;
-<a href=#586 id=586 data-nosnippet>586</a>        Metrics = (),
-<a href=#587 id=587 data-nosnippet>587</a>    &gt; + <span class="lifetime">'a</span>,
-<a href=#588 id=588 data-nosnippet>588</a>&gt; {
-<a href=#589 id=589 data-nosnippet>589</a>    <span class="kw">let </span>__hydro_lang_cluster_self_id_loc2v1 = __cluster_self_id;
-<a href=#590 id=590 data-nosnippet>590</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = __outputs.output.into_inner();
-<a href=#591 id=591 data-nosnippet>591</a>    <span class="kw">let </span>__network_in_o2m_data = __network_in.o2m_data.into_inner();
-<a href=#592 id=592 data-nosnippet>592</a>    {
-<a href=#593 id=593 data-nosnippet>593</a>        <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};
-<a href=#594 id=594 data-nosnippet>594</a>        <span class="attr">#[allow(unused_mut)]
-<a href=#595 id=595 data-nosnippet>595</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>df = __root_dfir_rs::scheduled::context::Context::new();
-<a href=#596 id=596 data-nosnippet>596</a>        <span class="kw">let </span><span class="kw-2">mut </span>sg_1v1_node_1v1_stream = __network_in_o2m_data;
-<a href=#597 id=597 data-nosnippet>597</a>        <span class="kw">let </span><span class="kw-2">mut </span>__dfir_bump = __root_dfir_rs::bumpalo::Bump::new();
-<a href=#598 id=598 data-nosnippet>598</a>        <span class="kw">let </span><span class="kw-2">mut </span>__dfir_work_done = <span class="bool-val">true</span>;
-<a href=#599 id=599 data-nosnippet>599</a>        <span class="attr">#[allow(
-<a href=#600 id=600 data-nosnippet>600</a>            unused_qualifications,
-<a href=#601 id=601 data-nosnippet>601</a>            unused_mut,
-<a href=#602 id=602 data-nosnippet>602</a>            unused_variables,
-<a href=#603 id=603 data-nosnippet>603</a>            clippy::await_holding_refcell_ref,
-<a href=#604 id=604 data-nosnippet>604</a>            clippy::deref_addrof
-<a href=#605 id=605 data-nosnippet>605</a>        )]
-<a href=#606 id=606 data-nosnippet>606</a>        </span><span class="kw">let </span>__dfir_inline_tick = <span class="kw">async move </span>|
-<a href=#607 id=607 data-nosnippet>607</a>            df: <span class="kw-2">&amp;mut </span>__root_dfir_rs::scheduled::context::Context&lt;()&gt;|
-<a href=#608 id=608 data-nosnippet>608</a>        {
-<a href=#609 id=609 data-nosnippet>609</a>            __dfir_bump.reset();
-<a href=#610 id=610 data-nosnippet>610</a>            {
-<a href=#611 id=611 data-nosnippet>611</a>                <span class="kw">let </span>sgid_1v1 = <span class="kw">async </span>{
-<a href=#612 id=612 data-nosnippet>612</a>                    <span class="kw">let </span>context = <span class="kw-2">&amp;</span>df;
-<a href=#613 id=613 data-nosnippet>613</a>                    <span class="kw">let </span><span class="kw-2">mut </span>sg_1v1_node_1v1_stream_fused = __root_dfir_rs::dfir_pipes::pull::Pull::fuse(
-<a href=#614 id=614 data-nosnippet>614</a>                        __root_dfir_rs::dfir_pipes::pull::stream_ready(
-<a href=#615 id=615 data-nosnippet>615</a>                            <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream,
-<a href=#616 id=616 data-nosnippet>616</a>                            context.waker(),
-<a href=#617 id=617 data-nosnippet>617</a>                        ),
-<a href=#618 id=618 data-nosnippet>618</a>                    );
-<a href=#619 id=619 data-nosnippet>619</a>                    <span class="kw">let </span>op_1v1 = <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream_fused;
-<a href=#620 id=620 data-nosnippet>620</a>                    <span class="attr">#[allow(
-<a href=#621 id=621 data-nosnippet>621</a>                        clippy::map_clone,
-<a href=#622 id=622 data-nosnippet>622</a>                        reason = <span class="string">"dfir has no explicit `cloned`/`copied` operator"
-<a href=#623 id=623 data-nosnippet>623</a>                    </span>)]
-<a href=#624 id=624 data-nosnippet>624</a>                    </span><span class="kw">let </span>op_2v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
-<a href=#625 id=625 data-nosnippet>625</a>                        op_1v1,
-<a href=#626 id=626 data-nosnippet>626</a>                        |res| {
-<a href=#627 id=627 data-nosnippet>627</a>                            hydro_lang::runtime_support::bincode::deserialize::&lt;
-<a href=#628 id=628 data-nosnippet>628</a>                                std::string::String,
-<a href=#629 id=629 data-nosnippet>629</a>                            &gt;(<span class="kw-2">&amp;</span>res.unwrap())
-<a href=#630 id=630 data-nosnippet>630</a>                                .unwrap()
-<a href=#631 id=631 data-nosnippet>631</a>                        },
-<a href=#632 id=632 data-nosnippet>632</a>                    );
-<a href=#633 id=633 data-nosnippet>633</a>                    <span class="attr">#[allow(
-<a href=#634 id=634 data-nosnippet>634</a>                        clippy::map_clone,
-<a href=#635 id=635 data-nosnippet>635</a>                        reason = <span class="string">"dfir has no explicit `cloned`/`copied` operator"
-<a href=#636 id=636 data-nosnippet>636</a>                    </span>)]
-<a href=#637 id=637 data-nosnippet>637</a>                    </span><span class="kw">let </span>op_3v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
-<a href=#638 id=638 data-nosnippet>638</a>                        op_2v1,
-<a href=#639 id=639 data-nosnippet>639</a>                        stageleft::runtime_support::fnmut1_type_hint::&lt;
-<a href=#640 id=640 data-nosnippet>640</a>                            std::string::String,
-<a href=#641 id=641 data-nosnippet>641</a>                            std::string::String,
-<a href=#642 id=642 data-nosnippet>642</a>                        &gt;({
-<a href=#643 id=643 data-nosnippet>643</a>                            <span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
-<a href=#644 id=644 data-nosnippet>644</a>                            <span class="kw">use </span>hydro_test::__staged::embedded::o2m_broadcast::<span class="kw-2">*</span>;
-<a href=#645 id=645 data-nosnippet>645</a>                            <span class="macro">hydro_test::__stageleft_quote_src_embedded_o2m_broadcast_rs_16_16!</span>(
-<a href=#646 id=646 data-nosnippet>646</a>                                [] [| s | s.to_uppercase()]
-<a href=#647 id=647 data-nosnippet>647</a>                            )
-<a href=#648 id=648 data-nosnippet>648</a>                        }),
-<a href=#649 id=649 data-nosnippet>649</a>                    );
-<a href=#650 id=650 data-nosnippet>650</a>                    <span class="kw">let </span>op_4v1 = __root_dfir_rs::dfir_pipes::push::for_each(<span class="kw-2">&amp;mut </span>output);
-<a href=#651 id=651 data-nosnippet>651</a>                    __root_dfir_rs::dfir_pipes::pull::Pull::send_push(op_3v1, op_4v1)
-<a href=#652 id=652 data-nosnippet>652</a>                        .<span class="kw">await</span>;
-<a href=#653 id=653 data-nosnippet>653</a>                    __root_dfir_rs::dfir_pipes::pull::Pull::drain_sync(
-<a href=#654 id=654 data-nosnippet>654</a>                        <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream_fused,
-<a href=#655 id=655 data-nosnippet>655</a>                    );
-<a href=#656 id=656 data-nosnippet>656</a>                };
-<a href=#657 id=657 data-nosnippet>657</a>                {
-<a href=#658 id=658 data-nosnippet>658</a>                    sgid_1v1.<span class="kw">await</span>;
-<a href=#659 id=659 data-nosnippet>659</a>                }
-<a href=#660 id=660 data-nosnippet>660</a>                <span class="attr">#[allow(clippy::nonminimal_bool, reason = <span class="string">"codegen"</span>)]
-<a href=#661 id=661 data-nosnippet>661</a>                </span><span class="kw">if </span><span class="bool-val">false </span>{
-<a href=#662 id=662 data-nosnippet>662</a>                    df.schedule_subgraph(<span class="bool-val">true</span>);
-<a href=#663 id=663 data-nosnippet>663</a>                }
-<a href=#664 id=664 data-nosnippet>664</a>            }
-<a href=#665 id=665 data-nosnippet>665</a>            df.__end_tick();
-<a href=#666 id=666 data-nosnippet>666</a>            ::std::mem::take(<span class="kw-2">&amp;mut </span>__dfir_work_done)
-<a href=#667 id=667 data-nosnippet>667</a>        };
-<a href=#668 id=668 data-nosnippet>668</a>        __root_dfir_rs::scheduled::context::Dfir::new(
-<a href=#669 id=669 data-nosnippet>669</a>            __root_dfir_rs::scheduled::context::TickClosureFn::new(__dfir_inline_tick),
-<a href=#670 id=670 data-nosnippet>670</a>            df,
-<a href=#671 id=671 data-nosnippet>671</a>            <span class="prelude-val">None</span>,
-<a href=#672 id=672 data-nosnippet>672</a>            <span class="prelude-val">None</span>,
-<a href=#673 id=673 data-nosnippet>673</a>        )
-<a href=#674 id=674 data-nosnippet>674</a>    }
-<a href=#675 id=675 data-nosnippet>675</a>}
+<a href=#581 id=581 data-nosnippet>581</a>    __outputs: o2m_receiver::EmbeddedOutputs&lt;__Out0&gt;,
+<a href=#582 id=582 data-nosnippet>582</a>    __network_in: o2m_receiver::EmbeddedNetworkIn&lt;__NetIn0&gt;,
+<a href=#583 id=583 data-nosnippet>583</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
+<a href=#584 id=584 data-nosnippet>584</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure&lt;
+<a href=#585 id=585 data-nosnippet>585</a>        Metrics = (),
+<a href=#586 id=586 data-nosnippet>586</a>    &gt; + <span class="lifetime">'a</span>,
+<a href=#587 id=587 data-nosnippet>587</a>&gt; {
+<a href=#588 id=588 data-nosnippet>588</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = __outputs.output.into_inner();
+<a href=#589 id=589 data-nosnippet>589</a>    <span class="kw">let </span>__network_in_o2m_data = __network_in.o2m_data.into_inner();
+<a href=#590 id=590 data-nosnippet>590</a>    {
+<a href=#591 id=591 data-nosnippet>591</a>        <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};
+<a href=#592 id=592 data-nosnippet>592</a>        <span class="attr">#[allow(unused_mut)]
+<a href=#593 id=593 data-nosnippet>593</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>df = __root_dfir_rs::scheduled::context::Context::new();
+<a href=#594 id=594 data-nosnippet>594</a>        <span class="kw">let </span><span class="kw-2">mut </span>sg_1v1_node_1v1_stream = __network_in_o2m_data;
+<a href=#595 id=595 data-nosnippet>595</a>        <span class="kw">let </span><span class="kw-2">mut </span>__dfir_bump = __root_dfir_rs::bumpalo::Bump::new();
+<a href=#596 id=596 data-nosnippet>596</a>        <span class="kw">let </span><span class="kw-2">mut </span>__dfir_work_done = <span class="bool-val">true</span>;
+<a href=#597 id=597 data-nosnippet>597</a>        <span class="attr">#[allow(
+<a href=#598 id=598 data-nosnippet>598</a>            unused_qualifications,
+<a href=#599 id=599 data-nosnippet>599</a>            unused_mut,
+<a href=#600 id=600 data-nosnippet>600</a>            unused_variables,
+<a href=#601 id=601 data-nosnippet>601</a>            clippy::await_holding_refcell_ref,
+<a href=#602 id=602 data-nosnippet>602</a>            clippy::deref_addrof
+<a href=#603 id=603 data-nosnippet>603</a>        )]
+<a href=#604 id=604 data-nosnippet>604</a>        </span><span class="kw">let </span>__dfir_inline_tick = <span class="kw">async move </span>|
+<a href=#605 id=605 data-nosnippet>605</a>            df: <span class="kw-2">&amp;mut </span>__root_dfir_rs::scheduled::context::Context&lt;()&gt;|
+<a href=#606 id=606 data-nosnippet>606</a>        {
+<a href=#607 id=607 data-nosnippet>607</a>            __dfir_bump.reset();
+<a href=#608 id=608 data-nosnippet>608</a>            {
+<a href=#609 id=609 data-nosnippet>609</a>                <span class="kw">let </span>sgid_1v1 = <span class="kw">async </span>{
+<a href=#610 id=610 data-nosnippet>610</a>                    <span class="kw">let </span>context = <span class="kw-2">&amp;</span>df;
+<a href=#611 id=611 data-nosnippet>611</a>                    <span class="kw">let </span><span class="kw-2">mut </span>sg_1v1_node_1v1_stream_fused = __root_dfir_rs::dfir_pipes::pull::Pull::fuse(
+<a href=#612 id=612 data-nosnippet>612</a>                        __root_dfir_rs::dfir_pipes::pull::stream_ready(
+<a href=#613 id=613 data-nosnippet>613</a>                            <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream,
+<a href=#614 id=614 data-nosnippet>614</a>                            context.waker(),
+<a href=#615 id=615 data-nosnippet>615</a>                        ),
+<a href=#616 id=616 data-nosnippet>616</a>                    );
+<a href=#617 id=617 data-nosnippet>617</a>                    <span class="kw">let </span>op_1v1 = <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream_fused;
+<a href=#618 id=618 data-nosnippet>618</a>                    <span class="attr">#[allow(
+<a href=#619 id=619 data-nosnippet>619</a>                        clippy::map_clone,
+<a href=#620 id=620 data-nosnippet>620</a>                        reason = <span class="string">"dfir has no explicit `cloned`/`copied` operator"
+<a href=#621 id=621 data-nosnippet>621</a>                    </span>)]
+<a href=#622 id=622 data-nosnippet>622</a>                    </span><span class="kw">let </span>op_2v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
+<a href=#623 id=623 data-nosnippet>623</a>                        op_1v1,
+<a href=#624 id=624 data-nosnippet>624</a>                        |res| {
+<a href=#625 id=625 data-nosnippet>625</a>                            hydro_lang::runtime_support::bincode::deserialize::&lt;
+<a href=#626 id=626 data-nosnippet>626</a>                                std::string::String,
+<a href=#627 id=627 data-nosnippet>627</a>                            &gt;(<span class="kw-2">&amp;</span>res.unwrap())
+<a href=#628 id=628 data-nosnippet>628</a>                                .unwrap()
+<a href=#629 id=629 data-nosnippet>629</a>                        },
+<a href=#630 id=630 data-nosnippet>630</a>                    );
+<a href=#631 id=631 data-nosnippet>631</a>                    <span class="attr">#[allow(
+<a href=#632 id=632 data-nosnippet>632</a>                        clippy::map_clone,
+<a href=#633 id=633 data-nosnippet>633</a>                        reason = <span class="string">"dfir has no explicit `cloned`/`copied` operator"
+<a href=#634 id=634 data-nosnippet>634</a>                    </span>)]
+<a href=#635 id=635 data-nosnippet>635</a>                    </span><span class="kw">let </span>op_3v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
+<a href=#636 id=636 data-nosnippet>636</a>                        op_2v1,
+<a href=#637 id=637 data-nosnippet>637</a>                        stageleft::runtime_support::fnmut1_type_hint::&lt;
+<a href=#638 id=638 data-nosnippet>638</a>                            std::string::String,
+<a href=#639 id=639 data-nosnippet>639</a>                            std::string::String,
+<a href=#640 id=640 data-nosnippet>640</a>                        &gt;({
+<a href=#641 id=641 data-nosnippet>641</a>                            <span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
+<a href=#642 id=642 data-nosnippet>642</a>                            <span class="kw">use </span>hydro_test::__staged::embedded::o2m_broadcast::<span class="kw-2">*</span>;
+<a href=#643 id=643 data-nosnippet>643</a>                            <span class="macro">hydro_test::__stageleft_quote_src_embedded_o2m_broadcast_rs_16_16!</span>(
+<a href=#644 id=644 data-nosnippet>644</a>                                [] [| s | s.to_uppercase()]
+<a href=#645 id=645 data-nosnippet>645</a>                            )
+<a href=#646 id=646 data-nosnippet>646</a>                        }),
+<a href=#647 id=647 data-nosnippet>647</a>                    );
+<a href=#648 id=648 data-nosnippet>648</a>                    <span class="kw">let </span>op_4v1 = __root_dfir_rs::dfir_pipes::push::for_each(<span class="kw-2">&amp;mut </span>output);
+<a href=#649 id=649 data-nosnippet>649</a>                    __root_dfir_rs::dfir_pipes::pull::Pull::send_push(op_3v1, op_4v1)
+<a href=#650 id=650 data-nosnippet>650</a>                        .<span class="kw">await</span>;
+<a href=#651 id=651 data-nosnippet>651</a>                    __root_dfir_rs::dfir_pipes::pull::Pull::drain_sync(
+<a href=#652 id=652 data-nosnippet>652</a>                        <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream_fused,
+<a href=#653 id=653 data-nosnippet>653</a>                    );
+<a href=#654 id=654 data-nosnippet>654</a>                };
+<a href=#655 id=655 data-nosnippet>655</a>                {
+<a href=#656 id=656 data-nosnippet>656</a>                    sgid_1v1.<span class="kw">await</span>;
+<a href=#657 id=657 data-nosnippet>657</a>                }
+<a href=#658 id=658 data-nosnippet>658</a>                <span class="attr">#[allow(clippy::nonminimal_bool, reason = <span class="string">"codegen"</span>)]
+<a href=#659 id=659 data-nosnippet>659</a>                </span><span class="kw">if </span><span class="bool-val">false </span>{
+<a href=#660 id=660 data-nosnippet>660</a>                    df.schedule_subgraph(<span class="bool-val">true</span>);
+<a href=#661 id=661 data-nosnippet>661</a>                }
+<a href=#662 id=662 data-nosnippet>662</a>            }
+<a href=#663 id=663 data-nosnippet>663</a>            df.__end_tick();
+<a href=#664 id=664 data-nosnippet>664</a>            ::std::mem::take(<span class="kw-2">&amp;mut </span>__dfir_work_done)
+<a href=#665 id=665 data-nosnippet>665</a>        };
+<a href=#666 id=666 data-nosnippet>666</a>        __root_dfir_rs::scheduled::context::Dfir::new(
+<a href=#667 id=667 data-nosnippet>667</a>            __root_dfir_rs::scheduled::context::TickClosureFn::new(__dfir_inline_tick),
+<a href=#668 id=668 data-nosnippet>668</a>            df,
+<a href=#669 id=669 data-nosnippet>669</a>            <span class="prelude-val">None</span>,
+<a href=#670 id=670 data-nosnippet>670</a>            <span class="prelude-val">None</span>,
+<a href=#671 id=671 data-nosnippet>671</a>        )
+<a href=#672 id=672 data-nosnippet>672</a>    }
+<a href=#673 id=673 data-nosnippet>673</a>}
 </code></pre></div></section></main></body></html>

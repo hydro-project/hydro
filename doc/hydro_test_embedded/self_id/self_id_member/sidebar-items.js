@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["inputs","outputs"],"struct":["EmbeddedInputs","EmbeddedOutputs"]};
