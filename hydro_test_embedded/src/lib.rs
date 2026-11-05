@@ -85,6 +85,17 @@ pub mod singleton_input {
     reason = "generated code"
 )]
 #[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod singleton_only {
+    include!(concat!(env!("OUT_DIR"), "/singleton_only.rs"));
+}
+
+#[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
 pub mod echo_network {
     include!(concat!(env!("OUT_DIR"), "/echo_network.rs"));
 }
@@ -409,6 +420,17 @@ mod tests {
         flow.run_tick().await;
         drop(flow);
         assert_eq!(collected, vec!["Hello Alice", "Hello Bob"]);
+    }
+
+    // A function whose only input is a singleton has no generic parameters.
+    #[tokio::test]
+    async fn test_embedded_singleton_only() {
+        let mut flow = crate::singleton_only::consume_greeting(
+            crate::singleton_only::consume_greeting::EmbeddedInputs {
+                greeting: "hello".to_owned(),
+            },
+        );
+        flow.run_tick().await;
     }
 
     // --- echo_network (o2o) ---
