@@ -1990,11 +1990,6 @@ impl DfirGraph {
                     }
                 };
 
-                // Each subgraph block is an async block so it can be individually instrumented.
-                // Note: this ident is for the subgraph future, not a runtime SubgraphId binding
-                // (unlike the scheduled path's `sg_ident`).
-                let sg_fut_ident = subgraph_id.as_ident(Span::call_site());
-
                 // Generate send-side curr_items_count updates (after subgraph runs).
                 let send_metrics_code = if options.include_metrics_tracking {
                     send_hoffs
@@ -2078,14 +2073,26 @@ impl DfirGraph {
                         }
                     });
 
+                // The subgraph body: set up ports, run the operators' pull/push pipeline.
+                let sg_body = quote! {
+                    let #context = &#df;
+                    #( #recv_port_code )*
+                    #( #send_port_code )*
+                    #( #subgraph_op_iter_code )*
+                    #( #subgraph_op_iter_after_code )*
+                };
+
                 let run_sg = if options.include_metrics_tracking {
+                    // When metrics are tracked, the subgraph body must be wrapped in an `async`
+                    // block so it can be individually instrumented (poll/idle durations).
                     quote! {
                         // Instrument w/ the subgraph metrics.
                         let sg_metrics = &__dfir_metrics.subgraphs[
                             #root::slotmap::KeyData::from_ffi(#sg_metrics_ffi).into()
                         ];
                         #root::scheduled::metrics::InstrumentSubgraph::new(
-                            #sg_fut_ident, sg_metrics
+                            async { #sg_body },
+                            sg_metrics,
                         ).await;
                         sg_metrics.total_run_count.update(|x| x + 1);
 
@@ -2093,9 +2100,10 @@ impl DfirGraph {
                         #( #send_metrics_code )*
                     }
                 } else {
-                    quote! {
-                        #sg_fut_ident.await;
-                    }
+                    // Otherwise, run the subgraph body inline. We are already in an `async`
+                    // context (the tick closure), so there is no need for an intermediate
+                    // `async` block which is immediately `.await`ed.
+                    sg_body
                 };
 
                 // Emit subgraph block to the current loop level (top of stack or root).
@@ -2103,19 +2111,12 @@ impl DfirGraph {
                     // Create the handoffs we are about to push to (send).
                     #( #send_hoff_make_code )*
 
-                    let #sg_fut_ident = async {
-                        let #context = &#df;
-                        #( #recv_port_code )*
-                        #( #send_port_code )*
-                        #( #subgraph_op_iter_code )*
-                        #( #subgraph_op_iter_after_code )*
-                    };
                     {
                         #run_sg
-
-                        // Drop the handoffs we just drained (recv).
-                        #( #recv_hoff_drop_code )*
                     }
+
+                    // Drop the handoffs we just drained (recv).
+                    #( #recv_hoff_drop_code )*
                 };
                 if let Some((_, body)) = loop_stack.last_mut() {
                     body.extend(sg_block);
