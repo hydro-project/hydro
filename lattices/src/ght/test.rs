@@ -1008,4 +1008,33 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_insert_duplicate_returns_false() {
+        use variadics::var_expr;
+        use variadics::variadic_collections::VariadicCollection;
+
+        use crate::GhtType;
+        use crate::ght::GeneralizedHashTrieNode;
+
+        // Non-empty suffix schema: `GhtLeaf<Schema, var_type!(...), Storage>::insert`.
+        type SuffixLeaf = GhtType!(() => u32, u64: VariadicHashSetStd);
+        let mut leaf = SuffixLeaf::default();
+        assert!(leaf.insert(var_expr!(1, 2)));
+        assert_eq!(leaf.elements.len(), 1);
+        assert_eq!(leaf.insert(var_expr!(1, 2)), false);
+        assert_eq!(leaf.elements.len(), 1);
+        assert!(leaf.insert(var_expr!(3, 4)));
+        assert_eq!(leaf.elements.len(), 2);
+
+        // Empty suffix schema: `GhtLeaf<Schema, (), Storage>::insert`, reached through the trie.
+        type EmptySuffixTrie = GhtType!(u32 => (): VariadicHashSetStd);
+        let mut trie = EmptySuffixTrie::default();
+        assert!(trie.insert(var_expr!(7)));
+        assert_eq!(trie.recursive_iter().count(), 1);
+        assert_eq!(trie.insert(var_expr!(7)), false);
+        assert_eq!(trie.recursive_iter().count(), 1);
+        assert!(trie.insert(var_expr!(8)));
+        assert_eq!(trie.recursive_iter().count(), 2);
+    }
 }
