@@ -50,7 +50,6 @@ pub const MAP: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                #[allow(clippy::map_clone, reason = "dfir has no explicit `cloned`/`copied` operator")]
                 let #ident = #root::dfir_pipes::pull::Pull::map(#input, #func);
             }
         } else {

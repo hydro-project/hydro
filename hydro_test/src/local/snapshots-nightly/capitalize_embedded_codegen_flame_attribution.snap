@@ -86,7 +86,7 @@ pub fn capitalize<
         {
             __dfir_bump.reset();
             {
-                let sgid_1v1 = async {
+                {
                     let context = &df;
                     let mut sg_1v1_node_1v1_stream_fused = __root_dfir_rs::dfir_pipes::pull::Pull::fuse(
                         __root_dfir_rs::dfir_pipes::pull::stream_ready(
@@ -153,10 +153,6 @@ pub fn capitalize<
                         }
                         op_1v1__source_stream__0::<_, _>(op_1v1)
                     };
-                    #[allow(
-                        clippy::map_clone,
-                        reason = "dfir has no explicit `cloned`/`copied` operator"
-                    )]
                     let op_2v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
                         op_1v1,
                         stageleft::runtime_support::fnmut1_type_hint::<
@@ -312,9 +308,6 @@ pub fn capitalize<
                     __root_dfir_rs::dfir_pipes::pull::Pull::drain_sync(
                         &mut sg_1v1_node_1v1_stream_fused,
                     );
-                };
-                {
-                    sgid_1v1.await;
                 }
                 #[allow(clippy::nonminimal_bool, reason = "codegen")]
                 if false {
