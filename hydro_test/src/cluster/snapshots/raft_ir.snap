@@ -1,6 +1,5 @@
 ---
 source: hydro_test/src/cluster/raft.rs
-assertion_line: 2633
 expression: built.ir()
 ---
 [
@@ -93,22 +92,45 @@ expression: built.ir()
                 init: stageleft :: runtime_support :: fn0_type_hint :: < std :: vec :: Vec < std :: string :: String > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_LINE_COL ! ([] [| | Vec :: new ()]) }),
                 acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < std :: vec :: Vec < std :: string :: String > , std :: string :: String , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: * ; crate :: __staged :: __stageleft_quote_src_cluster_raft_rs_LINE_COL ! ([] [| requests , request | { requests . push (request) ; }]) }),
                 input: Batch {
-                    inner: Map {
-                        f: stageleft :: runtime_support :: fnmut1_type_hint :: < () , std :: string :: String > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: raft :: Replica > :: from_tagless ((__hydro_lang_cluster_self_id_loc1v1) . clone ()) ; move | _ | format ! ("hello from member {}" , CLUSTER_SELF_ID__free . clone () . into_tagless ()) } }),
-                        input: Source {
-                            source: Stream(
-                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_LINE_COL ! ([interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { std :: time :: Duration :: from_secs (1) } } ,] [tokio_stream :: StreamExt :: map (tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) , | _ | ())]) },
-                            ),
+                    inner: ObserveNonDet {
+                        inner: Map {
+                            f: stageleft :: runtime_support :: fnmut1_type_hint :: < () , std :: string :: String > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: raft :: Replica > :: from_tagless ((__hydro_lang_cluster_self_id_loc1v1) . clone ()) ; move | _ | format ! ("hello from member {}" , CLUSTER_SELF_ID__free . clone () . into_tagless ()) } }),
+                            input: Cast {
+                                inner: Source {
+                                    source: Stream(
+                                        { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_LINE_COL ! ([interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { std :: time :: Duration :: from_secs (1) } } ,] [tokio_stream :: StreamExt :: map (tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) , | _ | ())]) },
+                                    ),
+                                    metadata: HydroIrMetadata {
+                                        location_id: Cluster(loc1v1),
+                                        collection_kind: Stream {
+                                            bound: Unbounded,
+                                            order: TotalOrder,
+                                            retry: ExactlyOnce,
+                                            element_type: (),
+                                        },
+                                    },
+                                },
+                                metadata: HydroIrMetadata {
+                                    location_id: Cluster(loc1v1),
+                                    collection_kind: Stream {
+                                        bound: Unbounded,
+                                        order: TotalOrder,
+                                        retry: AtLeastOnce,
+                                        element_type: (),
+                                    },
+                                },
+                            },
                             metadata: HydroIrMetadata {
                                 location_id: Cluster(loc1v1),
                                 collection_kind: Stream {
                                     bound: Unbounded,
                                     order: TotalOrder,
-                                    retry: ExactlyOnce,
-                                    element_type: (),
+                                    retry: AtLeastOnce,
+                                    element_type: std :: string :: String,
                                 },
                             },
                         },
+                        trusted: false,
                         metadata: HydroIrMetadata {
                             location_id: Cluster(loc1v1),
                             collection_kind: Stream {
@@ -161,10 +183,33 @@ expression: built.ir()
                     init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| | 0usize]) }),
                     acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| count , _ | * count += 1]) }),
                     input: Batch {
-                        inner: Source {
-                            source: Stream(
-                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_LINE_COL ! ([interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { std :: time :: Duration :: from_millis (100) } } ,] [tokio_stream :: StreamExt :: map (tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) , | _ | ())]) },
-                            ),
+                        inner: ObserveNonDet {
+                            inner: Cast {
+                                inner: Source {
+                                    source: Stream(
+                                        { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_LINE_COL ! ([interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { std :: time :: Duration :: from_millis (100) } } ,] [tokio_stream :: StreamExt :: map (tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) , | _ | ())]) },
+                                    ),
+                                    metadata: HydroIrMetadata {
+                                        location_id: Cluster(loc1v1),
+                                        collection_kind: Stream {
+                                            bound: Unbounded,
+                                            order: TotalOrder,
+                                            retry: ExactlyOnce,
+                                            element_type: (),
+                                        },
+                                    },
+                                },
+                                metadata: HydroIrMetadata {
+                                    location_id: Cluster(loc1v1),
+                                    collection_kind: Stream {
+                                        bound: Unbounded,
+                                        order: TotalOrder,
+                                        retry: AtLeastOnce,
+                                        element_type: (),
+                                    },
+                                },
+                            },
+                            trusted: false,
                             metadata: HydroIrMetadata {
                                 location_id: Cluster(loc1v1),
                                 collection_kind: Stream {
@@ -225,10 +270,33 @@ expression: built.ir()
                     init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| | 0usize]) }),
                     acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| count , _ | * count += 1]) }),
                     input: Batch {
-                        inner: Source {
-                            source: Stream(
-                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_LINE_COL ! ([interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: raft :: Replica > :: from_tagless ((__hydro_lang_cluster_self_id_loc1v1) . clone ()) ; std :: time :: Duration :: from_millis (500 + u64 :: from (CLUSTER_SELF_ID__free . get_raw_id ()) * 130) } } ,] [tokio_stream :: StreamExt :: map (tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) , | _ | ())]) },
-                            ),
+                        inner: ObserveNonDet {
+                            inner: Cast {
+                                inner: Source {
+                                    source: Stream(
+                                        { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; hydro_lang :: __stageleft_quote_src_location_mod_rs_LINE_COL ! ([interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: raft :: tests :: * ; { let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: raft :: Replica > :: from_tagless ((__hydro_lang_cluster_self_id_loc1v1) . clone ()) ; std :: time :: Duration :: from_millis (500 + u64 :: from (CLUSTER_SELF_ID__free . get_raw_id ()) * 130) } } ,] [tokio_stream :: StreamExt :: map (tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) , | _ | ())]) },
+                                    ),
+                                    metadata: HydroIrMetadata {
+                                        location_id: Cluster(loc1v1),
+                                        collection_kind: Stream {
+                                            bound: Unbounded,
+                                            order: TotalOrder,
+                                            retry: ExactlyOnce,
+                                            element_type: (),
+                                        },
+                                    },
+                                },
+                                metadata: HydroIrMetadata {
+                                    location_id: Cluster(loc1v1),
+                                    collection_kind: Stream {
+                                        bound: Unbounded,
+                                        order: TotalOrder,
+                                        retry: AtLeastOnce,
+                                        element_type: (),
+                                    },
+                                },
+                            },
+                            trusted: false,
                             metadata: HydroIrMetadata {
                                 location_id: Cluster(loc1v1),
                                 collection_kind: Stream {
