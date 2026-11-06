@@ -70,6 +70,10 @@ pub mod runtime;
 
 #[cfg(stageleft_runtime)]
 #[doc(hidden)]
+pub mod panic_guard;
+
+#[cfg(stageleft_runtime)]
+#[doc(hidden)]
 pub use compiled::continue_if_impl;
 #[cfg(stageleft_runtime)]
 pub use compiled::quiesce;
