@@ -177,7 +177,9 @@ macro_rules! on_member_method {
 /// handle's [scope](self#hook-scopes).
 ///
 /// A decision for a batch hook says which buffered elements form the next batch released
-/// into the tick. See `hydro_lang::sim::hooks` for the decisions offered.
+/// into the tick. For an `AtLeastOnce` stream, decisions may also keep released elements
+/// buffered so they are delivered again in a later batch. See `hydro_lang::sim::hooks` for
+/// the decisions offered.
 pub struct BatchHook<T, O: Ordering = TotalOrder, R: Retries = ExactlyOnce, S = OnProcess> {
     pub(crate) id: usize,
     /// The member selected by `.on(member_id)`; `None` for process-scoped handles.
@@ -341,8 +343,8 @@ where
 /// A decision for a retries hook says how many times a buffered element is released —
 /// the point where the simulator injects the duplicates the `AtLeastOnce` type says
 /// downstream must tolerate. Because every element admits arbitrarily many retries, the
-/// decision space is infinite and this non-determinism can never be explored
-/// autonomously: an `assume_retries` under simulation **must** be bound to a hook. See
+/// decision space is infinite and exhaustive simulation of an unhooked `assume_retries`
+/// requires `SimFlow::retries_depth`. See
 /// `hydro_lang::sim::hooks` for the decisions offered.
 pub struct RetriesHook<T, O: Ordering = NoOrder, B: Boundedness = Unbounded, S = OnProcess> {
     pub(crate) id: usize,

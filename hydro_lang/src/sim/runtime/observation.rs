@@ -5,10 +5,8 @@
 //! [`ScriptableHook`] impls live alongside them.
 //!
 //! The retry kinds ([`TopLevelNoOrderStreamRetriesHook`], [`TopLevelOrderedStreamRetriesHook`],
-//! [`TopLevelAtLeastOnceOrderHook`]) implement only the scriptable surface, never
-//! [`ObservationHook`]: their decision spaces are infinite (every element admits
-//! arbitrarily many retries), so no autonomous exploration is possible and the builder
-//! requires them to be bound to a sim hook.
+//! [`TopLevelAtLeastOnceOrderHook`]) are only explored autonomously within their
+//! [`RetryBudget`], which is spent over the whole run.
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -21,9 +19,10 @@ use dfir_rs::rustc_hash::FxHashMap;
 use dfir_rs::util::unsync::mpsc::Sender;
 
 use super::{
-    HookLocationMeta, ObservationHook, RuntimeHook, ScriptDecision, ScriptableHook,
+    HookLocationMeta, ObservationHook, RetryBudget, RuntimeHook, ScriptDecision, ScriptableHook,
     ScriptableObservationHook, TruncatedLabeledVecDebug, TruncatedVecDebug, abort,
-    describe_keyed_pending, keyed_buffer_len, log_release,
+    describe_keyed_pending, draw_boolean_false_if_exhausted, draw_unbounded_extra,
+    keyed_buffer_len, log_release,
 };
 
 /// Top-level (outside-tick) `assume_ordering` hooks release elements **one at a
@@ -1087,11 +1086,14 @@ where
 /// copies become distinct elements of a `NoOrder + ExactlyOnce` multiset, and the
 /// downstream ordering observation arranges that multiset arbitrarily.
 ///
-/// There is no autonomous ([`ObservationHook`]) implementation: copy counts make the
-/// decision space infinite, so this hook exists only bound to a sim hook handle.
+/// An autonomous decision either duplicates one buffered element, or releases everything
+/// buffered once. Releasing single elements without duplicating them would add nothing,
+/// since the output is unordered.
 pub struct TopLevelNoOrderStreamRetriesHook<T> {
     pub input: Rc<RefCell<VecDeque<T>>>,
     pub to_release: Option<Vec<T>>,
+    /// Unused when scripted.
+    pub budget: RetryBudget,
     pub output: Sender<T>,
     pub location: HookLocationMeta,
     pub format_item_debug: fn(&T) -> Option<String>,
@@ -1130,8 +1132,9 @@ pub struct TopLevelNoOrderStreamRetriesHook<T> {
 /// `assume_retries().assume_ordering()` explore the same state space: any sequence in
 /// which every input instance appears at least once.
 ///
-/// There is no autonomous ([`ObservationHook`]) implementation: cardinalities make the
-/// decision space infinite, so this hook exists only bound to a sim hook handle.
+/// An autonomous decision releases some number of copies of the front element and
+/// consumes it (never leaving it open, which would only add duplicate schedules), or
+/// releases everything buffered once when the budget is spent.
 pub struct TopLevelOrderedStreamRetriesHook<T> {
     pub input: Rc<RefCell<VecDeque<T>>>,
     pub to_release: Option<Vec<T>>,
@@ -1142,6 +1145,8 @@ pub struct TopLevelOrderedStreamRetriesHook<T> {
     /// `release`: the next decision may repeat it without re-starting it, and a
     /// `release_final` with no values may consume it as-is.
     pub front_started: bool,
+    /// Unused when scripted.
+    pub budget: RetryBudget,
     pub output: Sender<T>,
     pub location: HookLocationMeta,
     pub format_item_debug: fn(&T) -> Option<String>,
@@ -1258,6 +1263,43 @@ impl<T> RuntimeHook for TopLevelOrderedStreamRetriesHook<T> {
 
     fn location_meta(&self) -> HookLocationMeta {
         self.location
+    }
+}
+
+impl<T: Clone> ObservationHook for TopLevelNoOrderStreamRetriesHook<T> {
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let mut input = self.input.borrow_mut();
+        if self.budget.allows_retry() && draw_boolean_false_if_exhausted(driver) {
+            let index = (0..input.len()).generate(driver).unwrap();
+            // at least one extra copy, otherwise this is the same as releasing everything
+            let extra = match self.budget.remaining() {
+                Some(remaining) => (1..=remaining).generate(driver).unwrap(),
+                None => 1 + draw_unbounded_extra(driver),
+            };
+            self.budget.spend(extra);
+            self.to_release = Some(expand_retries(input.remove(index).unwrap(), 1 + extra));
+        } else {
+            // unlike an ordering hook, this doesn't need to release one element at a time:
+            // the output is unordered, so whatever consumes it is itself a hook that can
+            // delay and reorder, and there is no race between released elements and
+            // feedback that only a finer release could expose
+            self.to_release = Some(input.drain(..).collect());
+        }
+    }
+}
+
+impl<T: Clone> ObservationHook for TopLevelOrderedStreamRetriesHook<T> {
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let mut input = self.input.borrow_mut();
+        if self.budget.allows_retry() {
+            let copies = 1 + self.budget.draw_extra(driver);
+            let item = input.pop_front().unwrap();
+            self.to_release = Some(expand_retries(item, copies));
+        } else {
+            self.to_release = Some(input.drain(..).collect());
+        }
+        self.release_provisional = false;
+        self.front_started = false;
     }
 }
 
@@ -1589,8 +1631,9 @@ impl<T> ScriptableObservationHook for TopLevelOrderedStreamRetriesHook<T> where
 /// least once; at-least-once permits duplicates, not losses). Two adjacent slots of the
 /// same value are legitimate exactly when two or more buffered elements share it.
 ///
-/// There is no autonomous ([`ObservationHook`]) implementation: re-emission makes the
-/// decision space infinite, so this hook exists only bound to a sim hook handle.
+/// Autonomous decisions pick buffered elements by position rather than by value, so the
+/// budget is only spent on actual redeliveries. Each emits the picked element finally or,
+/// while budget remains, provisionally (spending one unit).
 pub struct TopLevelAtLeastOnceOrderHook<T> {
     pub input: Rc<RefCell<VecDeque<T>>>,
     pub to_release: Option<Vec<T>>,
@@ -1608,9 +1651,23 @@ pub struct TopLevelAtLeastOnceOrderHook<T> {
     /// `emit_final` to check that every buffered element of the class got a slot.
     /// An entry lives from a class's first `emit` until its `emit_final` consumes it.
     pub emitted_counts: Vec<(T, usize)>,
+    /// Unused when scripted.
+    pub budget: RetryBudget,
+    /// Autonomous counterpart of `last_emitted`, by buffer position. Positions only shift
+    /// on a final emission, which resets this.
+    pub last_emitted_index: Option<usize>,
     pub output: Sender<T>,
     pub location: HookLocationMeta,
     pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> TopLevelAtLeastOnceOrderHook<T> {
+    /// Buffer positions an autonomous decision may emit next.
+    fn autonomous_candidates(&self) -> Vec<usize> {
+        (0..self.input.borrow().len())
+            .filter(|index| Some(*index) != self.last_emitted_index)
+            .collect()
+    }
 }
 
 impl<T> RuntimeHook for TopLevelAtLeastOnceOrderHook<T> {
@@ -1666,6 +1723,32 @@ impl<T> RuntimeHook for TopLevelAtLeastOnceOrderHook<T> {
 
     fn location_meta(&self) -> HookLocationMeta {
         self.location
+    }
+}
+
+impl<T: Clone> ObservationHook for TopLevelAtLeastOnceOrderHook<T> {
+    fn can_release(&self) -> bool {
+        // the sole buffered element can't be emitted again right after a provisional
+        // emission (that is the downstream `assume_retries`'s job)
+        !self.autonomous_candidates().is_empty()
+    }
+
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let candidates = self.autonomous_candidates();
+        let index = candidates[(0..candidates.len()).generate(driver).unwrap()];
+        let is_provisional = self.budget.allows_retry() && draw_boolean_false_if_exhausted(driver);
+
+        let mut input = self.input.borrow_mut();
+        if !is_provisional {
+            self.to_release = Some(vec![input.remove(index).unwrap()]);
+            self.release_provisional = false;
+            self.last_emitted_index = None;
+        } else {
+            self.to_release = Some(vec![input[index].clone()]);
+            self.release_provisional = true;
+            self.last_emitted_index = Some(index);
+            self.budget.spend(1);
+        }
     }
 }
 

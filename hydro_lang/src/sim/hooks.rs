@@ -379,6 +379,40 @@ where
     }
 }
 
+impl<T, Scope: ScriptableHookScope> BatchHook<T, TotalOrder, AtLeastOnce, Scope>
+where
+    T: Serialize + DeserializeOwned + PartialEq,
+{
+    /// Like [`Self::release`], but the last released element stays buffered, so it is
+    /// delivered again as the first element of the next batch.
+    ///
+    /// # Panics
+    /// If `n` is zero.
+    #[track_caller]
+    pub fn release_keep_last(&self, n: usize) -> DecisionFuture {
+        assert!(
+            n >= 1,
+            "release_keep_last: at least one element must be released to keep its last"
+        );
+        DecisionFuture::new(self.id, self.member, &BatchDecision::<T>::PrefixKeepLast(n))
+    }
+
+    /// Like [`Self::release_values`], but the last released element stays buffered; see
+    /// [`Self::release_keep_last`].
+    ///
+    /// # Panics
+    /// If `values` is empty.
+    #[track_caller]
+    pub fn release_values_keep_last(&self, values: impl IntoIterator<Item = T>) -> DecisionFuture {
+        let values: Vec<T> = values.into_iter().collect();
+        assert!(
+            !values.is_empty(),
+            "release_values_keep_last: at least one value must be released to keep its last"
+        );
+        DecisionFuture::new(self.id, self.member, &BatchDecision::ValuesKeepLast(values))
+    }
+}
+
 impl<T, R: Retries, Scope: ScriptableHookScope> BatchHook<T, NoOrder, R, Scope>
 where
     T: Serialize + DeserializeOwned + PartialEq,
@@ -405,6 +439,28 @@ where
     /// [`Self::release_values`] with no values.
     pub fn release_empty(&self) -> DecisionFuture {
         self.release_values([])
+    }
+}
+
+impl<T, Scope: ScriptableHookScope> BatchHook<T, NoOrder, AtLeastOnce, Scope>
+where
+    T: Serialize + DeserializeOwned + PartialEq,
+{
+    /// Like [`Self::release_values`], but the elements matching `keep` (a subset of
+    /// `values`) stay buffered, so they are delivered again in a later batch.
+    pub fn release_values_keep(
+        &self,
+        values: impl IntoIterator<Item = T>,
+        keep: impl IntoIterator<Item = T>,
+    ) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &UnorderedBatchDecision::ValuesKeep(
+                values.into_iter().collect(),
+                keep.into_iter().collect(),
+            ),
+        )
     }
 }
 
@@ -777,6 +833,57 @@ where
     }
 }
 
+impl<K, V, Scope: ScriptableHookScope> KeyedBatchHook<K, V, TotalOrder, AtLeastOnce, Scope>
+where
+    K: Serialize + DeserializeOwned + PartialEq,
+    V: Serialize + DeserializeOwned + PartialEq,
+{
+    /// Like [`Self::release`], but each key's last released value stays buffered, so it
+    /// is delivered again as that key's first value in the next batch.
+    ///
+    /// # Panics
+    /// If `counts` names the same key more than once, or any count is zero.
+    #[track_caller]
+    pub fn release_keep_last(&self, counts: impl IntoIterator<Item = (K, usize)>) -> DecisionFuture
+    where
+        K: std::hash::Hash + Eq,
+    {
+        let counts: Vec<(K, usize)> = counts.into_iter().collect();
+        assert_distinct_keys(counts.iter().map(|(key, _)| key), "release_keep_last");
+        assert!(
+            counts.iter().all(|(_, count)| *count >= 1),
+            "release_keep_last: every named key must release at least one value to keep its last"
+        );
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &KeyedBatchDecision::<K, V>::PrefixesKeepLast(counts),
+        )
+    }
+
+    /// Like [`Self::release_values`], but each key's last released value stays buffered;
+    /// see [`Self::release_keep_last`].
+    ///
+    /// # Panics
+    /// If `entries` is empty.
+    #[track_caller]
+    pub fn release_values_keep_last(
+        &self,
+        entries: impl IntoIterator<Item = (K, V)>,
+    ) -> DecisionFuture {
+        let entries: Vec<(K, V)> = entries.into_iter().collect();
+        assert!(
+            !entries.is_empty(),
+            "release_values_keep_last: at least one entry must be released to keep its last"
+        );
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &KeyedBatchDecision::ValuesKeepLast(entries),
+        )
+    }
+}
+
 impl<K, V, R: Retries, Scope: ScriptableHookScope> KeyedBatchHook<K, V, NoOrder, R, Scope>
 where
     K: Serialize + DeserializeOwned + PartialEq,
@@ -809,6 +916,29 @@ where
     /// [`Self::release_values`] with no entries.
     pub fn release_empty(&self) -> DecisionFuture {
         self.release_values([])
+    }
+}
+
+impl<K, V, Scope: ScriptableHookScope> KeyedBatchHook<K, V, NoOrder, AtLeastOnce, Scope>
+where
+    K: Serialize + DeserializeOwned + PartialEq,
+    V: Serialize + DeserializeOwned + PartialEq,
+{
+    /// Like [`Self::release_values`], but the entries matching `keep` (a subset of
+    /// `entries`) stay buffered, so they are delivered again in a later batch.
+    pub fn release_values_keep(
+        &self,
+        entries: impl IntoIterator<Item = (K, V)>,
+        keep: impl IntoIterator<Item = (K, V)>,
+    ) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &UnorderedKeyedBatchDecision::ValuesKeep(
+                entries.into_iter().collect(),
+                keep.into_iter().collect(),
+            ),
+        )
     }
 }
 

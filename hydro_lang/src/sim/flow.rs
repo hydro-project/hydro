@@ -56,6 +56,12 @@ pub struct SimFlow<'a> {
     /// Number of iterations to use for fuzzing, defaults to 8192
     pub(crate) unit_test_fuzz_iterations: usize,
 
+    /// See [`Self::unit_test_fuzz_max_len`].
+    pub(crate) unit_test_fuzz_max_len: Option<usize>,
+
+    /// See [`Self::retries_depth`].
+    pub(crate) retries_depth: Option<usize>,
+
     pub(crate) _phantom: Invariant<'a>,
 }
 
@@ -96,6 +102,33 @@ impl<'a> SimFlow<'a> {
     #[must_use]
     pub fn unit_test_fuzz_iterations(mut self, iterations: usize) -> Self {
         self.unit_test_fuzz_iterations = iterations;
+        self
+    }
+
+    /// Limits how many bytes of random input each fuzz iteration may consume when a fuzz
+    /// test runs without `cargo sim`. Once the limit is reached, every remaining decision
+    /// gets the driver's fallback value. Defaults to bolero's limit (4096).
+    #[must_use]
+    pub fn unit_test_fuzz_max_len(mut self, max_len: usize) -> Self {
+        self.unit_test_fuzz_max_len = Some(max_len);
+        self
+    }
+
+    /// Bounds the number of retries the simulator generates at at-least-once operators
+    /// (`assume_retries`, and `assume_ordering` / `batch` on an `AtLeastOnce` stream) that
+    /// are not bound to a sim hook, to `depth` per operator. So `retries_depth(0)` delivers
+    /// every element exactly once.
+    ///
+    /// Required by [`exhaustive`](Self::exhaustive) when there are such operators. Under
+    /// [`fuzz`](Self::fuzz), retries are unbounded unless this is set.
+    /// [`deterministic`](Self::deterministic) ignores it, since every at-least-once operator
+    /// must be scripted there.
+    ///
+    /// The budget is per operator (and per cluster member). Operators inside a tick get a
+    /// fresh budget on every tick execution, others share one budget over the whole run.
+    #[must_use]
+    pub fn retries_depth(mut self, depth: usize) -> Self {
+        self.retries_depth = Some(depth);
         self
     }
 
@@ -158,6 +191,7 @@ impl<'a> SimFlow<'a> {
             next_hoff_id: crate::Counter::default(),
             test_safety_only: self.test_safety_only,
             skip_consistency_assertions: self.skip_consistency_assertions,
+            unhooked_at_least_once: vec![],
             channel_tables: BTreeMap::new(),
             bound_sim_hooks: HashMap::new(),
         };
@@ -257,6 +291,7 @@ impl<'a> SimFlow<'a> {
             sim_emit.extra_stmts_cluster,
         );
 
+        let unhooked_at_least_once = std::mem::take(&mut sim_emit.unhooked_at_least_once);
         let out = compile_sim(bin, trybuild).unwrap();
         let lib = {
             let _span = tracing::debug_span!(target: "hydro_build", "load_dylib").entered();
@@ -268,6 +303,9 @@ impl<'a> SimFlow<'a> {
             lib,
             externals_port_registry: self.externals_port_registry.take(),
             unit_test_fuzz_iterations: self.unit_test_fuzz_iterations,
+            unit_test_fuzz_max_len: self.unit_test_fuzz_max_len,
+            retries_depth: self.retries_depth,
+            unhooked_at_least_once,
         }
     }
 
