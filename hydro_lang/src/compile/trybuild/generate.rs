@@ -1,3 +1,4 @@
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -10,6 +11,7 @@ use sha2::{Digest, Sha256};
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use stageleft::internal::quote;
 use trybuild_internals_api::cargo::{self, Metadata};
+use trybuild_internals_api::directory::Directory;
 use trybuild_internals_api::env::Update;
 use trybuild_internals_api::normalize::Normalization;
 use trybuild_internals_api::run::{PathDependency, Project};
@@ -1030,6 +1032,16 @@ pub fn create_trybuild()
         manifest.workspace = None;
     }
 
+    // `Runner::make_manifest` copies every workspace `[profile.*.package.<name>]`
+    // table. Cargo warns when `<name>` is not in this generated project
+    // (`website_playground` is the workspace case). `package."*"` stays.
+    let dylib_examples_package = format!("{project_name}-dylib-examples");
+    let package_names = trybuild_package_names(
+        &manifest,
+        &[dylib_package_name.as_str(), dylib_examples_package.as_str()],
+    );
+    filter_copied_trybuild_profiles(&mut manifest.profile, &package_names);
+
     let project = Project {
         dir: project_dir,
         source_dir,
@@ -1346,6 +1358,196 @@ members = ["dylib", "dylib-examples"]
     ))
 }
 
+/// Packages whose `[profile.*.package.<name>]` overrides still apply to the
+/// generated trybuild project: the project itself, its direct dependencies
+/// (including its own dev-dependencies), the transitive normal dependencies of
+/// that set, and the dylib workspace members.
+///
+/// The walk follows path dependencies and `workspace = true` dependencies whose
+/// path is on the workspace dependency table, including target-specific normal
+/// dependencies. Dev-dependencies and build-dependencies of dependencies are
+/// not followed; they are not compiled as part of building the trybuild crate.
+fn trybuild_package_names(
+    manifest: &trybuild_internals_api::manifest::Manifest,
+    extra_packages: &[&str],
+) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    names.insert(manifest.package.name.clone());
+    names.extend(extra_packages.iter().map(|name| (*name).to_owned()));
+
+    let workspace_deps = manifest
+        .workspace
+        .as_ref()
+        .map(|workspace| &workspace.dependencies);
+    let mut pending_manifests = Vec::new();
+    // The generated manifest already includes the trybuild crate's own
+    // dev-dependencies (see `Runner::make_manifest`). Their normal-dependency
+    // closure is what the queue walks; dev-dependencies and build-dependencies
+    // of dependencies are not queued.
+    collect_dependency_package_names(
+        &mut names,
+        &mut pending_manifests,
+        &manifest.dependencies,
+        workspace_deps,
+    );
+    for target in manifest.target.values() {
+        collect_dependency_package_names(
+            &mut names,
+            &mut pending_manifests,
+            &target.dependencies,
+            workspace_deps,
+        );
+        collect_dependency_package_names(
+            &mut names,
+            &mut pending_manifests,
+            &target.dev_dependencies,
+            workspace_deps,
+        );
+    }
+
+    let mut visited = BTreeSet::new();
+    while let Some(dir) = pending_manifests.pop() {
+        if !visited.insert(manifest_dir_key(&dir)) {
+            continue;
+        }
+        let Ok(dep_manifest) = dependencies::get_manifest(&dir) else {
+            continue;
+        };
+        names.insert(dep_manifest.package.name.clone());
+        collect_dependency_package_names(
+            &mut names,
+            &mut pending_manifests,
+            &dep_manifest.dependencies,
+            workspace_deps,
+        );
+        for target in dep_manifest.target.values() {
+            collect_dependency_package_names(
+                &mut names,
+                &mut pending_manifests,
+                &target.dependencies,
+                workspace_deps,
+            );
+        }
+    }
+
+    names
+}
+
+fn collect_dependency_package_names<'a>(
+    names: &mut BTreeSet<String>,
+    pending_manifests: &mut Vec<Directory>,
+    dependencies: impl IntoIterator<Item = (&'a String, &'a dependencies::Dependency)>,
+    workspace_deps: Option<&'a BTreeMap<String, dependencies::Dependency>>,
+) {
+    for (key, dep) in dependencies {
+        names.insert(dependency_package_name(key, dep, workspace_deps).to_owned());
+        if let Some(dir) = dependency_manifest_dir(key, dep, workspace_deps) {
+            pending_manifests.push(dir.clone());
+        }
+    }
+}
+
+/// Cargo matches profile package overrides against the real package name, which
+/// `package = "..."` (including on a `workspace = true` dependency) can rename.
+fn dependency_package_name<'a>(
+    key: &'a str,
+    dep: &'a dependencies::Dependency,
+    workspace_deps: Option<&'a BTreeMap<String, dependencies::Dependency>>,
+) -> &'a str {
+    if let Some(name) = explicit_package_name(dep) {
+        return name;
+    }
+    if dep.workspace
+        && let Some(workspace_dep) = workspace_deps.and_then(|deps| deps.get(key))
+        && let Some(name) = explicit_package_name(workspace_dep)
+    {
+        return name;
+    }
+    key
+}
+
+/// Directory whose `Cargo.toml` lists this dependency's normal dependencies.
+/// `workspace = true` dependencies take their path from the workspace table.
+fn dependency_manifest_dir<'a>(
+    key: &str,
+    dep: &'a dependencies::Dependency,
+    workspace_deps: Option<&'a BTreeMap<String, dependencies::Dependency>>,
+) -> Option<&'a Directory> {
+    if dep.workspace
+        && let Some(path) = workspace_deps
+            .and_then(|deps| deps.get(key))
+            .and_then(|workspace_dep| workspace_dep.path.as_ref())
+    {
+        return Some(path);
+    }
+    dep.path.as_ref()
+}
+
+/// Identity of a manifest directory. Lexically normalized so a relative-path
+/// cycle cannot grow forever when `Directory::canonicalize` fails.
+fn manifest_dir_key(dir: &Directory) -> PathBuf {
+    let path = dir
+        .canonicalize()
+        .map(|canonical| canonical.as_ref().to_path_buf())
+        .unwrap_or_else(|_| dir.as_ref().to_path_buf());
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                normalized.pop();
+            }
+            other => normalized.push(other.as_os_str()),
+        }
+    }
+    normalized
+}
+
+fn explicit_package_name(dep: &dependencies::Dependency) -> Option<&str> {
+    dep.rest.get("package").and_then(|value| value.as_str())
+}
+
+fn filter_copied_trybuild_profiles<V>(
+    profile: &mut BTreeMap<String, V>,
+    package_names: &BTreeSet<String>,
+) where
+    V: serde::Serialize + serde::de::DeserializeOwned,
+{
+    if profile.is_empty() {
+        return;
+    }
+
+    let mut profile_value =
+        toml::Value::try_from(&*profile).expect("workspace profile should serialize to toml");
+    retain_trybuild_package_profiles(&mut profile_value, package_names);
+    let serialized = toml::to_string(&profile_value).expect("filtered profile should serialize");
+    *profile = toml::from_str(&serialized).expect("filtered profile should deserialize");
+}
+
+/// Drops `[profile.*.package.<name>]` when `<name>` is not in `package_names`.
+/// `profile` is the `[profile]` table (`dev`, `release`, ...). The `"*"` wildcard
+/// and every non-package profile key are kept.
+fn retain_trybuild_package_profiles(profile: &mut toml::Value, package_names: &BTreeSet<String>) {
+    let Some(profiles) = profile.as_table_mut() else {
+        return;
+    };
+    for (_, profile_config) in profiles.iter_mut() {
+        let Some(config) = profile_config.as_table_mut() else {
+            continue;
+        };
+        let Some(packages) = config
+            .get_mut("package")
+            .and_then(toml::Value::as_table_mut)
+        else {
+            continue;
+        };
+        packages.retain(|name, _| name == "*" || package_names.contains(name));
+        if packages.is_empty() {
+            config.remove("package");
+        }
+    }
+}
+
 fn check_contents(contents: &[u8], path: &Path) -> Result<bool, std::io::Error> {
     let mut file = File::options()
         .read(true)
@@ -1378,4 +1580,371 @@ pub(crate) fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::{BTreeMap, BTreeSet};
+    use std::path::{Path, PathBuf};
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    use trybuild_internals_api::dependencies::Dependency;
+    use trybuild_internals_api::directory::Directory;
+    use trybuild_internals_api::manifest::{Edition, Manifest, Package, Workspace};
+
+    use super::{
+        filter_copied_trybuild_profiles, retain_trybuild_package_profiles, trybuild_package_names,
+    };
+
+    #[test]
+    fn drops_package_profiles_absent_from_the_trybuild_crate() {
+        // Shape of the `[profile]` table copied from the workspace manifest.
+        let mut profile: toml::Value = toml::from_str(
+            r#"
+[dev]
+debug = "line-tables-only"
+
+[dev.package."*"]
+debug = false
+
+[dev.package.website_playground]
+debug-assertions = false
+
+[dev.package.hydro_lang]
+opt-level = 1
+
+[release]
+opt-level = 3
+lto = "fat"
+
+[release.package.website_playground]
+opt-level = "s"
+
+[profile]
+inherits = "release"
+debug = 2
+"#,
+        )
+        .unwrap();
+
+        let dev_packages = profile
+            .get("dev")
+            .and_then(|dev| dev.get("package"))
+            .unwrap();
+        assert!(
+            dev_packages.get("website_playground").is_some(),
+            "website_playground package profile is present before filtering"
+        );
+        assert!(dev_packages.get("*").is_some());
+
+        let mut package_names = BTreeSet::new();
+        package_names.insert("hydro_lang".to_owned());
+        package_names.insert("hydro_lang-hydro-trybuild".to_owned());
+        retain_trybuild_package_profiles(&mut profile, &package_names);
+
+        let dev = profile.get("dev").unwrap();
+        assert_eq!(
+            dev.get("debug").and_then(toml::Value::as_str),
+            Some("line-tables-only")
+        );
+        let dev_packages = dev
+            .get("package")
+            .expect("wildcard package table should remain");
+        assert!(dev_packages.get("website_playground").is_none());
+        assert!(dev_packages.get("*").is_some());
+        assert_eq!(
+            dev_packages
+                .get("hydro_lang")
+                .and_then(|pkg| pkg.get("opt-level"))
+                .and_then(toml::Value::as_integer),
+            Some(1)
+        );
+
+        let release = profile.get("release").unwrap();
+        assert_eq!(
+            release.get("opt-level").and_then(toml::Value::as_integer),
+            Some(3)
+        );
+        assert_eq!(
+            release.get("lto").and_then(toml::Value::as_str),
+            Some("fat")
+        );
+        assert!(
+            release
+                .get("package")
+                .and_then(|packages| packages.get("website_playground"))
+                .is_none()
+        );
+
+        let custom = profile.get("profile").unwrap();
+        assert_eq!(
+            custom.get("inherits").and_then(toml::Value::as_str),
+            Some("release")
+        );
+        assert_eq!(
+            custom.get("debug").and_then(toml::Value::as_integer),
+            Some(2)
+        );
+
+        // Same tables, as `Runner::make_manifest` receives them (`serde_json` values
+        // on the workspace manifest) and as `create_trybuild` filters them.
+        let mut workspace: trybuild_internals_api::dependencies::WorkspaceManifest =
+            toml::from_str(
+                r#"
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.dev.package.website_playground]
+debug-assertions = false
+
+[profile.release.package.website_playground]
+opt-level = "s"
+"#,
+            )
+            .unwrap();
+        assert!(
+            workspace.profile["dev"]["package"]
+                .get("website_playground")
+                .is_some()
+        );
+        filter_copied_trybuild_profiles(&mut workspace.profile, &package_names);
+        let dev_packages = &workspace.profile["dev"]["package"];
+        assert!(dev_packages.get("website_playground").is_none());
+        assert_eq!(
+            dev_packages
+                .get("*")
+                .and_then(|spec| spec.get("debug"))
+                .and_then(|v| v.as_bool()),
+            Some(false)
+        );
+        assert!(
+            workspace.profile["release"]
+                .get("package")
+                .and_then(|packages| packages.get("website_playground"))
+                .is_none()
+        );
+    }
+
+    /// `hydro_lang` is a path dependency of the generated crate, and `lattices` is a
+    /// path dependency of `hydro_lang`. `variadics` is a `workspace = true` dependency
+    /// of `hydro_lang` whose path lives on the workspace dependency table, and it
+    /// path-depends on `variadics_macro`. `target_only` is a target-specific normal
+    /// dependency. Those packages are compiled, so their profiles must be kept.
+    /// `website_playground` is only a dev-dependency and a build-dependency, so it
+    /// must still be dropped.
+    #[test]
+    fn keeps_transitive_normal_dependency_package_profiles() {
+        let root = fresh_temp_dir();
+        let _cleanup = RemoveOnDrop(root.clone());
+        let hydro_lang_dir = root.join("hydro_lang");
+        let lattices_dir = root.join("lattices");
+        let variadics_dir = root.join("variadics");
+        let variadics_macro_dir = root.join("variadics_macro");
+        let target_only_dir = root.join("target_only");
+        for dir in [
+            &hydro_lang_dir,
+            &lattices_dir,
+            &variadics_dir,
+            &variadics_macro_dir,
+            &target_only_dir,
+        ] {
+            std::fs::create_dir_all(dir).unwrap();
+        }
+        std::fs::write(
+            hydro_lang_dir.join("Cargo.toml"),
+            r#"
+[package]
+name = "hydro_lang"
+edition = "2021"
+
+[dependencies]
+lattices = { path = "../lattices" }
+variadics = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+target_only = { path = "../target_only" }
+
+[target.'cfg(unix)'.dev-dependencies]
+website_playground = { path = "../website_playground" }
+
+[build-dependencies]
+website_playground = { path = "../website_playground" }
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            lattices_dir.join("Cargo.toml"),
+            r#"
+[package]
+name = "lattices"
+edition = "2021"
+
+[dependencies]
+sealed = "0.6.0"
+
+[dev-dependencies]
+website_playground = { path = "../website_playground" }
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            variadics_dir.join("Cargo.toml"),
+            r#"
+[package]
+name = "variadics"
+edition = "2021"
+
+[dependencies]
+variadics_macro = { path = "../variadics_macro" }
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            variadics_macro_dir.join("Cargo.toml"),
+            r#"
+[package]
+name = "variadics_macro"
+edition = "2021"
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            target_only_dir.join("Cargo.toml"),
+            r#"
+[package]
+name = "target_only"
+edition = "2021"
+"#,
+        )
+        .unwrap();
+
+        let mut dependencies = BTreeMap::new();
+        dependencies.insert("hydro_lang".to_owned(), path_dependency(&hydro_lang_dir));
+        let mut workspace_dependencies = BTreeMap::new();
+        workspace_dependencies.insert("variadics".to_owned(), path_dependency(&variadics_dir));
+        let mut manifest = generated_manifest(
+            "app-hydro-trybuild",
+            dependencies,
+            r#"
+[dev]
+debug = "line-tables-only"
+
+[dev.package."*"]
+debug = false
+
+[dev.package.website_playground]
+debug-assertions = false
+
+[dev.package.hydro_lang]
+opt-level = 1
+
+[dev.package.lattices]
+opt-level = 2
+
+[dev.package.variadics]
+opt-level = 1
+
+[dev.package.variadics_macro]
+opt-level = 1
+
+[dev.package.target_only]
+opt-level = 1
+"#,
+        );
+        manifest.workspace = Some(Workspace {
+            dependencies: workspace_dependencies,
+        });
+
+        let package_names = trybuild_package_names(&manifest, &[]);
+        filter_copied_trybuild_profiles(&mut manifest.profile, &package_names);
+
+        let dev_packages = &manifest.profile["dev"]["package"];
+        assert!(
+            dev_packages.get("lattices").is_some(),
+            "lattices is a transitive normal dependency and must keep its package profile, got {dev_packages}"
+        );
+        assert!(dev_packages.get("variadics").is_some());
+        assert!(
+            dev_packages.get("variadics_macro").is_some(),
+            "normal dependencies of a workspace = true dependency must be kept, got {dev_packages}"
+        );
+        assert!(
+            dev_packages.get("target_only").is_some(),
+            "target-specific normal dependencies must be kept, got {dev_packages}"
+        );
+        assert!(dev_packages.get("hydro_lang").is_some());
+        assert!(dev_packages.get("*").is_some());
+        assert!(
+            dev_packages.get("website_playground").is_none(),
+            "website_playground is outside the normal-dependency closure"
+        );
+    }
+
+    fn path_dependency(dir: &Path) -> Dependency {
+        Dependency {
+            version: None,
+            path: Some(Directory::new(dir)),
+            optional: false,
+            default_features: None,
+            features: Vec::new(),
+            git: None,
+            branch: None,
+            tag: None,
+            rev: None,
+            workspace: false,
+            rest: BTreeMap::new(),
+        }
+    }
+
+    fn generated_manifest(
+        name: &str,
+        dependencies: BTreeMap<String, Dependency>,
+        profile_toml: &str,
+    ) -> Manifest {
+        Manifest {
+            cargo_features: Vec::new(),
+            package: Package {
+                name: name.to_owned(),
+                version: "0.0.0".to_owned(),
+                edition: Edition::E2021,
+                resolver: None,
+                publish: false,
+            },
+            features: BTreeMap::new(),
+            dependencies,
+            target: BTreeMap::new(),
+            bins: Vec::new(),
+            workspace: None,
+            patch: BTreeMap::new(),
+            replace: BTreeMap::new(),
+            profile: toml::from_str(profile_toml).unwrap(),
+        }
+    }
+
+    fn fresh_temp_dir() -> PathBuf {
+        static TEMP_DIRS: AtomicU64 = AtomicU64::new(0);
+        let n = TEMP_DIRS.fetch_add(1, Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!(
+            "hydro-trybuild-profile-{}-{}-{}",
+            std::process::id(),
+            n,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    struct RemoveOnDrop(PathBuf);
+
+    impl Drop for RemoveOnDrop {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
 }
