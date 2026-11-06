@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1793878719955,
+  "lastUpdate": 1793965070929,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -321330,6 +321330,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 258000,
             "range": "± 876.36",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "4056cebf83d18454633eb6414b8dc432481e802a",
+          "message": "ci: run Maelstrom tests concurrently in the `ci-heavy` profile (#3345)\n\nThe Maelstrom tests already build through `hydro_concurrent_cargo`:\n`MaelstromDeployment::build`\ncalls `compile_trybuild_example`, the same path as the simulator\n(per-job `target/jobs/<JOB>/`\ndirs symlinking a shared, once-prebuilt dependency set). Each test's job\nname is\n`<name_hint>_<sha256(source)>`, so concurrent final builds never\ncollide, and only the one-time\nprebuild is serialized under `.prebuild.lock`. The only thing\nserializing them was the nextest\nconfig.\n\n`.config/nextest.toml`:\n- Drop `(package(hydro_test) & test(maelstrom::))` from the `heavy` test\ngroup\n(`max-threads = 1`). That group's rationale — \"each invokes `cargo`\ninternally, so running them\nconcurrently would just contend on the target directory lock\" — applies\nto the trybuild\ncompile-fail tests, `rustflags_propagation`, and `cargo sim`, which run\ncargo directly against\nthe shared target dir, but not to Maelstrom. The tests stay in the\n`ci-heavy` profile filter\n(they still compile a generated program per test and need the\nJava/Maelstrom setup only that\n  flavor installs); the comments now explain the distinction.\n- Remove the `threads-required = 'num-test-threads'` overrides on\n`broadcast_3b`/`3c`. Their\nstated reason (\"under heavy CPU load, Maelstrom is flaky when multiple\nnodes are launched\") is\nthe symptom that #3339 root-caused and fixed deterministically: a wider\nnode-launch stagger let\ngossip reach a not-yet-registered peer, killing the sender's stdout pump\nin Maelstrom. With the\n`peers_ready` gate that race no longer exists, and keeping these\noverrides would have made 3b\n  and 3c each still run alone, eating most of the gain.\n\n`.github/workflows/ci.yml`: drop the \"take the target directory lock\"\nclause from the matrix\ncomment so it matches the nextest config.\n\nExpected impact, from the latest `main` ci-heavy run: the five Maelstrom\ntests took 247s\n(ubuntu) / 250s (macOS) serially, with `broadcast_3a` paying the ~70–85s\nprebuild. Run\nconcurrently they should collapse to roughly prebuild + the longest run\n(~40s), and they can\nalso overlap with the compile-fail trybuild tests (separate\n`target/tests/trybuild` dir).\n\nVerification: ran the five tests under `--profile ci-heavy` locally\nagainst Maelstrom v0.2.4\nsix times — 30/30 passed. Four runs on 32 cores finished in ~38s\nwall-clock with all five\nconcurrent; two runs pinned via `taskset -c 0-3` (so nextest ran\n3a+3b+3c+echo at once — 11\nnode processes and 4 JVMs on 4 cores, the load scenario the old override\nguarded against)\nfinished in ~58s with all passing. `cargo nextest show-config\ntest-groups` confirms the `heavy`\ngroup now holds only the direct-cargo tests on all three profiles.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-11-05T20:25:50Z",
+          "url": "https://github.com/hydro-project/hydro/commit/4056cebf83d18454633eb6414b8dc432481e802a"
+        },
+        "date": 1793965070865,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 351762,
+            "range": "± 5468",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 7385200,
+            "range": "± 106170",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 7734363,
+            "range": "± 20339",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 12045,
+            "range": "± 238",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 9552821,
+            "range": "± 124227",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1068290,
+            "range": "± 15947",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1167145,
+            "range": "± 34437",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 52365368,
+            "range": "± 2749251",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 7384881,
+            "range": "± 8266",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 44724923,
+            "range": "± 1035821",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 7383382,
+            "range": "± 153971",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 7738040,
+            "range": "± 159493",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 40189928,
+            "range": "± 479730",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 7186,
+            "range": "± 182",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 24521,
+            "range": "± 145",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4146,
+            "range": "± 82",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 7289,
+            "range": "± 223",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 422967,
+            "range": "± 1509",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 59808,
+            "range": "± 1412",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 44603,
+            "range": "± 1261",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 18229,
+            "range": "± 217",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 7226,
+            "range": "± 260",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1079,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 81725,
+            "range": "± 744",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 98965,
+            "range": "± 241",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 7196,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 17505,
+            "range": "± 354",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 27997,
+            "range": "± 436",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 5720,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 203880,
+            "range": "± 10513.12",
             "unit": "ops/s"
           }
         ]
