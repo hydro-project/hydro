@@ -15,14 +15,14 @@ help: the following other types implement trait `Retries`
    | impl Retries for AtLeastOnce {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::live_collections::stream::AtLeastOnce`
    = note: required for `hydro_lang::live_collections::stream::ExactlyOnce` to implement `MinRetries<()>`
-note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<T, hydro_lang::prelude::Process<'a, L>, B, O, R>>::send`
+note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<T, hydro_lang::prelude::Process<'a, L>, B, O, R, D>>::send`
   --> src/live_collections/stream/networking.rs
    |
    |     pub fn send<L2, N: NetworkFor<T>>(
    |            ---- required by a bound in this associated function
 ...
    |         R: MinRetries<N::RetriesGuarantee>,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R>>::send`
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R, D>>::send`
 
 error[E0277]: this `EMBEDDED` channel does not declare whether it may duplicate messages
   --> tests/compile-fail/stable/embedded_missing_guarantee.rs:13:10
@@ -59,14 +59,14 @@ help: the following other types implement trait `hydro_lang::live_collections::s
    | impl Ordering for NoOrder {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ `hydro_lang::live_collections::stream::NoOrder`
    = note: required for `hydro_lang::live_collections::stream::TotalOrder` to implement `MinOrder<()>`
-note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<T, hydro_lang::prelude::Process<'a, L>, B, O, R>>::send`
+note: required by a bound in `hydro_lang::live_collections::stream::networking::<impl hydro_lang::prelude::Stream<T, hydro_lang::prelude::Process<'a, L>, B, O, R, D>>::send`
   --> src/live_collections/stream/networking.rs
    |
    |     pub fn send<L2, N: NetworkFor<T>>(
    |            ---- required by a bound in this associated function
 ...
    |         O: MinOrder<N::OrderingGuarantee>,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R>>::send`
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `hydro_lang::live_collections::stream::networking::<impl Stream<T, Process<'a, L>, B, O, R, D>>::send`
 
 error[E0277]: this `EMBEDDED` channel does not declare whether it may reorder messages
   --> tests/compile-fail/stable/embedded_missing_guarantee.rs:17:47
@@ -91,7 +91,7 @@ error[E0277]: this `EMBEDDED` channel does not declare whether it may drop messa
 24 |     let _ = p1.source_iter(q!(vec![1, 2, 3])).send(
    |                                               ^^^^ the trait `EmbeddedFailPolicy` is not implemented for `()`
    |
-   = note: add `.never_drops()`, `.may_drop(nondet!(..))`, or `.may_delay_forever()` to the network config
+   = note: add `.never_drops()`, `.may_drop()`, or `.may_delay_forever()` to the network config
 help: the following other types implement trait `EmbeddedFailPolicy`
   --> src/networking/mod.rs
    |

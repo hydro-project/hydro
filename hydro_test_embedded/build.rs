@@ -93,14 +93,14 @@ fn generate_embedded() {
     // --- weak_stream_channel (o2o; the stream sent is unordered and may repeat messages, so the
     // channel has no order to keep and may duplicate them) ---
     {
-        use hydro_lang::live_collections::stream::{AtLeastOnce, NoOrder};
+        use hydro_lang::live_collections::stream::{AtLeastOnce, NoDrop, NoOrder};
         use hydro_lang::networking::EMBEDDED;
 
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
         let sender = flow.process::<()>();
         let receiver = flow.process::<()>();
         sender
-            .embedded_input::<String, NoOrder, AtLeastOnce>("input")
+            .embedded_input::<String, NoOrder, AtLeastOnce, NoDrop>("input")
             .send(
                 &receiver,
                 EMBEDDED
@@ -126,14 +126,14 @@ fn generate_embedded() {
     // --- weak_channel (o2o; the channel is declared to reorder and duplicate an ordered,
     // exactly-once stream) ---
     {
-        use hydro_lang::live_collections::stream::{ExactlyOnce, TotalOrder};
+        use hydro_lang::live_collections::stream::{ExactlyOnce, NoDrop, TotalOrder};
         use hydro_lang::networking::EMBEDDED;
 
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
         let sender = flow.process::<()>();
         let receiver = flow.process::<()>();
         sender
-            .embedded_input::<String, TotalOrder, ExactlyOnce>("input")
+            .embedded_input::<String, TotalOrder, ExactlyOnce, NoDrop>("input")
             .send(
                 &receiver,
                 EMBEDDED
@@ -151,6 +151,42 @@ fn generate_embedded() {
 
         std::fs::write(
             format!("{out_dir}/weak_channel.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- lossy_channel (o2o over a lossy `EMBEDDED` channel, whose received stream may be
+    // missing messages; the receiver also has an input that may be missing elements) ---
+    {
+        use hydro_lang::live_collections::stream::{ExactlyOnce, MayDrop, NoDrop, TotalOrder};
+        use hydro_lang::networking::EMBEDDED;
+
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let sender = flow.process::<()>();
+        let receiver = flow.process::<()>();
+        sender
+            .embedded_input::<String, TotalOrder, ExactlyOnce, NoDrop>("input")
+            .send(
+                &receiver,
+                EMBEDDED
+                    .never_reorders()
+                    .never_duplicates()
+                    .may_drop()
+                    .name("messages"),
+            )
+            .embedded_output("output");
+        receiver
+            .embedded_input::<String, TotalOrder, ExactlyOnce, MayDrop>("hints")
+            .embedded_output("hints_out");
+
+        let code = flow
+            .with_process(&sender, "lossy_sender")
+            .with_process(&receiver, "lossy_receiver")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/lossy_channel.rs"),
             prettyplease::unparse(&code),
         )
         .unwrap();

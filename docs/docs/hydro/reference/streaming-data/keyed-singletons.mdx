@@ -137,6 +137,9 @@ A keyed singleton can also be flattened back into streams: `entries()` emits `(K
 
 You can also observe aggregate views: `key_count()` produces a `Singleton<usize>` that asynchronously tracks the number of keys, and `into_singleton()` produces a `Singleton<HashMap<K, V>>` with the full mapping.
 
+## Missing Values
+A commutative keyed aggregation over a keyed stream that may be missing values ([`MayDrop`](./keyed-streams.mdx#missing-values-drops)) produces a `MayDrop` keyed singleton: the value of each key is always one its aggregation could take over all of its values, but a key may never appear, or never reach its final value. `map` and `map_with_key` keep the drop type. Reading it from a tick with `snapshot` requires `NoDrop`, so first call [`observe_drops`](rust:hydro_lang::live_collections::KeyedSingleton::observe_drops), whose [`nonlive!`](rust:hydro_lang::liveness::nonlive) explains why the program is acceptable even if some keys stop short.
+
 ## Using Keyed Singletons with State
 Pure transformations like `map` cover services where each response depends only on its own request. When responses must consult service **state** (a counter, a table, etc.), you process the keyed singleton inside a [slice block](../state-management/slices.mdx). When you `use` a `BoundedValue` keyed singleton in a `sliced!` block, it is revealed as a **batch of newly-arrived entries**. Each request key appears in exactly one batch, so every request is handled exactly once:
 

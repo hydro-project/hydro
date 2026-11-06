@@ -1014,14 +1014,16 @@ where
         outbound_messages
             .into_keyed()
             // The channel's fault model is chosen by the caller: sim tests use
-            // `TCP.fail_stop()` (the simulator cannot explore lossy channels without
-            // giving up liveness assertions), while real deployments that face
-            // partitions pass `TCP.lossy_delayed_forever()` — RAFT tolerates the
-            // loss: lost AppendEntries (or replies) are re-sent on the next
-            // heartbeat, and lost vote traffic is retried at the next election
-            // timeout.
+            // `TCP.fail_stop()`, while real deployments that face partitions pass
+            // `TCP.lossy_delayed_forever()`, whose received traffic may be missing
+            // messages (and is a no-op to observe for `fail_stop`).
             .demux(cluster, net)
-            .entries(),
+            .entries()
+            .observe_drops(nonlive!(
+                /// RAFT tolerates lost traffic: lost AppendEntries (or replies) are re-sent
+                /// on the next heartbeat, and lost vote traffic is retried at the next
+                /// election timeout.
+            )),
     );
 
     RaftOutputs {

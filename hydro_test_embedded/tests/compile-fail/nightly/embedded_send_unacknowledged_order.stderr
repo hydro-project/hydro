@@ -15,13 +15,13 @@ help: the trait `OrderAcknowledgedBy<hydro_lang::live_collections::stream::Total
    | impl<End> OrderAcknowledgedBy<NoOrder, End> for NoOrder {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: for that trait implementation, expected `hydro_lang::live_collections::stream::NoOrder`, found `hydro_lang::live_collections::stream::TotalOrder`
-   = note: required for `hydro_test_embedded::weak_stream_channel::weak_stream_sender::outgoing::messages` to implement `AcknowledgedBy<hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::AtLeastOnce>`
+   = note: required for `hydro_test_embedded::weak_stream_channel::weak_stream_sender::outgoing::messages` to implement `AcknowledgedBy<hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::AtLeastOnce, hydro_lang::live_collections::stream::NoDrop>`
 note: required by a bound in `EmbeddedNetworkOutputChannel::<C, S>::new`
   --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
    |
    | impl<C: EmbeddedNetworkChannel, S> EmbeddedNetworkOutputChannel<C, S> {
 ...
-   |     pub fn new<Tr, Ser, O, R>(
+   |     pub fn new<Tr, Ser, O, R, D>(
 ...
-   |         C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<O, R>,
-   |                                    ^^^^^^^^^^^^^^^^^^^^ required by this bound in `EmbeddedNetworkOutputChannel::<C, S>::new`
+   |         C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<O, R, D>,
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `EmbeddedNetworkOutputChannel::<C, S>::new`

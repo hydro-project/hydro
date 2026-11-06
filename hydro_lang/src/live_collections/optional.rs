@@ -12,7 +12,10 @@ use syn::parse_quote;
 use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::singleton::Singleton;
-use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
+use super::stream::{
+    AtLeastOnce, Drops, ExactlyOnce, MayDrop, NoDrop, NoMissingElements, NoOrder, Stream,
+    TotalOrder,
+};
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, OptionalBoundKind, SharedNode,
@@ -21,6 +24,7 @@ use crate::compile::ir::{
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::singleton::SingletonBound;
+use crate::liveness::NonLive;
 #[cfg(feature = "tokio")]
 use crate::location::TopLevel;
 #[cfg(stageleft_runtime)]
@@ -114,15 +118,18 @@ impl<B: IsBounded> IsInitNone for B {}
 /// - `Loc`: the [`Location`] where the optional is materialized
 /// - `Bound`: tracks whether the value is [`Bounded`] (fixed) or [`Unbounded`] (changing
 ///   asynchronously) or something in between (see [`OptionalBoundKind`]).
-pub struct Optional<Type, Loc, Bound: OptionalBound> {
+/// - `Drops`: whether the optional was aggregated from a stream that may be missing elements
+///   ([`MayDrop`]), so that it may never reach its final value, or not ([`NoDrop`], the default);
+///   reading a `MayDrop` optional from a tick first requires `observe_drops`
+pub struct Optional<Type, Loc, Bound: OptionalBound, Dropping: Drops = NoDrop> {
     pub(crate) location: Loc,
     pub(crate) ir_node: Rc<RefCell<HydroNode>>,
     pub(crate) flow_state: FlowState,
 
-    _phantom: PhantomData<(Type, Loc, Bound)>,
+    _phantom: PhantomData<(Type, Loc, Bound, Dropping)>,
 }
 
-impl<T, L, B: OptionalBound> Drop for Optional<T, L, B> {
+impl<T, L, B: OptionalBound, D: Drops> Drop for Optional<T, L, B, D> {
     fn drop(&mut self) {
         let ir_node = self.ir_node.replace(HydroNode::Placeholder);
         if !matches!(ir_node, HydroNode::Placeholder) && !ir_node.is_shared_with_others() {
@@ -321,7 +328,7 @@ fn or_inside_tick<'a, T, L: Location<'a>, B: Boundedness>(
     )
 }
 
-impl<'a, T, L, B: OptionalBound> Clone for Optional<T, L, B>
+impl<'a, T, L, B: OptionalBound, D: Drops> Clone for Optional<T, L, B, D>
 where
     T: Clone,
     L: Location<'a>,
@@ -354,7 +361,7 @@ where
     }
 }
 
-impl<'a, T, L, B: OptionalBound> Optional<T, L, B>
+impl<'a, T, L, B: OptionalBound, D: Drops> Optional<T, L, B, D>
 where
     L: Location<'a>,
 {
@@ -370,45 +377,20 @@ where
             _phantom: PhantomData,
         }
     }
-
     pub(crate) fn collection_kind() -> CollectionKind {
         CollectionKind::Optional {
             bound: <B as OptionalBound>::bound_kind(),
+            drops: D::DROPS_KIND,
             element_type: stageleft::quote_type::<T>().into(),
         }
     }
-
     /// Returns the [`Location`] where this optional is being materialized.
     pub fn location(&self) -> &L {
         &self.location
     }
-
-    /// Creates a shared reference handle to this optional that can be captured inside `q!()`
-    /// closures. The handle resolves to `&Option<T>` at runtime.
-    ///
-    /// The optional must be bounded, otherwise reading it would be non-deterministic.
-    /// The handle can only be captured in closures passed to operators on collections at
-    /// the same location with **matching boundedness**; capturing it in a closure over an
-    /// unbounded collection is rejected at compile time.
-    pub fn by_ref(&self) -> crate::handoff_ref::OptionalRef<'a, '_, T, L, B>
-    where
-        B: IsBounded,
-    {
-        crate::handoff_ref::OptionalRef::new(&self.ir_node)
-    }
-
-    /// Returns a mutable reference handle to this optional that can be captured inside `q!()`
-    /// closures. The handle resolves to `&mut Option<T>` at runtime.
-    pub fn by_mut(&self) -> crate::handoff_ref::OptionalMut<'a, '_, T, L, B>
-    where
-        B: IsBounded,
-    {
-        crate::handoff_ref::OptionalMut::new(&self.ir_node)
-    }
-
     /// Weakens the consistency of this live collection to not guarantee any consistency across
     /// cluster members (if this collection is on a cluster).
-    pub fn weaken_consistency(self) -> Optional<T, L::DropConsistency, B>
+    pub fn weaken_consistency(self) -> Optional<T, L::DropConsistency, B, D>
     where
         L: Location<'a>,
     {
@@ -425,23 +407,20 @@ where
                 self.location.drop_consistency(),
                 HydroNode::Cast {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: self
-                        .location
-                        .clone()
-                        .drop_consistency()
-                        .new_node_metadata(Optional::<T, L::DropConsistency, B>::collection_kind()),
+                    metadata: self.location.clone().drop_consistency().new_node_metadata(
+                        Optional::<T, L::DropConsistency, B, D>::collection_kind(),
+                    ),
                 },
             )
         }
     }
-
     /// Casts this live collection to have the consistency guarantees specified in the given
     /// location type parameter. The developer must ensure that the strengthened consistency
     /// is actually guaranteed, via the proof field (see [`crate::prelude::manual_proof`]).
     pub fn assert_has_consistency_of<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
         _proof: impl crate::properties::ConsistencyProof,
-    ) -> Optional<T, L2, B>
+    ) -> Optional<T, L2, B, D>
     where
         L: Location<'a>,
     {
@@ -460,12 +439,11 @@ where
                         .location
                         .clone()
                         .with_consistency_of::<L2>()
-                        .new_node_metadata(Optional::<T, L2, B>::collection_kind()),
+                        .new_node_metadata(Optional::<T, L2, B, D>::collection_kind()),
                 },
             )
         }
     }
-
     /// Transforms the optional value by applying a function `f` to it,
     /// continuously as the input is updated.
     ///
@@ -489,7 +467,7 @@ where
     pub fn map<U, F>(
         self,
         f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>>,
-    ) -> Optional<U, L, B>
+    ) -> Optional<U, L, B, D>
     where
         F: Fn(T) -> U + 'a,
     {
@@ -505,9 +483,138 @@ where
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .new_node_metadata(Optional::<U, L, B>::collection_kind()),
+                    .new_node_metadata(Optional::<U, L, B, D>::collection_kind()),
             },
         )
+    }
+    /// Creates an optional containing only the value if it satisfies a predicate `f`.
+    ///
+    /// If the optional is empty, the output optional is also empty. If the optional contains
+    /// a value and the predicate returns `true`, the output optional contains the same value.
+    /// If the predicate returns `false`, the output optional is empty.
+    ///
+    /// The closure `f` receives a reference `&T` rather than an owned value `T` because filtering does
+    /// not modify or take ownership of the value. If you need to modify the value while filtering
+    /// use [`Optional::filter_map`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let optional = tick.optional_first_tick(q!(5));
+    /// optional.filter(q!(|&x| x > 3)).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 5
+    /// # assert_eq!(stream.next().await.unwrap(), 5);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn filter<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>>,
+    ) -> Optional<T, L, B::UnderlyingBound, D>
+    where
+        F: Fn(&T) -> bool + 'a,
+    {
+        let f = f
+            .splice_fn1_borrow_ctx(&OperatorContext::<L, B::UnderlyingBound>::new(
+                &self.location,
+            ))
+            .into();
+        Optional::new(
+            self.location.clone(),
+            HydroNode::Filter {
+                f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(Optional::<T, L, B::UnderlyingBound, D>::collection_kind()),
+            },
+        )
+    }
+    /// An operator which allows you to "name" a `HydroNode`.
+    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
+    pub fn ir_node_named(self, name: &str) -> Optional<T, L, B, D> {
+        {
+            let mut node = self.ir_node.borrow_mut();
+            let metadata = node.metadata_mut();
+            metadata.tag = Some(name.to_owned());
+        }
+        self
+    }
+}
+
+impl<'a, T, L, B: OptionalBound> Optional<T, L, B, MayDrop>
+where
+    L: Location<'a>,
+{
+    /// Treats this optional, folded from a stream that may be missing elements, as one that
+    /// eventually reaches the value of the fold over the whole stream.
+    ///
+    /// Its value is always on some trajectory of the fold (the one where the missing elements
+    /// arrive last), so nothing is observed and no `nondet!` is needed. What a `MayDrop`
+    /// optional withholds is the promise that it eventually reaches the end of a trajectory;
+    /// the [`nonlive!`](crate::liveness::nonlive) explains why the program is acceptable
+    /// without it (the missing elements are retransmitted elsewhere, or the application
+    /// tolerates a value that stops short).
+    ///
+    /// The Hydro simulator cannot tell a missing element from a late one here, so it requires
+    /// `SimFlow::test_safety_only`: it exercises
+    /// safety, holding the dropped elements back, but not liveness.
+    pub fn observe_drops(self, nonlive: NonLive) -> Optional<T, L, B, NoDrop> {
+        let _ = nonlive;
+        Optional::new(
+            self.location.clone(),
+            HydroNode::ObserveNonDet {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                trusted: false,
+                metadata: self
+                    .location
+                    .new_node_metadata(Optional::<T, L, B, NoDrop>::collection_kind()),
+            },
+        )
+    }
+
+    // Reading a `MayDrop` value from a tick is not available. This stand-in exists only so that
+    // calling `snapshot` explains why, through `NoMissingElements`, instead of not finding the
+    // method.
+    #[doc(hidden)]
+    pub fn snapshot<Tk, N>(self, _tick: Tk, _nondet: N) -> std::convert::Infallible
+    where
+        Self: NoMissingElements,
+    {
+        unreachable!()
+    }
+}
+
+impl<'a, T, L, B: OptionalBound> Optional<T, L, B>
+where
+    L: Location<'a>,
+{
+    /// Creates a shared reference handle to this optional that can be captured inside `q!()`
+    /// closures. The handle resolves to `&Option<T>` at runtime.
+    ///
+    /// The optional must be bounded, otherwise reading it would be non-deterministic.
+    /// The handle can only be captured in closures passed to operators on collections at
+    /// the same location with **matching boundedness**; capturing it in a closure over an
+    /// unbounded collection is rejected at compile time.
+    pub fn by_ref(&self) -> crate::handoff_ref::OptionalRef<'a, '_, T, L, B>
+    where
+        B: IsBounded,
+    {
+        crate::handoff_ref::OptionalRef::new(&self.ir_node)
+    }
+
+    /// Returns a mutable reference handle to this optional that can be captured inside `q!()`
+    /// closures. The handle resolves to `&mut Option<T>` at runtime.
+    pub fn by_mut(&self) -> crate::handoff_ref::OptionalMut<'a, '_, T, L, B>
+    where
+        B: IsBounded,
+    {
+        crate::handoff_ref::OptionalMut::new(&self.ir_node)
     }
 
     /// Transforms the optional value by applying a function `f` to it and then flattening
@@ -675,55 +782,6 @@ where
         T: IntoIterator<Item = U>,
     {
         self.flat_map_unordered(q!(|v| v))
-    }
-
-    /// Creates an optional containing only the value if it satisfies a predicate `f`.
-    ///
-    /// If the optional is empty, the output optional is also empty. If the optional contains
-    /// a value and the predicate returns `true`, the output optional contains the same value.
-    /// If the predicate returns `false`, the output optional is empty.
-    ///
-    /// The closure `f` receives a reference `&T` rather than an owned value `T` because filtering does
-    /// not modify or take ownership of the value. If you need to modify the value while filtering
-    /// use [`Optional::filter_map`] instead.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let optional = tick.optional_first_tick(q!(5));
-    /// optional.filter(q!(|&x| x > 3)).all_ticks()
-    /// # }, |mut stream| async move {
-    /// // 5
-    /// # assert_eq!(stream.next().await.unwrap(), 5);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn filter<F>(
-        self,
-        f: impl IntoQuotedMut<'a, F, OperatorContext<L, B::UnderlyingBound>>,
-    ) -> Optional<T, L, B::UnderlyingBound>
-    where
-        F: Fn(&T) -> bool + 'a,
-    {
-        let f = f
-            .splice_fn1_borrow_ctx(&OperatorContext::<L, B::UnderlyingBound>::new(
-                &self.location,
-            ))
-            .into();
-        Optional::new(
-            self.location.clone(),
-            HydroNode::Filter {
-                f,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(Optional::<T, L, B::UnderlyingBound>::collection_kind()),
-            },
-        )
     }
 
     /// An operator that both filters and maps. It yields only the value if the supplied
@@ -1116,17 +1174,6 @@ where
         self.into_singleton()
             .zip(other.into_singleton())
             .map(q!(|(a, b)| a.is_some() && a == b))
-    }
-
-    /// An operator which allows you to "name" a `HydroNode`.
-    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
-    pub fn ir_node_named(self, name: &str) -> Optional<T, L, B> {
-        {
-            let mut node = self.ir_node.borrow_mut();
-            let metadata = node.metadata_mut();
-            metadata.tag = Some(name.to_owned());
-        }
-        self
     }
 
     /// Drops the [`InitNone`] guarantee of the [`Optional`], erasing it to its

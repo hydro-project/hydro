@@ -13,8 +13,8 @@ error[E0277]: the channel end `hydro_test_embedded::echo_network::echo_sender::o
 note: required by a bound in `EmbeddedNetworkOutputChannel::<C, S>::new`
   --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
    |
-   |     pub fn new<Tr, Ser, O, R>(
+   |     pub fn new<Tr, Ser, O, R, D>(
    |            --- required by a bound in this associated function
 ...
-   |         C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<O, R>,
+   |         C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<O, R, D>,
    |            ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `EmbeddedNetworkOutputChannel::<C, S>::new`

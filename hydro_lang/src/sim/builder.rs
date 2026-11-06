@@ -8,7 +8,7 @@ use syn::parse_quote;
 use crate::compile::builder::{HandoffId, StmtId};
 use crate::compile::ir::{
     CollectionKind, DebugExpr, DfirBuilder, HydroIrOpMetadata, KeyedSingletonBoundKind,
-    OptionalBoundKind, StreamOrder, StreamRetry,
+    OptionalBoundKind, StreamDrops, StreamOrder, StreamRetry,
 };
 use crate::location::dynamic::LocationId;
 use crate::staging_util::get_this_crate;
@@ -758,6 +758,7 @@ impl DfirBuilder for SimBuilder {
                 bound: KeyedSingletonBoundKind::BoundedValue | KeyedSingletonBoundKind::Bounded,
                 key_type,
                 value_type,
+                ..
             } => {
                 // Each key's value is final once it appears, so the keyed singleton is a feed
                 // of finalized `(K, V)` entries that each arrive exactly once. A batch is the
@@ -909,6 +910,7 @@ impl DfirBuilder for SimBuilder {
                     | KeyedSingletonBoundKind::Bounded,
                 key_type,
                 value_type,
+                ..
             } => {
                 // Keys are never removed, so each firing observes, for every key revealed so
                 // far, some version of its value (a fully `Bounded` keyed singleton has a single
@@ -1647,6 +1649,209 @@ impl DfirBuilder for SimBuilder {
             match (in_kind, out_kind) {
                 (
                     CollectionKind::Stream {
+                        order: in_order,
+                        retry: in_retry,
+                        drops: StreamDrops::MayDrop,
+                        element_type,
+                        ..
+                    },
+                    CollectionKind::Stream {
+                        order: out_order,
+                        retry: out_retry,
+                        drops: StreamDrops::NoDrop,
+                        ..
+                    },
+                ) if *in_order == StreamOrder::TotalOrder
+                    && in_order == out_order
+                    && in_retry == out_retry =>
+                {
+                    // The ordered `observe_drops(nondet!, nonlive!)`: the point where the
+                    // simulator drops the elements the `nondet!` says downstream tolerates
+                    // missing, exploring every subsequence that survives.
+                    let hoff_id = self.next_hoff_id.get_and_increment();
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+                    });
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                    });
+                    let inner_hook: syn::Expr = syn::parse_quote!(
+                        #root::sim::runtime::TopLevelStreamDropsHook::<_> {
+                            input: #buffered_ident.clone(),
+                            to_release: None,
+                            output: #hoff_send_ident,
+                            location: #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
+                            format_item_debug: #root::__maybe_debug__!(#element_type),
+                        }
+                    );
+                    self.add_hook(location, location, syn::parse_quote!(Box::new(#inner_hook)));
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
+                }
+                (
+                    CollectionKind::KeyedStream {
+                        value_order: in_order,
+                        value_retry: in_retry,
+                        value_drops: StreamDrops::MayDrop,
+                        key_type,
+                        value_type,
+                        ..
+                    },
+                    CollectionKind::KeyedStream {
+                        value_order: out_order,
+                        value_retry: out_retry,
+                        value_drops: StreamDrops::NoDrop,
+                        ..
+                    },
+                ) if *in_order == StreamOrder::TotalOrder
+                    && in_order == out_order
+                    && in_retry == out_retry =>
+                {
+                    // A keyed stream's entries flow as `(key, value)` pairs, each kept or dropped
+                    // like a stream element.
+                    let element_type: syn::Type = parse_quote!((#key_type, #value_type));
+                    // The ordered `observe_drops(nondet!, nonlive!)`: the point where the
+                    // simulator drops the elements the `nondet!` says downstream tolerates
+                    // missing, exploring every subsequence that survives.
+                    let hoff_id = self.next_hoff_id.get_and_increment();
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+                    });
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                    });
+                    let inner_hook: syn::Expr = syn::parse_quote!(
+                        #root::sim::runtime::TopLevelStreamDropsHook::<_> {
+                            input: #buffered_ident.clone(),
+                            to_release: None,
+                            output: #hoff_send_ident,
+                            location: #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
+                            format_item_debug: #root::__maybe_debug__!(#element_type),
+                        }
+                    );
+                    self.add_hook(location, location, syn::parse_quote!(Box::new(#inner_hook)));
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
+                }
+                (
+                    CollectionKind::Stream {
+                        order: StreamOrder::NoOrder,
+                        drops: StreamDrops::MayDrop,
+                        ..
+                    },
+                    CollectionKind::Stream {
+                        drops: StreamDrops::NoDrop,
+                        ..
+                    },
+                )
+                | (
+                    CollectionKind::KeyedStream {
+                        value_order: StreamOrder::NoOrder,
+                        value_drops: StreamDrops::MayDrop,
+                        ..
+                    },
+                    CollectionKind::KeyedStream {
+                        value_drops: StreamDrops::NoDrop,
+                        ..
+                    },
+                )
+                | (
+                    CollectionKind::Singleton {
+                        drops: StreamDrops::MayDrop,
+                        ..
+                    },
+                    CollectionKind::Singleton {
+                        drops: StreamDrops::NoDrop,
+                        ..
+                    },
+                )
+                | (
+                    CollectionKind::Optional {
+                        drops: StreamDrops::MayDrop,
+                        ..
+                    },
+                    CollectionKind::Optional {
+                        drops: StreamDrops::NoDrop,
+                        ..
+                    },
+                )
+                | (
+                    CollectionKind::KeyedSingleton {
+                        drops: StreamDrops::MayDrop,
+                        ..
+                    },
+                    CollectionKind::KeyedSingleton {
+                        drops: StreamDrops::NoDrop,
+                        ..
+                    },
+                ) => {
+                    // The `observe_drops(nonlive!)` on an unordered stream, a singleton, an
+                    // optional, or a keyed singleton: with no order to observe, a missing element
+                    // cannot be told from one that is delayed until the end of the execution, so
+                    // every element is delivered. That exercises safety, but not the liveness
+                    // `nonlive!` answers for.
+                    assert!(
+                        self.test_safety_only,
+                        "Simulating `observe_drops(nonlive!(..))` on an unordered `MayDrop` stream, \
+                         singleton, optional, or keyed singleton requires `.test_safety_only()` on \
+                         the SimFlow because the simulator models the missing elements as \
+                         indefinitely delayed, which only tests safety (not liveness). Call \
+                         `.sim().test_safety_only()` to opt in."
+                    );
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #out_ident = #in_ident;
+                        },
+                        None,
+                        None,
+                    );
+                }
+                (
+                    CollectionKind::Stream {
                         order: StreamOrder::NoOrder,
                         retry: StreamRetry::ExactlyOnce,
                         element_type,
@@ -2363,53 +2568,13 @@ impl DfirBuilder for SimBuilder {
         tag_id: StmtId,
         networking_info: &crate::networking::NetworkingInfo,
     ) {
-        use crate::networking::{EmbeddedFault, NetworkingInfo, TcpFault, UdpFault};
-        match networking_info {
-            NetworkingInfo::Tcp { fault } => match fault {
-                TcpFault::FailStop => {}
-                TcpFault::LossyDelayedForever => {
-                    assert!(
-                        self.test_safety_only,
-                        "Simulating `lossy_delayed_forever` requires `.test_safety_only()` on the \
-                         SimFlow because the simulator models dropped messages as indefinitely \
-                         delayed, which only tests safety (not liveness). Call \
-                         `.sim().test_safety_only()` to opt in."
-                    );
-                }
-                _ => todo!(
-                    "SimBuilder only supports fail-stop and lossy-delayed-forever TCP networking"
-                ),
-            },
-            NetworkingInfo::Udp { fault } => match fault {
-                UdpFault::LossyDelayedForever => {
-                    assert!(
-                        self.test_safety_only,
-                        "Simulating `lossy_delayed_forever` requires `.test_safety_only()` on the \
-                         SimFlow because the simulator models dropped messages as indefinitely \
-                         delayed, which only tests safety (not liveness). Call \
-                         `.sim().test_safety_only()` to opt in."
-                    );
-                }
-                _ => todo!("SimBuilder only supports lossy-delayed-forever UDP networking"),
-            },
-            // Ordering and retries are explored downstream, from the received stream's type.
-            NetworkingInfo::Embedded { fault, .. } => match fault {
-                EmbeddedFault::FailStop => {}
-                EmbeddedFault::LossyDelayedForever => {
-                    assert!(
-                        self.test_safety_only,
-                        "Simulating `lossy_delayed_forever` requires `.test_safety_only()` on the \
-                         SimFlow because the simulator models dropped messages as indefinitely \
-                         delayed, which only tests safety (not liveness). Call \
-                         `.sim().test_safety_only()` to opt in."
-                    );
-                }
-                EmbeddedFault::Lossy => todo!(
-                    "SimBuilder only supports fail-stop and lossy-delayed-forever EMBEDDED \
-                     networking"
-                ),
-            },
-        }
+        // Whatever the channel's transport and failure policy, every channel delivers every
+        // message here. Reordering and duplication are explored downstream, from the received
+        // stream's type. So is loss: a lossy channel's received stream is `MayDrop`, so the program
+        // observes its drops with `observe_drops`, where the simulator explores them (ordered) or
+        // delays them until the end of the execution (unordered, which requires
+        // `test_safety_only`).
+        let _ = networking_info;
 
         let root = get_this_crate();
 

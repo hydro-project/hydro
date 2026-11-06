@@ -63,12 +63,12 @@ fn broadcast_core<'a, C: 'a>(
         cur_state
             .clone()
             .sample_every(q!(Duration::from_millis(50)), nondet!(/** TODO */))
-            .broadcast(
-                cluster,
-                TCP.lossy(nondet!(/** TODO */)).bincode(),
-                nondet!(/** TODO */),
-            )
-            .values(),
+            .broadcast(cluster, TCP.lossy().bincode(), nondet!(/** TODO */))
+            .values()
+            .observe_drops(nonlive!(
+                /// The full state is re-broadcast every 50ms, so a lost broadcast is superseded
+                /// by a later one.
+            )),
     );
 
     cur_state

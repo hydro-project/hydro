@@ -7,7 +7,7 @@ use stageleft::properties::Property;
 use crate::live_collections::boundedness::Boundedness;
 use crate::live_collections::keyed_singleton::KeyedSingletonBound;
 use crate::live_collections::singleton::SingletonBound;
-use crate::live_collections::stream::{ExactlyOnce, Ordering, Retries, TotalOrder};
+use crate::live_collections::stream::{Drops, ExactlyOnce, NoDrop, Ordering, Retries, TotalOrder};
 use crate::sim_hooks::{OnProcess, OrderingHook};
 
 /// A trait for proof mechanisms that can validate commutativity.
@@ -1033,6 +1033,30 @@ pub trait ValidCommutativityFor<O: Ordering> {}
 impl ValidCommutativityFor<TotalOrder> for NotProved {}
 #[sealed::sealed]
 impl<O: Ordering> ValidCommutativityFor<O> for Proved {}
+
+/// Marker trait identifying that the commutativity property is valid for the given stream drops
+/// guarantee.
+///
+/// An aggregation over a stream that may be missing elements ([`MayDrop`]) must be commutative,
+/// even over an ordered stream. A commutative fold admits every ordering of its input, so its
+/// value on any sub-collection of the ideal stream is on the trajectory where the missing
+/// elements arrive last. A non-commutative fold has a single trajectory, and its value after a
+/// missing element lies on none of it.
+///
+/// [`MayDrop`]: crate::live_collections::stream::MayDrop
+#[diagnostic::on_unimplemented(
+    message = "because the input stream may be missing elements (`MayDrop`), the closure must demonstrate commutativity",
+    label = "required for this call",
+    note = "the stream may be missing elements anywhere, so a fold that depends on their order would observe which ones are missing",
+    note = "prove it with a `commutative = manual_proof!(/** why the order does not matter */)` annotation on the closure",
+    note = "to fold the elements that arrived in order anyway, observe which are missing first with `.observe_drops(nondet!(/** .. */), nonlive!(/** .. */))`"
+)]
+#[sealed::sealed]
+pub trait ValidCommutativityForDrops<D: Drops> {}
+#[sealed::sealed]
+impl ValidCommutativityForDrops<NoDrop> for NotProved {}
+#[sealed::sealed]
+impl<D: Drops> ValidCommutativityForDrops<D> for Proved {}
 
 /// Marker trait identifying that the idempotence property is valid for the given stream ordering.
 #[diagnostic::on_unimplemented(

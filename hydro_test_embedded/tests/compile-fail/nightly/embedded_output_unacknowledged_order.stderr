@@ -14,13 +14,13 @@ help: the trait `OrderAcknowledgedBy<hydro_lang::live_collections::stream::Total
   | impl<End> OrderAcknowledgedBy<NoOrder, End> for NoOrder {}
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   = help: for that trait implementation, expected `hydro_lang::live_collections::stream::NoOrder`, found `hydro_lang::live_collections::stream::TotalOrder`
-  = note: required for `hydro_test_embedded::unordered_output::capitalize_unordered::outputs::output` to implement `AcknowledgedBy<hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::AtLeastOnce>`
+  = note: required for `hydro_test_embedded::unordered_output::capitalize_unordered::outputs::output` to implement `AcknowledgedBy<hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::AtLeastOnce, hydro_lang::live_collections::stream::NoDrop>`
 note: required by a bound in `EmbeddedOutputChannel::<M, S>::new`
  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
   |
   | impl<M: EmbeddedChannel, S> EmbeddedOutputChannel<M, S> {
   |     /// Wraps a host sink for output `M`, with `acknowledgements` that cover what `M` may do.
-  |     pub fn new<O, R>(inner: S, acknowledgements: Acknowledgements<O, R>) -> Self
+  |     pub fn new<O, R, D>(inner: S, acknowledgements: Acknowledgements<O, R, D>) -> Self
   |     where
-  |         M: AcknowledgedBy<O, R>,
-  |            ^^^^^^^^^^^^^^^^^^^^ required by this bound in `EmbeddedOutputChannel::<M, S>::new`
+  |         M: AcknowledgedBy<O, R, D>,
+  |            ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `EmbeddedOutputChannel::<M, S>::new`

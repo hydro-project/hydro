@@ -1,0 +1,25 @@
+error[E0277]: because the input stream may be missing elements (`MayDrop`), the closure must demonstrate commutativity
+  --> tests/compile-fail/nightly/may_drop_fold.rs:15:10
+   |
+15 |         .fold(q!(|| String::new()), q!(|acc, c| acc.push(c)));
+   |          ^^^^ required for this call
+   |
+   = note: the stream may be missing elements anywhere, so a fold that depends on their order would observe which ones are missing
+   = note: prove it with a `commutative = manual_proof!(/** why the order does not matter */)` annotation on the closure
+   = note: to fold the elements that arrived in order anyway, observe which are missing first with `.observe_drops(nondet!(/** .. */), nonlive!(/** .. */))`
+help: the trait `ValidCommutativityForDrops<hydro_lang::live_collections::stream::MayDrop>` is not implemented for `NotProved`
+      but trait `ValidCommutativityForDrops<hydro_lang::live_collections::stream::NoDrop>` is implemented for it
+  --> src/properties/mod.rs
+   |
+   | impl ValidCommutativityForDrops<NoDrop> for NotProved {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `hydro_lang::live_collections::stream::NoDrop`, found `hydro_lang::live_collections::stream::MayDrop`
+note: required by a bound in `hydro_lang::prelude::Stream::<T, L, B, O, R, D>::fold`
+  --> src/live_collections/stream/mod.rs
+   |
+   | impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries, D: Drops> Stream<T, L, B, O, R, D>
+...
+   |     pub fn fold<A, I, F, C, Idemp, M, B2: SingletonBound>(
+...
+   |         C: ValidCommutativityFor<O> + ValidCommutativityForDrops<D>,
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Stream::<T, L, B, O, R, D>::fold`

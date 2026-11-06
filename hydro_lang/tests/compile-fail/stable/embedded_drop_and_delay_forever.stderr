@@ -4,7 +4,7 @@ error[E0599]: no method named `may_delay_forever` found for struct `NetworkingCo
 12 | /         EMBEDDED
 13 | |             .never_reorders()
 14 | |             .never_duplicates()
-15 | |             .may_drop(nondet!(/** test */))
+15 | |             .may_drop()
 16 | |             .may_delay_forever()
    | |             -^^^^^^^^^^^^^^^^^ method not found in `NetworkingConfig<EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::Lossy>, hydro_lang::networking::Embedded>`
    | |_____________|

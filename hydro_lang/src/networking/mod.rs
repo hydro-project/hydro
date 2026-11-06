@@ -7,10 +7,9 @@ use serde::de::DeserializeOwned;
 
 use crate::live_collections::stream::networking::{deserialize_bincode, serialize_bincode};
 use crate::live_collections::stream::{
-    AtLeastOnce, ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder,
+    AtLeastOnce, Drops, ExactlyOnce, MayDrop, NoDrop, NoOrder, Ordering, Retries, TotalOrder,
 };
 use crate::location::cluster::{Consistency, EventualConsistency, NoConsistency};
-use crate::nondet::NonDet;
 
 #[sealed::sealed]
 trait SerKind<T: ?Sized> {
@@ -76,6 +75,10 @@ pub trait TransportKind {
     /// message more than once.
     type RetriesGuarantee: Retries;
 
+    /// The drops guarantee provided by this transport: [`MayDrop`] if it may never deliver a
+    /// message (see [`NetworkFor::DropsGuarantee`]).
+    type DropsGuarantee: Drops;
+
     /// The consistency guarantee this transport can preserve for replicated outputs
     /// (see [`NetworkFor::ConsistencyGuarantee`]).
     type ConsistencyGuarantee: Consistency;
@@ -95,6 +98,10 @@ pub trait TcpFailPolicy {
     /// The ordering guarantee provided by this failure policy.
     type OrderingGuarantee: Ordering;
 
+    /// The drops guarantee of the received stream under this failure policy: [`NoDrop`] if
+    /// it loses only a suffix of a recipient's messages, [`MayDrop`] otherwise.
+    type Drops: Drops;
+
     /// The consistency guarantee this failure policy can preserve for replicated outputs
     /// (see [`NetworkFor::ConsistencyGuarantee`]).
     type ConsistencyGuarantee: Consistency;
@@ -109,6 +116,10 @@ pub enum FailStop {}
 impl TcpFailPolicy for FailStop {
     type OrderingGuarantee = TotalOrder;
 
+    // A failed connection loses only a suffix of a recipient's messages, as if the recipient
+    // had crashed, so the received stream is still a prefix of the ideal stream.
+    type Drops = NoDrop;
+
     // A failed connection stops *all* future deliveries to that recipient, which models the
     // recipient as having failed. Consistency guarantees only apply to live members, so
     // eventual consistency of replicated outputs is preserved.
@@ -119,11 +130,19 @@ impl TcpFailPolicy for FailStop {
     }
 }
 
-/// A failure policy that allows messages to be lost.
+/// A failure policy that allows any message to be lost, for one recipient and not another, while
+/// later ones are delivered. The received stream is a [`MayDrop`] subsequence of the messages
+/// sent, whose consumers observe the drops with
+/// [`observe_drops`](crate::live_collections::stream::Stream::observe_drops): with a `nondet!`
+/// and a `nonlive!` if it is ordered, or only a `nonlive!` if it is not.
 pub enum Lossy {}
 #[sealed::sealed]
 impl TcpFailPolicy for Lossy {
     type OrderingGuarantee = TotalOrder;
+
+    // Any message may be lost while later ones are delivered: the received stream is a
+    // subsequence of the messages sent.
+    type Drops = MayDrop;
 
     // A lossy channel can drop an arbitrary message for one recipient while continuing to
     // deliver later messages, so replicated outputs can diverge across members forever.
@@ -136,19 +155,22 @@ impl TcpFailPolicy for Lossy {
 
 /// A failure policy that treats dropped messages as indefinitely delayed.
 ///
-/// Unlike [`Lossy`], this does not require a [`NonDet`] annotation because the output
-/// stream is always lower in the partial order than the ideal stream (dropped messages
-/// are modeled as infinite delays). The tradeoff is that the output has [`NoOrder`]
-/// guarantees, imposing stricter conditions on downstream consumers.
+/// The received stream is [`NoOrder`] and [`MayDrop`]: without an order, a dropped message
+/// cannot be told from one that is merely late, so its consumers observe the drops with only a
+/// [`nonlive!`](crate::liveness::nonlive).
 ///
-/// When using this mode in the Hydro simulator, you must call
-/// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only): the simulator
-/// will not actually drop packets—it delays "dropped" messages until the end of the
-/// execution, which catches safety bugs but cannot test liveness.
+/// When those drops are observed in the Hydro simulator, you must call
+/// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only): the simulator does not
+/// actually drop packets, but delays "dropped" messages until the end of the execution, which
+/// catches safety bugs but cannot test liveness.
 pub enum LossyDelayedForever {}
 #[sealed::sealed]
 impl TcpFailPolicy for LossyDelayedForever {
     type OrderingGuarantee = NoOrder;
+
+    // A message that is never delivered is missing from the received stream (modelled as
+    // delayed forever, which an unordered stream cannot tell apart from a lost message).
+    type Drops = MayDrop;
 
     // Dropped messages are modeled as indefinitely delayed, so the output on each member is
     // always a lower bound of the ideal stream that is eventually delivered in full; replicated
@@ -170,6 +192,10 @@ impl TcpFailPolicy for LossyDelayedForever {
 /// produce [`NoOrder`] output streams, and there is no `fail_stop` option
 /// (UDP is connectionless, so there is no connection to fail).
 pub trait UdpFailPolicy {
+    /// The drops guarantee of the received stream under this failure policy: [`NoDrop`] if
+    /// it loses only a suffix of a recipient's messages, [`MayDrop`] otherwise.
+    type Drops: Drops;
+
     /// The consistency guarantee this failure policy can preserve for replicated outputs
     /// (see [`NetworkFor::ConsistencyGuarantee`]).
     type ConsistencyGuarantee: Consistency;
@@ -180,6 +206,10 @@ pub trait UdpFailPolicy {
 
 #[sealed::sealed]
 impl UdpFailPolicy for Lossy {
+    // Any message may be lost while later ones are delivered: the received stream is a
+    // subsequence of the messages sent.
+    type Drops = MayDrop;
+
     // A lossy channel can drop an arbitrary message for one recipient while continuing to
     // deliver later messages, so replicated outputs can diverge across members forever.
     type ConsistencyGuarantee = NoConsistency;
@@ -191,6 +221,10 @@ impl UdpFailPolicy for Lossy {
 
 #[sealed::sealed]
 impl UdpFailPolicy for LossyDelayedForever {
+    // A message that is never delivered is missing from the received stream (modelled as
+    // delayed forever, which an unordered stream cannot tell apart from a lost message).
+    type Drops = MayDrop;
+
     // Dropped messages are modeled as indefinitely delayed, so the output on each member is
     // always a lower bound of the ideal stream that is eventually delivered in full; replicated
     // outputs therefore remain eventually consistent.
@@ -211,6 +245,8 @@ impl<F: TcpFailPolicy> TransportKind for Tcp<F> {
     type OrderingGuarantee = F::OrderingGuarantee;
 
     type RetriesGuarantee = ExactlyOnce;
+
+    type DropsGuarantee = F::Drops;
 
     type ConsistencyGuarantee = F::ConsistencyGuarantee;
 
@@ -268,9 +304,13 @@ impl EmbeddedOrdering for NoOrder {}
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
     message = "this `EMBEDDED` channel does not declare whether it may drop messages",
-    note = "add `.never_drops()`, `.may_drop(nondet!(..))`, or `.may_delay_forever()` to the network config"
+    note = "add `.never_drops()`, `.may_drop()`, or `.may_delay_forever()` to the network config"
 )]
 pub trait EmbeddedFailPolicy {
+    /// The drops guarantee of the received stream under this failure policy: [`NoDrop`] if
+    /// it loses only a suffix of a recipient's messages, [`MayDrop`] otherwise.
+    type Drops: Drops;
+
     /// The ordering of the received stream when the channel declares ordering `O`.
     type Ordering<O: Ordering>: Ordering;
 
@@ -284,6 +324,10 @@ pub trait EmbeddedFailPolicy {
 
 #[sealed::sealed]
 impl EmbeddedFailPolicy for FailStop {
+    // A failed connection loses only a suffix of a recipient's messages, as if the recipient
+    // had crashed, so the received stream is still a prefix of the ideal stream.
+    type Drops = NoDrop;
+
     type Ordering<O: Ordering> = O;
 
     type ConsistencyGuarantee = EventualConsistency;
@@ -295,6 +339,10 @@ impl EmbeddedFailPolicy for FailStop {
 
 #[sealed::sealed]
 impl EmbeddedFailPolicy for Lossy {
+    // Any message may be lost while later ones are delivered: the received stream is a
+    // subsequence of the messages sent.
+    type Drops = MayDrop;
+
     type Ordering<O: Ordering> = O;
 
     type ConsistencyGuarantee = NoConsistency;
@@ -306,6 +354,10 @@ impl EmbeddedFailPolicy for Lossy {
 
 #[sealed::sealed]
 impl EmbeddedFailPolicy for LossyDelayedForever {
+    // A message that is never delivered is missing from the received stream (modelled as
+    // delayed forever, which an unordered stream cannot tell apart from a lost message).
+    type Drops = MayDrop;
+
     type Ordering<O: Ordering> = NoOrder;
 
     type ConsistencyGuarantee = EventualConsistency;
@@ -324,6 +376,8 @@ impl<R: EmbeddedRetries, O: EmbeddedOrdering, F: EmbeddedFailPolicy> TransportKi
     type OrderingGuarantee = F::Ordering<O>;
 
     type RetriesGuarantee = R;
+
+    type DropsGuarantee = F::Drops;
 
     type ConsistencyGuarantee = F::ConsistencyGuarantee;
 
@@ -347,6 +401,8 @@ impl<F: UdpFailPolicy> TransportKind for Udp<F> {
 
     type RetriesGuarantee = ExactlyOnce;
 
+    type DropsGuarantee = F::Drops;
+
     type ConsistencyGuarantee = F::ConsistencyGuarantee;
 
     fn networking_info() -> NetworkingInfo {
@@ -368,6 +424,13 @@ pub trait NetworkFor<T: ?Sized> {
     /// When combined with an input stream's retries `R`, the output retries
     /// will be `<R as MinRetries<Self::RetriesGuarantee>>::Min`.
     type RetriesGuarantee: Retries;
+
+    /// The drops guarantee provided by this network configuration: [`MayDrop`] if it may never
+    /// deliver a message (`lossy`, `lossy_delayed_forever`, `may_drop`, or
+    /// `may_delay_forever`). When combined with an input stream's drops `D`, the output drops
+    /// will be `<D as MinDrops<Self::DropsGuarantee>>::Min`. A `MayDrop` received stream is
+    /// observed with [`observe_drops`](crate::live_collections::stream::Stream::observe_drops).
+    type DropsGuarantee: Drops;
 
     /// The consistency guarantee this network configuration can preserve when the same data is
     /// replicated to several recipients (e.g. via
@@ -513,13 +576,13 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     ///
     /// This is appropriate for networks where messages may be dropped, such as when
     /// running under a Maelstrom partition nemesis. Unlike `fail_stop`, which guarantees
-    /// a prefix of messages is delivered, `lossy` makes no such guarantee.
-    ///
-    /// # Non-Determinism
-    /// A lossy TCP channel will non-deterministically drop messages during execution.
+    /// a prefix of messages is delivered, `lossy` makes no such guarantee: the received stream
+    /// is an in-order [`MayDrop`] subsequence of the messages sent, whose consumers observe the
+    /// drops with
+    /// [`observe_drops(nondet!(..), nonlive!(..))`](crate::live_collections::stream::Stream::observe_drops),
+    /// where the Hydro simulator explores them.
     #[must_use]
-    pub const fn lossy(self, nondet: NonDet) -> NetworkingConfig<Tcp<Lossy>, S> {
-        let _ = nondet;
+    pub const fn lossy(self) -> NetworkingConfig<Tcp<Lossy>, S> {
         NetworkingConfig {
             name: self.name,
             _phantom: (PhantomData, PhantomData),
@@ -529,18 +592,15 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     /// Configures the TCP transport to treat dropped messages as indefinitely delayed.
     ///
     /// This is appropriate for networks where messages may be dropped, such as when
-    /// running under a Maelstrom partition nemesis. Unlike [`Self::lossy`], this does
-    /// *not* require a [`NonDet`] annotation because the output is always lower in the
-    /// partial order than the ideal stream. However, the output stream will have
-    /// [`NoOrder`] guarantees, imposing stricter conditions on downstream consumers.
+    /// running under a Maelstrom partition nemesis. The received stream is [`NoOrder`] and
+    /// [`MayDrop`]: without an order, a dropped message cannot be told from one that is
+    /// merely late, so its consumers observe the drops with only a
+    /// [`nonlive!`](crate::liveness::nonlive).
     ///
-    /// Unlike [`Self::lossy`], this mode can easily be simulated in exhaustive mode
-    /// without running into fairness issues.
-    ///
-    /// When using this mode in the Hydro simulator, you must call
-    /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) to opt in:
-    /// the simulator will not actually drop packets—it delays "dropped" messages until
-    /// the end of the execution, which catches safety bugs but cannot test liveness.
+    /// When those drops are observed in the Hydro simulator, you must call
+    /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only): the simulator
+    /// does not actually drop packets, but delays "dropped" messages until the end of the
+    /// execution, which catches safety bugs but cannot test liveness.
     #[must_use]
     pub const fn lossy_delayed_forever(self) -> NetworkingConfig<Tcp<LossyDelayedForever>, S> {
         NetworkingConfig {
@@ -611,16 +671,9 @@ impl<R, O, S: ?Sized> NetworkingConfig<EmbeddedTransport<R, O, ()>, S> {
     }
 
     /// Declares that the host's channel may lose messages and keep delivering later ones, like
-    /// [`TCP.lossy()`](NetworkingConfig::lossy).
-    ///
-    /// # Non-Determinism
-    /// A lossy channel will non-deterministically drop messages during execution.
+    /// [`TCP.lossy()`](NetworkingConfig::lossy): the received stream is [`MayDrop`].
     #[must_use]
-    pub const fn may_drop(
-        self,
-        nondet: NonDet,
-    ) -> NetworkingConfig<EmbeddedTransport<R, O, Lossy>, S> {
-        let _ = nondet;
+    pub const fn may_drop(self) -> NetworkingConfig<EmbeddedTransport<R, O, Lossy>, S> {
         NetworkingConfig {
             name: self.name,
             _phantom: (PhantomData, PhantomData),
@@ -630,10 +683,7 @@ impl<R, O, S: ?Sized> NetworkingConfig<EmbeddedTransport<R, O, ()>, S> {
     /// Declares that the host's channel may never deliver a message, which is treated as
     /// indefinitely delayed, like
     /// [`TCP.lossy_delayed_forever()`](NetworkingConfig::lossy_delayed_forever). The received
-    /// stream is [`NoOrder`].
-    ///
-    /// The Hydro simulator requires
-    /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) for this mode.
+    /// stream is [`NoOrder`] and [`MayDrop`].
     #[must_use]
     pub const fn may_delay_forever(
         self,
@@ -650,13 +700,10 @@ impl<S: ?Sized> NetworkingConfig<Udp<()>, S> {
     ///
     /// UDP never guarantees delivery or ordering, so unlike TCP there is no `fail_stop`
     /// policy — messages may always be dropped and the output stream always has
-    /// [`NoOrder`] guarantees.
-    ///
-    /// # Non-Determinism
-    /// A lossy UDP channel will non-deterministically drop messages during execution.
+    /// [`NoOrder`] guarantees. The received stream is [`MayDrop`], observed with
+    /// [`observe_drops(nonlive!(..))`](crate::live_collections::stream::Stream::observe_drops).
     #[must_use]
-    pub const fn lossy(self, nondet: NonDet) -> NetworkingConfig<Udp<Lossy>, S> {
-        let _ = nondet;
+    pub const fn lossy(self) -> NetworkingConfig<Udp<Lossy>, S> {
         NetworkingConfig {
             name: self.name,
             _phantom: (PhantomData, PhantomData),
@@ -666,18 +713,13 @@ impl<S: ?Sized> NetworkingConfig<Udp<()>, S> {
     /// Configures the UDP transport to treat dropped messages as indefinitely delayed.
     ///
     /// UDP never guarantees delivery or ordering, so unlike TCP there is no `fail_stop`
-    /// policy. Unlike [`Self::lossy`], this does *not* require a [`NonDet`] annotation
-    /// because the output is always lower in the partial order than the ideal stream
-    /// (dropped messages are modeled as infinite delays). The output stream has
-    /// [`NoOrder`] guarantees, imposing stricter conditions on downstream consumers.
+    /// policy. Dropped messages are modeled as infinite delays: the received stream is
+    /// [`NoOrder`] and [`MayDrop`], observed with only a [`nonlive!`](crate::liveness::nonlive).
     ///
-    /// Unlike [`Self::lossy`], this mode can easily be simulated in exhaustive mode
-    /// without running into fairness issues.
-    ///
-    /// When using this mode in the Hydro simulator, you must call
-    /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) to opt in:
-    /// the simulator will not actually drop packets—it delays "dropped" messages until
-    /// the end of the execution, which catches safety bugs but cannot test liveness.
+    /// When those drops are observed in the Hydro simulator, you must call
+    /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only): the simulator
+    /// does not actually drop packets, but delays "dropped" messages until the end of the
+    /// execution, which catches safety bugs but cannot test liveness.
     #[must_use]
     pub const fn lossy_delayed_forever(self) -> NetworkingConfig<Udp<LossyDelayedForever>, S> {
         NetworkingConfig {
@@ -696,6 +738,8 @@ where
     type OrderingGuarantee = Tr::OrderingGuarantee;
 
     type RetriesGuarantee = Tr::RetriesGuarantee;
+
+    type DropsGuarantee = Tr::DropsGuarantee;
 
     type ConsistencyGuarantee = Tr::ConsistencyGuarantee;
 
@@ -729,6 +773,8 @@ where
     type OrderingGuarantee = Tr::OrderingGuarantee;
 
     type RetriesGuarantee = Tr::RetriesGuarantee;
+
+    type DropsGuarantee = Tr::DropsGuarantee;
 
     type ConsistencyGuarantee = Tr::ConsistencyGuarantee;
 
@@ -797,10 +843,9 @@ pub const EMBEDDED: NetworkingConfig<EmbeddedTransport<(), (), ()>, Embedded> = 
 /// including Docker and ECS deployments); attempting to deploy a UDP channel there
 /// will panic at compile time. Both UDP modes are available for embedded
 /// deployments (the only production deployment option) and Maelstrom testing. In
-/// the Hydro simulator, only `lossy_delayed_forever` is supported, and it requires
-/// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only): the
-/// simulator will not actually drop packets—it delays "dropped" messages until the
-/// end of the execution, which catches safety bugs but cannot test liveness.
+/// the Hydro simulator, both deliver every message, and the received stream's drops are
+/// explored where the program observes them (see
+/// [`observe_drops`](crate::live_collections::stream::Stream::observe_drops)).
 pub const UDP: NetworkingConfig<Udp<()>, NoSer> = NetworkingConfig {
     name: None,
     _phantom: (PhantomData, PhantomData),

@@ -20,7 +20,7 @@ note: required by a bound in `EmbeddedNetworkInputChannel::<C, S>::new`
    |
    | impl<C: EmbeddedNetworkChannel, S> EmbeddedNetworkInputChannel<C, S> {
 ...
-   |     pub fn new<Tr, Ser, O, R>(
+   |     pub fn new<Tr, Ser, O, R, D>(
 ...
-   |         C: ConfiguredAs<Tr, Ser> + SatisfiedBy<O, R>,
+   |         C: ConfiguredAs<Tr, Ser> + SatisfiedBy<O, R, D>,
    |            ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `EmbeddedNetworkInputChannel::<C, S>::new`

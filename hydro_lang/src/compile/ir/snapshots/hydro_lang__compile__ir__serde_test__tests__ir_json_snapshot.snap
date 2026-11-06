@@ -36,6 +36,7 @@ expression: json
                           "bound": "Bounded",
                           "order": "TotalOrder",
                           "retry": "ExactlyOnce",
+                          "drops": "NoDrop",
                           "element_type": "i32"
                         }
                       },
@@ -63,6 +64,7 @@ expression: json
                       "bound": "Bounded",
                       "order": "TotalOrder",
                       "retry": "ExactlyOnce",
+                      "drops": "NoDrop",
                       "element_type": "i32"
                     }
                   },
@@ -91,6 +93,7 @@ expression: json
                 "bound": "Bounded",
                 "order": "TotalOrder",
                 "retry": "ExactlyOnce",
+                "drops": "NoDrop",
                 "element_type": "i32"
               }
             },
@@ -137,6 +140,7 @@ expression: json
                 "bound": "Bounded",
                 "order": "TotalOrder",
                 "retry": "ExactlyOnce",
+                "drops": "NoDrop",
                 "element_type": "i32"
               }
             },

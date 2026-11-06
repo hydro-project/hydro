@@ -22,7 +22,8 @@ fn main() {
             ),
             Promises::new()
                 .total_order(manual_proof!(/** the list keeps its order */))
-                .exactly_once(manual_proof!(/** each message appears once in the list */)),
+                .exactly_once(manual_proof!(/** each message appears once in the list */))
+                .no_drops(manual_proof!(/** the list loses nothing */)),
         ),
     };
 }

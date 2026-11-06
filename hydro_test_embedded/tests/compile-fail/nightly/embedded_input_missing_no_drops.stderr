@@ -1,0 +1,29 @@
+error[E0277]: `hydro_test_embedded::embedded::capitalize::inputs::input` relies on every element arriving, but the host does not promise it
+  --> tests/compile-fail/nightly/embedded_input_missing_no_drops.rs:13:13
+   |
+11 |           input: EmbeddedInputChannel::new(
+   |                  ------------------------- required by a bound introduced by this call
+12 |               stream::iter(Vec::<String>::new()),
+13 | /             Promises::new()
+14 | |                 .total_order(manual_proof!(/** the list keeps its order */))
+15 | |                 .exactly_once(manual_proof!(/** the list holds each element once */)),
+   | |_____________________________________________________________________________________^ does not promise `NoDrop`
+   |
+   = note: add `.no_drops(manual_proof!(/** why every element arrives */))` to its `Promises`
+help: the trait `DropsPromisedBy<hydro_lang::live_collections::stream::MayDrop, input>` is not implemented for `hydro_lang::live_collections::stream::NoDrop`
+      but trait `DropsPromisedBy<hydro_lang::live_collections::stream::NoDrop, input>` is implemented for it
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   | impl<End> DropsPromisedBy<NoDrop, End> for NoDrop {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `hydro_lang::live_collections::stream::NoDrop`, found `hydro_lang::live_collections::stream::MayDrop`
+   = note: required for `hydro_test_embedded::embedded::capitalize::inputs::input` to implement `SatisfiedBy<hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::MayDrop>`
+note: required by a bound in `EmbeddedInputChannel::<C, S>::new`
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   | impl<C: EmbeddedChannel, S> EmbeddedInputChannel<C, S> {
+   |     /// Wraps a host stream for channel `C`, with `promises` that must meet its guarantees.
+   |     pub fn new<O, R, D>(inner: S, promises: Promises<O, R, D>) -> Self
+   |     where
+   |         C: SatisfiedBy<O, R, D>,
+   |            ^^^^^^^^^^^^^^^^^^^^ required by this bound in `EmbeddedInputChannel::<C, S>::new`

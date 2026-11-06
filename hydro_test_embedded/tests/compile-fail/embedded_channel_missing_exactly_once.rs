@@ -14,7 +14,9 @@ fn main() {
         messages: EmbeddedNetworkInputChannel::new(
             stream::iter(Vec::<String>::new()),
             ChannelConfiguration::new(EMBEDDED.never_reorders().never_duplicates().never_drops()),
-            Promises::new().total_order(manual_proof!(/** an in-memory list keeps its order */)),
+            Promises::new()
+                .total_order(manual_proof!(/** an in-memory list keeps its order */))
+                .no_drops(manual_proof!(/** the list loses nothing */)),
         ),
     };
 }

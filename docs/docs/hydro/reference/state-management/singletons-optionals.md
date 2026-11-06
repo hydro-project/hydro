@@ -104,6 +104,9 @@ The `B` type parameter determines which APIs are available. A `Bounded` singleto
 
 In addition to `Bounded` and `Unbounded`, singletons support a third bound: `Monotonic`, which marks values that only **grow** over time (for example, `count()` on an unbounded stream returns `Singleton<usize, _, Monotonic>`). Monotonicity is a weaker guarantee than boundedness but still enables deterministic APIs like threshold checks (`threshold_greater_or_equal`), since a growing value crosses a fixed threshold at most once. Aggregations can be marked monotonic with a `monotone = manual_proof!(...)` annotation.
 
+## Missing Elements
+A commutative aggregation over a stream that may be missing elements ([`MayDrop`](../streaming-data/streams.md#missing-elements-drops)) produces a `MayDrop` singleton or optional. At every moment its value is one the aggregation could take over the whole stream (with the missing elements arriving last), but it may never reach the final value. Operators that only transform the value, like `map` (and `filter` on an optional), keep the drop type. Reading the value from a tick with `snapshot` requires `NoDrop`, so first call [`observe_drops`](rust:hydro_lang::live_collections::Singleton::observe_drops), whose [`nonlive!`](rust:hydro_lang::liveness::nonlive) explains why the program is acceptable even if the value stops short. No `nondet!` is needed: the `snapshot` already accounts for reading some version of the value.
+
 ## Reading State in a Service
 To read an unbounded singleton — for example, answering get requests with the current value of a counter — take a **snapshot** inside a [`sliced!`](./slices.mdx) block. The snapshot is a `Bounded` singleton, so within the slice you can capture it with `by_ref()` and read it like a regular Rust value:
 

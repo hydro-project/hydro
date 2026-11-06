@@ -59,6 +59,7 @@ pub mod prelude {
     pub use crate::live_collections::singleton::Singleton;
     pub use crate::live_collections::sliced::sliced;
     pub use crate::live_collections::stream::Stream;
+    pub use crate::liveness::{NonLive, nonlive};
     pub use crate::location::{Cluster, External, Location as _, Process, Tick};
     pub use crate::networking::{EMBEDDED, TCP, UDP};
     pub use crate::nondet::{NonDet, nondet};
@@ -101,6 +102,7 @@ pub mod prelude {
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_context")))]
 pub mod runtime_context;
 
+pub mod liveness;
 pub mod nondet;
 
 pub mod live_collections;

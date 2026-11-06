@@ -1,0 +1,33 @@
+warning: variable does not need to be mutable
+  --> tests/compile-fail/nightly/may_drop_stateful_map.rs:14:13
+   |
+13 |       let _ = input.weaken_drops::<MayDrop>().map(q!({
+   |  _________________________________________________-
+14 | |         let mut total = 0;
+   | |             ----^^^^^
+   | |             |
+   | |             help: remove this `mut`
+15 | |         move |x| {
+16 | |             total += x;
+...  |
+19 | |     }));
+   | |______- this warning originates in the macro `__stageleft_quote_tests_compile_fail_may_drop_stateful_map_rs_13_51` which comes from the expansion of the macro `q`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+error[E0594]: cannot assign to `total`, as it is a captured variable in a `Fn` closure
+  --> tests/compile-fail/nightly/may_drop_stateful_map.rs:16:13
+   |
+11 |   fn test<'a>(p1: &Process<'a, P1>) {
+   |                                    - change this to return `FnMut` instead of `Fn`
+12 |       let input: Stream<i32, Process<'a, P1>> = p1.source_iter(q!(1..=3i32)).into();
+13 |       let _ = input.weaken_drops::<MayDrop>().map(q!({
+   |  _________________________________________________-
+14 | |         let mut total = 0;
+15 | |         move |x| {
+   | |         -------- in this closure
+16 | |             total += x;
+   | |             ^^^^^^^^^^ cannot assign
+...  |
+19 | |     }));
+   | |______- this error originates in the macro `__stageleft_quote_tests_compile_fail_may_drop_stateful_map_rs_13_51` which comes from the expansion of the macro `q`
