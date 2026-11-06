@@ -90,7 +90,8 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
 
         let accum_neg = quote_spanned! {op_span=>
             let fut = #root::dfir_pipes::pull::Pull::for_each(#input_neg, |k| {
-                #neg_ident.insert(k);
+                // Negative-side membership only; the "newly inserted" bool is unused.
+                let _ = #neg_ident.insert(k);
             });
             let () = #work_fn_async(fut).await;
         };

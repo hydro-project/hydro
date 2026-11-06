@@ -158,7 +158,8 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                     let fut = #root::dfir_pipes::pull::Pull::for_each(check_input(#input), |kv| {
                         match #hashtable_ident.entry(kv.0) {
                             ::std::collections::hash_map::Entry::Vacant(vacant) => {
-                                vacant.insert(kv.1);
+                                // `VacantEntry::insert` returns `&mut V`, which is not read here.
+                                let _ = vacant.insert(kv.1);
                             }
                             ::std::collections::hash_map::Entry::Occupied(mut occupied) => {
                                 call_comb_type(occupied.get_mut(), kv.1, #aggfn);
@@ -178,7 +179,8 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                 let #ident = #root::dfir_pipes::push::for_each(|kv: (#( #generic_type_args ),*)| {
                     match #singleton_output_ident.entry(kv.0) {
                         ::std::collections::hash_map::Entry::Vacant(vacant) => {
-                            vacant.insert(kv.1);
+                            // `VacantEntry::insert` returns `&mut V`, which is not read here.
+                            let _ = vacant.insert(kv.1);
                         }
                         ::std::collections::hash_map::Entry::Occupied(mut occupied) => {
                             #[inline(always)]

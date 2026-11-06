@@ -52,7 +52,10 @@ pub const LATTICE_REDUCE: OperatorConstraints = OperatorConstraints {
                },
                diagnostics| {
         let arguments = &parse_quote_spanned! {op_span=>
-            |acc, item| { #root::lattices::Merge::<_>::merge(acc, item); }
+            |acc, item| {
+                // `Merge::merge` returns whether the value changed; reduce only needs the write.
+                let _ = #root::lattices::Merge::<_>::merge(acc, item);
+            }
         };
         let wc = WriteContextArgs {
             arguments,
