@@ -134,13 +134,16 @@ purchases.fold(q!(|| 0), q!(|acc, amount| *acc += amount))
 #     snap.entries()
 # }.map(q!(|(k, v)| (k.to_string(), v)))
 # }, |mut stream| async move {
-// { "alice": 28, "bob": 13 }
-# let mut results = vec![];
-# for _ in 0..2 {
-#     results.push(stream.next().await.unwrap());
+// eventually { "alice": 28, "bob": 13 }
+# // The snapshot may be taken before every purchase has arrived, so it shows partial sums.
+# let results: Vec<(String, i32)> = stream.collect().await;
+# for (user, total) in results {
+#     match user.as_str() {
+#         "alice" => assert!([10, 25, 28].contains(&total)),
+#         "bob" => assert!([5, 13].contains(&total)),
+#         _ => panic!("unexpected user {user}"),
+#     }
 # }
-# results.sort();
-# assert_eq!(results, vec![("alice".to_owned(), 28), ("bob".to_owned(), 13)]);
 # }));
 ```
 
@@ -150,7 +153,8 @@ The result of a keyed aggregation is a [`KeyedSingleton`](./keyed-singletons.mdx
 
 Like with streams, operators like `fold` or `reduce` on keyed streams may require property annotations for commutativity or idempotence depending on the upstream guarantees:
 
-```rust
+```rust,no_run
+# // Only compiled: the simulator cannot yet run an idempotent fold over an at-least-once stream.
 # use hydro_lang::prelude::*;
 # use futures::StreamExt;
 # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {

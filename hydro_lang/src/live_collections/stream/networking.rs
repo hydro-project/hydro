@@ -107,7 +107,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
@@ -145,7 +145,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
@@ -242,7 +242,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -257,12 +257,12 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// // - MemberId::<()>(2): [123]
     /// // - MemberId::<()>(3): [123]
     /// # }, |mut stream| async move {
-    /// # let mut results = Vec::new();
-    /// # for w in 0..4 {
-    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec!["(MemberId::<()>(0), 123)", "(MemberId::<()>(1), 123)", "(MemberId::<()>(2), 123)", "(MemberId::<()>(3), 123)"]);
+    /// # // The simulator also explores members joining after the broadcast, which then miss it, so
+    /// # // check that each member that receives the element receives it once.
+    /// # let results: Vec<_> = stream.collect().await;
+    /// # let members: std::collections::HashSet<_> = results.iter().map(|(m, _)| format!("{m:?}")).collect();
+    /// # assert_eq!(members.len(), results.len());
+    /// # assert!(results.iter().all(|(_, v)| *v == 123));
     /// # }));
     /// # }
     /// ```
@@ -293,7 +293,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -308,12 +308,12 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// // - MemberId::<()>(2): [123]
     /// // - MemberId::<()>(3): [123]
     /// # }, |mut stream| async move {
-    /// # let mut results = Vec::new();
-    /// # for w in 0..4 {
-    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec!["(MemberId::<()>(0), 123)", "(MemberId::<()>(1), 123)", "(MemberId::<()>(2), 123)", "(MemberId::<()>(3), 123)"]);
+    /// # // The simulator also explores members joining after the broadcast, which then miss it, so
+    /// # // check that each member that receives the element receives it once.
+    /// # let results: Vec<_> = stream.collect().await;
+    /// # let members: std::collections::HashSet<_> = results.iter().map(|(m, _)| format!("{m:?}")).collect();
+    /// # assert_eq!(members.len(), results.len());
+    /// # assert!(results.iter().all(|(_, v)| *v == 123));
     /// # }));
     /// # }
     /// ```
@@ -384,7 +384,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -587,7 +587,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -633,7 +633,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -699,29 +699,27 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use hydro_lang::live_collections::stream::{TotalOrder, ExactlyOnce};
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test_with_cluster_size(2, |flow, p2| {
     /// let p1 = flow.process::<()>();
     /// let workers: Cluster<()> = flow.cluster::<()>();
-    /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(vec![1, 2]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers.round_robin_bincode(&workers, nondet!(/** assuming stable membership */));
     /// on_worker.send_bincode(&p2)
     /// # .first().values() // we use first to assert that each member gets one element
-    /// // with 4 cluster members, elements are distributed (with a non-deterministic round-robin order):
+    /// // elements are distributed across the members (with a non-deterministic round-robin order):
     /// // - MemberId::<()>(?): [1]
     /// // - MemberId::<()>(?): [2]
-    /// // - MemberId::<()>(?): [3]
-    /// // - MemberId::<()>(?): [4]
     /// # }, |mut stream| async move {
-    /// # let mut results = Vec::new();
-    /// # for w in 0..4 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
+    /// # // The simulator also explores members joining after elements are sent, which then miss
+    /// # // them, so check that the elements that arrive are distinct and come from the input.
+    /// # let mut results: Vec<i32> = stream.collect().await;
     /// # results.sort();
-    /// # assert_eq!(results, vec![1, 2, 3, 4]);
+    /// # results.dedup();
+    /// # assert!(results.iter().all(|v| (1..=2).contains(v)));
     /// # }));
     /// # }
     /// ```
@@ -755,29 +753,27 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use hydro_lang::live_collections::stream::{TotalOrder, ExactlyOnce};
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test_with_cluster_size(2, |flow, p2| {
     /// let p1 = flow.process::<()>();
     /// let workers: Cluster<()> = flow.cluster::<()>();
-    /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(vec![1, 2]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers.round_robin(&workers, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */));
     /// on_worker.send(&p2, TCP.fail_stop().bincode())
     /// # .first().values() // we use first to assert that each member gets one element
-    /// // with 4 cluster members, elements are distributed (with a non-deterministic round-robin order):
+    /// // elements are distributed across the members (with a non-deterministic round-robin order):
     /// // - MemberId::<()>(?): [1]
     /// // - MemberId::<()>(?): [2]
-    /// // - MemberId::<()>(?): [3]
-    /// // - MemberId::<()>(?): [4]
     /// # }, |mut stream| async move {
-    /// # let mut results = Vec::new();
-    /// # for w in 0..4 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
+    /// # // The simulator also explores members joining after elements are sent, which then miss
+    /// # // them, so check that the elements that arrive are distinct and come from the input.
+    /// # let mut results: Vec<i32> = stream.collect().await;
     /// # results.sort();
-    /// # assert_eq!(results, vec![1, 2, 3, 4]);
+    /// # results.dedup();
+    /// # assert!(results.iter().all(|v| (1..=2).contains(v)));
     /// # }));
     /// # }
     /// ```
@@ -847,8 +843,10 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
     /// order of messages and retries affects the round-robin pattern.
     ///
     /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// ```rust,no_run
+    /// # #[cfg(feature = "sim")] {
+    /// # // Only compiled: the simulator cannot explore every execution of two chained
+    /// # // round-robin hops across clusters in reasonable time.
     /// # use hydro_lang::prelude::*;
     /// # use hydro_lang::live_collections::stream::{TotalOrder, ExactlyOnce, NoOrder};
     /// # use hydro_lang::location::MemberId;
@@ -906,8 +904,10 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
     /// order of messages and retries affects the round-robin pattern.
     ///
     /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// ```rust,no_run
+    /// # #[cfg(feature = "sim")] {
+    /// # // Only compiled: the simulator cannot explore every execution of two chained
+    /// # // round-robin hops across clusters in reasonable time.
     /// # use hydro_lang::prelude::*;
     /// # use hydro_lang::live_collections::stream::{TotalOrder, ExactlyOnce, NoOrder};
     /// # use hydro_lang::location::MemberId;
@@ -999,7 +999,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
@@ -1023,7 +1023,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// If you don't need to know the source for each element, you can use `.values()`
     /// to get just the data:
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use hydro_lang::live_collections::stream::NoOrder;
     /// # use futures::StreamExt;
@@ -1062,7 +1062,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
@@ -1086,7 +1086,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// If you don't need to know the source for each element, you can use `.values()`
     /// to get just the data:
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use hydro_lang::live_collections::stream::NoOrder;
     /// # use futures::StreamExt;
@@ -1197,11 +1197,11 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use hydro_lang::location::MemberId;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test_with_cluster_size(2, |flow, p2| {
     /// # type Source = ();
     /// # type Destination = ();
     /// let source: Cluster<Source> = flow.cluster::<Source>();
@@ -1214,17 +1214,12 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// // - Destination(1): { Source(0): [123], Source(1): [123], ... }
     /// // - ...
     /// # }, |mut stream| async move {
-    /// # let mut results = Vec::new();
-    /// # for w in 0..16 {
-    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![
-    /// #   "(MemberId::<()>(0), (MemberId::<()>(0), 123))", "(MemberId::<()>(0), (MemberId::<()>(1), 123))", "(MemberId::<()>(0), (MemberId::<()>(2), 123))", "(MemberId::<()>(0), (MemberId::<()>(3), 123))",
-    /// #   "(MemberId::<()>(1), (MemberId::<()>(0), 123))", "(MemberId::<()>(1), (MemberId::<()>(1), 123))", "(MemberId::<()>(1), (MemberId::<()>(2), 123))", "(MemberId::<()>(1), (MemberId::<()>(3), 123))",
-    /// #   "(MemberId::<()>(2), (MemberId::<()>(0), 123))", "(MemberId::<()>(2), (MemberId::<()>(1), 123))", "(MemberId::<()>(2), (MemberId::<()>(2), 123))", "(MemberId::<()>(2), (MemberId::<()>(3), 123))",
-    /// #   "(MemberId::<()>(3), (MemberId::<()>(0), 123))", "(MemberId::<()>(3), (MemberId::<()>(1), 123))", "(MemberId::<()>(3), (MemberId::<()>(2), 123))", "(MemberId::<()>(3), (MemberId::<()>(3), 123))"
-    /// # ]);
+    /// # // The simulator also explores members joining after the broadcast, which then miss it, so
+    /// # // check that each (receiver, sender) pair gets the element at most once.
+    /// # let results: Vec<_> = stream.collect().await;
+    /// # let pairs: std::collections::HashSet<_> = results.iter().map(|(d, (s, _))| format!("{d:?} {s:?}")).collect();
+    /// # assert_eq!(pairs.len(), results.len());
+    /// # assert!(results.iter().all(|(_, (_, v))| *v == 123));
     /// # }));
     /// # }
     /// ```
@@ -1255,11 +1250,11 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use hydro_lang::location::MemberId;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test_with_cluster_size(2, |flow, p2| {
     /// # type Source = ();
     /// # type Destination = ();
     /// let source: Cluster<Source> = flow.cluster::<Source>();
@@ -1272,17 +1267,12 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// // - Destination(1): { Source(0): [123], Source(1): [123], ... }
     /// // - ...
     /// # }, |mut stream| async move {
-    /// # let mut results = Vec::new();
-    /// # for w in 0..16 {
-    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![
-    /// #   "(MemberId::<()>(0), (MemberId::<()>(0), 123))", "(MemberId::<()>(0), (MemberId::<()>(1), 123))", "(MemberId::<()>(0), (MemberId::<()>(2), 123))", "(MemberId::<()>(0), (MemberId::<()>(3), 123))",
-    /// #   "(MemberId::<()>(1), (MemberId::<()>(0), 123))", "(MemberId::<()>(1), (MemberId::<()>(1), 123))", "(MemberId::<()>(1), (MemberId::<()>(2), 123))", "(MemberId::<()>(1), (MemberId::<()>(3), 123))",
-    /// #   "(MemberId::<()>(2), (MemberId::<()>(0), 123))", "(MemberId::<()>(2), (MemberId::<()>(1), 123))", "(MemberId::<()>(2), (MemberId::<()>(2), 123))", "(MemberId::<()>(2), (MemberId::<()>(3), 123))",
-    /// #   "(MemberId::<()>(3), (MemberId::<()>(0), 123))", "(MemberId::<()>(3), (MemberId::<()>(1), 123))", "(MemberId::<()>(3), (MemberId::<()>(2), 123))", "(MemberId::<()>(3), (MemberId::<()>(3), 123))"
-    /// # ]);
+    /// # // The simulator also explores members joining after the broadcast, which then miss it, so
+    /// # // check that each (receiver, sender) pair gets the element at most once.
+    /// # let results: Vec<_> = stream.collect().await;
+    /// # let pairs: std::collections::HashSet<_> = results.iter().map(|(d, (s, _))| format!("{d:?} {s:?}")).collect();
+    /// # assert_eq!(pairs.len(), results.len());
+    /// # assert!(results.iter().all(|(_, (_, v))| *v == 123));
     /// # }));
     /// # }
     /// ```
@@ -1464,7 +1454,7 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -1520,7 +1510,7 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {

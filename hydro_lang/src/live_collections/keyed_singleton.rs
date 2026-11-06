@@ -486,7 +486,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -551,7 +551,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -620,22 +620,22 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
     /// let keyed_singleton = // { 1: "a", 2: "b", 3: "c" }
     /// # process
     /// #     .source_iter(q!(vec![(1, "a"), (2, "b"), (3, "c")]))
     /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
     /// #     .first();
     /// keyed_singleton.key_count()
-    /// # .all_ticks()
+    /// # .into_stream()
     /// # }, |mut stream| async move {
     /// // 3
-    /// # assert_eq!(stream.next().await.unwrap(), 3);
+    /// # for w in vec![3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
     /// # }));
     /// # }
     /// ```
@@ -685,7 +685,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -693,10 +693,9 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// # process
     /// #     .source_iter(q!(vec![(1, "a".to_owned()), (2, "b".to_owned()), (3, "c".to_owned())]))
     /// #     .into_keyed()
-    /// #     .batch(&process.tick(), nondet!(/** test */))
     /// #     .first();
     /// keyed_singleton.into_singleton()
-    /// # .all_ticks()
+    /// # .into_stream()
     /// # }, |mut stream| async move {
     /// // { 1: "a", 2: "b", 3: "c" }
     /// # assert_eq!(stream.next().await.unwrap(), vec![(1, "a".to_owned()), (2, "b".to_owned()), (3, "c".to_owned())].into_iter().collect());
@@ -790,7 +789,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -826,24 +825,21 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
     /// let keyed_data = process
     ///     .source_iter(q!(vec![(1, 10), (2, 20)]))
     ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */))
     ///     .first();
     /// let other_data = process
     ///     .source_iter(q!(vec![(1, 100), (2, 200), (1, 101)]))
-    ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */));
-    /// keyed_data.join_keyed_stream(other_data).entries().all_ticks()
+    ///     .into_keyed();
+    /// keyed_data.join_keyed_stream(other_data).entries()
     /// # }, |mut stream| async move {
     /// // { 1: [(10, 100), (10, 101)], 2: [(20, 200)] } in any order
-    /// # let mut results = vec![];
+    /// # let mut results = Vec::new();
     /// # for _ in 0..3 {
     /// #     results.push(stream.next().await.unwrap());
     /// # }
@@ -883,28 +879,25 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
     /// let requests = // { 1: 10, 2: 20, 3: 30 }
     /// # process
     /// #     .source_iter(q!(vec![(1, 10), (2, 20), (3, 30)]))
     /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
     /// #     .first();
     /// let other = // { 1: 100, 2: 200, 4: 400 }
     /// # process
     /// #     .source_iter(q!(vec![(1, 100), (2, 200), (4, 400)]))
     /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
     /// #     .first();
     /// requests.join_keyed_singleton(other)
-    /// # .entries().all_ticks()
+    /// # .entries()
     /// # }, |mut stream| async move {
     /// // { 1: (10, 100), 2: (20, 200) }
-    /// # let mut results = vec![];
+    /// # let mut results = Vec::new();
     /// # for _ in 0..2 {
     /// #     results.push(stream.next().await.unwrap());
     /// # }
@@ -939,28 +932,25 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
     /// let requests = // { 1: 10, 2: 20 }
     /// # process
     /// #     .source_iter(q!(vec![(1, 10), (2, 20)]))
     /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
     /// #     .first();
     /// let other_data = // { 10: 100, 11: 110 }
     /// # process
     /// #     .source_iter(q!(vec![(10, 100), (11, 110)]))
     /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
     /// #     .first();
     /// requests.lookup_keyed_singleton(other_data)
-    /// # .entries().all_ticks()
+    /// # .entries()
     /// # }, |mut stream| async move {
     /// // { 1: (10, Some(100)), 2: (20, None) }
-    /// # let mut results = vec![];
+    /// # let mut results = Vec::new();
     /// # for _ in 0..2 {
     /// #     results.push(stream.next().await.unwrap());
     /// # }
@@ -995,27 +985,24 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
     /// let requests = // { 1: 10, 2: 20 }
     /// # process
     /// #     .source_iter(q!(vec![(1, 10), (2, 20)]))
     /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
     /// #     .first();
     /// let other_data = // { 10: 100, 10: 110 }
     /// # process
     /// #     .source_iter(q!(vec![(10, 100), (10, 110)]))
-    /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */));
+    /// #     .into_keyed();
     /// requests.lookup_keyed_stream(other_data)
-    /// # .entries().all_ticks()
+    /// # .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [(10, Some(100)), (10, Some(110))], 2: (20, None) }
-    /// # let mut results = vec![];
+    /// # let mut results = Vec::new();
     /// # for _ in 0..3 {
     /// #     results.push(stream.next().await.unwrap());
     /// # }
@@ -1190,7 +1177,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1338,7 +1325,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1371,7 +1358,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1423,7 +1410,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1453,22 +1440,18 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
     /// let keyed_singleton = // { 1: 2, 2: 4 }
     /// # process
     /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
     /// #     .into_keyed()
-    /// #     .first()
-    /// #     .batch(&tick, nondet!(/** test */));
-    /// let keys_to_remove = process
-    ///     .source_iter(q!(vec![1]))
-    ///     .batch(&tick, nondet!(/** test */));
+    /// #     .first();
+    /// let keys_to_remove = process.source_iter(q!(vec![1]));
     /// keyed_singleton.filter_key_not_in(keys_to_remove)
-    /// #   .entries().all_ticks()
+    /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 2: 4 }
     /// # for w in vec![(2, 4)] {
@@ -1502,7 +1485,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1558,7 +1541,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1608,22 +1591,22 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
     /// let keyed_singleton = // { 1: 123, 2: 456, 0: 789 }
-    /// # Stream::<_, _>::from(process.source_iter(q!(vec![(1, 123), (2, 456), (0, 789)])))
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 123), (2, 456), (0, 789)]))
     /// #     .into_keyed()
     /// #     .first();
     /// keyed_singleton.get_max_key()
-    /// # .into_singleton()
-    /// # .sample_eager(nondet!(/** test */))
+    /// # .into_stream()
     /// # }, |mut stream| async move {
-    /// // sampled as `Option<(K, V)>` snapshots, eventually Some((2, 456))
-    /// # let mut recv = std::pin::pin!(stream.filter(|v| futures::future::ready(v.is_some())));
-    /// # assert_eq!(recv.next().await.unwrap(), Some((2, 456)));
+    /// // Some((2, 456))
+    /// # for w in vec![(2, 456)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
     /// # }));
     /// # }
     /// ```
@@ -1660,7 +1643,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1763,33 +1746,27 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// # // ticks are lazy by default, forces the second tick to run
-    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    /// # let batch_first_tick = process
-    /// #   .source_iter(q!(vec![(1, 2), (2, 3)]))
-    /// #   .batch(&tick, nondet!(/** test */))
-    /// #   .into_keyed();
-    /// # let batch_second_tick = process
-    /// #   .source_iter(q!(vec![(2, 4), (3, 5)]))
+    /// let input_batch = // for example { 1: 2, 2: 3 } (first tick), { 2: 4, 3: 5 } (second tick)
+    /// # process
+    /// #   .source_iter(q!(vec![(1, 2), (2, 3), (2, 4), (3, 5)]))
     /// #   .batch(&tick, nondet!(/** test */))
     /// #   .into_keyed()
-    /// #   .defer_tick(); // appears on the second tick
-    /// let input_batch = // first tick: { 1: 2, 2: 3 }, second tick: { 2: 4, 3: 5 }
-    /// # batch_first_tick.chain(batch_second_tick).first();
+    /// #   .first();
     /// input_batch.clone().filter_key_not_in(
     ///     input_batch.defer_tick().keys() // keys present in the previous tick
     /// )
     /// # .entries().all_ticks()
     /// # }, |mut stream| async move {
     /// // { 1: 2, 2: 3 } (first tick), { 3: 5 } (second tick)
-    /// # for w in vec![(1, 2), (2, 3), (3, 5)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
+    /// # let results: Vec<(i32, i32)> = stream.collect().await;
+    /// # // keys 1 and 3 each appear in only one tick, so they are never filtered out
+    /// # assert!(results.contains(&(1, 2)));
+    /// # assert!(results.iter().any(|&(k, _)| k == 3));
     /// # }));
     /// # }
     /// ```
@@ -1894,7 +1871,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1957,7 +1934,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # #[cfg(feature = "deploy")] {
+    /// # #[cfg(feature = "sim")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
