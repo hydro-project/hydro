@@ -6005,7 +6005,7 @@ impl HydroNode {
                         ident_stack.push(sort_ident);
                     }
 
-                    HydroNode::DeferTick { .. } => {
+                    HydroNode::DeferTick { metadata, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
                         let stmt_id = next_stmt_id.get_and_increment();
@@ -6014,11 +6014,23 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                graph_builders.add_dfir_at(
-                                    &out_location,
+                                let stmt: dfir_lang::parse::DfirCode = if metadata.location_id.is_root() {
+                                    // A top-level defer is a root-level DFIR `defer_tick()`: it is
+                                    // non-lazy, so deferred elements schedule the next DFIR tick
+                                    // on their own (there is no tick region to fire otherwise).
+                                    parse_quote! {
+                                        #defer_tick_ident = #input_ident -> defer_tick();
+                                    }
+                                } else {
+                                    // Inside a tick, deferred data must not fire the tick by
+                                    // itself, so the defer is lazy.
                                     parse_quote! {
                                         #defer_tick_ident = #input_ident -> defer_tick_lazy();
-                                    },
+                                    }
+                                };
+                                graph_builders.add_dfir_at(
+                                    &out_location,
+                                    stmt,
                                     Some(&stmt_id.to_string()),
                                 );
                             }
