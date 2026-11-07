@@ -142,8 +142,10 @@ macro_rules! __sliced_parse_uses__ {
 /// along with a non-determinism explanation. The style specifies how the live collection is sliced:
 /// `use::batch` for stream-like collections (such as [`Stream`](crate::live_collections::Stream)),
 /// `use::snapshot` for singleton-like collections (such as
-/// [`Singleton`](crate::live_collections::Singleton)), and `use::atomic` for atomically-processed
-/// collections. All `use` statements must appear before the body.
+/// [`Singleton`](crate::live_collections::Singleton)), `use::atomic` for atomically-processed
+/// collections, and `use::clone` (which takes no non-determinism explanation) for reading a
+/// bounded singleton-like collection (see [Bounded Values](#bounded-values)). All `use`
+/// statements must appear before the body.
 ///
 /// ```rust,ignore
 /// let stream = sliced! {
@@ -160,6 +162,29 @@ macro_rules! __sliced_parse_uses__ {
 /// The style-less form `use(collection, nondet!(...))`, which picks between batching and
 /// snapshotting automatically based on the collection type, is deprecated; use the explicit
 /// `use::batch` or `use::snapshot` styles instead.
+///
+/// # Bounded Values
+/// A top-level **bounded** [`Singleton`](crate::live_collections::Singleton) or
+/// [`Optional`](crate::live_collections::Optional) (for example, a configuration value fixed
+/// when the flow is built) can be read in every slice with `use::clone(collection)`, which
+/// takes no non-determinism explanation since the collection has a single immutable value.
+/// The binding is a bounded `Singleton` (or `Optional`) on the slice's tick, which can be used
+/// like any snapshot (e.g. with `cross_singleton` or `by_ref()`). The value is cloned into
+/// every tick, so it must implement [`Clone`]; avoiding that clone requires snapshots to
+/// return references ([hydro#2415](https://github.com/hydro-project/hydro/issues/2415)), and
+/// a `use::reference` style is planned for that. Unbounded collections are rejected at compile
+/// time; use `use::snapshot` for those. See
+/// [`clone`](crate::live_collections::sliced::style::clone) for details.
+///
+/// ```rust,ignore
+/// let stream = sliced! {
+///     let batch = use::batch(stream1, nondet!(/** explanation */));
+///     let config = use::clone(bounded_config);
+///
+///     let config = config.by_ref();
+///     batch.map(q!(|x| x * config.scale))
+/// };
+/// ```
 ///
 /// # Stateful Computations
 /// The `sliced!` macro also supports stateful computations across iterations using `let mut` bindings
@@ -677,5 +702,157 @@ mod tests {
             input_send.send((1, 3));
             assert_eq!(out_recv.next().await, (1, 6));
         });
+    }
+
+    /// A configuration value that is `Clone` but not `Copy`.
+    #[derive(Clone)]
+    pub struct Config {
+        pub offset: i32,
+    }
+
+    /// Test `use::clone` with a bounded singleton, read from several `q!` closures (via
+    /// `by_ref`) on every tick (not just the first).
+    #[test]
+    fn sim_clone_singleton() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_send, input) = node.sim_input::<i32, _, _>();
+        let config = node.singleton(q!(Config { offset: 100 }));
+
+        let out_recv = sliced! {
+            let batch = use::batch(input, nondet!(/** test */));
+            let config = use::clone(config);
+
+            let config = config.by_ref();
+            batch
+                .filter(q!(|x| *x < config.offset))
+                .map(q!(|x| x + config.offset))
+        }
+        .sim_output();
+
+        flow.sim().exhaustive(async || {
+            input_send.send(1);
+            assert_eq!(out_recv.next().await, 101);
+
+            input_send.send(200);
+            input_send.send(2);
+            assert_eq!(out_recv.next().await, 102);
+
+            input_send.send(3);
+            assert_eq!(out_recv.next().await, 103);
+        });
+    }
+
+    /// Test `use::clone` with bounded optionals, both present and absent.
+    #[test]
+    fn sim_clone_optional() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_send, input) = node.sim_input::<i32, _, _>();
+        let present = node.singleton(q!(5)).filter(q!(|x| *x > 0));
+        let absent = node.singleton(q!(5)).filter(q!(|x| *x > 10));
+
+        let out_recv = sliced! {
+            let batch = use::batch(input, nondet!(/** test */));
+            let present = use::clone(present);
+            let absent = use::clone(absent);
+
+            batch
+                .cross_singleton(present.into_singleton())
+                .cross_singleton(absent.into_singleton())
+                .map(q!(|((x, present), absent)| (
+                    x + present.unwrap_or(-1),
+                    absent.unwrap_or(-1)
+                )))
+        }
+        .sim_output();
+
+        flow.sim().exhaustive(async || {
+            input_send.send(1);
+            assert_eq!(out_recv.next().await, (6, -1));
+
+            input_send.send(2);
+            assert_eq!(out_recv.next().await, (7, -1));
+        });
+    }
+
+    /// Test `use::clone` on a cluster, where the other sliced inputs drop consistency.
+    #[test]
+    fn sim_clone_cluster() {
+        let mut flow = FlowBuilder::new();
+        let cluster = flow.cluster::<()>();
+
+        let (input_send, input) = cluster.sim_input::<i32, _, _>();
+        let config = cluster.singleton(q!(Config { offset: 100 }));
+
+        let out_recv = sliced! {
+            let batch = use::batch(input, nondet!(/** test */));
+            let config = use::clone(config);
+            batch
+                .cross_singleton(config)
+                .map(q!(|(x, config)| x + config.offset))
+        }
+        .sim_cluster_output();
+
+        flow.sim()
+            .with_cluster_size(&cluster, 2)
+            .exhaustive(async || {
+                input_send.send(0, 1);
+                input_send.send(1, 2);
+                assert_eq!(out_recv.next(0).await, 101);
+                assert_eq!(out_recv.next(1).await, 102);
+
+                input_send.send(0, 3);
+                assert_eq!(out_recv.next(0).await, 103);
+            });
+    }
+
+    /// `use::clone` introduces no non-deterministic choices: the simulator explores exactly as
+    /// many instances as for the same flow without it.
+    #[test]
+    fn sim_clone_no_extra_instances() {
+        let with_clone = {
+            let mut flow = FlowBuilder::new();
+            let node = flow.process::<()>();
+
+            let input = node.source_iter(q!(vec![1, 2, 3, 4]));
+            let offset = node.singleton(q!(100));
+
+            let out_recv = sliced! {
+                let batch = use::batch(input, nondet!(/** test */));
+                let offset = use::clone(offset);
+                batch.cross_singleton(offset).map(q!(|(x, offset)| x + offset))
+            }
+            .sim_output();
+
+            flow.sim().exhaustive(async || {
+                out_recv.assert_yields_only([101, 102, 103, 104]).await;
+            })
+        };
+
+        let without_clone = {
+            let mut flow = FlowBuilder::new();
+            let node = flow.process::<()>();
+
+            let input = node.source_iter(q!(vec![1, 2, 3, 4]));
+
+            let out_recv = sliced! {
+                let batch = use::batch(input, nondet!(/** test */));
+                batch.map(q!(|x| x + 100))
+            }
+            .sim_output();
+
+            flow.sim().exhaustive(async || {
+                out_recv.assert_yields_only([101, 102, 103, 104]).await;
+            })
+        };
+
+        assert_eq!(with_clone, without_clone);
+        assert_eq!(
+            with_clone,
+            8 // 2^3 ways to split up the 4 elements into non-empty batches
+        );
     }
 }

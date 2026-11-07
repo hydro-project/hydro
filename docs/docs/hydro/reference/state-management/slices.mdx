@@ -145,7 +145,7 @@ Although the *timing* of slices is non-deterministic, hooks provide several guar
 - **Snapshots are monotone**: the snapshot revealed in a later slice includes at least all data that contributed to the snapshot in an earlier slice. State never appears to "go backwards" — but a snapshot *may* lag behind the latest writes, since updates propagate asynchronously.
 - **A single point in time**: all hooks in one `sliced!` block are sliced together, at the same logical point in time.
 
-Because batch boundaries and snapshot timing remain non-deterministic, every `use` of an external collection requires a `nondet!` guard explaining why this non-determinism is acceptable. See [Non-Determinism and `nondet!`](../correctness/nondet.md) for how to write these explanations.
+Because batch boundaries and snapshot timing remain non-deterministic, every `use` of an external collection requires a `nondet!` guard explaining why this non-determinism is acceptable (the only exception is [`use::clone`](#clone-hooks) for bounded collections, which involves no non-determinism). See [Non-Determinism and `nondet!`](../correctness/nondet.md) for how to write these explanations.
 
 ## Reading State with References
 
@@ -176,6 +176,36 @@ let get_response = sliced! {
 ```
 
 Because the snapshot revealed by the hook is bounded, `by_ref()` gives you a handle that resolves to a plain `&usize` at runtime. Reference handles can also *mutate* state within a slice via `by_mut()`; see [References and Mutations](./references-mutations.md).
+
+### Bounded Values: `use::clone` {#clone-hooks}
+
+Some state never changes once the program starts, such as a configuration value fixed when the flow is built. Such a **bounded** `Singleton` (or `Optional`) has a single immutable value, so every slice observes the same value and reading it involves no non-determinism. The `use::clone(collection)` hook reads it in every slice **without** a `nondet!` guard, revealing a bounded `Singleton` (or `Optional`) that can be used like any other snapshot, including through `by_ref()`:
+
+```rust
+# use hydro_lang::prelude::*;
+# use futures::StreamExt;
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+let requests = process.source_iter(q!(vec![1, 2, 3]));
+let scale = process.singleton(q!(10));
+
+let scaled = sliced! {
+    let batch = use::batch(requests, nondet!(/** batch boundaries don't affect per-element results */));
+    let scale = use::clone(scale);
+
+    let scale_ref = scale.by_ref();
+    batch.map(q!(|x| x * *scale_ref))
+};
+// 10, 20, 30
+# scaled
+# }, |mut stream| async move {
+# let mut results = vec![];
+# for _ in 0..3 { results.push(stream.next().await.unwrap()); }
+# results.sort();
+# assert_eq!(results, vec![10, 20, 30]);
+# }));
+```
+
+The value is **cloned into every slice**, so its type must implement `Clone`. Reading it by reference instead requires snapshots of singleton-like collections to return a reference rather than a clone ([hydro#2415](https://github.com/hydro-project/hydro/issues/2415)); a `use::reference` hook that avoids the clone is planned. In simulation, `use::clone` introduces no non-deterministic choices. Only bounded collections are accepted: passing an unbounded singleton, whose value changes over time, is a compile error, and such state must be read with `use::snapshot` instead.
 
 ## Atomic Snapshots: `use::atomic` {#atomic-hooks}
 
