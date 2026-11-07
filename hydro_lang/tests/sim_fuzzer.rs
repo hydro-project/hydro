@@ -15,6 +15,7 @@ fn fuzz_with_cargo_sim() {
     let command = std::process::Command::new("cargo")
         .args([
             "sim",
+            "--default-codegen-units",
             "-p",
             "hydro_lang",
             "--features",
@@ -76,6 +77,7 @@ fn fuzz_with_cargo_sim_continue_if() {
     let command = std::process::Command::new("cargo")
         .args([
             "sim",
+            "--default-codegen-units",
             "-p",
             "hydro_lang",
             "--features",
