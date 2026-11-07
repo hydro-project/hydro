@@ -7,6 +7,7 @@
 use std::time::Duration;
 
 use futures::{SinkExt, Stream, StreamExt};
+use sinktools::fail_stop::FailStopSink;
 use sinktools::lazy::{LazySink, LazySource};
 use sinktools::lazy_sink_source::LazySinkSource;
 use stageleft::{QuotedWithContext, q};
@@ -18,7 +19,7 @@ use tracing::{Instrument, debug, instrument, span, trace, trace_span};
 pub use super::deploy_runtime_containerized::{
     CHANNEL_MAGIC, CHANNEL_MUX_PORT, CHANNEL_PROTOCOL_VERSION, ChannelHandshake, ChannelMagic,
     ChannelMux, ChannelProtocolVersion, SocketIdent, cluster_ids, connect_channel,
-    get_or_init_channel_mux, send_handshake,
+    get_or_init_channel_mux, send_handshake, warn_on_fail,
 };
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
@@ -29,8 +30,8 @@ pub fn deploy_containerized_o2o(
     channel_name: &str,
 ) -> (syn::Expr, syn::Expr) {
     (
-        q!(LazySink::<_, _, _, bytes::Bytes>::new(move || Box::pin(
-            async move {
+        q!(FailStopSink::new(
+            LazySink::<_, _, _, bytes::Bytes>::new(move || Box::pin(async move {
                 let channel_name = channel_name;
                 let target_task_family = target_task_family;
                 let task_id = self::resolve_task_family_to_task_id(target_task_family).await;
@@ -44,8 +45,9 @@ pub fn deploy_containerized_o2o(
                 self::send_handshake(&mut sink, channel_name, None).await?;
 
                 Result::<_, std::io::Error>::Ok(sink)
-            }
-        )))
+            })),
+            self::warn_on_fail(channel_name.to_owned(), target_task_family.to_owned()),
+        ))
         .splice_untyped_ctx(&()),
         q!(LazySource::new(move || Box::pin(async move {
             let channel_name = channel_name;
@@ -68,24 +70,31 @@ pub fn deploy_containerized_o2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
         q!(sinktools::demux_map_lazy::<_, _, _, _>(
             move |key: &TaglessMemberId| {
+                let on_fail = self::warn_on_fail(
+                    channel_name.to_owned(),
+                    key.get_container_name().to_owned(),
+                );
                 let key = key.clone();
                 let channel_name = channel_name.to_owned();
 
-                LazySink::<_, _, _, bytes::Bytes>::new(move || {
-                    Box::pin(async move {
-                        let task_id = key.get_container_name();
-                        let ip = self::resolve_task_ip(task_id).await;
-                        let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
-                        debug!(name: "connecting", %target, %task_id, channel_name = %channel_name);
+                FailStopSink::new(
+                    LazySink::<_, _, _, bytes::Bytes>::new(move || {
+                        Box::pin(async move {
+                            let task_id = key.get_container_name();
+                            let ip = self::resolve_task_ip(task_id).await;
+                            let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
+                            debug!(name: "connecting", %target, %task_id, channel_name = %channel_name);
 
-                        let stream = self::connect_channel(&target).await?;
-                        let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
+                            let stream = self::connect_channel(&target).await?;
+                            let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
-                        self::send_handshake(&mut sink, &channel_name, None).await?;
+                            self::send_handshake(&mut sink, &channel_name, None).await?;
 
-                        Result::<_, std::io::Error>::Ok(sink)
-                    })
-                })
+                            Result::<_, std::io::Error>::Ok(sink)
+                        })
+                    }),
+                    on_fail,
+                )
             }
         ))
         .splice_untyped_ctx(&()),
@@ -111,24 +120,28 @@ pub fn deploy_containerized_m2o(
     channel_name: &str,
 ) -> (syn::Expr, syn::Expr) {
     (
-        q!(LazySink::<_, _, _, bytes::Bytes>::new(move || {
-            Box::pin(async move {
-                let channel_name = channel_name;
-                let target_task_family = target_task_family;
-                let target_task_id = self::resolve_task_family_to_task_id(target_task_family).await;
-                let ip = self::resolve_task_ip(&target_task_id).await;
-                let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
-                debug!(name: "connecting", %target, %target_task_family, %target_task_id, %channel_name);
+        q!(FailStopSink::new(
+            LazySink::<_, _, _, bytes::Bytes>::new(move || {
+                Box::pin(async move {
+                    let channel_name = channel_name;
+                    let target_task_family = target_task_family;
+                    let target_task_id =
+                        self::resolve_task_family_to_task_id(target_task_family).await;
+                    let ip = self::resolve_task_ip(&target_task_id).await;
+                    let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
+                    debug!(name: "connecting", %target, %target_task_family, %target_task_id, %channel_name);
 
-                let stream = self::connect_channel(&target).await?;
-                let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
+                    let stream = self::connect_channel(&target).await?;
+                    let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
-                let self_task_id = self::get_self_task_id();
-                self::send_handshake(&mut sink, channel_name, Some(&self_task_id)).await?;
+                    let self_task_id = self::get_self_task_id();
+                    self::send_handshake(&mut sink, channel_name, Some(&self_task_id)).await?;
 
-                Result::<_, std::io::Error>::Ok(sink)
-            })
-        }))
+                    Result::<_, std::io::Error>::Ok(sink)
+                })
+            }),
+            self::warn_on_fail(channel_name.to_owned(), target_task_family.to_owned()),
+        ))
         .splice_untyped_ctx(&()),
         q!(LazySource::new(move || Box::pin(async move {
             let channel_name = channel_name;
@@ -163,25 +176,33 @@ pub fn deploy_containerized_m2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
         q!(sinktools::demux_map_lazy::<_, _, _, _>(
             move |key: &TaglessMemberId| {
+                let on_fail = self::warn_on_fail(
+                    channel_name.to_owned(),
+                    key.get_container_name().to_owned(),
+                );
                 let key = key.clone();
                 let channel_name = channel_name.to_owned();
 
-                LazySink::<_, _, _, bytes::Bytes>::new(move || {
-                    Box::pin(async move {
-                        let task_id = key.get_container_name();
-                        let ip = self::resolve_task_ip(task_id).await;
-                        let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
-                        debug!(name: "connecting", %target, %task_id, channel_name = %channel_name);
+                FailStopSink::new(
+                    LazySink::<_, _, _, bytes::Bytes>::new(move || {
+                        Box::pin(async move {
+                            let task_id = key.get_container_name();
+                            let ip = self::resolve_task_ip(task_id).await;
+                            let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
+                            debug!(name: "connecting", %target, %task_id, channel_name = %channel_name);
 
-                        let stream = self::connect_channel(&target).await?;
-                        let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
+                            let stream = self::connect_channel(&target).await?;
+                            let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
-                        let self_task_id = self::get_self_task_id();
-                        self::send_handshake(&mut sink, &channel_name, Some(&self_task_id)).await?;
+                            let self_task_id = self::get_self_task_id();
+                            self::send_handshake(&mut sink, &channel_name, Some(&self_task_id))
+                                .await?;
 
-                        Result::<_, std::io::Error>::Ok(sink)
-                    })
-                })
+                            Result::<_, std::io::Error>::Ok(sink)
+                        })
+                    }),
+                    on_fail,
+                )
             }
         ))
         .splice_untyped_ctx(&()),
