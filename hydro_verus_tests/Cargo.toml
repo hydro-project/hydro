@@ -13,7 +13,7 @@ workspace = true
 
 [features]
 # Each `reject_*` feature enables exactly one flow containing a bogus
-# `verus_proof_commutative_*` annotation that Verus must refuse to verify. They are
+# `verus_proof_*` annotation that Verus must refuse to verify. They are
 # selected one at a time by the `verus_rejects` test harness, since a failed proof
 # aborts verification of the whole crate.
 reject_overwrite_fold = []
@@ -24,6 +24,11 @@ reject_running_total_map = []
 reject_rate_limit_filter = []
 reject_weak_panic_guard = []
 reject_guarded_halving_fold = []
+reject_overwrite_monotone_fold = []
+reject_wrapping_sum_monotone_fold = []
+reject_overflowing_monotone_fold = []
+reject_reversing_map = []
+reject_wrapping_double_map = []
 
 [dependencies]
 # The `verus` feature exports `hydro_lang`'s Verus specifications (e.g. `verus_panic`).

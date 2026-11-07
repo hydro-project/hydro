@@ -168,6 +168,84 @@ impl<T, B: Boundedness, S> CommutativeProof<T, B, S> for VerusCommutativeProof {
     }
 }
 
+/// A machine-checked proof of **monotonicity**, verified by [Verus](https://verus-lang.github.io/verus/guide/).
+///
+/// Created by the [`verus_proof_monotone_fold!`] macro, which generates the obligation
+/// directly from the *actual closure body*: applying the aggregation to any accumulator
+/// and any item must leave the accumulator **greater than or equal** to its previous
+/// value, with respect to the accumulator type's [`PartialOrd`] (the order used by
+/// APIs such as [`Singleton::threshold_greater_or_equal`]). Users never write (and
+/// cannot weaken) the assertion; they only declare the types involved and, optionally,
+/// provide a proof *script* to help the SMT solver, which is itself checked by Verus.
+///
+/// When the crate is verified with `cargo verus verify`, Verus checks the obligation
+/// (which also proves the closure body panic-free). Under normal compilation, the proof
+/// is erased and this type simply marks the property as proven. This type only
+/// implements [`MonotoneProof`], so it cannot be used to fulfill a different property.
+///
+/// [`Singleton::threshold_greater_or_equal`]: crate::live_collections::singleton::Singleton::threshold_greater_or_equal
+pub struct VerusMonotoneProof {
+    _private: (),
+}
+
+impl VerusMonotoneProof {
+    #[doc(hidden)]
+    pub fn new() -> Self {
+        VerusMonotoneProof { _private: () }
+    }
+}
+
+impl Default for VerusMonotoneProof {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[sealed::sealed]
+impl MonotoneProof for VerusMonotoneProof {
+    fn register_proof(&self, _expr: &syn::Expr) {}
+}
+
+/// A machine-checked proof of **order preservation**, verified by [Verus](https://verus-lang.github.io/verus/guide/).
+///
+/// Created by the [`verus_proof_order_preserving_map!`] macro, which generates the
+/// obligation directly from the *actual closure body*: for any two inputs `x <= y`
+/// (with respect to the input type's [`PartialOrd`]), the outputs must satisfy
+/// `f(x) <= f(y)` (with respect to the output type's [`PartialOrd`]). This is exactly
+/// what is needed for a [`Singleton::map`] to keep a `Monotonic` singleton monotonic.
+/// Users never write (and cannot weaken) the assertion; they only declare the types
+/// involved and, optionally, provide a proof *script* to help the SMT solver, which is
+/// itself checked by Verus.
+///
+/// When the crate is verified with `cargo verus verify`, Verus checks the obligation
+/// (which also proves the closure body panic-free). Under normal compilation, the proof
+/// is erased and this type simply marks the property as proven. This type only
+/// implements [`OrderPreservingProof`], so it cannot be used to fulfill a different
+/// property.
+///
+/// [`Singleton::map`]: crate::live_collections::singleton::Singleton::map
+pub struct VerusOrderPreservingProof {
+    _private: (),
+}
+
+impl VerusOrderPreservingProof {
+    #[doc(hidden)]
+    pub fn new() -> Self {
+        VerusOrderPreservingProof { _private: () }
+    }
+}
+
+impl Default for VerusOrderPreservingProof {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[sealed::sealed]
+impl OrderPreservingProof for VerusOrderPreservingProof {
+    fn register_proof(&self, _expr: &syn::Expr) {}
+}
+
 #[doc(inline)]
 pub use crate::__manual_proof__ as manual_proof;
 
@@ -311,6 +389,10 @@ pub use crate::__verus_proof_commutative_filter__ as verus_proof_commutative_fil
 pub use crate::__verus_proof_commutative_fold__ as verus_proof_commutative_fold;
 #[doc(inline)]
 pub use crate::__verus_proof_commutative_map__ as verus_proof_commutative_map;
+#[doc(inline)]
+pub use crate::__verus_proof_monotone_fold__ as verus_proof_monotone_fold;
+#[doc(inline)]
+pub use crate::__verus_proof_order_preserving_map__ as verus_proof_order_preserving_map;
 
 #[macro_export]
 /// Fulfills a `commutative = ...` proof parameter for an **aggregation closure**
@@ -795,6 +877,256 @@ macro_rules! __verus_proof_commutative_effect__ {
             "verus_proof_commutative_effect! must be used as a property annotation inside `q!(...)` on a `|item| -> ()` closure with exactly one `captures_mut` entry, e.g. `commutative = verus_proof_commutative_effect!(item = u32, captures_mut = |state: u32|)`"
         );
         $crate::properties::VerusCommutativeProof::new()
+    }};
+}
+
+#[macro_export]
+/// Fulfills a `monotone = ...` proof parameter for an **aggregation closure**
+/// (`fold` / `reduce`, shape `|acc, item|` with `acc: &mut A`) with a **Verus-checked
+/// proof of monotonicity**.
+///
+/// **What monotonicity means for an aggregation:** applying the closure to any
+/// accumulator value and any item must leave the accumulator **greater than or equal**
+/// to its previous value, with respect to the accumulator type's [`PartialOrd`]. This is
+/// the order that `Monotonic` singletons are observed through (e.g. by
+/// [`Singleton::threshold_greater_or_equal`]), so a monotone aggregation yields a
+/// singleton whose value only grows over time, making threshold detection deterministic.
+///
+/// Users never write the proof obligation (so they cannot get it wrong): this macro
+/// receives the quoted closure itself from `q!` (as a trailing `__target = { ... }`
+/// argument) and generates a Verus function that takes a ghost snapshot of an arbitrary
+/// accumulator, symbolically executes the *actual closure body* on it with an arbitrary
+/// item, and asserts that the snapshot compares less than or equal to the final
+/// accumulator. Verifying this obligation also proves the closure body panic-free (e.g.
+/// no arithmetic overflow). Users only declare the accumulator and item types:
+///
+/// ```rust,ignore
+/// stream.fold(
+///     q!(|| 0u32),
+///     q!(
+///         |max, x| { if x > *max { *max = x; } },
+///         monotone = verus_proof_monotone_fold!(acc = u32, item = u32)
+///     )
+/// );
+/// ```
+///
+/// The comparison is expressed through Verus's specification of [`PartialOrd`]
+/// (`vstd::std_specs::cmp::PartialOrdSpec`): the obligation requires that the
+/// accumulator type's `PartialOrd` implementation is known to follow its specification
+/// (`obeys_partial_cmp_spec()`), and that the specification orders the old value at or
+/// below the new one. This holds automatically for primitive integers and tuples of
+/// them; your own accumulator types must implement `PartialOrdSpecImpl` inside a
+/// `verus!` block.
+///
+/// If the closure captures (read-only) variables from its environment, re-declare them
+/// (with their runtime types) in a `captures = |...|` clause; the obligation is then
+/// universally quantified over the capture values. `q!` also passes the closure's capture
+/// list (as a trailing `__captures = [...]` argument), and the macro checks at compile
+/// time that every capture is declared.
+///
+/// An optional `proof = |state, x| { ... }` (or `proof = |state, x, result| { ... }`)
+/// clause supplies a proof *script* to help the SMT solver, with ghost bindings for the
+/// initial accumulator, the item, and (optionally) the final accumulator (e.g.
+/// `proof = |s, x| { assert(s <= (s | x)) by (bit_vector); }`). The script is checked by
+/// Verus and cannot weaken the obligation (though, as anywhere in Verus, `assume` is an
+/// explicit soundness escape hatch).
+///
+/// The proof is gated on `cfg(verus_keep_ghost)`, so it only exists when the crate is
+/// compiled by the Verus driver (`cargo verus verify`). Under normal compilation the
+/// macro just produces a [`VerusMonotoneProof`] marker, so the types go through the
+/// ordinary `monotone = ...` mechanism with zero overhead.
+///
+/// [`Singleton::threshold_greater_or_equal`]: crate::live_collections::singleton::Singleton::threshold_greater_or_equal
+macro_rules! __verus_proof_monotone_fold__ {
+    (
+        acc = $accty:ty, item = $itemty:ty
+        $(, captures = |$($cap:ident : $capty:ty),* $(,)?|)?
+        $(, proof = |$pstate:ident, $px:ident $(, $pafter:ident)?| { $($proof_body:tt)* })?
+        , __target = { $(move)? |$tacc:ident $(: $taccty:ty)?, $titem:ident $(: $titemty:ty)?| $target_body:expr }
+        , __captures = [$($fv:ident),* $(,)?] $(,)?
+    ) => {{
+        /// Checks that every free variable captured by the closure is declared (with its
+        /// type) in the `captures = |...|` clause: within this function, the *only* names
+        /// in scope are the declared captures and the closure parameters, so an
+        /// undeclared capture fails to resolve.
+        #[allow(unused, reason = "only checks name resolution")]
+        fn __hydro_verus_captures_declared($($($cap: $capty),*)?) {
+            $(let $fv = &$fv;)*
+        }
+        #[cfg(verus_keep_ghost)]
+        const _: () = {
+            #[allow(unused_imports)]
+            use ::vstd::prelude::*;
+            #[allow(unused_imports)]
+            use ::vstd::std_specs::cmp::PartialOrdSpec;
+
+            ::vstd::prelude::verus! {
+                /// Monotonicity obligation, generated by `verus_proof_monotone_fold!`:
+                /// applying the closure body to any accumulator with any item must
+                /// leave the accumulator greater than or equal (per its `PartialOrd`
+                /// specification) to its previous value, for all capture values.
+                /// Verifying this also proves the body panic-free.
+                fn __hydro_verus_monotone(
+                    $($($cap: $capty,)*)?
+                    __hydro_acc: $accty,
+                    __hydro_x: $itemty,
+                ) {
+                    let ghost __hydro_before = __hydro_acc;
+                    $(
+                        let ghost $pstate = __hydro_acc;
+                        let ghost $px = __hydro_x;
+                    )?
+                    let mut __hydro_acc = __hydro_acc;
+                    { let $tacc = &mut __hydro_acc; let $titem = __hydro_x; let _ = { $target_body }; }
+                    $(
+                        $(let ghost $pafter = __hydro_acc;)?
+                        proof { $($proof_body)* }
+                    )?
+                    assert(<$accty as PartialOrdSpec>::obeys_partial_cmp_spec());
+                    assert(
+                        __hydro_before.partial_cmp_spec(&__hydro_acc)
+                            matches Some(::core::cmp::Ordering::Less | ::core::cmp::Ordering::Equal)
+                    );
+                }
+            }
+        };
+
+        $crate::properties::VerusMonotoneProof::new()
+    }};
+    (
+        $($rest:tt)*
+    ) => {{
+        ::core::compile_error!(
+            "verus_proof_monotone_fold! must be used as a property annotation inside `q!(...)` on a `|acc, item| ...` closure, e.g. `monotone = verus_proof_monotone_fold!(acc = u32, item = u32)`"
+        );
+        $crate::properties::VerusMonotoneProof::new()
+    }};
+}
+
+#[macro_export]
+/// Fulfills an `order_preserving = ...` proof parameter for a **singleton map closure**
+/// (shape `|value| -> out`, as taken by [`Singleton::map`]) with a **Verus-checked proof
+/// of order preservation**.
+///
+/// **What order preservation means for a map closure:** for any two inputs `x <= y`
+/// (with respect to the input type's [`PartialOrd`]), the outputs must satisfy
+/// `f(x) <= f(y)` (with respect to the output type's [`PartialOrd`]). A `Monotonic`
+/// singleton only ever grows, so mapping it through an order-preserving function yields
+/// a singleton that also only grows, which lets the result stay `Monotonic` (e.g. for a
+/// deterministic [`Singleton::threshold_greater_or_equal`]).
+///
+/// Users never write the proof obligation (so they cannot get it wrong): this macro
+/// receives the quoted closure itself from `q!` (as a trailing `__target = { ... }`
+/// argument) and generates a Verus function that, assuming two arbitrary inputs with
+/// `x <= y`, symbolically executes the *actual closure body* on each and asserts that the
+/// outputs compare less than or equal. Verifying this obligation also proves the closure
+/// body panic-free (e.g. no arithmetic overflow). Users only declare the input and output
+/// types:
+///
+/// ```rust,ignore
+/// let doubled = sum.map(q!(
+///     |v| v.saturating_mul(2),
+///     order_preserving = verus_proof_order_preserving_map!(input = u32, output = u32)
+/// ));
+/// ```
+///
+/// The comparisons are expressed through Verus's specification of [`PartialOrd`]
+/// (`vstd::std_specs::cmp::PartialOrdSpec`): the obligation requires that both the
+/// input and output types' `PartialOrd` implementations are known to follow their
+/// specification (`obeys_partial_cmp_spec()`). This holds automatically for primitive
+/// integers and tuples of them; your own types must implement `PartialOrdSpecImpl`
+/// inside a `verus!` block.
+///
+/// If the closure captures (read-only) variables from its environment, re-declare them
+/// (with their runtime types) in a `captures = |...|` clause; the obligation is then
+/// universally quantified over the capture values. `q!` also passes the closure's capture
+/// list (as a trailing `__captures = [...]` argument), and the macro checks at compile
+/// time that every capture is declared.
+///
+/// An optional `proof = |x, y| { ... }` (or `proof = |x, y, fx, fy| { ... }`) clause
+/// supplies a proof *script* to help the SMT solver, with ghost bindings for the two
+/// inputs and (optionally) the two outputs. The script is checked by Verus and cannot
+/// weaken the obligation (though, as anywhere in Verus, `assume` is an explicit soundness
+/// escape hatch).
+///
+/// The proof is gated on `cfg(verus_keep_ghost)`, so it only exists when the crate is
+/// compiled by the Verus driver (`cargo verus verify`). Under normal compilation the
+/// macro just produces a [`VerusOrderPreservingProof`] marker, so the types go through
+/// the ordinary `order_preserving = ...` mechanism with zero overhead.
+///
+/// [`Singleton::map`]: crate::live_collections::singleton::Singleton::map
+/// [`Singleton::threshold_greater_or_equal`]: crate::live_collections::singleton::Singleton::threshold_greater_or_equal
+macro_rules! __verus_proof_order_preserving_map__ {
+    (
+        input = $inty:ty, output = $outty:ty
+        $(, captures = |$($cap:ident : $capty:ty),* $(,)?|)?
+        $(, proof = |$px:ident, $py:ident $(, $pfx:ident, $pfy:ident)?| { $($proof_body:tt)* })?
+        , __target = { $(move)? |$tin:ident $(: $tinty:ty)?| $target_body:expr }
+        , __captures = [$($fv:ident),* $(,)?] $(,)?
+    ) => {{
+        /// Checks that every free variable captured by the closure is declared (with its
+        /// type) in the `captures = |...|` clause: within this function, the *only* names
+        /// in scope are the declared captures and the closure parameter, so an
+        /// undeclared capture fails to resolve.
+        #[allow(unused, reason = "only checks name resolution")]
+        fn __hydro_verus_captures_declared($($($cap: $capty),*)?) {
+            $(let $fv = &$fv;)*
+        }
+        #[cfg(verus_keep_ghost)]
+        const _: () = {
+            #[allow(unused_imports)]
+            use ::vstd::prelude::*;
+            #[allow(unused_imports)]
+            use ::vstd::std_specs::cmp::PartialOrdSpec;
+
+            ::vstd::prelude::verus! {
+                /// Order-preservation obligation, generated by
+                /// `verus_proof_order_preserving_map!`: for any two inputs ordered
+                /// `x <= y` (per the input type's `PartialOrd` specification), applying
+                /// the closure body to each must yield outputs ordered `f(x) <= f(y)`
+                /// (per the output type's `PartialOrd` specification), for all capture
+                /// values. Verifying this also proves the body panic-free.
+                fn __hydro_verus_order_preserving(
+                    $($($cap: $capty,)*)?
+                    __hydro_x: $inty,
+                    __hydro_y: $inty,
+                )
+                    requires
+                        __hydro_x.partial_cmp_spec(&__hydro_y)
+                            matches Some(::core::cmp::Ordering::Less | ::core::cmp::Ordering::Equal),
+                {
+                    $(
+                        let ghost $px = __hydro_x;
+                        let ghost $py = __hydro_y;
+                    )?
+                    let __hydro_out_x: $outty = { let $tin = __hydro_x; $target_body };
+                    let __hydro_out_y: $outty = { let $tin = __hydro_y; $target_body };
+                    $(
+                        $(
+                            let ghost $pfx = __hydro_out_x;
+                            let ghost $pfy = __hydro_out_y;
+                        )?
+                        proof { $($proof_body)* }
+                    )?
+                    assert(<$inty as PartialOrdSpec>::obeys_partial_cmp_spec());
+                    assert(<$outty as PartialOrdSpec>::obeys_partial_cmp_spec());
+                    assert(
+                        __hydro_out_x.partial_cmp_spec(&__hydro_out_y)
+                            matches Some(::core::cmp::Ordering::Less | ::core::cmp::Ordering::Equal)
+                    );
+                }
+            }
+        };
+
+        $crate::properties::VerusOrderPreservingProof::new()
+    }};
+    (
+        $($rest:tt)*
+    ) => {{
+        ::core::compile_error!(
+            "verus_proof_order_preserving_map! must be used as a property annotation inside `q!(...)` on a `|value| ...` closure, e.g. `order_preserving = verus_proof_order_preserving_map!(input = u32, output = u32)`"
+        );
+        $crate::properties::VerusOrderPreservingProof::new()
     }};
 }
 
