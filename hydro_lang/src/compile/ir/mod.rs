@@ -3310,6 +3310,66 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
+    /// Exposes the top-level update feed of a singleton-like collection (a [`Singleton`],
+    /// [`Optional`], or [`KeyedSingleton`](crate::live_collections::KeyedSingleton) at a root
+    /// location) as a stream-like collection whose elements are exactly the feed's updates.
+    ///
+    /// The updates use the input's top-level representation (see
+    /// [`CollectionKind::root_repr_is_tombstoned_update_feed`]): plain values, or `Option`
+    /// updates where `None` is a tombstone. In both production and simulation this is an
+    /// identity on the generated dataflow.
+    ///
+    /// Unlike [`HydroNode::Cast`], this is *not* deterministic: which versions of the
+    /// collection appear in its update feed depends on timing. Relative to "every version,
+    /// exactly once", the feed may *stutter* (repeat the current version, consecutively per
+    /// key) and *skip* (omit non-final versions). Consumers must therefore be invariant to
+    /// stuttering and skipping, which each use justifies with a `nondet!`.
+    ///
+    /// # Soundness with the simulator
+    ///
+    /// The simulator does **not** explore the space of possible update streams: it always
+    /// emits every version exactly once. A real execution may skip intermediate versions that a
+    /// simulated one never skips. The simulator still covers every production behavior only
+    /// because of how this node is consumed. Every use (all of them internal to Hydro; this must
+    /// never be exposed to user code) must uphold the following.
+    ///
+    /// - **Never expose the updates themselves.** The update stream, or anything derived from it
+    ///   update-by-update, must not reach user code or an output. Otherwise a simulated run
+    ///   would show every intermediate version, while production may skip some of them, so a
+    ///   test passing in simulation would say nothing about the executions that skip.
+    /// - **Preserve the whole trajectory up to a nondeterministic choice.** Before anything
+    ///   observable happens, the updates must flow into logic that keeps the full trajectory of
+    ///   versions available, and then through a simulator hook that nondeterministically picks
+    ///   among them. The hook is what explores the skips and stutters, so the logic in between
+    ///   must not deterministically drop versions that production could observe. Sound patterns:
+    ///   - fold the updates back into a singleton-like "latest" state (the root `fold` / `scan`
+    ///     lowerings, `into_singleton`, `key_count`). Its consumers snapshot it, and the
+    ///     snapshot hook picks any version from the trajectory;
+    ///   - batch the updates into a tick (`or` / `zip`, thresholds, `sample_eager`). The batch
+    ///     hook explores every way the versions can be grouped into firings, i.e. which
+    ///     versions are combined with which and which are skipped.
+    /// - **Explore interleavings, not just versions.** When several feeds are combined (e.g.
+    ///   `or` / `zip`), production can pair any version of one side with any version of the
+    ///   other, depending on timing. Combining the feeds with a deterministic interleaving
+    ///   (`chain`, a merge, or a stateful operator applied to the merged updates) would simulate
+    ///   only one of those pairings. Sound uses batch *each* feed into the same tick, so the batch
+    ///   hooks explore every relative grouping of the sides' versions, and then combine the
+    ///   per-firing latest values.
+    /// - **A derived feed must stay within the simulated trajectory.** When the updates are
+    ///   folded into a new singleton-like collection (which is itself an update feed), every
+    ///   version production can produce must also appear in the simulated trajectory, so that
+    ///   the downstream hooks can still reach it.
+    ///
+    /// Within those rules, each use must still justify in its `nondet!` that it is invariant
+    /// to stuttering and skipping, since the simulator does not check that either.
+    ///
+    /// [`Singleton`]: crate::live_collections::Singleton
+    /// [`Optional`]: crate::live_collections::Optional
+    CastUpdateStream {
+        inner: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
     /// Strengthens the guarantees of a stream by non-deterministically selecting a possible
     /// interpretation of the input stream.
     ///
@@ -3771,6 +3831,7 @@ impl HydroNode {
             }
 
             HydroNode::Cast { inner, .. }
+            | HydroNode::CastUpdateStream { inner, .. }
             | HydroNode::ObserveNonDet { inner, .. }
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
@@ -3887,6 +3948,10 @@ impl HydroNode {
         match self {
             HydroNode::Placeholder => HydroNode::Placeholder,
             HydroNode::Cast { inner, metadata } => HydroNode::Cast {
+                inner: Box::new(inner.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::CastUpdateStream { inner, metadata } => HydroNode::CastUpdateStream {
                 inner: Box::new(inner.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -4326,6 +4391,42 @@ impl HydroNode {
                 match node {
                     HydroNode::Placeholder => {
                         panic!()
+                    }
+
+                    HydroNode::CastUpdateStream { inner, metadata } => {
+                        // The input's top-level update feed *is* the output stream: identity.
+                        // The input ident is already on the stack from processing the child.
+                        debug_assert!(
+                            inner.metadata().location_id.is_root(),
+                            "CastUpdateStream requires a root-located input, got {:?}",
+                            inner.metadata().location_id
+                        );
+                        // The cast only changes the collection type, so the shapes must align:
+                        // a singleton / optional's feed is a stream, and a keyed singleton's feed
+                        // is a keyed stream.
+                        assert!(
+                            matches!(
+                                (&inner.metadata().collection_kind, &metadata.collection_kind),
+                                (
+                                    CollectionKind::Singleton { .. }
+                                        | CollectionKind::Optional { .. },
+                                    CollectionKind::Stream { .. }
+                                ) | (
+                                    CollectionKind::KeyedSingleton { .. },
+                                    CollectionKind::KeyedStream { .. }
+                                )
+                            ),
+                            "CastUpdateStream kinds do not align: {:?} -> {:?}",
+                            inner.metadata().collection_kind,
+                            metadata.collection_kind
+                        );
+                        let _ = next_stmt_id.get_and_increment();
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(_) => {}
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
                     }
 
                     HydroNode::Cast { inner, metadata } => {
@@ -6839,6 +6940,7 @@ impl HydroNode {
                 panic!()
             }
             HydroNode::Cast { .. }
+            | HydroNode::CastUpdateStream { .. }
             | HydroNode::ObserveNonDet { .. }
             | HydroNode::UnboundSingleton { .. }
             | HydroNode::AssertIsConsistent { .. } => {}
@@ -6940,6 +7042,7 @@ impl HydroNode {
             HydroNode::VersionedNetworkFork { metadata, .. }
             | HydroNode::VersionedNetwork { metadata, .. } => metadata,
             HydroNode::Cast { metadata, .. }
+            | HydroNode::CastUpdateStream { metadata, .. }
             | HydroNode::ObserveNonDet { metadata, .. }
             | HydroNode::AssertIsConsistent { metadata, .. }
             | HydroNode::UnboundSingleton { metadata, .. }
@@ -7002,6 +7105,7 @@ impl HydroNode {
             HydroNode::VersionedNetworkFork { metadata, .. }
             | HydroNode::VersionedNetwork { metadata, .. } => metadata,
             HydroNode::Cast { metadata, .. }
+            | HydroNode::CastUpdateStream { metadata, .. }
             | HydroNode::ObserveNonDet { metadata, .. }
             | HydroNode::AssertIsConsistent { metadata, .. }
             | HydroNode::UnboundSingleton { metadata, .. }
@@ -7069,6 +7173,7 @@ impl HydroNode {
                 vec![]
             }
             HydroNode::Cast { inner, .. }
+            | HydroNode::CastUpdateStream { inner, .. }
             | HydroNode::ObserveNonDet { inner, .. }
             | HydroNode::YieldConcat { inner, .. }
             | HydroNode::BeginAtomic { inner, .. }
@@ -7157,6 +7262,7 @@ impl HydroNode {
                 panic!()
             }
             HydroNode::Cast { .. } => "Cast()".to_owned(),
+            HydroNode::CastUpdateStream { .. } => "CastUpdateStream()".to_owned(),
             HydroNode::UnboundSingleton { .. } => "UnboundSingleton()".to_owned(),
             HydroNode::ObserveNonDet { .. } => "ObserveNonDet()".to_owned(),
             HydroNode::AssertIsConsistent { .. } => "AssertIsConsistent()".to_owned(),
