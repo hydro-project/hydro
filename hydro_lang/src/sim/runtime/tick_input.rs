@@ -90,6 +90,12 @@ impl<T> TickInputHook for StreamHook<T, TotalOrder> {
         !self.input.borrow().is_empty()
     }
 
+    fn apply_only_decision(&mut self) -> bool {
+        debug_assert!(self.input.borrow().is_empty());
+        self.to_release = Some(vec![]);
+        false
+    }
+
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool {
         let mut current_input = self.input.borrow_mut();
         let count = (usize::from(force_trigger)..=current_input.len())
@@ -158,6 +164,12 @@ impl<T> RuntimeHook for StreamHook<T, NoOrder> {
 impl<T> TickInputHook for StreamHook<T, NoOrder> {
     fn can_trigger_tick(&self) -> bool {
         !self.input.borrow().is_empty()
+    }
+
+    fn apply_only_decision(&mut self) -> bool {
+        debug_assert!(self.input.borrow().is_empty());
+        self.to_release = Some(vec![]);
+        false
     }
 
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool {
@@ -479,6 +491,12 @@ impl<K: Hash + Eq + Clone, V> TickInputHook for KeyedStreamHook<K, V, TotalOrder
         !self.input.borrow().values().all(|q| q.is_empty())
     }
 
+    fn apply_only_decision(&mut self) -> bool {
+        debug_assert!(!self.can_trigger_tick());
+        self.to_release = Some(vec![]);
+        false
+    }
+
     fn autonomous_decision<'a>(
         &mut self,
         driver: &mut Borrowed<'a>,
@@ -575,6 +593,12 @@ impl<K: Hash + Eq + Clone, V> TickInputHook for KeyedStreamHook<K, V, NoOrder> {
     fn can_trigger_tick(&self) -> bool {
         #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         !self.input.borrow().values().all(|q| q.is_empty())
+    }
+
+    fn apply_only_decision(&mut self) -> bool {
+        debug_assert!(!self.can_trigger_tick());
+        self.to_release = Some(vec![]);
+        false
     }
 
     fn autonomous_decision<'a>(
@@ -980,6 +1004,22 @@ impl<T: Clone> TickInputHook for SingletonHook<T> {
         !self.input.borrow().is_empty()
     }
 
+    fn apply_only_decision(&mut self) -> bool {
+        let mut current_input = self.input.borrow_mut();
+        if let Some(item) = current_input.pop_front() {
+            // A sole buffered version with nothing previously revealed: reveal it.
+            debug_assert!(current_input.is_empty() && self.last_released.is_none());
+            self.to_release = Some((item, true));
+            true
+        } else if let Some(last) = &self.last_released {
+            // Re-release the last item
+            self.to_release = Some((last.clone(), false));
+            false
+        } else {
+            panic!("No input and no last released item to re-release");
+        }
+    }
+
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool {
         let mut current_input = self.input.borrow_mut();
         if current_input.is_empty() {
@@ -1129,6 +1169,14 @@ impl<T: Clone> TickInputHook for OptionalInitNoneHook<T> {
         // Only advancing to a new value is nontrivial; releasing null (or re-releasing the
         // latest value) does not, by itself, drive a tick.
         !self.input.borrow().is_empty()
+    }
+
+    fn apply_only_decision(&mut self) -> bool {
+        debug_assert!(self.input.borrow().is_empty());
+        // Presence is monotone: once non-null, re-release the latest value; otherwise we are
+        // still in the initial-null prefix.
+        self.to_release = Some((self.last_released.clone(), false));
+        false
     }
 
     fn autonomous_decision<'a>(
@@ -1301,6 +1349,67 @@ impl<T: Clone + PartialEq + serde::Serialize + serde::de::DeserializeOwned> Scri
         }
     }
 }
+
+/// The hook for a tick's spin source (`spin_batch`). It has no input to buffer: the tick is
+/// always runnable on its account, and each execution releases exactly one `()`, with no
+/// non-deterministic decision involved.
+pub struct SpinHook {
+    pub output: Sender<()>,
+    pub spin_location: HookLocationMeta,
+}
+
+impl RuntimeHook for SpinHook {
+    fn has_pending_input(&self) -> bool {
+        true
+    }
+
+    fn only_one_possible_decision(&self) -> bool {
+        true
+    }
+
+    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
+        if let Some(log_writer) = log_writer {
+            let HookLocationMeta {
+                location,
+                line,
+                caret_indent,
+            } = self.spin_location;
+            log_release(
+                log_writer,
+                location,
+                line,
+                caret_indent,
+                "^ spinning",
+                colored::Color::Green,
+            );
+        }
+
+        self.output.try_send(()).unwrap();
+    }
+
+    fn location_meta(&self) -> HookLocationMeta {
+        self.spin_location
+    }
+}
+
+impl TickInputHook for SpinHook {
+    fn can_trigger_tick(&self) -> bool {
+        true
+    }
+
+    fn apply_only_decision(&mut self) -> bool {
+        true
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        _driver: &mut Borrowed<'a>,
+        _force_trigger: bool,
+    ) -> bool {
+        true
+    }
+}
+
 /// A passthrough singleton hook for fold outputs that are already controlled by a
 /// `TopLevelFoldHook`. Always releases the latest value without any non-deterministic
 /// decisions, since the fold hook already made the only meaningful choice (which subset
@@ -1382,11 +1491,7 @@ impl<T> TickInputHook for PassthroughSingletonHook<T> {
         !self.input.borrow().is_empty()
     }
 
-    fn autonomous_decision<'a>(
-        &mut self,
-        _driver: &mut Borrowed<'a>,
-        _force_trigger: bool,
-    ) -> bool {
+    fn apply_only_decision(&mut self) -> bool {
         let mut current_input = self.input.borrow_mut();
         // Always take the last (most recent) value, discard intermediates.
         if let Some(item) = current_input.pop_back() {
@@ -1396,6 +1501,14 @@ impl<T> TickInputHook for PassthroughSingletonHook<T> {
         } else {
             false
         }
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        _driver: &mut Borrowed<'a>,
+        _force_trigger: bool,
+    ) -> bool {
+        self.apply_only_decision()
     }
 }
 
@@ -1505,6 +1618,26 @@ impl<K: Hash + Eq + Clone, V: Clone> TickInputHook for KeyedSingletonHook<K, V> 
     fn can_trigger_tick(&self) -> bool {
         #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         !self.input.borrow().values().all(|q| q.is_empty())
+    }
+
+    fn apply_only_decision(&mut self) -> bool {
+        debug_assert!(!self.can_trigger_tick());
+        // No buffered versions: every key re-releases its last value.
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let to_release = self
+            .input
+            .borrow()
+            .keys()
+            .map(|key| {
+                (
+                    key.clone(),
+                    self.last_released.get(key).unwrap().clone(),
+                    false,
+                )
+            })
+            .collect();
+        self.to_release = Some(to_release);
+        false
     }
 
     fn autonomous_decision<'a>(

@@ -32,7 +32,6 @@ use crate::live_collections::stream::{ExactlyOnce, Stream, TotalOrder};
 use crate::location::TopLevel;
 #[cfg(feature = "tokio")]
 use crate::nondet::NonDet;
-use crate::nondet::nondet;
 
 /// A location wrapper that provides atomicity guarantees within a [`Tick`].
 ///
@@ -208,24 +207,29 @@ where
         batch_size: impl QuotedWithContext<
             'a,
             usize,
-            crate::live_collections::OperatorContext<
-                L,
-                crate::live_collections::boundedness::Unbounded,
-            >,
+            crate::live_collections::OperatorContext<Self, Bounded>,
         > + Copy
         + 'a,
     ) -> Stream<(), Self, Bounded, TotalOrder, ExactlyOnce>
     where
         L: TopLevel<'a>,
     {
-        let out = self
-            .l
-            .spin()
-            .flat_map_ordered(q!(move |_| 0..batch_size))
-            .map(q!(|_| ()));
+        let spin: Stream<(), Self, Bounded, TotalOrder, ExactlyOnce> = Stream::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::Spin(),
+                metadata: self.new_node_metadata(Stream::<
+                    (),
+                    Self,
+                    Bounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        );
 
-        let inner = out.batch(self, nondet!(/** at runtime, `spin` produces a single value per tick, so each batch is guaranteed to be the same size. */));
-        Stream::new(self.clone(), inner.ir_node.replace(HydroNode::Placeholder))
+        spin.flat_map_ordered(q!(move |_| 0..batch_size))
+            .map(q!(|_| ()))
     }
 
     /// Creates an [`Optional`] which has a null value on every tick.

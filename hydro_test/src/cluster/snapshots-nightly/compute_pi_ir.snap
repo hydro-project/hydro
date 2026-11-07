@@ -45,40 +45,29 @@ expression: built.ir()
                                                                             f: stageleft :: runtime_support :: fnmut1_type_hint :: < (f64 , f64) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; crate :: __staged :: __stageleft_quote_src_cluster_compute_pi_rs_LINE_COL ! ([] [| (x , y) | x * x + y * y < 1.0]) }),
                                                                             input: Map {
                                                                                 f: stageleft :: runtime_support :: fnmut1_type_hint :: < () , (f64 , f64) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; crate :: __staged :: __stageleft_quote_src_cluster_compute_pi_rs_LINE_COL ! ([] [| _ | rand :: random :: < (f64 , f64) > ()]) }),
-                                                                                input: Batch {
-                                                                                    inner: Map {
-                                                                                        f: stageleft :: runtime_support :: fnmut1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; hydro_lang :: __stageleft_quote_src_location_tick_rs_LINE_COL ! ([] [| _ | ()]) }),
-                                                                                        input: FlatMap {
-                                                                                            f: stageleft :: runtime_support :: fnmut1_type_hint :: < () , core :: ops :: Range < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; hydro_lang :: __stageleft_quote_src_location_tick_rs_LINE_COL ! ([batch_size__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; crate :: __staged :: __stageleft_quote_src_cluster_compute_pi_rs_LINE_COL ! ([batch_size__free = 8192usize ,] [batch_size__free]) } ,] [move | _ | 0 .. batch_size__free]) }),
-                                                                                            input: Source {
-                                                                                                source: Spin,
-                                                                                                metadata: HydroIrMetadata {
-                                                                                                    location_id: Cluster(loc1v1),
-                                                                                                    collection_kind: Stream {
-                                                                                                        bound: Unbounded,
-                                                                                                        order: TotalOrder,
-                                                                                                        retry: ExactlyOnce,
-                                                                                                        element_type: (),
-                                                                                                    },
-                                                                                                },
-                                                                                            },
+                                                                                input: Map {
+                                                                                    f: stageleft :: runtime_support :: fnmut1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; hydro_lang :: __stageleft_quote_src_location_tick_rs_LINE_COL ! ([] [| _ | ()]) }),
+                                                                                    input: FlatMap {
+                                                                                        f: stageleft :: runtime_support :: fnmut1_type_hint :: < () , core :: ops :: Range < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; hydro_lang :: __stageleft_quote_src_location_tick_rs_LINE_COL ! ([batch_size__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; crate :: __staged :: __stageleft_quote_src_cluster_compute_pi_rs_LINE_COL ! ([batch_size__free = 8192usize ,] [batch_size__free]) } ,] [move | _ | 0 .. batch_size__free]) }),
+                                                                                        input: Source {
+                                                                                            source: Spin,
                                                                                             metadata: HydroIrMetadata {
-                                                                                                location_id: Cluster(loc1v1),
+                                                                                                location_id: Tick(Some(ClockId(0)), Cluster(loc1v1)),
                                                                                                 collection_kind: Stream {
-                                                                                                    bound: Unbounded,
+                                                                                                    bound: Bounded,
                                                                                                     order: TotalOrder,
                                                                                                     retry: ExactlyOnce,
-                                                                                                    element_type: usize,
+                                                                                                    element_type: (),
                                                                                                 },
                                                                                             },
                                                                                         },
                                                                                         metadata: HydroIrMetadata {
-                                                                                            location_id: Cluster(loc1v1),
+                                                                                            location_id: Tick(Some(ClockId(0)), Cluster(loc1v1)),
                                                                                             collection_kind: Stream {
-                                                                                                bound: Unbounded,
+                                                                                                bound: Bounded,
                                                                                                 order: TotalOrder,
                                                                                                 retry: ExactlyOnce,
-                                                                                                element_type: (),
+                                                                                                element_type: usize,
                                                                                             },
                                                                                         },
                                                                                     },

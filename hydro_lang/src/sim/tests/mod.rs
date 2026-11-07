@@ -1559,6 +1559,36 @@ fn sim_generated_code_sees_root_rustflags() {
     });
 }
 
+/// A tick driven only by `spin_batch` (no external input) must make progress in the
+/// simulator: each tick is triggered autonomously and increments the counter, so awaiting the
+/// 100th emitted count must terminate.
+#[test]
+fn sim_spin_drives_counter() {
+    let mut flow = FlowBuilder::new();
+    let process = flow.process::<()>();
+
+    let tick = process.tick();
+    let (count_handle, count) = tick.cycle_with_initial(tick.singleton(q!(0u32)));
+    let count_mut = count.by_mut();
+    let out_recv = tick
+        .spin_batch(q!(1))
+        .first()
+        .into_stream()
+        .map(q!(|_| {
+            *count_mut += 1;
+            *count_mut
+        }))
+        .all_ticks()
+        .sim_output();
+    count_handle.complete_next_tick(count);
+
+    flow.sim().deterministic(async || {
+        for expected in 1..=100u32 {
+            assert_eq!(out_recv.next().await, expected);
+        }
+    });
+}
+
 mod scripted;
 
 mod custom_codec {

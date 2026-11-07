@@ -1352,7 +1352,7 @@ impl<'a> CompiledSimInstance<'a> {
         // The generated code keys hooks and tick DFIRs by the same locations, so we can
         // move each tick's / observation's hooks out of the maps and attach them
         // directly. This lets the scheduler's hot paths avoid keyed lookups entirely.
-        let not_ready_ticks = tick_dfirs
+        let (possibly_ready_ticks, not_ready_ticks): (Vec<_>, Vec<_>) = tick_dfirs
             .into_iter()
             .map(|(location, cluster_id, dfir)| {
                 let key = SimLocation {
@@ -1383,7 +1383,9 @@ impl<'a> CompiledSimInstance<'a> {
                 );
                 tick
             })
-            .collect();
+            // A tick driven by a spin source is runnable before any async DFIR has made
+            // progress, so it must not wait in the not-ready list for input to arrive.
+            .partition(SimTick::can_run);
 
         let (quiescence, script_coordinator) = CURRENT_SIM_CONNECTIONS.with(|connections| {
             let connections = connections.borrow();
@@ -1437,7 +1439,7 @@ impl<'a> CompiledSimInstance<'a> {
 
         LaunchedSim {
             async_dfirs,
-            possibly_ready_ticks: vec![],
+            possibly_ready_ticks,
             not_ready_ticks,
             current_scripted_tick: None,
             current_scripted_observation: None,
@@ -2770,6 +2772,10 @@ impl<W: std::io::Write> LaunchedSim<W> {
                                       }
                                   }
                                   if !tick.inline_hooks.is_empty() {
+                                      // TODO(#3349): a choice-free hook should be resolved
+                                      // without borrowing a driver (as `run_hooks` does via
+                                      // `apply_only_decision`); in deterministic mode there
+                                      // is no scope.
                                       bolero_generator::any::scope::borrow_with(|driver| {
                                           for hook in tick.inline_hooks.iter_mut() {
                                               if hook.has_pending_input() {
@@ -2875,36 +2881,41 @@ fn run_hooks<W: std::fmt::Write>(
     if !hooks.is_empty() {
         let mut decided = vec![false; hooks.len()];
         let mut remaining_decision_count = hooks.len();
-        bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
-            // First, resolve every hook that faces no choice (its decision consumes no
-            // entropy). Doing this before the second pass lets the final undecided hook
-            // be forced to trigger when no earlier hook made a triggering decision.
-            for (hook, decided) in hooks.iter_mut().zip(decided.iter_mut()) {
-                if hook.only_one_possible_decision() {
-                    // The no-choice decision can still trigger the tick (the passthrough
-                    // singleton always releases the latest value), so its result counts.
-                    made_triggering_decision |= hook.autonomous_decision(driver, false);
-                    *decided = true;
-                    remaining_decision_count -= 1;
-                }
+        // First, resolve every hook that faces no choice (its decision consumes no entropy,
+        // so no fuzzer driver is involved). Doing this before the second pass lets the final
+        // undecided hook be forced to trigger when no earlier hook made a triggering
+        // decision.
+        for (hook, decided) in hooks.iter_mut().zip(decided.iter_mut()) {
+            if hook.only_one_possible_decision() {
+                // The no-choice decision can still trigger the tick (the passthrough
+                // singleton always releases the latest value), so its result counts.
+                made_triggering_decision |= hook.apply_only_decision();
+                *decided = true;
+                remaining_decision_count -= 1;
             }
+        }
 
-            for (hook, decided) in hooks.iter_mut().zip(decided.iter()) {
-                if !decided {
-                    made_triggering_decision |= hook.autonomous_decision(
-                        driver,
-                        !made_triggering_decision && remaining_decision_count == 1,
-                    );
-                    remaining_decision_count -= 1;
+        if remaining_decision_count > 0 {
+            bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
+                for (hook, decided) in hooks.iter_mut().zip(decided.iter()) {
+                    if !decided {
+                        made_triggering_decision |= hook.autonomous_decision(
+                            driver,
+                            !made_triggering_decision && remaining_decision_count == 1,
+                        );
+                        remaining_decision_count -= 1;
+                    }
                 }
+            });
+        }
 
-                hook.release_decision(
-                    tick_decision_writer
-                        .as_deref_mut()
-                        .map(|w| w as &mut dyn std::fmt::Write),
-                );
-            }
-        });
+        for hook in hooks.iter_mut() {
+            hook.release_decision(
+                tick_decision_writer
+                    .as_deref_mut()
+                    .map(|w| w as &mut dyn std::fmt::Write),
+            );
+        }
     }
 
     abort_assert!(
@@ -2917,6 +2928,9 @@ fn run_hooks<W: std::fmt::Write>(
 /// because it has pending input (running an observation *is* releasing), so its
 /// autonomous decision must stage a release — running an observation without releasing
 /// would be a wasted schedule step the exploration must not contain.
+///
+/// TODO(#3349): a choice-free hook should be resolved without borrowing a driver (as
+/// `run_hooks` does via `apply_only_decision`); in deterministic mode there is no scope.
 fn run_observation_hook<W: std::fmt::Write>(
     writer: Option<&mut W>,
     hook: &mut dyn ObservationHook,

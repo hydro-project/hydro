@@ -663,6 +663,52 @@ impl DfirBuilder for SimBuilder {
         self.add_dfir_at(location, dfir, operator_tag);
     }
 
+    /// Registers a [`crate::sim::runtime::SpinHook`] for the tick, which makes the tick always
+    /// runnable and releases one `()` into the tick's graph each time it executes.
+    fn spin(
+        &mut self,
+        location: &LocationId,
+        out_ident: &syn::Ident,
+        op_meta: &HydroIrOpMetadata,
+        operator_tag: Option<&str>,
+    ) {
+        let LocationId::Tick {
+            parent_location, ..
+        } = location
+        else {
+            panic!("spin sources must be located in a tick");
+        };
+        let root_location = parent_location.root();
+        let root = get_this_crate();
+        let (spin_location, line, caret) = location_for_op(op_meta);
+
+        let hoff_id = self.next_hoff_id.get_and_increment();
+        let hoff_send_ident = syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+        let hoff_recv_ident = syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+        self.add_extra_stmt_internal(root_location, syn::parse_quote! {
+            let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+        });
+
+        self.add_hook(
+            root_location,
+            location,
+            syn::parse_quote!(Box::new(
+                #root::sim::runtime::SpinHook {
+                    output: #hoff_send_ident,
+                    spin_location: #root::sim::runtime::HookLocationMeta { location: #spin_location, line: #line, caret_indent: #caret },
+                }
+            )),
+        );
+
+        self.add_dfir_at(
+            location,
+            parse_quote! {
+                #out_ident = source_stream(#hoff_recv_ident);
+            },
+            operator_tag,
+        );
+    }
+
     fn batch(
         &mut self,
         in_ident: syn::Ident,

@@ -153,6 +153,11 @@ pub trait TickInputHook: RuntimeHook {
     /// the tick runs for some other reason.
     fn can_trigger_tick(&self) -> bool;
 
+    /// Stage the single possible decision. Only called when
+    /// [`RuntimeHook::only_one_possible_decision`] holds, so no fuzzer entropy is needed (or
+    /// available). Returns whether the decision triggers the tick.
+    fn apply_only_decision(&mut self) -> bool;
+
     /// Make an autonomous decision from fuzzer entropy. When `force_trigger` is true,
     /// the decision must trigger the tick: the scheduler only runs a tick to do
     /// meaningful work, so when no other hook has triggered and this is the last
