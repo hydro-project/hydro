@@ -3685,6 +3685,9 @@ mod tests {
         let external = flow.external::<()>();
 
         let node_tick = node.tick();
+        // Tick-located constants are lazy and never fire the tick on their own, so a spinning
+        // batch drives `node_tick`.
+        node_tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
         let count = node_tick
             .singleton(q!([1, 2, 3]))
             .into_stream()

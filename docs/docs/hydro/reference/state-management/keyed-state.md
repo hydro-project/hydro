@@ -25,8 +25,9 @@ let total_spent: KeyedSingleton<&str, i32, _, _> =
     purchases.fold(q!(|| 0), q!(|acc, amount| *acc += amount));
 // { "alice": 25, "bob": 5 }
 # sliced! {
+#     let read_request = use::batch(process.source_iter(q!([()])), nondet!(/** test */));
 #     let snapshot = use::snapshot(total_spent, nondet!(/** test */));
-#     snapshot.entries()
+#     snapshot.entries().filter_if(read_request.first().is_some())
 # }.map(q!(|(k, v)| (k.to_string(), v)))
 # }, |mut stream| async move {
 # let mut latest = std::collections::HashMap::new();
