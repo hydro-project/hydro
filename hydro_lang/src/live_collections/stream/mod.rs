@@ -8,8 +8,6 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q, quote_type};
-#[cfg(feature = "tokio")]
-use tokio::time::Instant;
 
 use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
@@ -2187,63 +2185,99 @@ where
     /// stream has not emitted a value since that duration.
     ///
     /// # Non-Determinism
-    /// Timeout relies on non-deterministic sampling of the stream, so depending on when
-    /// samples take place, timeouts may be non-deterministically generated or missed,
-    /// and the notification of the timeout may be delayed as well. There is also no
-    /// guarantee on how long the [`Optional`] will have a value after the timeout is
-    /// detected based on when the next sample is taken.
+    /// Timeout relies on non-deterministic timer and arrival interleavings, so depending on
+    /// when inputs and timer expirations are batched, timeouts may be non-deterministically
+    /// generated or missed, and the notification of the timeout may be delayed as well. There
+    /// is also no guarantee on how long the [`Optional`] will have a value after the timeout is
+    /// detected, since it is cleared by the next batch containing an input.
     #[cfg(feature = "tokio")]
     pub fn timeout(
         self,
         duration: impl QuotedWithContext<
             'a,
             std::time::Duration,
-            OperatorContext<Tick<L::DropConsistency>, Bounded>,
+            OperatorContext<L::DropConsistency, Unbounded>,
         > + Copy
         + 'a,
         nondet: NonDet,
     ) -> Optional<(), L::DropConsistency, Unbounded>
     where
         L: TopLevel<'a>,
+        L::DropConsistency: TopLevel<'a>,
     {
-        let tick = self.location.tick();
+        // Every batch of inputs starts a new countdown, tagged with a fresh epoch; a countdown
+        // that expires before any newer input arrives (its epoch is still current) is a
+        // timeout. Countdowns superseded by a newer input carry a stale epoch and are ignored.
+        // The slice is driven by the (non-lazy) batches of inputs and of expired countdowns.
+        let outer = self.location.drop_consistency();
+        let (expired_complete, expired) =
+            outer.forward_ref::<Stream<u64, L::DropConsistency, Unbounded, NoOrder, ExactlyOnce>>();
 
-        let latest_received = self
+        let inputs = self
             .assume_retries::<ExactlyOnce>(nondet!(
-                /// duplicates only affect the timestamp of the latest element, which is
-                /// captured by the caller's guard
+                /// only the presence of an input in a batch matters
                 nondet
             ))
-            .fold(
-                q!(|| None),
-                q!(
-                    |latest, _| {
-                        *latest = Some(Instant::now());
-                    },
-                    commutative = manual_proof!(/** TODO */)
-                ),
-            );
+            .assume_ordering::<TotalOrder>(nondet!(
+                /// only the presence of an input in a batch matters
+                nondet
+            ));
 
-        latest_received
-            .snapshot(
-                &tick,
-                nondet!(
-                    /// sampling timing is captured by the caller's guard
-                    nondet
-                ),
-            )
-            .filter_map(q!(move |latest_received| {
-                if let Some(latest_received) = latest_received {
-                    if Instant::now().duration_since(latest_received) > duration {
-                        Some(())
+        let (new_countdowns, timed_out) = crate::live_collections::sliced::sliced! {
+            let inputs = use::batch(inputs, nondet!(
+                /// arrival timing is captured by the caller's guard
+                nondet
+            ));
+            let expired = use::batch(expired, nondet!(
+                /// timer timing is captured by the caller's guard
+                nondet
+            ));
+            // (current epoch, whether that epoch's countdown expired with no newer input)
+            let mut state = use::state(|l| l.singleton(q!((0u64, false))));
+
+            let has_input = inputs.first().is_some();
+            let current_expired = expired
+                .cross_singleton(state.clone())
+                .filter_map(q!(|(epoch, (current, _))| (epoch == current).then_some(())))
+                .assume_ordering::<TotalOrder>(nondet!(/** only presence matters */))
+                .first()
+                .is_some();
+
+            let next_state = state.zip(has_input.clone()).zip(current_expired).map(q!(
+                |(((epoch, timed_out), has_input), current_expired)| {
+                    if has_input {
+                        (epoch + 1, false)
                     } else {
-                        None
+                        (epoch, timed_out || current_expired)
                     }
-                } else {
-                    Some(())
                 }
-            }))
-            .latest()
+            ));
+            state = next_state.clone();
+
+            (
+                next_state
+                    .clone()
+                    .zip(has_input)
+                    .filter_map(q!(|((epoch, _), has_input)| has_input.then_some(epoch)))
+                    .into_stream(),
+                next_state.filter_map(q!(|(_, timed_out)| timed_out.then_some(()))),
+            )
+        };
+
+        expired_complete.complete(
+            new_countdowns
+                // The countdowns feed back into the slice above; a top-level defer breaks the
+                // dataflow cycle through the (otherwise immediate) futures.
+                .defer_tick()
+                .merge_unordered(outer.source_iter(q!([0u64])).weaken_boundedness())
+                .map(q!(move |epoch| async move {
+                    tokio::time::sleep(duration).await;
+                    epoch
+                }))
+                .resolve_futures(),
+        );
+
+        timed_out
     }
 
     /// Shifts this stream into an atomic context, which guarantees that any downstream logic
