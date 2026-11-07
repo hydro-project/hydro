@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1793965070929,
+  "lastUpdate": 1794048667284,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -321531,6 +321531,208 @@
             "name": "paxos_bench",
             "value": 203880,
             "range": "± 10513.12",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "c81bd4adfe969cfab1807521c263c9b7be733606",
+          "message": "ci: merge the `ci-main` and `ci-heavy` test legs back into one job (#3347)\n\n## Why\n\nThe `ci-heavy` leg existed to keep the tests that spawn `cargo`\n(trybuild compile-fail\ntests, the `cargo sim` fuzzer harness, Maelstrom) away from the main\nsuite, and it ran them\nserially. Looking at what each of those actually locks:\n\n- **trybuild compile-fail tests** build in their own target dir\n(`target/tests/trybuild`,\nset by trybuild itself). They never contended with the fuzzer or with\nthe main suite on\n  cargo's lock, only with *each other*.\n- **Maelstrom tests** build through `hydro_concurrent_cargo` like every\nsim/deploy test\n  (#3345 already made them concurrent).\n- **`cargo sim`** compiled the instrumented test binary in the shared\ntarget dir, taking\ncargo's build lock on `target/debug` *exclusive*, while every\ngenerated-program test holds\nit *shared* through `hydro_concurrent_cargo`, so the two sides stalled\neach other.\n\nA first version of this PR ran the fuzzer harness alone\n(`threads-required =\n'num-test-threads'`); the merged job then took 30 min, of which 6.3 min\nwere the fuzzer running\nby itself plus ~1 min of queue drain in front of it. Measuring that test\nlocally: the\nsancov/O3 build of the `hydro_lang` test binary is a single 4.5–5 min\n**single-threaded** unit\nbecause of `-Ccodegen-units=1`; without it the whole build takes ~1 min\non a many-core box.\n\n## `cargo-sim`\n\n- Builds in its own target dir, `<target>/sim` (resolved via `cargo\nmetadata`, so\n`CARGO_TARGET_DIR` / `build.target-dir` are honored). It shares no\nartifacts with a regular\nbuild anyway, and this removes the exclusive-lock conflict with\nconcurrently running Hydro\n  tests (and with rust-analyzer locally).\n- New `--default-codegen-units` flag: drops `-Ccodegen-units=1`. Default\nbehaviour is\nunchanged for fuzzing sessions; the CI harness tests in\n`hydro_lang/tests/sim_fuzzer.rs`\npass the flag. Cold harness run locally: 6m26s → 1m51s; the second test\ntakes ~2 s.\n\n## `.config/nextest.toml`\n\n- Remove the `ci-heavy` / `ci-main` profiles; CI runs `profile.default`.\n- `serial-cargo` group now covers all five trybuild binaries (adds\n`embedded_compile_fail`,\nwhich previously ran unserialized in `ci-main`); new `serial-sim-fuzzer`\ngroup for the two\nharness tests. Each family only queues on its own target dir's lock, so\nboth run alongside\nthe rest of the suite. Both get `terminate-after = 20` since they are\ncold builds of a\ncrate's dependency tree now sharing the machine (`compile_fail` took 3.5\nmin alone on\n  Windows CI).\n- No more `threads-required = 'num-test-threads'` on the fuzzer (not\nneeded with the separate\n  target dir).\n\n## `.github/workflows/ci.yml`\n\n- Drop the `test_flavor` matrix dimension and `--profile`;\nJava/Maelstrom setup runs on every\n  non-Windows leg; doctests no longer need a flavor condition.\n- Nightly snapshot plumbing collapses to a single artifact\n(`nightly-snapshots`,\n`changes.patch`, `outcomes.json`); the PR job applies one patch and\nreports one outcome\npair. Kept `pattern:` + `merge-multiple` on download so a run whose\nnightly leg never\n  uploaded does not fail the PR job.\n\n## Verification\n\n- `cargo nextest show-config test-groups --all-targets --features\n\"deploy,test_embedded,test_ecs,test_docker\"`: the `serial-cargo` filter\nmatches exactly the\n  five trybuild binaries.\n- `cargo nextest run --all-targets --features ... -E\n'binary(sim_fuzzer)'` passes both harness\ntests from a cold `target/sim` (3 instrumented modules loaded, as\nasserted).\n\n## Follow-up\n\nDoctests (4.8 min) still run strictly after nextest; they could overlap\nthe nextest run phase\nin the same step, at the cost of reworking the nightly outcome\nbookkeeping.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-11-07T00:28:36Z",
+          "url": "https://github.com/hydro-project/hydro/commit/c81bd4adfe969cfab1807521c263c9b7be733606"
+        },
+        "date": 1794048667218,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 278076,
+            "range": "± 6290",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 14263099,
+            "range": "± 63372",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 14014419,
+            "range": "± 267620",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 10465,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 7844148,
+            "range": "± 29993",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 861806,
+            "range": "± 3214",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 924089,
+            "range": "± 3847",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 46357257,
+            "range": "± 770706",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 3524456,
+            "range": "± 155186",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 37768867,
+            "range": "± 226094",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 13083382,
+            "range": "± 16518",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 13486158,
+            "range": "± 37843",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 38178391,
+            "range": "± 213830",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 3865,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 24004,
+            "range": "± 94",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 4217,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6337,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 424769,
+            "range": "± 1057",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 60813,
+            "range": "± 179",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 47495,
+            "range": "± 344",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 48668,
+            "range": "± 264",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 7304,
+            "range": "± 45",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1629,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 76223,
+            "range": "± 214",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 85129,
+            "range": "± 145",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 6758,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 17464,
+            "range": "± 157",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 14187,
+            "range": "± 621",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 5146,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 244360,
+            "range": "± 722.77",
             "unit": "ops/s"
           }
         ]
