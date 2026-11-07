@@ -370,6 +370,10 @@ pub struct ExampleBuildConfig<'a> {
     /// Whether to set `TRYBUILD_LIB_NAME` to `bin_name` (the simulator uses this
     /// for its `include!`-based indirection).
     pub set_trybuild_lib_name: bool,
+    /// If `Some`, the `-C opt-level` to compile the generated example with, overriding the
+    /// profile's. Only the example crate is affected; its dependencies (the prebuilt
+    /// trybuild dylib and everything below it) keep the profile's level.
+    pub opt_level: Option<u8>,
 }
 
 /// Returns the toolchain's target libdir (where the shared `libstd` lives), memoized.
@@ -470,6 +474,7 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<PathBu
         example_name,
         crate_type,
         set_trybuild_lib_name,
+        opt_level,
     } = config;
 
     // Run from the dylib-examples crate, which has the dylib as a dependency.
@@ -613,6 +618,12 @@ pub fn compile_trybuild_example(config: ExampleBuildConfig<'_>) -> Result<PathBu
     // artifact gets replaced while another test process may still have it loaded. (On Linux
     // and macOS the per-job rpath arguments below happened to do this implicitly.)
     command.arg(format!("-Cmetadata={bin_name}"));
+    // Trailing rustc arguments apply only to the example crate, so this does not disturb the
+    // shared `deps/` or the prebuild fingerprint. It is folded into the unit hash like
+    // `-Cmetadata` above, so changing it yields a distinct artifact.
+    if let Some(opt_level) = opt_level {
+        command.arg(format!("-Copt-level={opt_level}"));
+    }
 
     if cfg!(any(target_os = "linux", target_os = "macos")) {
         // The built example links the trybuild dylib dynamically. Bake rpath entries for

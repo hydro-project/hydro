@@ -506,6 +506,7 @@ impl MaelstromDeployment {
             example_name: bin_name.clone(),
             crate_type: None,
             set_trybuild_lib_name: false,
+            opt_level: None,
         })
         .map_err(|()| Error::other("Maelstrom binary compilation failed"))
     }

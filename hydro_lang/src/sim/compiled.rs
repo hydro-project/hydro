@@ -2511,6 +2511,14 @@ impl<W: std::io::Write> LaunchedSim<W> {
 
         let mut any_made_progress = false;
         for (loc, c_id, dfir) in &mut self.async_dfirs {
+            // An async DFIR that cannot start a tick has polled every input stream to `Pending`
+            // with its waker registered, so it can only do work again once a send into one of
+            // those streams has fired the waker. Running it before then would return `false`,
+            // so the skip is observably identical and avoids polling every subgraph of every
+            // member on every scheduler step.
+            if !dfir.can_start_tick() {
+                continue;
+            }
             if dfir.run_tick().await {
                 any_made_progress = true;
 

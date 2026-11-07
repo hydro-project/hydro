@@ -29,6 +29,10 @@ use crate::scheduled::ticks::TickInstant;
 pub struct WakeState {
     /// Set to `true` when external data arrives, signaling that a new tick should run.
     /// Checked by [`Dfir::run_tick`](Dfir::run_tick) and [`Dfir::run_available`](Dfir::run_available).
+    ///
+    /// Starts `true`: a dataflow that has never run has not polled its input streams, so no
+    /// waker is registered on them and a send cannot set this flag; the first tick must run
+    /// unconditionally to pull initial data and register the wakers.
     can_start_tick: std::sync::atomic::AtomicBool,
     /// Wakes the [`Dfir::run`](Dfir::run) task from its idle `poll_fn` sleep.
     task_waker: futures::task::AtomicWaker,
@@ -37,7 +41,7 @@ pub struct WakeState {
 impl Default for WakeState {
     fn default() -> Self {
         Self {
-            can_start_tick: std::sync::atomic::AtomicBool::new(false),
+            can_start_tick: std::sync::atomic::AtomicBool::new(true),
             task_waker: futures::task::AtomicWaker::new(),
         }
     }
@@ -450,6 +454,18 @@ impl<Tick: TickClosure> Dfir<Tick> {
             .swap(false, Ordering::Relaxed);
         let tick_had_work = self.tick_closure.call_tick(&mut self.context).await;
         had_external || tick_had_work || self.wake_state.can_start_tick.load(Ordering::Relaxed)
+    }
+
+    /// Whether this dataflow needs a tick: an external event (data sent into one of its input
+    /// streams, or a `defer_tick` buffer left non-empty) has occurred since the last
+    /// [`Self::run_tick`], or it has never run.
+    ///
+    /// While this is `false`, `run_tick` can do no work: every input stream was polled to
+    /// `Pending` with the dataflow's waker registered, so any later send into it sets this
+    /// flag. Schedulers that drive several dataflows round-robin (e.g. the simulator) use
+    /// this to skip dataflows that cannot make progress, without running them to find out.
+    pub fn can_start_tick(&self) -> bool {
+        self.wake_state.can_start_tick.load(Ordering::Relaxed)
     }
 
     /// Run a single tick synchronously. Panics if the tick yields (async suspension).
