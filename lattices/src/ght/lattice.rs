@@ -9,7 +9,28 @@ use variadics::variadic_collections::VariadicSet;
 use variadics::{CloneVariadic, PartialEqVariadic, SplitBySuffix, VariadicExt, var_expr, var_type};
 
 use crate::ght::{GeneralizedHashTrieNode, GhtGet, GhtInner, GhtLeaf};
-use crate::{IsBot, IsTop, LatticeBimorphism, LatticeOrd, Merge};
+use crate::{IsBot, IsTop, LatticeBimorphism, LatticeFrom, LatticeOrd, Merge};
+
+impl<Head, Node> LatticeFrom<GhtInner<Head, Node>> for GhtInner<Head, Node>
+where
+    Head: Clone,
+    Node: GeneralizedHashTrieNode,
+{
+    fn lattice_from(other: Self) -> Self {
+        other
+    }
+}
+
+impl<Schema, ValType, Storage> LatticeFrom<GhtLeaf<Schema, ValType, Storage>>
+    for GhtLeaf<Schema, ValType, Storage>
+where
+    Schema: Eq + Hash,
+    Storage: VariadicSet<Schema = Schema>,
+{
+    fn lattice_from(other: Self) -> Self {
+        other
+    }
+}
 
 impl<Head, Node> Merge<GhtInner<Head, Node>> for GhtInner<Head, Node>
 where
