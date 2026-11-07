@@ -157,7 +157,8 @@ pub fn initialize_tracing_with_filter(filter: EnvFilter) {
 pub trait Sidecar {
     /// Generates code to create a sidecar.
     ///
-    /// The generated code should be an expression which evaluates as a `Future`.
+    /// The generated code should be an expression which evaluates as a `Future + Send + 'static`,
+    /// as it is spawned onto the location's tokio runtime via `tokio::spawn`.
     fn to_expr(
         &self,
         flow_name: &str,

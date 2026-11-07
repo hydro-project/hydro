@@ -1538,8 +1538,8 @@ impl DfirGraph {
                                 let hoff_metrics = &#metrics.handoffs[
                                     #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
                                 ];
-                                hoff_metrics.total_items_count.update(|x| x + hoff_len);
-                                hoff_metrics.curr_items_count.set(hoff_len);
+                                #root::scheduled::metrics::MetricCell::add(&hoff_metrics.total_items_count, hoff_len);
+                                #root::scheduled::metrics::MetricCell::set(&hoff_metrics.curr_items_count, hoff_len);
                             }
                         });
 
@@ -2007,9 +2007,12 @@ impl DfirGraph {
                                 }
                             };
                             quote! {
-                                __dfir_metrics.handoffs[
-                                    #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
-                                ].curr_items_count.set(#len_expr);
+                                #root::scheduled::metrics::MetricCell::set(
+                                    &__dfir_metrics.handoffs[
+                                        #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
+                                    ].curr_items_count,
+                                    #len_expr,
+                                );
                             }
                         })
                         .collect::<Vec<_>>()
@@ -2094,7 +2097,7 @@ impl DfirGraph {
                             async { #sg_body },
                             sg_metrics,
                         ).await;
-                        sg_metrics.total_run_count.update(|x| x + 1);
+                        #root::scheduled::metrics::MetricCell::add(&sg_metrics.total_run_count, 1);
 
                         // Update send (output) handoff metrics.
                         #( #send_metrics_code )*
