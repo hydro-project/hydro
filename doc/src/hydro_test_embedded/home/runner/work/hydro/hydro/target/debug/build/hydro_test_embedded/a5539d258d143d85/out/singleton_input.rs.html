@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded/a5539d258d143d85/out/singleton_input.rs`."><title>singleton_input.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../../../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/rustdoc-5c590327.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../../../../../../" data-static-root-path="../../../../../../../../../../../../../static.files/" data-current-crate="hydro_test_embedded" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (2d20b42b8 2026-11-04)" data-channel="nightly" data-search-js="search-835b9732.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-9b351432.js" ><script src="../../../../../../../../../../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../../../../../../../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../../../../../../../../../../src-files.js"></script><script defer src="../../../../../../../../../../../../../static.files/main-b2682d9c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/noscript-101b5a15.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../../../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test_embedded/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded/a5539d258d143d85/out/</div>singleton_input.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded/a5539d258d143d85/out/singleton_input.rs`."><title>singleton_input.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../../../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/rustdoc-020b02a2.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../../../../../../" data-static-root-path="../../../../../../../../../../../../../static.files/" data-current-crate="hydro_test_embedded" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (249c1e4e3 2026-11-05)" data-channel="nightly" data-search-js="search-835b9732.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-9b351432.js" ><script src="../../../../../../../../../../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../../../../../../../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../../../../../../../../../../src-files.js"></script><script defer src="../../../../../../../../../../../../../static.files/main-b2682d9c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/noscript-101b5a15.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../../../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test_embedded/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded/a5539d258d143d85/out/</div>singleton_input.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>hydro_lang::runtime_support::dfir_rs <span class="kw">as </span>__root_dfir_rs;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">pub use </span>hydro_test::__staged;
@@ -86,7 +86,7 @@
 <a href=#86 id=86 data-nosnippet>86</a>        {
 <a href=#87 id=87 data-nosnippet>87</a>            __dfir_bump.reset();
 <a href=#88 id=88 data-nosnippet>88</a>            {
-<a href=#89 id=89 data-nosnippet>89</a>                <span class="kw">let </span>sgid_1v1 = <span class="kw">async </span>{
+<a href=#89 id=89 data-nosnippet>89</a>                {
 <a href=#90 id=90 data-nosnippet>90</a>                    <span class="kw">let </span>context = <span class="kw-2">&amp;</span>df;
 <a href=#91 id=91 data-nosnippet>91</a>                    <span class="kw">let </span>op_2v1 = __root_dfir_rs::dfir_pipes::pull::iter(
 <a href=#92 id=92 data-nosnippet>92</a>                        <span class="kw-2">&amp;mut </span>sg_1v1_node_2v1_iter,
@@ -103,51 +103,44 @@
 <a href=#103 id=103 data-nosnippet>103</a>                        op_2v1,
 <a href=#104 id=104 data-nosnippet>104</a>                        <span class="kw-2">&amp;mut </span>sg_1v1_node_3v1_singleton_state,
 <a href=#105 id=105 data-nosnippet>105</a>                    );
-<a href=#106 id=106 data-nosnippet>106</a>                    <span class="attr">#[allow(
-<a href=#107 id=107 data-nosnippet>107</a>                        clippy::map_clone,
-<a href=#108 id=108 data-nosnippet>108</a>                        reason = <span class="string">"dfir has no explicit `cloned`/`copied` operator"
-<a href=#109 id=109 data-nosnippet>109</a>                    </span>)]
-<a href=#110 id=110 data-nosnippet>110</a>                    </span><span class="kw">let </span>op_4v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
-<a href=#111 id=111 data-nosnippet>111</a>                        op_3v1,
-<a href=#112 id=112 data-nosnippet>112</a>                        stageleft::runtime_support::fnmut1_type_hint::&lt;
-<a href=#113 id=113 data-nosnippet>113</a>                            (std::string::String, std::string::String),
-<a href=#114 id=114 data-nosnippet>114</a>                            std::string::String,
-<a href=#115 id=115 data-nosnippet>115</a>                        &gt;({
-<a href=#116 id=116 data-nosnippet>116</a>                            <span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
-<a href=#117 id=117 data-nosnippet>117</a>                            <span class="kw">use </span>hydro_test::__staged::local::singleton_input::<span class="kw-2">*</span>;
-<a href=#118 id=118 data-nosnippet>118</a>                            <span class="macro">hydro_test::__stageleft_quote_src_local_singleton_input_rs_9_16!</span>(
-<a href=#119 id=119 data-nosnippet>119</a>                                [] [| (name, prefix) | <span class="macro">format!</span>(<span class="string">"{prefix} {name}"</span>)]
-<a href=#120 id=120 data-nosnippet>120</a>                            )
-<a href=#121 id=121 data-nosnippet>121</a>                        }),
-<a href=#122 id=122 data-nosnippet>122</a>                    );
-<a href=#123 id=123 data-nosnippet>123</a>                    <span class="kw">let </span>op_5v1 = __root_dfir_rs::dfir_pipes::push::for_each(<span class="kw-2">&amp;mut </span>output);
-<a href=#124 id=124 data-nosnippet>124</a>                    __root_dfir_rs::dfir_pipes::pull::Pull::send_push(op_4v1, op_5v1)
-<a href=#125 id=125 data-nosnippet>125</a>                        .<span class="kw">await</span>;
-<a href=#126 id=126 data-nosnippet>126</a>                    ::std::iter::Iterator::for_each(
-<a href=#127 id=127 data-nosnippet>127</a>                        <span class="kw-2">&amp;mut </span>sg_1v1_node_2v1_iter,
-<a href=#128 id=128 data-nosnippet>128</a>                        ::std::mem::drop,
-<a href=#129 id=129 data-nosnippet>129</a>                    );
-<a href=#130 id=130 data-nosnippet>130</a>                    __root_dfir_rs::dfir_pipes::pull::Pull::drain_sync(
-<a href=#131 id=131 data-nosnippet>131</a>                        <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream_fused,
-<a href=#132 id=132 data-nosnippet>132</a>                    );
-<a href=#133 id=133 data-nosnippet>133</a>                };
-<a href=#134 id=134 data-nosnippet>134</a>                {
-<a href=#135 id=135 data-nosnippet>135</a>                    sgid_1v1.<span class="kw">await</span>;
-<a href=#136 id=136 data-nosnippet>136</a>                }
-<a href=#137 id=137 data-nosnippet>137</a>                <span class="attr">#[allow(clippy::nonminimal_bool, reason = <span class="string">"codegen"</span>)]
-<a href=#138 id=138 data-nosnippet>138</a>                </span><span class="kw">if </span><span class="bool-val">false </span>{
-<a href=#139 id=139 data-nosnippet>139</a>                    df.schedule_subgraph(<span class="bool-val">true</span>);
-<a href=#140 id=140 data-nosnippet>140</a>                }
-<a href=#141 id=141 data-nosnippet>141</a>            }
-<a href=#142 id=142 data-nosnippet>142</a>            df.__end_tick();
-<a href=#143 id=143 data-nosnippet>143</a>            ::std::mem::take(<span class="kw-2">&amp;mut </span>__dfir_work_done)
-<a href=#144 id=144 data-nosnippet>144</a>        };
-<a href=#145 id=145 data-nosnippet>145</a>        __root_dfir_rs::scheduled::context::Dfir::new(
-<a href=#146 id=146 data-nosnippet>146</a>            __root_dfir_rs::scheduled::context::TickClosureFn::new(__dfir_inline_tick),
-<a href=#147 id=147 data-nosnippet>147</a>            df,
-<a href=#148 id=148 data-nosnippet>148</a>            <span class="prelude-val">None</span>,
-<a href=#149 id=149 data-nosnippet>149</a>            <span class="prelude-val">None</span>,
-<a href=#150 id=150 data-nosnippet>150</a>        )
-<a href=#151 id=151 data-nosnippet>151</a>    }
-<a href=#152 id=152 data-nosnippet>152</a>}
+<a href=#106 id=106 data-nosnippet>106</a>                    <span class="kw">let </span>op_4v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
+<a href=#107 id=107 data-nosnippet>107</a>                        op_3v1,
+<a href=#108 id=108 data-nosnippet>108</a>                        stageleft::runtime_support::fnmut1_type_hint::&lt;
+<a href=#109 id=109 data-nosnippet>109</a>                            (std::string::String, std::string::String),
+<a href=#110 id=110 data-nosnippet>110</a>                            std::string::String,
+<a href=#111 id=111 data-nosnippet>111</a>                        &gt;({
+<a href=#112 id=112 data-nosnippet>112</a>                            <span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
+<a href=#113 id=113 data-nosnippet>113</a>                            <span class="kw">use </span>hydro_test::__staged::local::singleton_input::<span class="kw-2">*</span>;
+<a href=#114 id=114 data-nosnippet>114</a>                            <span class="macro">hydro_test::__stageleft_quote_src_local_singleton_input_rs_9_16!</span>(
+<a href=#115 id=115 data-nosnippet>115</a>                                [] [| (name, prefix) | <span class="macro">format!</span>(<span class="string">"{prefix} {name}"</span>)]
+<a href=#116 id=116 data-nosnippet>116</a>                            )
+<a href=#117 id=117 data-nosnippet>117</a>                        }),
+<a href=#118 id=118 data-nosnippet>118</a>                    );
+<a href=#119 id=119 data-nosnippet>119</a>                    <span class="kw">let </span>op_5v1 = __root_dfir_rs::dfir_pipes::push::for_each(<span class="kw-2">&amp;mut </span>output);
+<a href=#120 id=120 data-nosnippet>120</a>                    __root_dfir_rs::dfir_pipes::pull::Pull::send_push(op_4v1, op_5v1)
+<a href=#121 id=121 data-nosnippet>121</a>                        .<span class="kw">await</span>;
+<a href=#122 id=122 data-nosnippet>122</a>                    ::std::iter::Iterator::for_each(
+<a href=#123 id=123 data-nosnippet>123</a>                        <span class="kw-2">&amp;mut </span>sg_1v1_node_2v1_iter,
+<a href=#124 id=124 data-nosnippet>124</a>                        ::std::mem::drop,
+<a href=#125 id=125 data-nosnippet>125</a>                    );
+<a href=#126 id=126 data-nosnippet>126</a>                    __root_dfir_rs::dfir_pipes::pull::Pull::drain_sync(
+<a href=#127 id=127 data-nosnippet>127</a>                        <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream_fused,
+<a href=#128 id=128 data-nosnippet>128</a>                    );
+<a href=#129 id=129 data-nosnippet>129</a>                }
+<a href=#130 id=130 data-nosnippet>130</a>                <span class="attr">#[allow(clippy::nonminimal_bool, reason = <span class="string">"codegen"</span>)]
+<a href=#131 id=131 data-nosnippet>131</a>                </span><span class="kw">if </span><span class="bool-val">false </span>{
+<a href=#132 id=132 data-nosnippet>132</a>                    df.schedule_subgraph(<span class="bool-val">true</span>);
+<a href=#133 id=133 data-nosnippet>133</a>                }
+<a href=#134 id=134 data-nosnippet>134</a>            }
+<a href=#135 id=135 data-nosnippet>135</a>            df.__end_tick();
+<a href=#136 id=136 data-nosnippet>136</a>            ::std::mem::take(<span class="kw-2">&amp;mut </span>__dfir_work_done)
+<a href=#137 id=137 data-nosnippet>137</a>        };
+<a href=#138 id=138 data-nosnippet>138</a>        __root_dfir_rs::scheduled::context::Dfir::new(
+<a href=#139 id=139 data-nosnippet>139</a>            __root_dfir_rs::scheduled::context::TickClosureFn::new(__dfir_inline_tick),
+<a href=#140 id=140 data-nosnippet>140</a>            df,
+<a href=#141 id=141 data-nosnippet>141</a>            <span class="prelude-val">None</span>,
+<a href=#142 id=142 data-nosnippet>142</a>            <span class="prelude-val">None</span>,
+<a href=#143 id=143 data-nosnippet>143</a>        )
+<a href=#144 id=144 data-nosnippet>144</a>    }
+<a href=#145 id=145 data-nosnippet>145</a>}
 </code></pre></div></section></main></body></html>
