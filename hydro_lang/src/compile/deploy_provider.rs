@@ -6,12 +6,10 @@ use dfir_lang::graph::{AsCodeOptions, DfirGraph};
 use futures::{Sink, Stream};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use stageleft::QuotedWithContext;
 
 use crate::compile::builder::ExternalPortId;
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MembershipEvent, NetworkHint};
+use crate::location::{LocationKey, NetworkHint};
 
 pub trait Deploy<'a> {
     type Meta: Default;
@@ -239,17 +237,19 @@ pub trait Deploy<'a> {
         todo!("m2e_sink is not yet supported for this deploy backend")
     }
 
-    fn cluster_ids(
-        of_cluster: LocationKey,
-    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a;
+    /// The member IDs of `of_cluster`'s members, as a `&[TaglessMemberId]` expression.
+    fn cluster_ids(of_cluster: LocationKey) -> syn::Expr;
 
-    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a;
+    /// This member's own ID, as a `TaglessMemberId` expression.
+    fn cluster_self_id() -> syn::Expr;
 
+    /// A `Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>` expression: the
+    /// membership events of `location_id`, as seen from `at_location`.
     fn cluster_membership_stream(
         env: &mut Self::InstantiateEnv,
         at_location: &LocationId,
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>;
+    ) -> syn::Expr;
 
     /// Registers an embedded stream input for the given ident and element type.
     ///

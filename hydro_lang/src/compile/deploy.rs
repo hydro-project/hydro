@@ -10,7 +10,6 @@ use proc_macro2::Span;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use slotmap::{SecondaryMap, SlotMap, SparseSecondaryMap};
-use stageleft::QuotedWithContext;
 
 use super::built::build_inner;
 use super::compiled::CompiledFlow;
@@ -372,7 +371,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                 &format!("__hydro_lang_cluster_self_id_{}", cluster_key),
                 Span::call_site(),
             );
-            let self_id_expr = D::cluster_self_id().splice_untyped();
+            let self_id_expr = D::cluster_self_id();
             extra_stmts
                 .entry(cluster_key)
                 .expect("location was removed")
@@ -390,7 +389,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                     &format!("__hydro_lang_cluster_ids_{}", cluster_key),
                     Span::call_site(),
                 );
-                let other_id_expr = D::cluster_ids(cluster_key).splice_untyped();
+                let other_id_expr = D::cluster_ids(cluster_key);
                 extra_stmts
                     .entry(other_location)
                     .expect("location was removed")

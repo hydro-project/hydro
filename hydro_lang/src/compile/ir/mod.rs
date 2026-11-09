@@ -1961,10 +1961,7 @@ impl HydroRoot {
                             let key = (at_location.clone(), location_id.key());
                             if refcell_seen_cluster_members.borrow_mut().insert(key) {
                                 // First occurrence: call cluster_membership_stream and mark as Stream.
-                                let expr = stageleft::QuotedWithContext::splice_untyped_ctx(
-                                    D::cluster_membership_stream(&mut refcell_env.borrow_mut(), &at_location, location_id),
-                                    &(),
-                                );
+                                let expr = D::cluster_membership_stream(&mut refcell_env.borrow_mut(), &at_location, location_id);
                                 *state = ClusterMembersState::Stream(expr.into());
                             } else {
                                 // Already instantiated for this (at, target) pair: just tee.

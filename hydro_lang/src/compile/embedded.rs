@@ -52,13 +52,11 @@ use quote::quote;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use slotmap::SparseSecondaryMap;
-use stageleft::{QuotedWithContext, q};
 
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, Node, ProcessSpec, RegisterPort};
 use crate::compile::builder::ExternalPortId;
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MembershipEvent, NetworkHint};
+use crate::location::{LocationKey, NetworkHint};
 
 /// Marker type for the embedded deployment backend.
 ///
@@ -723,27 +721,19 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         panic!("EmbeddedDeploy does not support networking (o2e)")
     }
 
-    #[expect(
-        unreachable_code,
-        reason = "panic before q! which is only for return type"
-    )]
-    fn cluster_ids(
-        _of_cluster: LocationKey,
-    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
+    fn cluster_ids(_of_cluster: LocationKey) -> syn::Expr {
         panic!("EmbeddedDeploy does not support cluster IDs");
-        q!(unreachable!("EmbeddedDeploy does not support cluster IDs"))
     }
 
-    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
-        super::embedded_runtime::embedded_cluster_self_id()
+    fn cluster_self_id() -> syn::Expr {
+        syn::parse_quote!(__cluster_self_id)
     }
 
     fn cluster_membership_stream(
         env: &mut Self::InstantiateEnv,
         at_location: &LocationId,
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
-    {
+    ) -> syn::Expr {
         let at_key = match at_location {
             LocationId::Process(key) | LocationId::Cluster(key) => *key,
             _ => panic!("cluster_membership_stream must be called from a process or cluster"),
@@ -760,7 +750,8 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
             vec.len() - 1
         };
 
-        super::embedded_runtime::embedded_cluster_membership_stream(idx)
+        let ident = quote::format_ident!("__membership_{}", idx);
+        syn::parse_quote!(#ident)
     }
 
     fn register_embedded_stream_input(
