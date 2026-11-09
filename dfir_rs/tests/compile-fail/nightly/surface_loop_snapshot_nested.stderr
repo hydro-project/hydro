@@ -1,0 +1,5 @@
+error: Retaining windowing operator `snapshot(...)` is only allowed at the entry of a root-level `loop { ... }` context, not a nested loop.
+ --> tests/compile-fail/nightly/surface_loop_snapshot_nested.rs:8:22
+  |
+8 |                 b -> snapshot() -> null();
+  |                      ^^^^^^^^^^
