@@ -3,9 +3,9 @@ sidebar_position: 0
 ---
 
 # Verifying with Verus
-[Verus](https://verus-lang.github.io/verus/guide/) is a verifier for Rust code. Hydro uses it to machine-check **commutativity** [proof obligations](../proof-obligations.md), so you don't have to rely on a written `manual_proof!`.
+[Verus](https://verus-lang.github.io/verus/guide/) is a verifier for Rust code. Hydro uses it to machine-check **commutativity**, **monotonicity**, and **order preservation** [proof obligations](../proof-obligations.md), so you don't have to rely on a written `manual_proof!`.
 
-The `verus_proof_commutative_*!` macros generate a proof obligation from the **actual closure body**. The obligation runs the body on two arbitrary inputs `x` and `y` in both orders (`x` then `y`, and `y` then `x`), starting from the same arbitrary state, and requires the observable results to be equal. You never write the obligation yourself, so you cannot get it wrong or weaken it; you only declare the types involved.
+The `verus_proof_*!` macros generate a proof obligation from the **actual closure body**. For commutativity, the obligation runs the body on two arbitrary inputs `x` and `y` in both orders (`x` then `y`, and `y` then `x`), starting from the same arbitrary state, and requires the observable results to be equal. For monotonicity, it runs the body once on an arbitrary accumulator and requires the result to be at least the starting value; for order preservation, it runs the body on two inputs `x <= y` and requires `f(x) <= f(y)`. You never write the obligation yourself, so you cannot get it wrong or weaken it; you only declare the types involved.
 
 Under normal compilation (`cargo build`, `cargo test`), the proof is erased: the macro expands to a marker value, with no runtime cost and no dependency on Verus. The proof is only checked when the crate is built with the Verus driver (`cargo verus verify`).
 
@@ -36,14 +36,16 @@ Under normal compilation (`cargo build`, `cargo test`), the proof is erased: the
 A failed obligation is reported at the annotation, with the specific failing assertion inside the closure body (for example, the line that may overflow). We recommend running `cargo verus verify` in CI next to your regular tests, so that a change to a closure body cannot silently break its proof.
 
 ## Choosing a Macro
-There is one macro per closure shape. Each one checks the definition of commutativity that fits that shape:
+There is one macro per property and closure shape. Each one checks the definition of the property that fits that shape:
 
-| Macro | Closure shape | Used with | Must be order-independent |
-|---|---|---|---|
-| [`verus_proof_commutative_fold!`](rust:hydro_lang::properties::verus_proof_commutative_fold) | `\|acc: &mut A, item: T\|` | `fold`, `reduce` | the final accumulator |
-| [`verus_proof_commutative_map!`](rust:hydro_lang::properties::verus_proof_commutative_map) | `\|item: T\| -> U`, mutating captured state | `map` | the final captured state **and** the multiset of outputs |
-| [`verus_proof_commutative_filter!`](rust:hydro_lang::properties::verus_proof_commutative_filter) | `\|item: &T\| -> bool`, mutating captured state | `filter` | the final captured state **and** the multiset of retained elements |
-| [`verus_proof_commutative_effect!`](rust:hydro_lang::properties::verus_proof_commutative_effect) | `\|item: T\|` returning `()`, mutating captured state | `for_each`, `inspect` | the final captured state |
+| Macro | Property | Closure shape | Used with | Checked |
+|---|---|---|---|---|
+| [`verus_proof_commutative_fold!`](rust:hydro_lang::properties::verus_proof_commutative_fold) | `commutative` | `\|acc: &mut A, item: T\|` | `fold`, `reduce` | the final accumulator is order-independent |
+| [`verus_proof_commutative_map!`](rust:hydro_lang::properties::verus_proof_commutative_map) | `commutative` | `\|item: T\| -> U`, mutating captured state | `map` | the final captured state **and** the multiset of outputs are order-independent |
+| [`verus_proof_commutative_filter!`](rust:hydro_lang::properties::verus_proof_commutative_filter) | `commutative` | `\|item: &T\| -> bool`, mutating captured state | `filter` | the final captured state **and** the multiset of retained elements are order-independent |
+| [`verus_proof_commutative_effect!`](rust:hydro_lang::properties::verus_proof_commutative_effect) | `commutative` | `\|item: T\|` returning `()`, mutating captured state | `for_each`, `inspect` | the final captured state is order-independent |
+| [`verus_proof_monotone_fold!`](rust:hydro_lang::properties::verus_proof_monotone_fold) | `monotone` | `\|acc: &mut A, item: T\|` | `fold`, `reduce` | the accumulator never decreases |
+| [`verus_proof_order_preserving_map!`](rust:hydro_lang::properties::verus_proof_order_preserving_map) | `order_preserving` | `\|value: T\| -> U` | `Singleton::map` | `x <= y` implies `f(x) <= f(y)` |
 
 ### Aggregations
 For `fold` and `reduce`, declare the accumulator and item types:
@@ -94,6 +96,49 @@ let numbered = process
 For `map` and `filter`, commuting state updates are **not enough**, because the closure's output is also observable. The example above is accepted because the *set* of emitted counts (`s + 1` and `s + 2`) is the same in either order. But a `map` that returns a running total (`*total += x; *total`) emits values that reveal the processing order, so `verus_proof_commutative_map!` rejects it, even though its state update commutes. Likewise, a rate-limiting `filter` always uses up its budget the same way, but *which* element gets through depends on the order, so `verus_proof_commutative_filter!` rejects it. Hydro's generated obligations check the outputs too, so you don't have to reason about this case by hand.
 
 The `item = ...` type must match exactly what the closure receives. `filter` and `inspect` receive a reference, so the type is written as, for example, `item = &u32`.
+
+### Monotone Aggregations
+A `fold` whose accumulator only ever **grows** can opt in to a [`Monotonic`](../../state-management/singletons-optionals.md#boundedness-and-monotonicity) result with a `monotone = ...` annotation, which unlocks deterministic APIs such as `threshold_greater_or_equal`. `verus_proof_monotone_fold!` checks that applying the closure to any accumulator with any item leaves the accumulator **greater than or equal** to its previous value:
+
+```rust,no_run
+# use hydro_lang::prelude::*;
+# let mut flow = FlowBuilder::new();
+# let process = flow.process::<()>();
+# let numbers = process.source_iter(q!(vec![1u32, 2, 3]));
+let largest = numbers.fold(
+    q!(|| 0u32),
+    q!(
+        |curr, new| {
+            if new > *curr {
+                *curr = new;
+            }
+        },
+        monotone = verus_proof_monotone_fold!(acc = u32, item = u32)
+    ),
+);
+let reached = largest.threshold_greater_or_equal(process.singleton(q!(2u32)));
+```
+
+A last-writer-wins update (`*curr = new`) is rejected because the new value may be smaller, and so is a wrapping sum, which decreases when it wraps around. A monotone closure can carry both `commutative = ...` and `monotone = ...` annotations; each macro generates its own obligation.
+
+### Order-Preserving Maps
+Mapping a `Monotonic` singleton keeps it `Monotonic` only if the function is **order-preserving**: whenever `x <= y`, `f(x) <= f(y)`. `verus_proof_order_preserving_map!` checks exactly this, for the input and output types you declare:
+
+```rust,no_run
+# use hydro_lang::prelude::*;
+# let mut flow = FlowBuilder::new();
+# let process = flow.process::<()>();
+# let numbers = process.source_iter(q!(vec![1u32, 2, 3]));
+let count = numbers.count();
+let halved = count.map(q!(
+    |v| v / 2,
+    order_preserving = verus_proof_order_preserving_map!(input = usize, output = usize)
+));
+```
+
+Order-reversing functions (`usize::MAX - v`) are rejected, as are functions that wrap around (`v.wrapping_mul(2)`).
+
+Both macros compare values through Verus's specification of `PartialOrd` (`vstd::std_specs::cmp::PartialOrdSpec`), which is the same order Hydro uses at runtime for thresholds. Primitive integers and tuples of them are supported out of the box; your own types must implement `PartialOrdSpecImpl` inside a `verus!` block so that Verus knows how they are ordered.
 
 ## Read-Only Captures
 If the closure reads other variables from its environment, declare them, with their types, in a `captures = |...|` clause. The obligation is then proven for **every possible value** of those captures:

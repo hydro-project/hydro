@@ -26,6 +26,11 @@ const REJECT_FEATURES: &[&str] = &[
     "reject_rate_limit_filter",
     "reject_weak_panic_guard",
     "reject_guarded_halving_fold",
+    "reject_overwrite_monotone_fold",
+    "reject_wrapping_sum_monotone_fold",
+    "reject_overflowing_monotone_fold",
+    "reject_reversing_map",
+    "reject_wrapping_double_map",
 ];
 
 fn workspace_root() -> PathBuf {

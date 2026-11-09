@@ -25,7 +25,7 @@ let largest = numbers.reduce(q!(
 
 Every annotation needs a **proof**. A proof is evidence that the property holds. Hydro accepts two kinds:
 - a **manual proof** ([`manual_proof!`](rust:hydro_lang::properties::manual_proof)): a written justification that a human reviewer checks
-- a **Verus proof** (`verus_proof_commutative_*!`): a machine-checked proof that [Verus](https://verus-lang.github.io/verus/guide/) verifies against the closure body
+- a **Verus proof** (`verus_proof_*!`): a machine-checked proof that [Verus](https://verus-lang.github.io/verus/guide/) verifies against the closure body
 
 The table below lists the properties and which proofs each one accepts:
 
@@ -33,8 +33,8 @@ The table below lists the properties and which proofs each one accepts:
 |---|---|---|---|
 | Commutativity | `commutative = ...` | the input is `NoOrder` | `manual_proof!`, `verus_proof_commutative_*!` |
 | Idempotence | `idempotent = ...` | the input is `AtLeastOnce` | `manual_proof!` |
-| Monotonicity | `monotone = ...` | opting in to a `Monotonic` result | `manual_proof!` |
-| Order preservation | `order_preserving = ...` | keeping a singleton `Monotonic` through a `map` | `manual_proof!` |
+| Monotonicity | `monotone = ...` | opting in to a `Monotonic` result | `manual_proof!`, `verus_proof_monotone_fold!` |
+| Order preservation | `order_preserving = ...` | keeping a singleton `Monotonic` through a `map` | `manual_proof!`, `verus_proof_order_preserving_map!` |
 
 The rules for when annotations are needed are covered in [Streams](../streaming-data/streams.md), [Keyed Streams](../streaming-data/keyed-streams.mdx), and [References and Mutations](../state-management/references-mutations.md). This page gives an overview of the two kinds of proof.
 
@@ -65,10 +65,10 @@ let any_failed = checks.fold(
 
 Manual proofs work for every property and every closure, but **you are responsible for their correctness**. The compiler does not check the explanation, so a wrong claim (for example, calling a last-writer-wins update "commutative") quietly brings back the non-determinism the annotation was meant to rule out. Treat `manual_proof!` invocations the same way you treat [`nondet!` guards](./nondet.md): write a specific justification, and check it carefully in code review.
 
-Use a Verus proof wherever one applies (currently commutativity), and keep manual proofs for the remaining cases.
+Use a Verus proof wherever one applies (commutativity, monotonicity, and order preservation), and keep manual proofs for the remaining cases (currently idempotence).
 
 ## Verus Proofs
-[Verus](https://verus-lang.github.io/verus/guide/) is a verifier for Rust code. For commutativity, the `verus_proof_commutative_*!` macros generate a proof obligation from the **actual closure body**, and Verus checks it: running the body on any two inputs, in either order, from the same starting state, must produce the same observable result. You only declare the types involved; you never write the obligation, so you cannot get it wrong or weaken it.
+[Verus](https://verus-lang.github.io/verus/guide/) is a verifier for Rust code. The `verus_proof_*!` macros generate a proof obligation from the **actual closure body**, and Verus checks it. For commutativity, the obligation is that running the body on any two inputs, in either order, from the same starting state, must produce the same observable result; for monotonicity, that the accumulator never decreases; for order preservation, that `x <= y` implies `f(x) <= f(y)`. You only declare the types involved; you never write the obligation, so you cannot get it wrong or weaken it.
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
@@ -89,6 +89,6 @@ let largest = numbers.reduce(q!(
 Under a normal build, the proof is erased, with no runtime cost and no dependency on Verus. It is only checked when you run `cargo verus verify`. Verus also proves that the closure cannot panic, which affects how some closures (such as overflowing arithmetic) have to be written.
 
 See [Verus Proofs](./verus/index.md) for the details:
-- [Verifying with Verus](./verus/index.md): setting up a crate, the macros for each closure shape, and declaring captures
+- [Verifying with Verus](./verus/index.md): setting up a crate, the macros for each property and closure shape, and declaring captures
 - [Handling Panics](./verus/panics.md): why Verus requires panic-free closures, and how to use `verus_panic!`
 - [Custom Proof Scripts](./verus/proof-scripts.md): giving the solver hints when it cannot prove a property on its own
