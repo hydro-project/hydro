@@ -14,7 +14,7 @@ mod trophies;
 #[cfg(not(nightly))]
 #[test]
 #[should_panic]
-#[cfg_attr(not(target_os = "linux"), ignore)] // sim reproducer not yet reproducible on non-linux OSes
+#[cfg_attr(not(target_os = "linux"), ignore = "sim reproducer is Linux-only")]
 fn sim_crash_in_output() {
     use bytes::Bytes;
 
@@ -29,9 +29,15 @@ fn sim_crash_in_output() {
         in_send.send(bolero::any::<Vec<u8>>().into());
 
         let x = out_recv.next().await;
-        if !x.is_empty() && x[0] == 42 && x.len() > 1 && x[1] == 43 && x.len() > 2 && x[2] == 44 {
-            panic!("boom");
-        }
+        assert!(
+            !(!x.is_empty()
+                && x[0] == 42
+                && x.len() > 1
+                && x[1] == 43
+                && x.len() > 2
+                && x[2] == 44),
+            "boom"
+        )
     });
 }
 
@@ -39,7 +45,7 @@ fn sim_crash_in_output() {
 #[cfg(not(nightly))]
 #[test]
 #[should_panic]
-#[cfg_attr(not(target_os = "linux"), ignore)] // sim reproducer not yet reproducible on non-linux OSes
+#[cfg_attr(not(target_os = "linux"), ignore = "sim reproducer is Linux-only")]
 fn sim_crash_in_output_with_filter() {
     use bytes::Bytes;
 
@@ -156,7 +162,7 @@ fn sim_crash_with_fuzzed_batching() {
 }
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)] // trace locations don't work on Windows right now
+#[cfg_attr(target_os = "windows", ignore = "trace locations broken on Windows")]
 fn trace_for_fuzzed_batching() {
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
@@ -203,7 +209,7 @@ fn trace_for_fuzzed_batching() {
 }
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)] // trace locations don't work on Windows right now
+#[cfg_attr(target_os = "windows", ignore = "trace locations broken on Windows")]
 fn trace_for_fuzzed_batching_sliced() {
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
@@ -274,17 +280,24 @@ fn sim_batch_nondebuggable_type() {
 
 #[test]
 fn sim_embedded_send() {
-    use crate::networking::TCP;
+    use crate::networking::EMBEDDED;
 
     let mut flow = FlowBuilder::new();
     let p1 = flow.process::<()>();
     let p2 = flow.process::<()>();
 
     let (in_send, input) = p1.sim_input::<i32, _, _>();
-    // `.embedded()` leaves serialization to external code; in the simulator the raw value is
-    // carried directly through the in-memory channel.
+    // An `EMBEDDED` channel leaves serialization to external code; in the simulator the raw
+    // value is carried directly through the in-memory channel.
     let out_recv = input
-        .send(&p2, TCP.fail_stop().embedded().name("ch"))
+        .send(
+            &p2,
+            EMBEDDED
+                .never_reorders()
+                .never_duplicates()
+                .never_drops()
+                .name("ch"),
+        )
         .map(q!(|x| x * 10))
         .sim_output();
 
@@ -657,7 +670,7 @@ fn sim_collect_waits_for_all_ticks() {
     });
 }
 
-/// Regression test for https://github.com/hydro-project/hydro/issues/2602
+/// Regression test for <https://github.com/hydro-project/hydro/issues/2602>
 /// Verifies that `resolve_futures_blocking` preserves `Bounded`, allowing
 /// its output to be used with APIs that require boundedness (e.g. `cross_singleton`).
 /// If `resolve_futures_blocking` ever regresses to return `Unbounded`, this test
@@ -911,6 +924,80 @@ fn sim_fold_keyed_no_order() {
     });
 }
 
+/// Batching a `BoundedValue` keyed singleton (each key's value is fixed once it appears) is
+/// defined to yield only the entries that are *new* since the previous batch, matching the
+/// deployed `batch_eager()` semantics. The simulator must not model it as a snapshot, which
+/// would re-deliver every previously revealed entry on each tick (and let the batch skip or
+/// withhold "versions" that a `BoundedValue` keyed singleton can never have).
+#[test]
+fn sim_batch_bounded_value_keyed_singleton_yields_each_entry_once() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let (in_send, input) = node.sim_input::<(u32, char), TotalOrder, ExactlyOnce>();
+
+    // `first()` on a keyed stream yields a `BoundedValue` keyed singleton.
+    let firsts = input.into_keyed().first();
+    let out = sliced! {
+        let batch = use::batch(firsts, nondet!(/** test */));
+        batch.entries()
+    }
+    .sim_output();
+
+    flow.sim().exhaustive(async || {
+        in_send.send_many([(1, 'a'), (2, 'b'), (3, 'c')]);
+        // Across all ticks, each finalized entry is delivered exactly once, regardless of
+        // how the entries are split into batches.
+        out.assert_yields_only_unordered([(1, 'a'), (2, 'b'), (3, 'c')])
+            .await;
+    });
+}
+
+/// A fully `Bounded` keyed singleton can be *snapshotted* (as well as batched): every tick
+/// observes all the entries revealed so far, so an entry is never lost once it has been
+/// observed, and the snapshot eventually contains the complete contents.
+#[test]
+fn sim_snapshot_bounded_keyed_singleton_is_cumulative() {
+    use std::collections::BTreeSet;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let (trigger_send, trigger) = node.sim_input::<(), TotalOrder, ExactlyOnce>();
+
+    // `first()` on a bounded keyed stream yields a `Bounded` keyed singleton.
+    let bounded = node
+        .source_iter(q!(vec![(1, 'a'), (2, 'b')]))
+        .into_keyed()
+        .first();
+    let out = sliced! {
+        let trigger = use::batch(trigger, nondet!(/** test */));
+        let snapshot = use::snapshot(bounded, nondet!(/** test */));
+        trigger.cross_singleton(snapshot.entries().sort().collect_vec())
+            .map(q!(|(_, entries)| entries))
+    }
+    .sim_output();
+
+    let mut saw_complete = false;
+    flow.sim().exhaustive(async || {
+        trigger_send.send_many([(), ()]);
+        let per_tick: Vec<Vec<(u32, char)>> = out.collect().await;
+        let mut seen_so_far = BTreeSet::new();
+        for entries in &per_tick {
+            let now: BTreeSet<(u32, char)> = entries.iter().copied().collect();
+            assert!(
+                seen_so_far.is_subset(&now),
+                "a snapshot of a bounded keyed singleton must contain every previously observed entry; \
+                 saw {per_tick:?}"
+            );
+            seen_so_far = now;
+        }
+        saw_complete |= seen_so_far == BTreeSet::from([(1, 'a'), (2, 'b')]);
+    });
+    assert!(
+        saw_complete,
+        "some execution must observe the complete contents of the bounded keyed singleton"
+    );
+}
+
 #[test]
 fn sim_fold_tee_downstream_sees_different_subsets() {
     use std::collections::HashSet;
@@ -1011,7 +1098,7 @@ fn sim_fold_catches_false_commutativity() {
 }
 
 /// Verifies that the simulator catches false commutativity for in-tick folds on
-/// NoOrder streams by permuting the batch before it reaches the fold.
+/// `NoOrder` streams by permuting the batch before it reaches the fold.
 ///
 /// Top-level folds ARE tested via cross-batch subset selection + permutation
 /// (see `sim_fold_catches_false_commutativity`).
@@ -1128,7 +1215,7 @@ fn sim_sliced_singleton_is_init_none_optional() {
 /// So a consumer scheduled before the producer observes `None` (rather than panicking), and once
 /// the producer runs it observes `Some(sum)`. The exhaustive engine must witness both.
 #[test]
-#[cfg_attr(target_os = "windows", ignore)]
+#[cfg_attr(target_os = "windows", ignore = "not yet supported on Windows")]
 fn sim_singleton_latest_is_init_none_optional() {
     use std::collections::HashSet;
 
@@ -1183,7 +1270,7 @@ fn sim_singleton_latest_is_init_none_optional() {
 }
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)]
+#[cfg_attr(target_os = "windows", ignore = "not yet supported on Windows")]
 fn sim_unbounded_keyed_singleton_rejected_snapshot() {
     use crate::compile::ir::KeyedSingletonBoundKind;
 
@@ -1234,7 +1321,7 @@ fn sim_unbounded_keyed_singleton_rejected_snapshot() {
 /// on a tick-level Optional that produces a top-level Unbounded Optional).
 /// This snapshot test verifies the panic message.
 #[test]
-#[cfg_attr(target_os = "windows", ignore)]
+#[cfg_attr(target_os = "windows", ignore = "not yet supported on Windows")]
 fn sim_unbounded_optional_rejected_snapshot() {
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
@@ -1403,10 +1490,8 @@ fn sim_crash_behind_continue_if() {
             counts.first().is_some_and(|c| *c >= 2),
             "first batch was a singleton"
         );
-        if counts.first() == Some(&3) {
-            // Only reachable in instances that passed the assumption.
-            panic!("boom");
-        }
+        // Only reachable in instances that passed the assumption.
+        assert!(counts.first() != Some(&3), "boom")
     });
 }
 
@@ -1432,46 +1517,6 @@ fn sim_continue_if_failure_in_fuzz_repro_is_reported() {
                 })
                 .await;
         });
-}
-
-/// Whether this code was compiled with `--cfg hydro_rustflags_probe`. Called from inside a `q!`
-/// via a `self::` path (a bare `cfg!` or unqualified call would be mistaken for a captured
-/// variable), so its `__staged` copy reports the *generated* program's rustflags.
-#[expect(
-    unexpected_cfgs,
-    reason = "the probe cfg is only ever set by the rustflags_propagation harness test"
-)]
-fn compiled_with_rustflags_probe() -> bool {
-    cfg!(hydro_rustflags_probe)
-}
-
-/// Checks that the *generated* sim program is compiled with the same rustflags as this crate.
-/// The `q!` body runs inside the child compile, so [`compiled_with_rustflags_probe`] there
-/// reports the child's flags, while the assertion outside reports ours. Driven by the
-/// `rustflags_propagation` harness test (in `tests/rustflags_propagation.rs`), which sets the
-/// probe cfg via `--config build.rustflags` — a source that only reaches the child through
-/// `CARGO_ENCODED_RUSTFLAGS` forwarding, never through the process environment.
-#[test]
-#[ignore = "run by tests/rustflags_propagation.rs, which compiles with `--cfg hydro_rustflags_probe`"]
-fn sim_generated_code_sees_root_rustflags() {
-    assert!(
-        compiled_with_rustflags_probe(),
-        "this test must be compiled with `--cfg hydro_rustflags_probe`"
-    );
-
-    let mut flow = FlowBuilder::new();
-    let node = flow.process::<()>();
-
-    let out_recv = node
-        .source_iter(q!([self::compiled_with_rustflags_probe()]))
-        .sim_output();
-
-    flow.sim().exhaustive(async || {
-        assert!(
-            out_recv.next().await,
-            "generated program was compiled without the root rustflags"
-        );
-    });
 }
 
 mod scripted;

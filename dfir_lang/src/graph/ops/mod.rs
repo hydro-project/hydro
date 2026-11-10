@@ -14,8 +14,8 @@ use syn::punctuated::Punctuated;
 use syn::{Expr, Token, parse_quote_spanned};
 
 use super::{
-    GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics, OperatorInstance,
-    PortIndexValue,
+    AsCodeOptions, GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics,
+    OperatorInstance, PortIndexValue,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::parse::{Operator, PortIndex};
@@ -107,9 +107,11 @@ impl Debug for OperatorConstraints {
 }
 
 /// The code generated and returned by a [`OperatorConstraints::write_fn`].
-/// **Important**: When destructuring this struct in delegating operators, list all fields
-/// explicitly rather than using `..` to ensure new fields are not silently dropped.
-#[derive(Default)]
+///
+/// This type intentionally does not implement [`Default`]. Constructing it with
+/// `..` or `..Default::default()` silently drops newly added fields (this once
+/// dropped `write_tick_end` from `lattice_reduce`). List every field explicitly
+/// when constructing or destructuring.
 pub struct OperatorWriteOutput {
     /// Code which runs once outside any subgraphs to set up external state
     /// (channels, network connections, etc.) to be used by the subgraph.
@@ -137,6 +139,11 @@ pub const RANGE_1: &'static dyn RangeTrait<usize> = &(1..=1);
 
 /// Helper to write the `write_iterator` portion of [`OperatorConstraints::write_fn`] output for
 /// unary identity operators.
+///
+/// When no explicit type argument is given and
+/// [`AsCodeOptions::exclude_type_guards`](super::AsCodeOptions::exclude_type_guards) is set, the
+/// identity `check_input`/`check_output` type guard is omitted and the input/output is simply
+/// rebound.
 pub fn identity_write_iterator_fn(
     &WriteContextArgs {
         root,
@@ -145,6 +152,7 @@ pub fn identity_write_iterator_fn(
         inputs,
         outputs,
         is_pull,
+        options,
         op_inst:
             OperatorInstance {
                 generics: OpInstGenerics { type_args, .. },
@@ -153,6 +161,14 @@ pub fn identity_write_iterator_fn(
         ..
     }: &WriteContextArgs<'_>,
 ) -> TokenStream {
+    if type_args.is_empty() && options.exclude_type_guards {
+        // No user-provided type to pin down, so the guard would be a pure (verbose) no-op.
+        let src = if is_pull { &inputs[0] } else { &outputs[0] };
+        return quote_spanned! {op_span=>
+            let #ident = #src;
+        };
+    }
+
     let generic_type = type_args
         .first()
         .map(quote::ToTokens::to_token_stream)
@@ -191,8 +207,10 @@ pub fn identity_write_iterator_fn(
 pub const IDENTITY_WRITE_FN: WriteFn = |write_context_args, _| {
     let write_iterator = identity_write_iterator_fn(write_context_args);
     Ok(OperatorWriteOutput {
+        write_prologue: Default::default(),
         write_iterator,
-        ..Default::default()
+        write_iterator_after: Default::default(),
+        write_tick_end: Default::default(),
     })
 };
 
@@ -244,7 +262,7 @@ pub fn null_write_iterator_fn(
         }
     } else {
         quote_spanned! {op_span=>
-            #[allow(clippy::let_unit_value)]
+            #[allow(clippy::let_unit_value, clippy::ignored_unit_patterns)]
             let _ = (#(#outputs),*);
             let #ident = #root::dfir_pipes::push::for_each::<_, #iter_type>(::std::mem::drop::<#iter_type>);
         }
@@ -256,8 +274,10 @@ pub fn null_write_iterator_fn(
 pub const NULL_WRITE_FN: WriteFn = |write_context_args, _| {
     let write_iterator = null_write_iterator_fn(write_context_args);
     Ok(OperatorWriteOutput {
+        write_prologue: Default::default(),
         write_iterator,
-        ..Default::default()
+        write_iterator_after: Default::default(),
+        write_tick_end: Default::default(),
     })
 };
 
@@ -333,6 +353,9 @@ declare_ops![
     reduce_no_replay::REDUCE_NO_REPLAY,
     scan::SCAN,
     scan_async_blocking::SCAN_ASYNC_BLOCKING,
+    snapshot::SNAPSHOT,
+    snapshot_keyed::SNAPSHOT_KEYED,
+    snapshot_prefix::SNAPSHOT_PREFIX,
     spin::SPIN,
     sort::SORT,
     sort_by_key::SORT_BY_KEY,
@@ -418,6 +441,13 @@ pub struct WriteContextArgs<'a> {
     /// These arguments include singleton postprocessing codegen, with
     /// [`std::cell::RefCell::borrow_mut`] code pre-generated.
     pub arguments: &'a Punctuated<Expr, Token![,]>,
+
+    /// The codegen options passed to
+    /// [`DfirGraph::as_code_with_options`](super::DfirGraph::as_code_with_options).
+    ///
+    /// Operators may consult these, e.g. to omit their own type-guard helper functions when
+    /// [`AsCodeOptions::exclude_type_guards`] is set.
+    pub options: &'a AsCodeOptions,
 }
 impl WriteContextArgs<'_> {
     /// Generate a (almost certainly) unique identifier with the given suffix.
@@ -598,11 +628,11 @@ pub enum OperatorCategory {
 impl OperatorCategory {
     /// Human-readible heading name, for docs.
     pub fn name(self) -> &'static str {
-        self.get_variant_docs().split_once(":").unwrap().0
+        self.get_variant_docs().split_once(':').unwrap().0
     }
     /// Human description, for docs.
     pub fn description(self) -> &'static str {
-        self.get_variant_docs().split_once(":").unwrap().1
+        self.get_variant_docs().split_once(':').unwrap().1
     }
 }
 
@@ -616,6 +646,14 @@ pub enum FloType {
     /// A lazy windowing operator — moves data into a loop context but does not trigger the loop.
     /// Data is dropped if the loop does not fire that tick.
     WindowingLazy,
+    /// A retaining windowing operator — moves data into a loop context but does not trigger the
+    /// loop. Unlike [`FloType::WindowingLazy`], state is retained across ticks and emitted, as
+    /// clones, every time the loop fires — it is not consumed. The shape of the retained state
+    /// depends on the operator: `snapshot()` keeps a single last-write-wins value,
+    /// `snapshot_keyed()` the latest value per key, and `snapshot_prefix()` every element received
+    /// so far. Only valid at the entry of a root-level loop (nested loops iterate within a single
+    /// tick, so cross-tick retention does not apply).
+    WindowingRetain,
     /// An eager windowing operator — moves data into a loop context and always triggers the loop,
     /// even when the windowed input is empty. Only valid at the entry of a root-level loop (it is
     /// disallowed in nested loops, where it would prevent the fixpoint iteration from terminating).

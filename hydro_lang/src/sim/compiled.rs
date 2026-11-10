@@ -99,7 +99,6 @@ use super::runtime::{
 };
 use super::{SimClusterReceiver, SimClusterSender, SimReceiver, SimSender};
 use crate::compile::builder::ExternalPortId;
-use crate::compile::trybuild::generate::BuiltArtifact;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder};
 use crate::location::dynamic::LocationId;
 use crate::sim::graph::{SimExternalPort, SimExternalPortRegistry};
@@ -331,7 +330,7 @@ impl ScriptCtx {
         self.quiescence.push_park_waker(waker);
     }
 
-    /// Attempts to install a decision (bincode-serialized; the handle and hook statically
+    /// Attempts to install a decision (MessagePack-serialized; the handle and hook statically
     /// know the matching type) for the hook instance `(hook_id, member)` under the group
     /// protocol: join the current group if this decision belongs to it, open a new group
     /// if the previous one has been consumed, or hand the decision back to be retried
@@ -551,11 +550,10 @@ impl Drop for SettlePauseGuard {
 /// to quiesce (running pending nondeterministic work), and new input has been sent since, so
 /// further observations could misattribute failures caused by the forced overrun.
 fn guard_not_poisoned(quiescence: &QuiescenceState) {
-    if quiescence.poisoned.get() {
-        panic!(
-            "cannot receive more simulator output: an earlier observation (such as `try_next`, `collect`, or a quiescence assertion outside exhaustive mode) forced the simulation to quiesce by running pending nondeterministic work, and new input has been sent since. Failures observed now could be misattributed, so either restructure the test to make quiescence-forcing observations its last step, or insert an explicit `sim::quiesce().await` phase barrier before sending more input."
-        );
-    }
+    assert!(
+        !quiescence.poisoned.get(),
+        "cannot receive more simulator output: an earlier observation (such as `try_next`, `collect`, or a quiescence assertion outside exhaustive mode) forced the simulation to quiesce by running pending nondeterministic work, and new input has been sent since. Failures observed now could be misattributed, so either restructure the test to make quiescence-forcing observations its last step, or insert an explicit `sim::quiesce().await` phase barrier before sending more input."
+    );
 }
 
 /// Runs the simulation to quiescence, as an explicit *phase barrier* between rounds of a
@@ -631,9 +629,7 @@ async fn try_next_bytes(
         // waiting, that decision can never be honored — panic instead of yielding output
         // or end-of-stream, so a stuck script cannot masquerade as a completed one.
         if let Some(stuck) = script_unconsumed_description() {
-            if quiescence.is_quiescent() {
-                panic!("{}", script_stuck_error(&stuck));
-            }
+            assert!(!quiescence.is_quiescent(), "{}", script_stuck_error(&stuck));
             quiescence.push_park_waker(cx.waker());
             return Poll::Pending;
         }
@@ -774,7 +770,6 @@ tokio::task_local! {
 
 /// A handle to a compiled Hydro simulation, which can be instantiated and run.
 pub struct CompiledSim {
-    pub(super) _path: BuiltArtifact,
     pub(super) lib: Library,
     pub(super) externals_port_registry: SimExternalPortRegistry,
     pub(super) unit_test_fuzz_iterations: usize,
@@ -814,8 +809,8 @@ type SimLoaded<'a> = libloading::Symbol<
         println_handler: fn(fmt::Arguments<'_>),
         eprintln_handler: fn(fmt::Arguments<'_>),
     ) -> (
-        Vec<(LocationId, Option<u32>, DfirErased)>,
-        Vec<(LocationId, Option<u32>, DfirErased)>,
+        Vec<(LocationId, Option<u32>, DfirErased<()>)>,
+        Vec<(LocationId, Option<u32>, DfirErased<()>)>,
         Hooks,
         ObservationHooks,
         InlineHooks,
@@ -1131,8 +1126,8 @@ impl CompiledSim {
 
 // This must be a tuple because it is referenced from generated code in `graph.rs`.
 type DylibResult = (
-    Vec<(LocationId, Option<u32>, DfirErased)>,
-    Vec<(LocationId, Option<u32>, DfirErased)>,
+    Vec<(LocationId, Option<u32>, DfirErased<()>)>,
+    Vec<(LocationId, Option<u32>, DfirErased<()>)>,
     Hooks,
     ObservationHooks,
     InlineHooks,
@@ -1308,9 +1303,11 @@ impl<'a> CompiledSimInstance<'a> {
                 let Some(stuck) = script_unconsumed_description() else {
                     break;
                 };
-                if sim.quiescence.is_quiescent() {
-                    panic!("{}", script_stuck_error(&stuck));
-                }
+                assert!(
+                    !sim.quiescence.is_quiescent(),
+                    "{}",
+                    script_stuck_error(&stuck)
+                );
                 sim.step().await;
                 continue;
             }
@@ -2287,7 +2284,7 @@ struct SimTick {
     /// The cluster member ID, if the tick lives on a cluster.
     cluster_id: Option<u32>,
     /// The tick DFIR, executed once per tick.
-    dfir: DfirErased,
+    dfir: DfirErased<()>,
     /// Hooks (e.g. from `batch`) resolved *before* the tick runs, deciding what data to
     /// release into it.
     hooks: Vec<Box<dyn TickInputHook>>,
@@ -2388,7 +2385,7 @@ impl SimObservation {
 struct LaunchedSim<W: std::io::Write> {
     /// Top-level async DFIRs, one per process/cluster member. These run continuously and
     /// produce data that feeds into ticks and observations.
-    async_dfirs: Vec<(LocationId, Option<u32>, DfirErased)>,
+    async_dfirs: Vec<(LocationId, Option<u32>, DfirErased<()>)>,
     /// Ticks whose parent async DFIR has made progress, so they may be ready to run.
     /// The scheduler further filters these by checking whether their hooks have pending decisions.
     possibly_ready_ticks: Vec<SimTick>,
@@ -2668,14 +2665,11 @@ impl<W: std::io::Write> LaunchedSim<W> {
                         .filter(|_| scripted_tick_runnable),
                 ) {
                     for hook in &tick.hooks {
-                        if !hook.only_one_possible_decision() {
-                            panic!(
-                                "{}",
-                                crate::sim::runtime::render_unhooked_nondet_error(
-                                    hook.location_meta()
-                                )
-                            );
-                        }
+                        assert!(
+                            hook.only_one_possible_decision(),
+                            "{}",
+                            crate::sim::runtime::render_unhooked_nondet_error(hook.location_meta())
+                        );
                     }
                 }
                 for obs in &self.possibly_ready_observations {
@@ -2688,13 +2682,12 @@ impl<W: std::io::Write> LaunchedSim<W> {
                         );
                     }
                 }
-                if candidate_count > 1 {
-                    // Each action on its own may be free of choices, but the order in
-                    // which they run is not determined, and it can be observable.
-                    panic!(
-                        "deterministic simulation reached a state with more than one runnable tick/observation; the order in which they run is not deterministic\nhelp: script the involved operators so the schedule is explicit, or run under `fuzz` / `exhaustive` instead"
-                    );
-                }
+                // Each action on its own may be free of choices, but the order in
+                // which they run is not determined, and it can be observable.
+                assert!(
+                    candidate_count <= 1,
+                    "deterministic simulation reached a state with more than one runnable tick/observation; the order in which they run is not deterministic\nhelp: script the involved operators so the schedule is explicit, or run under `fuzz` / `exhaustive` instead"
+                );
                 0
             } else {
                 (0..candidate_count).any()
@@ -2761,7 +2754,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                                 abort_assert!(r, "runnable tick's DFIR run_tick() returned false");
                                 break;
                             }
-                            _ = async {} => {
+                            () = async {} => {
                                   for hook in &tick.scripted_inline_hooks {
                                       if hook.borrow().has_pending_input() {
                                           let run = hook.borrow_mut().run_decision(
@@ -2784,8 +2777,9 @@ impl<W: std::io::Write> LaunchedSim<W> {
                                                   // to decide for this operator; it may only
                                                   // proceed when exactly one outcome is
                                                   // possible.
-                                                  if deterministic && !hook.only_one_possible_decision() {
-                                                      panic!(
+                                                  if deterministic {
+                                                      assert!(
+                                                          hook.only_one_possible_decision(),
                                                           "{}",
                                                           crate::sim::runtime::render_unhooked_nondet_error(
                                                               hook.location_meta()

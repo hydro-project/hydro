@@ -83,9 +83,10 @@ impl SingletonBound for Monotonic {
 
 #[sealed]
 #[diagnostic::on_unimplemented(
-    message = "The input singleton must be monotonic (`Monotonic`) or bounded (`Bounded`), but has bound `{Self}`. Strengthen the monotonicity upstream or consider a different API.",
+    message = "the input singleton must be monotonic (`Monotonic`) or bounded (`Bounded`), but has bound `{Self}`",
     label = "required here",
-    note = "To intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region. This introduces non-determinism so avoid unless necessary."
+    note = "strengthen the monotonicity upstream, or consider a different API",
+    note = "to intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region; this introduces non-determinism, so avoid it unless necessary"
 )]
 /// Marker trait that is implemented for the [`Monotonic`] boundedness guarantee.
 pub trait IsMonotonic: SingletonBound {}
@@ -919,7 +920,7 @@ where
     }
 
     /// Filters this singleton into an [`Optional`], passing through the singleton value if the
-    /// argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is null.
+    /// argument (a [`Bounded`] [`Optional`]) is non-null, otherwise the output is null.
     ///
     /// Useful for conditionally processing, such as only emitting a singleton's value outside
     /// a tick if some other condition is satisfied.
@@ -965,7 +966,7 @@ where
     }
 
     /// Filters this singleton into an [`Optional`], passing through the singleton value if the
-    /// argument (a [`Bounded`] [`Optional`]`) is null, otherwise the output is null.
+    /// argument (a [`Bounded`] [`Optional`]) is null, otherwise the output is null.
     ///
     /// Like [`Singleton::filter_if_some`], this is useful for conditional processing, but inverts
     /// the condition.
@@ -1248,7 +1249,7 @@ where
         metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         Singleton::new(
             tick.drop_consistency(),
-            HydroNode::Batch {
+            HydroNode::Snapshot {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata,
             },
@@ -1287,7 +1288,7 @@ where
         metadata.op.sim_hook_id = nondet.take_hook().map(|h| h.id);
         Singleton::new(
             tick.drop_consistency(),
-            HydroNode::Batch {
+            HydroNode::Snapshot {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata,
             },
@@ -1698,7 +1699,17 @@ where
     }
 
     fn make(location: L, ir_node: HydroNode) -> Self::Out {
-        Optional::new(location, ir_node)
+        // The zip lowering may hand us an `Unbounded` optional node (from `latest()`); cast
+        // to this impl's output kind. At the root the representations differ (tombstoned
+        // update feed vs. plain values), so the cast must be present for codegen to insert
+        // the conversion.
+        Optional::new(
+            location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(ir_node),
+                metadata: location.new_node_metadata(Self::Out::collection_kind()),
+            },
+        )
     }
 }
 
@@ -1766,6 +1777,52 @@ mod tests {
         tick_trigger.send(()).await.unwrap();
 
         assert_eq!(external_out.next().await.unwrap(), 1);
+    }
+
+    /// A top-level (unbounded) `fold` whose input never receives anything must still hold its
+    /// initial value: its update feed has to carry the initial value even with no input. The
+    /// snapshot is driven by a separate read input, so the tick fires regardless of whether
+    /// snapshots trigger ticks.
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn top_level_fold_without_input_has_initial_value() {
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (values_send, values) = node.source_external_bincode::<_, _, _, ExactlyOnce>(&external);
+        let (read_send, reads) = node.source_external_bincode::<_, _, _, ExactlyOnce>(&external);
+
+        let folded = values.fold(q!(|| 5), q!(|acc: &mut i32, v: i32| *acc += v));
+
+        let out = crate::live_collections::sliced::sliced! {
+            let reads = use::batch(reads, nondet!(/** test */));
+            let value = use::snapshot(folded, nondet!(/** test */));
+            reads.cross_singleton(value).map(q!(|((), value)| value))
+        }
+        .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        // Connected but never written to: the fold never receives any input.
+        let _values_send = nodes.connect(values_send).await;
+        let mut read_send = nodes.connect(read_send).await;
+        let mut out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        read_send.send(()).await.unwrap();
+        assert_eq!(out.next().await.unwrap(), 5);
+
+        read_send.send(()).await.unwrap();
+        assert_eq!(out.next().await.unwrap(), 5);
     }
 
     #[cfg(feature = "sim")]
@@ -1855,9 +1912,10 @@ mod tests {
         let out_recv = batch.all_ticks().sim_output();
 
         flow.sim().exhaustive(async || {
-            if out_recv.next().await == (1, 3) && out_recv.next().await == (2, 3) {
-                panic!("repeated snapshot");
-            }
+            assert!(
+                !(out_recv.next().await == (1, 3) && out_recv.next().await == (2, 3)),
+                "repeated snapshot"
+            );
         });
     }
 
@@ -1971,7 +2029,7 @@ mod tests {
         assert_eq!(count, 4);
     }
 
-    /// Reproducer for simulator hang when using cross_singleton on a top-level
+    /// Reproducer for simulator hang when using `cross_singleton` on a top-level
     /// unbounded stream (not inside sliced!). The exhaustive simulator hangs
     /// after the first iteration.
     #[cfg(feature = "sim")]

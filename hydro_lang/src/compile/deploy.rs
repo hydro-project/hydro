@@ -10,7 +10,6 @@ use proc_macro2::Span;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use slotmap::{SecondaryMap, SlotMap, SparseSecondaryMap};
-use stageleft::QuotedWithContext;
 
 use super::built::build_inner;
 use super::compiled::CompiledFlow;
@@ -43,6 +42,9 @@ where
 
     /// Compile-time sidecar directives (both simple futures and external TCP sidecars).
     pub(super) sidecars: Vec<super::builder::Sidecar>,
+
+    /// Clusters whose code reads their own member ID.
+    pub(super) clusters_reading_self_id: HashSet<LocationKey>,
 
     /// Per-location codegen options, edited by sidecars via [`Sidecar::edit_as_code_options`].
     /// Locations without an entry use [`AsCodeOptions::default`].
@@ -369,7 +371,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                 &format!("__hydro_lang_cluster_self_id_{}", cluster_key),
                 Span::call_site(),
             );
-            let self_id_expr = D::cluster_self_id().splice_untyped();
+            let self_id_expr = D::cluster_self_id();
             extra_stmts
                 .entry(cluster_key)
                 .expect("location was removed")
@@ -387,7 +389,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                     &format!("__hydro_lang_cluster_ids_{}", cluster_key),
                     Span::call_site(),
                 );
-                let other_id_expr = D::cluster_ids(cluster_key).splice_untyped();
+                let other_id_expr = D::cluster_ids(cluster_key);
                 extra_stmts
                     .entry(other_location)
                     .expect("location was removed")

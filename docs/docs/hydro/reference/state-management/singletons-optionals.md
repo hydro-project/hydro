@@ -40,7 +40,7 @@ let sum: Singleton<i32, Process<_>, Bounded> =
 
 Here, the input stream is `Bounded` (it comes from a fixed `Vec`), so the aggregation result is also `Bounded`: once all four elements are folded, the sum is final. If the input stream were `Unbounded` (e.g., requests arriving over the network), the same code would produce an *unbounded* singleton whose value continues to grow as requests arrive.
 
-Just like on streams, aggregations on unordered or at-least-once streams require **property annotations** (commutativity / idempotence with `manual_proof!`); see [Streams](../streaming-data/streams.md) for details.
+Just like on streams, aggregations on unordered or at-least-once streams require **property annotations** (commutativity / idempotence, backed by a `manual_proof!` or a Verus proof); see [Streams](../streaming-data/streams.md) and [Proof Obligations](../correctness/proof-obligations.md) for details.
 
 ## Optionals
 An `Optional` is a value that may be absent. Optionals commonly arise from aggregations that have no result until the first element arrives, such as [`reduce`](rust:hydro_lang::live_collections::Stream::reduce), [`max`](rust:hydro_lang::live_collections::Stream::max), [`min`](rust:hydro_lang::live_collections::Stream::min), and [`first`](rust:hydro_lang::live_collections::Stream::first), or from filtering a singleton:

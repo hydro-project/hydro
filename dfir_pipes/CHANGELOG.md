@@ -1,5 +1,26 @@
 
 
+## v0.1.0-alpha.4 (2026-09-30)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release over the course of 8 calendar days.
+ - 78 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release hydro_build_utils v0.1.1-alpha.1, dfir_lang v0.17.0-alpha.4, dfir_macro v0.17.0-alpha.4, variadics v0.2.0-alpha.3, variadics_macro v0.8.0-alpha.2, lattices v0.8.0-alpha.4, example_test v0.0.2-alpha.0, sinktools v0.2.0-alpha.4, hydro_deploy_integration v0.17.0-alpha.3, dfir_rs v0.17.0-alpha.5, copy_span v0.1.2-alpha.0, hydro_concurrent_cargo v0.1.1-alpha.0, hydro_deploy v0.17.0-alpha.4, hydro_lang v0.17.0-alpha.5, hydro_std v0.17.0-alpha.5, safety bump 4 crates ([`38ccb27`](https://github.com/hydro-project/hydro/commit/38ccb27ae7a08b9ac1ab544f4047a4f4592ee230))
+</details>
+
 ## v0.1.0-alpha.3 (2026-07-14)
 
 ### New Features
@@ -10,7 +31,7 @@
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release over the course of 21 calendar days.
+ - 3 commits contributed to the release over the course of 22 calendar days.
  - 25 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#2962](https://github.com/hydro-project/hydro/issues/2962)
@@ -24,6 +45,7 @@
  * **[#2962](https://github.com/hydro-project/hydro/issues/2962)**
     - Add push accum operators (fold, reduce, etc) ([`79f7aa6`](https://github.com/hydro-project/hydro/commit/79f7aa68b7f5af64506129af1d1d5c7d14042756))
  * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.3, variadics v0.2.0-alpha.2, lattices v0.8.0-alpha.3, dfir_pipes v0.1.0-alpha.3, multiplatform_test v0.7.1-alpha.0, dfir_rs v0.17.0-alpha.4, hydro_concurrent_cargo v0.1.0-alpha.0, hydro_deploy v0.17.0-alpha.3, hydro_lang v0.17.0-alpha.4, hydro_std v0.17.0-alpha.4, safety bump 3 crates ([`6287d84`](https://github.com/hydro-project/hydro/commit/6287d84c83b0a37798d6afdeb6bfacaf9a8ce3d1))
     - Release dfir_macro v0.17.0-alpha.3, lattices v0.8.0-alpha.2, sinktools v0.2.0-alpha.3, hydro_deploy_integration v0.17.0-alpha.2, dfir_rs v0.17.0-alpha.3, hydro_deploy v0.17.0-alpha.2, hydro_lang v0.17.0-alpha.3, hydro_std v0.17.0-alpha.3 ([`295c0ec`](https://github.com/hydro-project/hydro/commit/295c0ec5d2d3f182598972d9a0c5511f5812c6ae))
 </details>
 
@@ -38,7 +60,7 @@
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
- - 7 days passed between releases.
+ - 8 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#2947](https://github.com/hydro-project/hydro/issues/2947)
 
@@ -65,6 +87,7 @@
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
+ - 1 day passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -188,7 +211,6 @@
 ### New Features
 
  - <csr-id-eacc3cd85a0a9bdd70c9f6b9da4da312059f3c5a/> Add scan_async_blocking operator to hydro_lang and dfir
- - <csr-id-128e85a7b6980f76575ad0e7306f34e7de0076c6/> resolve_future[s]_blocking for streams, singleton
  - <csr-id-892bcb67cc7789db6f749c2a5c38796bcb17f14a/> Add pull::FlatMapStream operator to dfir_pipes
    Implements the missing `pull::FlatMapStream` combinator, completing the
    2x2 matrix of pull/push × flatten/flat_map stream operators.
@@ -276,44 +298,14 @@
    `Vec::reserve(hint.0)` for pre-allocation. Gated on `alloc` feature.
    - Constructor: `push::vec_push(buf)` creates a VecPush from a `&mut
    Vec<T>`.
- - <csr-id-a662ff38541e58bec801644b81b2bfc505779e7b/> use custom `dfir_pipes::Pull` trait [ci-bench]
-   This is the pull-half of a big change from using other iterators
-   (`std::iter::Iterator` or `futures_core::stream::Stream`) to our own
-   `Pull` trait. Key to this more powerful iterator trait is the step enum:
-   ```rust
-   pub enum Step<Item, Meta, CanPend: Toggle, CanEnd: Toggle> {
-   /// An item is ready with associated metadata.
-   Ready(Item, Meta),
-   /// The pull is not ready yet (only possible when `CanPend = Yes`).
-   Pending(CanPend),
-   /// The pull has ended (only possible when `CanEnd = Yes`).
-   Ended(CanEnd),
-   }
-   ```
-   This abstraction allows `Pull` to represent both synchronous `Iterator`s
-   and asynchronous `Stream`s with zero cost. (As well as distinguishing
-   between infinite vs finite iterators, which I guess is not actually that
-   useful to us). In the future we will also add an `Error` variant
-   (#2635). The `Meta` metadata field may be used for full record-level
-   tracing (#2242).
-   
-   This trait has some pseudo-specialization around `Fuse`, and further
-   performance improvements may come from true nightly
-   `min_specialization`, as well as from converting from `Pusherator/Sink`
-   to a new `Push` trait.
-   
-   Other changes:
-   * Moves much of `dfir_rs::compiled::pull` into `dfir_pipes`, using new
-   trait
-   * Update itertools to `0.14`
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 20 commits contributed to the release.
- - 18 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 16 unique issues were worked on: [#2618](https://github.com/hydro-project/hydro/issues/2618), [#2644](https://github.com/hydro-project/hydro/issues/2644), [#2665](https://github.com/hydro-project/hydro/issues/2665), [#2666](https://github.com/hydro-project/hydro/issues/2666), [#2671](https://github.com/hydro-project/hydro/issues/2671), [#2673](https://github.com/hydro-project/hydro/issues/2673), [#2674](https://github.com/hydro-project/hydro/issues/2674), [#2675](https://github.com/hydro-project/hydro/issues/2675), [#2678](https://github.com/hydro-project/hydro/issues/2678), [#2680](https://github.com/hydro-project/hydro/issues/2680), [#2681](https://github.com/hydro-project/hydro/issues/2681), [#2682](https://github.com/hydro-project/hydro/issues/2682), [#2683](https://github.com/hydro-project/hydro/issues/2683), [#2684](https://github.com/hydro-project/hydro/issues/2684), [#2686](https://github.com/hydro-project/hydro/issues/2686), [#2710](https://github.com/hydro-project/hydro/issues/2710)
+ - 18 commits contributed to the release.
+ - 16 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 14 unique issues were worked on: [#2644](https://github.com/hydro-project/hydro/issues/2644), [#2665](https://github.com/hydro-project/hydro/issues/2665), [#2666](https://github.com/hydro-project/hydro/issues/2666), [#2671](https://github.com/hydro-project/hydro/issues/2671), [#2673](https://github.com/hydro-project/hydro/issues/2673), [#2674](https://github.com/hydro-project/hydro/issues/2674), [#2675](https://github.com/hydro-project/hydro/issues/2675), [#2678](https://github.com/hydro-project/hydro/issues/2678), [#2680](https://github.com/hydro-project/hydro/issues/2680), [#2681](https://github.com/hydro-project/hydro/issues/2681), [#2682](https://github.com/hydro-project/hydro/issues/2682), [#2683](https://github.com/hydro-project/hydro/issues/2683), [#2684](https://github.com/hydro-project/hydro/issues/2684), [#2710](https://github.com/hydro-project/hydro/issues/2710)
 
 ### Commit Details
 
@@ -321,8 +313,6 @@
 
 <details><summary>view details</summary>
 
- * **[#2618](https://github.com/hydro-project/hydro/issues/2618)**
-    - Use custom `dfir_pipes::Pull` trait [ci-bench] ([`a662ff3`](https://github.com/hydro-project/hydro/commit/a662ff38541e58bec801644b81b2bfc505779e7b))
  * **[#2644](https://github.com/hydro-project/hydro/issues/2644)**
     - Use custom `dfir_pipes::Push` trait instead of `Sink` [ci-bench] ([`3e6e26c`](https://github.com/hydro-project/hydro/commit/3e6e26c4cc87d6f7857591b10876074cba97caff))
  * **[#2665](https://github.com/hydro-project/hydro/issues/2665)**
@@ -349,8 +339,6 @@
     - Add StreamCompat type in dfir_pipes/pull, mirroring SinkCompat in push ([`a0cd424`](https://github.com/hydro-project/hydro/commit/a0cd424a6b4b6d8d5c0f96ed4e2aeb7e6b64a2ac))
  * **[#2684](https://github.com/hydro-project/hydro/issues/2684)**
     - Add pull::FlatMapStream operator to dfir_pipes ([`892bcb6`](https://github.com/hydro-project/hydro/commit/892bcb67cc7789db6f749c2a5c38796bcb17f14a))
- * **[#2686](https://github.com/hydro-project/hydro/issues/2686)**
-    - Resolve_future[s]_blocking for streams, singleton ([`128e85a`](https://github.com/hydro-project/hydro/commit/128e85a7b6980f76575ad0e7306f34e7de0076c6))
  * **[#2710](https://github.com/hydro-project/hydro/issues/2710)**
     - Add scan_async_blocking operator to hydro_lang and dfir ([`eacc3cd`](https://github.com/hydro-project/hydro/commit/eacc3cd85a0a9bdd70c9f6b9da4da312059f3c5a))
  * **Uncategorized**

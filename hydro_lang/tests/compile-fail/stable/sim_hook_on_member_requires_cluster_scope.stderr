@@ -4,4 +4,4 @@ error[E0599]: no method named `on` found for struct `OrderingHook<u32>` in the c
 13 |     let _scoped = ordering.on(0);
    |                            ^^ method not found in `OrderingHook<u32>`
    |
-   = note: the method was found for `OrderingHook<T, B, OnCluster<C>>`
+   = note: the method was found for `OrderingHook<T, B, R, OnCluster<C>>`

@@ -161,7 +161,7 @@ impl One<U32WithInfinity> for Cost {
 pub struct ConfidenceScore(f64);
 
 impl ConfidenceScore {
-    /// Create a new instance of ConfidenceScore with the given value.
+    /// Create a new instance of `ConfidenceScore` with the given value.
     pub fn new(value: f64) -> Self {
         // Ensure the value is within the range [0, 1]
         assert!((0.0..=1.0).contains(&value));
@@ -169,17 +169,17 @@ impl ConfidenceScore {
     }
 }
 
-/// Implementation of the addition trait for ConfidenceScore semiring.
+/// Implementation of the addition trait for `ConfidenceScore` semiring.
 impl Addition<ConfidenceScore> for ConfidenceScore {
-    /// Maximum is the addition operation for ConfidenceScore semiring.
+    /// Maximum is the addition operation for `ConfidenceScore` semiring.
     fn add(&mut self, other: ConfidenceScore) {
         self.0 = f64::max(self.0, other.0);
     }
 }
 
-/// Implementation of the multiplication trait for ConfidenceScore semiring.
+/// Implementation of the multiplication trait for `ConfidenceScore` semiring.
 impl Multiplication<ConfidenceScore> for ConfidenceScore {
-    /// Multiplication is the multiplication operation for ConfidenceScore semiring.
+    /// Multiplication is the multiplication operation for `ConfidenceScore` semiring.
     fn mul(&mut self, other: ConfidenceScore) {
         self.0 *= other.0;
     }
@@ -205,7 +205,7 @@ impl One<f64> for ConfidenceScore {
 pub struct FuzzyLogic(f64);
 
 impl FuzzyLogic {
-    /// Create a new instance of FuzzyLogic with the given value.
+    /// Create a new instance of `FuzzyLogic` with the given value.
     pub fn new(value: f64) -> Self {
         // Ensure the value is within the range [0, 1]
         assert!((0.0..=1.0).contains(&value));
@@ -213,17 +213,17 @@ impl FuzzyLogic {
     }
 }
 
-/// Implementation of the addition trait for FuzzyLogic semiring.
+/// Implementation of the addition trait for `FuzzyLogic` semiring.
 impl Addition<FuzzyLogic> for FuzzyLogic {
-    /// Maximum is the addition operation for FuzzyLogic semiring.
+    /// Maximum is the addition operation for `FuzzyLogic` semiring.
     fn add(&mut self, other: FuzzyLogic) {
         self.0 = f64::max(self.0, other.0);
     }
 }
 
-/// Implementation of the multiplication trait for FuzzyLogic semiring.
+/// Implementation of the multiplication trait for `FuzzyLogic` semiring.
 impl Multiplication<FuzzyLogic> for FuzzyLogic {
-    /// Minimum is the multiplication operation for FuzzyLogic semiring.
+    /// Minimum is the multiplication operation for `FuzzyLogic` semiring.
     fn mul(&mut self, other: FuzzyLogic) {
         self.0 = f64::min(self.0, other.0);
     }

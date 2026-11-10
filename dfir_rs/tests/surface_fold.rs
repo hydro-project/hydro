@@ -210,6 +210,72 @@ pub fn test_fold_inference() {
     };
 }
 
+/// Test that `fold::<'tick>` does not require `Clone`: the accumulator is moved (not cloned)
+/// into the output. Exercises the pull codegen path.
+#[multiplatform_test]
+pub fn test_fold_tick_no_clone() {
+    #[derive(Debug, PartialEq, Eq)]
+    struct NoClone(u32);
+
+    let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<NoClone>();
+    let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<NoClone>();
+
+    let mut df = dfir_rs::dfir_syntax! {
+        source_stream(items_recv)
+            -> fold::<'tick>(|| NoClone(0), |old: &mut NoClone, item: NoClone| { old.0 += item.0; })
+            -> for_each(|v| result_send.send(v).unwrap());
+    };
+
+    items_send.send(NoClone(1)).unwrap();
+    items_send.send(NoClone(2)).unwrap();
+    df.run_tick_sync();
+    assert_eq!(
+        &[NoClone(3)],
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+    );
+
+    items_send.send(NoClone(5)).unwrap();
+    df.run_tick_sync();
+    assert_eq!(
+        &[NoClone(5)],
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+    );
+}
+
+/// Test that `fold::<'tick>` does not require `Clone` on the accumulator in push position
+/// (downstream of `tee`): the accumulator is moved (not cloned) into the output.
+#[multiplatform_test]
+pub fn test_fold_tick_push_no_clone() {
+    #[derive(Debug, PartialEq, Eq)]
+    struct NoClone(u32);
+
+    let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
+    let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<NoClone>();
+
+    let mut df = dfir_rs::dfir_syntax! {
+        teed = source_stream(items_recv) -> tee();
+        teed[0]
+            -> fold::<'tick>(|| NoClone(0), |old: &mut NoClone, item: u32| { old.0 += item; })
+            -> for_each(|v| result_send.send(v).unwrap());
+        teed[1] -> null();
+    };
+
+    items_send.send(1).unwrap();
+    items_send.send(2).unwrap();
+    df.run_tick_sync();
+    assert_eq!(
+        &[NoClone(3)],
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+    );
+
+    items_send.send(5).unwrap();
+    df.run_tick_sync();
+    assert_eq!(
+        &[NoClone(5)],
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+    );
+}
+
 // TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[test]
 // fn test_fold_loop_lifetime() {
@@ -248,3 +314,29 @@ pub fn test_fold_inference() {
 //         &*collect_ready::<Vec<_>, _>(&mut result2_recv)
 //     );
 // }
+
+/// `fold_no_replay` emits its initial value on the first tick even when no input ever arrives,
+/// then emits nothing until new input arrives (pull side: `source -> fold_no_replay -> for_each`).
+#[multiplatform_test]
+pub fn test_fold_no_replay_initial_value_without_input() {
+    let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let mut df = dfir_syntax! {
+        source_stream(items_recv)
+            -> fold_no_replay::<'static>(|| 7, |a: &mut _, b| *a += b)
+            -> for_each(|v| out_send.send(v).unwrap());
+    };
+
+    // First tick, no input: the initial value is emitted exactly once.
+    df.run_tick_sync();
+    assert_eq!(&[7], &*collect_ready::<Vec<_>, _>(&mut out_recv));
+
+    // No new input: nothing is emitted.
+    df.run_tick_sync();
+    assert_eq!(&[] as &[i32], &*collect_ready::<Vec<_>, _>(&mut out_recv));
+
+    // New input: the updated accumulator is emitted.
+    items_send.send(3).unwrap();
+    df.run_tick_sync();
+    assert_eq!(&[10], &*collect_ready::<Vec<_>, _>(&mut out_recv));
+}

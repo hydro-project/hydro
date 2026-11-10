@@ -7,7 +7,7 @@ use stageleft::{q, quote_type};
 use super::KeyedStream;
 use crate::compile::ir::{DebugInstantiate, HydroNode, NetworkRecv, NetworkSend};
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
-use crate::live_collections::stream::{MinOrder, Ordering, Retries, Stream};
+use crate::live_collections::stream::{MinOrder, MinRetries, Ordering, Retries, Stream};
 use crate::location::cluster::{Consistency, NoConsistency};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
@@ -113,17 +113,17 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         Cluster<'a, L2, NoConsistency>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
-        R,
+        <R as MinRetries<N::RetriesGuarantee>>::Min,
     >
     where
         O: MinOrder<N::OrderingGuarantee>,
+        R: MinRetries<N::RetriesGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -161,7 +161,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                     Cluster<'a, L2>,
                     Unbounded,
                     <O as MinOrder<N::OrderingGuarantee>>::Min,
-                    R,
+                    <R as MinRetries<N::RetriesGuarantee>>::Min,
                 >::collection_kind()),
             },
         )
@@ -259,17 +259,17 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         Cluster<'a, L2, NoConsistency>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
-        R,
+        <R as MinRetries<N::RetriesGuarantee>>::Min,
     >
     where
         O: MinOrder<N::OrderingGuarantee>,
+        R: MinRetries<N::RetriesGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -313,7 +313,7 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                     Cluster<'a, L2>,
                     Unbounded,
                     <O as MinOrder<N::OrderingGuarantee>>::Min,
-                    R,
+                    <R as MinRetries<N::RetriesGuarantee>>::Min,
                 >::collection_kind()),
             },
         )
@@ -438,17 +438,17 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         Cluster<'a, L2, NoConsistency>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
-        R,
+        <R as MinRetries<N::RetriesGuarantee>>::Min,
     >
     where
         O: MinOrder<N::OrderingGuarantee>,
+        R: MinRetries<N::RetriesGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -487,7 +487,7 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
                     Cluster<'a, L2>,
                     Unbounded,
                     <O as MinOrder<N::OrderingGuarantee>>::Min,
-                    R,
+                    <R as MinRetries<N::RetriesGuarantee>>::Min,
                 >::collection_kind()),
             },
         )
@@ -627,17 +627,17 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         Process<'a, L2>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
-        R,
+        <R as MinRetries<N::RetriesGuarantee>>::Min,
     >
     where
         O: MinOrder<N::OrderingGuarantee>,
+        R: MinRetries<N::RetriesGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -661,12 +661,13 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
             )
         };
 
+        #[expect(clippy::type_complexity, reason = "stream markers")]
         let raw_stream: Stream<
             (MemberId<L>, (K, V)),
             Process<'a, L2>,
             Unbounded,
             <O as MinOrder<N::OrderingGuarantee>>::Min,
-            R,
+            <R as MinRetries<N::RetriesGuarantee>>::Min,
         > = Stream::new(
             to.clone(),
             HydroNode::Network {
@@ -681,7 +682,7 @@ impl<'a, K, V, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
                     Cluster<'a, L2>,
                     Unbounded,
                     <O as MinOrder<N::OrderingGuarantee>>::Min,
-                    R,
+                    <R as MinRetries<N::RetriesGuarantee>>::Min,
                 >::collection_kind()),
             },
         );

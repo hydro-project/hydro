@@ -292,7 +292,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only: singleton ref inside flat_map closure.
+    /// Compile-only: singleton ref inside `flat_map` closure.
     #[test]
     fn singleton_by_ref_flat_map() {
         let mut flow = FlowBuilder::new();
@@ -372,7 +372,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: singleton by_mut.
+    /// Compile-only test: singleton `by_mut`.
     #[test]
     fn singleton_by_mut_compiles() {
         let mut flow = FlowBuilder::new();
@@ -394,7 +394,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: optional by_ref.
+    /// Compile-only test: optional `by_ref`.
     #[test]
     fn optional_by_ref_compiles() {
         let mut flow = FlowBuilder::new();
@@ -411,7 +411,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: stream by_ref.
+    /// Compile-only test: stream `by_ref`.
     #[test]
     fn stream_by_ref_compiles() {
         let mut flow = FlowBuilder::new();
@@ -428,7 +428,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: singleton by_mut in filter (TotalOrder).
+    /// Compile-only test: singleton `by_mut` in filter (`TotalOrder`).
     #[test]
     fn singleton_by_mut_filter() {
         let mut flow = FlowBuilder::new();
@@ -450,7 +450,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: singleton by_mut in flat_map_ordered (TotalOrder).
+    /// Compile-only test: singleton `by_mut` in `flat_map_ordered` (`TotalOrder`).
     #[test]
     fn singleton_by_mut_flat_map() {
         let mut flow = FlowBuilder::new();
@@ -472,7 +472,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: singleton by_mut in filter_map (TotalOrder).
+    /// Compile-only test: singleton `by_mut` in `filter_map` (`TotalOrder`).
     #[test]
     fn singleton_by_mut_filter_map() {
         let mut flow = FlowBuilder::new();
@@ -494,7 +494,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: singleton by_mut in inspect (TotalOrder).
+    /// Compile-only test: singleton `by_mut` in inspect (`TotalOrder`).
     #[test]
     fn singleton_by_mut_inspect() {
         let mut flow = FlowBuilder::new();
@@ -515,7 +515,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: singleton by_ref in for_each.
+    /// Compile-only test: singleton `by_ref` in `for_each`.
     #[test]
     fn singleton_by_ref_for_each() {
         let mut flow = FlowBuilder::new();
@@ -533,7 +533,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: singleton by_mut in for_each.
+    /// Compile-only test: singleton `by_mut` in `for_each`.
     #[test]
     fn singleton_by_mut_for_each() {
         let mut flow = FlowBuilder::new();
@@ -556,8 +556,8 @@ mod tests {
     /// must still be materialized during DFIR emission.
     ///
     /// `HydroRoot::ForEach` used to only *look up* captured refs in `built_tees`, assuming
-    /// some node-level operator had already emitted them, and panicked with "ForEach
-    /// singleton ref not found in built_tees" when the `for_each` closure was the sole
+    /// some node-level operator had already emitted them, and panicked with "`ForEach`
+    /// singleton ref not found in `built_tees`" when the `for_each` closure was the sole
     /// capturer. This test drives the flow through full DFIR emission (which
     /// `flow.finalize()` alone does not) to cover that path.
     #[cfg(feature = "deploy")]
@@ -655,7 +655,7 @@ mod tests {
             .preview_compile();
     }
 
-    /// Compile-only test: singleton by_ref inside scan closures.
+    /// Compile-only test: singleton `by_ref` inside scan closures.
     #[test]
     fn singleton_by_ref_scan() {
         let mut flow = FlowBuilder::new();
@@ -680,7 +680,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: singleton by_ref inside scan_async_blocking closure.
+    /// Compile-only test: singleton `by_ref` inside `scan_async_blocking` closure.
     #[test]
     fn singleton_by_ref_scan_async_blocking() {
         let mut flow = FlowBuilder::new();
@@ -706,7 +706,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: singleton by_ref inside generator closure.
+    /// Compile-only test: singleton `by_ref` inside generator closure.
     #[test]
     fn singleton_by_ref_generator() {
         use crate::live_collections::keyed_stream::Generate;
@@ -737,7 +737,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: singleton by_ref inside keyed scan closure.
+    /// Compile-only test: singleton `by_ref` inside keyed scan closure.
     #[test]
     fn singleton_by_ref_keyed_scan() {
         let mut flow = FlowBuilder::new();
@@ -767,7 +767,7 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    /// Compile-only test: singleton by_ref inside keyed generator closure.
+    /// Compile-only test: singleton `by_ref` inside keyed generator closure.
     #[test]
     fn singleton_by_ref_keyed_generator() {
         use crate::live_collections::keyed_stream::Generate;

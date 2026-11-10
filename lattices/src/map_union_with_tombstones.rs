@@ -71,7 +71,7 @@ impl<Map, TombstoneSet> MapUnionWithTombstones<Map, TombstoneSet> {
     }
 }
 
-/// Merge implementation using TombstoneSet trait for optimized union operations
+/// Merge implementation using `TombstoneSet` trait for optimized union operations
 #[cfg(feature = "std")]
 impl<MapSelf, MapOther, K, ValSelf, ValOther, TombstoneSetSelf, TombstoneSetOther>
     Merge<MapUnionWithTombstones<MapOther, TombstoneSetOther>>

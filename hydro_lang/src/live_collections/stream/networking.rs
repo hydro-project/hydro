@@ -7,7 +7,7 @@ use serde::de::DeserializeOwned;
 use stageleft::{q, quote_type};
 use syn::parse_quote;
 
-use super::{ExactlyOnce, MinOrder, Ordering, Stream, TotalOrder};
+use super::{ExactlyOnce, MinOrder, MinRetries, Ordering, Stream, TotalOrder};
 use crate::compile::builder::ExternalPortId;
 use crate::compile::ir::{
     DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot, NetworkRecv, NetworkSend,
@@ -166,16 +166,22 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         self,
         to: &Process<'a, L2>,
         via: N,
-    ) -> Stream<T, Process<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
+    ) -> Stream<
+        T,
+        Process<'a, L2>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        <R as MinRetries<N::RetriesGuarantee>>::Min,
+    >
     where
         O: MinOrder<N::OrderingGuarantee>,
+        R: MinRetries<N::RetriesGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -213,7 +219,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
                     Process<'a, L2>,
                     Unbounded,
                     <O as MinOrder<N::OrderingGuarantee>>::Min,
-                    R,
+                    <R as MinRetries<N::RetriesGuarantee>>::Min,
                 >::collection_kind()),
             },
         )
@@ -316,10 +322,17 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         to: &Cluster<'a, L2>,
         via: N,
         nondet_membership: NonDet,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
+    ) -> Stream<
+        T,
+        Cluster<'a, L2>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        <R as MinRetries<N::RetriesGuarantee>>::Min,
+    >
     where
         T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
+        R: MinRetries<N::RetriesGuarantee>,
     {
         // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
         // sim hooks do not exist yet. Once they do, expose a composite hook payload here
@@ -400,11 +413,12 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         Cluster<'a, L2, N::ConsistencyGuarantee>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
-        R,
+        <R as MinRetries<N::RetriesGuarantee>>::Min,
     >
     where
         T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
+        R: MinRetries<N::RetriesGuarantee>,
     {
         let cluster_ids = ClusterIds {
             key: to.key,
@@ -502,14 +516,14 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     }
 
     #[cfg(feature = "sim")]
-    /// Sets up a bincode-encoded simulation output port for this stream, allowing test code to
+    /// Sets up a MessagePack-encoded simulation output port for this stream, allowing test code to
     /// receive elements sent to this stream during simulation. Use [`Stream::sim_output_with`] to
     /// select another codec.
     pub fn sim_output(self) -> SimReceiver<T, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.sim_output_with::<crate::sim::codec::BincodeCodec>()
+        self.sim_output_with::<crate::sim::codec::RmpCodec>()
     }
 
     #[cfg(feature = "sim")]
@@ -536,13 +550,15 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     }
 }
 
-impl<'a, T, L: Location<'a>, B: Boundedness> Stream<T, L, B, TotalOrder, ExactlyOnce> {
+impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R> {
     /// Creates an external output for embedded deployment mode.
     ///
     /// The `name` parameter specifies the name of the field in the generated
-    /// `EmbeddedOutputs` struct that will receive elements from this stream.
-    /// The generated function will accept an `EmbeddedOutputs` struct with an
-    /// `impl FnMut(T)` field with this name.
+    /// `EmbeddedOutputs` struct that will receive elements from this stream: an
+    /// [`EmbeddedOutputChannel`](crate::compile::embedded_runtime::EmbeddedOutputChannel) around the host's
+    /// `FnMut(T)` callback. The stream's ordering `O` and retries `R` are what the host
+    /// receives; the host must acknowledge each way they may be weaker than `TotalOrder` and
+    /// `ExactlyOnce`, or it does not compile.
     pub fn embedded_output(self, name: impl Into<String>) {
         let ident = syn::Ident::new(&name.into(), proc_macro2::Span::call_site());
 
@@ -652,10 +668,11 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         Cluster<'a, L2, NoConsistency>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
-        R,
+        <R as MinRetries<N::RetriesGuarantee>>::Min,
     >
     where
         O: MinOrder<N::OrderingGuarantee>,
+        R: MinRetries<N::RetriesGuarantee>,
     {
         self.into_keyed().demux(to, via)
     }
@@ -769,7 +786,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
         to: &Cluster<'a, L2>,
         via: N,
         nondet_membership: NonDet,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce> {
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, N::RetriesGuarantee> {
         // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
         // sim hooks do not exist yet. Once they do, expose a composite hook payload here
         // (`NonDet<(Option<KeyedSnapshotHook<..>>, Option<BatchHook<T, O, R>>)>`) so tests
@@ -924,8 +941,14 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
         to: &Cluster<'a, L2>,
         via: N,
         nondet_membership: NonDet,
-    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce>
-    {
+    ) -> KeyedStream<
+        MemberId<L>,
+        T,
+        Cluster<'a, L2>,
+        Unbounded,
+        N::OrderingGuarantee,
+        N::RetriesGuarantee,
+    > {
         // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
         // sim hooks do not exist yet. Once they do, expose a composite hook payload here
         // (`NonDet<(Option<KeyedSnapshotHook<..>>, Option<BatchHook<T, O, R>>)>`) so tests
@@ -1095,17 +1118,17 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         Process<'a, L2>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
-        R,
+        <R as MinRetries<N::RetriesGuarantee>>::Min,
     >
     where
         O: MinOrder<N::OrderingGuarantee>,
+        R: MinRetries<N::RetriesGuarantee>,
     {
         let name = via.name();
-        if to.multiversioned() && name.is_none() {
-            panic!(
-                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-            );
-        }
+        assert!(
+            !to.multiversioned() || name.is_some(),
+            "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+        );
 
         let (serialize, deserialize) = if N::is_embedded() {
             (
@@ -1134,7 +1157,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
             Process<'a, L2>,
             Unbounded,
             <O as MinOrder<N::OrderingGuarantee>>::Min,
-            R,
+            <R as MinRetries<N::RetriesGuarantee>>::Min,
         > = Stream::new(
             to.clone(),
             HydroNode::Network {
@@ -1149,7 +1172,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
                     Process<'a, L2>,
                     Unbounded,
                     <O as MinOrder<N::OrderingGuarantee>>::Min,
-                    R,
+                    <R as MinRetries<N::RetriesGuarantee>>::Min,
                 >::collection_kind()),
             },
         );
@@ -1274,11 +1297,12 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         Cluster<'a, L2>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
-        R,
+        <R as MinRetries<N::RetriesGuarantee>>::Min,
     >
     where
         T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
+        R: MinRetries<N::RetriesGuarantee>,
     {
         // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
         // sim hooks do not exist yet. Once they do, expose a composite hook payload here
@@ -1332,11 +1356,12 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         Cluster<'a, L2, N::ConsistencyGuarantee>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
-        R,
+        <R as MinRetries<N::RetriesGuarantee>>::Min,
     >
     where
         T: Clone,
         O: MinOrder<N::OrderingGuarantee>,
+        R: MinRetries<N::RetriesGuarantee>,
     {
         let cluster_ids = ClusterIds {
             key: to.key,
@@ -1388,14 +1413,14 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     }
 
     #[cfg(feature = "sim")]
-    /// Sets up a bincode-encoded simulation output port for this cluster stream, allowing test
+    /// Sets up a MessagePack-encoded simulation output port for this cluster stream, allowing test
     /// code to receive `(member_id, T)` pairs during simulation. Use
     /// [`Stream::sim_cluster_output_with`] to select another codec.
     pub fn sim_cluster_output(self) -> crate::sim::SimClusterReceiver<T, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.sim_cluster_output_with::<crate::sim::codec::BincodeCodec>()
+        self.sim_cluster_output_with::<crate::sim::codec::RmpCodec>()
     }
 
     #[cfg(feature = "sim")]
@@ -1537,10 +1562,11 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         Cluster<'a, L2, NoConsistency>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
-        R,
+        <R as MinRetries<N::RetriesGuarantee>>::Min,
     >
     where
         O: MinOrder<N::OrderingGuarantee>,
+        R: MinRetries<N::RetriesGuarantee>,
     {
         self.into_keyed().demux(to, via)
     }
@@ -1586,7 +1612,7 @@ mod tests {
             in_send.send(());
 
             let received = out_recv.collect::<Vec<_>>().await;
-            assert!(received.into_iter().sum::<usize>() == 3);
+            assert_eq!(received.into_iter().sum::<usize>(), 3);
         });
 
         assert_eq!(instances, 4); // 2^{3 - 1}

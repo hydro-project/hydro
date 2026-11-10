@@ -47,8 +47,10 @@ pub const UNZIP: OperatorConstraints = OperatorConstraints {
             let #ident = #root::dfir_pipes::push::unzip(#output0, #output1);
         };
         Ok(OperatorWriteOutput {
+            write_prologue: Default::default(),
             write_iterator,
-            ..Default::default()
+            write_iterator_after: Default::default(),
+            write_tick_end: Default::default(),
         })
     },
 };

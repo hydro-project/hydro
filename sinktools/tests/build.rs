@@ -210,10 +210,11 @@ async fn test_forward_complex_pipeline() {
 
     // Complex pipeline: flatten -> filter -> map -> filter_map -> inspect
     let mut final_sink = SinkBuilder::<Vec<i32>>::new()
-        .flatten::<Vec<i32>>()                    // Flatten input vectors
-        .filter(|x| *x > 0)                      // Keep positive numbers
-        .map(|x| x * 2)                          // Double them
-        .filter_map(|x| {                        // Keep only numbers < 20, add 100
+        .flatten::<Vec<i32>>() // Flatten input vectors
+        .filter(|x| *x > 0) // Keep positive numbers
+        .map(|x| x * 2) // Double them
+        .filter_map(|x| {
+            // Keep only numbers < 20, add 100
             if x < 20 { Some(x + 100) } else { None }
         })
         .inspect(|x| println!("Final value: {}", x))

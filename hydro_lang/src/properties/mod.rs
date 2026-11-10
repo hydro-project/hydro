@@ -25,7 +25,7 @@ pub trait CommutativeProof<T, B: Boundedness, S = OnProcess> {
     fn register_proof(&self, expr: &syn::Expr);
 
     /// Takes the simulator ordering hook attached to this proof, if any.
-    fn take_hook(&mut self) -> Option<OrderingHook<T, B, S>>;
+    fn take_hook(&mut self) -> Option<OrderingHook<T, B, ExactlyOnce, S>>;
 }
 
 /// A trait for proof mechanisms that can validate idempotence.
@@ -81,20 +81,20 @@ impl<H> ManualProof<H> {
     }
 }
 
-impl<T, B: Boundedness, S> ManualProof<Option<OrderingHook<T, B, S>>> {
+impl<T, B: Boundedness, S> ManualProof<Option<OrderingHook<T, B, ExactlyOnce, S>>> {
     #[doc(hidden)]
-    pub fn hooked(hook: impl Into<Option<OrderingHook<T, B, S>>>) -> Self {
+    pub fn hooked(hook: impl Into<Option<OrderingHook<T, B, ExactlyOnce, S>>>) -> Self {
         ManualProof { hook: hook.into() }
     }
 }
 
 #[sealed::sealed]
 impl<T, B: Boundedness, S> CommutativeProof<T, B, S>
-    for ManualProof<Option<OrderingHook<T, B, S>>>
+    for ManualProof<Option<OrderingHook<T, B, ExactlyOnce, S>>>
 {
     fn register_proof(&self, _expr: &syn::Expr) {}
 
-    fn take_hook(&mut self) -> Option<OrderingHook<T, B, S>> {
+    fn take_hook(&mut self) -> Option<OrderingHook<T, B, ExactlyOnce, S>> {
         self.hook.take()
     }
 }
@@ -103,7 +103,7 @@ impl<T, B: Boundedness, S> CommutativeProof<T, B, S>
 impl<T, B: Boundedness, S> CommutativeProof<T, B, S> for ManualProof {
     fn register_proof(&self, _expr: &syn::Expr) {}
 
-    fn take_hook(&mut self) -> Option<OrderingHook<T, B, S>> {
+    fn take_hook(&mut self) -> Option<OrderingHook<T, B, ExactlyOnce, S>> {
         None
     }
 }
@@ -161,7 +161,7 @@ impl Default for VerusCommutativeProof {
 impl<T, B: Boundedness, S> CommutativeProof<T, B, S> for VerusCommutativeProof {
     fn register_proof(&self, _expr: &syn::Expr) {}
 
-    fn take_hook(&mut self) -> Option<OrderingHook<T, B, S>> {
+    fn take_hook(&mut self) -> Option<OrderingHook<T, B, ExactlyOnce, S>> {
         // Verus proofs are still not trusted by the simulator, which explores the
         // input ordering on its own; no scripting hook is attached.
         None
@@ -217,6 +217,79 @@ impl IdempotentProof for VerusIdempotentProof {
 
 #[doc(inline)]
 pub use crate::__manual_proof__ as manual_proof;
+
+// Verus only sees items declared inside `verus!`, so under the Verus driver (with the
+// `verus` feature) the function backing `verus_panic!` is declared there.
+// `external_body`: Verus trusts the signature without checking the body (which calls
+// `panic!`, whose vstd specification is `requires false`). The signature has no
+// precondition and the default unwind specification (may unwind), so callers need not
+// prove anything, and since the return type is `!`, nothing after the call is reachable.
+#[cfg(all(verus_keep_ghost, feature = "verus"))]
+vstd::prelude::verus! {
+    #[doc(hidden)]
+    #[verifier::external_body]
+    pub fn __verus_panic() -> ! {
+        panic!("verus_panic! was reached")
+    }
+}
+
+#[doc(inline)]
+pub use crate::__verus_panic__ as verus_panic;
+
+#[cfg(all(verus_keep_ghost, feature = "verus"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __verus_panic__ {
+    // The message arguments are dropped: Verus does not support `format_args!`, and they
+    // would only be evaluated on a path that panics anyway.
+    ($($arg:tt)*) => {
+        $crate::properties::__verus_panic()
+    };
+}
+
+#[cfg(not(all(verus_keep_ghost, feature = "verus")))]
+#[macro_export]
+/// Panics, in a way that **Verus proofs of algebraic properties treat as an acceptable
+/// outcome**. Takes the same arguments as [`panic!`].
+///
+/// A Verus proof (e.g. [`verus_proof_commutative_fold!`]) normally requires the closure body
+/// to be panic-free for every input, which rejects closures such as `*acc += x` (which
+/// panics on overflow) even though they are commutative whenever they complete. Calling
+/// `verus_panic!(...)` instead tells Verus that this path ends the program: the property
+/// only has to hold for executions that do **not** reach it. That matches Hydro's
+/// requirement, since a panicking closure crashes the process rather than producing a
+/// result.
+///
+/// The typical use is to guard an operation that could otherwise panic, so that Verus
+/// knows it cannot fail on the paths that continue:
+///
+/// ```rust,ignore
+/// q!(
+///     |acc, x| {
+///         if *acc > u32::MAX - x {
+///             verus_panic!("sum overflowed");
+///         }
+///         *acc += x; // cannot overflow here, so Verus accepts it
+///     },
+///     commutative = verus_proof_commutative_fold!(acc = u32, item = u32)
+/// )
+/// ```
+///
+/// This is sound because the guard really executes: the closure panics at runtime whenever
+/// the guard condition holds, so a guard that is stricter than necessary is still correct.
+/// A guard that is too weak is caught by Verus, which reports the operation that may still
+/// panic. Unlike `assume(...)` in a proof script, nothing is taken on faith beyond the fact
+/// that `verus_panic!` never returns.
+///
+/// Under normal compilation, this forwards its arguments to [`panic!`]. When verifying
+/// with `cargo verus verify`, the `verus` feature of `hydro_lang` must be enabled; Verus
+/// then sees a call to a function that never returns (the message arguments are not
+/// evaluated by the proof).
+macro_rules! __verus_panic__ {
+    ($($arg:tt)*) => {
+        ::core::panic!($($arg)*)
+    };
+}
 
 #[macro_export]
 /// Fulfills a proof parameter by declaring a human-written justification for why
@@ -1408,7 +1481,10 @@ impl<T, B: Boundedness, C, I, M, S> AggFuncAlgebra<T, B, C, I, M, S> {
 
     /// Registers the expression with the underlying proof mechanisms, and takes the
     /// simulator ordering hook attached to the commutativity proof, if any.
-    pub(crate) fn register_proof(self, expr: &syn::Expr) -> Option<OrderingHook<T, B, S>> {
+    pub(crate) fn register_proof(
+        self,
+        expr: &syn::Expr,
+    ) -> Option<OrderingHook<T, B, ExactlyOnce, S>> {
         let mut hook = None;
         if let Some(mut comm_proof) = self.0 {
             comm_proof.register_proof(expr);
@@ -1479,7 +1555,10 @@ impl<T, B: Boundedness, O, C, I, S> SingletonMapFuncAlgebra<T, B, O, C, I, S> {
 
     /// Registers the expression with the underlying proof mechanisms, and takes the
     /// simulator ordering hook attached to the commutativity proof, if any.
-    pub(crate) fn register_proof(self, expr: &syn::Expr) -> Option<OrderingHook<T, B, S>> {
+    pub(crate) fn register_proof(
+        self,
+        expr: &syn::Expr,
+    ) -> Option<OrderingHook<T, B, ExactlyOnce, S>> {
         if let Some(proof) = self.0 {
             proof.register_proof(expr);
         }
@@ -1530,7 +1609,10 @@ impl<T, B: Boundedness, C, I, S> StreamMapFuncAlgebra<T, B, C, I, S> {
 
     /// Registers the expression with the underlying proof mechanisms, and takes the
     /// simulator ordering hook attached to the commutativity proof, if any.
-    pub(crate) fn register_proof(self, expr: &syn::Expr) -> Option<OrderingHook<T, B, S>> {
+    pub(crate) fn register_proof(
+        self,
+        expr: &syn::Expr,
+    ) -> Option<OrderingHook<T, B, ExactlyOnce, S>> {
         let hook = self.0.and_then(|mut proof| {
             proof.register_proof(expr);
             proof.take_hook()
@@ -1559,9 +1641,10 @@ impl<T, B: Boundedness, C, I, S> Property for StreamMapFuncAlgebra<T, B, C, I, S
 /// *intermediate* accumulator values may still differ and must not be observed without
 /// a non-determinism annotation.
 #[diagnostic::on_unimplemented(
-    message = "Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation.",
+    message = "because the input stream has ordering `{O}`, the closure must demonstrate commutativity",
     label = "required for this call",
-    note = "To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+    note = "prove it with a `commutative = manual_proof!(/** why the order does not matter */)` annotation on the closure",
+    note = "to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary"
 )]
 #[sealed::sealed]
 pub trait ValidCommutativityFor<O: Ordering> {}
@@ -1581,9 +1664,10 @@ impl<O: Ordering> ValidCommutativityFor<O> for Proved {}
 /// position. **Definition (`for_each`, `|item: T|`):** processing an item twice in a row
 /// must leave the mutably-captured state in the same final value as processing it once.
 #[diagnostic::on_unimplemented(
-    message = "Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation.",
+    message = "because the input stream has retries `{R}`, the closure must demonstrate idempotence",
     label = "required for this call",
-    note = "To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+    note = "prove it with an `idempotent = manual_proof!(/** why a repeat does not matter */)` annotation on the closure",
+    note = "to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary"
 )]
 #[sealed::sealed]
 pub trait ValidIdempotenceFor<R: Retries> {}
@@ -1606,9 +1690,10 @@ impl<R: Retries> ValidIdempotenceFor<R> for Proved {}
 /// [`Singleton::by_mut`]: crate::live_collections::singleton::Singleton::by_mut
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation.",
+    message = "because the input stream has ordering `{O}`, the closure must demonstrate commutativity",
     label = "required for this call",
-    note = "To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+    note = "prove it with a `commutative = manual_proof!(/** why the order does not matter */)` annotation on the closure",
+    note = "to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary"
 )]
 pub trait ValidMutCommutativityFor<F: FnMut(In) -> Out, In, Out, O: Ordering, const WAS_MUT: bool> {}
 #[sealed::sealed]
@@ -1646,9 +1731,10 @@ impl<In, Out, F: Fn(In) -> Out, O: Ordering> ValidMutCommutativityFor<F, In, Out
 ///
 /// [`Singleton::by_mut`]: crate::live_collections::singleton::Singleton::by_mut
 #[diagnostic::on_unimplemented(
-    message = "Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation.",
+    message = "because the input stream has retries `{R}`, the closure must demonstrate idempotence",
     label = "required for this call",
-    note = "To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+    note = "prove it with an `idempotent = manual_proof!(/** why a repeat does not matter */)` annotation on the closure",
+    note = "to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary"
 )]
 #[sealed::sealed]
 pub trait ValidMutIdempotenceFor<F: FnMut(In) -> Out, In, Out, R: Retries, const WAS_MUT: bool> {}
@@ -1689,9 +1775,10 @@ impl<In, Out, F: Fn(In) -> Out, R: Retries> ValidMutIdempotenceFor<F, In, Out, R
 /// [`Singleton::by_mut`]: crate::live_collections::singleton::Singleton::by_mut
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation.",
+    message = "because the input stream has ordering `{O}`, the closure must demonstrate commutativity",
     label = "required for this call",
-    note = "To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+    note = "prove it with a `commutative = manual_proof!(/** why the order does not matter */)` annotation on the closure",
+    note = "to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary"
 )]
 pub trait ValidMutBorrowCommutativityFor<
     F: FnMut(&In) -> Out,
@@ -1737,9 +1824,10 @@ impl<In: ?Sized, Out, F: Fn(&In) -> Out, O: Ordering>
 ///
 /// [`Singleton::by_mut`]: crate::live_collections::singleton::Singleton::by_mut
 #[diagnostic::on_unimplemented(
-    message = "Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation.",
+    message = "because the input stream has retries `{R}`, the closure must demonstrate idempotence",
     label = "required for this call",
-    note = "To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+    note = "prove it with an `idempotent = manual_proof!(/** why a repeat does not matter */)` annotation on the closure",
+    note = "to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary"
 )]
 #[sealed::sealed]
 pub trait ValidMutBorrowIdempotenceFor<

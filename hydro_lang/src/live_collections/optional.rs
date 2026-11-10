@@ -83,9 +83,10 @@ impl OptionalBound for InitNone {
 
 #[sealed]
 #[diagnostic::on_unimplemented(
-    message = "The optional must be null-only-initially (`InitNone`) or bounded (`Bounded`), but has bound `{Self}`. Strengthen the guarantee upstream or consider a different API.",
+    message = "the optional must be null-only-initially (`InitNone`) or bounded (`Bounded`), but has bound `{Self}`",
     label = "required here",
-    note = "To intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region. This introduces non-determinism so avoid unless necessary."
+    note = "strengthen the guarantee upstream, or consider a different API",
+    note = "to intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region; this introduces non-determinism, so avoid it unless necessary"
 )]
 /// Marker trait that is implemented for [`OptionalBound`] types that are null only initially:
 /// once the optional becomes non-null it remains non-null (or it is [`Bounded`]).
@@ -816,7 +817,17 @@ where
             )
             .latest();
 
-            Optional::new(self_location, out.ir_node.replace(HydroNode::Placeholder))
+            // `latest()` produces an `Unbounded` optional; cast it back to this method's
+            // (bounded) output kind. The cast is not just metadata: at the root, unbounded
+            // optionals are tombstoned update feeds while bounded ones are plain values.
+            Optional::new(
+                self_location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(out.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self_location
+                        .new_node_metadata(Optional::<(T, O), L, B>::collection_kind()),
+                },
+            )
         } else {
             zip_inside_tick(self, other)
         }
@@ -1263,7 +1274,7 @@ where
     }
 
     /// Filters this optional, passing through the optional value if it is non-null **and** the
-    /// argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is null.
+    /// argument (a [`Bounded`] [`Optional`]) is non-null, otherwise the output is null.
     ///
     /// Useful for conditionally processing, such as only emitting an optional's value outside
     /// a tick if some other condition is satisfied.
@@ -1307,7 +1318,7 @@ where
     }
 
     /// Filters this optional, passing through the optional value if it is non-null **and** the
-    /// argument (a [`Bounded`] [`Optional`]`) is _null_, otherwise the output is null.
+    /// argument (a [`Bounded`] [`Optional`]) is _null_, otherwise the output is null.
     ///
     /// Useful for conditionally processing, such as only emitting an optional's value outside
     /// a tick if some other condition is satisfied.
@@ -1398,7 +1409,14 @@ where
     /// if it is [`Unbounded`], the [`KeyedSingleton`] will be [`Unbounded`], which means that
     /// the entry will be updated and appear / disappear according to the state of the
     /// [`Optional`].
-    pub fn into_keyed_singleton(self) -> KeyedSingleton<K, V, L, B::UnderlyingBound> {
+    ///
+    /// The `K: Clone + PartialEq` bounds are needed because when the optional is [`Unbounded`]
+    /// at a top-level location, the compiled representation tracks the previously emitted key
+    /// so the entry can be removed when the optional becomes null or moves to a different key.
+    pub fn into_keyed_singleton(self) -> KeyedSingleton<K, V, L, B::UnderlyingBound>
+    where
+        K: Clone + PartialEq,
+    {
         KeyedSingleton::new(
             self.location.clone(),
             HydroNode::Cast {
@@ -1439,7 +1457,7 @@ where
         );
         Optional::new(
             tick.drop_consistency(),
-            HydroNode::Batch {
+            HydroNode::Snapshot {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
                     .new_node_metadata(Optional::<T, Tick<L>, Bounded>::collection_kind()),
@@ -1471,7 +1489,7 @@ where
         );
         Optional::new(
             tick.drop_consistency(),
-            HydroNode::Batch {
+            HydroNode::Snapshot {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
                     .new_node_metadata(Optional::<T, Tick<L>, Bounded>::collection_kind()),

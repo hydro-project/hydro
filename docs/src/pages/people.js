@@ -14,6 +14,7 @@ import shadaj from "./people-img/shadaj.png";
 import lucky from "./people-img/lucky.jpeg";
 import rohit from "./people-img/rohit.jpg";
 import ben from "./people-img/ben.jpg";
+import peter from "./people-img/peter_alvaro.png";
 import hydroTurtle from "../../static/img/hydro-turtle.png";
 
 import styles from "./people.module.css";
@@ -129,6 +130,12 @@ export default function Home() {
             </div>
             <div className={styles["personGroup"]}>
               <PersonCard
+                name={"Peter Alvaro"}
+                role={"Professor, UC Santa Cruz"}
+                url={"https://people.ucsc.edu/~palvaro/"}
+                img={peter}
+              ></PersonCard>
+              <PersonCard
                 name={"Alvin Cheung"}
                 role={"Professor, UC Berkeley"}
                 url={"https://people.eecs.berkeley.edu/~akcheung"}
@@ -140,20 +147,18 @@ export default function Home() {
                 url={"https://nacrooks.github.io"}
                 img={natacha}
               ></PersonCard>
-
-              <PersonCard
-                name={"Mae Milano"}
-                role={"Professor, Princeton University"}
-                url={"https://www.languagesforsyste.ms"}
-                img={mae}
-              ></PersonCard>
               <PersonCard
                 name={"Chris Douglas"}
                 role={"PhD Student, UC Berkeley"}
                 url={"https://www.linkedin.com/in/chris-douglas-73333a1"}
                 img={hydroTurtle}
               ></PersonCard>
-
+              <PersonCard
+                name={"Mae Milano"}
+                role={"Professor, Princeton University"}
+                url={"https://www.languagesforsyste.ms"}
+                img={mae}
+              ></PersonCard>
             </div>
 
             <div className={styles["subtitle"]}>Project Alumni</div>

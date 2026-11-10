@@ -16,3 +16,5 @@ Much like Rust's type system helps ensure memory safety, Hydro helps ensure **di
   - See [State Management / Slice Blocks](../state-management/slices.mdx)
 
 These safety guarantees are surfaced through the Rust type system, so you can catch these bugs at compile time rather than in production. And when it is necessary to bypass these checks for advanced distributed logic, Hydro requires you to attach [non-determinism guards](./nondet.md) that explain the effects of the non-determinism, clearly marking the code that should be carefully reviewed.
+
+Some APIs are only deterministic if the closures you pass them satisfy algebraic properties, such as commutativity for aggregations over unordered streams. Hydro requires these to be backed by [proofs](./proof-obligations.md): either a written `manual_proof!` or a proof that is machine-checked by Verus.

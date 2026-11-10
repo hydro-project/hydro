@@ -2,15 +2,15 @@
 source: hydro_verus_tests/tests/verus_rejects.rs
 expression: "format!(\"{}\\n{}\", verification_results(&stdout), verus_diagnostics(&stderr))"
 ---
-verification results:: 22 verified, 1 errors
+verification results:: 24 verified, 1 errors
 error: assertion failed
-   --> hydro_verus_tests/src/lib.rs:638:34
+   --> hydro_verus_tests/src/lib.rs:729:34
     |
-638 |                       idempotent = verus_proof_idempotent_map!(
+729 |                       idempotent = verus_proof_idempotent_map!(
     |  __________________________________^
-639 | |                         item = u32,
-640 | |                         captures_mut = |count_mut: u32|
-641 | |                     )
+730 | |                         item = u32,
+731 | |                         captures_mut = |count_mut: u32|
+732 | |                     )
     | |_____________________^ assertion failed
     |
     = note: this error originates in the macro `verus_proof_idempotent_map` (in Nightly builds, run with -Z macro-backtrace for more info)

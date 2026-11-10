@@ -103,7 +103,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         committed -> map(|xid| (xid, ())) -> [0]check_committed;
         phase_map -> [1]check_committed;
         check_committed = join::<'tick, 'tick>()
-            -> map(|(xid, (_, phase))| (xid, phase))
+            -> map(|(xid, ((), phase))| (xid, phase))
             -> filter(|(_xid, phase)| *phase == 1)
             -> map(|(xid, _phase)| xid)
             -> tee();

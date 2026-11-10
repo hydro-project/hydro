@@ -117,7 +117,28 @@ let words_count = all_words
 
 :::danger
 
-Developers are responsible for the commutativity when they use a `ManualProof`. In the future, commutativity checks will be automatically provided by the compiler (via tools like [Kani](https://github.com/model-checking/kani)).
+Developers are responsible for the correctness of a `manual_proof!`; the compiler does not check the explanation. For commutativity, you can instead use a **machine-checked** proof: the `verus_proof_commutative_fold!` macro generates a proof obligation from the closure body and has it checked by [Verus](https://verus-lang.github.io/verus/guide/):
+
+```rust,no_run
+# use hydro_lang::prelude::*;
+# let mut flow = FlowBuilder::new();
+# let workers = flow.cluster::<()>();
+# let process = flow.process::<()>();
+# let all_words: Stream<_, Process<_>, _, hydro_lang::live_collections::stream::NoOrder> = workers
+#     .source_iter(q!(vec!["hello", "world"]))
+#     .map(q!(|x| x.to_string()))
+#     .send(&process, TCP.fail_stop().bincode())
+#     .values();
+let words_count = all_words.fold(
+    q!(|| 0usize),
+    q!(
+        |acc, _word| *acc = acc.wrapping_add(1),
+        commutative = verus_proof_commutative_fold!(acc = usize, item = String)
+    ),
+);
+```
+
+Verus also requires the closure to be panic-free, which is why this uses `wrapping_add` instead of `+=` (see [Handling Panics](../correctness/verus/panics.md)). See [Verifying with Verus](../correctness/verus/index.md) for how to set up and run Verus.
 
 :::
 

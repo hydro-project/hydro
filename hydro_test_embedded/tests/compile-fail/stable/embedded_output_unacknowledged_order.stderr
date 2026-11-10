@@ -1,0 +1,25 @@
+error[E0277]: `hydro_test_embedded::unordered_output::capitalize_unordered::outputs::output` may deliver its elements in any order, which the host must acknowledge
+ --> tests/compile-fail/stable/embedded_output_unacknowledged_order.rs:9:60
+  |
+9 |         output: EmbeddedOutputChannel::new(|_: String| {}, Acknowledgements::new().at_least_once()),
+  |                 --------------------------                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ does not acknowledge `NoOrder`
+  |                 |
+  |                 required by a bound introduced by this call
+  |
+  = note: add `.no_order()` to its `Acknowledgements`
+help: the trait `OrderAcknowledgedBy<hydro_lang::live_collections::stream::TotalOrder, hydro_test_embedded::unordered_output::capitalize_unordered::outputs::output>` is not implemented for `hydro_lang::live_collections::stream::NoOrder`
+      but trait `OrderAcknowledgedBy<hydro_lang::live_collections::stream::NoOrder, hydro_test_embedded::unordered_output::capitalize_unordered::outputs::output>` is implemented for it
+ --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+  |
+  | impl<End> OrderAcknowledgedBy<NoOrder, End> for NoOrder {}
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = help: for that trait implementation, expected `hydro_lang::live_collections::stream::NoOrder`, found `hydro_lang::live_collections::stream::TotalOrder`
+  = note: required for `hydro_test_embedded::unordered_output::capitalize_unordered::outputs::output` to implement `AcknowledgedBy<hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::AtLeastOnce>`
+note: required by a bound in `EmbeddedOutputChannel::<M, S>::new`
+ --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+  |
+  |     pub fn new<O, R>(inner: S, acknowledgements: Acknowledgements<O, R>) -> Self
+  |            --- required by a bound in this associated function
+  |     where
+  |         M: AcknowledgedBy<O, R>,
+  |            ^^^^^^^^^^^^^^^^^^^^ required by this bound in `EmbeddedOutputChannel::<M, S>::new`

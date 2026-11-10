@@ -1,7 +1,7 @@
 use hydro_lang::live_collections::OperatorContext;
 use hydro_lang::live_collections::keyed_stream::KeyedStream;
 use hydro_lang::live_collections::sliced::sliced;
-use hydro_lang::live_collections::stream::{ExactlyOnce, NoOrder, TotalOrder};
+use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
 use hydro_lang::location::MemberId;
 use hydro_lang::location::tick::Tick;
 use hydro_lang::networking::NetworkFor;
@@ -61,7 +61,7 @@ fn hash_demux<'a, F, N: NetworkFor<Request>>(
         Cluster<'a, GossipServer>,
         Unbounded,
         N::OrderingGuarantee,
-        ExactlyOnce,
+        N::RetriesGuarantee,
     >,
     Stream<Vec<MemberId<GossipServer>>, Cluster<'a, GossipServer>, Unbounded>,
 )
@@ -224,6 +224,8 @@ pub fn gossip_server_versioned<'a>(
 
 #[cfg(test)]
 mod tests {
+    use hydro_lang::live_collections::stream::ExactlyOnce;
+
     use super::*;
 
     /// Write to member 0, read from member 1; both should see the value because gossip replicates

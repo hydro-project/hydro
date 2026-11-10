@@ -137,8 +137,10 @@ pub const PARTITION: OperatorConstraints = OperatorConstraints {
         };
 
         Ok(OperatorWriteOutput {
+            write_prologue: Default::default(),
             write_iterator,
-            ..Default::default()
+            write_iterator_after: Default::default(),
+            write_tick_end: Default::default(),
         })
     },
 };
@@ -303,16 +305,21 @@ fn extract_closure_idents(
         ));
     };
 
-    let idents = pat_slice
-        .elems
-        .iter()
-        .map(|pat| {
-            let Pat::Ident(pat_ident) = pat else {
-                panic!("TODO(mingwei) expected ident pat");
-            };
-            pat_ident.ident.clone()
-        })
-        .collect();
+    let mut idents = Vec::with_capacity(pat_slice.elems.len());
+    for pat in &pat_slice.elems {
+        let Pat::Ident(pat_ident) = pat else {
+            return Err(Diagnostic::spanned(
+                pat.span(),
+                Level::Error,
+                format!(
+                    "Each element of the `{}` closure's slice pattern must be an identifier. \
+                    For example: `[foo, bar]`.",
+                    op_name
+                ),
+            ));
+        };
+        idents.push(pat_ident.ident.clone());
+    }
 
     // Last step: set the type `[a, b, c]: [usize; 3]` if it is not already specified.
     if !already_has_type {
@@ -374,4 +381,34 @@ fn check_closure_ports_match(
         }
     }
     (!err).then_some(()).ok_or(())
+}
+
+#[cfg(test)]
+mod tests {
+    use syn::parse_quote;
+
+    use super::*;
+
+    /// A slice element that is not an identifier, such as `[foo, 0]`, must be a
+    /// spanned error diagnostic rather than a compiler panic.
+    #[test]
+    fn non_ident_slice_element_is_diagnostic() {
+        let mut func: Expr = parse_quote! {
+            |val, [foo, 0]| foo
+        };
+        let err = extract_closure_idents(&mut func, "partition").expect_err(
+            "non-ident slice element should be a diagnostic, not a panic",
+        );
+        assert_eq!(Level::Error, err.level);
+        assert!(
+            err.message.contains("`partition`"),
+            "diagnostic should name the operator, got: {}",
+            err.message
+        );
+        assert!(
+            err.message.contains("[foo, bar]"),
+            "diagnostic should show a valid ident slice, got: {}",
+            err.message
+        );
+    }
 }

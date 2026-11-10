@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::marker::PhantomData;
 
 use dfir_lang::graph::{
@@ -25,6 +26,9 @@ pub struct BuiltFlow<'a> {
 
     /// Compile-time sidecar directives extracted from the flow state.
     pub(super) sidecars: Vec<super::builder::Sidecar>,
+
+    /// Clusters whose code reads their own member ID.
+    pub(super) clusters_reading_self_id: HashSet<LocationKey>,
 
     /// Application name used in telemetry.
     pub(super) flow_name: String,
@@ -83,7 +87,7 @@ impl<'a> BuiltFlow<'a> {
         &self.location_names
     }
 
-    /// Get a GraphApi instance for this built flow
+    /// Get a `GraphApi` instance for this built flow
     #[cfg(stageleft_runtime)]
     #[cfg(feature = "viz")]
     pub fn graph_api(&self) -> GraphApi<'_> {
@@ -200,6 +204,7 @@ impl<'a> BuiltFlow<'a> {
             clusters,
             externals,
             sidecars: self.sidecars,
+            clusters_reading_self_id: self.clusters_reading_self_id,
             as_code_options: Default::default(),
             flow_name: self.flow_name,
             _phantom: PhantomData,

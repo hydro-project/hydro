@@ -1,0 +1,5 @@
+error: Each element of the `partition` closure's slice pattern must be an identifier. For example: `[foo, bar]`.
+ --> tests/compile-fail/nightly/surface_partition_non_ident.rs:5:69
+  |
+5 |         my_partition = source_iter(0..10) -> partition(|item, [foo, 0]| {
+  |                                                                     ^

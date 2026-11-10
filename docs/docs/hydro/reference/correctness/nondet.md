@@ -200,6 +200,6 @@ In general, avoid such APIs inside transformation functions unless the non-deter
 
 :::info
 
-To help avoid such bugs, we are working on ways to use formal verification tools (such as [Kani](https://model-checking.github.io/kani/)) to check arbitrary Rust code for properties such as determinism and more. This remains active research for now and is not yet available.
+Formal verification can already check some of these properties. When a closure's correctness depends on an algebraic property, such as commutativity of a `fold` over an unordered stream, you can have [Verus](https://verus-lang.github.io/verus/guide/) machine-check it from the closure body instead of relying on a written justification; see [Proof Obligations](./proof-obligations.md). Checking arbitrary Rust code for determinism in general remains active research.
 
 :::

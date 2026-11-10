@@ -1,5 +1,5 @@
 //! Tests that short-circuiting operators do not break stateful operators.
-//! See https://github.com/hydro-project/hydro/issues/2334
+//! See <https://github.com/hydro-project/hydro/issues/2334>
 use std::time::Duration;
 
 use dfir_rs::util::collect_ready_async;

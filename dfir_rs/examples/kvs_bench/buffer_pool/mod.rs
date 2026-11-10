@@ -16,10 +16,10 @@ pub struct BufferPool<const SIZE: usize> {
     buffers: Vec<Rc<RefCell<[u8; SIZE]>>>,
 }
 
-/// This buffer will be returned to it's owning buffer pool when it is dropped.
-/// In order to return it, it has to know where it is being returned to, this is the [collector] member.
-/// The collector pointer is weak because otherwise there would be a cycle between BufferPool and AutoReturnBufferInner
-/// and an AutoReturnBufferInner does not logically have any kind of ownership over the BufferPool shared pool.
+/// This buffer will be returned to its owning buffer pool when it is dropped.
+/// In order to return it, it has to know where it is being returned to, this is the `collector` member.
+/// The collector pointer is weak because otherwise there would be a cycle between `BufferPool` and `AutoReturnBufferInner`
+/// and an `AutoReturnBufferInner` does not logically have any kind of ownership over the `BufferPool` shared pool.
 #[derive(Clone, Debug)]
 pub struct AutoReturnBuffer<const SIZE: usize> {
     pub collector: Weak<RefCell<BufferPool<SIZE>>>,

@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use dfir_lang::diagnostic::Diagnostics;
@@ -17,13 +18,12 @@ use crate::compile::deploy_provider::{Deploy, DynSourceSink, Node, RegisterPort}
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use crate::compile::trybuild::generate::LinkingMode;
 use crate::compile::trybuild::generate::{
-    BuiltArtifact, CONCURRENT_TEST_LOCK, ExampleBuildConfig, IS_TEST, TrybuildConfig,
-    compile_trybuild_example, create_trybuild, write_atomic, write_staged_source_cached,
+    CONCURRENT_TEST_LOCK, ExampleBuildConfig, IS_TEST, TrybuildConfig, compile_trybuild_example,
+    create_trybuild, write_atomic, write_staged_source_cached,
 };
 use crate::deploy::deploy_runtime::cluster_membership_stream;
+use crate::location::LocationKey;
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MembershipEvent};
 use crate::staging_util::get_this_crate;
 
 crate::newtype_counter! {
@@ -406,34 +406,24 @@ impl<'a> Deploy<'a> for SimDeploy {
         })
     }
 
-    #[expect(unreachable_code, reason = "todo!() is unreachable")]
-    fn cluster_ids(
-        _of_cluster: LocationKey,
-    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
+    fn cluster_ids(_of_cluster: LocationKey) -> syn::Expr {
         todo!("cluster_ids is not yet supported in simulation");
-        stageleft::q!(todo!())
     }
 
-    #[expect(unreachable_code, reason = "todo!() is unreachable")]
-    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
+    fn cluster_self_id() -> syn::Expr {
         todo!("cluster_self_id is not yet supported in simulation");
-        stageleft::q!(todo!())
     }
 
     fn cluster_membership_stream(
         _env: &mut Self::InstantiateEnv,
         _at_location: &LocationId,
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<
-        'a,
-        Box<dyn futures::Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>,
-        (),
-    > {
-        cluster_membership_stream(location_id)
+    ) -> syn::Expr {
+        cluster_membership_stream(location_id).splice_untyped()
     }
 }
 
-pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<BuiltArtifact, ()> {
+pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<PathBuf, ()> {
     compile_trybuild_example(ExampleBuildConfig {
         trybuild,
         bin_name: bin,
@@ -443,7 +433,6 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<Built
         example_name: "sim-dylib".to_owned(),
         crate_type: Some("cdylib"),
         set_trybuild_lib_name: true,
-        allow_fuzz: true,
     })
 }
 
@@ -460,7 +449,7 @@ pub(super) fn create_sim_graph_trybuild(
 ) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
-    let crate_name = source_manifest.package.name.replace("-", "_");
+    let crate_name = source_manifest.package.name.replace('-', "_");
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
@@ -491,17 +480,11 @@ pub(super) fn create_sim_graph_trybuild(
 
     let bin_name = hash;
 
-    let (project_dir, target_dir, mut cur_bin_enabled_features) = create_trybuild().unwrap();
+    let (project_dir, target_dir, dylib_package_name, mut cur_bin_enabled_features) =
+        create_trybuild().unwrap();
 
-    let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
-
-    // Sim builds use dynamic linking, so put examples in dylib-examples crate
-    // Fuzzing does not, so put them in the main trybuild project dir
-    let examples_dir = if is_fuzz {
-        path!(project_dir / "examples")
-    } else {
-        path!(project_dir / "dylib-examples" / "examples")
-    };
+    // Sim examples link the trybuild dylib dynamically, from the dylib-examples crate.
+    let examples_dir = path!(project_dir / "dylib-examples" / "examples");
 
     // TODO(shadaj): garbage collect this directory occasionally
     fs::create_dir_all(path!(project_dir / "src")).unwrap();
@@ -535,6 +518,7 @@ pub(super) fn create_sim_graph_trybuild(
         TrybuildConfig {
             project_dir,
             target_dir,
+            dylib_package_name,
             features: cur_bin_enabled_features,
             #[cfg(any(feature = "deploy", feature = "maelstrom"))]
             linking_mode: LinkingMode::Dynamic,
@@ -719,8 +703,8 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased<()>)>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased<()>)>,
             #root::sim::runtime::Hooks,
             #root::sim::runtime::ObservationHooks,
             #root::sim::runtime::InlineHooks,
@@ -799,8 +783,8 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
-            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased)>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased<()>)>,
+            Vec<(#root::location::dynamic::LocationId, Option<u32>, __root_dfir_rs::scheduled::context::DfirErased<()>)>,
             #root::sim::runtime::Hooks,
             #root::sim::runtime::ObservationHooks,
             #root::sim::runtime::InlineHooks,

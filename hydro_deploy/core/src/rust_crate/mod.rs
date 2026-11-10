@@ -41,7 +41,9 @@ pub struct RustCrate {
     rustflags: Option<String>,
     target_dir: Option<PathBuf>,
     build_env: Vec<(String, String)>,
-    is_dylib: bool,
+    /// If set, the crate is a generated trybuild `dylib-examples` crate whose examples link
+    /// dynamically against the trybuild dylib with this cargo package name.
+    dylib_package: Option<String>,
     no_default_features: bool,
     features: Option<Vec<String>>,
     config: Vec<String>,
@@ -67,7 +69,7 @@ impl RustCrate {
             rustflags: None,
             target_dir: None,
             build_env: vec![],
-            is_dylib: false,
+            dylib_package: None,
             no_default_features: false,
             features: None,
             config: vec![],
@@ -82,9 +84,11 @@ impl RustCrate {
     /// Sets the target to be a binary with the given name,
     /// equivalent to `cargo run --bin <name>`.
     pub fn bin(mut self, bin: impl Into<String>) -> Self {
-        if self.target != CrateTarget::Default {
-            panic!("{} already set", name_of!(target in Self));
-        }
+        assert!(
+            self.target == CrateTarget::Default,
+            "{} already set",
+            name_of!(target in Self)
+        );
 
         self.target = CrateTarget::Bin(bin.into());
         self
@@ -93,9 +97,11 @@ impl RustCrate {
     /// Sets the target to be an example with the given name,
     /// equivalent to `cargo run --example <name>`.
     pub fn example(mut self, example: impl Into<String>) -> Self {
-        if self.target != CrateTarget::Default {
-            panic!("{} already set", name_of!(target in Self));
-        }
+        assert!(
+            self.target == CrateTarget::Default,
+            "{} already set",
+            name_of!(target in Self)
+        );
 
         self.target = CrateTarget::Example(example.into());
         self
@@ -104,27 +110,33 @@ impl RustCrate {
     /// Sets the profile to be used when building the crate.
     /// Equivalent to `cargo run --profile <profile>`.
     pub fn profile(mut self, profile: impl Into<String>) -> Self {
-        if self.profile.is_some() {
-            panic!("{} already set", name_of!(profile in Self));
-        }
+        assert!(
+            self.profile.is_none(),
+            "{} already set",
+            name_of!(profile in Self)
+        );
 
         self.profile = Some(profile.into());
         self
     }
 
     pub fn rustflags(mut self, rustflags: impl Into<String>) -> Self {
-        if self.rustflags.is_some() {
-            panic!("{} already set", name_of!(rustflags in Self));
-        }
+        assert!(
+            self.rustflags.is_none(),
+            "{} already set",
+            name_of!(rustflags in Self)
+        );
 
         self.rustflags = Some(rustflags.into());
         self
     }
 
     pub fn target_dir(mut self, target_dir: impl Into<PathBuf>) -> Self {
-        if self.target_dir.is_some() {
-            panic!("{} already set", name_of!(target_dir in Self));
-        }
+        assert!(
+            self.target_dir.is_none(),
+            "{} already set",
+            name_of!(target_dir in Self)
+        );
 
         self.target_dir = Some(target_dir.into());
         self
@@ -135,11 +147,15 @@ impl RustCrate {
         self
     }
 
-    pub fn set_is_dylib(mut self, is_dylib: bool) -> Self {
-        self.is_dylib = is_dylib;
+    /// Marks this crate as a generated trybuild `dylib-examples` crate whose examples link
+    /// dynamically against the trybuild dylib with cargo package name `dylib_package`.
+    #[must_use]
+    pub fn dylib_package(mut self, dylib_package: impl Into<String>) -> Self {
+        self.dylib_package = Some(dylib_package.into());
         self
     }
 
+    #[must_use]
     pub fn no_default_features(mut self) -> Self {
         self.no_default_features = true;
         self
@@ -164,9 +180,11 @@ impl RustCrate {
     }
 
     pub fn tracing(mut self, perf: impl Into<TracingOptions>) -> Self {
-        if self.tracing.is_some() {
-            panic!("{} already set", name_of!(tracing in Self));
-        }
+        assert!(
+            self.tracing.is_none(),
+            "{} already set",
+            name_of!(tracing in Self)
+        );
 
         self.tracing = Some(perf.into());
         self
@@ -180,9 +198,11 @@ impl RustCrate {
 
     /// Sets the display name for this service, which will be used in logging.
     pub fn display_name(mut self, display_name: impl Into<String>) -> Self {
-        if self.display_name.is_some() {
-            panic!("{} already set", name_of!(display_name in Self));
-        }
+        assert!(
+            self.display_name.is_none(),
+            "{} already set",
+            name_of!(display_name in Self)
+        );
 
         self.display_name = Some(display_name.into());
         self
@@ -194,6 +214,7 @@ impl RustCrate {
         self
     }
 
+    #[must_use]
     pub fn pin_to_core(mut self, core: usize) -> Self {
         self.pin_to_core = Some(core);
         self
@@ -217,7 +238,7 @@ impl RustCrate {
             self.build_env.clone(),
             self.no_default_features,
             target,
-            self.is_dylib,
+            self.dylib_package.clone(),
             self.features.clone(),
             self.config.clone(),
         )

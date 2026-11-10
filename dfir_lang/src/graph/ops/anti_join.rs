@@ -100,7 +100,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     #accum_neg
 
-                    #root::dfir_pipes::pull::Pull::filter(#input_pos, |(k, _)| {
+                    #root::dfir_pipes::pull::Pull::filter(#input_pos, |(k, _v)| {
                         !#neg_ident.contains(k)
                     })
                 };
@@ -117,7 +117,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                     let () = #work_fn_async(fut).await;
 
                     // Replay out of pos vec
-                    let iter = ::std::iter::Iterator::filter(#pos_ident.iter(), |(k, _)| {
+                    let iter = ::std::iter::Iterator::filter(#pos_ident.iter(), |(k, _v)| {
                         !#neg_ident.contains(k)
                     });
                     let iter = ::std::iter::Iterator::cloned(iter);
@@ -132,11 +132,11 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                 #write_prologue_neg
             },
             write_iterator,
+            write_iterator_after: Default::default(),
             write_tick_end: quote_spanned! {op_span=>
                 #write_tick_end_pos
                 #write_tick_end_neg
             },
-            ..Default::default()
         })
     },
 };

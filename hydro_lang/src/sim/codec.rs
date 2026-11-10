@@ -13,7 +13,7 @@ use crate::staging_util::get_this_crate;
 /// A serialization codec for values crossing the simulation dylib boundary.
 ///
 /// The test and simulation dylib exchange only encoded bytes, so custom codecs do not need to
-/// use [`serde`]. See [`BincodeCodec`] for the default.
+/// use [`serde`]. See [`RmpCodec`] for the default.
 ///
 /// The codec is selected purely at the type level, as a type parameter of
 /// [`Stream::sim_output_with`], [`Location::sim_input_with`] and their cluster
@@ -58,17 +58,22 @@ pub trait SimCodec<T> {
     fn decode(bytes: &[u8]) -> T;
 }
 
-/// The default simulation codec, using [`bincode`].
+/// The default simulation codec, using [MessagePack](https://msgpack.org/) via [`rmp_serde`].
+///
+/// Values are encoded with named struct fields ([`rmp_serde::to_vec_named`]), making the
+/// encoding self-describing. Unlike `bincode` (the previous default), this supports serde
+/// attributes that require `deserialize_any`, such as `#[serde(untagged)]` and
+/// `#[serde(flatten)]`.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct BincodeCodec;
+pub struct RmpCodec;
 
-impl<T: Serialize + DeserializeOwned> SimCodec<T> for BincodeCodec {
+impl<T: Serialize + DeserializeOwned> SimCodec<T> for RmpCodec {
     fn encode(value: &T) -> Vec<u8> {
-        bincode::serialize(value).unwrap()
+        rmp_serde::to_vec_named(value).unwrap()
     }
 
     fn decode(bytes: &[u8]) -> T {
-        bincode::deserialize(bytes).unwrap()
+        rmp_serde::from_slice(bytes).unwrap()
     }
 }
 

@@ -35,13 +35,13 @@
 //!
 //! | Implementation | Space Efficiency | Merge Speed | Lookup Speed | False Positives |
 //! |----------------|------------------|-------------|--------------|-----------------|
-//! | RoaringBitmap  | Excellent        | Excellent   | Excellent    | None            |
+//! | `RoaringBitmap`  | Excellent        | Excellent   | Excellent    | None            |
 //! | FST            | Very Good        | Good        | Very Good    | None            |
-//! | HashSet        | Poor             | Good        | Excellent    | None            |
+//! | `HashSet`        | Poor             | Good        | Excellent    | None            |
 //!
 //! # Performance Considerations
 //!
-//! - **RoaringBitmap:** Optimized for dense integer sets. Very fast for all operations.
+//! - **`RoaringBitmap`:** Optimized for dense integer sets. Very fast for all operations.
 //! - **FST:** The `extend()` operation rebuilds the entire FST, so batch your insertions.
 //!   Use `from_iter()` when possible for better performance.
 //!

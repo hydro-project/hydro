@@ -146,7 +146,7 @@ impl<'a, C, Con: Consistency> TopLevel<'a> for Cluster<'a, C, Con> {}
 
 #[cfg(feature = "sim")]
 impl<'a, C> Cluster<'a, C> {
-    /// Sets up a bincode-encoded simulated input port on this cluster for testing.
+    /// Sets up a MessagePack-encoded simulated input port on this cluster for testing.
     ///
     /// Returns a `SimClusterSender` that sends `(member_id, T)` messages targeting
     /// specific cluster members, and a `Stream<T>` received by each member. Use
@@ -177,7 +177,7 @@ impl<'a, C> Cluster<'a, C> {
     where
         T: serde::Serialize + serde::de::DeserializeOwned,
     {
-        self.sim_input_with::<crate::sim::codec::BincodeCodec, T, O, R>()
+        self.sim_input_with::<crate::sim::codec::RmpCodec, T, O, R>()
     }
 
     /// Sets up a simulated input port on this cluster using the codec `Codec`.
@@ -305,6 +305,10 @@ where
         let LocationId::Cluster(cluster_id) = ctx.context_location().root().id() else {
             unreachable!()
         };
+        crate::location::dynamic::DynLocation::flow_state(ctx.context_location())
+            .borrow_mut()
+            .clusters_reading_self_id
+            .insert(cluster_id);
 
         let ident = syn::Ident::new(
             &format!("__hydro_lang_cluster_self_id_{}", cluster_id),
@@ -417,9 +421,9 @@ mod tests {
                     },
                 );
 
-                assert!(grouped.len() == 2);
+                assert_eq!(grouped.len(), 2);
                 for (_id, v) in grouped {
-                    assert!(v == 3);
+                    assert_eq!(v, 3);
                 }
             });
 

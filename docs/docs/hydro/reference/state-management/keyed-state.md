@@ -37,7 +37,7 @@ let total_spent: KeyedSingleton<&str, i32, _, _> =
 # }));
 ```
 
-When the input keyed stream is unbounded, the resulting keyed singleton is a live view: new keys appear as they are first seen, and each key's value updates as more of its elements arrive. Just like aggregations on streams, keyed aggregations require **property annotations** (`commutative = manual_proof!(...)`, `idempotent = manual_proof!(...)`) when the input has weaker ordering or retry guarantees; see [Keyed Streams](../streaming-data/keyed-streams.mdx) for details.
+When the input keyed stream is unbounded, the resulting keyed singleton is a live view: new keys appear as they are first seen, and each key's value updates as more of its elements arrive. Just like aggregations on streams, keyed aggregations require **property annotations** (`commutative = ...`, `idempotent = ...`) when the input has weaker ordering or retry guarantees; see [Keyed Streams](../streaming-data/keyed-streams.mdx) and [Proof Obligations](../correctness/proof-obligations.md) for details.
 
 :::tip
 

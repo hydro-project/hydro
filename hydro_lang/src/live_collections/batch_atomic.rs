@@ -1,5 +1,5 @@
 use super::boundedness::{Bounded, Unbounded};
-use crate::live_collections::keyed_singleton::KeyedSingletonBound;
+use crate::live_collections::keyed_singleton::KeyedSingletonSnapshotBound;
 use crate::live_collections::optional::OptionalBound;
 use crate::live_collections::singleton::SingletonBound;
 use crate::live_collections::stream::{Ordering, Retries};
@@ -50,7 +50,7 @@ impl<'a, L: Location<'a>, T, B: OptionalBound> BatchAtomic<'a>
     }
 }
 
-impl<'a, L: Location<'a>, K, V, B: KeyedSingletonBound<ValueBound = Unbounded>> BatchAtomic<'a>
+impl<'a, L: Location<'a>, K, V, B: KeyedSingletonSnapshotBound> BatchAtomic<'a>
     for super::KeyedSingleton<K, V, Atomic<L>, B>
 {
     type Batched = super::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;

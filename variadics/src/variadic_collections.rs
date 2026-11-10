@@ -1,12 +1,12 @@
 #[cfg(feature = "alloc")]
 use core::fmt;
-use core::hash::{BuildHasher, Hash};
+use core::hash::{BuildHasher, Hash, Hasher};
 
 use hashbrown::hash_table::{Entry, HashTable};
 
 #[cfg(feature = "alloc")]
 use crate::VecVariadic;
-use crate::{PartialEqVariadic, VariadicExt};
+use crate::{HashVariadic, PartialEqVariadic, VariadicExt};
 
 /// Trait for a set of Variadic Tuples
 pub trait VariadicCollection: Extend<Self::Schema> {
@@ -35,12 +35,20 @@ pub trait VariadicCollection: Extend<Self::Schema> {
 /// trait for sets or multisets of variadics
 pub trait VariadicSet: VariadicCollection {}
 
+/// Hashes a variadic of references with `hasher`, producing the same hash as
+/// `hasher.hash_one(owned_variadic)` would. See [`HashVariadic`].
+fn hash_ref_var<T: HashVariadic, S: BuildHasher>(hasher: &S, ref_var: T::AsRefVar<'_>) -> u64 {
+    let mut state = hasher.build_hasher();
+    T::hash_ref(ref_var, &mut state);
+    state.finish()
+}
+
 /// Default implementation of a set.
 #[cfg(feature = "std")]
 pub type VariadicHashSetStd<T> = VariadicHashSet<T, std::hash::RandomState>;
 
-/// HashSet that stores Variadics of owned values but allows
-/// for lookups with RefVariadics as well
+/// `HashSet` that stores Variadics of owned values but allows
+/// for lookups with `RefVariadics` as well
 #[derive(Clone)]
 pub struct VariadicHashSet<T, S> {
     table: HashTable<T>,
@@ -70,8 +78,8 @@ where
 #[cfg(feature = "alloc")]
 impl<T, S> fmt::Debug for VariadicHashSet<T, S>
 where
-    T: fmt::Debug + VariadicExt + PartialEqVariadic + Eq + Hash,
-    for<'a> T::AsRefVar<'a>: Hash + fmt::Debug,
+    T: fmt::Debug + VariadicExt + PartialEqVariadic + Eq + Hash + HashVariadic,
+    for<'a> T::AsRefVar<'a>: fmt::Debug,
     S: BuildHasher,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -81,13 +89,12 @@ where
 
 impl<T, S> VariadicHashSet<T, S>
 where
-    T: PartialEqVariadic,
-    for<'a> T::AsRefVar<'a>: Hash,
+    T: PartialEqVariadic + HashVariadic,
     S: BuildHasher,
 {
-    /// given a RefVariadic lookup key, get a RefVariadic version of a tuple in the set
+    /// given a `RefVariadic` lookup key, get a `RefVariadic` version of a tuple in the set
     pub fn get<'a>(&'a self, ref_var: T::AsRefVar<'_>) -> Option<&'a T> {
-        let hash = self.hasher.hash_one(ref_var);
+        let hash = hash_ref_var::<T, _>(&self.hasher, ref_var);
         self.table.find(hash, |item| {
             <T as PartialEqVariadic>::eq_ref(ref_var, item.as_ref_var())
         })
@@ -95,19 +102,18 @@ where
 }
 impl<T, S> VariadicCollection for VariadicHashSet<T, S>
 where
-    T: VariadicExt + PartialEqVariadic + Eq + Hash,
-    for<'a> T::AsRefVar<'a>: Hash,
+    T: VariadicExt + PartialEqVariadic + Eq + Hash + HashVariadic,
     S: BuildHasher,
 {
     type Schema = T;
 
     fn insert(&mut self, element: T) -> bool {
         // let hash = Self::get_hash(&self.hasher, element.as_ref_var());
-        let hash = self.hasher.hash_one(element.as_ref_var());
+        let hash = hash_ref_var::<T, _>(&self.hasher, element.as_ref_var());
         let entry = self.table.entry(
             hash,
             |item| <T as PartialEqVariadic>::eq(&element, item),
-            |item| self.hasher.hash_one(item.as_ref_var()),
+            |item| hash_ref_var::<T, _>(&self.hasher, item.as_ref_var()),
         );
         match entry {
             Entry::Occupied(_occupied_entry) => false,
@@ -140,8 +146,7 @@ where
 }
 impl<T, S> VariadicSet for VariadicHashSet<T, S>
 where
-    T: VariadicExt + PartialEqVariadic + Eq + Hash,
-    for<'a> T::AsRefVar<'a>: Hash,
+    T: VariadicExt + PartialEqVariadic + Eq + Hash + HashVariadic,
     S: BuildHasher,
 {
 }
@@ -160,14 +165,14 @@ where
 }
 
 impl<T, S> VariadicHashSet<T, S> {
-    /// allocate a new VariadicHashSet with a specific hasher
+    /// allocate a new `VariadicHashSet` with a specific hasher
     pub fn with_hasher(hasher: S) -> Self {
         Self {
             table: HashTable::new(),
             hasher,
         }
     }
-    /// allocate a new VariadicHashSet with a specific hasher and capacity
+    /// allocate a new `VariadicHashSet` with a specific hasher and capacity
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
         Self {
             table: HashTable::with_capacity(capacity),
@@ -179,9 +184,8 @@ impl<T, S> VariadicHashSet<T, S> {
 // THIS CODE ADAPTED FROM hashbrown::HashMap
 impl<K, S> Extend<K> for VariadicHashSet<K, S>
 where
-    K: Eq + Hash + PartialEqVariadic,
+    K: Eq + Hash + PartialEqVariadic + HashVariadic,
     S: BuildHasher,
-    for<'a> K::AsRefVar<'a>: Hash,
 {
     fn extend<T: IntoIterator<Item = K>>(&mut self, iter: T) {
         // Keys may be already present or show multiple times in the iterator.
@@ -194,8 +198,9 @@ where
         } else {
             iter.size_hint().0.div_ceil(2)
         };
-        self.table
-            .reserve(reserve, |item| self.hasher.hash_one(item));
+        self.table.reserve(reserve, |item| {
+            hash_ref_var::<K, _>(&self.hasher, item.as_ref_var())
+        });
 
         iter.for_each(move |k| {
             self.insert(k);
@@ -205,9 +210,8 @@ where
 
 impl<T, S> PartialEq for VariadicHashSet<T, S>
 where
-    T: Eq + Hash + PartialEqVariadic,
+    T: Eq + Hash + PartialEqVariadic + HashVariadic,
     S: BuildHasher,
-    for<'a> T::AsRefVar<'a>: Hash,
 {
     fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
@@ -219,9 +223,8 @@ where
 
 impl<T, S> FromIterator<T> for VariadicHashSet<T, S>
 where
-    T: Eq + Hash + PartialEqVariadic,
+    T: Eq + Hash + PartialEqVariadic + HashVariadic,
     S: BuildHasher + Default,
-    for<'a> T::AsRefVar<'a>: Hash,
     // A: Default + Allocator,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
@@ -238,8 +241,8 @@ pub type VariadicCountedHashSetStd<K> = VariadicCountedHashSet<K, std::hash::Ran
 /// Trait for a multiset of Tuples
 pub trait VariadicMultiset: VariadicCollection {}
 
-/// HashMap keyed on Variadics of (owned value, count) pairs, allows
-/// for lookups with RefVariadics.
+/// `HashMap` keyed on Variadics of (owned value, count) pairs, allows
+/// for lookups with `RefVariadics`.
 #[derive(Clone)]
 pub struct VariadicCountedHashSet<K, S>
 where
@@ -278,8 +281,8 @@ where
 #[cfg(feature = "alloc")]
 impl<K, S> fmt::Debug for VariadicCountedHashSet<K, S>
 where
-    K: fmt::Debug + VariadicExt + PartialEqVariadic,
-    for<'a> K::AsRefVar<'a>: Hash + fmt::Debug,
+    K: fmt::Debug + VariadicExt + PartialEqVariadic + HashVariadic,
+    for<'a> K::AsRefVar<'a>: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.table.iter()).finish()
@@ -288,13 +291,12 @@ where
 
 impl<K, S> VariadicCountedHashSet<K, S>
 where
-    K: PartialEqVariadic,
-    for<'a> K::AsRefVar<'a>: Hash,
+    K: PartialEqVariadic + HashVariadic,
     S: BuildHasher,
 {
-    /// given a RefVariadic lookup key, get a RefVariadic version of an entry in the map
+    /// given a `RefVariadic` lookup key, get a `RefVariadic` version of an entry in the map
     pub fn get<'a>(&'a self, ref_var: K::AsRefVar<'_>) -> Option<&'a (K, usize)> {
-        let hash = self.hasher.hash_one(ref_var);
+        let hash = hash_ref_var::<K, _>(&self.hasher, ref_var);
         self.table.find(hash, |(key, _val)| {
             <K as PartialEqVariadic>::eq_ref(ref_var, key.as_ref_var())
         })
@@ -303,19 +305,18 @@ where
 
 impl<K, S> VariadicCollection for VariadicCountedHashSet<K, S>
 where
-    K: VariadicExt + PartialEqVariadic + Eq + Hash + Clone,
-    for<'a> K::AsRefVar<'a>: Hash,
+    K: VariadicExt + PartialEqVariadic + Eq + Hash + Clone + HashVariadic,
     S: BuildHasher,
 {
     type Schema = K;
 
     fn insert(&mut self, element: K) -> bool {
-        let hash = self.hasher.hash_one(element.as_ref_var());
+        let hash = hash_ref_var::<K, _>(&self.hasher, element.as_ref_var());
         self.table
             .entry(
                 hash,
                 |(item, _count)| <K as PartialEqVariadic>::eq(&element, item),
-                |(item, _count)| self.hasher.hash_one(item.as_ref_var()),
+                |(item, _count)| hash_ref_var::<K, _>(&self.hasher, item.as_ref_var()),
             )
             .and_modify(|(_, count)| *count += 1)
             .or_insert((element, 1));
@@ -353,8 +354,7 @@ where
 
 impl<K, S> VariadicMultiset for VariadicCountedHashSet<K, S>
 where
-    K: VariadicExt + PartialEqVariadic + Eq + Hash + Clone,
-    for<'a> K::AsRefVar<'a>: Hash,
+    K: VariadicExt + PartialEqVariadic + Eq + Hash + Clone + HashVariadic,
     S: BuildHasher,
 {
 }
@@ -412,7 +412,7 @@ impl<K, S> VariadicCountedHashSet<K, S>
 where
     K: VariadicExt,
 {
-    /// allocate a new VariadicCountedHashSet with a specific hasher
+    /// allocate a new `VariadicCountedHashSet` with a specific hasher
     pub fn with_hasher(hasher: S) -> Self {
         Self {
             table: HashTable::new(),
@@ -420,7 +420,7 @@ where
             len: 0,
         }
     }
-    /// allocate a new VariadicCountedHashSet with a specific hasher and capacity
+    /// allocate a new `VariadicCountedHashSet` with a specific hasher and capacity
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
         Self {
             table: HashTable::with_capacity(capacity),
@@ -433,9 +433,8 @@ where
 // THIS CODE ADAPTED FROM hashbrown::HashTable
 impl<K, S> Extend<K> for VariadicCountedHashSet<K, S>
 where
-    K: Eq + Hash + PartialEqVariadic + Clone,
+    K: Eq + Hash + PartialEqVariadic + Clone + HashVariadic,
     S: BuildHasher,
-    for<'a> K::AsRefVar<'a>: Hash,
 {
     fn extend<T: IntoIterator<Item = K>>(&mut self, iter: T) {
         // Keys may be already present or show multiple times in the iterator.
@@ -448,8 +447,9 @@ where
         } else {
             iter.size_hint().0.div_ceil(2)
         };
-        self.table
-            .reserve(reserve, |item| self.hasher.hash_one(item));
+        self.table.reserve(reserve, |(item, _count)| {
+            hash_ref_var::<K, _>(&self.hasher, item.as_ref_var())
+        });
         iter.for_each(move |key| {
             // TODO: super inefficient. Need a insert_with_count method
             self.insert(key);
@@ -459,9 +459,8 @@ where
 
 impl<T, S> PartialEq for VariadicCountedHashSet<T, S>
 where
-    T: Eq + Hash + PartialEqVariadic + Clone,
+    T: Eq + Hash + PartialEqVariadic + Clone + HashVariadic,
     S: BuildHasher,
-    for<'a> T::AsRefVar<'a>: Hash,
 {
     fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
@@ -481,9 +480,8 @@ where
 
 impl<T, S> FromIterator<T> for VariadicCountedHashSet<T, S>
 where
-    T: Eq + Hash + PartialEqVariadic + Clone,
+    T: Eq + Hash + PartialEqVariadic + Clone + HashVariadic,
     S: BuildHasher + Default,
-    for<'a> T::AsRefVar<'a>: Hash,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut set = Self::with_hasher(Default::default());
@@ -493,7 +491,7 @@ where
 }
 
 /// Column storage for Variadic tuples of type Schema
-/// An alternative to VariadicHashMultiset
+/// An alternative to `VariadicHashMultiset`
 #[cfg(feature = "alloc")]
 #[derive(Clone)]
 pub struct VariadicColumnMultiset<Schema>
@@ -529,10 +527,15 @@ where
 }
 
 #[cfg(feature = "alloc")]
+// NOTE: unlike the hashbrown-backed sets above, this impl deliberately has *no*
+// `for<'a> Schema::AsRefVar<'a>: Hash` bound: the columnar store never hashes rows (`contains` is a
+// linear scan via `PartialEqVariadic::eq_ref`). Beyond being unused, that higher-ranked bound over a
+// `where Self: 'a` GAT is expensive for the new trait solver when `Schema` contains a region (e.g.
+// `&'static str`): it was re-solved once per level of the recursive `ColtGet` impls in `lattices`,
+// blowing compile memory up exponentially in the number of columns (30+ GB for 4 columns).
 impl<Schema> VariadicCollection for VariadicColumnMultiset<Schema>
 where
     Schema: PartialEqVariadic + Eq + Hash,
-    for<'a> <Schema as VariadicExt>::AsRefVar<'a>: Hash,
 {
     type Schema = Schema;
 
@@ -570,18 +573,16 @@ where
 }
 
 #[cfg(feature = "alloc")]
-impl<Schema> VariadicMultiset for VariadicColumnMultiset<Schema>
-where
-    Schema: PartialEqVariadic + Eq + Hash,
-    for<'a> <Schema as VariadicExt>::AsRefVar<'a>: Hash,
+impl<Schema> VariadicMultiset for VariadicColumnMultiset<Schema> where
+    Schema: PartialEqVariadic + Eq + Hash
 {
 }
 
 #[cfg(feature = "alloc")]
 impl<T> fmt::Debug for VariadicColumnMultiset<T>
 where
-    T: fmt::Debug + VariadicExt + PartialEqVariadic + Eq + Hash,
-    for<'a> T::AsRefVar<'a>: Hash + fmt::Debug,
+    T: fmt::Debug + VariadicExt + PartialEqVariadic + Eq + Hash + HashVariadic,
+    for<'a> T::AsRefVar<'a>: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.iter()).finish()
@@ -606,7 +607,6 @@ where
 impl<K> Extend<K> for VariadicColumnMultiset<K>
 where
     K: Eq + Hash + PartialEqVariadic,
-    for<'a> K::AsRefVar<'a>: Hash,
 {
     fn extend<T: IntoIterator<Item = K>>(&mut self, iter: T) {
         let iter = iter.into_iter();

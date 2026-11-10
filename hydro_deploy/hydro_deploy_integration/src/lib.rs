@@ -448,9 +448,8 @@ async fn async_retry<T, E, F: Future<Output = Result<T, E>>>(
         let result = thunk().await;
         if result.is_ok() {
             return result;
-        } else {
-            tokio::time::sleep(delay).await;
         }
+        tokio::time::sleep(delay).await;
     }
 
     thunk().await

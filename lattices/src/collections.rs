@@ -782,7 +782,7 @@ impl<T> Collection for OptionSet<T> {
 }
 impl<T> Len for OptionSet<T> {
     fn len(&self) -> usize {
-        self.0.is_some() as usize
+        usize::from(self.0.is_some())
     }
 }
 impl<T> CollectionRef for OptionSet<T> {
@@ -873,7 +873,7 @@ impl<K, V> Collection for OptionMap<K, V> {
 }
 impl<K, V> Len for OptionMap<K, V> {
     fn len(&self) -> usize {
-        self.0.is_some() as usize
+        usize::from(self.0.is_some())
     }
 }
 impl<K, V> CollectionRef for OptionMap<K, V> {

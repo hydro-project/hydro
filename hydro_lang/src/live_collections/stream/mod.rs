@@ -78,7 +78,7 @@ impl Ordering for NoOrder {
 #[sealed::sealed]
 pub trait WeakerOrderingThan<Other: ?Sized>: Ordering {}
 #[sealed::sealed]
-impl<O: Ordering, O2: Ordering> WeakerOrderingThan<O2> for O where O: MinOrder<O2, Min = O> {}
+impl<O, O2: Ordering> WeakerOrderingThan<O2> for O where O: Ordering + MinOrder<O2, Min = O> {}
 
 /// Helper trait for determining the weakest of two orderings.
 #[sealed::sealed]
@@ -132,7 +132,7 @@ impl Retries for AtLeastOnce {
 #[sealed::sealed]
 pub trait WeakerRetryThan<Other: ?Sized>: Retries {}
 #[sealed::sealed]
-impl<R: Retries, R2: Retries> WeakerRetryThan<R2> for R where R: MinRetries<R2, Min = R> {}
+impl<R, R2: Retries> WeakerRetryThan<R2> for R where R: Retries + MinRetries<R2, Min = R> {}
 
 /// Helper trait for determining the weakest of two retry guarantees.
 #[sealed::sealed]
@@ -153,9 +153,10 @@ impl<R: Retries> MinRetries<R> for AtLeastOnce {
 
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "The input stream must be totally-ordered (`TotalOrder`), but has order `{Self}`. Strengthen the order upstream or consider a different API.",
+    message = "the input stream must be totally ordered (`TotalOrder`), but has order `{Self}`",
     label = "required here",
-    note = "To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+    note = "strengthen the order upstream, or consider a different API",
+    note = "to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary"
 )]
 /// Marker trait that is implemented for the [`TotalOrder`] ordering guarantee.
 pub trait IsOrdered: Ordering {}
@@ -166,9 +167,10 @@ impl IsOrdered for TotalOrder {}
 
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "The input stream must be exactly-once (`ExactlyOnce`), but has retries `{Self}`. Strengthen the retries guarantee upstream or consider a different API.",
+    message = "the input stream must be exactly-once (`ExactlyOnce`), but has retries `{Self}`",
     label = "required here",
-    note = "To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+    note = "strengthen the retries guarantee upstream, or consider a different API",
+    note = "to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary"
 )]
 /// Marker trait that is implemented for the [`ExactlyOnce`] retries guarantee.
 pub trait IsExactlyOnce: Retries {}
@@ -1138,7 +1140,7 @@ where
             .map(q!(|(d, _)| d))
     }
 
-    /// Passes this stream through if the argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is empty.
+    /// Passes this stream through if the argument (a [`Bounded`] [`Optional`]) is non-null, otherwise the output is empty.
     ///
     /// Useful for gating the release of elements based on a condition, such as only processing requests if you are the
     /// leader of a cluster.
@@ -1177,7 +1179,7 @@ where
         self.filter_if(signal.is_some())
     }
 
-    /// Passes this stream through if the argument (a [`Bounded`] [`Optional`]`) is null, otherwise the output is empty.
+    /// Passes this stream through if the argument (a [`Bounded`] [`Optional`]) is null, otherwise the output is empty.
     ///
     /// Useful for gating the release of elements based on a condition, such as triggering a protocol if you are missing
     /// some local state.
@@ -2230,15 +2232,21 @@ where
     {
         let tick = self.location.tick();
 
-        let latest_received = self.assume_retries::<ExactlyOnce>(nondet).fold(
-            q!(|| None),
-            q!(
-                |latest, _| {
-                    *latest = Some(Instant::now());
-                },
-                commutative = manual_proof!(/** TODO */)
-            ),
-        );
+        let latest_received = self
+            .assume_retries::<ExactlyOnce>(nondet!(
+                /// duplicates only affect the timestamp of the latest element, which is
+                /// captured by the caller's guard
+                nondet
+            ))
+            .fold(
+                q!(|| None),
+                q!(
+                    |latest, _| {
+                        *latest = Some(Instant::now());
+                    },
+                    commutative = manual_proof!(/** TODO */)
+                ),
+            );
 
         latest_received
             .snapshot(
@@ -2371,7 +2379,7 @@ where
     /// for the rest of the program.
     pub fn assume_ordering<O2: Ordering>(
         self,
-        mut nondet: NonDet<Option<crate::sim_hooks::OrderingHook<T, B, L::SimHookScope>>>,
+        mut nondet: NonDet<Option<crate::sim_hooks::OrderingHook<T, B, R, L::SimHookScope>>>,
     ) -> Stream<T, L::DropConsistency, B, O2, R> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
             self.use_ordering_type().weaken_consistency()
@@ -2484,9 +2492,16 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
+    ///
+    /// In simulation tests, the retry decisions (how many times each element is
+    /// observed) can be scripted by attaching a
+    /// [`RetriesHook`](crate::sim_hooks::RetriesHook) to the guard via
+    /// `nondet!(/** reason */ hook = my_hook)`. Because every element admits arbitrarily
+    /// many retries, this non-determinism cannot be explored autonomously: simulating a
+    /// program containing a strengthening `assume_retries` **requires** a bound hook.
     pub fn assume_retries<R2: Retries>(
         self,
-        _nondet: NonDet,
+        mut nondet: NonDet<Option<crate::sim_hooks::RetriesHook<T, O, B, L::SimHookScope>>>,
     ) -> Stream<T, L::DropConsistency, B, O, R2> {
         if R::RETRIES_KIND == R2::RETRIES_KIND {
             Stream::new(
@@ -2506,13 +2521,15 @@ where
             )
         } else {
             let target_location = self.location.drop_consistency();
+            let mut metadata =
+                target_location.new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind());
+            metadata.op.sim_hook_id = nondet.take_hook().map(|hook| hook.id);
             Stream::new(
                 target_location.clone(),
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                     trusted: false,
-                    metadata: target_location
-                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
+                    metadata,
                 },
             )
         }
@@ -4008,9 +4025,10 @@ mod tests {
         flow.sim().exhaustive(async || {
             in_send.send_many_unordered([1, 2, 3]);
 
-            if out_recv.collect::<Vec<_>>().await == vec![(1, 3), (2, 2)] {
-                panic!("saw both (1, 3) and (2, 2), so batching must have shuffled the order");
-            }
+            assert!(
+                out_recv.collect::<Vec<_>>().await != vec![(1, 3), (2, 2)],
+                "saw both (1, 3) and (2, 2), so batching must have shuffled the order"
+            )
         });
     }
 
@@ -4102,7 +4120,7 @@ mod tests {
 
         let instance_count = flow.sim().exhaustive(async || {
             in_send.send_many_unordered([1, 2, 3, 4]);
-            assert!(out_recv.collect::<Vec<_>>().await.last().unwrap() == &4);
+            assert_eq!(out_recv.collect::<Vec<_>>().await.last(), Some(&4));
         });
 
         assert_eq!(
@@ -4512,7 +4530,7 @@ mod tests {
         assert_eq!(instances, 6);
     }
 
-    /// Tests that merge_ordered passes through elements when only one input
+    /// Tests that `merge_ordered` passes through elements when only one input
     /// has data.
     #[cfg(feature = "sim")]
     #[test]
@@ -4539,8 +4557,8 @@ mod tests {
         assert_eq!(instances, 1);
     }
 
-    /// Tests that merge_ordered correctly handles feedback cycles.
-    /// An element output from merge_ordered is filtered and cycled back to
+    /// Tests that `merge_ordered` correctly handles feedback cycles.
+    /// An element output from `merge_ordered` is filtered and cycled back to
     /// one of its inputs. The one-at-a-time release must allow the cycled-back
     /// element to arrive and potentially be emitted before elements still
     /// waiting on the other input.
@@ -4594,7 +4612,7 @@ mod tests {
         );
     }
 
-    /// Tests that merge_ordered correctly interleaves when one input has a
+    /// Tests that `merge_ordered` correctly interleaves when one input has a
     /// delayed element. With a: [1, _delay_, 2] and b: [3, 4], the delayed
     /// element 2 should be able to appear after b's elements.
     #[cfg(feature = "sim")]
@@ -4642,7 +4660,7 @@ mod tests {
         assert!(saw_delayed_interleaving);
     }
 
-    /// Deploy test: merge_ordered with a delayed element on one input.
+    /// Deploy test: `merge_ordered` with a delayed element on one input.
     /// Sends a=1, b=3, b=4, then after receiving those, sends a=2.
     /// Expects to see [1, 3, 4] first, then [2] — demonstrating that
     /// both inputs are pulled and the delayed element arrives later.
@@ -5213,7 +5231,7 @@ mod tests {
     }
 
     /// A map with a mut singleton ref on a top-level unordered input should produce > 1
-    /// simulation instance. Currently panics because observe_nondet doesn't support
+    /// simulation instance. Currently panics because `observe_nondet` doesn't support
     /// top-level bounded inputs yet.
     #[cfg(feature = "sim")]
     #[test]

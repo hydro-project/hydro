@@ -54,9 +54,9 @@ use crate::live_collections::singleton::Singleton;
 #[cfg(feature = "sim")]
 #[cfg(stageleft_runtime)]
 use crate::live_collections::stream::networking::serialize_bincode;
-use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
-#[cfg(feature = "tokio")]
-use crate::live_collections::stream::{Ordering, Retries};
+use crate::live_collections::stream::{
+    ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
+};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::dynamic::{ClusterConsistency, LocationId};
@@ -138,7 +138,7 @@ impl std::str::FromStr for LocationKey {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let nvn = s.strip_prefix("loc").ok_or(None)?;
-        let (idx, ver) = nvn.split_once("v").ok_or(None)?;
+        let (idx, ver) = nvn.split_once('v').ok_or(None)?;
         let idx: u64 = idx.parse()?;
         let ver: u64 = ver.parse()?;
         Ok(slotmap::KeyData::from_ffi((ver << 32) | idx).into())
@@ -638,7 +638,7 @@ pub trait Location<'a>: DynLocation {
         )
     }
 
-    /// Sets up a bincode-encoded simulated input port on this location for testing.
+    /// Sets up a MessagePack-encoded simulated input port on this location for testing.
     ///
     /// Returns a handle to send messages to the location as well as a stream
     /// of received messages. Use [`Location::sim_input_with`] to select another codec.
@@ -654,7 +654,7 @@ pub trait Location<'a>: DynLocation {
         Self: TopLevel<'a> + Sized,
         T: Serialize + DeserializeOwned,
     {
-        self.sim_input_with::<crate::sim::codec::BincodeCodec, T, O, R>()
+        self.sim_input_with::<crate::sim::codec::RmpCodec, T, O, R>()
     }
 
     /// Sets up a simulated input port using the codec `C`.
@@ -694,13 +694,17 @@ pub trait Location<'a>: DynLocation {
 
     /// Creates an external input stream for embedded deployment mode.
     ///
-    /// The `name` parameter specifies the name of the generated function parameter
-    /// that will supply data to this stream at runtime. The generated function will
-    /// accept an `impl Stream<Item = T> + Unpin` argument with this name.
-    fn embedded_input<T>(
+    /// The `name` parameter specifies the name of the field in the generated `EmbeddedInputs`
+    /// struct that will supply data to this stream at runtime: a
+    /// [`EmbeddedInputChannel`](crate::compile::embedded_runtime::EmbeddedInputChannel) around the host's
+    /// `Stream<Item = T> + Unpin`. The stream's ordering `O` and retries `R` are what the
+    /// dataflow relies on, so they are what the host must promise: declare only what the
+    /// dataflow relies on (for example `NoOrder` if it does not use the stream's order), and the
+    /// host promises nothing more.
+    fn embedded_input<T, O: Ordering, R: Retries>(
         &self,
         name: impl Into<String>,
-    ) -> Stream<T, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> Stream<T, Self::DropConsistency, Unbounded, O, R>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -711,13 +715,8 @@ pub trait Location<'a>: DynLocation {
             target_location.clone(),
             HydroNode::Source {
                 source: HydroSource::Embedded(ident),
-                metadata: target_location.new_node_metadata(Stream::<
-                    T,
-                    Self,
-                    Unbounded,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
+                metadata: target_location
+                    .new_node_metadata(Stream::<T, Self, Unbounded, O, R>::collection_kind()),
             },
         )
     }

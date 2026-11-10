@@ -134,7 +134,7 @@ pub trait VariadicExt: Variadic {
     type Reverse: VariadicExt;
     /// Reverses this variadic value.
     fn reverse(self) -> Self::Reverse;
-    /// Reverses an AsRefVar variadic value
+    /// Reverses an `AsRefVar` variadic value
     fn reverse_ref(this: Self::AsRefVar<'_>) -> <Self::Reverse as VariadicExt>::AsRefVar<'_>;
 
     /// The length of this variadic type
@@ -192,7 +192,7 @@ pub trait VariadicExt: Variadic {
 
     /// type for all elements of the variadic being wrapped in `Option`
     type IntoOption;
-    /// wrap all elements of the variadic in `Option``
+    /// wrap all elements of the variadic in `Option`
     fn into_option(self) -> Self::IntoOption;
 
     /// type for all elements of the variadic being wrapped in `Vec`
@@ -601,6 +601,41 @@ impl PartialEqVariadic for () {
     }
 }
 
+/// A variadic where all items implement [`Hash`](core::hash::Hash).
+///
+/// [`Self::hash_ref`] hashes an [`VariadicExt::AsRefVar`] exactly as the owned variadic (or the
+/// `AsRefVar` itself) would be hashed through the [`Hash`](core::hash::Hash) impls for tuples and
+/// references, so the two can be used interchangeably for lookups.
+///
+/// Prefer bounding on this trait rather than on `for<'a> T::AsRefVar<'a>: Hash`: that higher-ranked
+/// bound over a `where Self: 'a` GAT is very expensive for the new trait solver when `T` contains
+/// a region (e.g. `&'static str`), blowing up compile time and memory exponentially in the depth
+/// of generic code that re-proves it (such as the recursive GHT/COLT impls in `lattices`).
+///
+/// This is a sealed trait.
+#[sealed]
+pub trait HashVariadic: VariadicExt {
+    /// Hashes the `AsRefVar` version of `Self`.
+    fn hash_ref<H: core::hash::Hasher>(this: Self::AsRefVar<'_>, state: &mut H);
+}
+#[sealed]
+impl<Item, Rest> HashVariadic for (Item, Rest)
+where
+    Item: core::hash::Hash,
+    Rest: HashVariadic,
+{
+    fn hash_ref<H: core::hash::Hasher>(this: <Self as VariadicExt>::AsRefVar<'_>, state: &mut H) {
+        let var_args!(item, ...rest) = this;
+        item.hash(state);
+        Rest::hash_ref(rest, state);
+    }
+}
+#[sealed]
+impl HashVariadic for () {
+    fn hash_ref<H: core::hash::Hasher>(_this: <Self as VariadicExt>::AsRefVar<'_>, _state: &mut H) {
+    }
+}
+
 /// A variadic where all elements are the same type, `T`.
 ///
 /// This is a sealed trait.
@@ -778,16 +813,16 @@ pub trait VecVariadic: VariadicExt {
     /// Individual variadic items without the Vec wrapper
     type UnVec: VariadicExt<IntoVec = Self>;
 
-    /// zip across all the vecs in this VariadicVec
+    /// zip across all the vecs in this `VariadicVec`
     fn zip_vecs(&self) -> impl Iterator<Item = <Self::UnVec as VariadicExt>::AsRefVar<'_>>;
 
-    /// append an unvec'ed Variadic into this VariadicVec
+    /// append an unvec'ed Variadic into this `VariadicVec`
     fn push(&mut self, item: Self::UnVec);
 
     /// get the unvec'ed Variadic at position `index`
     fn get(&mut self, index: usize) -> Option<<Self::UnVec as VariadicExt>::AsRefVar<'_>>;
 
-    /// result type from into_zip
+    /// result type from `into_zip`
     type IntoZip: Iterator<Item = Self::UnVec>;
     /// Turns into an iterator of items `UnVec` -- i.e. iterate through rows (not columns!).
     fn into_zip(self) -> Self::IntoZip;
@@ -895,7 +930,7 @@ mod test {
     #[test]
     // #[expect(clippy::let_unit_value, reason = "var_expr macro test")]
     fn test_basic_expr() {
-        let _ = var_expr!();
+        let () = var_expr!();
         let _ = var_expr!(1);
         let _ = var_expr!(1, "b",);
         let _ = var_expr!("a",);

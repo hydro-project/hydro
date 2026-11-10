@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Network Configuration
 
-When sending data between locations in Hydro (e.g. via `.send()`, `.broadcast()`, or `.demux()`), you must provide a networking configuration that specifies the transport, fault tolerance policy, and serialization format. These are configured by specifying a network protocol and using a builder-style API.
+When sending data between locations in Hydro (e.g. via `.send()`, `.broadcast()`, or `.demux()`), you must provide a networking configuration that specifies the transport, fault tolerance policy, and serialization format (for [`EMBEDDED`](#embedded) channels, the serialization is performed by the host). These are configured by specifying a network protocol and using a builder-style API.
 
 A typical networking configuration looks like:
 
@@ -36,37 +36,41 @@ Serialization configures how data is encoded and decoded when sent over the netw
 
 The `.bincode()` API configures the channel to use the [`bincode`](https://docs.rs/bincode) crate for serialization and deserialization. The types being sent must implement `Serialize` and `DeserializeOwned`. Bincode is currently the only built-in wire format — the one where Hydro performs the encoding and decoding for you — and it works on all deployment backends.
 
-### Embedded
+## EMBEDDED
 
-The `.embedded()` API configures the channel to leave serialization to code **outside of Hydro**. Instead of Hydro serializing elements to bytes, the raw element type `T` is exposed at the network boundary: the generated sender side hands you `T` values directly, and the receiver side accepts a stream of `T` values. You are then responsible for encoding, transporting, and decoding the elements yourself—for example with a custom wire format, a specialized transport like DPDK or shared memory, or an existing messaging layer.
+`EMBEDDED` is for [embedded deployments](../deploy/embedded.mdx), where the host program that runs the generated code implements every channel itself: over a network connection, through an in-memory queue, with a specialized transport like DPDK or shared memory, or with an existing messaging layer. The config names the **anomalies** the host's channel may introduce: for each one, it must declare whether the channel may exhibit the anomaly or may not exhibit the anomaly. Failing to declare what the channel will do with regards to an anomaly will result in a compilation error.
+
+| Anomaly | Never | May | Received stream when it may |
+|---|---|---|---|
+| Reordering | `.never_reorders()` | `.may_reorder()`: deliver a sender's messages out of order | `NoOrder` |
+| Duplication | `.never_duplicates()` | `.may_duplicate()`: deliver a message more than once | `AtLeastOnce` |
+| Loss | `.never_drops()` | `.may_drop(nondet!(..))`: lose messages and keep delivering later ones, like `TCP.lossy(..)` | as `TCP.lossy(..)` |
+| | | `.may_delay_forever()`: never deliver a message, treated as delayed forever, like `TCP.lossy_delayed_forever()` | `NoOrder` |
+
+Like every guarantee of a channel, the `never_*` declarations hold as long as the channel remains live: a channel that `.never_drops()` delivers every message while it is up, and nothing more once it fails, like `TCP.fail_stop()`. A channel that leaves an anomaly undeclared does not compile.
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
-let config = TCP.fail_stop().embedded().name("messages");
+let config = EMBEDDED.may_reorder().never_duplicates().never_drops().name("messages");
 ```
 
-Embedded serialization works with any transport configuration, including [UDP](#udp):
+Each embedded channel is unidirectional and has two ends, an input and an output. For channels that move data from the dataflow to the embedded host, the network configuration dictates what guarantees and behavior the embedded host can expect from the channel. For channels that move data from the embedded host to the data flow, the network configuration determines what guarantees and behavior the embedded host must uphold.
 
-```rust,no_run
-# use hydro_lang::prelude::*;
-let config = UDP.lossy_delayed_forever().embedded().name("messages");
-```
+As with TCP and UDP, the Hydro simulator requires [`.test_safety_only()`](rust:hydro_lang::sim::flow::SimFlow::test_safety_only) for `may_delay_forever()`, and does not support `may_drop` yet.
 
-Note that with embedded serialization, the transport and fault policy describe a **contract** rather than an implementation: since your external code carries the data, *you* must ensure your transport upholds the declared guarantees (e.g. in-order, prefix delivery for `TCP.fail_stop()`; for `UDP` channels, messages may be dropped or reordered, and Hydro's type system will treat the received stream accordingly, as `NoOrder`).
-
-Because there is no transport managed by Hydro, the receiving side gets the raw payload with no transport `Result` to unwrap—your external code decides how to handle serialization and delivery faults before feeding elements into the receiver.
+`EMBEDDED` channels are never serialized by Hydro: the raw element type `T` is exposed at the channel boundary, so the generated sender side hands the host `T` values directly, and the receiver side accepts a stream of `T` values. The host encodes them only if its transport needs to (an in-memory queue never does). Because no transport managed by Hydro is involved, the receiving side gets the raw payload with no transport `Result` to unwrap: the host decides how to handle serialization and delivery faults before feeding elements into the receiver.
 
 :::caution
 
-Embedded serialization is only supported in [embedded deployments](../deploy/embedded.mdx) (where you wire up network channels manually) and the Hydro simulator (where raw values are carried directly through in-memory channels). Attempting to use `.embedded()` with other deployment backends, such as Hydro Deploy or Maelstrom, will panic at compile time; use `.bincode()` there instead.
+`EMBEDDED` is only supported in [embedded deployments](../deploy/embedded.mdx) and the Hydro simulator (where raw values are carried directly through in-memory channels). Other deployment backends, such as Hydro Deploy or Maelstrom, run the transport themselves and panic at compile time on an `EMBEDDED` channel; use [TCP](#tcp) or [UDP](#udp) with `.bincode()` there instead. (Embedded deployments also support `TCP`/`UDP` channels, in which case Hydro serializes to bytes and the host only moves them.)
 
 :::
 
-See [Embedded Mode: Embedded Serialization](../deploy/embedded.mdx#embedded-serialization) for details on the generated code.
+See [Embedded Mode: Host-Implemented Channels](../deploy/embedded.mdx#host-implemented-channels-embedded) for details on the generated code.
 
 ## TCP
 
-TCP is one of two available transport backends (see also [UDP](#udp)). When using `TCP`, you **must** choose a fault tolerance policy before configuring serialization. Calling `TCP.bincode()` directly will result in a compile error—you need to first call `.fail_stop()`, `.lossy_delayed_forever()`, or `.lossy()`.
+TCP is one of two transport backends Hydro runs itself (see also [UDP](#udp), and [EMBEDDED](#embedded) for host-implemented channels). When using `TCP`, you **must** choose a fault tolerance policy before configuring serialization. Calling `TCP.bincode()` directly will result in a compile error—you need to first call `.fail_stop()`, `.lossy_delayed_forever()`, or `.lossy()`.
 
 ### Fail-Stop
 

@@ -37,11 +37,11 @@ pub const REMOVAL_PROBABILITY: f32 = 1.0 / 4.0;
 /// Runs an instance of a server that gossips new chat messages with other instances of the server.
 ///
 /// The servers are protocol-compatible with the broadcast-based server run by
-/// [crate::server::run_server], so can be used with the existing client
-/// ([crate::client::run_client]).
+/// [`crate::server::run_server`], so can be used with the existing client
+/// ([`crate::client::run_client`]).
 ///
 /// The implementation is based on "Epidemic algorithms for replicated database maintenance"
-/// (https://dl.acm.org/doi/epdf/10.1145/41840.41841). Specifically, it implements push-based
+/// (<https://dl.acm.org/doi/epdf/10.1145/41840.41841>). Specifically, it implements push-based
 /// "rumor-mongering" with a blind-coin removal process described below.
 ///
 /// At every "cycle" a server chooses, randomly, one peer from a group of five servers. It then
@@ -51,7 +51,7 @@ pub const REMOVAL_PROBABILITY: f32 = 1.0 / 4.0;
 ///
 /// A "blind-coin" removal process is used. After a server gossips the known rumors with randomly
 /// selected peers, each message is dropped with a 1/K probability. K can be configured by changing
-/// [REMOVAL_PROBABILITY]. The removal is "blind" because the server doesn't check if the receiving
+/// [`REMOVAL_PROBABILITY`]. The removal is "blind" because the server doesn't check if the receiving
 /// peer already knew the message, i.e. it doesn't rely on a feedback mechanism from the peer to
 /// drive the process. The removal is "coin" based because it relies on pure chance (instead of
 /// keeping track using a counter).
@@ -162,7 +162,7 @@ pub(crate) async fn run_gossiping_server(opts: Opts) {
         // are blindly removed with a 1/K probability after this.
         source_interval(Duration::from_secs(1)) -> [0]triggered_messages; // The time trigger to perform a round of gossip
         triggered_messages = cross_join()
-            -> map(|(_, message)| {
+            -> map(|((), message)| {
                     // Choose a random peer
                     let random_peer = other_members.choose(&mut rng()).unwrap();
                     (message, gossip_address(random_peer))

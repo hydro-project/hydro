@@ -4,3 +4,4 @@ pub mod m2m_broadcast;
 pub mod m2o_send;
 pub mod o2m_broadcast;
 pub mod o2m_demux_embedded;
+pub mod self_id;

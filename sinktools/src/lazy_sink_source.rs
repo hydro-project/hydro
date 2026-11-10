@@ -95,13 +95,13 @@ impl<Fut, St, Si, Item, Error> LazySinkSource<Fut, St, Si, Item, Error> {
     }
 }
 
-/// Sink half of the SinkSource
+/// Sink half of the `SinkSource`
 pub struct LazySinkHalf<Fut, St, Si, Item, Error> {
     state: Rc<RefCell<SharedState<Fut, St, Si, Item>>>,
     _phantom: PhantomData<Error>,
 }
 
-/// Stream half of the SinkSource
+/// Stream half of the `SinkSource`
 pub struct LazySourceHalf<Fut, St, Si, Item, Error> {
     state: Rc<RefCell<SharedState<Fut, St, Si, Item>>>,
     _phantom: PhantomData<Error>,

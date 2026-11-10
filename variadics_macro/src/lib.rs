@@ -13,7 +13,7 @@ struct InputLen {
 }
 
 impl Parse for InputLen {
-    fn parse(ts: ParseStream) -> syn::Result<Self> {
+    fn parse(ts: ParseStream<'_>) -> syn::Result<Self> {
         let input = ts.parse()?;
         ts.parse::<syn::Token![,]>()?;
         let len = ts.parse()?;

@@ -38,7 +38,7 @@ impl<Item> Pull for Once<Item> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = if self.item.is_some() { 1 } else { 0 };
+        let n = usize::from(self.item.is_some());
         (n, Some(n))
     }
 

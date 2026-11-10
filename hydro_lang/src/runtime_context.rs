@@ -12,6 +12,12 @@ pub static RUNTIME_CONTEXT: RuntimeContext<'static> = RuntimeContext { _private:
 /// A handle to DFIR [`Context`] which can be used inside quoted code.
 ///
 /// When spliced, it turns into a reference to [`Context`].
+///
+/// The exposed type is `&Context<()>` (the "no metrics" typestate), since whether the actual
+/// runtime context tracks metrics is only decided at deploy time (e.g. by telemetry sidecars).
+/// `Context<()>` only exposes the methods available on *every* `Context<M>` (e.g.
+/// [`Context::current_tick`]), so quoted code type-checked against it will also compile against
+/// the real context regardless of which metrics typestate it ends up with.
 #[derive(Clone, Copy)]
 pub struct RuntimeContext<'a> {
     _private: &'a (),
@@ -21,7 +27,7 @@ impl<'a, Ctx> FreeVariableWithContextWithProps<Ctx, ()> for RuntimeContext<'a>
 where
     Ctx: ContextWithLocation<'a>,
 {
-    type O = &'a Context;
+    type O = &'a Context<()>;
 
     fn to_tokens(self, _ctx: &Ctx) -> (QuoteTokens, ()) {
         (

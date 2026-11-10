@@ -200,9 +200,9 @@ impl ChannelMux {
     }
 }
 
-/// Get or initialize the global ChannelMux for this process.
+/// Get or initialize the global `ChannelMux` for this process.
 ///
-/// The first call creates the TcpListener and spawns the accept loop.
+/// The first call creates the `TcpListener` and spawns the accept loop.
 /// Subsequent calls return the same `Arc<ChannelMux>`.
 pub fn get_or_init_channel_mux() -> Arc<ChannelMux> {
     use std::sync::OnceLock;

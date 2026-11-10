@@ -124,7 +124,7 @@ pub enum GraphNode {
         input: bool,
 
         /// The span of the import!() expression that imported this module.
-        /// The value of this span when the ModuleBoundary node is still inside the module is Span::call_site()
+        /// The value of this span when the `ModuleBoundary` node is still inside the module is `Span::call_site()`
         /// TODO: This could one day reference into the module file itself?
         #[serde(skip, default = "Span::call_site")]
         import_expr: Span,

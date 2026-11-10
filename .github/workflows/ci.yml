@@ -5,15 +5,19 @@ on:
     branches:
       - main
   pull_request:
+  merge_group:
   schedule:
     - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
   workflow_dispatch:
 
 permissions: {}
 
+# Without a group, two runs for the same commit (which GitHub triggers for every stacked PR push) would
+# both run in full. Grouping them by commit makes the second wait for the first, after which `pre_job`
+# skips it as a duplicate. Deliberately no `cancel-in-progress`: see
+# https://github.com/hydro-project/hydro/pull/3344 and https://github.com/orgs/community/discussions/211754.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.base.sha }}-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha || github.ref }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -26,11 +30,18 @@ defaults:
 jobs:
   pre_job:
     runs-on: ubuntu-slim
+    permissions:
+      actions: write # for `cancel_others`
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
+        with:
+          # Cancel still-running runs of this workflow for older commits of the same PR branch (instead of
+          # `concurrency.cancel-in-progress`, see the comment there). PRs only: a scheduled or manual
+          # run must not cancel an in-flight `main` run.
+          cancel_others: ${{ github.event_name == 'pull_request' }}
 
   lint:
     name: All lints and compilation checks
@@ -44,10 +55,12 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         rust_release: [latest-nightly, latest-stable]
         exclude:
-          # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
-          # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
-          # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
-          - rust_release: ${{ (((github.event_name != 'pull_request' && github.event_name != 'push') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
+          # Only run `latest-nightly` for the scheduled/manual nightly snapshot runs, or for PRs
+          # marked `[ci-full]`. For those, the condition is true and 'nothing' is truthy, so the
+          # entire && operator resolves to 'nothing'. Then the || operator resolves to 'nothing' so
+          # we exclude 'nothing'. For everything else (`pull_request`, `push`, `merge_group`), the
+          # condition is false so we exclude 'latest-nightly'. https://stackoverflow.com/a/73822998
+          - rust_release: ${{ (((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
           - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'windows-latest' }}
           - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'macos-latest' }}
 
@@ -71,6 +84,20 @@ jobs:
       - run: rustup component add --toolchain nightly rustfmt
       - run: cargo +nightly fmt --all -- --check
 
+  lint-all:
+    if: ${{ always() }}
+    runs-on: ubuntu-slim
+    name: Lint Result (Full Matrix)
+    needs: [lint]
+    steps:
+      - run: |
+          result="${{ needs.lint.result }}"
+          if [[ $result == "success" || $result == "skipped" ]]; then
+            exit 0
+          else
+            exit 1
+          fi
+
   verus:
     name: Verus proofs
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
@@ -79,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Keep in sync with the `vstd` version pinned in `hydro_test/Cargo.toml` and
-      # `hydro_verus_tests/Cargo.toml`.
+      # `hydro_verus_tests/Cargo.toml` (and the lower bound in `hydro_lang/Cargo.toml`).
       VERUS_VERSION: 0.2026.09.13.671956e
       VERUS_TOOLCHAIN: 1.98.1
     steps:
@@ -122,15 +149,13 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         rust_release: [latest-nightly, latest-stable]
-        # `ci-main` runs most tests; `ci-heavy` runs tests which internally invoke `cargo`
-        # (trybuild compile-fail tests, the `cargo sim` fuzzer, Maelstrom deployments), which
-        # recompile many dependencies and take the target directory lock. See `.config/nextest.toml`.
-        test_flavor: [ci-main, ci-heavy]
         exclude:
-          # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
-          # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
-          # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
-          - rust_release: ${{ (((github.event_name != 'pull_request' && github.event_name != 'push') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
+          # Only run `latest-nightly` for the scheduled/manual nightly snapshot runs, or for PRs
+          # marked `[ci-full]`. For those, the condition is true and 'nothing' is truthy, so the
+          # entire && operator resolves to 'nothing'. Then the || operator resolves to 'nothing' so
+          # we exclude 'nothing'. For everything else (`pull_request`, `push`, `merge_group`), the
+          # condition is false so we exclude 'latest-nightly'. https://stackoverflow.com/a/73822998
+          - rust_release: ${{ (((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
           - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'windows-latest' }}
           - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'macos-latest' }}
 
@@ -155,14 +180,14 @@ jobs:
       - uses: taiki-e/install-action@2b15ad09ca0f06a76791407e35ab20f0b712d615 # nextest
 
       - name: Install Java for Maelstrom
-        if: matrix.os != 'windows-latest' && matrix.test_flavor == 'ci-heavy'
+        if: matrix.os != 'windows-latest'
         uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
           distribution: "temurin"
           java-version: "21"
 
       - name: Download and setup Maelstrom
-        if: matrix.os != 'windows-latest' && matrix.test_flavor == 'ci-heavy'
+        if: matrix.os != 'windows-latest'
         run: |
           MAELSTROM_DIR=$(mktemp -d)
           curl -L -o "$MAELSTROM_DIR/maelstrom.tar.bz2" https://github.com/jepsen-io/maelstrom/releases/download/v0.2.4/maelstrom.tar.bz2
@@ -185,25 +210,25 @@ jobs:
           INSTA_FORCE_PASS: ${{ (matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) && '1' || '' }}
           RUST_BACKTRACE: "1"
           __CARGO_DEFAULT_LIB_METADATA: "1"
-        run: cargo nextest run --profile ${{ matrix.test_flavor }} --no-fail-fast --all-targets --features "deploy,test_embedded,test_ecs,test_docker"
+        run: cargo nextest run --no-fail-fast --all-targets --features "deploy,test_embedded,test_ecs,test_docker"
 
       - name: Run doctests
         id: doctests
-        # Doctests cannot run under nextest, so run them once as part of the main flavor.
-        if: matrix.test_flavor == 'ci-main'
         continue-on-error: ${{ matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
         # Not supported by nextest: https://github.com/nextest-rs/nextest/issues/16
+        #
+        # Deliberately no `--no-capture` (nightly `-Zunstable-options`): rustdoc compiles
+        # uncaptured doctests as standalone binaries instead of merging them, which breaks the
+        # `doctest_init` ctor in `hydro_test` that enables `IS_TEST` for the sim doctests.
         env:
-          # note: no-capture is not supported by doctests, that's why the unstable is needed (nightly only).
-          RUSTDOCFLAGS: ${{ matrix.rust_release == 'latest-nightly' && '-Zunstable-options --no-capture' || '' }}
           RUST_BACKTRACE: "1"
           __CARGO_DEFAULT_LIB_METADATA: "1"
         run: cargo test --no-fail-fast --doc
 
-      # Nightly snapshot update logic: each test flavor packages its snapshot changes and test
-      # outcomes as an artifact. The `nightly-snapshot-pr` job below combines the changes from all
-      # flavors into a single PR, so the PR's CI runs with the full set of updated snapshots.
-      # (Separate per-flavor PRs would each fail CI, since each would be missing the other's changes.)
+      # Nightly snapshot update logic: the Linux nightly leg packages its snapshot changes and test
+      # outcomes as an artifact. The `nightly-snapshot-pr` job below turns them into a PR; doing
+      # that in a separate job keeps this one free of the `issues: write` permission and the
+      # app token.
       - name: Package snapshot changes and test outcomes (nightly only)
         if: matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && matrix.os == 'ubuntu-latest'
         run: |
@@ -214,11 +239,10 @@ jobs:
             echo "No snapshot changes detected"
           else
             echo "Snapshot changes detected"
-            git diff --cached --binary > "$RUNNER_TEMP/nightly-snapshots/changes-${{ matrix.test_flavor }}.patch"
+            git diff --cached --binary > "$RUNNER_TEMP/nightly-snapshots/changes.patch"
           fi
-          cat > "$RUNNER_TEMP/nightly-snapshots/outcomes-${{ matrix.test_flavor }}.json" <<EOF
+          cat > "$RUNNER_TEMP/nightly-snapshots/outcomes.json" <<EOF
           {
-            "test_flavor": "${{ matrix.test_flavor }}",
             "nextest_outcome": "${{ steps.nextest.outcome }}",
             "doctest_outcome": "${{ steps.doctests.outcome }}"
           }
@@ -228,14 +252,36 @@ jobs:
         if: matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: nightly-snapshots-${{ matrix.test_flavor }}
+          name: nightly-snapshots
           path: ${{ runner.temp }}/nightly-snapshots/
           if-no-files-found: error
 
+      # On nightly runs the test steps use `continue-on-error` (and `INSTA_FORCE_PASS`) so that
+      # updated snapshots can be packaged above. Now that the artifacts have been uploaded, fail
+      # the job if any tests failed or any snapshots changed, so the run doesn't show as passing.
+      - name: Fail if tests failed or snapshots changed (nightly only)
+        if: ${{ !cancelled() && matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+        run: |
+          failed=0
+          if [[ "${{ steps.nextest.outcome }}" == "failure" ]]; then
+            echo "::error::cargo nextest failed"
+            failed=1
+          fi
+          if [[ "${{ steps.doctests.outcome }}" == "failure" ]]; then
+            echo "::error::Doctests failed"
+            failed=1
+          fi
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "::error::Snapshots changed (insta/trybuild outputs were updated)"
+            git status --porcelain
+            failed=1
+          fi
+          exit $failed
+
   nightly-snapshot-pr:
-    name: Create combined nightly snapshot update PR
-    # Use always() so this still runs if some `test` matrix legs failed (e.g. the stable legs);
-    # the nightly legs use continue-on-error for the test steps themselves.
+    name: Create nightly snapshot update PR
+    # Use always() so this still runs when `test` matrix legs fail. The nightly leg uploads its
+    # snapshot artifact before deliberately failing on test failures or snapshot changes.
     if: ${{ always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     timeout-minutes: 20
     needs: test
@@ -246,23 +292,22 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Download nightly snapshot artifacts
+      - name: Download nightly snapshot artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          pattern: nightly-snapshots-*
+          # `pattern` rather than `name` so a run whose nightly leg never got to upload (e.g. a
+          # failed checkout) ends up with no changes instead of a download error.
+          pattern: nightly-snapshots
           path: ${{ runner.temp }}/nightly-snapshots
           merge-multiple: true
 
-      - name: Apply snapshot changes from all test flavors
+      - name: Apply snapshot changes
         id: apply_changes
         run: |
-          shopt -s nullglob
-          for patch in "$RUNNER_TEMP/nightly-snapshots"/changes-*.patch; do
-            echo "Applying $patch"
-            # --3way merges cleanly if multiple flavors touched the same file, since all patches
-            # are based on the same commit as this checkout.
-            git apply --3way "$patch"
-          done
+          patch="$RUNNER_TEMP/nightly-snapshots/changes.patch"
+          if [ -f "$patch" ]; then
+            git apply "$patch"
+          fi
           if [ -z "$(git status --porcelain)" ]; then
             echo "No snapshot changes detected"
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -293,7 +338,7 @@ jobs:
           body: |
             [ci-full]
 
-            This PR was automatically generated by the nightly CI run, combining snapshot changes from all test flavors (`ci-main` and `ci-heavy`). Updated insta/trybuild snapshots for nightly Rust builds. Please review the snapshot changes to ensure they are expected.
+            This PR was automatically generated by the nightly CI run. Updated insta/trybuild snapshots for nightly Rust builds. Please review the snapshot changes to ensure they are expected.
           branch: nightly-snapshot-updates
           delete-branch: true
           draft: false
@@ -309,18 +354,14 @@ jobs:
             const prNumber = '${{ steps.create_snapshot_pr.outputs.pull-request-number }}';
             const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
 
-            const artifactDir = path.join(process.env.RUNNER_TEMP, 'nightly-snapshots');
-            const outcomes = fs.existsSync(artifactDir)
-              ? fs.readdirSync(artifactDir)
-                  .filter(f => f.startsWith('outcomes-') && f.endsWith('.json'))
-                  .map(f => JSON.parse(fs.readFileSync(path.join(artifactDir, f), 'utf8')))
-              : [];
-            const hasTestFailures = outcomes.some(o =>
-              o.nextest_outcome === 'failure' || o.doctest_outcome === 'failure'
-            );
-            const resultLines = outcomes.map(o =>
-              `- \`${o.test_flavor}\`: nextest ${o.nextest_outcome}, doctests ${o.doctest_outcome}`
-            ).join('\n');
+            const outcomesPath = path.join(process.env.RUNNER_TEMP, 'nightly-snapshots', 'outcomes.json');
+            const outcomes = fs.existsSync(outcomesPath)
+              ? JSON.parse(fs.readFileSync(outcomesPath, 'utf8'))
+              : { nextest_outcome: 'unknown', doctest_outcome: 'unknown' };
+            const hasTestFailures =
+              outcomes.nextest_outcome === 'failure' || outcomes.doctest_outcome === 'failure';
+            const resultLines =
+              `- nextest: ${outcomes.nextest_outcome}\n- doctests: ${outcomes.doctest_outcome}`;
 
             // Search for existing nightly failure issue
             const { data: issues } = await github.rest.issues.listForRepo({
@@ -428,10 +469,12 @@ jobs:
       matrix:
         rust_release: [latest-nightly, latest-stable]
         exclude:
-          #   # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
-          #   # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
-          #   # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
-          - rust_release: ${{ (((github.event_name != 'pull_request' && github.event_name != 'push') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
+          # Only run `latest-nightly` for the scheduled/manual nightly snapshot runs, or for PRs
+          # marked `[ci-full]`. For those, the condition is true and 'nothing' is truthy, so the
+          # entire && operator resolves to 'nothing'. Then the || operator resolves to 'nothing' so
+          # we exclude 'nothing'. For everything else (`pull_request`, `push`, `merge_group`), the
+          # condition is false so we exclude 'latest-nightly'. https://stackoverflow.com/a/73822998
+          - rust_release: ${{ (((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
 
     env:
       RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-nightly' && 'nightly' || '' }}

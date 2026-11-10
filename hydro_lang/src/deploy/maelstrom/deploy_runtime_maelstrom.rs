@@ -10,6 +10,8 @@
 #![allow(missing_docs, reason = "used internally")]
 
 use std::io::{BufRead, Write};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -42,7 +44,7 @@ pub struct InitBody {
     pub node_ids: Vec<String>,
 }
 
-/// Maelstrom init_ok response body.
+/// Maelstrom `init_ok` response body.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InitOkBody {
     #[serde(rename = "type")]
@@ -56,6 +58,10 @@ pub struct MaelstromMeta {
     pub node_id: String,
     pub node_ids: Vec<String>,
     stdin_tx: tokio::sync::broadcast::Sender<String>,
+    /// Set once this node has received its first post-`init` message from a client or a
+    /// peer node. Until then, outbound node-to-node messages are dropped; see
+    /// [`MaelstromMeta::peers_ready`] for why this is necessary.
+    peers_ready: Arc<AtomicBool>,
 }
 
 impl MaelstromMeta {
@@ -65,9 +71,32 @@ impl MaelstromMeta {
         tokio_stream::wrappers::BroadcastStream::new(self.stdin_tx.subscribe())
     }
 
+    /// A flag that becomes `true` once it is safe to send node-to-node messages.
+    ///
+    /// Maelstrom sets up nodes concurrently: each node's process is launched, registered in
+    /// the simulated network, and sent `init` independently, with no barrier in between. A
+    /// node that answers `init` quickly may therefore start sending to a peer whose process
+    /// Maelstrom has not launched yet. Maelstrom treats a message to an unregistered
+    /// destination as a fatal assertion failure (`Invalid dest for message ...`) and
+    /// permanently stops reading the *sender's* stdout, so every later response from that
+    /// node (e.g. `topology_ok`) is silently lost and the test fails with
+    /// `Client read timeout`.
+    ///
+    /// Jepsen only opens clients after `db/setup!` (launch + `init`) has completed on every
+    /// node, so receiving a client message proves all peers are registered. A message from a
+    /// peer node proves the same thing transitively: peers also hold their outbound messages
+    /// until *they* have been activated, so any peer message we receive was sent after some
+    /// node observed a client message. Dropping outbound messages before activation is
+    /// permitted because node-to-node channels in the Maelstrom backend are lossy.
+    pub fn peers_ready(&self) -> Arc<AtomicBool> {
+        self.peers_ready.clone()
+    }
+
     /// Start receiving incoming messages from clients and other nodes, after launching the DFIR.
     pub fn start_receiving(&self) {
         let tx_clone = self.stdin_tx.clone();
+        let peers_ready = self.peers_ready.clone();
+        let node_ids: std::collections::HashSet<String> = self.node_ids.iter().cloned().collect();
 
         // Spawn thread to read stdin and broadcast lines
         std::thread::spawn(move || {
@@ -75,6 +104,11 @@ impl MaelstromMeta {
             for line in stdin.lock().lines() {
                 match line {
                     Ok(l) => {
+                        if !peers_ready.load(Ordering::Relaxed)
+                            && message_activates_node(&l, &node_ids)
+                        {
+                            peers_ready.store(true, Ordering::Release);
+                        }
                         // Ignore send errors (no receivers)
                         let _ = tx_clone.send(l);
                     }
@@ -85,20 +119,33 @@ impl MaelstromMeta {
     }
 }
 
+/// Whether receiving `line` proves that every node in the cluster has been registered in the
+/// Maelstrom network (see [`MaelstromMeta::peers_ready`]). This is the case for messages from
+/// peer nodes and from Jepsen clients (`c1`, `c2`, ...). Replies from Maelstrom's built-in
+/// services (`lin-kv`, `seq-kv`, ...) do not count: services are registered before any node is
+/// launched, so a service reply can arrive while peers are still being set up.
+fn message_activates_node(line: &str, node_ids: &std::collections::HashSet<String>) -> bool {
+    let Ok(msg) = serde_json::from_str::<MaelstromMessage<serde_json::Value>>(line) else {
+        return false;
+    };
+    node_ids.contains(&msg.src) || msg.src.starts_with('c')
+}
+
 /// Initialize a Maelstrom node by reading the init message from stdin.
-/// Returns the node metadata and sends init_ok response.
+/// Returns the node metadata and sends `init_ok` response.
 /// Also spawns a background thread to read stdin and broadcast lines to subscribers.
 pub fn maelstrom_init() -> MaelstromMeta {
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout();
 
     // Read until the init message arrives. Maelstrom delivers node-to-node
-    // messages to a node's stdin as soon as the process starts, so a
-    // fast-starting peer may already be broadcasting `hydro_data` messages
-    // before the init RPC for this node is sent — the first line on stdin is
-    // not necessarily `init`. Such pre-init messages are dropped: inter-node
-    // channels in the Maelstrom backend are lossy, so dropped messages are
-    // handled the same as network loss.
+    // messages to a node's stdin as soon as the process starts, so a peer
+    // may already be sending `hydro_data` messages before the init RPC for
+    // this node is sent (e.g. after this node was killed and restarted by a
+    // nemesis) — the first line on stdin is not necessarily `init`. Such
+    // pre-init messages are dropped: inter-node channels in the Maelstrom
+    // backend are lossy, so dropped messages are handled the same as network
+    // loss.
     let msg: MaelstromMessage<InitBody> = loop {
         let mut line = String::new();
         let bytes_read = stdin
@@ -127,12 +174,11 @@ pub fn maelstrom_init() -> MaelstromMeta {
                 dest: parsed.dest,
                 body,
             };
-        } else {
-            eprintln!(
-                "dropping message received before init (lossy channel): {}",
-                line.trim_end()
-            );
         }
+        eprintln!(
+            "dropping message received before init (lossy channel): {}",
+            line.trim_end()
+        );
     };
 
     // Set up broadcast channel for stdin lines
@@ -142,6 +188,7 @@ pub fn maelstrom_init() -> MaelstromMeta {
         node_id: msg.body.node_id.clone(),
         node_ids: msg.body.node_ids.clone(),
         stdin_tx,
+        peers_ready: Arc::new(AtomicBool::new(false)),
     };
 
     // Send init_ok response
@@ -162,7 +209,7 @@ pub fn maelstrom_init() -> MaelstromMeta {
 }
 
 /// Get the cluster member IDs from the Maelstrom metadata.
-/// The `meta` parameter is a RuntimeData reference to the MaelstromMeta that will be
+/// The `meta` parameter is a `RuntimeData` reference to the `MaelstromMeta` that will be
 /// available at runtime as `__hydro_lang_maelstrom_meta`.
 pub(super) fn cluster_members<'a>(
     meta: RuntimeData<&'a MaelstromMeta>,
@@ -213,9 +260,12 @@ pub(super) fn cluster_membership_stream<'a>(
 /// Create sink and source for m2m (cluster member to cluster member) communication.
 /// Messages are routed through Maelstrom's network via stdin/stdout.
 pub(super) fn deploy_maelstrom_m2m(meta: RuntimeData<&MaelstromMeta>) -> (syn::Expr, syn::Expr) {
-    // Sink: serialize and write to stdout with Maelstrom message envelope
+    // Sink: serialize and write to stdout with Maelstrom message envelope.
+    // Messages are dropped until the node has been activated by an incoming
+    // client or peer message; see `MaelstromMeta::peers_ready`.
     let sink_expr = q!({
         let node_id = meta.node_id.clone();
+        let peers_ready = meta.peers_ready();
         sinktools::map(
             move |(dest_id, payload): (TaglessMemberId, bytes::Bytes)| {
                 let msg = serde_json::json!({
@@ -226,15 +276,27 @@ pub(super) fn deploy_maelstrom_m2m(meta: RuntimeData<&MaelstromMeta>) -> (syn::E
                         "data": payload.to_vec()
                     }
                 });
-                serde_json::to_string(&msg).unwrap() + "\n"
+                let mut line = serde_json::to_string(&msg).unwrap();
+                line.push('\n');
+                line
             },
-            futures::sink::unfold((), |(), line: String| {
-                Box::pin(async move {
-                    print!("{}", line);
-                    std::io::stdout().flush().ok();
-                    Ok::<_, std::io::Error>(())
-                })
-            }),
+            futures::sink::unfold(
+                peers_ready,
+                |peers_ready: std::sync::Arc<std::sync::atomic::AtomicBool>, line: String| {
+                    Box::pin(async move {
+                        if peers_ready.load(std::sync::atomic::Ordering::Acquire) {
+                            print!("{}", line);
+                            std::io::stdout().flush().ok();
+                        } else {
+                            eprintln!(
+                                "dropping message sent before peers are known to be up (lossy channel): {}",
+                                line.trim_end()
+                            );
+                        }
+                        Ok::<_, std::io::Error>(peers_ready)
+                    })
+                },
+            ),
         )
     })
     .splice_untyped_ctx(&());
@@ -273,8 +335,8 @@ pub(super) fn deploy_maelstrom_m2m(meta: RuntimeData<&MaelstromMeta>) -> (syn::E
 }
 
 /// Creates a stream of client messages from Maelstrom stdin.
-/// Returns tuples of (client_id, message_body) where client_id is the source client
-/// and message_body is the JSON value of the message body.
+/// Returns tuples of `(client_id, message_body)` where `client_id` is the source client
+/// and `message_body` is the JSON value of the message body.
 ///
 /// This function is meant to be used with `source_stream` on a Cluster location.
 pub fn maelstrom_client_source(

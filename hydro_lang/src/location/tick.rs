@@ -463,7 +463,7 @@ mod tests {
             write_ack_recv.assert_yields([1]).await;
             read_send.send(());
 
-            let (_, v) = read_response_recv.next().await;
+            let ((), v) = read_response_recv.next().await;
             assert_eq!(v, 1);
         });
     }

@@ -20,7 +20,7 @@ use crate::staging_util::get_this_crate;
 /// "top-level" operators guarantee "eventual determinism" (per Flo), we do not need to simulate
 /// every possible interleaving of message arrivals and processing. Instead, we only need to
 /// simulate sources of non-determinism at the points in the program where a user intentionally
-/// observes them (such as batch or assume_ordering).
+/// observes them (such as batch or `assume_ordering`).
 ///
 /// Because each tick relies on a set of decisions being made to select their inputs (batch,
 /// snapshot), we emit each tick's code into a separate DFIR graph. Each non-deterministic input
@@ -462,6 +462,169 @@ impl SimBuilder {
             );
         }
     }
+
+    /// Lowers a `batch_atomic` / `snapshot_atomic`: the input already lives in the tick's
+    /// atomic region, so the non-deterministic decision happened where the collection *entered*
+    /// the atomic context and the tick boundary itself is the identity.
+    fn enter_tick_from_atomic(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        out_ident: &syn::Ident,
+        op_meta: &HydroIrOpMetadata,
+        op_name: &str,
+    ) {
+        assert!(
+            op_meta.sim_hook_id.is_none(),
+            "sim hooks are not supported on `{op_name}`: the non-deterministic decision happens \
+             where the collection *enters* the atomic context, not at the atomic tick boundary \
+             (at {})",
+            location_for_op(op_meta).0
+        );
+        self.get_dfir_mut(in_location).add_dfir(
+            parse_quote! {
+                #out_ident = #in_ident;
+            },
+            None,
+            None,
+        );
+    }
+
+    /// Allocates the plumbing shared by every tick-input hook: a buffer that the top-level graph
+    /// pushes arriving items into, and a handoff channel through which the hook releases the
+    /// items chosen for each tick execution into the tick's graph.
+    fn tick_input_plumbing(
+        &mut self,
+        in_location: &LocationId,
+        buffer: TickInputBuffer,
+    ) -> TickInputPlumbing {
+        let hoff_id = self.next_hoff_id.get_and_increment();
+
+        let buffered_ident = syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+        let hoff_send_ident = syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+        let hoff_recv_ident = syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+        self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+            let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+        });
+        let buffer_init: syn::Expr = match buffer {
+            TickInputBuffer::Queue => syn::parse_quote!(::std::collections::VecDeque::new()),
+            TickInputBuffer::KeyedQueues => {
+                syn::parse_quote!(__root_dfir_rs::rustc_hash::FxHashMap::<
+                    _,
+                    ::std::collections::VecDeque<_>,
+                >::default())
+            }
+        };
+        self.add_extra_stmt_internal(
+            in_location,
+            syn::parse_quote! {
+                let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#buffer_init));
+            },
+        );
+
+        TickInputPlumbing {
+            hoff_id,
+            buffer,
+            buffered_ident,
+            hoff_send_ident,
+            hoff_recv_ident,
+        }
+    }
+
+    /// Registers `inner_hook` as the tick-input hook for this boundary, wrapping it as a
+    /// scripted hook when the operator's guard carries a sim hook handle.
+    fn install_tick_input_hook(
+        &mut self,
+        in_location: &LocationId,
+        out_location: &LocationId,
+        plumbing: &TickInputPlumbing,
+        sim_hook_id: Option<usize>,
+        op_location: &str,
+        inner_hook: syn::Expr,
+    ) {
+        if let Some(hook_id) = sim_hook_id {
+            let hook_rc_ident = syn::Ident::new(
+                &format!("__scripted_hook_{}", plumbing.hoff_id),
+                Span::call_site(),
+            );
+            self.add_scripted_hook(
+                hook_id,
+                in_location,
+                out_location,
+                &hook_rc_ident,
+                op_location,
+                inner_hook,
+            );
+        } else {
+            self.add_hook(
+                in_location,
+                out_location,
+                syn::parse_quote!(Box::new(#inner_hook)),
+            );
+        }
+    }
+
+    /// Wires the top-level input into the hook's buffer and the hook's handoff into the tick's
+    /// graph as the windowed output.
+    fn connect_tick_input(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        out_ident: &syn::Ident,
+        out_location: &LocationId,
+        plumbing: &TickInputPlumbing,
+    ) {
+        let TickInputPlumbing {
+            buffered_ident,
+            hoff_recv_ident,
+            ..
+        } = plumbing;
+        let push: dfir_lang::parse::DfirCode = match plumbing.buffer {
+            TickInputBuffer::Queue => parse_quote! {
+                #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+            },
+            TickInputBuffer::KeyedQueues => parse_quote! {
+                #in_ident -> for_each(|(k, v)| #buffered_ident.borrow_mut().entry(k).or_default().push_back(v));
+            },
+        };
+        self.get_dfir_mut(in_location).add_dfir(push, None, None);
+
+        self.get_dfir_mut(out_location).add_dfir(
+            parse_quote! {
+                #out_ident = source_stream(#hoff_recv_ident);
+            },
+            None,
+            None,
+        );
+    }
+}
+
+/// The shape of the buffer a tick-input hook accumulates arriving items into.
+#[derive(Clone, Copy)]
+enum TickInputBuffer {
+    /// A single `VecDeque` of items (streams, singletons, optionals).
+    Queue,
+    /// A `VecDeque` of values per key (keyed streams, keyed singletons).
+    KeyedQueues,
+}
+
+/// Identifiers allocated by [`SimBuilder::tick_input_plumbing`].
+struct TickInputPlumbing {
+    hoff_id: HandoffId,
+    buffer: TickInputBuffer,
+    buffered_ident: syn::Ident,
+    hoff_send_ident: syn::Ident,
+    hoff_recv_ident: syn::Ident,
+}
+
+/// The tick a windowing operator targets: an atomic output location is unwrapped to its tick.
+fn tick_of_out_location(out_location: &LocationId) -> &LocationId {
+    if let LocationId::Atomic(tick) = out_location {
+        tick.as_ref()
+    } else {
+        out_location
+    }
 }
 
 impl DfirBuilder for SimBuilder {
@@ -508,398 +671,209 @@ impl DfirBuilder for SimBuilder {
         out_ident: &syn::Ident,
         out_location: &LocationId,
         op_meta: &HydroIrOpMetadata,
+        _fold_hooked_idents: &HashSet<String>,
+    ) {
+        if let LocationId::Atomic(_) = in_location {
+            self.enter_tick_from_atomic(in_ident, in_location, out_ident, op_meta, "batch_atomic");
+            return;
+        }
+
+        let out_location = tick_of_out_location(out_location);
+        let (batch_location, line, caret) = location_for_op(op_meta);
+        let root = get_this_crate();
+
+        match in_kind {
+            CollectionKind::Stream {
+                order,
+                retry: StreamRetry::ExactlyOnce,
+                element_type,
+                ..
+            } => {
+                debug_assert!(in_location.is_top_level());
+                let order_ty = order.type_tokens();
+                let plumbing = self.tick_input_plumbing(in_location, TickInputBuffer::Queue);
+                let TickInputPlumbing {
+                    buffered_ident,
+                    hoff_send_ident,
+                    ..
+                } = &plumbing;
+
+                let inner_hook: syn::Expr = syn::parse_quote!(
+                    #root::sim::runtime::StreamHook::<_, #order_ty> {
+                        input: #buffered_ident.clone(),
+                        to_release: None,
+                        output: #hoff_send_ident,
+                        batch_location: #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
+                        format_item_debug: #root::__maybe_debug__!(#element_type),
+                        _order: std::marker::PhantomData,
+                    }
+                );
+                self.install_tick_input_hook(
+                    in_location,
+                    out_location,
+                    &plumbing,
+                    op_meta.sim_hook_id,
+                    &batch_location,
+                    inner_hook,
+                );
+                self.connect_tick_input(in_ident, in_location, out_ident, out_location, &plumbing);
+            }
+            CollectionKind::KeyedStream {
+                value_order,
+                value_retry: StreamRetry::ExactlyOnce,
+                key_type,
+                value_type,
+                ..
+            } => {
+                debug_assert!(in_location.is_top_level());
+                let order_ty = value_order.type_tokens();
+                let plumbing = self.tick_input_plumbing(in_location, TickInputBuffer::KeyedQueues);
+                let TickInputPlumbing {
+                    buffered_ident,
+                    hoff_send_ident,
+                    ..
+                } = &plumbing;
+
+                let inner_hook: syn::Expr = syn::parse_quote!(
+                    #root::sim::runtime::KeyedStreamHook::<_, _, #order_ty> {
+                        input: #buffered_ident.clone(),
+                        to_release: None,
+                        output: #hoff_send_ident,
+                        batch_location: #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
+                        format_item_debug: #root::__maybe_debug__!((#key_type, #value_type)),
+                        _order: std::marker::PhantomData,
+                    }
+                );
+                self.install_tick_input_hook(
+                    in_location,
+                    out_location,
+                    &plumbing,
+                    op_meta.sim_hook_id,
+                    &batch_location,
+                    inner_hook,
+                );
+                self.connect_tick_input(in_ident, in_location, out_ident, out_location, &plumbing);
+            }
+            CollectionKind::KeyedSingleton {
+                bound: KeyedSingletonBoundKind::BoundedValue | KeyedSingletonBoundKind::Bounded,
+                key_type,
+                value_type,
+            } => {
+                // Each key's value is final once it appears, so the keyed singleton is a feed
+                // of finalized `(K, V)` entries that each arrive exactly once. A batch is the
+                // set of entries that arrived since the previous batch, which is exactly how a
+                // keyed stream with (at most) one value per key is batched. Per-key ordering
+                // is vacuous with a single value per key, so the ordered hook (whose scripted
+                // decisions name entries or per-key counts) is used.
+                debug_assert!(in_location.is_top_level());
+                let plumbing = self.tick_input_plumbing(in_location, TickInputBuffer::KeyedQueues);
+                let TickInputPlumbing {
+                    buffered_ident,
+                    hoff_send_ident,
+                    ..
+                } = &plumbing;
+
+                let inner_hook: syn::Expr = syn::parse_quote!(
+                    #root::sim::runtime::KeyedStreamHook::<_, _, #root::live_collections::stream::TotalOrder> {
+                        input: #buffered_ident.clone(),
+                        to_release: None,
+                        output: #hoff_send_ident,
+                        batch_location: #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
+                        format_item_debug: #root::__maybe_debug__!((#key_type, #value_type)),
+                        _order: std::marker::PhantomData,
+                    }
+                );
+                self.install_tick_input_hook(
+                    in_location,
+                    out_location,
+                    &plumbing,
+                    op_meta.sim_hook_id,
+                    &batch_location,
+                    inner_hook,
+                );
+                self.connect_tick_input(in_ident, in_location, out_ident, out_location, &plumbing);
+            }
+            CollectionKind::Singleton { .. }
+            | CollectionKind::Optional { .. }
+            | CollectionKind::KeyedSingleton {
+                bound:
+                    KeyedSingletonBoundKind::Unbounded
+                    | KeyedSingletonBoundKind::MonotonicKeys
+                    | KeyedSingletonBoundKind::MonotonicValue,
+                ..
+            } => {
+                panic!(
+                    "`Batch` is only defined for stream-like collections (streams, keyed streams, \
+                     and keyed singletons with bounded per-key values), but was applied to a \
+                     singleton-like collection {in_kind:?} (at {batch_location}); use `Snapshot` \
+                     instead"
+                );
+            }
+            CollectionKind::Stream {
+                retry: StreamRetry::AtLeastOnce,
+                ..
+            }
+            | CollectionKind::KeyedStream {
+                value_retry: StreamRetry::AtLeastOnce,
+                ..
+            } => {
+                eprintln!("{:?}", op_meta.backtrace.elements().collect::<Vec<_>>());
+                todo!("batch not implemented for kind {:?}", in_kind)
+            }
+        }
+    }
+
+    fn snapshot(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        out_location: &LocationId,
+        op_meta: &HydroIrOpMetadata,
         fold_hooked_idents: &HashSet<String>,
     ) {
         if let LocationId::Atomic(_) = in_location {
-            assert!(
-                op_meta.sim_hook_id.is_none(),
-                "sim hooks are not supported on `batch_atomic` / `snapshot_atomic`: the \
-                 non-deterministic decision happens where the stream *enters* the atomic \
-                 context, not at the atomic batch (at {})",
-                location_for_op(op_meta).0
+            self.enter_tick_from_atomic(
+                in_ident,
+                in_location,
+                out_ident,
+                op_meta,
+                "snapshot_atomic",
             );
-            let builder = self.get_dfir_mut(in_location);
-            builder.add_dfir(
-                parse_quote! {
-                    #out_ident = #in_ident;
-                },
-                None,
-                None,
-            );
-        } else {
-            let out_location = if let LocationId::Atomic(tick) = out_location {
-                tick.as_ref()
-            } else {
-                out_location
-            };
+            return;
+        }
 
-            let (batch_location, line, caret) = location_for_op(op_meta);
-            let root = get_this_crate();
+        let out_location = tick_of_out_location(out_location);
+        let (batch_location, line, caret) = location_for_op(op_meta);
+        let root = get_this_crate();
 
-            match in_kind {
-                CollectionKind::Stream {
-                    order,
-                    retry: StreamRetry::ExactlyOnce,
-                    element_type,
+        match in_kind {
+            CollectionKind::Singleton { element_type, .. } => {
+                debug_assert!(in_location.is_top_level());
+                let plumbing = self.tick_input_plumbing(in_location, TickInputBuffer::Queue);
+                let TickInputPlumbing {
+                    buffered_ident,
+                    hoff_send_ident,
                     ..
-                } => {
-                    debug_assert!(in_location.is_top_level());
+                } = &plumbing;
 
-                    let order_ty: syn::Type = match order {
-                        StreamOrder::TotalOrder => {
-                            parse_quote! { #root::live_collections::stream::TotalOrder }
-                        }
-                        StreamOrder::NoOrder => {
-                            parse_quote! { #root::live_collections::stream::NoOrder }
-                        }
-                    };
-
-                    let hoff_id = self.next_hoff_id.get_and_increment();
-
-                    let buffered_ident =
-                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
-                    let hoff_send_ident =
-                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                    let hoff_recv_ident =
-                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
-
-                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
-                    });
-                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
-                    });
-
-                    let inner_hook: syn::Expr = syn::parse_quote!(
-                        #root::sim::runtime::StreamHook::<_, #order_ty> {
-                            input: #buffered_ident.clone(),
-                            to_release: None,
-                            output: #hoff_send_ident,
-                            batch_location: #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
-                            format_item_debug: #root::__maybe_debug__!(#element_type),
-                            _order: std::marker::PhantomData,
-                        }
+                if fold_hooked_idents.contains(&in_ident.to_string()) {
+                    assert!(
+                        op_meta.sim_hook_id.is_none(),
+                        "sim hooks are not yet supported on snapshots of top-level folds \
+                         over unordered streams: the fold's input order is fuzzed \
+                         separately (at {})",
+                        batch_location
                     );
-                    if let Some(hook_id) = op_meta.sim_hook_id {
-                        let hook_rc_ident = syn::Ident::new(
-                            &format!("__scripted_hook_{hoff_id}"),
-                            Span::call_site(),
-                        );
-                        self.add_scripted_hook(
-                            hook_id,
-                            in_location,
-                            out_location,
-                            &hook_rc_ident,
-                            &batch_location,
-                            inner_hook,
-                        );
-                    } else {
-                        self.add_hook(
-                            in_location,
-                            out_location,
-                            syn::parse_quote!(Box::new(#inner_hook)),
-                        );
-                    }
-
-                    self.get_dfir_mut(in_location).add_dfir(
-                        parse_quote! {
-                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
-                        },
-                        None,
-                        None,
-                    );
-
-                    self.get_dfir_mut(out_location).add_dfir(
-                        parse_quote! {
-                            #out_ident = source_stream(#hoff_recv_ident);
-                        },
-                        None,
-                        None,
-                    );
-                }
-                CollectionKind::KeyedStream {
-                    value_order,
-                    value_retry: StreamRetry::ExactlyOnce,
-                    key_type,
-                    value_type,
-                    ..
-                } => {
-                    debug_assert!(in_location.is_top_level());
-
-                    let order_ty: syn::Type = match value_order {
-                        StreamOrder::TotalOrder => {
-                            parse_quote! { #root::live_collections::stream::TotalOrder }
-                        }
-                        StreamOrder::NoOrder => {
-                            parse_quote! { #root::live_collections::stream::NoOrder }
-                        }
-                    };
-
-                    let hoff_id = self.next_hoff_id.get_and_increment();
-
-                    let buffered_ident =
-                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
-                    let hoff_send_ident =
-                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                    let hoff_recv_ident =
-                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
-
-                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
-                    });
-                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(__root_dfir_rs::rustc_hash::FxHashMap::<_, ::std::collections::VecDeque<_>>::default()));
-                    });
-
-                    let inner_hook: syn::Expr = syn::parse_quote!(
-                        #root::sim::runtime::KeyedStreamHook::<_, _, #order_ty> {
-                            input: #buffered_ident.clone(),
-                            to_release: None,
-                            output: #hoff_send_ident,
-                            batch_location: #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
-                            format_item_debug: #root::__maybe_debug__!((#key_type, #value_type)),
-                            _order: std::marker::PhantomData,
-                        }
-                    );
-                    if let Some(hook_id) = op_meta.sim_hook_id {
-                        let hook_rc_ident = syn::Ident::new(
-                            &format!("__scripted_hook_{hoff_id}"),
-                            Span::call_site(),
-                        );
-                        self.add_scripted_hook(
-                            hook_id,
-                            in_location,
-                            out_location,
-                            &hook_rc_ident,
-                            &batch_location,
-                            inner_hook,
-                        );
-                    } else {
-                        self.add_hook(
-                            in_location,
-                            out_location,
-                            syn::parse_quote!(Box::new(#inner_hook)),
-                        );
-                    }
-
-                    self.get_dfir_mut(in_location).add_dfir(
-                        parse_quote! {
-                            #in_ident -> for_each(|(k, v)| #buffered_ident.borrow_mut().entry(k).or_default().push_back(v));
-                        },
-                        None,
-                        None,
-                    );
-
-                    self.get_dfir_mut(out_location).add_dfir(
-                        parse_quote! {
-                            #out_ident = source_stream(#hoff_recv_ident);
-                        },
-                        None,
-                        None,
-                    );
-                }
-                CollectionKind::Singleton { element_type, .. } => {
-                    debug_assert!(in_location.is_top_level());
-
-                    let hoff_id = self.next_hoff_id.get_and_increment();
-
-                    let buffered_ident =
-                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
-                    let hoff_send_ident =
-                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                    let hoff_recv_ident =
-                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
-
-                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
-                    });
-                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
-                    });
-
-                    if fold_hooked_idents.contains(&in_ident.to_string()) {
-                        assert!(
-                            op_meta.sim_hook_id.is_none(),
-                            "sim hooks are not yet supported on snapshots of top-level folds \
-                             over unordered streams: the fold's input order is fuzzed \
-                             separately (at {})",
-                            batch_location
-                        );
-                        // The fold hook already controls when new values are produced.
-                        // Use a PassthroughSingletonHook that always releases the latest
-                        // value without non-deterministic decisions.
-                        self.add_hook(
-                            in_location,
-                            out_location,
-                            syn::parse_quote!(
-                                Box::new(#root::sim::runtime::PassthroughSingletonHook::<_>::new(
-                                    #buffered_ident.clone(),
-                                    #hoff_send_ident,
-                                    #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
-                                    #root::__maybe_debug__!(#element_type),
-                                ))
-                            ),
-                        );
-                    } else if let Some(hook_id) = op_meta.sim_hook_id {
-                        let hook_rc_ident = syn::Ident::new(
-                            &format!("__scripted_hook_{hoff_id}"),
-                            Span::call_site(),
-                        );
-                        self.add_scripted_hook(
-                            hook_id,
-                            in_location,
-                            out_location,
-                            &hook_rc_ident,
-                            &batch_location,
-                            syn::parse_quote!(
-                                #root::sim::runtime::SingletonHook::<_>::new(
-                                    #buffered_ident.clone(),
-                                    #hoff_send_ident,
-                                    #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
-                                    #root::__maybe_debug__!(#element_type),
-                                )
-                            ),
-                        );
-                    } else {
-                        self.add_hook(
-                            in_location,
-                            out_location,
-                            syn::parse_quote!(
-                                Box::new(#root::sim::runtime::SingletonHook::<_>::new(
-                                    #buffered_ident.clone(),
-                                    #hoff_send_ident,
-                                    #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
-                                    #root::__maybe_debug__!(#element_type),
-                                ))
-                            ),
-                        );
-                    }
-
-                    self.get_dfir_mut(in_location).add_dfir(
-                        parse_quote! {
-                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
-                        },
-                        None,
-                        None,
-                    );
-
-                    self.get_dfir_mut(out_location).add_dfir(
-                        parse_quote! {
-                            #out_ident = source_stream(#hoff_recv_ident);
-                        },
-                        None,
-                        None,
-                    );
-                }
-                CollectionKind::KeyedSingleton {
-                    bound,
-                    key_type,
-                    value_type,
-                } => {
-                    if *bound == KeyedSingletonBoundKind::Unbounded {
-                        todo!(
-                            "Simulation of Unbounded keyed singletons is not yet supported. \
-                             Keys may be removed in Unbounded keyed singletons, which the simulator \
-                             cannot currently model. Use a fold (which gives MonotonicKeys) or \
-                             another operator that guarantees keys are never removed."
-                        );
-                    }
-
-                    debug_assert!(in_location.is_top_level());
-
-                    let hoff_id = self.next_hoff_id.get_and_increment();
-
-                    let buffered_ident =
-                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
-                    let hoff_send_ident =
-                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                    let hoff_recv_ident =
-                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
-
-                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
-                    });
-                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(__root_dfir_rs::rustc_hash::FxHashMap::<_, ::std::collections::VecDeque<_>>::default()));
-                    });
-
-                    let inner_hook: syn::Expr = syn::parse_quote!(
-                        #root::sim::runtime::KeyedSingletonHook::<_, _>::new(
-                            #buffered_ident.clone(),
-                            #hoff_send_ident,
-                            #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
-                            #root::__maybe_debug__!(#key_type),
-                            #root::__maybe_debug__!(#value_type),
-                        )
-                    );
-                    if let Some(hook_id) = op_meta.sim_hook_id {
-                        let hook_rc_ident = syn::Ident::new(
-                            &format!("__scripted_hook_{hoff_id}"),
-                            Span::call_site(),
-                        );
-                        self.add_scripted_hook(
-                            hook_id,
-                            in_location,
-                            out_location,
-                            &hook_rc_ident,
-                            &batch_location,
-                            inner_hook,
-                        );
-                    } else {
-                        self.add_hook(
-                            in_location,
-                            out_location,
-                            syn::parse_quote!(Box::new(#inner_hook)),
-                        );
-                    }
-
-                    self.get_dfir_mut(in_location).add_dfir(
-                        parse_quote! {
-                            #in_ident -> for_each(|(k, v)| #buffered_ident.borrow_mut().entry(k).or_default().push_back(v));
-                        },
-                        None,
-                        None,
-                    );
-
-                    self.get_dfir_mut(out_location).add_dfir(
-                        parse_quote! {
-                            #out_ident = source_stream(#hoff_recv_ident);
-                        },
-                        None,
-                        None,
-                    );
-                }
-                CollectionKind::Optional {
-                    bound: OptionalBoundKind::InitNone,
-                    element_type,
-                    ..
-                } => {
-                    // Only `InitNone` optionals (null prefix, then monotone presence) are
-                    // supported: their monotone presence is what `OptionalInitNoneHook` models. A general
-                    // `Unbounded` optional can return to null, which this hook does not represent,
-                    // so it stays rejected below.
-                    debug_assert!(in_location.is_top_level());
-
-                    let hoff_id = self.next_hoff_id.get_and_increment();
-
-                    let buffered_ident =
-                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
-                    let hoff_send_ident =
-                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                    let hoff_recv_ident =
-                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
-
-                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
-                    });
-                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
-                    });
+                    // The fold hook already controls when new values are produced.
+                    // Use a PassthroughSingletonHook that always releases the latest
+                    // value without non-deterministic decisions.
                     self.add_hook(
                         in_location,
                         out_location,
                         syn::parse_quote!(
-                            Box::new(#root::sim::runtime::OptionalInitNoneHook::<_>::new(
+                            Box::new(#root::sim::runtime::PassthroughSingletonHook::<_>::new(
                                 #buffered_ident.clone(),
                                 #hoff_send_ident,
                                 #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
@@ -907,27 +881,126 @@ impl DfirBuilder for SimBuilder {
                             ))
                         ),
                     );
-
-                    self.get_dfir_mut(in_location).add_dfir(
-                        parse_quote! {
-                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
-                        },
-                        None,
-                        None,
+                } else {
+                    let inner_hook: syn::Expr = syn::parse_quote!(
+                        #root::sim::runtime::SingletonHook::<_>::new(
+                            #buffered_ident.clone(),
+                            #hoff_send_ident,
+                            #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
+                            #root::__maybe_debug__!(#element_type),
+                        )
                     );
-
-                    self.get_dfir_mut(out_location).add_dfir(
-                        parse_quote! {
-                            #out_ident = source_stream(#hoff_recv_ident);
-                        },
-                        None,
-                        None,
+                    self.install_tick_input_hook(
+                        in_location,
+                        out_location,
+                        &plumbing,
+                        op_meta.sim_hook_id,
+                        &batch_location,
+                        inner_hook,
                     );
                 }
-                _ => {
-                    eprintln!("{:?}", op_meta.backtrace.elements().collect::<Vec<_>>());
-                    todo!("batch not implemented for kind {:?}", in_kind)
-                }
+
+                self.connect_tick_input(in_ident, in_location, out_ident, out_location, &plumbing);
+            }
+            CollectionKind::KeyedSingleton {
+                bound:
+                    KeyedSingletonBoundKind::MonotonicKeys
+                    | KeyedSingletonBoundKind::MonotonicValue
+                    | KeyedSingletonBoundKind::Bounded,
+                key_type,
+                value_type,
+            } => {
+                // Keys are never removed, so each firing observes, for every key revealed so
+                // far, some version of its value (a fully `Bounded` keyed singleton has a single
+                // version per key, so the only choice is when each key is first revealed).
+                debug_assert!(in_location.is_top_level());
+                let plumbing = self.tick_input_plumbing(in_location, TickInputBuffer::KeyedQueues);
+                let TickInputPlumbing {
+                    buffered_ident,
+                    hoff_send_ident,
+                    ..
+                } = &plumbing;
+
+                let inner_hook: syn::Expr = syn::parse_quote!(
+                    #root::sim::runtime::KeyedSingletonHook::<_, _>::new(
+                        #buffered_ident.clone(),
+                        #hoff_send_ident,
+                        #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
+                        #root::__maybe_debug__!(#key_type),
+                        #root::__maybe_debug__!(#value_type),
+                    )
+                );
+                self.install_tick_input_hook(
+                    in_location,
+                    out_location,
+                    &plumbing,
+                    op_meta.sim_hook_id,
+                    &batch_location,
+                    inner_hook,
+                );
+                self.connect_tick_input(in_ident, in_location, out_ident, out_location, &plumbing);
+            }
+            CollectionKind::KeyedSingleton {
+                bound: KeyedSingletonBoundKind::Unbounded,
+                ..
+            } => {
+                todo!(
+                    "Simulation of Unbounded keyed singletons is not yet supported. \
+                     Keys may be removed in Unbounded keyed singletons, which the simulator \
+                     cannot currently model. Use a fold (which gives MonotonicKeys) or \
+                     another operator that guarantees keys are never removed."
+                );
+            }
+            CollectionKind::Optional {
+                bound: OptionalBoundKind::InitNone,
+                element_type,
+                ..
+            } => {
+                // Only `InitNone` optionals (null prefix, then monotone presence) are
+                // supported: their monotone presence is what `OptionalInitNoneHook` models. A general
+                // `Unbounded` optional can return to null, which this hook does not represent,
+                // so it stays rejected below.
+                debug_assert!(in_location.is_top_level());
+                let plumbing = self.tick_input_plumbing(in_location, TickInputBuffer::Queue);
+                let TickInputPlumbing {
+                    buffered_ident,
+                    hoff_send_ident,
+                    ..
+                } = &plumbing;
+
+                self.add_hook(
+                    in_location,
+                    out_location,
+                    syn::parse_quote!(
+                        Box::new(#root::sim::runtime::OptionalInitNoneHook::<_>::new(
+                            #buffered_ident.clone(),
+                            #hoff_send_ident,
+                            #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
+                            #root::__maybe_debug__!(#element_type),
+                        ))
+                    ),
+                );
+                self.connect_tick_input(in_ident, in_location, out_ident, out_location, &plumbing);
+            }
+            CollectionKind::Stream { .. }
+            | CollectionKind::KeyedStream { .. }
+            | CollectionKind::KeyedSingleton {
+                bound: KeyedSingletonBoundKind::BoundedValue,
+                ..
+            } => {
+                panic!(
+                    "`Snapshot` is only defined for singleton-like collections (singletons, \
+                     optionals, and keyed singletons whose per-key values may change), but was \
+                     applied to a stream-like collection {in_kind:?} (at {batch_location}); use \
+                     `Batch` instead"
+                );
+            }
+            CollectionKind::Optional {
+                bound: OptionalBoundKind::Unbounded | OptionalBoundKind::Bounded,
+                ..
+            } => {
+                eprintln!("{:?}", op_meta.backtrace.elements().collect::<Vec<_>>());
+                todo!("snapshot not implemented for kind {:?}", in_kind)
             }
         }
     }
@@ -939,6 +1012,7 @@ impl DfirBuilder for SimBuilder {
         in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         out_location: &LocationId,
+        _out_kind: &CollectionKind,
     ) {
         match in_kind {
             CollectionKind::Stream { .. }
@@ -1052,6 +1126,7 @@ impl DfirBuilder for SimBuilder {
         in_location: &LocationId,
         in_kind: &CollectionKind,
         out_ident: &syn::Ident,
+        out_kind: &CollectionKind,
     ) {
         if let LocationId::Atomic(tick) = in_location
             && let LocationId::Tick {
@@ -1065,6 +1140,7 @@ impl DfirBuilder for SimBuilder {
                 in_kind,
                 out_ident,
                 parent_location.as_ref(),
+                out_kind,
             );
         } else {
             unreachable!()
@@ -1366,6 +1442,196 @@ impl DfirBuilder for SimBuilder {
                         None,
                     );
                 }
+                (
+                    CollectionKind::Stream {
+                        order: in_order @ (StreamOrder::NoOrder | StreamOrder::TotalOrder),
+                        retry: StreamRetry::AtLeastOnce,
+                        element_type,
+                        ..
+                    },
+                    CollectionKind::Stream {
+                        order: out_order,
+                        retry: StreamRetry::ExactlyOnce,
+                        ..
+                    },
+                ) if in_order == out_order => {
+                    // `assume_retries`: the point where the simulator injects the
+                    // duplicates the `AtLeastOnce` type says downstream must tolerate.
+                    let Some(hook_id) = op_meta.sim_hook_id else {
+                        panic!(
+                            "observing retries (`assume_retries`) has an infinite decision space \
+                             (every element admits arbitrarily many retries), so the simulator \
+                             cannot explore it autonomously\n--> {assume_location}\nhelp: bind a \
+                             sim hook to this operator (`nondet!(... hook = handle)`) and script \
+                             its decisions"
+                        );
+                    };
+
+                    let hoff_id = self.next_hoff_id.get_and_increment();
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+                    });
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident));
+                    });
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(None));
+                    });
+
+                    let hook_ty: syn::Path = if *in_order == StreamOrder::TotalOrder {
+                        syn::parse_quote!(#root::sim::runtime::OrderedStreamRetriesHook)
+                    } else {
+                        syn::parse_quote!(#root::sim::runtime::NoOrderStreamRetriesHook)
+                    };
+                    let inner_hook: syn::Expr = syn::parse_quote!(
+                        #hook_ty::<_>::new(
+                            #buffered_ident.clone(),
+                            #hoff_send_ident,
+                            #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
+                            #root::__maybe_debug__!(#element_type),
+                        )
+                    );
+                    let hook_rc_ident = syn::Ident::new(
+                        &format!("__scripted_inline_hook_{hoff_id}"),
+                        Span::call_site(),
+                    );
+                    self.add_scripted_inline_hook(
+                        hook_id,
+                        location,
+                        &hook_rc_ident,
+                        &assume_location,
+                        inner_hook,
+                    );
+
+                    let builder = self.get_dfir_mut(location);
+                    builder.add_dfir(
+                        parse_quote! {
+                            #out_ident = #in_ident -> fold::<'tick>(
+                                || ::std::vec::Vec::new(),
+                                |acc, v| {
+                                    acc.push(v);
+                                }
+                            ) -> map(|v| {
+                                let #buffered_ident = #buffered_ident.clone();
+                                let #hoff_recv_ident = #hoff_recv_ident.clone();
+                                async move {
+                                    fn force_matching_type<T>(a: &mut Option<::std::vec::Vec<T>>, b: ::std::vec::Vec<T>) -> ::std::vec::Vec<T> {
+                                        b
+                                    }
+
+                                    let mut out_holder = Some(v);
+                                    *#buffered_ident.borrow_mut() = out_holder.take();
+                                    force_matching_type(&mut out_holder, #hoff_recv_ident.borrow_mut().recv().await.unwrap())
+                                }
+                            }) -> resolve_futures_blocking() -> flatten();
+                        },
+                        None,
+                        None,
+                    );
+                }
+                (
+                    CollectionKind::Stream {
+                        order: StreamOrder::NoOrder,
+                        retry: StreamRetry::AtLeastOnce,
+                        element_type,
+                        ..
+                    },
+                    CollectionKind::Stream {
+                        order: StreamOrder::TotalOrder,
+                        retry: StreamRetry::AtLeastOnce,
+                        ..
+                    },
+                ) => {
+                    // `assume_ordering` on an at-least-once stream: ordering also decides
+                    // which slots each element's retries occupy (an element may be emitted
+                    // into several slots), so the decision space is infinite.
+                    let Some(hook_id) = op_meta.sim_hook_id else {
+                        panic!(
+                            "observing the order of an at-least-once stream also decides which \
+                             slots each element's retries occupy, an infinite decision space \
+                             the simulator cannot explore autonomously\n--> {assume_location}\n\
+                             help: bind a sim hook to this operator (`nondet!(... hook = \
+                             handle)`) and script its decisions"
+                        );
+                    };
+
+                    let hoff_id = self.next_hoff_id.get_and_increment();
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+                    });
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident));
+                    });
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(None));
+                    });
+
+                    let inner_hook: syn::Expr = syn::parse_quote!(
+                        #root::sim::runtime::AtLeastOnceStreamOrderHook::<_>::new(
+                            #buffered_ident.clone(),
+                            #hoff_send_ident,
+                            #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
+                            #root::__maybe_debug__!(#element_type),
+                        )
+                    );
+                    let hook_rc_ident = syn::Ident::new(
+                        &format!("__scripted_inline_hook_{hoff_id}"),
+                        Span::call_site(),
+                    );
+                    self.add_scripted_inline_hook(
+                        hook_id,
+                        location,
+                        &hook_rc_ident,
+                        &assume_location,
+                        inner_hook,
+                    );
+
+                    let builder = self.get_dfir_mut(location);
+                    builder.add_dfir(
+                        parse_quote! {
+                            #out_ident = #in_ident -> fold::<'tick>(
+                                || ::std::vec::Vec::new(),
+                                |acc, v| {
+                                    acc.push(v);
+                                }
+                            ) -> map(|v| {
+                                let #buffered_ident = #buffered_ident.clone();
+                                let #hoff_recv_ident = #hoff_recv_ident.clone();
+                                async move {
+                                    fn force_matching_type<T>(a: &mut Option<::std::vec::Vec<T>>, b: ::std::vec::Vec<T>) -> ::std::vec::Vec<T> {
+                                        b
+                                    }
+
+                                    let mut out_holder = Some(v);
+                                    *#buffered_ident.borrow_mut() = out_holder.take();
+                                    force_matching_type(&mut out_holder, #hoff_recv_ident.borrow_mut().recv().await.unwrap())
+                                }
+                            }) -> resolve_futures_blocking() -> flatten();
+                        },
+                        None,
+                        None,
+                    );
+                }
                 _ => {
                     todo!(
                         "non-trusted observe_nondet not yet supported for kinds {:?} -> {:?}",
@@ -1578,6 +1844,178 @@ impl DfirBuilder for SimBuilder {
                     self.get_dfir_mut(location).add_dfir(
                         parse_quote! {
                             #in_ident -> for_each(|(k, v)| #buffered_ident.borrow_mut().entry(k).or_insert_with(::std::collections::VecDeque::new).push_back(v));
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
+                }
+                (
+                    CollectionKind::Stream {
+                        order: in_order @ (StreamOrder::NoOrder | StreamOrder::TotalOrder),
+                        retry: StreamRetry::AtLeastOnce,
+                        element_type,
+                        ..
+                    },
+                    CollectionKind::Stream {
+                        order: out_order,
+                        retry: StreamRetry::ExactlyOnce,
+                        ..
+                    },
+                ) if in_order == out_order => {
+                    // `assume_retries`: the point where the simulator injects the
+                    // duplicates the `AtLeastOnce` type says downstream must tolerate.
+                    let Some(hook_id) = op_meta.sim_hook_id else {
+                        panic!(
+                            "observing retries (`assume_retries`) has an infinite decision space \
+                             (every element admits arbitrarily many retries), so the simulator \
+                             cannot explore it autonomously\n--> {assume_location}\nhelp: bind a \
+                             sim hook to this operator (`nondet!(... hook = handle)`) and script \
+                             its decisions"
+                        );
+                    };
+
+                    let hoff_id = self.next_hoff_id.get_and_increment();
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+                    });
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                    });
+                    let hook_ty: syn::Path = if *in_order == StreamOrder::TotalOrder {
+                        syn::parse_quote!(#root::sim::runtime::TopLevelOrderedStreamRetriesHook)
+                    } else {
+                        syn::parse_quote!(#root::sim::runtime::TopLevelNoOrderStreamRetriesHook)
+                    };
+                    let extra_fields: proc_macro2::TokenStream =
+                        if *in_order == StreamOrder::TotalOrder {
+                            quote::quote!(release_provisional: false, front_started: false,)
+                        } else {
+                            Default::default()
+                        };
+                    let inner_hook: syn::Expr = syn::parse_quote!(
+                        #hook_ty::<_> {
+                            input: #buffered_ident.clone(),
+                            to_release: None,
+                            #extra_fields
+                            output: #hoff_send_ident,
+                            location: #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
+                            format_item_debug: #root::__maybe_debug__!(#element_type),
+                        }
+                    );
+                    let hook_rc_ident = syn::Ident::new(
+                        &format!("__scripted_observation_hook_{hoff_id}"),
+                        Span::call_site(),
+                    );
+                    self.add_scripted_hook(
+                        hook_id,
+                        location,
+                        location,
+                        &hook_rc_ident,
+                        &assume_location,
+                        inner_hook,
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
+                }
+                (
+                    CollectionKind::Stream {
+                        order: StreamOrder::NoOrder,
+                        retry: StreamRetry::AtLeastOnce,
+                        element_type,
+                        ..
+                    },
+                    CollectionKind::Stream {
+                        order: StreamOrder::TotalOrder,
+                        retry: StreamRetry::AtLeastOnce,
+                        ..
+                    },
+                ) => {
+                    // `assume_ordering` on an at-least-once stream: ordering also decides
+                    // which slots each element's retries occupy (an element may be emitted
+                    // into several slots), so the decision space is infinite.
+                    let Some(hook_id) = op_meta.sim_hook_id else {
+                        panic!(
+                            "observing the order of an at-least-once stream also decides which \
+                             slots each element's retries occupy, an infinite decision space \
+                             the simulator cannot explore autonomously\n--> {assume_location}\n\
+                             help: bind a sim hook to this operator (`nondet!(... hook = \
+                             handle)`) and script its decisions"
+                        );
+                    };
+
+                    let hoff_id = self.next_hoff_id.get_and_increment();
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unsync::mpsc::unbounded();
+                    });
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                    });
+                    let inner_hook: syn::Expr = syn::parse_quote!(
+                        #root::sim::runtime::TopLevelAtLeastOnceOrderHook::<_> {
+                            input: #buffered_ident.clone(),
+                            to_release: None,
+                            release_provisional: false,
+                            last_emitted: None,
+                            emitted_counts: ::std::vec::Vec::new(),
+                            output: #hoff_send_ident,
+                            location: #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
+                            format_item_debug: #root::__maybe_debug__!(#element_type),
+                        }
+                    );
+                    let hook_rc_ident = syn::Ident::new(
+                        &format!("__scripted_observation_hook_{hoff_id}"),
+                        Span::call_site(),
+                    );
+                    self.add_scripted_hook(
+                        hook_id,
+                        location,
+                        location,
+                        &hook_rc_ident,
+                        &assume_location,
+                        inner_hook,
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
                         },
                         None,
                         None,
@@ -1925,7 +2363,7 @@ impl DfirBuilder for SimBuilder {
         tag_id: StmtId,
         networking_info: &crate::networking::NetworkingInfo,
     ) {
-        use crate::networking::{NetworkingInfo, TcpFault, UdpFault};
+        use crate::networking::{EmbeddedFault, NetworkingInfo, TcpFault, UdpFault};
         match networking_info {
             NetworkingInfo::Tcp { fault } => match fault {
                 TcpFault::FailStop => {}
@@ -1953,6 +2391,23 @@ impl DfirBuilder for SimBuilder {
                     );
                 }
                 _ => todo!("SimBuilder only supports lossy-delayed-forever UDP networking"),
+            },
+            // Ordering and retries are explored downstream, from the received stream's type.
+            NetworkingInfo::Embedded { fault, .. } => match fault {
+                EmbeddedFault::FailStop => {}
+                EmbeddedFault::LossyDelayedForever => {
+                    assert!(
+                        self.test_safety_only,
+                        "Simulating `lossy_delayed_forever` requires `.test_safety_only()` on the \
+                         SimFlow because the simulator models dropped messages as indefinitely \
+                         delayed, which only tests safety (not liveness). Call \
+                         `.sim().test_safety_only()` to opt in."
+                    );
+                }
+                EmbeddedFault::Lossy => todo!(
+                    "SimBuilder only supports fail-stop and lossy-delayed-forever EMBEDDED \
+                     networking"
+                ),
             },
         }
 
@@ -2567,5 +3022,5 @@ fn location_for_op(op_meta: &HydroIrOpMetadata) -> (String, String, String) {
                 format!("{:>1$}", "", (colno - 1).try_into().unwrap()),
             ))
         })
-        .unwrap_or_else(|| ("unknown location".to_owned(), "".to_owned(), "".to_owned()))
+        .unwrap_or_else(|| ("unknown location".to_owned(), String::new(), String::new()))
 }

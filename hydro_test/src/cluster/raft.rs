@@ -29,7 +29,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use hydro_lang::forward_handle::ForwardHandle;
-use hydro_lang::live_collections::stream::{MinOrder, NoOrder, Ordering, TotalOrder};
+use hydro_lang::live_collections::stream::{ExactlyOnce, MinOrder, NoOrder, Ordering, TotalOrder};
 use hydro_lang::location::cluster::{
     CLUSTER_SELF_ID, ClusterIds, Consistency, EventualConsistency, NoConsistency,
 };
@@ -46,11 +46,11 @@ use serde::{Deserialize, Serialize};
 #[doc(hidden)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum RaftState {
-    /// When in follower mode, a RAFT server receives AppendEntries RPCs and updates its log
+    /// When in follower mode, a RAFT server receives `AppendEntries` RPCs and updates its log
     Follower,
     /// When in candidate mode, a RAFT server requests votes and is trying to become the leader
     Candidate,
-    /// When leader, the RAFT server sends AppendEntries RPCs and serves client requests
+    /// When leader, the RAFT server sends `AppendEntries` RPCs and serves client requests
     Leader,
 }
 
@@ -83,11 +83,9 @@ pub struct LogEntry<T> {
     serialize = "T: Serialize",
     deserialize = "T: serde::de::DeserializeOwned"
 ))]
-pub struct AppendEntriesRequest<T, ClusterTag> {
+pub struct AppendEntriesRequest<T> {
     /// The leader's term.
     pub term: usize,
-    /// The leader's identity, so followers can redirect clients to it.
-    pub leader: MemberId<ClusterTag>,
     /// Index of the log entry immediately preceding `entries`.
     pub prev_log_index: usize,
     /// Term of the entry at `prev_log_index`.
@@ -98,11 +96,10 @@ pub struct AppendEntriesRequest<T, ClusterTag> {
     pub leader_commit: usize,
 }
 
-impl<T: Clone, ClusterTag> Clone for AppendEntriesRequest<T, ClusterTag> {
+impl<T: Clone> Clone for AppendEntriesRequest<T> {
     fn clone(&self) -> Self {
         AppendEntriesRequest {
             term: self.term,
-            leader: self.leader.clone(),
             prev_log_index: self.prev_log_index,
             prev_log_term: self.prev_log_term,
             entries: self.entries.clone(),
@@ -111,11 +108,10 @@ impl<T: Clone, ClusterTag> Clone for AppendEntriesRequest<T, ClusterTag> {
     }
 }
 
-impl<T: Debug, ClusterTag> Debug for AppendEntriesRequest<T, ClusterTag> {
+impl<T: Debug> Debug for AppendEntriesRequest<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppendEntriesRequest")
             .field("term", &self.term)
-            .field("leader", &self.leader)
             .field("prev_log_index", &self.prev_log_index)
             .field("prev_log_term", &self.prev_log_term)
             .field("entries", &self.entries)
@@ -159,18 +155,18 @@ pub struct AppendEntriesReply {
     serialize = "T: Serialize",
     deserialize = "T: serde::de::DeserializeOwned"
 ))]
-pub enum RaftRpc<T, ClusterTag> {
+pub enum RaftRpc<T> {
     /// Candidate -> everyone: request a vote for `term` (RAFT §5.2).
     RequestVote(RequestVoteDto),
     /// Voter -> candidate: grant a vote for `term`.
     RequestVoteResponse(RequestVoteResponseDto),
     /// Leader -> follower: replicate entries / heartbeat (RAFT §5.3).
-    AppendEntries(AppendEntriesRequest<T, ClusterTag>),
+    AppendEntries(AppendEntriesRequest<T>),
     /// Follower -> leader: acknowledge or reject an `AppendEntries`.
     AppendEntriesReply(AppendEntriesReply),
 }
 
-impl<T: Clone, ClusterTag> Clone for RaftRpc<T, ClusterTag> {
+impl<T: Clone> Clone for RaftRpc<T> {
     fn clone(&self) -> Self {
         match self {
             RaftRpc::RequestVote(dto) => RaftRpc::RequestVote(dto.clone()),
@@ -181,7 +177,7 @@ impl<T: Clone, ClusterTag> Clone for RaftRpc<T, ClusterTag> {
     }
 }
 
-impl<T: Debug, ClusterTag> Debug for RaftRpc<T, ClusterTag> {
+impl<T: Debug> Debug for RaftRpc<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RaftRpc::RequestVote(dto) => f.debug_tuple("RequestVote").field(dto).finish(),
@@ -399,7 +395,7 @@ pub struct RaftStepInput<T, ClusterTag> {
     pub requests: Vec<T>,
     /// Intra-cluster messages received this tick, as an unordered batch; the step
     /// sorts them canonically so its outcome depends only on the batch *multiset*.
-    pub messages: Vec<(MemberId<ClusterTag>, RaftRpc<T, ClusterTag>)>,
+    pub messages: Vec<(MemberId<ClusterTag>, RaftRpc<T>)>,
 }
 
 /// One tick's worth of outputs from [`raft_step`].
@@ -408,7 +404,7 @@ pub struct RaftStepInput<T, ClusterTag> {
 #[doc(hidden)]
 pub struct RaftStepOutput<T, ClusterTag> {
     /// Messages to send to specific members.
-    pub outbound: Vec<(MemberId<ClusterTag>, RaftRpc<T, ClusterTag>)>,
+    pub outbound: Vec<(MemberId<ClusterTag>, RaftRpc<T>)>,
     /// Entries newly committed this tick, in log order (each index emitted exactly
     /// once over the member's lifetime).
     pub committed: Vec<LogEntry<T>>,
@@ -502,7 +498,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
 
     // (a) Process this tick's messages in a canonical order (so the step is a
     // function of the batch multiset), each one sequentially against live state.
-    fn sort_key<T, ClusterTag>(rpc: &RaftRpc<T, ClusterTag>) -> (u8, usize, usize, usize) {
+    fn sort_key<T>(rpc: &RaftRpc<T>) -> (u8, usize, usize, usize) {
         match rpc {
             RaftRpc::RequestVote(dto) => (0, dto.term, dto.last_log_term, dto.last_log_index),
             RaftRpc::RequestVoteResponse(dto) => (1, dto.term, 0, 0),
@@ -583,7 +579,7 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 if state.role == RaftState::Candidate {
                     state.role = RaftState::Follower;
                 }
-                state.known_leader = Some(request.leader.clone());
+                state.known_leader = Some(sender.clone());
 
                 // Log-matching check (RAFT §5.3).
                 let log_matches = request.prev_log_index == 0
@@ -766,7 +762,6 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 follower.clone(),
                 RaftRpc::AppendEntries(AppendEntriesRequest {
                     term: state.term,
-                    leader: me.clone(),
                     prev_log_index,
                     prev_log_term,
                     entries: state.log[prev_log_index..].to_vec(),
@@ -848,7 +843,7 @@ where
     T: Clone + Serialize + DeserializeOwned + 'a,
     ClusterTag: 'a,
     O: Ordering,
-    Net: NetworkFor<RaftRpc<T, ClusterTag>>,
+    Net: NetworkFor<RaftRpc<T>, RetriesGuarantee = ExactlyOnce>,
     NoOrder: MinOrder<Net::OrderingGuarantee, Min = NoOrder>,
 {
     let cluster_size = config.cluster_size;
@@ -871,19 +866,9 @@ where
     let (traffic_handle, traffic): (
         ForwardHandle<
             'a,
-            Stream<
-                (MemberId<ClusterTag>, RaftRpc<T, ClusterTag>),
-                Cluster<'a, ClusterTag>,
-                Unbounded,
-                NoOrder,
-            >,
+            Stream<(MemberId<ClusterTag>, RaftRpc<T>), Cluster<'a, ClusterTag>, Unbounded, NoOrder>,
         >,
-        Stream<
-            (MemberId<ClusterTag>, RaftRpc<T, ClusterTag>),
-            Cluster<'a, ClusterTag>,
-            Unbounded,
-            NoOrder,
-        >,
+        Stream<(MemberId<ClusterTag>, RaftRpc<T>), Cluster<'a, ClusterTag>, Unbounded, NoOrder>,
     ) = cluster.forward_ref();
 
     // The cluster membership list, resolved on each member at runtime (identical
@@ -901,7 +886,7 @@ where
         reason = "the sliced! outputs are annotated with their full stream types"
     )]
     let (outbound_messages, committed, redirected, view_transitions): (
-        Stream<(MemberId<ClusterTag>, RaftRpc<T, ClusterTag>), Cluster<'a, ClusterTag>>,
+        Stream<(MemberId<ClusterTag>, RaftRpc<T>), Cluster<'a, ClusterTag>>,
         Stream<LogEntry<T>, Cluster<'a, ClusterTag>>,
         Stream<(T, Option<MemberId<ClusterTag>>), Cluster<'a, ClusterTag>>,
         Stream<LeaderView<ClusterTag>, Cluster<'a, ClusterTag>>,
@@ -1025,7 +1010,8 @@ where
         (outbound, committed, redirected, view_transitions)
     };
 
-    traffic_handle.complete(outbound_messages
+    traffic_handle.complete(
+        outbound_messages
             .into_keyed()
             // The channel's fault model is chosen by the caller: sim tests use
             // `TCP.fail_stop()` (the simulator cannot explore lossy channels without
@@ -1035,7 +1021,8 @@ where
             // heartbeat, and lost vote traffic is retried at the next election
             // timeout.
             .demux(cluster, net)
-            .entries());
+            .entries(),
+    );
 
     RaftOutputs {
         // The RAFT protocol itself is what justifies the consistency cast: every
@@ -1122,7 +1109,7 @@ where
     O: Ordering,
     Con: Consistency,
     ClusterTag: 'a,
-    Net: NetworkFor<RaftRpc<T, ClusterTag>>,
+    Net: NetworkFor<RaftRpc<T>, RetriesGuarantee = ExactlyOnce>,
     NoOrder: MinOrder<Net::OrderingGuarantee, Min = NoOrder>,
 {
     // The server runs on the consistency-less view of the cluster: `Cluster`'s
@@ -1480,7 +1467,7 @@ mod tests {
     /// messages to them pile up unanswered.
     struct StepCluster {
         states: Vec<RaftServerState<String, Replica>>,
-        inboxes: Vec<Vec<(MemberId<Replica>, RaftRpc<String, Replica>)>>,
+        inboxes: Vec<Vec<(MemberId<Replica>, RaftRpc<String>)>>,
         committed: Vec<Vec<LogEntry<String>>>,
         redirected: Vec<Vec<(String, Option<MemberId<Replica>>)>>,
         cluster_size: usize,
@@ -1678,9 +1665,8 @@ mod tests {
         let append = |entries: Vec<LogEntry<String>>, prev: usize| {
             RaftRpc::AppendEntries(AppendEntriesRequest {
                 term: 1,
-                leader: leader_0.clone(),
                 prev_log_index: prev,
-                prev_log_term: if prev == 0 { 0 } else { 1 },
+                prev_log_term: usize::from(prev != 0),
                 entries,
                 leader_commit: 0,
             })
@@ -1774,7 +1760,7 @@ mod tests {
                 election_timer_fired: false,
                 heartbeat_timer_fired: false,
                 requests: vec![],
-                messages: vec![(leader_0.clone(), append(vec![entry(1)], 0))],
+                messages: vec![(leader_0, append(vec![entry(1)], 0))],
             },
         );
         assert_eq!(
@@ -2053,7 +2039,7 @@ mod tests {
     /// installed with `crown` (as the pre-unification test did with injected views)
     /// while replication runs the real protocol:
     /// * Term 1: member 0 appends "old" but never heartbeats it (figure 8(a)).
-    /// * Term 2: member 0, re-crowned, replicates "old" everywhere — match_index
+    /// * Term 2: member 0, re-crowned, replicates "old" everywhere — `match_index`
     ///   reaches 1 on every member, beyond a majority, yet nothing may commit:
     ///   "old" is a term-1 entry under a term-2 leader. This is the trap that catches
     ///   a dropped §5.4.2 restriction (figure 8(c)).
@@ -2061,7 +2047,7 @@ mod tests {
     ///   the common prefix keeps later empty heartbeats from disturbing it).
     /// * Term 4: member 0, re-crowned, appends "winner" at index 2, unreplicated —
     ///   the doomed entry.
-    /// * Term 5: member 2 is crowned; its log is authoritative: the next_index
+    /// * Term 5: member 2 is crowned; its log is authoritative: the `next_index`
     ///   walk-back truncates "winner" in favor of "conflict", and a fresh
     ///   current-term entry "new" commits by counting — carrying "old" and
     ///   "conflict" with it transitively (figure 8(d)/(e)).
@@ -2320,7 +2306,7 @@ mod tests {
     /// The choreography deliberately overlaps replication and elections without
     /// intermediate quiescence: each round primes a challenger's heartbeat-
     /// suppression flag, then in one un-quiesced burst sends a fresh request to
-    /// member 0, pumps its heartbeat timer (pushing AppendEntries with the new
+    /// member 0, pumps its heartbeat timer (pushing `AppendEntries` with the new
     /// entry), and fires the challenger's election timer (a concurrent candidacy).
     /// The fuzzer explores the delivery interleavings. No liveness is asserted in
     /// the racy rounds — a stalled round is a legal outcome.

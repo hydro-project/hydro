@@ -189,7 +189,7 @@ A closure that mutates state is sensitive to the **order** and **multiplicity** 
 - If the stream is `NoOrder`, elements may reach the closure in any order, so the mutation must be **commutative**: applying updates in any order must produce the same final state.
 - If the stream is `AtLeastOnce`, the same element may be processed more than once, so the mutation must be **idempotent**: re-applying an element must leave the state unchanged.
 
-These properties are declared with annotations attached to the closure inside `q!()`, each justified by a [`manual_proof!`](rust:hydro_lang::properties::manual_proof) explaining why the property holds — the same annotations required by aggregations like `fold` and `reduce` on weakly-guaranteed streams. Without them, code that mutates state through a `by_mut` handle on a `NoOrder` or `AtLeastOnce` stream will not compile:
+These properties are declared with annotations attached to the closure inside `q!()`, each backed by a proof — the same annotations required by aggregations like `fold` and `reduce` on weakly-guaranteed streams. A proof is either a [`manual_proof!`](rust:hydro_lang::properties::manual_proof) explaining why the property holds, or (for commutativity) a machine-checked Verus proof; see [Proof Obligations](../correctness/proof-obligations.md). Without them, code that mutates state through a `by_mut` handle on a `NoOrder` or `AtLeastOnce` stream will not compile:
 
 ```rust
 # use hydro_lang::prelude::*;
@@ -223,6 +223,18 @@ let deposit_acks = sliced! {
 # }));
 ```
 
+The commutativity claim can also be machine-checked with Verus instead of argued in a doc comment. Here, `verus_proof_commutative_map!` proves both that the balance update commutes and that the outputs do not depend on the processing order. Because Verus also requires the closure to be panic-free, the addition must not overflow; here it wraps (see [Handling Panics](../correctness/verus/panics.md) for alternatives):
+
+```rust,ignore
+batch.map(q!(
+    |amt| {
+        *balance_mut = balance_mut.wrapping_add(amt);
+        amt
+    },
+    commutative = verus_proof_commutative_map!(item = i32, captures_mut = |balance_mut: i32|)
+))
+```
+
 If the stream also has `AtLeastOnce` retries, an `idempotent = ...` annotation is required as well (or instead, if the stream is totally ordered):
 
 ```rust,ignore
@@ -233,7 +245,7 @@ seen_failure_batch.for_each(q!(
 ));
 ```
 
-Note that the annotation covers the *entire* closure, including its output: in the deposit example above, returning the running balance instead of `amt` would make the per-element outputs order-dependent, which the `manual_proof!` could no longer justify. If your update logic genuinely is not commutative or idempotent, do not paper over it with a false proof — instead, restore stronger guarantees upstream (e.g., by sequencing requests through a single ordered stream), or explicitly accept the non-determinism with `assume_ordering` / `assume_retries` and a `nondet!` guard.
+Note that the annotation covers the *entire* closure, including its output: in the deposit example above, returning the running balance instead of `amt` would make the per-element outputs order-dependent, which the `manual_proof!` could no longer justify (and which `verus_proof_commutative_map!` would reject). If your update logic genuinely is not commutative or idempotent, do not paper over it with a false proof — instead, restore stronger guarantees upstream (e.g., by sequencing requests through a single ordered stream), or explicitly accept the non-determinism with `assume_ordering` / `assume_retries` and a `nondet!` guard.
 
 ## Determinism Considerations
 
@@ -241,6 +253,6 @@ Mutable references are imperative escape hatches, and they demand the same care 
 
 - **Element order**: mutations run per-element in the order of the batch. For a `TotalOrder` stream this order is deterministic; for weaker guarantees, the compiler requires the commutativity / idempotence annotations described above.
 - **Batch boundaries**: if outputs depend on *where* batch boundaries fall (for example, reads interleaved with writes across slices), that non-determinism is exactly what the `nondet!` guards on your [slice hooks](./slices.mdx) must justify. See [Non-Determinism and `nondet!`](../correctness/nondet.md).
-- **Test with the simulator**: the [Hydro simulator](../simulation/index.mdx) explores different batch boundaries and interleavings, which is the best way to validate claims made in your `nondet!` explanations and `manual_proof!` annotations.
+- **Test with the simulator**: the [Hydro simulator](../simulation/index.mdx) explores different batch boundaries and interleavings, which is the best way to validate claims made in your `nondet!` explanations and `manual_proof!` annotations (prefer [Verus proofs](../correctness/verus/index.md) where they apply).
 
 You can view the full API documentation for reference handles [here](rust:hydro_lang::handoff_ref).

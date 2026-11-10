@@ -38,8 +38,7 @@ use crate::compile::deploy_provider::{
 };
 use crate::compile::trybuild::generate::{LinkingMode, create_graph_trybuild};
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MembershipEvent, NetworkHint};
+use crate::location::{LocationKey, NetworkHint};
 
 /// represents a docker network
 #[derive(Clone, Debug)]
@@ -48,7 +47,7 @@ pub struct DockerNetwork {
 }
 
 impl DockerNetwork {
-    /// creates a new docker network (will actually be created when deployment.start() is called).
+    /// creates a new docker network (will actually be created when `deployment.start()` is called).
     pub fn new(name: String) -> Self {
         Self {
             name: format!("{name}-{}", nanoid::nanoid!(6, &CONTAINER_ALPHABET)),
@@ -246,7 +245,7 @@ pub struct DockerDeployExternal {
     name: String,
     next_port: Rc<RefCell<u16>>,
 
-    /// Counter for generating ExternalPortId values at deploy time.
+    /// Counter for generating `ExternalPortId` values at deploy time.
     next_external_port_id: Rc<RefCell<crate::Counter<ExternalPortId>>>,
 
     ports: Rc<RefCell<HashMap<ExternalPortId, u16>>>,
@@ -672,7 +671,7 @@ async fn build_and_create_image(
             let stderr_lines = stderr_lines.join("\n");
 
             anyhow::bail!(
-                r#"
+                r"
 Failed to build crate {exit_status:?}
 --- diagnostics
 ---
@@ -695,7 +694,7 @@ Failed to build crate {exit_status:?}
 {stderr_lines}
 ---
 ---
----"#
+---"
             );
         }
         Err(err) => {
@@ -1269,12 +1268,11 @@ impl<'a> Deploy<'a> for DockerDeploy {
         many: bool,
         server_hint: NetworkHint,
     ) -> Box<dyn FnOnce()> {
-        if server_hint != NetworkHint::Auto {
-            panic!(
-                "Docker deployment only supports NetworkHint::Auto, got {:?}",
-                server_hint
-            );
-        }
+        assert!(
+            server_hint == NetworkHint::Auto,
+            "Docker deployment only supports NetworkHint::Auto, got {:?}",
+            server_hint
+        );
 
         // For many connections, we need to populate connection_info so as_bincode_bidi can find it
         if many {
@@ -1311,15 +1309,13 @@ impl<'a> Deploy<'a> for DockerDeploy {
     }
 
     #[instrument(level = "trace", skip_all, fields(%of_cluster))]
-    fn cluster_ids(
-        of_cluster: LocationKey,
-    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
-        cluster_ids()
+    fn cluster_ids(of_cluster: LocationKey) -> syn::Expr {
+        cluster_ids().splice_untyped()
     }
 
     #[instrument(level = "trace", skip_all)]
-    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
-        cluster_self_id()
+    fn cluster_self_id() -> syn::Expr {
+        cluster_self_id().splice_untyped()
     }
 
     #[instrument(level = "trace", skip_all, fields(?location_id))]
@@ -1327,9 +1323,8 @@ impl<'a> Deploy<'a> for DockerDeploy {
         _env: &mut Self::InstantiateEnv,
         _at_location: &LocationId,
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
-    {
-        cluster_membership_stream(location_id)
+    ) -> syn::Expr {
+        cluster_membership_stream(location_id).splice_untyped()
     }
 }
 
@@ -1362,15 +1357,14 @@ fn get_docker_image_name(
 
     let image_name = format!("hy-{name_hint}-{deployment_instance}-{location_key}");
 
-    if !is_valid_docker_image_name(&image_name) {
-        panic!(
-            "Generated Docker image name '{image_name}' is not a valid Docker image name. \
-             Docker image names may only contain lowercase alphanumeric characters \
-             separated by single '.', '_', or '-' characters, and must start and end \
-             with an alphanumeric character. The most likely cause is your location \
-             struct name '{name_hint}'"
-        );
-    }
+    assert!(
+        is_valid_docker_image_name(&image_name),
+        "Generated Docker image name '{image_name}' is not a valid Docker image name. \
+         Docker image names may only contain lowercase alphanumeric characters \
+         separated by single '.', '_', or '-' characters, and must start and end \
+         with an alphanumeric character. The most likely cause is your location \
+         struct name '{name_hint}'"
+    );
 
     image_name
 }
