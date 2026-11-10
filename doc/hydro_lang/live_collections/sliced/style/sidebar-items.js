@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["atomic","batch","snapshot","state","state_null"],"struct":["Atomic","Batch","Default","Snapshot","StateBuilder","StateNullBuilder"]};
+window.SIDEBAR_ITEMS = {"fn":["atomic","batch","snapshot","state","state_null","time"],"struct":["Atomic","Batch","Default","Snapshot","StateBuilder","StateNullBuilder","Time"]};

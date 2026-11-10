@@ -1344,7 +1344,7 @@
 <a href=#1344 id=1344 data-nosnippet>1344</a>        interval: <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, std::time::Duration, L&gt; + Copy + <span class="lifetime">'a</span>,
 <a href=#1345 id=1345 data-nosnippet>1345</a>        <span class="kw-2">mut </span>nondet: NonDet&lt;(
 <a href=#1346 id=1346 data-nosnippet>1346</a>            <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::sim_hooks::SnapshotHook&lt;T, L::SimHookScope&gt;&gt;,
-<a href=#1347 id=1347 data-nosnippet>1347</a>            <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::sim_hooks::BatchHook&lt;(), TotalOrder, ExactlyOnce, L::SimHookScope&gt;&gt;,
+<a href=#1347 id=1347 data-nosnippet>1347</a>            <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::sim_hooks::BatchHook&lt;(), TotalOrder, AtLeastOnce, L::SimHookScope&gt;&gt;,
 <a href=#1348 id=1348 data-nosnippet>1348</a>        )&gt;,
 <a href=#1349 id=1349 data-nosnippet>1349</a>    ) -&gt; Stream&lt;T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce&gt;
 <a href=#1350 id=1350 data-nosnippet>1350</a>    <span class="kw">where

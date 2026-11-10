@@ -2573,71 +2573,86 @@
 <a href=#2573 id=2573 data-nosnippet>2573</a>            .map(<span class="macro">q!</span>(<span class="kw">move </span>|<span class="kw">_</span>| <span class="macro">format!</span>(
 <a href=#2574 id=2574 data-nosnippet>2574</a>                <span class="string">"hello from member {}"</span>,
 <a href=#2575 id=2575 data-nosnippet>2575</a>                CLUSTER_SELF_ID.clone().into_tagless()
-<a href=#2576 id=2576 data-nosnippet>2576</a>            )));
-<a href=#2577 id=2577 data-nosnippet>2577</a>
-<a href=#2578 id=2578 data-nosnippet>2578</a>        <span class="kw">let </span>election_timer_interrupts = replicas.source_interval(<span class="macro">q!</span>(
-<a href=#2579 id=2579 data-nosnippet>2579</a>            std::time::Duration::from_millis(<span class="number">500 </span>+ u64::from(CLUSTER_SELF_ID.get_raw_id()) * <span class="number">130</span>)
-<a href=#2580 id=2580 data-nosnippet>2580</a>        ));
-<a href=#2581 id=2581 data-nosnippet>2581</a>        <span class="kw">let </span>heartbeat_timer_interrupts =
-<a href=#2582 id=2582 data-nosnippet>2582</a>            replicas.source_interval(<span class="macro">q!</span>(std::time::Duration::from_millis(<span class="number">100</span>)));
-<a href=#2583 id=2583 data-nosnippet>2583</a>
-<a href=#2584 id=2584 data-nosnippet>2584</a>        <span class="kw">let </span>(committed, redirected) = raft(
-<a href=#2585 id=2585 data-nosnippet>2585</a>            requests,
-<a href=#2586 id=2586 data-nosnippet>2586</a>            election_timer_interrupts,
-<a href=#2587 id=2587 data-nosnippet>2587</a>            heartbeat_timer_interrupts,
-<a href=#2588 id=2588 data-nosnippet>2588</a>            RaftConfig { cluster_size: <span class="number">3 </span>},
-<a href=#2589 id=2589 data-nosnippet>2589</a>            || TCP.fail_stop().bincode(),
-<a href=#2590 id=2590 data-nosnippet>2590</a>            <span class="macro">nondet!</span>(
-<a href=#2591 id=2591 data-nosnippet>2591</a>                <span class="doccomment">/// Which member leads and how concurrent requests interleave in the
-<a href=#2592 id=2592 data-nosnippet>2592</a>                /// log is inherently non-deterministic; every member still prints
-<a href=#2593 id=2593 data-nosnippet>2593</a>                /// the same committed sequence.
-<a href=#2594 id=2594 data-nosnippet>2594</a>            </span>),
-<a href=#2595 id=2595 data-nosnippet>2595</a>        );
-<a href=#2596 id=2596 data-nosnippet>2596</a>
-<a href=#2597 id=2597 data-nosnippet>2597</a>        committed
-<a href=#2598 id=2598 data-nosnippet>2598</a>            .end_atomic()
-<a href=#2599 id=2599 data-nosnippet>2599</a>            .weaken_consistency()
-<a href=#2600 id=2600 data-nosnippet>2600</a>            .for_each(<span class="macro">q!</span>(|entry| <span class="macro">println!</span>(
-<a href=#2601 id=2601 data-nosnippet>2601</a>                <span class="string">"committed [term {}, index {}]: {}"</span>,
-<a href=#2602 id=2602 data-nosnippet>2602</a>                entry.term_received, entry.index, entry.message
-<a href=#2603 id=2603 data-nosnippet>2603</a>            )));
-<a href=#2604 id=2604 data-nosnippet>2604</a>
-<a href=#2605 id=2605 data-nosnippet>2605</a>        redirected.for_each(<span class="macro">q!</span>(|(request, leader_hint)| <span class="macro">println!</span>(
-<a href=#2606 id=2606 data-nosnippet>2606</a>            <span class="string">"redirected: {request:?} (leader hint: {leader_hint:?})"
-<a href=#2607 id=2607 data-nosnippet>2607</a>        </span>)));
-<a href=#2608 id=2608 data-nosnippet>2608</a>    }
-<a href=#2609 id=2609 data-nosnippet>2609</a>
-<a href=#2610 id=2610 data-nosnippet>2610</a>    <span class="doccomment">/// Pins the Hydro IR (and the per-member DFIR graph) generated for the
-<a href=#2611 id=2611 data-nosnippet>2611</a>    /// deploy-shaped raft wiring, so optimizer or staging regressions surface as
-<a href=#2612 id=2612 data-nosnippet>2612</a>    /// snapshot diffs — matching the `paxos_ir` / `two_pc_ir` convention.
-<a href=#2613 id=2613 data-nosnippet>2613</a>    </span><span class="attr">#[test]
-<a href=#2614 id=2614 data-nosnippet>2614</a>    </span><span class="kw">fn </span>raft_ir() {
-<a href=#2615 id=2615 data-nosnippet>2615</a>        <span class="kw">use </span>dfir_lang::graph::WriteConfig;
-<a href=#2616 id=2616 data-nosnippet>2616</a>        <span class="kw">use </span>hydro_lang::deploy::HydroDeploy;
-<a href=#2617 id=2617 data-nosnippet>2617</a>
-<a href=#2618 id=2618 data-nosnippet>2618</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = FlowBuilder::new();
-<a href=#2619 id=2619 data-nosnippet>2619</a>        <span class="kw">let </span>replicas = builder.cluster::&lt;Replica&gt;();
-<a href=#2620 id=2620 data-nosnippet>2620</a>        create_raft(<span class="kw-2">&amp;</span>replicas);
-<a href=#2621 id=2621 data-nosnippet>2621</a>        <span class="kw">let </span><span class="kw-2">mut </span>built = builder.with_default_optimize::&lt;HydroDeploy&gt;();
-<a href=#2622 id=2622 data-nosnippet>2622</a>
-<a href=#2623 id=2623 data-nosnippet>2623</a>        hydro_lang::compile::ir::dbg_dedup_tee(|| {
-<a href=#2624 id=2624 data-nosnippet>2624</a>            <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(built.ir());
-<a href=#2625 id=2625 data-nosnippet>2625</a>        });
-<a href=#2626 id=2626 data-nosnippet>2626</a>
-<a href=#2627 id=2627 data-nosnippet>2627</a>        <span class="kw">let </span>preview = built.preview_compile();
-<a href=#2628 id=2628 data-nosnippet>2628</a>        <span class="macro">hydro_build_utils::insta::with_settings!</span>({
-<a href=#2629 id=2629 data-nosnippet>2629</a>            snapshot_suffix =&gt; <span class="string">"replica_mermaid"
-<a href=#2630 id=2630 data-nosnippet>2630</a>        </span>}, {
-<a href=#2631 id=2631 data-nosnippet>2631</a>            <span class="macro">hydro_build_utils::assert_snapshot!</span>(
-<a href=#2632 id=2632 data-nosnippet>2632</a>                preview.dfir_for(<span class="kw-2">&amp;</span>replicas).unwrap().to_mermaid(<span class="kw-2">&amp;</span>WriteConfig {
-<a href=#2633 id=2633 data-nosnippet>2633</a>                    no_subgraphs: <span class="bool-val">true</span>,
-<a href=#2634 id=2634 data-nosnippet>2634</a>                    no_pull_push: <span class="bool-val">true</span>,
-<a href=#2635 id=2635 data-nosnippet>2635</a>                    no_handoffs: <span class="bool-val">true</span>,
-<a href=#2636 id=2636 data-nosnippet>2636</a>                    op_text_no_imports: <span class="bool-val">true</span>,
-<a href=#2637 id=2637 data-nosnippet>2637</a>                    ..WriteConfig::default()
-<a href=#2638 id=2638 data-nosnippet>2638</a>                })
-<a href=#2639 id=2639 data-nosnippet>2639</a>            );
+<a href=#2576 id=2576 data-nosnippet>2576</a>            )))
+<a href=#2577 id=2577 data-nosnippet>2577</a>            .assume_retries::&lt;ExactlyOnce&gt;(<span class="macro">nondet!</span>(
+<a href=#2578 id=2578 data-nosnippet>2578</a>                <span class="doccomment">/// The interval timer's `()`s are `AtLeastOnce`; this wiring treats each
+<a href=#2579 id=2579 data-nosnippet>2579</a>                /// fire as one distinct request, a choice the workload is allowed to make.
+<a href=#2580 id=2580 data-nosnippet>2580</a>            </span>));
+<a href=#2581 id=2581 data-nosnippet>2581</a>
+<a href=#2582 id=2582 data-nosnippet>2582</a>        <span class="kw">let </span>election_timer_interrupts = replicas
+<a href=#2583 id=2583 data-nosnippet>2583</a>            .source_interval(<span class="macro">q!</span>(std::time::Duration::from_millis(
+<a href=#2584 id=2584 data-nosnippet>2584</a>                <span class="number">500 </span>+ u64::from(CLUSTER_SELF_ID.get_raw_id()) * <span class="number">130
+<a href=#2585 id=2585 data-nosnippet>2585</a>            </span>)))
+<a href=#2586 id=2586 data-nosnippet>2586</a>            .assume_retries::&lt;ExactlyOnce&gt;(<span class="macro">nondet!</span>(
+<a href=#2587 id=2587 data-nosnippet>2587</a>                <span class="doccomment">/// `source_interval`'s fires are `AtLeastOnce`; `raft` consumes its timers
+<a href=#2588 id=2588 data-nosnippet>2588</a>                /// `ExactlyOnce` and only tests whether a tick saw a fire, so a repeated
+<a href=#2589 id=2589 data-nosnippet>2589</a>                /// fire is just another fire.
+<a href=#2590 id=2590 data-nosnippet>2590</a>            </span>));
+<a href=#2591 id=2591 data-nosnippet>2591</a>        <span class="kw">let </span>heartbeat_timer_interrupts = replicas
+<a href=#2592 id=2592 data-nosnippet>2592</a>            .source_interval(<span class="macro">q!</span>(std::time::Duration::from_millis(<span class="number">100</span>)))
+<a href=#2593 id=2593 data-nosnippet>2593</a>            .assume_retries::&lt;ExactlyOnce&gt;(<span class="macro">nondet!</span>(
+<a href=#2594 id=2594 data-nosnippet>2594</a>                <span class="doccomment">/// `source_interval`'s fires are `AtLeastOnce`; `raft` consumes its timers
+<a href=#2595 id=2595 data-nosnippet>2595</a>                /// `ExactlyOnce` and only tests whether a tick saw a fire, so a repeated
+<a href=#2596 id=2596 data-nosnippet>2596</a>                /// fire is just another fire.
+<a href=#2597 id=2597 data-nosnippet>2597</a>            </span>));
+<a href=#2598 id=2598 data-nosnippet>2598</a>
+<a href=#2599 id=2599 data-nosnippet>2599</a>        <span class="kw">let </span>(committed, redirected) = raft(
+<a href=#2600 id=2600 data-nosnippet>2600</a>            requests,
+<a href=#2601 id=2601 data-nosnippet>2601</a>            election_timer_interrupts,
+<a href=#2602 id=2602 data-nosnippet>2602</a>            heartbeat_timer_interrupts,
+<a href=#2603 id=2603 data-nosnippet>2603</a>            RaftConfig { cluster_size: <span class="number">3 </span>},
+<a href=#2604 id=2604 data-nosnippet>2604</a>            || TCP.fail_stop().bincode(),
+<a href=#2605 id=2605 data-nosnippet>2605</a>            <span class="macro">nondet!</span>(
+<a href=#2606 id=2606 data-nosnippet>2606</a>                <span class="doccomment">/// Which member leads and how concurrent requests interleave in the
+<a href=#2607 id=2607 data-nosnippet>2607</a>                /// log is inherently non-deterministic; every member still prints
+<a href=#2608 id=2608 data-nosnippet>2608</a>                /// the same committed sequence.
+<a href=#2609 id=2609 data-nosnippet>2609</a>            </span>),
+<a href=#2610 id=2610 data-nosnippet>2610</a>        );
+<a href=#2611 id=2611 data-nosnippet>2611</a>
+<a href=#2612 id=2612 data-nosnippet>2612</a>        committed
+<a href=#2613 id=2613 data-nosnippet>2613</a>            .end_atomic()
+<a href=#2614 id=2614 data-nosnippet>2614</a>            .weaken_consistency()
+<a href=#2615 id=2615 data-nosnippet>2615</a>            .for_each(<span class="macro">q!</span>(|entry| <span class="macro">println!</span>(
+<a href=#2616 id=2616 data-nosnippet>2616</a>                <span class="string">"committed [term {}, index {}]: {}"</span>,
+<a href=#2617 id=2617 data-nosnippet>2617</a>                entry.term_received, entry.index, entry.message
+<a href=#2618 id=2618 data-nosnippet>2618</a>            )));
+<a href=#2619 id=2619 data-nosnippet>2619</a>
+<a href=#2620 id=2620 data-nosnippet>2620</a>        redirected.for_each(<span class="macro">q!</span>(|(request, leader_hint)| <span class="macro">println!</span>(
+<a href=#2621 id=2621 data-nosnippet>2621</a>            <span class="string">"redirected: {request:?} (leader hint: {leader_hint:?})"
+<a href=#2622 id=2622 data-nosnippet>2622</a>        </span>)));
+<a href=#2623 id=2623 data-nosnippet>2623</a>    }
+<a href=#2624 id=2624 data-nosnippet>2624</a>
+<a href=#2625 id=2625 data-nosnippet>2625</a>    <span class="doccomment">/// Pins the Hydro IR (and the per-member DFIR graph) generated for the
+<a href=#2626 id=2626 data-nosnippet>2626</a>    /// deploy-shaped raft wiring, so optimizer or staging regressions surface as
+<a href=#2627 id=2627 data-nosnippet>2627</a>    /// snapshot diffs — matching the `paxos_ir` / `two_pc_ir` convention.
+<a href=#2628 id=2628 data-nosnippet>2628</a>    </span><span class="attr">#[test]
+<a href=#2629 id=2629 data-nosnippet>2629</a>    </span><span class="kw">fn </span>raft_ir() {
+<a href=#2630 id=2630 data-nosnippet>2630</a>        <span class="kw">use </span>dfir_lang::graph::WriteConfig;
+<a href=#2631 id=2631 data-nosnippet>2631</a>        <span class="kw">use </span>hydro_lang::deploy::HydroDeploy;
+<a href=#2632 id=2632 data-nosnippet>2632</a>
+<a href=#2633 id=2633 data-nosnippet>2633</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = FlowBuilder::new();
+<a href=#2634 id=2634 data-nosnippet>2634</a>        <span class="kw">let </span>replicas = builder.cluster::&lt;Replica&gt;();
+<a href=#2635 id=2635 data-nosnippet>2635</a>        create_raft(<span class="kw-2">&amp;</span>replicas);
+<a href=#2636 id=2636 data-nosnippet>2636</a>        <span class="kw">let </span><span class="kw-2">mut </span>built = builder.with_default_optimize::&lt;HydroDeploy&gt;();
+<a href=#2637 id=2637 data-nosnippet>2637</a>
+<a href=#2638 id=2638 data-nosnippet>2638</a>        hydro_lang::compile::ir::dbg_dedup_tee(|| {
+<a href=#2639 id=2639 data-nosnippet>2639</a>            <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(built.ir());
 <a href=#2640 id=2640 data-nosnippet>2640</a>        });
-<a href=#2641 id=2641 data-nosnippet>2641</a>    }
-<a href=#2642 id=2642 data-nosnippet>2642</a>}
+<a href=#2641 id=2641 data-nosnippet>2641</a>
+<a href=#2642 id=2642 data-nosnippet>2642</a>        <span class="kw">let </span>preview = built.preview_compile();
+<a href=#2643 id=2643 data-nosnippet>2643</a>        <span class="macro">hydro_build_utils::insta::with_settings!</span>({
+<a href=#2644 id=2644 data-nosnippet>2644</a>            snapshot_suffix =&gt; <span class="string">"replica_mermaid"
+<a href=#2645 id=2645 data-nosnippet>2645</a>        </span>}, {
+<a href=#2646 id=2646 data-nosnippet>2646</a>            <span class="macro">hydro_build_utils::assert_snapshot!</span>(
+<a href=#2647 id=2647 data-nosnippet>2647</a>                preview.dfir_for(<span class="kw-2">&amp;</span>replicas).unwrap().to_mermaid(<span class="kw-2">&amp;</span>WriteConfig {
+<a href=#2648 id=2648 data-nosnippet>2648</a>                    no_subgraphs: <span class="bool-val">true</span>,
+<a href=#2649 id=2649 data-nosnippet>2649</a>                    no_pull_push: <span class="bool-val">true</span>,
+<a href=#2650 id=2650 data-nosnippet>2650</a>                    no_handoffs: <span class="bool-val">true</span>,
+<a href=#2651 id=2651 data-nosnippet>2651</a>                    op_text_no_imports: <span class="bool-val">true</span>,
+<a href=#2652 id=2652 data-nosnippet>2652</a>                    ..WriteConfig::default()
+<a href=#2653 id=2653 data-nosnippet>2653</a>                })
+<a href=#2654 id=2654 data-nosnippet>2654</a>            );
+<a href=#2655 id=2655 data-nosnippet>2655</a>        });
+<a href=#2656 id=2656 data-nosnippet>2656</a>    }
+<a href=#2657 id=2657 data-nosnippet>2657</a>}
 </code></pre></div></section></main></body></html>
