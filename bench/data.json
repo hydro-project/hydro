@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1794226470642,
+  "lastUpdate": 1794311452711,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -322137,6 +322137,208 @@
             "name": "paxos_bench",
             "value": 205300,
             "range": "± 9871.98",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mingwei Samuel",
+            "username": "MingweiSamuel",
+            "email": "mingwei.samuel@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "bdca72e48424fc3e9b38a8ad36baa7153e2ee9ae",
+          "message": "refactor(hydro_lang): stop replaying top-level singleton-like update feeds in production (#3180)\n\nTop-level (root) singletons, optionals, and keyed singletons are\nrepresented as update feeds. Until now, several production lowerings\nreplayed their whole current state on every tick, and the consumers that\nwindow them into ticks relied on that replay. Now each producer emits\nonly its updates, and every consumer holds the latest state itself, so\nnothing re-sends unchanged state every tick. The tombstoned `Unbounded`\nkinds already worked this way since #3189; this extends it to the plain\nkinds.\n\n### Producers\n\nThese are production lowerings; the simulator already modeled them as\nupdate feeds.\n\n- **Constants**: an unbounded root `SingletonSource` and\n`UnboundSingleton` no longer `persist::<'static>()`. A constant's feed\nis its single update.\n- **`Fold`**: `fold::<'static>` → `fold_no_replay::<'static>`. It emits\nthe initial value once on the first tick (even with no input), then the\naccumulator only on ticks with new input.\n- **`Reduce`**: `reduce::<'static>` → `reduce_no_replay::<'static>` at\nthe root, bounded or not.\n- **`FoldKeyed`**: `fold_keyed::<'static>` → the keyed `scan::<'static>`\nthat emits only the updated entry. This was previously the sim-only\nlowering.\n- **`ReduceKeyed`**: `reduce_keyed::<'static>` → a keyed\n`scan::<'static>` that emits only the updated entry.\n- `ReduceKeyedWatermark` was already delta-emitting.\n\n### Consumers\n\nSnapshot ingress (`ProdDfirBuilder::snapshot`) stays `batch_eager()` and\nholds the state across firings:\n\n- **Singleton (any bound), or a bounded / `InitNone` optional**: a\ncross-firing `fold` holding the latest update. For the bounded kinds\nthis replaces `persist::<'static>()` + `batch_eager()`.\n- **Bounded / `MonotonicKeys` / `MonotonicValue` keyed singletons**: a\ncross-firing `fold` upserting each entry into the current map.\nPreviously a plain `batch_eager()` relied on the full map being\nreplayed.\n- **Unbounded optionals and keyed singletons**: unchanged (they already\nheld state).\n\n### Why this is safe\n\nOnly the tombstoned `Unbounded` kinds can lose values, and their\nproducers emit explicit tombstones. The plain kinds never lose anything:\n\n- `Singleton` is always present.\n- An `InitNone` optional never returns to null.\n- Monotonic keyed singletons never remove keys.\n\nEvery operator that can drop values from a plain kind either produces a\ntombstoned kind (`Singleton` / `Optional` `filter` / `filter_map`) or is\nrestricted to bounded values (`KeyedSingleton::filter`, `filter_map`,\n`filter_key_not_in`).\n\n### Testing\n\n- New tests for the initial value of a fold that never receives input:\n- `fold_no_replay` emits its initial value on the first tick with no\ninput, then nothing until input arrives, on both the pull and push side\n(`surface_fold::test_fold_no_replay_initial_value_without_input`,\n`surface_push_blocking::test_fold_no_replay_push_initial_value_without_input`).\n- `singleton::top_level_fold_without_input_has_initial_value` (deploy):\na top-level `fold` whose input never receives anything still holds its\ninitial value when read through a `sliced!` that batches a separate read\ninput and snapshots the fold.\n- `hydro_test` IR / mermaid snapshots updated for the new lowerings\n(compute_pi, map_reduce, paxos acceptor / proposer, two_pc coordinator,\nchat_app_no_replay).\n- `hydro_lang` lib and `hydro_test` tests pass; clippy and rustfmt\nclean.\n\n### Stack\n\n1. **This PR**: stop replaying top-level update feeds.\n2. #3269: add an update-stream cast (`HydroNode::CastUpdateStream`) and\nreimplement top-level combinators (`into_singleton`, `key_count`, `or` /\n`zip`, thresholds, `sample_eager`) on top of it.\n3. Allow `defer_tick` on top-level streams.\n4. Replace snapshot-only ticks (`timeout`, `bench_client`,\n`paxos_bench`, `map_reduce`, `echo`) with non-lazy inputs.\n5. Stop tests and docs from relying on snapshots triggering ticks.\n6. #3270: make Hydro tick ingress lazy for everything except batched-in\nstreams. This uses the lazy `snapshot()` / `snapshot_keyed()` /\n`snapshot_prefix()` cells, so loops no longer run on every tick.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-11-10T01:17:19Z",
+          "url": "https://github.com/hydro-project/hydro/commit/bdca72e48424fc3e9b38a8ad36baa7153e2ee9ae"
+        },
+        "date": 1794311452648,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311181,
+            "range": "± 1839",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6527272,
+            "range": "± 8910",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6840747,
+            "range": "± 112143",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 11306,
+            "range": "± 56",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 8443392,
+            "range": "± 86421",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 946783,
+            "range": "± 5878",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1021019,
+            "range": "± 3219",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 46401493,
+            "range": "± 969058",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6527534,
+            "range": "± 53713",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 41512286,
+            "range": "± 235010",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6525909,
+            "range": "± 12191",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6839663,
+            "range": "± 6118",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 38420291,
+            "range": "± 164728",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 3868,
+            "range": "± 38",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 23600,
+            "range": "± 227",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 3896,
+            "range": "± 42",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6585,
+            "range": "± 211",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 373181,
+            "range": "± 1000",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 53930,
+            "range": "± 304",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 43416,
+            "range": "± 164",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 16812,
+            "range": "± 79",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6887,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1080,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72150,
+            "range": "± 367",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 74822,
+            "range": "± 307",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 6679,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15583,
+            "range": "± 113",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 26363,
+            "range": "± 477",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7297,
+            "range": "± 625",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 196660,
+            "range": "± 4728.89",
             "unit": "ops/s"
           }
         ]
