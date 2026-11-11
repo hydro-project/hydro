@@ -38,6 +38,8 @@ pub struct SimBuilder {
     pub next_hoff_id: crate::Counter<HandoffId>,
     pub test_safety_only: bool,
     pub skip_consistency_assertions: bool,
+    /// At-least-once operators not bound to a sim hook, rendered for error messages.
+    pub unhooked_at_least_once: Vec<String>,
     pub channel_tables: BTreeMap<u32, syn::Ident>,
     /// Tracks which operators sim hook handles have been bound to, to report double-binds
     /// at flow build time with both operator locations.
@@ -287,6 +289,24 @@ impl SimBuilder {
                 _ => unreachable!(),
             },
             _ => unreachable!(),
+        }
+    }
+
+    /// The `budget` expression for an at-least-once hook. Scripted hooks never consult it,
+    /// unhooked ones use the budget the host passes for the run.
+    fn at_least_once_budget(
+        &mut self,
+        op_meta: &HydroIrOpMetadata,
+        op_location: &str,
+        operator: &str,
+    ) -> syn::Expr {
+        let root = get_this_crate();
+        if op_meta.sim_hook_id.is_some() {
+            syn::parse_quote!(#root::sim::runtime::RetryBudget::Bounded(0))
+        } else {
+            self.unhooked_at_least_once
+                .push(format!("{operator}\n--> {op_location}"));
+            syn::parse_quote!(__hydro_retry_budget)
         }
     }
 
@@ -685,7 +705,7 @@ impl DfirBuilder for SimBuilder {
         match in_kind {
             CollectionKind::Stream {
                 order,
-                retry: StreamRetry::ExactlyOnce,
+                retry,
                 element_type,
                 ..
             } => {
@@ -698,16 +718,27 @@ impl DfirBuilder for SimBuilder {
                     ..
                 } = &plumbing;
 
-                let inner_hook: syn::Expr = syn::parse_quote!(
-                    #root::sim::runtime::StreamHook::<_, #order_ty> {
-                        input: #buffered_ident.clone(),
-                        to_release: None,
-                        output: #hoff_send_ident,
-                        batch_location: #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
-                        format_item_debug: #root::__maybe_debug__!(#element_type),
-                        _order: std::marker::PhantomData,
-                    }
+                let args: proc_macro2::TokenStream = quote::quote!(
+                    #buffered_ident.clone(),
+                    #hoff_send_ident,
+                    #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
+                    #root::__maybe_debug__!(#element_type),
                 );
+                let inner_hook: syn::Expr = match retry {
+                    StreamRetry::ExactlyOnce => syn::parse_quote!(
+                        #root::sim::runtime::StreamBatchHook::<_, #order_ty, #root::live_collections::stream::ExactlyOnce>::new(#args)
+                    ),
+                    StreamRetry::AtLeastOnce => {
+                        let budget = self.at_least_once_budget(
+                            op_meta,
+                            &batch_location,
+                            "`batch` of an `AtLeastOnce` stream",
+                        );
+                        syn::parse_quote!(
+                            #root::sim::runtime::StreamBatchHook::<_, #order_ty, #root::live_collections::stream::AtLeastOnce>::new(#args #budget)
+                        )
+                    }
+                };
                 self.install_tick_input_hook(
                     in_location,
                     out_location,
@@ -720,7 +751,7 @@ impl DfirBuilder for SimBuilder {
             }
             CollectionKind::KeyedStream {
                 value_order,
-                value_retry: StreamRetry::ExactlyOnce,
+                value_retry,
                 key_type,
                 value_type,
                 ..
@@ -734,16 +765,27 @@ impl DfirBuilder for SimBuilder {
                     ..
                 } = &plumbing;
 
-                let inner_hook: syn::Expr = syn::parse_quote!(
-                    #root::sim::runtime::KeyedStreamHook::<_, _, #order_ty> {
-                        input: #buffered_ident.clone(),
-                        to_release: None,
-                        output: #hoff_send_ident,
-                        batch_location: #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
-                        format_item_debug: #root::__maybe_debug__!((#key_type, #value_type)),
-                        _order: std::marker::PhantomData,
-                    }
+                let args: proc_macro2::TokenStream = quote::quote!(
+                    #buffered_ident.clone(),
+                    #hoff_send_ident,
+                    #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
+                    #root::__maybe_debug__!((#key_type, #value_type)),
                 );
+                let inner_hook: syn::Expr = match value_retry {
+                    StreamRetry::ExactlyOnce => syn::parse_quote!(
+                        #root::sim::runtime::KeyedStreamBatchHook::<_, _, #order_ty, #root::live_collections::stream::ExactlyOnce>::new(#args)
+                    ),
+                    StreamRetry::AtLeastOnce => {
+                        let budget = self.at_least_once_budget(
+                            op_meta,
+                            &batch_location,
+                            "`batch` of an `AtLeastOnce` keyed stream",
+                        );
+                        syn::parse_quote!(
+                            #root::sim::runtime::KeyedStreamBatchHook::<_, _, #order_ty, #root::live_collections::stream::AtLeastOnce>::new(#args #budget)
+                        )
+                    }
+                };
                 self.install_tick_input_hook(
                     in_location,
                     out_location,
@@ -774,14 +816,12 @@ impl DfirBuilder for SimBuilder {
                 } = &plumbing;
 
                 let inner_hook: syn::Expr = syn::parse_quote!(
-                    #root::sim::runtime::KeyedStreamHook::<_, _, #root::live_collections::stream::TotalOrder> {
-                        input: #buffered_ident.clone(),
-                        to_release: None,
-                        output: #hoff_send_ident,
-                        batch_location: #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
-                        format_item_debug: #root::__maybe_debug__!((#key_type, #value_type)),
-                        _order: std::marker::PhantomData,
-                    }
+                    #root::sim::runtime::KeyedStreamBatchHook::<_, _, #root::live_collections::stream::TotalOrder, #root::live_collections::stream::ExactlyOnce>::new(
+                        #buffered_ident.clone(),
+                        #hoff_send_ident,
+                        #root::sim::runtime::HookLocationMeta { location: #batch_location, line: #line, caret_indent: #caret },
+                        #root::__maybe_debug__!((#key_type, #value_type)),
+                    )
                 );
                 self.install_tick_input_hook(
                     in_location,
@@ -808,17 +848,6 @@ impl DfirBuilder for SimBuilder {
                      singleton-like collection {in_kind:?} (at {batch_location}); use `Snapshot` \
                      instead"
                 );
-            }
-            CollectionKind::Stream {
-                retry: StreamRetry::AtLeastOnce,
-                ..
-            }
-            | CollectionKind::KeyedStream {
-                value_retry: StreamRetry::AtLeastOnce,
-                ..
-            } => {
-                eprintln!("{:?}", op_meta.backtrace.elements().collect::<Vec<_>>());
-                todo!("batch not implemented for kind {:?}", in_kind)
             }
         }
     }
@@ -1457,15 +1486,8 @@ impl DfirBuilder for SimBuilder {
                 ) if in_order == out_order => {
                     // `assume_retries`: the point where the simulator injects the
                     // duplicates the `AtLeastOnce` type says downstream must tolerate.
-                    let Some(hook_id) = op_meta.sim_hook_id else {
-                        panic!(
-                            "observing retries (`assume_retries`) has an infinite decision space \
-                             (every element admits arbitrarily many retries), so the simulator \
-                             cannot explore it autonomously\n--> {assume_location}\nhelp: bind a \
-                             sim hook to this operator (`nondet!(... hook = handle)`) and script \
-                             its decisions"
-                        );
-                    };
+                    let budget =
+                        self.at_least_once_budget(op_meta, &assume_location, "`assume_retries`");
 
                     let hoff_id = self.next_hoff_id.get_and_increment();
 
@@ -1499,19 +1521,24 @@ impl DfirBuilder for SimBuilder {
                             #hoff_send_ident,
                             #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
                             #root::__maybe_debug__!(#element_type),
+                            #budget,
                         )
                     );
-                    let hook_rc_ident = syn::Ident::new(
-                        &format!("__scripted_inline_hook_{hoff_id}"),
-                        Span::call_site(),
-                    );
-                    self.add_scripted_inline_hook(
-                        hook_id,
-                        location,
-                        &hook_rc_ident,
-                        &assume_location,
-                        inner_hook,
-                    );
+                    if let Some(hook_id) = op_meta.sim_hook_id {
+                        let hook_rc_ident = syn::Ident::new(
+                            &format!("__scripted_inline_hook_{hoff_id}"),
+                            Span::call_site(),
+                        );
+                        self.add_scripted_inline_hook(
+                            hook_id,
+                            location,
+                            &hook_rc_ident,
+                            &assume_location,
+                            inner_hook,
+                        );
+                    } else {
+                        self.add_inline_hook(location, syn::parse_quote!(Box::new(#inner_hook)));
+                    }
 
                     let builder = self.get_dfir_mut(location);
                     builder.add_dfir(
@@ -1555,15 +1582,11 @@ impl DfirBuilder for SimBuilder {
                     // `assume_ordering` on an at-least-once stream: ordering also decides
                     // which slots each element's retries occupy (an element may be emitted
                     // into several slots), so the decision space is infinite.
-                    let Some(hook_id) = op_meta.sim_hook_id else {
-                        panic!(
-                            "observing the order of an at-least-once stream also decides which \
-                             slots each element's retries occupy, an infinite decision space \
-                             the simulator cannot explore autonomously\n--> {assume_location}\n\
-                             help: bind a sim hook to this operator (`nondet!(... hook = \
-                             handle)`) and script its decisions"
-                        );
-                    };
+                    let budget = self.at_least_once_budget(
+                        op_meta,
+                        &assume_location,
+                        "`assume_ordering` on an `AtLeastOnce` stream",
+                    );
 
                     let hoff_id = self.next_hoff_id.get_and_increment();
 
@@ -1592,19 +1615,24 @@ impl DfirBuilder for SimBuilder {
                             #hoff_send_ident,
                             #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
                             #root::__maybe_debug__!(#element_type),
+                            #budget,
                         )
                     );
-                    let hook_rc_ident = syn::Ident::new(
-                        &format!("__scripted_inline_hook_{hoff_id}"),
-                        Span::call_site(),
-                    );
-                    self.add_scripted_inline_hook(
-                        hook_id,
-                        location,
-                        &hook_rc_ident,
-                        &assume_location,
-                        inner_hook,
-                    );
+                    if let Some(hook_id) = op_meta.sim_hook_id {
+                        let hook_rc_ident = syn::Ident::new(
+                            &format!("__scripted_inline_hook_{hoff_id}"),
+                            Span::call_site(),
+                        );
+                        self.add_scripted_inline_hook(
+                            hook_id,
+                            location,
+                            &hook_rc_ident,
+                            &assume_location,
+                            inner_hook,
+                        );
+                    } else {
+                        self.add_inline_hook(location, syn::parse_quote!(Box::new(#inner_hook)));
+                    }
 
                     let builder = self.get_dfir_mut(location);
                     builder.add_dfir(
@@ -1872,15 +1900,8 @@ impl DfirBuilder for SimBuilder {
                 ) if in_order == out_order => {
                     // `assume_retries`: the point where the simulator injects the
                     // duplicates the `AtLeastOnce` type says downstream must tolerate.
-                    let Some(hook_id) = op_meta.sim_hook_id else {
-                        panic!(
-                            "observing retries (`assume_retries`) has an infinite decision space \
-                             (every element admits arbitrarily many retries), so the simulator \
-                             cannot explore it autonomously\n--> {assume_location}\nhelp: bind a \
-                             sim hook to this operator (`nondet!(... hook = handle)`) and script \
-                             its decisions"
-                        );
-                    };
+                    let budget =
+                        self.at_least_once_budget(op_meta, &assume_location, "`assume_retries`");
 
                     let hoff_id = self.next_hoff_id.get_and_increment();
 
@@ -1913,23 +1934,28 @@ impl DfirBuilder for SimBuilder {
                             input: #buffered_ident.clone(),
                             to_release: None,
                             #extra_fields
+                            budget: #budget,
                             output: #hoff_send_ident,
                             location: #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
                             format_item_debug: #root::__maybe_debug__!(#element_type),
                         }
                     );
-                    let hook_rc_ident = syn::Ident::new(
-                        &format!("__scripted_observation_hook_{hoff_id}"),
-                        Span::call_site(),
-                    );
-                    self.add_scripted_hook(
-                        hook_id,
-                        location,
-                        location,
-                        &hook_rc_ident,
-                        &assume_location,
-                        inner_hook,
-                    );
+                    if let Some(hook_id) = op_meta.sim_hook_id {
+                        let hook_rc_ident = syn::Ident::new(
+                            &format!("__scripted_observation_hook_{hoff_id}"),
+                            Span::call_site(),
+                        );
+                        self.add_scripted_hook(
+                            hook_id,
+                            location,
+                            location,
+                            &hook_rc_ident,
+                            &assume_location,
+                            inner_hook,
+                        );
+                    } else {
+                        self.add_hook(location, location, syn::parse_quote!(Box::new(#inner_hook)));
+                    }
 
                     self.get_dfir_mut(location).add_dfir(
                         parse_quote! {
@@ -1963,15 +1989,11 @@ impl DfirBuilder for SimBuilder {
                     // `assume_ordering` on an at-least-once stream: ordering also decides
                     // which slots each element's retries occupy (an element may be emitted
                     // into several slots), so the decision space is infinite.
-                    let Some(hook_id) = op_meta.sim_hook_id else {
-                        panic!(
-                            "observing the order of an at-least-once stream also decides which \
-                             slots each element's retries occupy, an infinite decision space \
-                             the simulator cannot explore autonomously\n--> {assume_location}\n\
-                             help: bind a sim hook to this operator (`nondet!(... hook = \
-                             handle)`) and script its decisions"
-                        );
-                    };
+                    let budget = self.at_least_once_budget(
+                        op_meta,
+                        &assume_location,
+                        "`assume_ordering` on an `AtLeastOnce` stream",
+                    );
 
                     let hoff_id = self.next_hoff_id.get_and_increment();
 
@@ -1995,23 +2017,29 @@ impl DfirBuilder for SimBuilder {
                             release_provisional: false,
                             last_emitted: None,
                             emitted_counts: ::std::vec::Vec::new(),
+                            budget: #budget,
+                            last_emitted_index: None,
                             output: #hoff_send_ident,
                             location: #root::sim::runtime::HookLocationMeta { location: #assume_location, line: #line, caret_indent: #caret },
                             format_item_debug: #root::__maybe_debug__!(#element_type),
                         }
                     );
-                    let hook_rc_ident = syn::Ident::new(
-                        &format!("__scripted_observation_hook_{hoff_id}"),
-                        Span::call_site(),
-                    );
-                    self.add_scripted_hook(
-                        hook_id,
-                        location,
-                        location,
-                        &hook_rc_ident,
-                        &assume_location,
-                        inner_hook,
-                    );
+                    if let Some(hook_id) = op_meta.sim_hook_id {
+                        let hook_rc_ident = syn::Ident::new(
+                            &format!("__scripted_observation_hook_{hoff_id}"),
+                            Span::call_site(),
+                        );
+                        self.add_scripted_hook(
+                            hook_id,
+                            location,
+                            location,
+                            &hook_rc_ident,
+                            &assume_location,
+                            inner_hook,
+                        );
+                    } else {
+                        self.add_hook(location, location, syn::parse_quote!(Box::new(#inner_hook)));
+                    }
 
                     self.get_dfir_mut(location).add_dfir(
                         parse_quote! {

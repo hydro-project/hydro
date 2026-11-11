@@ -1519,6 +1519,8 @@ fn sim_continue_if_failure_in_fuzz_repro_is_reported() {
         });
 }
 
+mod exhausted_entropy;
+mod retries_depth;
 mod scripted;
 
 mod custom_codec {
