@@ -651,7 +651,7 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
             /// (`kv_replica/sequence_payloads.rs`), so every later slot
             /// stalls until a subsequent leader recommits this one — also
             /// when the value WAS chosen but the previous leader crashed
-            /// before forwarding it. See `hydro_lean/FIDELITY.md` (B6).
+            /// before forwarding it. See `hydro_lean/internal/FIDELITY.md` (B6).
         ))
         .fold::<(usize, Option<LogValue<P>>), _, _, _, _, _, _>(
             q!(|| (0, None)),
