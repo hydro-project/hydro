@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["named_receiver","named_sender"],"mod":["named_receiver","named_sender"]};

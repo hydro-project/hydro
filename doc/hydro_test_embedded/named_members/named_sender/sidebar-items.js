@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["inputs","membership","outgoing"],"struct":["EmbeddedInputs","EmbeddedMembershipStreams","EmbeddedNetworkOut"]};
