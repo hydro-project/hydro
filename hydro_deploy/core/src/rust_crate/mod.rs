@@ -41,7 +41,9 @@ pub struct RustCrate {
     rustflags: Option<String>,
     target_dir: Option<PathBuf>,
     build_env: Vec<(String, String)>,
-    is_dylib: bool,
+    /// If set, the crate is a generated trybuild `dylib-examples` crate whose examples link
+    /// dynamically against the trybuild dylib with this cargo package name.
+    dylib_package: Option<String>,
     no_default_features: bool,
     features: Option<Vec<String>>,
     config: Vec<String>,
@@ -67,7 +69,7 @@ impl RustCrate {
             rustflags: None,
             target_dir: None,
             build_env: vec![],
-            is_dylib: false,
+            dylib_package: None,
             no_default_features: false,
             features: None,
             config: vec![],
@@ -145,9 +147,11 @@ impl RustCrate {
         self
     }
 
+    /// Marks this crate as a generated trybuild `dylib-examples` crate whose examples link
+    /// dynamically against the trybuild dylib with cargo package name `dylib_package`.
     #[must_use]
-    pub fn set_is_dylib(mut self, is_dylib: bool) -> Self {
-        self.is_dylib = is_dylib;
+    pub fn dylib_package(mut self, dylib_package: impl Into<String>) -> Self {
+        self.dylib_package = Some(dylib_package.into());
         self
     }
 
@@ -234,7 +238,7 @@ impl RustCrate {
             self.build_env.clone(),
             self.no_default_features,
             target,
-            self.is_dylib,
+            self.dylib_package.clone(),
             self.features.clone(),
             self.config.clone(),
         )

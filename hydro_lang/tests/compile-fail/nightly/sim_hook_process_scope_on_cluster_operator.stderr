@@ -11,5 +11,7 @@ error[E0308]: mismatched types
 note: method defined here
   --> src/live_collections/stream/mod.rs
    |
+   | impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
+...
    |     pub fn assume_ordering<O2: Ordering>(
    |            ^^^^^^^^^^^^^^^

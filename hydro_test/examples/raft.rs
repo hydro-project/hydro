@@ -7,6 +7,7 @@ use hydro_deploy::rust_crate::tracing_options::{
 };
 use hydro_deploy::{AwsNetwork, Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::live_collections::stream::ExactlyOnce;
 use hydro_lang::location::Location;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::nondet::nondet;
@@ -80,7 +81,7 @@ async fn main() {
     };
 
     let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
-    let replicas = builder.cluster::<Replica>();
+    let replicas = builder.cluster::<Replica, u32>();
 
     // Each member submits a request of its own every second; only requests received
     // by the current leader are appended (the rest surface on `redirected` with a
@@ -90,17 +91,32 @@ async fn main() {
         .map(q!(move |_| format!(
             "hello from member {}",
             CLUSTER_SELF_ID.clone().into_tagless()
-        )));
+        )))
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// The interval timer's `()`s are `AtLeastOnce`; this demo treats each fire
+            /// as one distinct request, a choice the workload is allowed to make.
+        ));
 
     // Election timeouts are deliberately skewed per member (RAFT's randomized-timeout
     // tie-breaking): distinct periods guarantee two members' timers cannot fire
     // simultaneously forever. Heartbeats are much faster than the shortest election
     // timeout, so a live leader suppresses follower elections.
-    let election_timer_interrupts = replicas.source_interval(q!(std::time::Duration::from_millis(
-        500 + u64::from(CLUSTER_SELF_ID.get_raw_id()) * 130
-    )));
-    let heartbeat_timer_interrupts =
-        replicas.source_interval(q!(std::time::Duration::from_millis(100)));
+    let election_timer_interrupts = replicas
+        .source_interval(q!(std::time::Duration::from_millis(
+            500 + u64::from(CLUSTER_SELF_ID.get_raw_id()) * 130
+        )))
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// `source_interval`'s fires are `AtLeastOnce`; `raft` consumes its timers
+            /// `ExactlyOnce` and only tests whether a tick saw a fire, so a repeated
+            /// fire is just another fire.
+        ));
+    let heartbeat_timer_interrupts = replicas
+        .source_interval(q!(std::time::Duration::from_millis(100)))
+        .assume_retries::<ExactlyOnce>(nondet!(
+            /// `source_interval`'s fires are `AtLeastOnce`; `raft` consumes its timers
+            /// `ExactlyOnce` and only tests whether a tick saw a fire, so a repeated
+            /// fire is just another fire.
+        ));
 
     let (committed, redirected) = raft(
         requests,

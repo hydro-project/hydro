@@ -77,8 +77,8 @@ async fn docker() {
     let mut builder = FlowBuilder::new();
     let external = builder.external();
     let p1 = builder.process();
-    let c2 = builder.cluster();
-    let c3 = builder.cluster();
+    let c2 = builder.cluster::<_, String>();
+    let c3 = builder.cluster::<_, String>();
     let p4 = builder.process();
     let bidi_port = distributed_echo(&external, &p1, &c2, &c3, &p4);
 
@@ -263,8 +263,8 @@ async fn export_manifest(output_path: PathBuf) {
     let mut builder = FlowBuilder::new();
     let external = builder.external();
     let p1 = builder.process();
-    let c2 = builder.cluster();
-    let c3 = builder.cluster();
+    let c2 = builder.cluster::<_, String>();
+    let c3 = builder.cluster::<_, String>();
     let p4 = builder.process();
     let _bidi_port = distributed_echo(&external, &p1, &c2, &c3, &p4);
 

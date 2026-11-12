@@ -82,8 +82,7 @@ use crate::compile::deploy_provider::{
 };
 use crate::compile::trybuild::generate::create_graph_trybuild;
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MembershipEvent, NetworkHint};
+use crate::location::{LocationKey, NetworkHint};
 
 /// Represents a process running in an ecs deployment
 #[derive(Clone)]
@@ -447,6 +446,9 @@ fn build_info_from_config(
     }
 }
 
+/// ECS names each cluster's members with `String`s.
+impl crate::compile::deploy_provider::SupportsMemberId<String> for EcsDeploy {}
+
 impl<'a> Deploy<'a> for EcsDeploy {
     type InstantiateEnv = Self;
     type Process = EcsDeployProcess;
@@ -754,15 +756,13 @@ impl<'a> Deploy<'a> for EcsDeploy {
     }
 
     #[instrument(level = "trace", skip_all, fields(%of_cluster))]
-    fn cluster_ids(
-        of_cluster: LocationKey,
-    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
-        cluster_ids()
+    fn cluster_ids(of_cluster: LocationKey) -> syn::Expr {
+        cluster_ids().splice_untyped()
     }
 
     #[instrument(level = "trace", skip_all)]
-    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
-        cluster_self_id()
+    fn cluster_self_id() -> syn::Expr {
+        cluster_self_id().splice_untyped()
     }
 
     #[instrument(level = "trace", skip_all, fields(?location_id))]
@@ -770,9 +770,8 @@ impl<'a> Deploy<'a> for EcsDeploy {
         _env: &mut Self::InstantiateEnv,
         _at_location: &LocationId,
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
-    {
-        cluster_membership_stream(location_id)
+    ) -> syn::Expr {
+        cluster_membership_stream(location_id).splice_untyped()
     }
 }
 

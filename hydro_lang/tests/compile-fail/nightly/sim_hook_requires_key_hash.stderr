@@ -17,6 +17,8 @@ help: the trait `SimHook` is conditionally implemented for `KeyedMergeOrderedHoo
 note: required by a bound in `FlowBuilder::<'a>::sim_hook`
   --> src/compile/builder.rs
    |
+   | impl<'a> FlowBuilder<'a> {
+...
    |     pub fn sim_hook<B: crate::sim_hooks::SimHook>(&mut self) -> B {
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `FlowBuilder::<'a>::sim_hook`
 help: consider annotating `NotHashable` with `#[derive(Hash)]`

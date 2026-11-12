@@ -10,11 +10,12 @@ use std::env::join_paths;
 use vstd::prelude::*;
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)] // `cargo-sim` script is currently Unix only
+#[cfg_attr(target_os = "windows", ignore = "`cargo-sim` script is Unix-only")]
 fn fuzz_with_cargo_sim() {
     let command = std::process::Command::new("cargo")
         .args([
             "sim",
+            "--default-codegen-units",
             "-p",
             "hydro_lang",
             "--features",
@@ -51,14 +52,32 @@ fn fuzz_with_cargo_sim() {
     assert!(stderr_text.contains("boom\nstack backtrace:"));
 
     assert!(stderr_text.contains("releasing items: [100, 23]"));
+
+    // The generated program must be instrumented too, which requires `hydro_lang` to forward the
+    // rustflags (see `forward_rustflags`). libFuzzer reports each instrumented shared object as a
+    // module: the test binary, the trybuild dylib, and the generated cdylib.
+    let loaded_modules: usize = stderr_text
+        .lines()
+        .find_map(|line| {
+            let (count, rest) = line.strip_prefix("INFO: Loaded ")?.split_once(' ')?;
+            rest.trim_start()
+                .starts_with("modules")
+                .then(|| count.parse().ok())?
+        })
+        .expect("libFuzzer did not report its loaded modules");
+    assert_eq!(
+        loaded_modules, 3,
+        "expected the test binary, the trybuild dylib and the generated cdylib to be instrumented"
+    );
 }
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)] // `cargo-sim` script is currently Unix only
+#[cfg_attr(target_os = "windows", ignore = "`cargo-sim` script is Unix-only")]
 fn fuzz_with_cargo_sim_continue_if() {
     let command = std::process::Command::new("cargo")
         .args([
             "sim",
+            "--default-codegen-units",
             "-p",
             "hydro_lang",
             "--features",

@@ -260,12 +260,11 @@ impl<'a> SimFlow<'a> {
         let out = compile_sim(bin, trybuild).unwrap();
         let lib = {
             let _span = tracing::debug_span!(target: "hydro_build", "load_dylib").entered();
-            unsafe { Library::new(&*out).unwrap() }
+            unsafe { Library::new(&out).unwrap() }
         };
         drop(compiled_span);
 
         CompiledSim {
-            _path: out,
             lib,
             externals_port_registry: self.externals_port_registry.take(),
             unit_test_fuzz_iterations: self.unit_test_fuzz_iterations,

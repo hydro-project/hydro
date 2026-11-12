@@ -172,6 +172,11 @@ const config = {
                 label: "DFIR",
               },
               {
+                type: "docSidebar",
+                sidebarId: "hydroLeanSidebar",
+                label: "Hydro Lean (experimental)",
+              },
+              {
                 href: "pathname:///rustdoc/hydro_lang/",
                 label: "Rustdoc",
               },
@@ -215,6 +220,10 @@ const config = {
               {
                 label: "DFIR",
                 to: "/docs/dfir/",
+              },
+              {
+                label: "Hydro Lean (experimental)",
+                to: "/docs/hydro-lean/using/",
               },
             ],
           },

@@ -24,3 +24,36 @@ feat(hydro_lang): ...
 
 ... detailed explanation of key design decisions
 ```
+
+## Comments
+
+State the mechanism and the reason directly, as a causal chain: "X is the case, therefore Y, therefore Z."
+
+- No defensive or apologetic framing. Do not justify a choice against alternatives not taken ("rather than X, which would…", "as it already was", "deliberately"), and do not narrate history ("earlier versions…"). If an alternative is a trap worth warning about, state the trap plainly.
+- Lead with *why* the code exists; keep *how* short. Omit tangential facts, even true ones.
+- Name the direct cause, not a chain of secondary effects (prefer "this key has the highest precedence" over describing which other keys get joined or ignored).
+- A doc summary line says precisely what the item is or does.
+- Every pronoun has an unambiguous referent in the same sentence.
+- Be precise about distinct things with similar names (e.g. cargo's process environment vs. the environment it gives a build script).
+- Delete comments whose code is gone.
+
+## Building and Testing
+
+Set `__CARGO_DEFAULT_LIB_METADATA=1` in the environment for every `cargo` invocation
+(`check`, `clippy`, `test`, …). It makes cargo reuse compiled dependency artifacts across
+invocations that differ only in metadata, which turns multi-minute rebuilds of the
+workspace's dependencies into seconds:
+
+```
+__CARGO_DEFAULT_LIB_METADATA=1 cargo test -p hydro_test --lib
+```
+
+Format with the **nightly** toolchain — `rustfmt.toml` uses unstable options
+(`imports_granularity`, `group_imports`, `hex_literal_case`) that stable `cargo fmt` silently
+skips, so a stable run leaves the tree mis-formatted (and reflows unrelated lines):
+
+```
+cargo +nightly fmt --all
+cargo +nightly fmt --all -- --check
+```
+

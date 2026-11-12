@@ -123,7 +123,7 @@ where
                 (true, false) => Some(Greater),
                 (false, true) => Some(Less),
                 (false, false) => Some(Equal),
-                (true, true) => unreachable!(),
+                (true, true) => None,
             }
         }
     }
@@ -433,8 +433,6 @@ where
     StorageA: VariadicSet<Schema = SchemaA>,
     StorageB: VariadicSet<Schema = SchemaB>,
     StorageOut: VariadicSet<Schema = var_type!(...SchemaA, ...ValTypeB)>,
-    for<'x> SchemaA::AsRefVar<'x>: CloneVariadic,
-    for<'x> SchemaB::AsRefVar<'x>: CloneVariadic,
     var_type!(...SchemaA, ...ValTypeB): Eq + Hash,
 {
     type DeepJoinLatticeBimorphism = GhtValTypeProductBimorphism<

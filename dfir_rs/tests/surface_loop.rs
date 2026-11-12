@@ -239,6 +239,360 @@ pub fn test_batch_lazy() {
     assert_eq!(out, Vec::<i32>::new());
 }
 
+/// Test snapshot: like `batch_lazy()`, data enters the loop without triggering it to fire —
+/// but unlike `batch_lazy()` (see `test_batch_lazy`, the negative control, where data pending
+/// in a non-firing tick is *dropped*), `snapshot()` RETAINS the latest value across ticks and
+/// delivers it every time the loop fires. The retained state is a single last-write-wins cell:
+/// newer values replace older ones, so the loop always observes the most recent value (see
+/// `test_snapshot_lww_single_cell` for the memory/drop behavior and
+/// `test_snapshot_rerun_without_new_input` for re-firing without new input).
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_snapshot() {
+    let (trigger_send, trigger_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (snap_send, snap_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+
+    let mut df = dfir_syntax! {
+        trigger_inp = source_stream(trigger_recv);
+        snap_inp = source_stream(snap_recv);
+        loop {
+            merged = union();
+            trigger_inp -> batch() -> merged;
+            snap_inp -> snapshot() -> merged;
+            merged -> for_each(|x| out_send.send(x).unwrap());
+        };
+    };
+
+    // Tick 1: only snapshot data — loop should NOT fire (snapshot never triggers it)...
+    snap_send.send(100).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, Vec::<i32>::new());
+
+    // Tick 2: trigger data arrives — loop fires and sees the retained snapshot value from
+    // tick 1 (which `batch_lazy()` would have dropped).
+    trigger_send.send(1).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![1, 100]);
+
+    // Tick 3: only trigger, no new snapshot data — the retained value is observed again
+    // (the snapshot is a persistent view, not consumed on firing).
+    trigger_send.send(2).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![2, 100]);
+
+    // Ticks 4 and 5: snapshot data trickles in over two non-firing ticks — the newer value
+    // replaces the older one (last-write-wins).
+    snap_send.send(300).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, Vec::<i32>::new());
+    snap_send.send(400).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, Vec::<i32>::new());
+
+    // Tick 6: loop fires — observes only the LATEST value (400), not the stale 300. Data
+    // arriving in the same tick as the trigger also participates in last-write-wins.
+    trigger_send.send(3).unwrap();
+    snap_send.send(500).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![3, 500]);
+}
+
+/// Test that `snapshot()` does NOT consume its value when the loop fires: it is a persistent view
+/// of the latest value. When the loop re-fires (e.g. due to a `batch()` trigger) with no new input
+/// to `snapshot()`, the loop should observe the *same* retained value again, not nothing.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_snapshot_rerun_without_new_input() {
+    let (trigger_send, trigger_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (snap_send, snap_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+
+    let mut df = dfir_syntax! {
+        trigger_inp = source_stream(trigger_recv);
+        snap_inp = source_stream(snap_recv);
+        loop {
+            merged = union();
+            trigger_inp -> batch() -> merged;
+            snap_inp -> snapshot() -> merged;
+            merged -> for_each(|x| out_send.send(x).unwrap());
+        };
+    };
+
+    // Tick 1: snapshot value arrives, loop does not fire.
+    snap_send.send(100).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, Vec::<i32>::new());
+
+    // Tick 2: trigger fires the loop, which observes the snapshot value.
+    trigger_send.send(1).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![1, 100]);
+
+    // Tick 3: trigger fires the loop again with NO new snapshot input. The snapshot value must
+    // still be observed — it is a persistent view, not a one-shot buffer.
+    trigger_send.send(2).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![2, 100]);
+
+    // Tick 4: a new snapshot value replaces the old one (loop does not fire).
+    snap_send.send(200).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, Vec::<i32>::new());
+
+    // Ticks 5 and 6: the loop fires twice more; both times it observes the latest value (200).
+    trigger_send.send(3).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![3, 200]);
+
+    trigger_send.send(4).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![4, 200]);
+}
+
+/// Test that `snapshot()` holds a single last-write-wins cell, NOT an accumulating buffer.
+///
+/// When the loop does not fire for several ticks, each new value arriving at `snapshot()` must
+/// *replace* (and drop) the previously pending value, so that at most one value is ever retained.
+/// Uses a helper type with a custom `Drop` to track how many values are live at any time.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_snapshot_lww_single_cell() {
+    use std::cell::Cell;
+    use std::rc::Rc;
+
+    /// Helper which increments a shared counter on creation (and clone) and decrements it on drop,
+    /// so we can observe exactly how many values are retained inside the dataflow at any time.
+    struct Tracked {
+        val: i32,
+        live: Rc<Cell<usize>>,
+    }
+    impl Tracked {
+        fn new(val: i32, live: &Rc<Cell<usize>>) -> Self {
+            live.set(live.get() + 1);
+            Self {
+                val,
+                live: Rc::clone(live),
+            }
+        }
+    }
+    impl Clone for Tracked {
+        fn clone(&self) -> Self {
+            Self::new(self.val, &self.live)
+        }
+    }
+    impl Drop for Tracked {
+        fn drop(&mut self) {
+            self.live.set(self.live.get() - 1);
+        }
+    }
+
+    let live = Rc::new(Cell::new(0usize));
+
+    let (trigger_send, trigger_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (snap_send, snap_recv) = dfir_rs::util::unbounded_channel::<Tracked>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+
+    let mut df = dfir_syntax! {
+        trigger_inp = source_stream(trigger_recv);
+        snap_inp = source_stream(snap_recv);
+        loop {
+            merged = union();
+            trigger_inp -> batch() -> merged;
+            snap_inp -> snapshot() -> map(|t: Tracked| t.val) -> merged;
+            merged -> for_each(|x| out_send.send(x).unwrap());
+        };
+    };
+
+    // Several ticks where only snapshot data arrives: the loop never fires. Each new value must
+    // replace the pending one, so at most ONE value may be live inside the dataflow.
+    for i in 1..=5 {
+        snap_send.send(Tracked::new(i, &live)).unwrap();
+        df.run_tick_sync();
+        let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+        assert_eq!(out, Vec::<i32>::new());
+        assert_eq!(
+            1,
+            live.get(),
+            "tick {}: snapshot() should retain exactly one (LWW) value, but {} are live",
+            i,
+            live.get()
+        );
+    }
+
+    // Multiple values within a single tick: still only the last one is retained.
+    snap_send.send(Tracked::new(6, &live)).unwrap();
+    snap_send.send(Tracked::new(7, &live)).unwrap();
+    df.run_tick_sync();
+    let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    assert_eq!(out, Vec::<i32>::new());
+    assert_eq!(1, live.get());
+
+    // Trigger fires the loop: only the latest value is observed. The snapshot is NOT consumed —
+    // the single retained value stays live (the clone handed to the loop body has been dropped).
+    trigger_send.send(100).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![7, 100]);
+    assert_eq!(1, live.get());
+
+    // Loop fires again on trigger alone: the same retained value is observed again, and still
+    // exactly one value is live.
+    trigger_send.send(101).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![7, 101]);
+    assert_eq!(1, live.get());
+
+    // A newer value replaces the retained one; still exactly one live.
+    snap_send.send(Tracked::new(8, &live)).unwrap();
+    trigger_send.send(102).unwrap();
+    df.run_tick_sync();
+    let mut out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+    out.sort();
+    assert_eq!(out, vec![8, 102]);
+    assert_eq!(1, live.get());
+
+    // Dropping the dataflow releases the retained value.
+    drop(df);
+    assert_eq!(0, live.get());
+}
+
+/// Test `snapshot_keyed()`: the keyed counterpart of `snapshot()`. It applies `(K, Option<V>)`
+/// updates to a persistent per-key map (latest value per key wins, `None` removes the key),
+/// never triggers the loop, retains updates across non-firing ticks (including updates to
+/// *different* keys, which a single `snapshot()` cell would collapse to the last one), and is not
+/// consumed when the loop fires.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_snapshot_keyed() {
+    let (trigger_send, trigger_recv) = dfir_rs::util::unbounded_channel::<()>();
+    let (snap_send, snap_recv) = dfir_rs::util::unbounded_channel::<(&str, Option<i32>)>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(&str, i32)>();
+
+    let mut df = dfir_syntax! {
+        trigger_inp = source_stream(trigger_recv);
+        snap_inp = source_stream(snap_recv);
+        loop {
+            trigger = trigger_inp -> batch();
+            snap = snap_inp -> snapshot_keyed();
+            trigger -> [0]cp;
+            snap -> [1]cp;
+            cp = cross_join::<'tick, 'tick>() -> map(|((), kv)| kv) -> for_each(|kv| out_send.send(kv).unwrap());
+        };
+    };
+
+    macro_rules! run_tick {
+        () => {{
+            df.run_tick_sync();
+            let mut out: Vec<(&str, i32)> = dfir_rs::util::collect_ready(&mut out_recv);
+            out.sort();
+            out
+        }};
+    }
+
+    // Tick 1: updates to several keys, in multiple items, while the loop does not fire.
+    snap_send.send(("a", Some(1))).unwrap();
+    snap_send.send(("b", Some(2))).unwrap();
+    assert_eq!(run_tick!(), vec![]);
+
+    // Tick 2: more updates (overwrite `a`, add `c`), still not firing.
+    snap_send.send(("a", Some(10))).unwrap();
+    snap_send.send(("c", Some(3))).unwrap();
+    assert_eq!(run_tick!(), vec![]);
+
+    // Tick 3: the loop fires and observes the latest value of every key.
+    trigger_send.send(()).unwrap();
+    assert_eq!(run_tick!(), vec![("a", 10), ("b", 2), ("c", 3)]);
+
+    // Tick 4: fires again with no new updates — the map is not consumed.
+    trigger_send.send(()).unwrap();
+    assert_eq!(run_tick!(), vec![("a", 10), ("b", 2), ("c", 3)]);
+
+    // Tick 5: a removal arrives while not firing; tick 6: it is observed.
+    snap_send.send(("b", None)).unwrap();
+    assert_eq!(run_tick!(), vec![]);
+    trigger_send.send(()).unwrap();
+    snap_send.send(("d", Some(4))).unwrap();
+    assert_eq!(run_tick!(), vec![("a", 10), ("c", 3), ("d", 4)]);
+}
+
+/// Test `snapshot_prefix()`: a lazy, persistent, non-consuming ingress that replays *every*
+/// element received so far (in arrival order) each time the loop fires. Unlike `snapshot()`
+/// (single LWW cell) nothing is ever dropped; unlike `batch_lazy()` nothing is lost on ticks
+/// where the loop does not fire; unlike `batch()` it never triggers the loop.
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_snapshot_prefix() {
+    let (trigger_send, trigger_recv) = dfir_rs::util::unbounded_channel::<()>();
+    let (pre_send, pre_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+
+    let mut df = dfir_syntax! {
+        trigger_inp = source_stream(trigger_recv);
+        pre_inp = source_stream(pre_recv);
+        loop {
+            trigger = trigger_inp -> batch();
+            pre = pre_inp -> snapshot_prefix();
+            trigger -> [0]cp;
+            pre -> [1]cp;
+            cp = cross_join::<'tick, 'tick>() -> map(|((), x)| x) -> for_each(|x| out_send.send(x).unwrap());
+        };
+    };
+
+    macro_rules! run_tick {
+        () => {{
+            df.run_tick_sync();
+            let out: Vec<i32> = dfir_rs::util::collect_ready(&mut out_recv);
+            out
+        }};
+    }
+
+    // Ticks 1 and 2: elements arrive over two ticks while the loop does not fire — retained.
+    pre_send.send(1).unwrap();
+    pre_send.send(2).unwrap();
+    assert_eq!(run_tick!(), Vec::<i32>::new());
+    pre_send.send(3).unwrap();
+    assert_eq!(run_tick!(), Vec::<i32>::new());
+
+    // Tick 3: the loop fires and observes the full prefix so far, in arrival order.
+    trigger_send.send(()).unwrap();
+    assert_eq!(run_tick!(), vec![1, 2, 3]);
+
+    // Tick 4: fires again with no new input — the SAME prefix is replayed (not consumed).
+    trigger_send.send(()).unwrap();
+    assert_eq!(run_tick!(), vec![1, 2, 3]);
+
+    // Tick 5: a new element arrives in the same tick as a trigger — appended to the prefix.
+    trigger_send.send(()).unwrap();
+    pre_send.send(4).unwrap();
+    assert_eq!(run_tick!(), vec![1, 2, 3, 4]);
+
+    // Tick 6: no trigger — loop does not fire even though a new element arrived.
+    pre_send.send(5).unwrap();
+    assert_eq!(run_tick!(), Vec::<i32>::new());
+
+    // Tick 7: the whole prefix, including the element from the non-firing tick.
+    trigger_send.send(()).unwrap();
+    assert_eq!(run_tick!(), vec![1, 2, 3, 4, 5]);
+}
+
 /// Test `batch_eager`: the loop fires every tick, even when the eager input is empty.
 /// A `fold` inside the loop should emit output on every tick regardless of input.
 #[multiplatform_test(test, wasm, env_tracing)]

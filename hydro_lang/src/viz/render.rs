@@ -1584,16 +1584,18 @@ impl HydroNode {
                 network_id
             }
 
-            // Non-deterministic batch operation
-            HydroNode::Batch { inner, metadata } => build_simple_transform(TransformParams {
-                structure,
-                seen_tees,
-                config,
-                input: inner,
-                metadata,
-                op_name: extract_op_name(self.print_root()),
-                node_type: HydroNodeType::NonDeterministic,
-            }),
+            // Non-deterministic batch / snapshot operations
+            HydroNode::Batch { inner, metadata } | HydroNode::Snapshot { inner, metadata } => {
+                build_simple_transform(TransformParams {
+                    structure,
+                    seen_tees,
+                    config,
+                    input: inner,
+                    metadata,
+                    op_name: extract_op_name(self.print_root()),
+                    node_type: HydroNodeType::NonDeterministic,
+                })
+            }
 
             HydroNode::YieldConcat { inner, .. } => {
                 // Unpersist is typically optimized away, just pass through

@@ -1,0 +1,27 @@
+error[E0277]: `hydro_test_embedded::weak_stream_channel::weak_stream_sender::outgoing::messages` may deliver its elements in any order, which the host must acknowledge
+  --> tests/compile-fail/nightly/embedded_send_unacknowledged_order.rs:16:13
+   |
+13 |         messages: EmbeddedNetworkOutputChannel::new(
+   |                   --------------------------------- required by a bound introduced by this call
+...
+16 |             Acknowledgements::new().at_least_once(),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ does not acknowledge `NoOrder`
+   |
+   = note: add `.no_order()` to its `Acknowledgements`
+help: the trait `OrderAcknowledgedBy<hydro_lang::live_collections::stream::TotalOrder, messages>` is not implemented for `hydro_lang::live_collections::stream::NoOrder`
+      but trait `OrderAcknowledgedBy<hydro_lang::live_collections::stream::NoOrder, messages>` is implemented for it
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   | impl<End> OrderAcknowledgedBy<NoOrder, End> for NoOrder {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `hydro_lang::live_collections::stream::NoOrder`, found `hydro_lang::live_collections::stream::TotalOrder`
+   = note: required for `hydro_test_embedded::weak_stream_channel::weak_stream_sender::outgoing::messages` to implement `AcknowledgedBy<hydro_lang::live_collections::stream::TotalOrder, hydro_lang::live_collections::stream::AtLeastOnce>`
+note: required by a bound in `EmbeddedNetworkOutputChannel::<C, S>::new`
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   | impl<C: EmbeddedNetworkChannel, S> EmbeddedNetworkOutputChannel<C, S> {
+...
+   |     pub fn new<Tr, Ser, O, R>(
+...
+   |         C: ConfiguredAs<Tr, Ser> + AcknowledgedBy<O, R>,
+   |                                    ^^^^^^^^^^^^^^^^^^^^ required by this bound in `EmbeddedNetworkOutputChannel::<C, S>::new`

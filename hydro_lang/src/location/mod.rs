@@ -54,9 +54,9 @@ use crate::live_collections::singleton::Singleton;
 #[cfg(feature = "sim")]
 #[cfg(stageleft_runtime)]
 use crate::live_collections::stream::networking::serialize_bincode;
-use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
-#[cfg(feature = "tokio")]
-use crate::live_collections::stream::{Ordering, Retries};
+use crate::live_collections::stream::{
+    AtLeastOnce, ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
+};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::dynamic::{ClusterConsistency, LocationId};
@@ -83,7 +83,7 @@ pub mod cluster;
 pub use cluster::Cluster;
 
 pub mod member_id;
-pub use member_id::{MemberId, TaglessMemberId};
+pub use member_id::MemberId;
 
 pub mod tick;
 pub use tick::{Atomic, Tick};
@@ -488,7 +488,7 @@ pub trait Location<'a>: DynLocation {
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// # // do nothing on each worker
     /// # workers.source_iter(q!(vec![])).for_each(q!(|_: ()| {}));
     /// let cluster_members = p1.source_cluster_members(&workers, nondet!(/** late joiners may miss events */));
@@ -505,11 +505,11 @@ pub trait Location<'a>: DynLocation {
     /// # }));
     /// # }
     /// ```
-    fn source_cluster_members<C: 'a>(
+    fn source_cluster_members<C: 'a, Id: Clone + 'a>(
         &self,
-        cluster: &Cluster<'a, C>,
+        cluster: &Cluster<'a, C, Id>,
         nondet_start: NonDet,
-    ) -> KeyedStream<MemberId<C>, MembershipEvent, Self::DropConsistency, Unbounded>
+    ) -> KeyedStream<MemberId<C, Id>, MembershipEvent, Self::DropConsistency, Unbounded>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -537,7 +537,7 @@ pub trait Location<'a>: DynLocation {
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// # // do nothing on each worker
     /// # workers.source_iter(q!(vec![])).for_each(q!(|_: ()| {}));
     /// let cluster_members = p1.source_cluster_membership_stream(&workers, nondet!(/** late joiners may miss events */));
@@ -554,11 +554,11 @@ pub trait Location<'a>: DynLocation {
     /// # }));
     /// # }
     /// ```
-    fn source_cluster_membership_stream<C: 'a>(
+    fn source_cluster_membership_stream<C: 'a, Id: Clone + 'a>(
         &self,
-        cluster: &Cluster<'a, C>,
+        cluster: &Cluster<'a, C, Id>,
         _nondet_start: NonDet,
-    ) -> KeyedStream<MemberId<C>, MembershipEvent, Self::DropConsistency, Unbounded>
+    ) -> KeyedStream<MemberId<C, Id>, MembershipEvent, Self::DropConsistency, Unbounded>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -568,7 +568,7 @@ pub trait Location<'a>: DynLocation {
             HydroNode::Source {
                 source: HydroSource::ClusterMembers(cluster.id(), ClusterMembersState::Uninit),
                 metadata: target_consistency.new_node_metadata(Stream::<
-                    (TaglessMemberId, MembershipEvent),
+                    (Id, MembershipEvent),
                     Self,
                     Unbounded,
                     TotalOrder,
@@ -694,13 +694,17 @@ pub trait Location<'a>: DynLocation {
 
     /// Creates an external input stream for embedded deployment mode.
     ///
-    /// The `name` parameter specifies the name of the generated function parameter
-    /// that will supply data to this stream at runtime. The generated function will
-    /// accept an `impl Stream<Item = T> + Unpin` argument with this name.
-    fn embedded_input<T>(
+    /// The `name` parameter specifies the name of the field in the generated `EmbeddedInputs`
+    /// struct that will supply data to this stream at runtime: a
+    /// [`EmbeddedInputChannel`](crate::compile::embedded_runtime::EmbeddedInputChannel) around the host's
+    /// `Stream<Item = T> + Unpin`. The stream's ordering `O` and retries `R` are what the
+    /// dataflow relies on, so they are what the host must promise: declare only what the
+    /// dataflow relies on (for example `NoOrder` if it does not use the stream's order), and the
+    /// host promises nothing more.
+    fn embedded_input<T, O: Ordering, R: Retries>(
         &self,
         name: impl Into<String>,
-    ) -> Stream<T, Self::DropConsistency, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> Stream<T, Self::DropConsistency, Unbounded, O, R>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -711,13 +715,8 @@ pub trait Location<'a>: DynLocation {
             target_location.clone(),
             HydroNode::Source {
                 source: HydroSource::Embedded(ident),
-                metadata: target_location.new_node_metadata(Stream::<
-                    T,
-                    Self,
-                    Unbounded,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
+                metadata: target_location
+                    .new_node_metadata(Stream::<T, Self, Unbounded, O, R>::collection_kind()),
             },
         )
     }
@@ -1492,14 +1491,16 @@ pub trait Location<'a>: DynLocation {
     /// The first tick completes immediately. Missed ticks will be scheduled
     /// as soon as possible.
     ///
-    /// Because this only emits `()`, the non-determinism of *when* events fire
-    /// is captured by the `AtLeastOnce` retry semantics downstream, so no
-    /// [`NonDet`] guard is required.
+    /// The stream is `AtLeastOnce`: it only emits `()`, and every non-empty
+    /// sequence of `()` is one `AtLeastOnce` equivalence class, so the stream
+    /// is deterministic as a whole — the non-determinism of *when*, and how
+    /// many, events fire before a tick is captured entirely by the downstream
+    /// `batch`'s [`NonDet`] guard, so none is required here.
     #[cfg(feature = "tokio")]
     fn source_interval(
         &self,
         interval: impl QuotedWithContext<'a, Duration, Self> + Copy + 'a,
-    ) -> Stream<(), Self, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> Stream<(), Self, Unbounded, TotalOrder, AtLeastOnce>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -1507,23 +1508,26 @@ pub trait Location<'a>: DynLocation {
             tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(interval)),
             |_| ()
         )))
+        .weaken_retries::<AtLeastOnce>()
         .assert_has_consistency_of_trusted(
-            manual_proof!(/** interval does not reveal timestamps */),
+            manual_proof!(/** every non-empty sequence of `()` is one `AtLeastOnce` class */),
         )
     }
 
     /// Generates a stream that emits `()` at a fixed interval, after an
     /// initial delay.
     ///
-    /// Because this only emits `()`, the non-determinism of *when* events fire
-    /// is captured by the `AtLeastOnce` retry semantics downstream, so no
-    /// [`NonDet`] guard is required.
+    /// The stream is `AtLeastOnce`: it only emits `()`, and every non-empty
+    /// sequence of `()` is one `AtLeastOnce` equivalence class, so the stream
+    /// is deterministic as a whole — the non-determinism of *when*, and how
+    /// many, events fire before a tick is captured entirely by the downstream
+    /// `batch`'s [`NonDet`] guard, so none is required here.
     #[cfg(feature = "tokio")]
     fn source_interval_delayed(
         &self,
         delay: impl QuotedWithContext<'a, Duration, Self> + Copy + 'a,
         interval: impl QuotedWithContext<'a, Duration, Self> + Copy + 'a,
-    ) -> Stream<(), Self, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> Stream<(), Self, Unbounded, TotalOrder, AtLeastOnce>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -1534,8 +1538,9 @@ pub trait Location<'a>: DynLocation {
             )),
             |_| ()
         )))
+        .weaken_retries::<AtLeastOnce>()
         .assert_has_consistency_of_trusted(
-            manual_proof!(/** interval does not reveal timestamps */),
+            manual_proof!(/** every non-empty sequence of `()` is one `AtLeastOnce` class */),
         )
     }
 

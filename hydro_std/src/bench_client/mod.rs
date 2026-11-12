@@ -1,10 +1,14 @@
 use std::cell::RefCell;
+#[cfg(feature = "tokio")]
+use std::hash::Hash;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use hdrhistogram::Histogram;
 use hdrhistogram::serialization::{Deserializer, Serializer, V2Serializer};
-use hydro_lang::live_collections::stream::{ExactlyOnce, NoOrder, TotalOrder};
+#[cfg(feature = "tokio")]
+use hydro_lang::live_collections::stream::NoOrder;
+use hydro_lang::live_collections::stream::{ExactlyOnce, TotalOrder};
 use hydro_lang::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -49,17 +53,26 @@ pub struct BenchResult<L> {
 ///
 /// ## Returns
 /// A stream of latencies per completed client request
-pub fn bench_client<'a, Client, Input, Output>(
-    clients: &Cluster<'a, Client>,
-    num_clients_per_node: Singleton<usize, Cluster<'a, Client>, Bounded>,
+///
+/// # Non-Determinism
+/// Latencies are measured against the wall clock (`use::time`).
+#[cfg(feature = "tokio")]
+pub fn bench_client<'a, Client, Id: Clone + Eq + Hash + 'a, Input, Output>(
+    clients: &Cluster<'a, Client, Id>,
+    num_clients_per_node: Singleton<usize, Cluster<'a, Client, Id>, Bounded>,
     workload_generator: impl FnOnce(
-        KeyedStream<u32, Option<Output>, Cluster<'a, Client>, Unbounded, NoOrder>,
-    )
-        -> KeyedStream<u32, Input, Cluster<'a, Client>, Unbounded, NoOrder>,
+        KeyedStream<u32, Option<Output>, Cluster<'a, Client, Id>, Unbounded, NoOrder>,
+    ) -> KeyedStream<
+        u32,
+        Input,
+        Cluster<'a, Client, Id>,
+        Unbounded,
+        NoOrder,
+    >,
     protocol: impl FnOnce(
-        KeyedStream<u32, Input, Cluster<'a, Client>, Unbounded, NoOrder>,
-    ) -> KeyedStream<u32, Output, Cluster<'a, Client>, Unbounded, NoOrder>,
-) -> KeyedStream<u32, (Output, Duration), Cluster<'a, Client>, Unbounded, NoOrder>
+        KeyedStream<u32, Input, Cluster<'a, Client, Id>, Unbounded, NoOrder>,
+    ) -> KeyedStream<u32, Output, Cluster<'a, Client, Id>, Unbounded, NoOrder>,
+) -> KeyedStream<u32, (Output, Duration), Cluster<'a, Client, Id>, Unbounded, NoOrder>
 where
     Input: Clone,
     Output: 'a + Clone,
@@ -87,7 +100,8 @@ where
     };
 
     let (protocol_outputs_complete, protocol_outputs) =
-        clients.forward_ref::<KeyedStream<u32, Output, Cluster<'a, Client>, Unbounded, NoOrder>>();
+        clients
+            .forward_ref::<KeyedStream<u32, Output, Cluster<'a, Client, Id>, Unbounded, NoOrder>>();
     // Use new payload IDS and previous outputs to generate new payloads
     let protocol_inputs = workload_generator(
         new_payload_ids.merge_unordered(protocol_outputs.map(q!(|payload| Some(payload)))),
@@ -96,35 +110,48 @@ where
     let protocol_outputs = protocol(protocol_inputs.clone());
     protocol_outputs_complete.complete(protocol_outputs.clone());
 
-    // Persist start latency, overwrite on new value. Memory footprint = O(num_clients_per_node)
-    let start_times = protocol_inputs.fold(
-        q!(|| Instant::now()),
-        q!(
-            |curr, _new| {
-                *curr = Instant::now();
-            },
-            commutative = manual_proof!(/** The value will be thrown away */)
-        ),
-    );
-
     sliced! {
-        let start_times = use::snapshot(start_times, nondet!(/** Only one in-flight message per virtual client at any time, and outputs happen-after inputs, so if an output is received the start_times must contain its input time. */));
-        let current_outputs = use::batch(protocol_outputs, nondet!(/** Batching is required to compare output to input time, but does not actually affect the result. */));
+        let new_inputs = use::batch(protocol_inputs.entries(), nondet!(/** Batching is required to stamp each input with its start time, but does not affect the result. */));
+        let current_outputs = use::batch(protocol_outputs.entries(), nondet!(/** Batching is required to compare output to input time, but does not actually affect the result. */));
+        let now = use::time(nondet!(/** Latencies are measured against the wall clock. */));
+        // Persisted start times, one per in-flight request. Memory footprint = O(num_clients_per_node)
+        let mut start_times = use::state_null::<KeyedSingleton<u32, _, _, _>>();
+
+        let new_inputs = new_inputs
+            .assume_ordering::<TotalOrder>(nondet!(/** Only one in-flight message per virtual client at any time, so each batch holds at most one input per key. */))
+            .into_keyed();
+        let current_outputs = current_outputs
+            .assume_ordering::<TotalOrder>(nondet!(/** Only one in-flight message per virtual client at any time, and they are causally dependent, so this just casts to KeyedSingleton */))
+            .into_keyed();
 
         let end_times_and_output = current_outputs
+            .cross_singleton(now.clone())
             .reduce(q!(|curr, new| {
-                    *curr = new;
-                },
-                commutative = manual_proof!(/** Only one in-flight message per virtual client at any time, and they are causally dependent, so this just casts to KeyedSingleton */)),
-            )
-            .map(q!(|output| (Instant::now(), output)));
+                *curr = new;
+            }));
 
-        start_times
-            .defer_tick() // Get the start_times before they were overwritten with the newly generated input
-            .join_keyed_singleton(end_times_and_output)
-            .map(q!(|(start_time, (end_time, output))| (output, end_time.duration_since(start_time))))
+        let latencies = start_times
+            .clone()
+            .join_keyed_singleton(end_times_and_output.clone())
+            .map(q!(|(start_time, (output, end_time))| (output, end_time.duration_since(start_time))));
+
+        let new_start_times = new_inputs
+            .cross_singleton(now)
+            .map(q!(|(_input, start_time)| start_time))
+            .reduce(q!(|curr, new| {
+                *curr = new;
+            }));
+
+        // Outputs complete their requests; new inputs start the next ones
+        start_times = start_times
+            .filter_key_not_in(end_times_and_output.keys())
             .into_keyed_stream()
-            .weaken_ordering()
+            .chain(new_start_times.into_keyed_stream())
+            .reduce(q!(|curr, new| {
+                *curr = new;
+            }));
+
+        latencies.into_keyed_stream().weaken_ordering()
     }
 }
 
@@ -134,12 +161,12 @@ where
 /// # Non-Determinism
 /// This function uses non-deterministic wall-clock windows for measuring throughput.
 #[cfg(feature = "tokio")]
-pub fn compute_throughput_latency<'a, Client: 'a>(
-    clients: &Cluster<'a, Client>,
-    latencies: Stream<Duration, Cluster<'a, Client>, Unbounded, NoOrder>,
+pub fn compute_throughput_latency<'a, Client: 'a, Id: Clone + Eq + Hash + 'a>(
+    clients: &Cluster<'a, Client, Id>,
+    latencies: Stream<Duration, Cluster<'a, Client, Id>, Unbounded, NoOrder>,
     interval_millis: u64,
     nondet_measurement_window: NonDet,
-) -> BenchResult<Cluster<'a, Client>> {
+) -> BenchResult<Cluster<'a, Client, Id>> {
     let punctuation = clients.source_interval(q!(Duration::from_millis(interval_millis)));
 
     let (interval_throughput, interval_latency) = sliced! {
@@ -206,8 +233,8 @@ pub fn compute_throughput_latency<'a, Client: 'a>(
 ///
 /// Note: Inconsistent windowing may result in unexpected outputs unless `output_interval_millis` >> `interval_millis`.
 #[cfg(feature = "tokio")]
-pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
-    results: BenchResult<Cluster<'a, Client>>,
+pub fn aggregate_bench_results<'a, Client: 'a, Id: Clone + Eq + Hash + 'a, Aggregator>(
+    results: BenchResult<Cluster<'a, Client, Id>>,
     aggregator: &Process<'a, Aggregator>,
     output_interval_millis: u64,
 ) -> BenchResult<Process<'a, Aggregator>> {

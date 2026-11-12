@@ -54,3 +54,22 @@ pub use trybuild::generate::init_test;
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 pub(crate) const DFIR_IDENT: &str = "flow";
+
+/// Returns the `dfir_rs::scheduled::metrics::MetricsState` typestate type that the DFIR codegen
+/// will use for the generated `Dfir`'s `Context`, based on
+/// [`AsCodeOptions::include_metrics_tracking`](dfir_lang::graph::AsCodeOptions::include_metrics_tracking).
+///
+/// This must match the type chosen by `DfirGraph::as_code_with_options`, and is used to reveal the
+/// `Metrics` associated type in generated `Dfir<impl TickClosure<Metrics = ...>>` signatures so
+/// callers can access `Dfir::metrics()` when (and only when) tracking is enabled.
+#[cfg(feature = "build")]
+pub(crate) fn dfir_metrics_state_type(
+    as_code_options: &dfir_lang::graph::AsCodeOptions,
+    root: &proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
+    if as_code_options.include_metrics_tracking {
+        quote::quote! { #root::runtime_support::dfir_rs::scheduled::metrics::DfirMetrics }
+    } else {
+        quote::quote! { () }
+    }
+}

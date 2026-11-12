@@ -4,10 +4,9 @@ warning: unexpected `cfg` condition name: `stageleft_macro`
 8 |         .source_iter(q!(0..5i32))
   |                      ^^^^^^^^^^^
   |
-  = help: expected names are: `docsrs`, `feature`, and `test` and 31 more
+  = help: expected names are: `docsrs`, `feature`, and `test` and 32 more
   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
   = help: try referring to `q` crate for guidance on how handle this unexpected cfg
-  = help: the macro `q` may come from an old version of the `stageleft_macro` crate, try updating your dependency with `cargo update -p stageleft_macro`
   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
   = note: `#[warn(unexpected_cfgs)]` on by default
   = note: this warning originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -20,7 +19,6 @@ warning: unexpected `cfg` condition name: `stageleft_macro`
   |
   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
   = help: try referring to `q` crate for guidance on how handle this unexpected cfg
-  = help: the macro `q` may come from an old version of the `stageleft_macro` crate, try updating your dependency with `cargo update -p stageleft_macro`
   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
   = note: this warning originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -32,7 +30,6 @@ warning: unexpected `cfg` condition name: `stageleft_macro`
   |
   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
   = help: try referring to `q` crate for guidance on how handle this unexpected cfg
-  = help: the macro `q` may come from an old version of the `stageleft_macro` crate, try updating your dependency with `cargo update -p stageleft_macro`
   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
   = note: this warning originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -44,7 +41,6 @@ warning: unexpected `cfg` condition name: `stageleft_macro`
    |
    = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
    = help: try referring to `q` crate for guidance on how handle this unexpected cfg
-   = help: the macro `q` may come from an old version of the `stageleft_macro` crate, try updating your dependency with `cargo update -p stageleft_macro`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
    = note: this warning originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -60,7 +56,6 @@ warning: unexpected `cfg` condition name: `stageleft_macro`
    |
    = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
    = help: try referring to `q` crate for guidance on how handle this unexpected cfg
-   = help: the macro `q` may come from an old version of the `stageleft_macro` crate, try updating your dependency with `cargo update -p stageleft_macro`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
    = note: this warning originates in the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)
 

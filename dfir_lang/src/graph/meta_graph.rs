@@ -7,13 +7,15 @@ use std::fmt::Debug;
 use std::iter::FusedIterator;
 
 use itertools::Itertools;
-use proc_macro2::{Ident, Literal, Span, TokenStream};
+use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
 use quote::{ToTokens, format_ident, quote, quote_spanned};
 use serde::{Deserialize, Serialize};
 use slotmap::{Key, SecondaryMap, SlotMap, SparseSecondaryMap};
 use syn::spanned::Spanned;
 
 use super::graph_write::{Dot, GraphWrite, Mermaid};
+use super::ops::snapshot_keyed::SNAPSHOT_KEYED;
+use super::ops::snapshot_prefix::SNAPSHOT_PREFIX;
 use super::ops::{
     DelayType, FloType, OPERATORS, OperatorWriteOutput, WriteContextArgs, find_op_op_constraints,
     null_write_iterator_fn,
@@ -26,6 +28,22 @@ use super::{
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::pretty_span::{PrettyRowCol, PrettySpan};
 use crate::process_singletons;
+
+/// The shape of the persistent state backing a retaining windowing (`FloType::WindowingRetain`)
+/// loop-entry handoff. Such state is declared outside the tick closure, persists across ticks,
+/// and is never consumed by the loop (which reads clones out of it each time it fires).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum RetainKind {
+    /// `snapshot()`: a single last-write-wins `Option<T>` cell; each new item replaces the
+    /// previous one.
+    Cell,
+    /// `snapshot_keyed()`: a per-key `FxHashMap<K, V>` fed by `(K, Option<V>)` updates; `Some(v)`
+    /// upserts, `None` removes.
+    Keyed,
+    /// `snapshot_prefix()`: an append-only `Vec<T>` of every item received so far, in arrival
+    /// order.
+    Prefix,
+}
 
 /// A resolved handoff reference: the target node ID plus mutability and access group info.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1026,14 +1044,17 @@ impl DfirGraph {
         let mut gate_checks: Vec<TokenStream> = entry_handoffs
             .iter()
             .filter(|&&hoff_id| {
-                // Check if the successor (windowing operator) is lazy.
+                // Check if the successor (windowing operator) is lazy or retaining.
                 // If so, exclude from the gate — it doesn't trigger the loop.
                 let is_lazy = self
                     .node_successors(hoff_id)
                     .next()
                     .and_then(|(_, succ)| self.node_op_inst(succ))
                     .is_some_and(|op_inst| {
-                        op_inst.op_constraints.flo_type == Some(FloType::WindowingLazy)
+                        matches!(
+                            op_inst.op_constraints.flo_type,
+                            Some(FloType::WindowingLazy | FloType::WindowingRetain)
+                        )
                     });
                 !is_lazy
             })
@@ -1264,6 +1285,62 @@ impl DfirGraph {
                 ))
             })
             .collect::<SparseSecondaryMap<_, _>>();
+
+        // Determine which handoff nodes feed a retaining windowing operator
+        // (`FloType::WindowingRetain`: `snapshot()`, `snapshot_keyed()`, `snapshot_prefix()`).
+        // Like defer_tick back-edges, these buffers are declared outside the tick closure so that
+        // retained state persists across ticks. Unlike other handoffs they are never cleared or
+        // consumed: the loop reads clones out of them each time it fires. The shape of the
+        // retained state depends on the operator — see `RetainKind`.
+        let retain_hoffs = handoff_nodes
+            .iter()
+            .map(|&(node_id, _, _)| node_id)
+            .filter_map(|node_id| {
+                let op_inst = self
+                    .node_successors(node_id)
+                    .next()
+                    .and_then(|(_, succ)| self.node_op_inst(succ))?;
+                if op_inst.op_constraints.flo_type != Some(FloType::WindowingRetain) {
+                    return None;
+                }
+                let retain_kind = if op_inst.op_constraints.name == SNAPSHOT_KEYED.name {
+                    RetainKind::Keyed
+                } else if op_inst.op_constraints.name == SNAPSHOT_PREFIX.name {
+                    RetainKind::Prefix
+                } else {
+                    RetainKind::Cell
+                };
+                Some((node_id, retain_kind))
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        // Declarations for retaining windowing handoff state, emitted outside the tick closure.
+        let retain_buf_decls = handoff_nodes
+            .iter()
+            .filter_map(|&(hoff_id, kind, (src_span, dst_span))| {
+                let retain_kind = *retain_hoffs.get(&hoff_id)?;
+                // The graph-level kind is `Vec` (like all loop-entry handoffs), but codegen
+                // special-cases retain handoffs with the storage below.
+                assert_eq!(
+                    HandoffKind::Vec,
+                    kind,
+                    "retaining windowing (`snapshot*()`) handoffs must be `Vec`-kind"
+                );
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                let buf_ident = self.hoff_buf_ident(hoff_id, span);
+                Some(match retain_kind {
+                    RetainKind::Cell => quote! {
+                        let mut #buf_ident = ::std::option::Option::None;
+                    },
+                    RetainKind::Keyed => quote! {
+                        let mut #buf_ident = #root::rustc_hash::FxHashMap::default();
+                    },
+                    RetainKind::Prefix => quote! {
+                        let mut #buf_ident = ::std::vec::Vec::new();
+                    },
+                })
+            })
+            .collect::<Vec<_>>();
 
         // Back buffer idents, buf idents, and if they are lazy.
         let back_buffer_idents_laziness = handoff_nodes
@@ -1512,25 +1589,70 @@ impl DfirGraph {
                         let metrics = Ident::new("__dfir_metrics", Span::call_site());
 
                         // Compute len and drain expressions based on handoff kind.
-                        let (len_expr, drain_expr) = match kind {
-                            HandoffKind::Singleton | HandoffKind::Optional => (
-                                quote! { if #buf_ident.is_some() { 1usize } else { 0usize } },
-                                quote! { #root::dfir_pipes::pull::iter(#buf_ident.take().into_iter()) },
-                            ),
-                            HandoffKind::Vec => {
-                                // Special asymmetric handling for defer tick handoffs, which are double-buffered.
-                                // The producer writes to the regular buffer; at end-of-tick the buffers are swapped,
-                                // so the consumer drains from the back buffer (here).
-                                let drain_ident = if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
-                                    &self.hoff_back_ident(hoff_id, buf_ident.span())
-                                } else {
-                                    buf_ident
-                                };
+                        let (len_expr, drain_expr) = match retain_hoffs.get(&hoff_id) {
+                            Some(RetainKind::Keyed) => {
+                                // Retaining keyed windowing (`snapshot_keyed()`) handoffs are a
+                                // persistent keyed map, declared outside the tick closure. Like
+                                // `snapshot()`, it is NOT consumed when the loop fires: every firing
+                                // observes a clone of every current entry. Requires `K: Clone, V: Clone`.
                                 (
-                                    quote! { #drain_ident.len() },
-                                    quote! { #root::dfir_pipes::pull::iter(#drain_ident.drain(..)) },
+                                    quote! { #buf_ident.len() },
+                                    quote! {
+                                        {
+                                            #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                                            let __snapshot_keyed_entries = #buf_ident.iter();
+                                            #root::dfir_pipes::pull::iter(
+                                                __snapshot_keyed_entries.map(
+                                                    #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
+                                                    |(k, v)| (::std::clone::Clone::clone(k), ::std::clone::Clone::clone(v))
+                                                )
+                                            )
+                                        }
+                                    },
                                 )
                             }
+                            Some(RetainKind::Prefix) => {
+                                // Retaining prefix windowing (`snapshot_prefix()`) handoffs are a
+                                // persistent `Vec<T>` of every element received so far, declared
+                                // outside the tick closure. NOT consumed when the loop fires: every
+                                // firing replays a clone of the whole prefix, in arrival order.
+                                // Requires `T: Clone`.
+                                (
+                                    quote! { #buf_ident.len() },
+                                    quote! { #root::dfir_pipes::pull::iter(#buf_ident.iter().cloned()) },
+                                )
+                            }
+                            Some(RetainKind::Cell) => {
+                                // Retaining windowing (`snapshot()`) handoffs are a single
+                                // last-write-wins `Option<T>` cell, declared outside the tick closure.
+                                // The cell is NOT consumed when the loop fires: it is a persistent
+                                // view of the latest value, so the loop observes it again on every
+                                // firing until a newer value replaces it. Requires `T: Clone`.
+                                (
+                                    quote! { if #buf_ident.is_some() { 1usize } else { 0usize } },
+                                    quote! { #root::dfir_pipes::pull::iter(::std::clone::Clone::clone(&#buf_ident).into_iter()) },
+                                )
+                            }
+                            None => match kind {
+                                HandoffKind::Singleton | HandoffKind::Optional => (
+                                    quote! { if #buf_ident.is_some() { 1usize } else { 0usize } },
+                                    quote! { #root::dfir_pipes::pull::iter(#buf_ident.take().into_iter()) },
+                                ),
+                                HandoffKind::Vec => {
+                                    // Special asymmetric handling for defer tick handoffs, which are double-buffered.
+                                    // The producer writes to the regular buffer; at end-of-tick the buffers are swapped,
+                                    // so the consumer drains from the back buffer (here).
+                                    let drain_ident = if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
+                                        &self.hoff_back_ident(hoff_id, buf_ident.span())
+                                    } else {
+                                        buf_ident
+                                    };
+                                    (
+                                        quote! { #drain_ident.len() },
+                                        quote! { #root::dfir_pipes::pull::iter(#drain_ident.drain(..)) },
+                                    )
+                                }
+                            },
                         };
 
                         let track_hoff_metrics = options.include_metrics_tracking.then(|| {
@@ -1561,7 +1683,48 @@ impl DfirGraph {
                     .iter()
                     .zip(send_buf_idents.iter())
                     .zip(send_kinds.iter())
-                    .map(|((port_ident, buf_ident), &kind)| {
+                    .zip(send_hoffs.iter())
+                    .map(|(((port_ident, buf_ident), &kind), &hoff_id)| {
+                        match retain_hoffs.get(&hoff_id) {
+                            Some(RetainKind::Keyed) => {
+                                // Retaining keyed windowing (`snapshot_keyed()`) map: apply each
+                                // `(K, Option<V>)` update — `Some(v)` replaces the key's value (latest
+                                // write wins per key), `None` removes the key.
+                                return quote_spanned! {port_ident.span()=>
+                                    let #port_ident = #root::dfir_pipes::push::for_each(|(__key, __update)| {
+                                        match __update {
+                                            ::std::option::Option::Some(__value) => {
+                                                #buf_ident.insert(__key, __value);
+                                            }
+                                            ::std::option::Option::None => {
+                                                #buf_ident.remove(&__key);
+                                            }
+                                        }
+                                    });
+                                };
+                            }
+                            Some(RetainKind::Prefix) => {
+                                // Retaining prefix windowing (`snapshot_prefix()`) buffer: append
+                                // every item. Nothing is ever dropped or replaced.
+                                return quote_spanned! {port_ident.span()=>
+                                    let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
+                                        #buf_ident.push(__item);
+                                    });
+                                };
+                            }
+                            Some(RetainKind::Cell) => {
+                                // Retaining windowing (`snapshot()`) cell: last-write-wins. Each new
+                                // item replaces (and drops) any previously pending item, so at most
+                                // one value is retained no matter how many ticks pass before the
+                                // consuming loop fires.
+                                return quote_spanned! {port_ident.span()=>
+                                    let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
+                                        #buf_ident = ::std::option::Option::Some(__item);
+                                    });
+                                };
+                            }
+                            None => {}
+                        }
                         match kind {
                             HandoffKind::Singleton => {
                                 // Singleton slot: store exactly one item, panic on duplicate.
@@ -1738,6 +1901,7 @@ impl DfirGraph {
                                 op_name,
                                 op_inst,
                                 arguments,
+                                options,
                             };
 
                             let write_result =
@@ -1754,31 +1918,59 @@ impl DfirGraph {
                                     op_name,
                                 );
                                 OperatorWriteOutput {
+                                    write_prologue: Default::default(),
                                     write_iterator: null_write_iterator_fn(&context_args),
-                                    ..Default::default()
+                                    write_iterator_after: Default::default(),
+                                    write_tick_end: Default::default(),
                                 }
                             });
 
-                            op_prologue_code.push(syn::parse_quote! {
-                                #[allow(dead_code, non_snake_case, reason = "codegen")]
-                                #[inline(always)]
-                                fn #work_fn<T>(thunk: impl ::std::ops::FnOnce() -> T) -> T {
-                                    thunk()
-                                }
+                            // The `work_fn` / `work_fn_async` thunks exist purely so that work done
+                            // by an operator outside of the pull/push pipeline (e.g. `fold`
+                            // accumulation) is attributed to a named frame in flamegraphs. Only emit
+                            // them if the operator's codegen actually references them, otherwise they
+                            // are dead code which just clutters the output.
+                            let op_outputs = [
+                                &write_prologue,
+                                &write_iterator,
+                                &write_iterator_after,
+                                &write_tick_end,
+                            ];
+                            let uses_ident = |ident: &Ident| {
+                                op_outputs
+                                    .iter()
+                                    .any(|tokens| tokens_contain_ident((*tokens).clone(), ident))
+                            };
 
-                                #[allow(dead_code, non_snake_case, reason = "codegen")]
-                                #[inline(always)]
-                                async fn #work_fn_async<T>(
-                                    thunk: impl ::std::future::Future<Output = T>,
-                                ) -> T {
-                                    thunk.await
-                                }
-                            });
+                            if uses_ident(&work_fn) {
+                                op_prologue_code.push(syn::parse_quote! {
+                                    #[allow(dead_code, non_snake_case, reason = "codegen")]
+                                    #[inline(always)]
+                                    fn #work_fn<T>(thunk: impl ::std::ops::FnOnce() -> T) -> T {
+                                        thunk()
+                                    }
+                                });
+                            }
+                            if uses_ident(&work_fn_async) {
+                                op_prologue_code.push(syn::parse_quote! {
+                                    #[allow(dead_code, non_snake_case, reason = "codegen")]
+                                    #[inline(always)]
+                                    async fn #work_fn_async<T>(
+                                        thunk: impl ::std::future::Future<Output = T>,
+                                    ) -> T {
+                                        thunk.await
+                                    }
+                                });
+                            }
                             op_prologue_code.push(write_prologue);
                             op_tick_end_code.push(write_tick_end);
                             subgraph_op_iter_code.push(write_iterator);
 
-                            if !options.exclude_type_guards {
+                            // The per-operator wrapper serves a dual purpose: it is the type guard,
+                            // and (since the wrapper's `pull`/`push` impls live inside a fn named
+                            // after the operator) it is also what gives streaming operators a named
+                            // frame in flamegraphs.
+                            if !options.exclude_type_guards || options.require_flame_attribution {
                                 let type_guard = if is_pull {
                                     quote_spanned! {op_span=>
                                         let #ident = {
@@ -1933,30 +2125,33 @@ impl DfirGraph {
                             .span()
                             .join(push_ident.span())
                             .unwrap_or_else(|| push_ident.span());
-                        let pivot_fn_ident = Ident::new(
-                            &format!("pivot_run_sg_{:?}", subgraph_id.data()),
-                            pivot_span,
-                        );
                         let root = change_spans(root.clone(), pivot_span);
-                        subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
-                            #[inline(always)]
-                            fn #pivot_fn_ident<Pul, Psh, Item>(pull: Pul, push: Psh)
-                                -> impl ::std::future::Future<Output = ()>
-                            where
-                                Pul: #root::dfir_pipes::pull::Pull<Item = Item>,
-                                Psh: #root::dfir_pipes::push::Push<Item, Pul::Meta>,
-                            {
-                                #root::dfir_pipes::pull::Pull::send_push(pull, push)
-                            }
-                            (#pivot_fn_ident)(#pull_ident, #push_ident).await;
-                        });
+                        if options.exclude_type_guards {
+                            // `send_push` already carries the same `Item`/`Meta` bounds as the
+                            // guard function below, so call it directly.
+                            subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
+                                #root::dfir_pipes::pull::Pull::send_push(#pull_ident, #push_ident).await;
+                            });
+                        } else {
+                            let pivot_fn_ident = Ident::new(
+                                &format!("pivot_run_sg_{:?}", subgraph_id.data()),
+                                pivot_span,
+                            );
+                            subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
+                                #[inline(always)]
+                                fn #pivot_fn_ident<Pul, Psh, Item>(pull: Pul, push: Psh)
+                                    -> impl ::std::future::Future<Output = ()>
+                                where
+                                    Pul: #root::dfir_pipes::pull::Pull<Item = Item>,
+                                    Psh: #root::dfir_pipes::push::Push<Item, Pul::Meta>,
+                                {
+                                    #root::dfir_pipes::pull::Pull::send_push(pull, push)
+                                }
+                                (#pivot_fn_ident)(#pull_ident, #push_ident).await;
+                            });
+                        }
                     }
                 };
-
-                // Each subgraph block is an async block so it can be individually instrumented.
-                // Note: this ident is for the subgraph future, not a runtime SubgraphId binding
-                // (unlike the scheduled path's `sg_ident`).
-                let sg_fut_ident = subgraph_id.as_ident(Span::call_site());
 
                 // Generate send-side curr_items_count updates (after subgraph runs).
                 let send_metrics_code = if options.include_metrics_tracking {
@@ -1966,13 +2161,24 @@ impl DfirGraph {
                         .zip(send_kinds.iter())
                         .map(|((&hoff_id, buf_ident), &kind)| {
                             let hoff_ffi = hoff_id.data().as_ffi();
-                            let len_expr = match kind {
-                                HandoffKind::Singleton | HandoffKind::Optional => {
-                                    quote! { if #buf_ident.is_some() { 1 } else { 0 } }
-                                }
-                                HandoffKind::Vec => {
+                            let len_expr = match retain_hoffs.get(&hoff_id) {
+                                Some(RetainKind::Keyed | RetainKind::Prefix) => {
+                                    // Retaining keyed map (`snapshot_keyed()`) or prefix buffer
+                                    // (`snapshot_prefix()`).
                                     quote! { #buf_ident.len() }
                                 }
+                                Some(RetainKind::Cell) => {
+                                    // Retaining windowing (`snapshot()`) single `Option<T>` cell.
+                                    quote! { if #buf_ident.is_some() { 1 } else { 0 } }
+                                }
+                                None => match kind {
+                                    HandoffKind::Singleton | HandoffKind::Optional => {
+                                        quote! { if #buf_ident.is_some() { 1 } else { 0 } }
+                                    }
+                                    HandoffKind::Vec => {
+                                        quote! { #buf_ident.len() }
+                                    }
+                                },
                             };
                             quote! {
                                 __dfir_metrics.handoffs[
@@ -1993,7 +2199,12 @@ impl DfirGraph {
                     .zip(send_hoffs.iter())
                     .filter_map(|((buf_ident, &kind), &hoff_id)| {
                         let span = buf_ident.span();
-                        if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
+                        if retain_hoffs.contains_key(&hoff_id) {
+                            // Retaining windowing (`snapshot*()`) state is declared outside the
+                            // tick closure and must NOT be re-declared or cleared: it persists
+                            // across ticks (and across loop firings).
+                            None
+                        } else if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
                             // Defer_tick send buffers are declared outside the tick closure
                             // as std::vec::Vec for O(1) swap. Just clear here.
                             Some(quote_spanned! {span=>
@@ -2033,7 +2244,10 @@ impl DfirGraph {
                 let recv_hoff_drop_code = recv_buf_idents
                     .iter()
                     .zip(recv_hoffs.iter())
-                    .filter(|&(_, &hoff_id)| !back_edge_hoffs_and_lazyness.contains_key(hoff_id))
+                    .filter(|&(_, &hoff_id)| {
+                        !back_edge_hoffs_and_lazyness.contains_key(hoff_id)
+                            && !retain_hoffs.contains_key(&hoff_id)
+                    })
                     .map(|(buf_ident, _)| {
                         let span = buf_ident.span();
                         quote_spanned! {span=>
@@ -2041,14 +2255,26 @@ impl DfirGraph {
                         }
                     });
 
+                // The subgraph body: set up ports, run the operators' pull/push pipeline.
+                let sg_body = quote! {
+                    let #context = &#df;
+                    #( #recv_port_code )*
+                    #( #send_port_code )*
+                    #( #subgraph_op_iter_code )*
+                    #( #subgraph_op_iter_after_code )*
+                };
+
                 let run_sg = if options.include_metrics_tracking {
+                    // When metrics are tracked, the subgraph body must be wrapped in an `async`
+                    // block so it can be individually instrumented (poll/idle durations).
                     quote! {
                         // Instrument w/ the subgraph metrics.
                         let sg_metrics = &__dfir_metrics.subgraphs[
                             #root::slotmap::KeyData::from_ffi(#sg_metrics_ffi).into()
                         ];
                         #root::scheduled::metrics::InstrumentSubgraph::new(
-                            #sg_fut_ident, sg_metrics
+                            async { #sg_body },
+                            sg_metrics,
                         ).await;
                         sg_metrics.total_run_count.update(|x| x + 1);
 
@@ -2056,9 +2282,10 @@ impl DfirGraph {
                         #( #send_metrics_code )*
                     }
                 } else {
-                    quote! {
-                        #sg_fut_ident.await;
-                    }
+                    // Otherwise, run the subgraph body inline. We are already in an `async`
+                    // context (the tick closure), so there is no need for an intermediate
+                    // `async` block which is immediately `.await`ed.
+                    sg_body
                 };
 
                 // Emit subgraph block to the current loop level (top of stack or root).
@@ -2066,19 +2293,12 @@ impl DfirGraph {
                     // Create the handoffs we are about to push to (send).
                     #( #send_hoff_make_code )*
 
-                    let #sg_fut_ident = async {
-                        let #context = &#df;
-                        #( #recv_port_code )*
-                        #( #send_port_code )*
-                        #( #subgraph_op_iter_code )*
-                        #( #subgraph_op_iter_after_code )*
-                    };
                     {
                         #run_sg
-
-                        // Drop the handoffs we just drained (recv).
-                        #( #recv_hoff_drop_code )*
                     }
+
+                    // Drop the handoffs we just drained (recv).
+                    #( #recv_hoff_drop_code )*
                 };
                 if let Some((_, body)) = loop_stack.last_mut() {
                     body.extend(sg_block);
@@ -2129,8 +2349,16 @@ impl DfirGraph {
             (quote! { None }, quote! { None })
         };
 
-        // Generate metrics initialization: one entry per handoff and per subgraph.
-        let metrics_init_code = if options.include_metrics_tracking {
+        // Generate the `Context` constructor, the `Context<M>` metrics typestate used in the tick
+        // closure's signature, and, if metrics tracking is enabled, the metrics initialization
+        // (one entry per handoff and per subgraph) plus the per-tick `__dfir_metrics` binding used
+        // by the tracking code.
+        //
+        // When metrics tracking is disabled, `Context<()>` is used, which statically guarantees that
+        // no metrics state exists at runtime (see `dfir_rs::scheduled::metrics::MetricsState`).
+        let (context_new_code, context_metrics_ty, tick_metrics_code) = if options
+            .include_metrics_tracking
+        {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _, _)| {
                 let ffi = node_id.data().as_ffi();
                 quote! {
@@ -2149,9 +2377,30 @@ impl DfirGraph {
                     );
                 }
             });
-            handoff_inits.chain(subgraph_inits).collect::<Vec<_>>()
+            let init_code = handoff_inits.chain(subgraph_inits).collect::<Vec<_>>();
+            (
+                quote! {
+                    #root::scheduled::context::Context::new_with_metrics({
+                        let mut dfir_metrics = #root::scheduled::metrics::DfirMetrics::default();
+                        #( #init_code )*
+                        dfir_metrics
+                    })
+                },
+                quote! {
+                    #root::scheduled::metrics::DfirMetrics
+                },
+                quote! {
+                    let __dfir_metrics = #df.metrics();
+                },
+            )
         } else {
-            Vec::new()
+            (
+                quote! {
+                    #root::scheduled::context::Context::new()
+                },
+                quote! { () },
+                quote! {},
+            )
         };
 
         // For creating back-buffer handoff vecs.
@@ -2203,21 +2452,8 @@ impl DfirGraph {
 
                 use #root::{var_expr, var_args};
 
-                let __dfir_wake_state = ::std::sync::Arc::new(
-                    #root::scheduled::context::WakeState::default()
-                );
-
-                let __dfir_metrics = {
-                    let mut dfir_metrics = #root::scheduled::metrics::DfirMetrics::default();
-                    #( #metrics_init_code )*
-                    ::std::rc::Rc::new(dfir_metrics)
-                };
-
                 #[allow(unused_mut)]
-                let mut #df = #root::scheduled::context::Context::new(
-                    ::std::clone::Clone::clone(&__dfir_wake_state),
-                    __dfir_metrics,
-                );
+                let mut #df = #context_new_code;
 
                 #( #op_prologue_code )*
 
@@ -2226,6 +2462,13 @@ impl DfirGraph {
                 // This enables O(1) mem::swap at end of tick for double-buffering.
                 #( let mut #back_buffer_idents = ::std::vec::Vec::new(); )*
                 #( let mut #defer_tick_buf_idents = ::std::vec::Vec::new(); )*
+
+                // Retaining windowing (`snapshot*()`) handoff state: declared outside the tick
+                // closure so it persists across ticks, and never consumed by the loop (which reads
+                // clones each time it fires). `snapshot()` is a single last-write-wins `Option<T>`,
+                // `snapshot_keyed()` a per-key `FxHashMap<K, V>`, `snapshot_prefix()` an
+                // append-only `Vec<T>`. See `RetainKind`.
+                #( #retain_buf_decls )*
 
                 // Bump allocator for handoffs (except for back-edge handoffs, above).
                 let mut #bump_ident = #root::bumpalo::Bump::new();
@@ -2236,12 +2479,12 @@ impl DfirGraph {
                 // if any handoff buffer has data.
                 let mut __dfir_work_done = true;
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof)]
-                let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context| {
+                let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context<#context_metrics_ty>| {
                     // Reset arena between ticks (start-of-tick)
                     #bump_ident.reset();
 
                     {
-                        let __dfir_metrics = #df.metrics();
+                        #tick_metrics_code
 
                         #gated_subgraph_code
 
@@ -2265,7 +2508,7 @@ impl DfirGraph {
                     ::std::mem::take(&mut __dfir_work_done)
                 };
                 #root::scheduled::context::Dfir::new(
-                    __dfir_inline_tick,
+                    #root::scheduled::context::TickClosureFn::new(__dfir_inline_tick),
                     #df,
                     #meta_graph_arg,
                     #diagnostics_arg,
@@ -2726,18 +2969,47 @@ impl DfirGraph {
 }
 
 /// Options for [`DfirGraph::as_code_with_options`].
-#[derive(Default)]
+#[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub struct AsCodeOptions {
-    /// Controls whether type guards are emitted in codegen. Excluding type guards may result in worse
-    /// error messages, and may have little benefit on `--release` builds.
+    /// Controls whether type guards are emitted in codegen.
+    ///
+    /// Type guards are identity wrapper functions emitted around each operator (and in some
+    /// operators' own codegen, e.g. `check_stream` in `source_stream`, or the `pivot_run_sg_*`
+    /// function joining the pull and push halves of a subgraph), which pin down the `Item`/`Meta`
+    /// types flowing between operators so that type errors in user code are reported at the
+    /// offending operator rather than somewhere downstream. They have no runtime effect, but they
+    /// make the generated code significantly more verbose.
+    ///
+    /// Excluding type guards may result in worse error messages for hand-written DFIR. However,
+    /// front-ends which already type-check the dataflow themselves (e.g. Hydro) and inject their
+    /// own type hints can safely exclude them to produce much more compact generated code.
+    ///
+    /// Note that the per-operator type guard wrapper is also what gives streaming operators (e.g.
+    /// `map`, `filter`) a named stack frame in profiles/flamegraphs, since the wrapper struct's
+    /// `pull`/`push` impls live inside a function named after the operator. Set
+    /// [`Self::require_flame_attribution`] to keep those wrappers even when type guards are
+    /// excluded.
     pub exclude_type_guards: bool,
+    /// Requires that every operator gets a named stack frame for profiler/flamegraph attribution,
+    /// even when [`Self::exclude_type_guards`] is set.
+    ///
+    /// Operators which do work outside the pull/push pipeline (e.g. `fold`, `join`) always get
+    /// attribution via their `work_fn` thunks. Streaming operators (e.g. `map`, `filter`) only get
+    /// attribution via the per-operator type guard wrapper, so this option forces that wrapper to
+    /// be emitted when type guards are otherwise excluded. Has no effect when type guards are
+    /// included (the default).
+    pub require_flame_attribution: bool,
     /// Controls whether the runtime meta graph + diagnostics JSON blobs are baked into the generated
     /// `Dfir::new(...)` call.
     pub exclude_meta: bool,
     /// Controls whether metrics are tracked. Metrics tracking is opt-in: no tracking code is
-    /// generated unless this is set. Even if metrics are tracked, they still need to be reported
-    /// via the `Context::metrics` field.
+    /// generated unless this is set.
+    ///
+    /// This selects the `MetricsState` typestate of the generated `Dfir`'s `Context`: when set,
+    /// `Context<DfirMetrics>` is used and `Dfir::metrics()` is available; when unset,
+    /// `Context<()>` is used, which statically guarantees that there is no metrics state (and no
+    /// `Dfir::metrics()` accessor) at runtime.
     pub include_metrics_tracking: bool,
 }
 
@@ -2780,6 +3052,15 @@ pub enum WriteGraphType {
     Mermaid,
     /// Dot (Graphviz) graphs.
     Dot,
+}
+
+/// Returns `true` if `ident` appears anywhere (at any nesting depth) in `tokens`.
+fn tokens_contain_ident(tokens: TokenStream, ident: &Ident) -> bool {
+    tokens.into_iter().any(|tt| match tt {
+        TokenTree::Ident(i) => i == *ident,
+        TokenTree::Group(group) => tokens_contain_ident(group.stream(), ident),
+        TokenTree::Punct(_) | TokenTree::Literal(_) => false,
+    })
 }
 
 /// [`itertools::Itertools::into_group_map`], but for `BTreeMap`.

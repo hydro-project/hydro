@@ -1,0 +1,138 @@
+---
+sidebar_position: 1
+title: "Locations and Networking"
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Link from "@docusaurus/Link";
+
+import helloSrc from '!!raw-loader!../../../../../hydro_lean/Examples/Tutorials/HelloWorld.lean';
+import programSrc from '!!raw-loader!../../../../../hydro_lean/Examples/TutorialSteps/QuorumProgram.lean';
+import clientSrc from '!!raw-loader!../../../../../hydro_lean/Examples/Paxos/PaxosWithClient.lean';
+import valuesSrc from '!!raw-loader!../../../../../hydro_lean/Hydro/Values.lean';
+import { getLines } from '../../../../src/util';
+
+# Locations and Networking
+
+As in Rust, a distributed Hydro Lean program is one function over several locations, and the network is an explicit operator between them ([Location-Oriented Programming](../../../hydro/reference/introduction/location-oriented-programming.md)). The function takes its semantics `H : HydroSem L mem` as its first argument and calls only the operators `H` provides ([Carriers, Grades and Operators](./signature.md)). This page covers what is specific to a distributed program: where its locations come from, how one program text describes every member of a cluster, and how collections move between locations.
+
+## Locations {#locations}
+
+A Rust function takes its locations as arguments (`&Cluster<'a, Leader>`). A Lean program takes them as values of a **location type** `L`, and `mem : L → Nat` gives the number of members of each location. `vote_quorum` runs at a coordinator and a cluster of participants:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumProgram.lean">Examples/TutorialSteps/QuorumProgram.lean</Link>
+}>{getLines(programSrc, 'signature', `
+hydro def vote_quorum (H : HydroSem L mem) (coord part : L) (minYes : Nat)
+    (vote : Fin (mem part) → Nat → Bool)
+    (requests : H.Stream coord Nat .noOrder .exactlyOnce)
+    (dec : QuorumDec H (mem coord)) (sched : QuorumSched H (mem coord) (mem part)) :
+    H.Stream coord Nat .noOrder .exactlyOnce :=
+`)}</CodeBlock>
+
+`coord` and `part` are ordinary arguments, and the program never inspects which location each one is. Every carrier is indexed by its location: `requests : H.Stream coord Nat .noOrder .exactlyOnce` is a stream at the coordinator, as `Stream<u64, Cluster<'a, Coordinator>, Unbounded, NoOrder>` is in Rust. An operator that combines two collections, such as `union`, takes both at the same location, so only a network operator moves data between locations.
+
+Hydro Lean has no separate process type. A location with one member, `mem ℓ = 1`, takes the place of a Rust `Process`, and the [process](../../../hydro/reference/locations/processes.md) and [cluster](../../../hydro/reference/locations/clusters.md) APIs map to the same operators. A program is generic over `L` and `mem`, so its theorems hold for every number of members. A concrete run, such as a `#guard` or a demo executable, fixes both:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/HelloWorld.lean">Examples/Tutorials/HelloWorld.lean</Link>
+}>{getLines(helloSrc, 'locs', `
+/-- One leader, three workers. -/
+inductive HelloLoc | leader | workers
+  deriving DecidableEq
+
+@[reducible] def helloMem : HelloLoc → Nat
+  | .leader => 1
+  | .workers => 3
+`)}</CodeBlock>
+
+## Members {#members}
+
+A carrier holds the collection at **every member** of its location at once: `H.Stream part α ord ret` holds one stream per participant. You write the program once for all members, as one Rust function describes every member of a cluster. A member's id is a value of `Fin (mem ℓ)`, and a stream-level closure receives it as its first argument, in the role of Rust's `CLUSTER_SELF_ID` ([Self-Identification](../../../hydro/reference/locations/clusters.md#self-identification)):
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumProgram.lean">Examples/TutorialSteps/QuorumProgram.lean</Link>
+}>{getLines(programSrc, 34, 34, `
+let p_votes := H.map p_requests (fun j p => (p, vote j p))
+`)}</CodeBlock>
+
+Each participant `j` tags a request `p` with its own vote `vote j p`. Where the Rust closure does not capture the member id, the Lean closure ignores it: `fun _me x => …`. Closures inside a `tick` body take no member id ([Closures](./signature.md#closures)).
+
+## Sending Between Locations {#sending}
+
+Two operators move a stream from a location `c` to a location `p`:
+
+| Lean | Rust | what each member of `p` receives |
+|---|---|---|
+| `broadcast_closed d s` | `.broadcast(&cluster, …)`, `.send(&process, …)` | every element of `s` |
+| `demux d s addr` | `.demux(&cluster, …)` | the elements of `s` addressed to it |
+
+Both return a `KeyedStream p (Fin (mem c)) α ord ret`: at each receiver, one group per sending member, keyed by the sender's id, each group with the sender's grade. Rust's `send` from a cluster returns the same sender-keyed stream ([Networking](../../../hydro/reference/locations/clusters.md#networking)). The result is keyed even when `c` has one member, and `H.values` drops the keys and merges the groups into one stream. The interleaving across senders depends on delivery timing, so `values` returns a `.noOrder` stream whatever the senders' order. The same two operators connect any two locations: cluster to cluster, cluster to a one-member location, and back.
+
+`payloads_to_leader` (`Examples/Paxos/PaxosWithClient.lean`) uses `demux` to send each client payload to the proposer that is currently the leader. The comments show the equivalent Rust:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Paxos/PaxosWithClient.lean">Examples/Paxos/PaxosWithClient.lean</Link>
+}>{getLines(clientSrc, 111, 119, `
+-- .map(q!(move |(payload, leader_id)| (leader_id, payload)))
+-- .demux(&leaders, TCP.fail_stop().bincode())
+-- .values();
+let payloads_at_proposer := H.values (H.demux sched.payloadCh
+  (H.map (H.allTicks payloads_at_proposer) (fun _me (payload, leader_id) => (leader_id.val, payload)))
+  (fun i => i.val))
+-- let payloads_at_proposer = { payloads_at_proposer.assume_ordering(nondet!(nondet_order)) };
+-- payloads_at_proposer
+H.assume_ordering payloads_at_proposer dec.order
+`)}</CodeBlock>
+
+`demux` takes a stream of `(address, payload)` pairs and a function `addr : Fin (mem p) → Nat` that gives each receiver's address. Receiver `i` keeps the payloads whose address equals `addr i`. Here an address is a proposer's index (`leader_id.val`), and `fun i => i.val` gives each proposer its own index. `demux` takes only `.exactlyOnce` streams. The merged result is unordered, and the proposer needs an order, so the program selects one with `assume_ordering`, which takes the decision `dec.order` ([Nondeterminism and Decisions](./nondeterminism.md)).
+
+:::warning[Membership is fixed at deployment]
+
+Every Rust `.broadcast` takes a `nondet!` for cluster membership changing while the program runs. In Hydro Lean the receivers are the type `Fin (mem p)`, fixed when the program is deployed, so `broadcast_closed` has no counterpart of that `nondet!` and a theorem says nothing about members that join later.
+
+:::
+
+:::warning[Only fail-stop TCP]
+
+The models below the denotation deliver, per sender and receiver, a growing prefix of what the sender sent, which is the behaviour of `TCP.fail_stop()` ([TCP](../../../hydro/reference/locations/network-configuration.md#tcp)). A lossy transport (`TCP.lossy()`, UDP) can skip a message and deliver later ones, which no prefix describes, so the theorems do not cover programs that use one. The signature also has no `round_robin`.
+
+:::
+
+## Schedule Records {#schedule-records}
+
+When each message arrives is not part of the program, but the operational semantics `SchedSem` needs it to run the program. Each network operator therefore takes a transport decision `d : H.TransportDec (mem p) (mem c)`, and the program receives these decisions as the fields of a **schedule record**, one field per network edge:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/HelloWorld.lean">Examples/Tutorials/HelloWorld.lean</Link>
+}>{getLines(helloSrc, 'sched', `
+/-- The program's one network edge: how far each worker has been handed the leader's
+stream. \`Unit\` at \`Values\`; delivery cursors at \`SchedSem\`. -/
+structure HelloSched (H : HydroSem L mem) (nWorkers nLeader : Nat) where
+  toWorkers : H.TransportDec nWorkers nLeader
+`)}</CodeBlock>
+
+The program passes each field to its operator and never reads it. At `Values` every field is `Unit`. At `SchedSem` a field gives, per receiver, sender and step, how many of the sender's messages the receiver has been handed. Theorems about `SchedSem` runs hold for every schedule record, so a program's correctness never depends on delivery timing. `#nondet_census` counts one schedule site per network edge ([The `dec` and `sched` Records](./nondeterminism.md#the-dec-and-sched-records)).
+
+## The Network at `Values` {#the-network-at-values}
+
+A network can delay, reorder and interleave messages, and a contract has to hold under all of it. You prove contracts at the denotational semantics `Values`, which does not simulate that behaviour message by message. It encodes the behaviour in the **types** of the collections a receiver gets, as quotients ([Grades](./signature.md#grades)):
+
+- Reordering and interleaving. Each sender's group in a received `KeyedStream` keeps the sender's grade, and `values` merges the groups into a `.noOrder` stream. At `Values` a `.noOrder` stream is a `Multiset`, one value that stands for every arrival order and every interleaving of the senders.
+- Delay. A pool holds everything that is ever sent. How much of it has arrived by a given tick does not appear in the pool.
+
+The network's nondeterminism therefore stays unresolved inside these values until an operator observes it. An operator that gives the same result for every history the value stands for needs no choice: a filter, a count of an exactly-once stream, a fold whose closure is proved commutative. An operator that observes one particular history takes a decision. `batch` takes cuts that say how much has arrived by each tick, and `assume_ordering` takes the order to observe ([Nondeterminism and Decisions](./nondeterminism.md)). A contract holds for every decision, so it holds for every delay, order and interleaving at the points where the program observes them.
+
+With the network's behaviour in the types, the transport changes no content. At `Values`, `broadcast_closed` hands every receiver each sender's whole pool, keyed by sender, and `demux` hands each receiver the part of each pool addressed to it. For an exactly-once unordered stream, what a receiver reads with `values` is the sum of the senders' pools, by `rfl`:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Hydro/Values.lean">Hydro/Values.lean</Link>
+}>{getLines(valuesSrc, 691, 695, `
+@[den] theorem values_broadcast_sum {c : L} {α : Type} [DecidableEq α]
+    (d : (Values L mem).TransportDec (mem ℓ) (mem c))
+    (s : (Values L mem).Stream c α .noOrder .exactlyOnce) (p : Fin (mem ℓ)) :
+    (Values L mem).values ((Values L mem).broadcast_closed d s) p
+      = ((List.finRange (mem c)).map (fun j => s j)).sum := rfl
+`)}</CodeBlock>
+
+Hydro Lean checks this encoding against an operational semantics, `SchedSem`, that runs the same program with explicit delivery: every stream is one concrete sequence per member, and a delivery cursor says, per receiver, sender and step, how many of the sender's messages the receiver has been handed. A proof done once for every program shows two things about each run of `SchedSem`. At every step, what each receiver holds lies inside its pool at `Values`. And every observation the run makes, such as where a tick's batch ended or the order a stream arrived in, is reproduced by a decision built from the run. A contract proved for every decision therefore holds of every run ([Transferring to the Machine and the Network](../proving/transferring-to-the-machine.md)). [The Network as Identity](../../internals/semantics/values.md#the-network-as-identity) shows the definitions at both semantics.

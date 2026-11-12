@@ -1,0 +1,114 @@
+---
+sidebar_position: 2
+title: "Ticks and Cycles"
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Link from "@docusaurus/Link";
+
+import clientSrc from '!!raw-loader!../../../../../hydro_lean/Examples/Paxos/PaxosWithClient.lean';
+import { getLines } from '../../../../src/util';
+
+# Ticks and Cycles
+
+A program keeps state over time in two ways. A `tick` block, Rust's `sliced!`, carries state at one location from one tick to the next ([Slice Blocks](../../../hydro/reference/state-management/slices.mdx)). A `fix … complete` block, Rust's `forward_ref`, feeds a collection back into the code that defines it. This page shows how to write both. Their loop invariants are clauses of the same blocks, covered in [Tick Blocks and Their Invariants](../proving/tick-invariants.md) and [Knots and Loop Invariants](../proving/knot-invariants.md).
+
+## Tick Blocks {#tick-blocks}
+
+A `tick` block runs its body once per **tick** of each member: it reads this tick's inputs and the state the previous tick left, then gives the next state and this tick's emissions. `payloads_to_leader` (`Examples/Paxos/PaxosWithClient.lean`) holds client payloads while no leader is known, and releases them once a leader is known. The comments show the equivalent Rust:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Paxos/PaxosWithClient.lean">Examples/Paxos/PaxosWithClient.lean</Link>
+}>{getLines(clientSrc, 96, 110, `
+-- let payloads_at_proposer = sliced! {
+--   let mut unsent_payloads = use::state_null::<Stream<_, _, _, TotalOrder>>();
+--   let payload_batch = use::batch(payloads, nondet!(/** see below */));
+--   let latest_leader = use::snapshot(cur_leader_id, nondet!(nondet_commit));
+tick (state unsent_payloads : H.BoundedStream P .totalOrder .exactlyOnce)
+    (input payload_batch := H.batch payloads dec.payloads)
+    (input latest_leader := H.snapshot cur_leader dec.leader) :=
+  let latest_leader := H.boMap latest_leader (fun ballot : Ballot (mem prop) => ballot.proposerId)
+  -- let all_payloads = unsent_payloads.chain(payload_batch);
+  let all_payloads := H.bchain unsent_payloads payload_batch
+  -- unsent_payloads = all_payloads.clone().filter_if(latest_leader.clone().is_none());
+  rebind (unsent_payloads := H.bfilterIf all_payloads (H.boIsNone latest_leader))
+  -- all_payloads.cross_singleton(latest_leader)
+  yield (payloads_at_proposer := H.bcrossOptional all_payloads latest_leader);
+-- }
+`)}</CodeBlock>
+
+The header declares what the Rust `use::` lines declare:
+
+- `(state r : σ := seed)` declares a **register**, Rust's `use::state`: a value carried from one tick to the next, starting at `seed`.
+- `(state s : H.BoundedStream α ord ret)` declares a persisted stream, Rust's `use::state_null`. It starts empty, so it takes no seed. Keyed variants (`H.BoundedKeyedStream`, `H.BoundedKeyedSingleton`) work the same way. A block without state declares no `state` clause.
+- `(input x := wire)` reads one tick-located wire. `H.batch s d` corresponds to `use::batch(s, nondet!)` and `H.snapshot s d` to `use::snapshot(s, nondet!)`; each takes its decision as an argument ([Nondeterminism and Decisions](./nondeterminism.md)). Any other tick wire works too, for example `H.defer_tick init a`, the previous tick's value of `a` (Rust's `.defer_tick()`), which reads `init` at tick 0. The block reads each input's kind (singleton, stream, keyed) off its type.
+
+The body is a chain of `let`s with the in-tick operators (`H.bchain`, `H.bkfold`, `H.boMap`, …), over this tick's values of the inputs and the previous tick's values of the states ([the in-tick operator table](./signature.md#operators)). It ends with three clauses:
+
+- `rebind (r := e, …)` gives the next value of each state. It must assign every state, in declaration order; to keep a state unchanged, rebind it to itself. A block without state has no `rebind`.
+- `emit (a := e, …)` emits singletons, `yield (b := e, …)` emits streams and `kyield (c := e, …)` emits keyed streams. A block needs at least one emission.
+- `;` ends the block. The code after it is the continuation, where each emission is in scope as a tick wire: an `emit` output has type `H.Atomic ℓ σ`, a `yield` output `H.AtomicStream ℓ α ord ret`, and a `kyield` output `H.AtomicKeyedStream ℓ K V ord ret`.
+
+Lean has no assignment, so a Rust body that assigns state inside an `if` becomes an `if` whose arms each return a tuple of every value the Rust arm assigns, followed by one `rebind` ([Porting from Rust](../quickstart/porting-from-rust.mdx#assignment-and-the-exit)).
+
+After the block, the operators on tick wires take over. `H.allTicks` concatenates the per-tick emissions into an unbounded stream, Rust's `.all_ticks()` ([Returning Values from a Slice](../../../hydro/reference/state-management/slices.mdx#unslicing)). `payloads_to_leader` applies it before the `demux` that sends the payloads to the leader ([Sending Between Locations](./distributed-programs.mdx#sending)). `H.mapTick`, `H.zipTick` and `H.firstTick` transform tick wires without a block.
+
+The full grammar, without the loop-invariant clauses:
+
+```lean
+    tick (state r₁ : τ₁ := seed₁) … (state sₖ : H.BoundedStream α ord ret) …
+      (input x₁ := <wire₁>) … (input xₘ := <wireₘ>) :=
+      <per-tick let-chain over r₁ … rₙ x₁ … xₘ (this tick's values)>
+      rebind (r₁ := e₁, …, rₙ := eₙ)
+      emit (a := …, …)? yield (b := …, …)? kyield (c := …, …)?;
+    <continuation: the outputs in scope>
+```
+
+## Cycles {#cycles}
+
+Rust's `forward_ref` hands out a collection before it is defined, and `complete_cycle.complete(…)` defines it later. A cycle closed this way is a **knot**. Paxos has two at the top level. The acceptor log `a_log` feeds leader election's promises, and leader election's output feeds the sequencing that writes the log. Here is the Rust in `paxos_core` (`hydro_test/src/cluster/paxos.rs`):
+
+```rust
+    let (sequencing_max_ballot_complete_cycle, sequencing_max_ballot_forward_reference) =
+        proposers.forward_ref::<Stream<Ballot, _, _, NoOrder>>();
+    let (a_log_complete_cycle, a_log_forward_reference) =
+        acceptor_tick.forward_ref::<Singleton<_, _, _>>();
+```
+
+and the Lean (`Examples/Paxos/PaxosCore.lean`), with the `invariant` clause elided:
+
+```lean
+  fix (a_log : H.Atomic acc (ALog P (mem prop)))
+      (sequencing_max_ballots : H.Stream prop (Ballot (mem prop))
+        .noOrder .exactlyOnce)
+      via (dec.fuelALog, dec.fuelSeqMax)
+    …
+  :=
+      let le := leader_election H variant prop acc (config.f + 1) (2 * config.f + 1)
+        config dec.le sched.le sequencing_max_ballots a_log
+      …
+    -- a_log_complete_cycle.complete(a_log);
+    -- sequencing_max_ballot_complete_cycle.complete(seq_max_ballots)
+    complete (sp.2.1, sp.2.2)
+    (-- p_ballot.filter_if(just_became_leader).all_ticks()
+     H.allTicks (H.flattenOrdered (H.mapTick
+     …
+```
+
+- The binders after `fix` are the cycle's wires, one per Rust `forward_ref`, each with its carrier type.
+- `via` gives one **fuel** per wire, a decision of type `H.FixDec`: at `Values` the number of times the body is iterated from the empty collection. Put the fuels in the module's decision record (`dec.fuelALog`), not in bare `H.FixDec` binders, because the proofs about the cycle read them from there.
+- The body, after `:=`, is ordinary program text in which the cycle's wires are in scope.
+- `complete (e₁, …)` gives the closing value of each wire, in binder order, as Rust's `complete` calls do.
+- The text after `complete` is the continuation. There the cycle's binders refer to the closed wires, and the body's `let`s stay in scope.
+
+Every cycle has to pass through a network hop or a `defer_tick`, as in Rust, which compiles no instantaneous cycles. A cycle without one, such as `fix w := union w inp`, fails while the `fix` elaborates, with one of two messages:
+
+```text
+HydroGen: a lag-2 agreement cannot be read at lag 1
+```
+
+```text
+HydroGen: {what}: the body's output lag is {μ}, not `0` — the body is not strict in the knot wire (a cycle without a network hop or `defer_tick`)
+```
+
+To fix it, find the path from the wire back to the body's output and put on it the hop or the `defer_tick` that the Rust has.

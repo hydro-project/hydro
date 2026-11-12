@@ -1,4 +1,6 @@
 fn main() {
+    hydro_build_utils::emit_nightly_configuration!();
+
     #[cfg(feature = "test_embedded")]
     generate_embedded();
 }
@@ -6,13 +8,14 @@ fn main() {
 #[cfg(feature = "test_embedded")]
 fn generate_embedded() {
     use hydro_lang::location::Location;
-    use hydro_lang::prelude::nondet;
 
     println!("cargo::rerun-if-changed=build.rs");
 
     let out_dir = std::env::var("OUT_DIR").unwrap();
 
     // --- capitalize (local, no networking) ---
+    // Uses `generate_embedded`, i.e. the default `EmbeddedCodegenOptions` (no per-operator
+    // flame attribution wrappers), which is what most users will call.
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
         let process = flow.process::<()>();
@@ -24,6 +27,130 @@ fn generate_embedded() {
 
         std::fs::write(
             format!("{out_dir}/embedded.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- capitalize, with flame attribution wrappers ---
+    // Same program, but with `EmbeddedCodegenOptions::with_flame_attribution()`, so that the
+    // per-operator wrapper codegen path is also compiled and run.
+    {
+        use hydro_lang::compile::embedded::EmbeddedCodegenOptions;
+
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<()>();
+        hydro_test::local::capitalize::capitalize(process.embedded_input("input"));
+
+        let code = flow
+            .with_process(&process, "capitalize")
+            .generate_embedded_with_options(
+                "hydro_test",
+                &EmbeddedCodegenOptions::with_flame_attribution(),
+            );
+
+        std::fs::write(
+            format!("{out_dir}/embedded_flame_attribution.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- capitalize_unordered (local, an unordered output) ---
+    {
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<()>();
+        hydro_test::local::capitalize::capitalize_unordered(process.embedded_input("input"));
+
+        let code = flow
+            .with_process(&process, "capitalize_unordered")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/unordered_output.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- unique_names (local, a `NoOrder`, `AtLeastOnce` input) ---
+    {
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<()>();
+        hydro_test::local::unique_names::unique_names(process.embedded_input("input"));
+
+        let code = flow
+            .with_process(&process, "unique_names")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/at_least_once_input.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- weak_stream_channel (o2o; the stream sent is unordered and may repeat messages, so the
+    // channel has no order to keep and may duplicate them) ---
+    {
+        use hydro_lang::live_collections::stream::{AtLeastOnce, NoOrder};
+        use hydro_lang::networking::EMBEDDED;
+
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let sender = flow.process::<()>();
+        let receiver = flow.process::<()>();
+        sender
+            .embedded_input::<String, NoOrder, AtLeastOnce>("input")
+            .send(
+                &receiver,
+                EMBEDDED
+                    .never_reorders()
+                    .never_duplicates()
+                    .never_drops()
+                    .name("messages"),
+            )
+            .embedded_output("output");
+
+        let code = flow
+            .with_process(&sender, "weak_stream_sender")
+            .with_process(&receiver, "weak_stream_receiver")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/weak_stream_channel.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- weak_channel (o2o; the channel is declared to reorder and duplicate an ordered,
+    // exactly-once stream) ---
+    {
+        use hydro_lang::live_collections::stream::{ExactlyOnce, TotalOrder};
+        use hydro_lang::networking::EMBEDDED;
+
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let sender = flow.process::<()>();
+        let receiver = flow.process::<()>();
+        sender
+            .embedded_input::<String, TotalOrder, ExactlyOnce>("input")
+            .send(
+                &receiver,
+                EMBEDDED
+                    .may_reorder()
+                    .may_duplicate()
+                    .never_drops()
+                    .name("messages"),
+            )
+            .embedded_output("output");
+
+        let code = flow
+            .with_process(&sender, "weak_channel_sender")
+            .with_process(&receiver, "weak_channel_receiver")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/weak_channel.rs"),
             prettyplease::unparse(&code),
         )
         .unwrap();
@@ -49,6 +176,25 @@ fn generate_embedded() {
         .unwrap();
     }
 
+    // --- singleton_only (local, a singleton input and nothing else) ---
+    {
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<()>();
+        hydro_test::local::singleton_only::consume_greeting(
+            process.embedded_singleton_input("greeting"),
+        );
+
+        let code = flow
+            .with_process(&process, "consume_greeting")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/singleton_only.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
     // --- echo_network (o2o networking) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
@@ -69,7 +215,7 @@ fn generate_embedded() {
         .unwrap();
     }
 
-    // --- echo_network_embedded (o2o networking, `.embedded()` serialization) ---
+    // --- echo_network_embedded (o2o networking, an `EMBEDDED` channel) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
         let sender = flow.process::<hydro_test::embedded::echo_network_embedded::Sender>();
@@ -96,12 +242,11 @@ fn generate_embedded() {
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
         let process = flow.process::<hydro_test::embedded::o2m_broadcast::Src>();
-        let cluster = flow.cluster::<hydro_test::embedded::o2m_broadcast::Dst>();
+        let cluster = flow.cluster::<hydro_test::embedded::o2m_broadcast::Dst, u32>();
         hydro_test::embedded::o2m_broadcast::o2m_broadcast(
             &cluster,
             process.embedded_input("input"),
         )
-        .assume_ordering(nondet!(/** test */))
         .embedded_output("output");
 
         let code = flow
@@ -116,13 +261,34 @@ fn generate_embedded() {
         .unwrap();
     }
 
-    // --- o2m_demux_embedded (process -> cluster demux, `.embedded()` serialization) ---
+    // --- named_members (process -> cluster broadcast; the host names members with strings) ---
+    {
+        use hydro_test::embedded::named_members::{Dst, Src, broadcast_to_members};
+
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<Src>();
+        let cluster = flow.cluster::<Dst, String>();
+        broadcast_to_members(&cluster, process.embedded_input("input")).embedded_output("output");
+
+        let code = flow
+            .with_process(&process, "named_sender")
+            .with_cluster(&cluster, "named_receiver")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/named_members.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
+    // --- o2m_demux_embedded (process -> cluster demux, an `EMBEDDED` channel) ---
     // The payload type has no serde derives; constructing this flow in a build script
     // (a non-test context) is the regression scenario for hydro-project/hydro#3158.
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
         let process = flow.process::<hydro_test::embedded::o2m_demux_embedded::Src>();
-        let cluster = flow.cluster::<hydro_test::embedded::o2m_demux_embedded::Dst>();
+        let cluster = flow.cluster::<hydro_test::embedded::o2m_demux_embedded::Dst, u32>();
         hydro_test::embedded::o2m_demux_embedded::o2m_demux_embedded(
             &cluster,
             process.embedded_input("input"),
@@ -141,13 +307,30 @@ fn generate_embedded() {
         .unwrap();
     }
 
+    // --- self_id (local cluster; reads its own member ID) ---
+    {
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let cluster = flow.cluster::<hydro_test::embedded::self_id::Members, u32>();
+        hydro_test::embedded::self_id::tag_with_self_id(cluster.embedded_input("input"))
+            .embedded_output("output");
+
+        let code = flow
+            .with_cluster(&cluster, "self_id_member")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/self_id.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
     // --- m2o_send (cluster -> process) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
-        let cluster = flow.cluster::<hydro_test::embedded::m2o_send::Src>();
+        let cluster = flow.cluster::<hydro_test::embedded::m2o_send::Src, u32>();
         let process = flow.process::<hydro_test::embedded::m2o_send::Dst>();
         hydro_test::embedded::m2o_send::m2o_send(&process, cluster.embedded_input("input"))
-            .assume_ordering(nondet!(/** test */))
             .embedded_output("output");
 
         let code = flow
@@ -165,10 +348,9 @@ fn generate_embedded() {
     // --- m2m_broadcast (cluster -> cluster) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
-        let src = flow.cluster::<hydro_test::embedded::m2m_broadcast::Src>();
-        let dst = flow.cluster::<hydro_test::embedded::m2m_broadcast::Dst>();
+        let src = flow.cluster::<hydro_test::embedded::m2m_broadcast::Src, u32>();
+        let dst = flow.cluster::<hydro_test::embedded::m2m_broadcast::Dst, u32>();
         hydro_test::embedded::m2m_broadcast::m2m_broadcast(&dst, src.embedded_input("input"))
-            .assume_ordering(nondet!(/** test */))
             .embedded_output("output");
 
         let code = flow

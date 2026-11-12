@@ -1,20 +1,52 @@
 #!/usr/bin/env bash
 set -e
 
-mkdir -p fuzz
-
+# Build for the host as an explicit compilation target, so that cargo applies the rustflags below
+# to target artifacts only. Build scripts and proc-macros link no sanitizer-coverage runtime, so
+# instrumenting them fails at link time.
 export CARGO_BUILD_TARGET=$(rustc -vV | grep 'host:' | awk '{print $2}')
-export RUSTFLAGS="$RUSTFLAGS -C prefer-dynamic -Copt-level=3 -Ccodegen-units=1 -Cpasses=sancov-module -Cllvm-args=-sanitizer-coverage-inline-8bit-counters -Cllvm-args=-sanitizer-coverage-level=4 -Cllvm-args=-sanitizer-coverage-pc-table -Cllvm-args=-sanitizer-coverage-trace-compares"
 
-# The test binary hosts the libfuzzer runtime (linked in via bolero), and the simulator dlopens a
-# sancov-instrumented dylib whose coverage hooks (e.g. `__sanitizer_cov_pcs_init`) must resolve
-# against that runtime. Export the binary's symbols dynamically so the loader can find them;
-# without this, loading the dylib fails with "undefined symbol: __sanitizer_cov_pcs_init".
-if [[ "$(uname)" == "Darwin" ]]; then
-  export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-export_dynamic"
-else
-  export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-Wl,-export-dynamic"
+# Own target dir: the fuzzing build shares no artifacts with a regular build, and cargo's exclusive
+# build lock would otherwise stall concurrently running Hydro tests (or rust-analyzer) and vice versa.
+TARGET_DIR=$(cargo metadata --no-deps --format-version 1 | sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
+if [[ -z "$TARGET_DIR" ]]; then
+  echo "cargo-sim: could not determine the target directory from \`cargo metadata\`" >&2
+  exit 1
 fi
+export CARGO_TARGET_DIR="$TARGET_DIR/sim"
+
+# The test binary hosts the libfuzzer runtime (linked in via bolero). The simulator dlopens
+# sancov-instrumented shared objects (the generated program and the prebuilt trybuild dylib it
+# links against), whose coverage hooks (e.g. `__sanitizer_cov_pcs_init`) resolve against that
+# runtime at load time, so the binary must export its symbols dynamically.
+if [[ "$(uname)" == "Darwin" ]]; then
+  # macOS rejects undefined symbols when linking shared objects (Linux allows them), so the hooks
+  # must be declared as resolved at load time.
+  LINK_FLAGS=(-Clink-arg=-export_dynamic -Clink-arg=-undefined -Clink-arg=dynamic_lookup)
+else
+  LINK_FLAGS=(-Clink-arg=-Wl,-export-dynamic)
+fi
+
+# Usage: `cargo sim [--default-codegen-units] <cargo test args>`.
+# `-Ccodegen-units=1` gives the best fuzzing binary but makes `hydro_lang` a single ~5 minute
+# single-threaded compile; the flag opts out of it (used by the CI harness tests).
+CODEGEN_FLAGS=(-Ccodegen-units=1)
+CARGO_ARGS=()
+for arg in "${@:2}"; do
+  if [[ "$arg" == "--default-codegen-units" ]]; then
+    CODEGEN_FLAGS=()
+  else
+    CARGO_ARGS+=("$arg")
+  fi
+done
+
+# Rustflags are passed as cargo config, not `RUSTFLAGS`, so they reach the generated programs the
+# same way `--config`-driven test runs do: via `hydro_lang`'s `forward_rustflags`.
+# `target.<triple>.rustflags` is the highest-precedence config key.
+FLAGS=($RUSTFLAGS -C prefer-dynamic -Copt-level=3 "${CODEGEN_FLAGS[@]}" -Cpasses=sancov-module -Cllvm-args=-sanitizer-coverage-inline-8bit-counters -Cllvm-args=-sanitizer-coverage-level=4 -Cllvm-args=-sanitizer-coverage-pc-table -Cllvm-args=-sanitizer-coverage-trace-compares "${LINK_FLAGS[@]}")
+unset RUSTFLAGS CARGO_ENCODED_RUSTFLAGS
+RUSTFLAGS_CONFIG="target.$CARGO_BUILD_TARGET.rustflags=[$(printf '"%s",' "${FLAGS[@]}")]"
+
 export BOLERO_FUZZER="libfuzzer"
 
-cargo test --lib ${@:2} --nocapture --test-threads=1
+cargo test --config "$RUSTFLAGS_CONFIG" --lib "${CARGO_ARGS[@]}" --nocapture --test-threads=1

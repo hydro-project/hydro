@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use hydro_lang::live_collections::OperatorContext;
 use hydro_lang::live_collections::boundedness::Boundedness;
 use hydro_lang::live_collections::stream::{NoOrder, Ordering};
@@ -9,50 +11,51 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use stageleft::IntoQuotedMut;
 
-pub trait PartitionStream<'a, T, C1, C2, Order: Ordering> {
+pub trait PartitionStream<'a, T, C1, C2, Order: Ordering, Id1 = u32, Id2 = u32> {
     fn send_partitioned<F>(
         self,
-        other: &Cluster<'a, C2>,
+        other: &Cluster<'a, C2, Id2>,
         dist_policy: impl IntoQuotedMut<
             'a,
             F,
-            OperatorContext<Cluster<'a, C1>, Unbounded>,
+            OperatorContext<Cluster<'a, C1, Id1>, Unbounded>,
             StreamMapFuncAlgebra<
-                (MemberId<C2>, T),
+                (MemberId<C2, Id2>, T),
                 Unbounded,
                 NotProved,
                 NotProved,
                 hydro_lang::sim_hooks::OnCluster<C1>,
             >,
         >,
-    ) -> Stream<T, Cluster<'a, C2>, Unbounded, NoOrder>
+    ) -> Stream<T, Cluster<'a, C2, Id2>, Unbounded, NoOrder>
     where
         T: Clone + Serialize + DeserializeOwned,
-        F: Fn((MemberId<C2>, T)) -> (MemberId<C2>, T) + 'a;
+        F: Fn((MemberId<C2, Id2>, T)) -> (MemberId<C2, Id2>, T) + 'a;
 }
 
-impl<'a, T, C1, C2, Order: Ordering> PartitionStream<'a, T, C1, C2, Order>
-    for Stream<(MemberId<C2>, T), Cluster<'a, C1>, Unbounded, Order>
+impl<'a, T, C1, Id1: Clone + Eq + Hash + 'a, C2, Id2: Clone + Eq + Hash + 'a, Order: Ordering>
+    PartitionStream<'a, T, C1, C2, Order, Id1, Id2>
+    for Stream<(MemberId<C2, Id2>, T), Cluster<'a, C1, Id1>, Unbounded, Order>
 {
     fn send_partitioned<F>(
         self,
-        other: &Cluster<'a, C2>,
+        other: &Cluster<'a, C2, Id2>,
         dist_policy: impl IntoQuotedMut<
             'a,
             F,
-            OperatorContext<Cluster<'a, C1>, Unbounded>,
+            OperatorContext<Cluster<'a, C1, Id1>, Unbounded>,
             StreamMapFuncAlgebra<
-                (MemberId<C2>, T),
+                (MemberId<C2, Id2>, T),
                 Unbounded,
                 NotProved,
                 NotProved,
                 hydro_lang::sim_hooks::OnCluster<C1>,
             >,
         >,
-    ) -> Stream<T, Cluster<'a, C2>, Unbounded, NoOrder>
+    ) -> Stream<T, Cluster<'a, C2, Id2>, Unbounded, NoOrder>
     where
         T: Clone + Serialize + DeserializeOwned,
-        F: Fn((MemberId<C2>, T)) -> (MemberId<C2>, T) + 'a,
+        F: Fn((MemberId<C2, Id2>, T)) -> (MemberId<C2, Id2>, T) + 'a,
     {
         self.map(dist_policy)
             .demux(other, TCP.fail_stop().bincode())
@@ -60,25 +63,25 @@ impl<'a, T, C1, C2, Order: Ordering> PartitionStream<'a, T, C1, C2, Order>
     }
 }
 
-pub trait DecoupleClusterStream<'a, T, C1, B, Order: Ordering> {
+pub trait DecoupleClusterStream<'a, T, C1, B, Order: Ordering, Id = u32> {
     fn decouple_cluster<C2: 'a>(
         self,
-        other: &Cluster<'a, C2>,
-    ) -> Stream<T, Cluster<'a, C2>, Unbounded, Order>
+        other: &Cluster<'a, C2, Id>,
+    ) -> Stream<T, Cluster<'a, C2, Id>, Unbounded, Order>
     where
         T: Clone + Serialize + DeserializeOwned,
         C1: 'a;
 }
 
-impl<'a, T, C1, B: Boundedness, Order: Ordering> DecoupleClusterStream<'a, T, C1, B, Order>
-    for Stream<T, Cluster<'a, C1>, B, Order>
+impl<'a, T, C1, B: Boundedness, Order: Ordering, Id: Clone + Eq + Hash + 'a>
+    DecoupleClusterStream<'a, T, C1, B, Order, Id> for Stream<T, Cluster<'a, C1, Id>, B, Order>
 where
     C1: 'a,
 {
     fn decouple_cluster<C2: 'a>(
         self,
-        other: &Cluster<'a, C2>,
-    ) -> Stream<T, Cluster<'a, C2>, Unbounded, Order>
+        other: &Cluster<'a, C2, Id>,
+    ) -> Stream<T, Cluster<'a, C2, Id>, Unbounded, Order>
     where
         T: Clone + Serialize + DeserializeOwned,
         C1: 'a,

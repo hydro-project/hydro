@@ -79,7 +79,9 @@ fn dfir_syntax_internal(
                 {
                     #root::scheduled::context::Dfir::new(
                         #root::scheduled::context::NullTickClosure,
-                        <#root::scheduled::context::Context as ::std::default::Default>::default(),
+                        #root::scheduled::context::Context::new_with_metrics(
+                            ::std::default::Default::default(),
+                        ),
                         None,
                         None,
                     )

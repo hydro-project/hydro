@@ -17,5 +17,7 @@ help: the following other types implement trait `BindableHookScope`
 note: required by a bound in `hydro_lang::prelude::FlowBuilder::<'a>::sim_hook`
   --> src/compile/builder.rs
    |
+   | impl<'a> FlowBuilder<'a> {
+...
    |     pub fn sim_hook<B: crate::sim_hooks::SimHook>(&mut self) -> B {
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `FlowBuilder::<'a>::sim_hook`

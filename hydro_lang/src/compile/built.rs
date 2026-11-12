@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::marker::PhantomData;
 
 use dfir_lang::graph::{
@@ -7,7 +8,9 @@ use slotmap::{SecondaryMap, SlotMap};
 
 use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
-use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
+use super::deploy_provider::{
+    ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, SupportsMemberId,
+};
 use super::ir::{HydroRoot, emit};
 use crate::location::{Cluster, External, LocationKey, LocationType, Process};
 #[cfg(stageleft_runtime)]
@@ -22,9 +25,13 @@ pub struct BuiltFlow<'a> {
     pub(super) ir: Vec<HydroRoot>,
     pub(super) locations: SlotMap<LocationKey, LocationType>,
     pub(super) location_names: SecondaryMap<LocationKey, String>,
+    pub(super) cluster_id_types: SecondaryMap<LocationKey, syn::Type>,
 
     /// Compile-time sidecar directives extracted from the flow state.
     pub(super) sidecars: Vec<super::builder::Sidecar>,
+
+    /// Clusters whose code reads their own member ID.
+    pub(super) clusters_reading_self_id: HashSet<LocationKey>,
 
     /// Application name used in telemetry.
     pub(super) flow_name: String,
@@ -196,10 +203,12 @@ impl<'a> BuiltFlow<'a> {
             ir: self.ir,
             locations: self.locations,
             location_names: self.location_names,
+            cluster_id_types: self.cluster_id_types,
             processes,
             clusters,
             externals,
             sidecars: self.sidecars,
+            clusters_reading_self_id: self.clusters_reading_self_id,
             as_code_options: Default::default(),
             flow_name: self.flow_name,
             _phantom: PhantomData,
@@ -236,9 +245,9 @@ impl<'a> BuiltFlow<'a> {
         self.into_deploy().with_remaining_externals(spec)
     }
 
-    pub fn with_cluster<C, D: Deploy<'a>>(
+    pub fn with_cluster<C, Id, D: Deploy<'a> + SupportsMemberId<Id>>(
         self,
-        cluster: &Cluster<'_, C>,
+        cluster: &Cluster<'_, C, Id>,
         spec: impl ClusterSpec<'a, D>,
     ) -> DeployFlow<'a, D> {
         self.into_deploy().with_cluster(cluster, spec)

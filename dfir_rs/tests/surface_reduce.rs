@@ -31,6 +31,79 @@ pub fn test_reduce_tick() {
     assert_eq!(&[7], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
 
+/// Test that `reduce::<'tick>` does not require `Clone`: the accumulated value is moved (not
+/// cloned) into the output. Exercises the pull codegen path.
+#[multiplatform_test]
+pub fn test_reduce_tick_no_clone() {
+    #[derive(Debug, PartialEq, Eq)]
+    struct NoClone(u32);
+
+    let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<NoClone>();
+    let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<NoClone>();
+
+    let mut df = dfir_rs::dfir_syntax! {
+        source_stream(items_recv)
+            -> reduce::<'tick>(|acc: &mut NoClone, next: NoClone| acc.0 += next.0)
+            -> for_each(|v| result_send.send(v).unwrap());
+    };
+
+    items_send.send(NoClone(1)).unwrap();
+    items_send.send(NoClone(2)).unwrap();
+    df.run_tick_sync();
+    assert_eq!(
+        &[NoClone(3)],
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+    );
+
+    // No input: no output.
+    df.run_tick_sync();
+    assert_eq!(
+        &[] as &[NoClone],
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+    );
+
+    items_send.send(NoClone(5)).unwrap();
+    df.run_tick_sync();
+    assert_eq!(
+        &[NoClone(5)],
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+    );
+}
+
+/// Test that `reduce::<'tick>` does not require `Clone` in push position (downstream of
+/// `unzip`): the accumulated value is moved (not cloned) into the output.
+#[multiplatform_test]
+pub fn test_reduce_tick_push_no_clone() {
+    #[derive(Debug, PartialEq, Eq)]
+    struct NoClone(u32);
+
+    let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<NoClone>();
+    let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<NoClone>();
+
+    let mut df = dfir_rs::dfir_syntax! {
+        unzipped = source_stream(items_recv) -> map(|item| (item, ())) -> unzip();
+        unzipped[0]
+            -> reduce::<'tick>(|acc: &mut NoClone, next: NoClone| acc.0 += next.0)
+            -> for_each(|v| result_send.send(v).unwrap());
+        unzipped[1] -> null();
+    };
+
+    items_send.send(NoClone(1)).unwrap();
+    items_send.send(NoClone(2)).unwrap();
+    df.run_tick_sync();
+    assert_eq!(
+        &[NoClone(3)],
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+    );
+
+    items_send.send(NoClone(5)).unwrap();
+    df.run_tick_sync();
+    assert_eq!(
+        &[NoClone(5)],
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+    );
+}
+
 #[multiplatform_test]
 pub fn test_reduce_static() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
