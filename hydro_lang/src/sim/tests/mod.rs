@@ -1571,3 +1571,5 @@ mod custom_codec {
             });
     }
 }
+
+mod dylib_panic;
