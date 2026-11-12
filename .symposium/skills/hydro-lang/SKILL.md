@@ -21,7 +21,7 @@ enum Workers {}
 
 let mut flow = FlowBuilder::new();
 let leader = flow.process::<Leader>();
-let workers = flow.cluster::<Workers>();
+let workers = flow.cluster::<Workers, u32>();
 ```
 
 ### Quoted Closures (`q!`)

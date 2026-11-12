@@ -27,8 +27,7 @@ use crate::compile::trybuild::generate::{
     create_graph_trybuild,
 };
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MembershipEvent, NetworkHint};
+use crate::location::{LocationKey, NetworkHint};
 
 /// Deployment backend that targets Maelstrom for distributed systems testing.
 ///
@@ -37,6 +36,9 @@ use crate::location::{LocationKey, MembershipEvent, NetworkHint};
 /// - Exactly one cluster (no processes)
 /// - A single external input channel for client communication
 pub enum MaelstromDeploy {}
+
+/// Maelstrom names each cluster's members with `String`s.
+impl crate::compile::deploy_provider::SupportsMemberId<String> for MaelstromDeploy {}
 
 impl<'a> Deploy<'a> for MaelstromDeploy {
     type Meta = ();
@@ -136,6 +138,9 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
                 (TcpFault::FailStop, Some(_)) => {} // other nemeses are fine with fail_stop
             },
             NetworkingInfo::Udp { .. } => {} // UDP is always lossy, which is always allowed
+            NetworkingInfo::Embedded { .. } => {
+                unreachable!("`EMBEDDED` channels are only supported by the embedded backend")
+            }
         }
         deploy_maelstrom_m2m(RuntimeData::new("__hydro_lang_maelstrom_meta"))
     }
@@ -197,23 +202,21 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
 
-    fn cluster_ids(
-        _of_cluster: LocationKey,
-    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
+    fn cluster_ids(_of_cluster: LocationKey) -> syn::Expr {
         cluster_members(RuntimeData::new("__hydro_lang_maelstrom_meta"), _of_cluster)
+            .splice_untyped()
     }
 
-    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
-        cluster_self_id(RuntimeData::new("__hydro_lang_maelstrom_meta"))
+    fn cluster_self_id() -> syn::Expr {
+        cluster_self_id(RuntimeData::new("__hydro_lang_maelstrom_meta")).splice_untyped()
     }
 
     fn cluster_membership_stream(
         _env: &mut Self::InstantiateEnv,
         _at_location: &LocationId,
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
-    {
-        cluster_membership_stream(location_id)
+    ) -> syn::Expr {
+        cluster_membership_stream(location_id).splice_untyped()
     }
 }
 
@@ -495,7 +498,7 @@ impl MaelstromDeployment {
             .as_ref()
             .expect("No trybuild config set - did you call deploy?");
 
-        let out = compile_trybuild_example(ExampleBuildConfig {
+        compile_trybuild_example(ExampleBuildConfig {
             trybuild: trybuild.clone(),
             bin_name: bin_name.clone(),
             runtime_feature: "hydro___feature_maelstrom_runtime",
@@ -503,12 +506,8 @@ impl MaelstromDeployment {
             example_name: bin_name.clone(),
             crate_type: None,
             set_trybuild_lib_name: false,
-            allow_fuzz: false,
         })
-        .map_err(|()| Error::other("Maelstrom binary compilation failed"))?;
-
-        // Persist the built executable so it survives past the temporary build guards.
-        out.keep().map_err(|e| Error::other(e.to_string()))
+        .map_err(|()| Error::other("Maelstrom binary compilation failed"))
     }
 
     /// Run Maelstrom with the compiled binary, return Ok(()) if all checks pass.

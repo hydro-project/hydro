@@ -116,6 +116,32 @@ pub fn test_fold_no_replay_push() {
     assert_eq!(&[13], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 }
 
+/// `fold_no_replay` on push side emits its initial value on the first tick even when no input
+/// ever arrives, then emits nothing until new input arrives.
+#[multiplatform_test]
+pub fn test_fold_no_replay_push_initial_value_without_input() {
+    let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let mut df = dfir_syntax! {
+        my_tee = source_stream(items_recv) -> tee();
+        my_tee -> fold_no_replay::<'static>(|| 7, |a: &mut _, b| *a += b) -> for_each(|v| out_send.send(v).unwrap());
+        my_tee -> null();
+    };
+
+    // First tick, no input: the initial value is emitted exactly once.
+    df.run_tick_sync();
+    assert_eq!(&[7], &*collect_ready::<Vec<_>, _>(&mut out_recv));
+
+    // No new input: nothing is emitted.
+    df.run_tick_sync();
+    assert_eq!(&[] as &[i32], &*collect_ready::<Vec<_>, _>(&mut out_recv));
+
+    // New input: the updated accumulator is emitted.
+    items_send.send(3).unwrap();
+    df.run_tick_sync();
+    assert_eq!(&[10], &*collect_ready::<Vec<_>, _>(&mut out_recv));
+}
+
 /// `reduce_no_replay` on push side: `source -> tee -> reduce_no_replay -> for_each`
 #[multiplatform_test]
 pub fn test_reduce_no_replay_push() {

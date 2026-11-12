@@ -1,13 +1,18 @@
-//! Typed and untyped identifiers for members of a [`Cluster`](super::Cluster).
+//! Typed identifiers for members of a [`Cluster`](super::Cluster).
 //!
 //! In Hydro, a [`Cluster`](super::Cluster) is a location that represents a group of
-//! identical processes. Each individual process within a cluster is identified by a
-//! [`MemberId`], which is parameterized by a tag type `Tag` to prevent accidentally
-//! mixing up member IDs from different clusters.
+//! identical processes. Each process in a cluster is identified by a [`MemberId`].
 //!
-//! [`TaglessMemberId`] is the underlying untyped representation, which carries the
-//! actual runtime identity (e.g. a raw numeric ID, a Docker container name, or a
-//! Maelstrom node ID) without any compile-time cluster tag.
+//! A `MemberId<Tag, Id>` has two type parameters.
+//! `Tag` names the member's cluster, so IDs from different clusters cannot be mixed up.
+//! `Id` is the type of the ID itself, such as an index, an address, or a name.
+//!
+//! You choose `Id` when you create the cluster (see
+//! [`FlowBuilder::cluster`](crate::compile::builder::FlowBuilder::cluster)).
+//! Pick whatever the code that runs the cluster already uses to identify its members.
+//! Hydro only compares, hashes, orders, clones, and sends IDs, so it works with any such type.
+//! The deployment backend must support it (see
+//! [`SupportsMemberId`](crate::compile::deploy_provider::SupportsMemberId)).
 
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
@@ -15,256 +20,63 @@ use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
 
-/// An untyped identifier for a member of a cluster, without a compile-time tag
-/// distinguishing which cluster it belongs to.
-///
-/// The available variants depend on which runtime features are enabled. This enum
-/// is `#[non_exhaustive]` because new runtime backends may add additional variants.
-///
-/// In most user code, prefer [`MemberId<Tag>`] which carries a type-level tag to
-/// prevent mixing up members from different clusters.
-#[derive(Clone, Deserialize, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-#[non_exhaustive] // Variants change based on features.
-pub enum TaglessMemberId {
-    /// A legacy numeric member ID, used with the `deploy_integration` / `sim_runtime` / `embedded_runtime` feature.
-    #[cfg(any(
-        feature = "deploy",
-        feature = "deploy_integration",
-        feature = "sim",
-        feature = "sim_runtime",
-        feature = "embedded_runtime"
-    ))]
-    #[cfg_attr(
-        docsrs,
-        doc(cfg(any(
-            feature = "deploy",
-            feature = "deploy_integration",
-            feature = "sim",
-            feature = "sim_runtime",
-            feature = "embedded_runtime"
-        )))
-    )]
-    Legacy {
-        /// The raw numeric identifier for this cluster member.
-        raw_id: u32,
-    },
-    /// A Docker container-based member ID, used with the `docker_runtime` / `ecs_runtime` feature.
-    #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
-    #[cfg_attr(
-        docsrs,
-        doc(cfg(any(feature = "docker_runtime", feature = "ecs_runtime")))
-    )]
-    Docker {
-        /// The Docker container name identifying this cluster member.
-        container_name: String,
-    },
-    /// A Maelstrom node-based member ID, used with the `maelstrom_runtime` feature.
-    #[cfg(feature = "maelstrom_runtime")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "maelstrom_runtime")))]
-    Maelstrom {
-        /// The Maelstrom node ID string identifying this cluster member.
-        node_id: String,
-    },
-}
-
-macro_rules! assert_feature {
-    (#[cfg($meta:meta)] $( $code:stmt )+) => {
-        #[cfg(not($meta))]
-        panic!("Feature {:?} is not enabled.", stringify!($meta));
-
-        #[cfg($meta)]
-        {
-            $( $code )+
-        }
-    };
-}
-
-impl TaglessMemberId {
-    /// Creates a [`TaglessMemberId`] from a raw numeric ID.
-    ///
-    /// # Panics
-    /// Panics if the `deploy` / `deploy_integration` / `sim_runtime` / `embedded_runtime` feature is not enabled.
-    pub fn from_raw_id(_raw_id: u32) -> Self {
-        assert_feature! {
-            #[cfg(any(feature = "deploy", feature = "deploy_integration", feature = "sim", feature = "sim_runtime", feature = "embedded_runtime"))]
-            Self::Legacy { raw_id: _raw_id }
-        }
-    }
-
-    /// Returns the raw numeric ID from this member identifier.
-    ///
-    /// # Panics
-    /// Panics if this is not the `Legacy` variant or if the `deploy_integration` / `sim_runtime`
-    /// feature is not enabled.
-    pub fn get_raw_id(&self) -> u32 {
-        assert_feature! {
-            #[cfg(any(feature = "deploy", feature = "deploy_integration", feature = "sim", feature = "sim_runtime", feature = "embedded_runtime"))]
-            #[expect(clippy::allow_attributes, reason = "Depends on features.")]
-            #[allow(
-                irrefutable_let_patterns,
-                reason = "Depends on features."
-            )]
-            let TaglessMemberId::Legacy { raw_id } = self else {
-                panic!("Not `Legacy` variant.");
-            }
-            *raw_id
-        }
-    }
-
-    /// Creates a [`TaglessMemberId`] from a Docker container name.
-    ///
-    /// # Panics
-    /// Panics if the `docker_runtime` / `ecs_runtime` feature is not enabled.
-    pub fn from_container_name(_container_name: impl Into<String>) -> Self {
-        assert_feature! {
-            #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
-            Self::Docker {
-                container_name: _container_name.into(),
-            }
-        }
-    }
-
-    /// Returns the Docker container name from this member identifier.
-    ///
-    /// # Panics
-    /// Panics if this is not the `Docker` variant or if the `docker_runtime` / `ecs_runtime`
-    /// feature is not enabled.
-    pub fn get_container_name(&self) -> &str {
-        assert_feature! {
-            #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
-            #[expect(clippy::allow_attributes, reason = "Depends on features.")]
-            #[allow(
-                irrefutable_let_patterns,
-                reason = "Depends on features."
-            )]
-            let TaglessMemberId::Docker { container_name } = self else {
-                panic!("Not `Docker` variant.");
-            }
-            container_name
-        }
-    }
-
-    /// Creates a [`TaglessMemberId`] from a Maelstrom node ID.
-    ///
-    /// # Panics
-    /// Panics if the `maelstrom_runtime` feature is not enabled.
-    pub fn from_maelstrom_node_id(_node_id: impl Into<String>) -> Self {
-        assert_feature! {
-                #[cfg(feature = "maelstrom_runtime")]
-                Self::Maelstrom {
-                node_id: _node_id.into(),
-            }
-        }
-    }
-
-    /// Returns the Maelstrom node ID from this member identifier.
-    ///
-    /// # Panics
-    /// Panics if this is not the `Maelstrom` variant or if the `maelstrom_runtime`
-    /// feature is not enabled.
-    pub fn get_maelstrom_node_id(&self) -> &str {
-        assert_feature! {
-            #[cfg(feature = "maelstrom_runtime")]
-            #[expect(clippy::allow_attributes, reason = "Depends on features.")]
-            #[allow(
-                irrefutable_let_patterns,
-                reason = "Depends on features."
-            )]
-            let TaglessMemberId::Maelstrom { node_id } = self else {
-                panic!("Not `Maelstrom` variant.");
-            }
-            node_id
-        }
-    }
-}
-
-impl Display for TaglessMemberId {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            #[cfg(any(
-                feature = "deploy",
-                feature = "deploy_integration",
-                feature = "sim",
-                feature = "sim_runtime",
-                feature = "embedded_runtime"
-            ))]
-            TaglessMemberId::Legacy { raw_id } => write!(_f, "{}", raw_id),
-            #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
-            TaglessMemberId::Docker { container_name } => write!(_f, "{}", container_name),
-            #[cfg(feature = "maelstrom_runtime")]
-            TaglessMemberId::Maelstrom { node_id } => write!(_f, "{}", node_id),
-            #[expect(
-                clippy::allow_attributes,
-                reason = "Only triggers when `TaglessMemberId` is empty."
-            )]
-            #[allow(
-                unreachable_patterns,
-                reason = "Needed when `TaglessMemberId` is empty."
-            )]
-            _ => panic!(),
-        }
-    }
-}
-
 /// A typed identifier for a member of a [`Cluster`](super::Cluster).
 ///
 /// The `Tag` type parameter ties this ID to a specific cluster, preventing
 /// accidental mixing of member IDs from different clusters at compile time.
-/// Under the hood, this wraps a [`TaglessMemberId`].
+/// It wraps an `Id` (see the [module documentation](self)).
 #[repr(transparent)]
-pub struct MemberId<Tag> {
-    inner: TaglessMemberId,
+pub struct MemberId<Tag, Id = u32> {
+    inner: Id,
     _phantom: PhantomData<Tag>,
 }
 
-impl<Tag> MemberId<Tag> {
-    /// Converts this typed member ID into an untyped [`TaglessMemberId`],
-    /// discarding the compile-time cluster tag.
-    pub fn into_tagless(self) -> TaglessMemberId {
+impl<Tag, Id> MemberId<Tag, Id> {
+    /// Unwraps the ID, dropping the cluster tag.
+    pub fn into_tagless(self) -> Id {
         self.inner
     }
 
-    /// Creates a typed [`MemberId`] from an untyped [`TaglessMemberId`].
-    pub fn from_tagless(inner: TaglessMemberId) -> Self {
+    /// Wraps an ID as a member of this cluster.
+    pub fn from_tagless(inner: Id) -> Self {
         Self {
             inner,
-            _phantom: Default::default(),
+            _phantom: PhantomData,
         }
     }
 
-    /// Creates a typed [`MemberId`] from a raw numeric ID.
+    /// The wrapped ID.
+    pub fn as_tagless(&self) -> &Id {
+        &self.inner
+    }
+}
+
+impl<Tag> MemberId<Tag, u32> {
+    /// The member numbered `raw_id`.
     ///
-    /// # Panics
-    /// Panics if the `deploy_integration` feature is not enabled.
+    /// Hydro Deploy and the simulator number each cluster's members `0..n`.
     pub fn from_raw_id(raw_id: u32) -> Self {
-        #[expect(clippy::allow_attributes, reason = "Depends on features.")]
-        #[allow(
-            unreachable_code,
-            reason = "`inner` may be uninhabited depending on features."
-        )]
-        Self {
-            inner: TaglessMemberId::from_raw_id(raw_id),
-            _phantom: Default::default(),
-        }
+        Self::from_tagless(raw_id)
     }
 
-    /// Returns the raw numeric ID from this member identifier.
-    ///
-    /// # Panics
-    /// Panics if the underlying [`TaglessMemberId`] is not the `Legacy` variant
-    /// or if the `deploy_integration` feature is not enabled.
+    /// This member's number.
     pub fn get_raw_id(&self) -> u32 {
-        self.inner.get_raw_id()
+        self.inner
     }
 }
 
-impl<Tag> Debug for MemberId<Tag> {
+impl<Tag, Id: Debug> Debug for MemberId<Tag, Id> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(self, f)
+        write!(
+            f,
+            "MemberId::<{}>({:?})",
+            std::any::type_name::<Tag>(),
+            self.inner
+        )
     }
 }
 
-impl<Tag> Display for MemberId<Tag> {
+impl<Tag, Id: Display> Display for MemberId<Tag, Id> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -275,21 +87,13 @@ impl<Tag> Display for MemberId<Tag> {
     }
 }
 
-impl<Tag> Clone for MemberId<Tag> {
+impl<Tag, Id: Clone> Clone for MemberId<Tag, Id> {
     fn clone(&self) -> Self {
-        #[expect(clippy::allow_attributes, reason = "Depends on features.")]
-        #[allow(
-            unreachable_code,
-            reason = "`inner` may be uninhabited depending on features."
-        )]
-        Self {
-            inner: self.inner.clone(),
-            _phantom: Default::default(),
-        }
+        Self::from_tagless(self.inner.clone())
     }
 }
 
-impl<Tag> Serialize for MemberId<Tag> {
+impl<Tag, Id: Serialize> Serialize for MemberId<Tag, Id> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -298,43 +102,36 @@ impl<Tag> Serialize for MemberId<Tag> {
     }
 }
 
-impl<'a, Tag> Deserialize<'a> for MemberId<Tag> {
+impl<'a, Tag, Id: Deserialize<'a>> Deserialize<'a> for MemberId<Tag, Id> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'a>,
     {
-        #[expect(clippy::allow_attributes, reason = "Depends on features.")]
-        #[allow(
-            unreachable_code,
-            reason = "`inner` may be uninhabited depending on features."
-        )]
-        Ok(Self::from_tagless(TaglessMemberId::deserialize(
-            deserializer,
-        )?))
+        Ok(Self::from_tagless(Id::deserialize(deserializer)?))
     }
 }
 
-impl<Tag> PartialOrd for MemberId<Tag> {
+impl<Tag, Id: Ord> PartialOrd for MemberId<Tag, Id> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<Tag> Ord for MemberId<Tag> {
+impl<Tag, Id: Ord> Ord for MemberId<Tag, Id> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.inner.cmp(&other.inner)
     }
 }
 
-impl<Tag> PartialEq for MemberId<Tag> {
+impl<Tag, Id: PartialEq> PartialEq for MemberId<Tag, Id> {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
     }
 }
 
-impl<Tag> Eq for MemberId<Tag> {}
+impl<Tag, Id: Eq> Eq for MemberId<Tag, Id> {}
 
-impl<Tag> Hash for MemberId<Tag> {
+impl<Tag, Id: Hash> Hash for MemberId<Tag, Id> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.inner.hash(state);
         // This seems like the a good thing to do. This will ensure that two member ids that come from different

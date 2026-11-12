@@ -20,12 +20,12 @@ expression: built.ir()
                         },
                         deserialize: Custom {
                             deserialize_fn: Some(
-                                | res | { let (id , b) = res . unwrap () ; (hydro_lang :: __staged :: location :: MemberId :: < () > :: from_tagless (id as hydro_lang :: __staged :: location :: TaglessMemberId) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
+                                | res | { let (id , b) = res . unwrap () ; (hydro_lang :: __staged :: location :: MemberId :: < () , _ > :: from_tagless (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
                             ),
                         },
                         instantiate_fn: <network instantiate>,
                         input: Inspect {
-                            f: stageleft :: runtime_support :: fnmut1_borrow_type_hint :: < i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; crate :: __staged :: __stageleft_quote_src_cluster_simple_cluster_rs_LINE_COL ! ([CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < () > :: from_tagless ((__hydro_lang_cluster_self_id_loc2v1) . clone ()) ,] [move | n | println ! ("cluster received: {} (self cluster id: {})" , n , CLUSTER_SELF_ID__free)]) }),
+                            f: stageleft :: runtime_support :: fnmut1_borrow_type_hint :: < i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; crate :: __staged :: __stageleft_quote_src_cluster_simple_cluster_rs_LINE_COL ! ([CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < () , _ > :: from_tagless ((__hydro_lang_cluster_self_id_loc2v1) . clone ()) ,] [move | n | println ! ("cluster received: {} (self cluster id: {})" , n , CLUSTER_SELF_ID__free)]) }),
                             input: AssertIsConsistent {
                                 inner: Network {
                                     name: None,
@@ -34,7 +34,7 @@ expression: built.ir()
                                     },
                                     serialize: Custom {
                                         serialize_fn: Some(
-                                            hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , i32) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                            hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ , _ > , i32) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                         ),
                                     },
                                     deserialize: Custom {
@@ -79,7 +79,7 @@ expression: built.ir()
                                                         f: stageleft :: runtime_support :: fnmut1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , (() , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL ! ([] [| v | (() , v)]) }),
                                                         input: Source {
                                                             source: Iter(
-                                                                stageleft :: runtime_support :: type_hint :: < core :: iter :: Map < core :: slice :: Iter < '_ , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId > , _ > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([cluster_ids__free = __hydro_lang_cluster_ids_loc2v1 ,] [cluster_ids__free . iter () . map (| id | MemberId :: from_tagless (id . clone ()))]) }),
+                                                                stageleft :: runtime_support :: type_hint :: < core :: iter :: Map < core :: slice :: Iter < '_ , u32 > , _ > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; hydro_lang :: __stageleft_quote_src_live_collections_stream_networking_rs_LINE_COL ! ([cluster_ids__free = __hydro_lang_cluster_ids_loc2v1 ,] [cluster_ids__free . iter () . map (| id | MemberId :: from_tagless (id . clone ()))]) }),
                                                             ),
                                                             metadata: HydroIrMetadata {
                                                                 location_id: Process(loc1v1),

@@ -3,6 +3,172 @@
 //! This crate provides the coordination primitives for running multiple cargo
 //! builds concurrently against a shared target directory using per-job symlinked
 //! directories.
+//!
+//! # Why
+//!
+//! Hydro compiles each generated program (one per deployed process, sim test, ...)
+//! as an example of a generated trybuild project. Cargo allows a single build per
+//! target directory (it takes an exclusive lock on it), so compiling those programs
+//! concurrently through cargo directly would serialize them. At the same time they
+//! all share the same, expensive dependency graph, so giving each its own target
+//! directory would recompile everything per program.
+//!
+//! # The trick: prebuild once, then share the artifacts without cargo's lock
+//!
+//! Builds run in two phases, coordinated by this crate's own locks:
+//!
+//! 1. **Prebuild** (exclusive `.prebuild.lock`): one cargo build compiles every
+//!    dependency — including the trybuild dylib that the generated programs link
+//!    against — into the *shared* target dir. While it runs, no final build is in
+//!    flight, so it may freely write shared state.
+//! 2. **Final builds** (shared `.prebuild.lock`): many cargo builds run
+//!    concurrently, each with its *own* target-dir root under `jobs/<JOB>/`, so
+//!    cargo's locks are per job and never contend. The shared, prebuilt state is
+//!    made visible inside each job dir via symlinks. This is safe without cargo's
+//!    lock only because of an invariant the two phases establish: **a final build
+//!    reads shared state but never writes it** — everything it reads is fresh (the
+//!    prebuild just built it, with identical features/rustflags, so cargo finds the
+//!    fingerprints up to date), and everything it creates (its own example unit,
+//!    its uplifted artifacts) has a job-unique path. Switching configuration
+//!    (features, rustflags, toolchain) takes the lock exclusive again, draining all
+//!    in-flight final builds before the prebuild rewrites shared state.
+//!
+//! Unrelated cargo processes building in the shared target dir (a developer's
+//! `cargo build`, an IDE) are kept out the same way cargo keeps itself out: this
+//! crate holds the shared target dir's own `.cargo-build-lock` **shared** for the
+//! whole prebuild + final build, and cargo takes that file **exclusive** for any
+//! build there, so the two mutually exclude ("Blocking waiting for file lock on
+//! build directory"). This is also why *every* cargo spawned by this crate —
+//! prebuild included — gets a `jobs/*` root rather than the shared dir: a child
+//! cargo using the shared dir would wait forever on the lock its own parent holds.
+//!
+//! # Configurations and the `__CARGO_DEFAULT_LIB_METADATA` optimization
+//!
+//! A *configuration* is a (crate, features, rustflags, compiler) tuple. Cargo hashes
+//! all of these into the filenames of rlibs, so artifacts of different
+//! configurations coexist in the shared `deps/` and are cached side by side — with
+//! one exception: the filename of a path package's **dylib** carries no hash
+//! (`libX_dylib.so`), so every configuration would want to write the same file.
+//! The trybuild dylib is thus the single shared resource configurations fight
+//! over, and the design has two modes (see [`run_prebuild`], [`dylib_lib_name`]):
+//!
+//! - **Default**: the fingerprint of rustflags + compiler version
+//!   ([`toolchain_fingerprint`]) is baked into the dylib's `[lib] name`, so
+//!   different toolchains/rustflags get distinct files. Features are not part of
+//!   the name, so switching features *replaces* the dylib: there is a single
+//!   `.prebuild.lock`, every build holds it shared through its final build, and a
+//!   configuration switch takes it exclusive — draining all in-flight builds
+//!   before the prebuild renames the manifest and rebuilds. Concurrency is
+//!   therefore limited to builds of **one configuration at a time**: while test
+//!   binary A (features `{sim}`) has final builds in flight, test binary B
+//!   (features `{sim, deploy}`) blocks until they finish, then rebuilds the dylib,
+//!   then A blocks on B — alternating binaries ping-pong the shared dylib.
+//! - **`__CARGO_DEFAULT_LIB_METADATA=1`** (set in CI): this undocumented cargo
+//!   variable (used by rust-lang/rust's bootstrap) makes cargo hash dylib filenames
+//!   too (`libX_dylib-<hash>.so`), so every configuration's dylib is a distinct
+//!   file and the manifest never changes. Shared state becomes append-only across
+//!   configurations — nothing one configuration writes is ever read by another —
+//!   so the lock can be split per configuration: one `.prebuild-<key>.lock` each,
+//!   with the cross-configuration `.global-prebuild.lock` taken only around a
+//!   prebuild's actual `cargo build` so two prebuilds never write `deps/` at the
+//!   same time. The concurrency this unlocks: **final builds of different
+//!   configurations run simultaneously**, and a prebuild for one configuration
+//!   runs while another configuration's final builds are in flight. For nextest,
+//!   which runs many test binaries with differing feature sets at once, that is
+//!   the difference between the binaries serializing on each other and all of them
+//!   proceeding in parallel — and every configuration's dylib stays cached instead
+//!   of being rebuilt on each switch.
+//!
+//! Why a prebuild for configuration B may overlap configuration A's final builds:
+//! cargo only writes a unit's files when the unit is *dirty* (fresh units are not
+//! touched at all; the legacy-layout `build-script-build` re-link rewrites only the
+//! job-local uplift). B's prebuild therefore writes B-specific units, which have
+//! B's hashes and are never read by A, plus any unit *shared* with A that is dirty.
+//! A's final builds read only units A's own prebuild completed, so a shared unit is
+//! fresh for B — unless its inputs changed since A's prebuild. That is the
+//! precondition: all concurrent builds must come from one source state. Within a
+//! test run it holds (test binaries are built before any runs, and the prebuild
+//! stamp is keyed on the binary's mtime); running test processes from two
+//! different source states at once is unsupported in either mode (in default mode
+//! A's `--frozen` final builds would panic with "unexpected recompilation"). The
+//! prebuild-vs-prebuild case is different — two configurations can both be dirty
+//! on the same not-yet-built shared unit — which is exactly what
+//! `.global-prebuild.lock` serializes.
+//!
+//! Mixing builds with and without the variable against one target dir is
+//! unsupported: they would rename the shared manifest under different locks.
+//! Because the hashed dylib name is what the final artifacts link against
+//! (`DT_NEEDED`), loader search paths must include wherever that hashed file
+//! lives; see [`dylib_search_dirs`].
+//!
+//! # Layouts
+//!
+//! Cargo's new build-dir layout (`-Zbuild-dir-new-layout`, default on current
+//! nightly) moves everything under `build/<pkg>/<unit-hash>/`; see
+//! [`BuildDirLayout`] (detected at compile time by `build.rs`). The same job-dir
+//! structure works for both layouts: the job's `build/` is a real directory two
+//! levels deep whose children are symlinks, so writes cargo makes at that level
+//! (legacy: re-linking `build-script-build`; new: the job's own example unit, which
+//! for the simulator is the *same* cargo unit in every job) stay job-local.
+//!
+//! With an explicit compilation target (`--target`, `CARGO_BUILD_TARGET`) cargo
+//! splits a build into two directories of identical structure: `debug/` for host
+//! units (build scripts, proc-macros) and `<triple>/debug/` for target units
+//! (everything else, including the dylib and final artifacts), each with its own
+//! cargo locks. [`ArtifactDirs`] names these *layers*; every job dir mirrors each
+//! of them the same way (`jobs/<JOB>/debug/`, `jobs/<JOB>/<triple>/debug/`). The
+//! diagrams below show the single-layer case; `debug/` stands for each layer.
+//!
+//! ```text
+//! LEGACY LAYOUT (stable)                                       NEW LAYOUT (nightly -Zbuild-dir-new-layout)
+//!
+//! target/                                                      target/
+//! ├── .prebuild.lock       hydro's own lock (see above)        ├── .prebuild.lock
+//! ├── debug/               <-- SHARED prebuilt state           ├── debug/               <-- SHARED prebuilt state
+//! │   ├── .cargo-build-lock   hydro holds SHARED;              │   ├── .cargo-build-lock   (same: excludes unrelated cargo)
+//! │   │                       unrelated cargo takes EXCLUSIVE  │   ├── (no .fingerprint/, no deps/)
+//! │   ├── .fingerprint/                                        │   ├── build/
+//! │   │   └── <unit>-<h>/     one dir per unit                 │   │   └── <pkg>/          one dir per package
+//! │   ├── deps/               rlibs + dylibs, hashed names     │   │       └── <h>/        one dir per unit
+//! │   │   ├── libfoo-<h>.rlib                                  │   │           ├── fingerprint/
+//! │   │   └── libX_dylib-<h>.so   SHARED prebuilt dylib        │   │           ├── out/    rlibs, dylibs, .o
+//! │   └── build/              build scripts + OUT_DIR          │   │           │   └── libX_dylib-<h>.so   SHARED prebuilt dylib
+//! │       └── <pkg>-<h>/                                       │   │           └── run/    build script runs
+//! │           ├── build-script-build                           │   └── libX_dylib.so       uplift, UNHASHED name
+//! │           ├── out/                                         │
+//! │           └── output                                       ├── jobs/
+//! │                                                            │   ├── prebuild/           (hydro's exclusive lock held)
+//! ├── jobs/                                                    │   │   └── debug/
+//! │   ├── prebuild/           (hydro's exclusive lock held)    │   │       ├── .cargo-lock, .cargo-build-lock   (job-local)
+//! │   │   └── debug/                                           │   │       ├── .fingerprint -> target/debug/.fingerprint  (unused)
+//! │   │       ├── .cargo-lock                   (job-local)    │   │       ├── deps         -> target/debug/deps          (unused)
+//! │   │       ├── .fingerprint -> target/debug/.fingerprint    │   │       └── build        -> target/debug/build    writes through
+//! │   │       ├── deps         -> target/debug/deps            │   │
+//! │   │       └── build        -> target/debug/build           │   └── <JOB>/              (one per generated program)
+//! │   │                           (whole dir, writes through)  │       └── debug/
+//! │   │                                                        │           ├── .cargo-lock, .cargo-build-lock   (job-local)
+//! │   └── <JOB>/              (one per generated program)      │           ├── .fingerprint -> ...              (unused)
+//! │       └── debug/                                           │           ├── deps         -> ...              (unused)
+//! │           ├── .cargo-lock                   (job-local)    │           ├── build/                           REAL dir
+//! │           ├── .fingerprint -> target/debug/.fingerprint    │           │   └── <pkg>/                       REAL dir
+//! │           ├── deps         -> target/debug/deps            │           │       ├── <h1> -> target/debug/build/<pkg>/<h1>  prebuilt
+//! │           ├── build/                        REAL dir       │           │       └── <h2>/                    REAL: this job's
+//! │           │   └── <pkg>-<h>/                REAL dir       │           │           └── out/libsim_dylib-<h2>.so    own example
+//! │           │       ├── build-script-build -> shared         │           ├── libX_dylib.so       job's uplift of the SHARED dylib
+//! │           │       ├── out                -> shared         │           └── examples/<JOB>      FINAL artifact
+//! │           │       └── output             -> shared         │
+//! │           └── examples/<JOB>      FINAL artifact           │
+//! ```
+//!
+//! `libX_dylib` is the *shared* trybuild dylib (the user crate + `hydro_lang` built
+//! once by the prebuild) that every final artifact links against; `libsim_dylib` is
+//! a *final* per-job artifact (the simulator's `cdylib`) that links against it.
+//!
+//! Loader search paths (rpath / `LD_LIBRARY_PATH`) for `libX_dylib` are computed by
+//! [`dylib_search_dirs`] and only ever name state that outlives the build: the
+//! job's `debug/` and the shared location (`deps/` on legacy, the shared unit `out/`
+//! dirs on new) — never `jobs/<JOB>/debug/build/`, which is re-synced on every
+//! build (and job dirs are shared by tests whose generated programs are identical).
 
 use std::collections::HashMap;
 use std::fs;
@@ -11,6 +177,80 @@ use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 use std::time::SystemTime;
+
+/// The filesystem layout cargo uses for intermediate build artifacts.
+///
+/// Detected at compile time by this crate's build script, which inspects the
+/// shape of its own `OUT_DIR` (see `build.rs`). Use [`build_dir_layout`] to
+/// query it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildDirLayout {
+    /// The stable layout: `debug/{.fingerprint,deps,build,...}`, with final
+    /// artifacts uplifted into `debug/` and dependency dylibs in `debug/deps/`.
+    Legacy,
+    /// The layout behind `-Zbuild-dir-new-layout` (default on current nightly):
+    /// all intermediates (fingerprints, rlibs, build script outputs) live under
+    /// `debug/build/<pkg>/<hash>/{fingerprint,out,run}/`, and final artifacts
+    /// — including dependency dylibs — are uplifted into `debug/`.
+    New,
+}
+
+/// The [`BuildDirLayout`] used by the toolchain that compiled this crate.
+///
+/// The runtime cargo invocations coordinated by this crate use the same
+/// toolchain (rustup pins the toolchain for the whole process tree), so the
+/// compile-time verdict matches the layout of the builds we coordinate;
+/// switching toolchains recompiles this crate and re-runs the detection.
+pub fn build_dir_layout() -> BuildDirLayout {
+    if cfg!(new_build_dir_layout) {
+        BuildDirLayout::New
+    } else {
+        BuildDirLayout::Legacy
+    }
+}
+
+/// The profile directories (*layers*) cargo places one build's artifacts in, relative to the
+/// target-dir root: `<profile>/` for host units, and with an explicit compilation target
+/// `<triple>/<profile>/` for target units. See the crate docs.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ArtifactDirs {
+    /// Where target units and final artifacts go: `<profile>` or `<triple>/<profile>`.
+    pub target: PathBuf,
+    /// Where host units go: `<profile>`. Equal to [`Self::target`] without a compilation target.
+    pub host: PathBuf,
+}
+
+impl ArtifactDirs {
+    /// The layers for a build using the profile directory `profile_dir` (see
+    /// [`profile_dir_name`]), compiled for `target_triple` if given.
+    pub fn new(profile_dir: &str, target_triple: Option<&str>) -> Self {
+        let host = PathBuf::from(profile_dir);
+        let target = match target_triple {
+            Some(triple) => Path::new(triple).join(profile_dir),
+            None => host.clone(),
+        };
+        ArtifactDirs { target, host }
+    }
+
+    /// The distinct layers, host first: cargo takes the host layer's `.cargo-build-lock` before
+    /// the target layer's, and [`CargoBuildLock::lock_shared`] must take them in the same order
+    /// to rule out a lock-order inversion with a concurrent cargo build.
+    pub fn layers(&self) -> impl Iterator<Item = &Path> {
+        std::iter::once(self.host.as_path())
+            .chain((self.target != self.host).then_some(self.target.as_path()))
+    }
+}
+
+/// The directory cargo uses for the profile `profile` (`None`: the command's default, `dev` for
+/// `build`/`rustc`/`test`). `dev` and `test` share `debug`, `release` and `bench` share
+/// `release`, custom profiles use their name.
+pub fn profile_dir_name(profile: Option<&str>) -> &str {
+    match profile {
+        None | Some("dev" | "test") => "debug",
+        Some("release" | "bench") => "release",
+        Some(custom) => custom,
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Logging
@@ -63,22 +303,45 @@ fn get_job_dir_lock(job_dir: &Path) -> &'static Mutex<()> {
 // CargoBuildLock
 // ---------------------------------------------------------------------------
 
-/// Guard holding the cargo build directory file lock (shared).
+/// Guard holding the shared target dir's `.cargo-build-lock` **shared** (one per layer of
+/// the build, see [`ArtifactDirs`]).
+///
+/// Cargo takes this same file **exclusive** for the duration of any build in that target dir
+/// (the "build directory" lock, cargo ≥ 1.98 and nightly), so holding it shared for the whole
+/// prebuild + final build mutually excludes us from unrelated cargo processes building there
+/// — which would otherwise race our symlinked writes into `deps/`, `.fingerprint/` and
+/// `build/` without any lock between us. Concurrent hydro builds all hold it shared and so
+/// proceed together.
+///
+/// Consequence: no cargo spawned while this is held may use the shared target dir as its
+/// `--target-dir` — it would block forever on the lock its own parent holds. Every cargo we
+/// spawn (prebuild included) therefore gets its own root under `jobs/`, with the shared
+/// state reached through symlinks.
 pub struct CargoBuildLock {
-    _file: fs::File,
+    _files: Vec<fs::File>,
 }
 
 impl CargoBuildLock {
-    pub fn lock_shared(lock_path: &Path) -> Self {
-        let file = fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(lock_path)
-            .unwrap();
-        file.lock_shared().unwrap();
-        CargoBuildLock { _file: file }
+    /// Locks `<target_dir>/<layer>/.cargo-build-lock` shared for every layer of `dirs`, in
+    /// cargo's own order (see [`ArtifactDirs::layers`]).
+    pub fn lock_shared(target_dir: &Path, dirs: &ArtifactDirs) -> Self {
+        let files = dirs
+            .layers()
+            .map(|layer| {
+                let shared_layer = target_dir.join(layer);
+                fs::create_dir_all(&shared_layer).ok();
+                let file = fs::OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .truncate(false)
+                    .open(shared_layer.join(".cargo-build-lock"))
+                    .unwrap();
+                file.lock_shared().unwrap();
+                file
+            })
+            .collect();
+        CargoBuildLock { _files: files }
     }
 }
 
@@ -187,10 +450,22 @@ impl PrebuildGuard {
 // Job directory setup
 // ---------------------------------------------------------------------------
 
-/// Set up a job directory with symlinked .fingerprint and deps subdirs.
+/// Set up a job directory with symlinked .fingerprint and deps subdirs in every layer of
+/// `dirs`, sharing the state under `target_dir`.
 /// Does NOT set up build/ — use `populate_job_build_dir` for final builds
-/// or manually symlink for prebuild.
-pub fn setup_job_dir(jobs_dir: &Path, name: &str, shared_debug: &Path) -> PathBuf {
+/// or `symlink_prebuild_build_dir` for the prebuild.
+///
+/// The `.fingerprint` and `deps` symlinks are what shares prebuilt state under
+/// the [`BuildDirLayout::Legacy`] layout. Under [`BuildDirLayout::New`] cargo
+/// ignores both directories (everything lives under `build/`), so the symlinks
+/// are harmless; they are created unconditionally because the layout is not
+/// yet known when job dirs are set up (detection happens during the prebuild).
+pub fn setup_job_dir(
+    jobs_dir: &Path,
+    name: &str,
+    target_dir: &Path,
+    dirs: &ArtifactDirs,
+) -> PathBuf {
     let job = jobs_dir.join(name);
     let _lock = get_job_dir_lock(&job);
     let _lock = _lock.lock().unwrap();
@@ -206,33 +481,38 @@ pub fn setup_job_dir(jobs_dir: &Path, name: &str, shared_debug: &Path) -> PathBu
         .unwrap();
     job_lock_file.lock().unwrap();
 
-    let job_debug = job.join("debug");
-    fs::create_dir_all(&job_debug).unwrap();
-    for subdir in [".fingerprint", "deps"] {
-        let link = job_debug.join(subdir);
-        if !link.exists() {
-            let target = shared_debug.join(subdir);
-            fs::create_dir_all(&target).unwrap();
-            #[cfg(unix)]
-            std::os::unix::fs::symlink(&target, &link).unwrap();
-            #[cfg(windows)]
-            std::os::windows::fs::symlink_dir(&target, &link).unwrap();
+    for layer in dirs.layers() {
+        let job_layer = job.join(layer);
+        fs::create_dir_all(&job_layer).unwrap();
+        for subdir in [".fingerprint", "deps"] {
+            let link = job_layer.join(subdir);
+            if !link.exists() {
+                let target = target_dir.join(layer).join(subdir);
+                fs::create_dir_all(&target).unwrap();
+                symlink_dir(&target, &link);
+            }
         }
     }
     job
 }
 
-/// Symlink the build/ directory for prebuild jobs (writes through to shared).
-pub fn symlink_prebuild_build_dir(prebuild_target: &Path, shared_debug: &Path) {
-    let link = prebuild_target.join("debug").join("build");
-    if !link.exists() {
-        let target = shared_debug.join("build");
-        fs::create_dir_all(&target).unwrap();
-        #[cfg(unix)]
-        std::os::unix::fs::symlink(&target, &link).unwrap();
-        #[cfg(windows)]
-        std::os::windows::fs::symlink_dir(&target, &link).unwrap();
+/// Symlink the build/ directory of every layer for prebuild jobs (writes through to shared).
+pub fn symlink_prebuild_build_dir(prebuild_target: &Path, target_dir: &Path, dirs: &ArtifactDirs) {
+    for layer in dirs.layers() {
+        let link = prebuild_target.join(layer).join("build");
+        if !link.exists() {
+            let target = target_dir.join(layer).join("build");
+            fs::create_dir_all(&target).unwrap();
+            symlink_dir(&target, &link);
+        }
     }
+}
+
+fn symlink_dir(target: &Path, link: &Path) {
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(target, link).unwrap();
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_dir(target, link).unwrap();
 }
 
 /// Guard that holds the job directory lock for the duration of a build.
@@ -241,14 +521,33 @@ pub struct JobBuildGuard {
     _file: fs::File,
 }
 
-/// Populate the per-job build/ directory from the shared build/ directory.
+/// Populate the per-job build/ directory of every layer from the shared build/ directories
+/// under `target_dir`. `job_dir` is the job's target-dir root (as returned by
+/// [`setup_job_dir`]).
 /// Returns a guard that holds the job lock — keep alive for the entire final build.
-/// This prevents races from cargo's `link_or_copy` on build script binaries.
-pub fn populate_job_build_dir(job_debug: &Path, shared_debug: &Path) -> JobBuildGuard {
-    let shared_build = shared_debug.join("build");
-    let job_build = job_debug.join("build");
-
-    let job_dir = job_debug.parent().unwrap();
+/// This prevents races between processes building the same job concurrently.
+///
+/// Each shared `build/` is mirrored two levels deep: each top-level directory is
+/// recreated job-locally and its *children* are symlinked to the shared copies.
+/// Anything the final build reads is the prebuilt, immutable shared state;
+/// anything it *creates or replaces* lands in the job-local directory instead
+/// of racing other jobs. This is the same structure under both layouts:
+///
+/// - **Legacy** (`build/<pkg>-<hash>/{build-script-build,out,output,...}`):
+///   cargo re-links `build-script-build` even on fresh builds; with per-child
+///   symlinks that replaces the job-local link, not the shared file.
+/// - **New** (`build/<pkg>/<unit-hash>/{fingerprint,out,run}`): the final
+///   build's own example unit is created job-locally. This matters because
+///   concurrent jobs can compile the *same* cargo unit — the simulator builds
+///   the fixed `sim-dylib` example in every job (varied only via
+///   `include!(env!(..))`, which affects freshness but not the unit hash) — so
+///   sharing `build/` wholesale would have them write, and uplift, the same
+///   `out/` files.
+pub fn populate_job_build_dir(
+    job_dir: &Path,
+    target_dir: &Path,
+    dirs: &ArtifactDirs,
+) -> JobBuildGuard {
     let mutex_guard = get_job_dir_lock(job_dir);
     let mutex_guard = mutex_guard.lock().unwrap();
 
@@ -263,21 +562,47 @@ pub fn populate_job_build_dir(job_debug: &Path, shared_debug: &Path) -> JobBuild
         .unwrap();
     job_lock_file.lock().unwrap();
 
-    let _ = fs::remove_dir_all(&job_build);
-    fs::create_dir_all(&job_build).unwrap();
+    for layer in dirs.layers() {
+        mirror_build_dir(
+            &job_dir.join(layer).join("build"),
+            &target_dir.join(layer).join("build"),
+        );
+    }
+
+    JobBuildGuard {
+        _mutex_guard: mutex_guard,
+        _file: job_lock_file,
+    }
+}
+
+/// Mirrors `shared_build` into `job_build` as described in [`populate_job_build_dir`].
+fn mirror_build_dir(job_build: &Path, shared_build: &Path) {
+    // A stale symlink may be left over from an earlier version that shared
+    // `build/` wholesale; `remove_dir_all` would follow it into the shared dir.
+    if job_build.symlink_metadata().is_ok_and(|m| m.is_symlink()) {
+        let _ = fs::remove_file(job_build);
+    }
+    // Sync incrementally rather than recreating the mirror: under the new layout
+    // the job's own units (e.g. the simulator's example, with its fingerprint and
+    // output) live in here as real directories, and wiping them would force a
+    // rebuild on every final build, even when the flow was just built.
+    fs::create_dir_all(job_build).unwrap();
     if shared_build.exists() {
-        for entry in fs::read_dir(&shared_build).unwrap() {
+        for entry in fs::read_dir(shared_build).unwrap() {
             let entry = entry.unwrap();
             if !entry.file_type().unwrap().is_dir() {
                 continue;
             }
             let dest = job_build.join(entry.file_name());
-            // Create dir and symlink each child individually so cargo can
-            // safely remove+relink build-script-build without racing other jobs.
             fs::create_dir_all(&dest).unwrap();
             for file in fs::read_dir(entry.path()).unwrap() {
                 let file = file.unwrap();
                 let file_dest = dest.join(file.file_name());
+                // Already mirrored (or replaced by a job-local file, as cargo does
+                // for `build-script-build` under the legacy layout).
+                if file_dest.symlink_metadata().is_ok() {
+                    continue;
+                }
                 #[cfg(unix)]
                 std::os::unix::fs::symlink(file.path(), &file_dest).unwrap();
                 #[cfg(windows)]
@@ -290,11 +615,6 @@ pub fn populate_job_build_dir(job_debug: &Path, shared_debug: &Path) -> JobBuild
                 }
             }
         }
-    }
-
-    JobBuildGuard {
-        _mutex_guard: mutex_guard,
-        _file: job_lock_file,
     }
 }
 
@@ -380,6 +700,56 @@ fn manifest_lib_name(doc: &toml_edit::DocumentMut) -> Option<&str> {
     doc.get("lib")?.get("name")?.as_str()
 }
 
+/// Directories that a dynamically linked artifact built into the per-job artifact dir
+/// `job_debug` (the job's *target* layer, e.g. `jobs/<name>/debug` or
+/// `jobs/<name>/<triple>/debug`, see [`ArtifactDirs::target`]) needs on its library search
+/// path (rpath or `LD_LIBRARY_PATH`) to load the trybuild dylib whose cargo package is
+/// `dylib_package_name`. `shared_debug` is the shared target's corresponding layer that the
+/// job mirrors.
+///
+/// Every returned path must stay valid for the artifact's whole lifetime, which outlives the
+/// build (the binary is exec'd by the deployment later; the simulator `dlopen`s its cdylib after
+/// the build returns). Job dirs are keyed by generated-source hash, so tests whose programs are
+/// identical share one; a later build in the same job dir repopulates its `build/` (see
+/// [`populate_job_build_dir`]), so nothing under `job_debug/build/` may be referenced. The
+/// dylib's home is instead the shared prebuilt state, which only changes under the exclusive
+/// prebuild lock.
+///
+/// Cargo uplifts the dylib into `job_debug` under its unhashed `lib<name>.so` filename, which
+/// satisfies the loader whenever the artifact links against that name. With
+/// `__CARGO_DEFAULT_LIB_METADATA` set, however, the artifact links against the hash-suffixed
+/// `lib<name>-<hash>.so`:
+///
+/// - under the legacy layout every variant, hashed or not, lives in `deps/`, which
+///   `job_debug/deps` symlinks to once at job setup;
+/// - under the new layout `deps/` no longer exists and the uplift is *renamed* to the unhashed
+///   name, so the hashed file only exists in the dylib unit's
+///   `<shared_debug>/build/<dylib_package_name>/<hash>/out/` dir. Every such unit dir is
+///   included; hashed names are unique per unit so this is unambiguous, and unhashed names
+///   resolve from `job_debug` (listed first) before any unit dir.
+pub fn dylib_search_dirs(
+    dylib_package_name: &str,
+    job_debug: &Path,
+    shared_debug: &Path,
+) -> Vec<PathBuf> {
+    let mut dirs = vec![job_debug.to_owned()];
+    match build_dir_layout() {
+        BuildDirLayout::Legacy => dirs.push(job_debug.join("deps")),
+        BuildDirLayout::New => {
+            if let Ok(units) = fs::read_dir(shared_debug.join("build").join(dylib_package_name)) {
+                let mut out_dirs: Vec<PathBuf> = units
+                    .flatten()
+                    .map(|unit| unit.path().join("out"))
+                    .filter(|out| out.is_dir())
+                    .collect();
+                out_dirs.sort();
+                dirs.extend(out_dirs);
+            }
+        }
+    }
+    dirs
+}
+
 /// The `[lib] name` currently in the dylib manifest of the trybuild project at `project_dir`,
 /// if it has one. Call with [`lock_project`] held and write the manifest under the same lock.
 ///
@@ -412,6 +782,8 @@ pub fn set_dylib_lib_name(project_dir: &Path, rustflags: &str) {
 /// Run the prebuild phase with proper locking and freshness checking.
 ///
 /// - `target_dir`: the shared target directory (e.g. `target/`)
+/// - `dirs`: the layers of `target_dir` that `build_fn` and the final builds use (see
+///   [`ArtifactDirs`])
 /// - `crate_name`: unique identifier for the crate being built (included in hash)
 /// - `features`: list of features for hashing
 /// - `rustflags`: the rustflags the prebuild (and the final builds sharing its artifacts) are
@@ -447,6 +819,7 @@ pub fn set_dylib_lib_name(project_dir: &Path, rustflags: &str) {
 /// prebuild for a different configuration is never mistaken for fresh.
 pub fn run_prebuild(
     target_dir: &Path,
+    dirs: &ArtifactDirs,
     crate_name: &str,
     features: &[String],
     rustflags: &str,
@@ -454,9 +827,7 @@ pub fn run_prebuild(
     build_fn: impl FnOnce(&Path),
 ) -> (PrebuildGuard, CargoBuildLock) {
     // Acquire cargo build lock shared for the entire prebuild + final build duration.
-    let shared_debug = target_dir.join("debug");
-    fs::create_dir_all(&shared_debug).ok();
-    let cargo_lock = CargoBuildLock::lock_shared(&shared_debug.join(".cargo-build-lock"));
+    let cargo_lock = CargoBuildLock::lock_shared(target_dir, dirs);
 
     let toolchain = toolchain_fingerprint(rustflags);
     let fingerprint = hash_hex(|h| {
@@ -465,6 +836,8 @@ pub fn run_prebuild(
         sorted.sort();
         sorted.hash(h);
         toolchain.hash(h);
+        // Other layers hold other compilation targets' or profiles' artifacts.
+        dirs.hash(h);
     });
 
     // Without `__CARGO_DEFAULT_LIB_METADATA` every configuration shares one fixed key, so this
@@ -485,6 +858,9 @@ pub fn run_prebuild(
         .max()
         .unwrap_or(SystemTime::UNIX_EPOCH);
 
+    // The stamp's freshness also covers the build-dir layout: layout changes
+    // require a toolchain change, which also changes the mtime of
+    // `current_exe`, which callers include in `staged_paths`.
     let prebuild_is_fresh = |path: &Path, expected_hash: &str| -> bool {
         fs::read_to_string(path)
             .ok()
@@ -515,10 +891,9 @@ pub fn run_prebuild(
 
     // Re-check after acquiring exclusive.
     if !prebuild_is_fresh(&lock_path, &fingerprint) {
-        let shared_debug = target_dir.join("debug");
         let jobs_dir = target_dir.join("jobs");
-        let prebuild_target = setup_job_dir(&jobs_dir, "prebuild", &shared_debug);
-        symlink_prebuild_build_dir(&prebuild_target, &shared_debug);
+        let prebuild_target = setup_job_dir(&jobs_dir, "prebuild", target_dir, dirs);
+        symlink_prebuild_build_dir(&prebuild_target, target_dir, dirs);
 
         build_fn(&prebuild_target);
 

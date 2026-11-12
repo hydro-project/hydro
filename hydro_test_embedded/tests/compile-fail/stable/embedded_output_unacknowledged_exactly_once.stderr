@@ -1,0 +1,25 @@
+error[E0277]: `hydro_test_embedded::unordered_output::capitalize_unordered::outputs::output` may deliver an element more than once, which the host must acknowledge
+ --> tests/compile-fail/stable/embedded_output_unacknowledged_exactly_once.rs:9:60
+  |
+9 |         output: EmbeddedOutputChannel::new(|_: String| {}, Acknowledgements::new().no_order()),
+  |                 --------------------------                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ does not acknowledge `AtLeastOnce`
+  |                 |
+  |                 required by a bound introduced by this call
+  |
+  = note: add `.at_least_once()` to its `Acknowledgements`
+help: the trait `RetriesAcknowledgedBy<hydro_lang::live_collections::stream::ExactlyOnce, hydro_test_embedded::unordered_output::capitalize_unordered::outputs::output>` is not implemented for `hydro_lang::live_collections::stream::AtLeastOnce`
+      but trait `RetriesAcknowledgedBy<hydro_lang::live_collections::stream::AtLeastOnce, hydro_test_embedded::unordered_output::capitalize_unordered::outputs::output>` is implemented for it
+ --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+  |
+  | impl<End> RetriesAcknowledgedBy<AtLeastOnce, End> for AtLeastOnce {}
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = help: for that trait implementation, expected `hydro_lang::live_collections::stream::AtLeastOnce`, found `hydro_lang::live_collections::stream::ExactlyOnce`
+  = note: required for `hydro_test_embedded::unordered_output::capitalize_unordered::outputs::output` to implement `AcknowledgedBy<hydro_lang::live_collections::stream::NoOrder, hydro_lang::live_collections::stream::ExactlyOnce>`
+note: required by a bound in `EmbeddedOutputChannel::<M, S>::new`
+ --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+  |
+  |     pub fn new<O, R>(inner: S, acknowledgements: Acknowledgements<O, R>) -> Self
+  |            --- required by a bound in this associated function
+  |     where
+  |         M: AcknowledgedBy<O, R>,
+  |            ^^^^^^^^^^^^^^^^^^^^ required by this bound in `EmbeddedOutputChannel::<M, S>::new`

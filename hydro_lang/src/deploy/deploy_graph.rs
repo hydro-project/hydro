@@ -31,11 +31,10 @@ use crate::compile::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
 use crate::compile::trybuild::generate::{
-    HYDRO_RUNTIME_FEATURES, LinkingMode, create_graph_trybuild,
+    HYDRO_RUNTIME_FEATURES, LinkingMode, TrybuildConfig, create_graph_trybuild,
 };
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MembershipEvent, NetworkHint};
+use crate::location::{LocationKey, NetworkHint};
 use crate::staging_util::get_this_crate;
 
 /// Deployment backend that uses [`hydro_deploy`] for provisioning and launching.
@@ -44,9 +43,12 @@ use crate::staging_util::get_this_crate;
 /// an `&mut` reference to [`hydro_deploy::Deployment`] as the deployment context.
 pub enum HydroDeploy {}
 
+/// Hydro numbers each cluster's members with `u32`s.
+impl crate::compile::deploy_provider::SupportsMemberId<u32> for HydroDeploy {}
+
 impl<'a> Deploy<'a> for HydroDeploy {
     /// Map from Cluster location ID to member IDs.
-    type Meta = SparseSecondaryMap<LocationKey, Vec<TaglessMemberId>>;
+    type Meta = SparseSecondaryMap<LocationKey, Vec<u32>>;
     type InstantiateEnv = Deployment;
 
     type Process = DeployNode;
@@ -427,23 +429,20 @@ impl<'a> Deploy<'a> for HydroDeploy {
         parse_quote!(#sink_ident)
     }
 
-    fn cluster_ids(
-        of_cluster: LocationKey,
-    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
-        cluster_members(RuntimeData::new("__hydro_lang_trybuild_cli"), of_cluster)
+    fn cluster_ids(of_cluster: LocationKey) -> syn::Expr {
+        cluster_members(RuntimeData::new("__hydro_lang_trybuild_cli"), of_cluster).splice_untyped()
     }
 
-    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
-        cluster_self_id(RuntimeData::new("__hydro_lang_trybuild_cli"))
+    fn cluster_self_id() -> syn::Expr {
+        cluster_self_id(RuntimeData::new("__hydro_lang_trybuild_cli")).splice_untyped()
     }
 
     fn cluster_membership_stream(
         _env: &mut Self::InstantiateEnv,
         _at_location: &LocationId,
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
-    {
-        cluster_membership_stream(location_id)
+    ) -> syn::Expr {
+        cluster_membership_stream(location_id).splice_untyped()
     }
 }
 
@@ -800,7 +799,7 @@ impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
 impl Node for DeployExternal {
     type Port = String;
     /// Map from Cluster location ID to member IDs.
-    type Meta = SparseSecondaryMap<LocationKey, Vec<TaglessMemberId>>;
+    type Meta = SparseSecondaryMap<LocationKey, Vec<u32>>;
     type InstantiateEnv = Deployment;
 
     fn next_port(&self) -> Self::Port {
@@ -874,7 +873,7 @@ impl DeployCrateWrapper for DeployNode {
 impl Node for DeployNode {
     type Port = String;
     /// Map from Cluster location ID to member IDs.
-    type Meta = SparseSecondaryMap<LocationKey, Vec<TaglessMemberId>>;
+    type Meta = SparseSecondaryMap<LocationKey, Vec<u32>>;
     type InstantiateEnv = Deployment;
 
     fn next_port(&self) -> String {
@@ -925,17 +924,7 @@ impl Node for DeployNode {
                     linking_mode,
                 );
                 let host = trybuild.host.clone();
-                (
-                    create_trybuild_service(
-                        trybuild,
-                        &config.project_dir,
-                        &config.target_dir,
-                        config.features.as_deref(),
-                        &bin_name,
-                        &config.linking_mode,
-                    ),
-                    host,
-                )
+                (create_trybuild_service(trybuild, &config, &bin_name), host)
             }
         };
 
@@ -974,7 +963,7 @@ impl DeployCluster {
 impl Node for DeployCluster {
     type Port = String;
     /// Map from Cluster location ID to member IDs.
-    type Meta = SparseSecondaryMap<LocationKey, Vec<TaglessMemberId>>;
+    type Meta = SparseSecondaryMap<LocationKey, Vec<u32>>;
     type InstantiateEnv = Deployment;
 
     fn next_port(&self) -> String {
@@ -1048,29 +1037,14 @@ impl Node for DeployCluster {
                     CrateOrTrybuild::Trybuild(trybuild) => {
                         let (bin_name, config) = maybe_trybuild.as_ref().unwrap();
                         let host = trybuild.host.clone();
-                        (
-                            create_trybuild_service(
-                                trybuild,
-                                &config.project_dir,
-                                &config.target_dir,
-                                config.features.as_deref(),
-                                bin_name,
-                                &config.linking_mode,
-                            ),
-                            host,
-                        )
+                        (create_trybuild_service(trybuild, config, bin_name), host)
                     }
                 };
 
                 env.add_service(service, host)
             })
             .collect::<Vec<_>>();
-        meta.insert(
-            self.key,
-            (0..(cluster_nodes.len() as u32))
-                .map(TaglessMemberId::from_raw_id)
-                .collect(),
-        );
+        meta.insert(self.key, (0..(cluster_nodes.len() as u32)).collect());
         *self.members.borrow_mut() = cluster_nodes
             .into_iter()
             .map(|n| DeployClusterNode { underlying: n })
@@ -1081,7 +1055,7 @@ impl Node for DeployCluster {
         for (cluster_id, node) in self.members.borrow().iter().enumerate() {
             node.underlying.update_meta(HydroMeta {
                 clusters: meta.clone(),
-                cluster_id: Some(TaglessMemberId::from_raw_id(cluster_id as u32)),
+                cluster_id: Some(cluster_id as u32),
             });
         }
     }
@@ -1172,24 +1146,24 @@ impl<T: Into<TrybuildHost>, I: IntoIterator<Item = T>> ClusterSpec<'_, HydroDepl
 
 fn create_trybuild_service(
     trybuild: TrybuildHost,
-    dir: &std::path::Path,
-    target_dir: &std::path::PathBuf,
-    features: Option<&[String]>,
+    config: &TrybuildConfig,
     bin_name: &str,
-    linking_mode: &LinkingMode,
 ) -> RustCrate {
+    let dir = &config.project_dir;
     // For dynamic linking, use the dylib-examples crate; for static, use the base crate
-    let crate_dir = match linking_mode {
+    let crate_dir = match config.linking_mode {
         LinkingMode::Dynamic => dir.join("dylib-examples"),
-        LinkingMode::Static => dir.to_path_buf(),
+        LinkingMode::Static => dir.clone(),
     };
 
     let mut ret = RustCrate::new(&crate_dir, dir)
-        .target_dir(target_dir)
+        .target_dir(&config.target_dir)
         .example(bin_name)
         .no_default_features();
 
-    ret = ret.set_is_dylib(matches!(linking_mode, LinkingMode::Dynamic));
+    if matches!(config.linking_mode, LinkingMode::Dynamic) {
+        ret = ret.dylib_package(&config.dylib_package_name);
+    }
 
     if let Some(display_name) = trybuild.display_name {
         ret = ret.display_name(display_name);
@@ -1246,7 +1220,7 @@ fn create_trybuild_service(
     ret = ret.build_env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
     ret = ret.config("build.incremental = false");
 
-    if let Some(features) = features {
+    if let Some(features) = config.features.as_deref() {
         ret = ret.features(features);
     }
 

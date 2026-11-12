@@ -34,10 +34,10 @@ pub mod deploy_runtime_maelstrom;
 /// })));
 /// ```
 pub fn maelstrom_bidi_clients<'a, C, In: DeserializeOwned, Out: Serialize>(
-    cluster: &Cluster<'a, C>,
+    cluster: &Cluster<'a, C, String>,
 ) -> (
-    KeyedStream<String, In, Cluster<'a, C>>,
-    ForwardHandle<'a, KeyedStream<String, Out, Cluster<'a, C>>>,
+    KeyedStream<String, In, Cluster<'a, C, String>>,
+    ForwardHandle<'a, KeyedStream<String, Out, Cluster<'a, C, String>>>,
 ) {
     use stageleft::q;
 
@@ -47,14 +47,14 @@ pub fn maelstrom_bidi_clients<'a, C, In: DeserializeOwned, Out: Serialize>(
         stageleft::RuntimeData::new("__hydro_lang_maelstrom_meta");
 
     // Create the input stream from Maelstrom clients
-    let input: KeyedStream<String, In, Cluster<'a, C>> = cluster
+    let input: KeyedStream<String, In, Cluster<'a, C, String>> = cluster
         .source_stream(q!(deploy_runtime_maelstrom::maelstrom_client_source(meta)))
         .into_keyed()
         .map(q!(|b| serde_json::from_value(b).unwrap()));
 
     // Create a forward reference for the output stream
     let (fwd_handle, output_stream) =
-        cluster.forward_ref::<KeyedStream<String, Out, Cluster<'a, C>>>();
+        cluster.forward_ref::<KeyedStream<String, Out, Cluster<'a, C, String>>>();
 
     // Set up the output sink to send responses back to clients
     output_stream

@@ -5,7 +5,7 @@ error: Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `
   |                               ^^^^^^^^^^^^^^^^^^^
 
 warning: variable does not need to be mutable
- --> tests/compile-fail/nightly/surface_inline_cycle.rs:2:9
+ --> tests/compile-fail/nightly/surface_inline_cycle.rs:2:13
   |
 2 |     let mut flow = dfir_rs::dfir_syntax! {
   |         ----^^^^

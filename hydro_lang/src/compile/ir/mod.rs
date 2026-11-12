@@ -527,8 +527,33 @@ pub trait DfirBuilder {
         quote!('static)
     }
 
+    /// Lowers a [`HydroNode::Batch`]: windows a stream-like collection (`in_kind` must be a
+    /// stream, a keyed stream, or a keyed singleton with bounded per-key values) into the tick
+    /// at `out_location`, so that each firing observes just the elements that arrived since
+    /// the previous batch.
+    ///
+    /// Implementations must reject singleton-like `in_kind`s, which are windowed with
+    /// [`DfirBuilder::snapshot`] instead.
     #[expect(clippy::too_many_arguments, reason = "TODO")]
     fn batch(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        out_location: &LocationId,
+        op_meta: &HydroIrOpMetadata,
+        fold_hooked_idents: &HashSet<String>,
+    );
+
+    /// Lowers a [`HydroNode::Snapshot`]: windows a singleton-like collection (`in_kind` must be
+    /// a singleton, an optional, or a keyed singleton whose per-key values may change) into the
+    /// tick at `out_location`, so that each firing observes the collection's current value.
+    ///
+    /// Implementations must reject stream-like `in_kind`s, which are windowed with
+    /// [`DfirBuilder::batch`] instead.
+    #[expect(clippy::too_many_arguments, reason = "TODO")]
+    fn snapshot(
         &mut self,
         in_ident: syn::Ident,
         in_location: &LocationId,
@@ -835,6 +860,84 @@ impl DfirBuilder for ProdDfirBuilder {
                     in_tick, out_tick,
                     "batch between distinct ticks should have been unified"
                 );
+                self.add_dfir_in(
+                    out_location,
+                    parse_quote! {
+                        #out_ident = #in_ident;
+                    },
+                    None,
+                );
+            }
+            (None, Some(_)) => {
+                // Entering the tick's loop from the top level: emit a windowing operator.
+                // `batch_eager()` preserves the pre-loop tick semantics: the loop fires on every
+                // tick even when the windowed input is empty.
+                match in_kind {
+                    // Streams and keyed streams are plain event feeds: a batch is simply the
+                    // new events. Keyed singletons with bounded per-key values keep the plain
+                    // `(K, V)` entry feed, where each entry's value arrives exactly once, and a
+                    // batch is defined to contain just the *new* finalized entries.
+                    CollectionKind::Stream { .. }
+                    | CollectionKind::KeyedStream { .. }
+                    | CollectionKind::KeyedSingleton {
+                        bound:
+                            KeyedSingletonBoundKind::BoundedValue | KeyedSingletonBoundKind::Bounded,
+                        ..
+                    } => {
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #in_ident -> batch_eager();
+                            },
+                            None,
+                        );
+                    }
+
+                    CollectionKind::Singleton { .. }
+                    | CollectionKind::Optional { .. }
+                    | CollectionKind::KeyedSingleton {
+                        bound:
+                            KeyedSingletonBoundKind::Unbounded
+                            | KeyedSingletonBoundKind::MonotonicKeys
+                            | KeyedSingletonBoundKind::MonotonicValue,
+                        ..
+                    } => {
+                        panic!(
+                            "`Batch` is only defined for stream-like collections (streams, keyed \
+                             streams, and keyed singletons with bounded per-key values), but was \
+                             applied to a singleton-like collection {in_kind:?}; use `Snapshot` \
+                             instead"
+                        );
+                    }
+                }
+            }
+            (Some(_) | None, None) => {
+                unreachable!("batch must target a tick location");
+            }
+        }
+    }
+
+    fn snapshot(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        out_location: &LocationId,
+        _op_meta: &HydroIrOpMetadata,
+        _fold_hooked_idents: &HashSet<String>,
+    ) {
+        match (
+            tick_location_of(in_location),
+            tick_location_of(out_location),
+        ) {
+            (Some(in_tick), Some(out_tick)) => {
+                // Within the same (unified) tick, e.g. entering the tick from its associated
+                // atomic region: both sides live in the same loop.
+                assert_eq!(
+                    in_tick, out_tick,
+                    "snapshot between distinct ticks should have been unified"
+                );
                 // NOTE(#2902): a bounded singleton-like value produced once inside the
                 // loop (e.g. by `fold_no_replay` in an atomic region) needs to be held across
                 // firings. Operators in atomic regions have `'static` lifetimes so they should
@@ -862,52 +965,18 @@ impl DfirBuilder for ProdDfirBuilder {
                 // which would let each firing observe the held value by reference instead of
                 // `fold` cloning its accumulator to emit it downstream every firing.
                 match in_kind {
-                    // A *bounded* singleton-like value is produced exactly once. Persist it at
-                    // the root (a `loop { ... }` context cannot contain `persist`) so it remains
-                    // available, then window it into the loop on each firing.
-                    CollectionKind::Singleton {
-                        bound: SingletonBoundKind::Bounded,
-                        ..
-                    }
-                    | CollectionKind::Optional {
-                        bound: OptionalBoundKind::Bounded,
-                        ..
-                    }
-                    | CollectionKind::KeyedSingleton {
-                        bound: KeyedSingletonBoundKind::Bounded,
-                        ..
-                    } => {
-                        let persisted_ident = self.intermediate_ident();
-                        self.add_dfir_in(
-                            in_location,
-                            parse_quote! {
-                                #persisted_ident = #in_ident -> persist::<'static>();
-                            },
-                            None,
-                        );
-                        self.add_dfir_in(
-                            out_location,
-                            parse_quote! {
-                                #out_ident = #persisted_ident -> batch_eager();
-                            },
-                            None,
-                        );
-                    }
-
-                    // An unbounded singleton (or `InitNone` optional, which shares the plain
-                    // `T`-update representation) arrives as a feed of updated values. Hold the
-                    // latest update across firings so each firing observes the current value
-                    // even if no update arrived since the previous firing. Until the first
-                    // update arrives the state is `None`: for a singleton the first update
-                    // arrives before any consumer could observe it (the upstream aggregation
-                    // emits its initial value immediately), and for an `InitNone` optional
+                    // A singleton (any bound), or a bounded / `InitNone` optional, which share the
+                    // plain `T`-update representation, arrives as a feed of updated values (a
+                    // bounded value or a constant arrives exactly once, and root feeds are not
+                    // replayed). Hold the latest update across firings so each firing observes
+                    // the current value even if no update arrived since the previous firing. Until
+                    // the first update arrives the state is `None`: for a singleton the first
+                    // update arrives before any consumer could observe it (the upstream
+                    // aggregation emits its initial value immediately), and for an optional
                     // "no update yet" genuinely means null.
-                    CollectionKind::Singleton {
-                        bound: SingletonBoundKind::Unbounded | SingletonBoundKind::Monotonic,
-                        ..
-                    }
+                    CollectionKind::Singleton { .. }
                     | CollectionKind::Optional {
-                        bound: OptionalBoundKind::InitNone,
+                        bound: OptionalBoundKind::Bounded | OptionalBoundKind::InitNone,
                         ..
                     } => {
                         let batched_ident = self.intermediate_ident();
@@ -980,11 +1049,12 @@ impl DfirBuilder for ProdDfirBuilder {
                         );
                         let lifetime: TokenStream = self.cross_tick_state_lifetime(out_location);
                         let lifetime: syn::Lifetime = syn::parse2(lifetime).unwrap();
+                        let root = crate::staging_util::get_this_crate();
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
                                 #out_ident = #batched_ident
-                                    -> fold::<#lifetime>(|| ::std::collections::HashMap::new(), |current, (key, update)| {
+                                    -> fold::<#lifetime>(|| #root::runtime_support::dfir_rs::rustc_hash::FxHashMap::default(), |current, (key, update)| {
                                         match update {
                                             ::std::option::Option::Some(value) => {
                                                 current.insert(key, value);
@@ -1000,34 +1070,59 @@ impl DfirBuilder for ProdDfirBuilder {
                         );
                     }
 
-                    // Streams and keyed streams are plain event feeds: a batch is simply the
-                    // new events. The remaining keyed-singleton kinds never remove keys, so
-                    // they keep the plain `(K, V)` entry feed: for the value-unbounded kinds
-                    // (`MonotonicKeys`/`MonotonicValue`), upstream keyed aggregations re-emit
-                    // an entry's current value eagerly whenever it changes; for
-                    // `BoundedValue`, each entry's value arrives exactly once, and a batch is
-                    // defined to contain just the *new* finalized entries.
-                    CollectionKind::Stream { .. }
-                    | CollectionKind::KeyedStream { .. }
-                    | CollectionKind::KeyedSingleton {
+                    // The keyed-singleton kinds that never remove keys (`Bounded`, `MonotonicKeys`,
+                    // `MonotonicValue`) are a plain `(K, V)` entry feed in which a later entry for a
+                    // key supersedes earlier ones (root feeds are not replayed, so an entry arrives
+                    // only when it changes). Hold the current entry map across firings by
+                    // upserting each entry, then emit the entries each firing.
+                    CollectionKind::KeyedSingleton {
                         bound:
-                            KeyedSingletonBoundKind::MonotonicKeys
-                            | KeyedSingletonBoundKind::MonotonicValue
-                            | KeyedSingletonBoundKind::BoundedValue,
+                            KeyedSingletonBoundKind::Bounded
+                            | KeyedSingletonBoundKind::MonotonicKeys
+                            | KeyedSingletonBoundKind::MonotonicValue,
                         ..
                     } => {
+                        let batched_ident = self.intermediate_ident();
                         self.add_dfir_in(
                             out_location,
                             parse_quote! {
-                                #out_ident = #in_ident -> batch_eager();
+                                #batched_ident = #in_ident -> batch_eager();
                             },
                             None,
+                        );
+                        let lifetime: TokenStream = self.cross_tick_state_lifetime(out_location);
+                        let lifetime: syn::Lifetime = syn::parse2(lifetime).unwrap();
+                        let root = crate::staging_util::get_this_crate();
+                        self.add_dfir_in(
+                            out_location,
+                            parse_quote! {
+                                #out_ident = #batched_ident
+                                    -> fold::<#lifetime>(|| #root::runtime_support::dfir_rs::rustc_hash::FxHashMap::default(), |current, (key, value)| {
+                                        current.insert(key, value);
+                                    })
+                                    -> flat_map(|current| current);
+                            },
+                            None,
+                        );
+                    }
+
+                    CollectionKind::Stream { .. }
+                    | CollectionKind::KeyedStream { .. }
+                    | CollectionKind::KeyedSingleton {
+                        bound: KeyedSingletonBoundKind::BoundedValue,
+                        ..
+                    } => {
+                        panic!(
+                            "`Snapshot` is only defined for singleton-like collections \
+                             (singletons, optionals, and keyed singletons whose per-key values \
+                             may change), but was applied to a stream-like collection \
+                             {in_kind:?}; use `Batch` instead"
                         );
                     }
                 }
             }
             (Some(_) | None, None) => {
-                unreachable!("batch must target a tick location");
+                unreachable!("snapshot must target a tick location");
             }
         }
     }
@@ -1854,10 +1949,7 @@ impl HydroRoot {
                             let key = (at_location.clone(), location_id.key());
                             if refcell_seen_cluster_members.borrow_mut().insert(key) {
                                 // First occurrence: call cluster_membership_stream and mark as Stream.
-                                let expr = stageleft::QuotedWithContext::splice_untyped_ctx(
-                                    D::cluster_membership_stream(&mut refcell_env.borrow_mut(), &at_location, location_id),
-                                    &(),
-                                );
+                                let expr = D::cluster_membership_stream(&mut refcell_env.borrow_mut(), &at_location, location_id);
                                 *state = ClusterMembersState::Stream(expr.into());
                             } else {
                                 // Already instantiated for this (at, target) pair: just tee.
@@ -2451,7 +2543,7 @@ fn uf_union(parent: &mut HashMap<ClockId, ClockId>, a: ClockId, b: ClockId) {
 }
 
 /// Traverse the IR to build a union-find that unifies tick IDs connected
-/// through `Batch` and `YieldConcat` nodes at atomic boundaries, then
+/// through `Batch`, `Snapshot`, and `YieldConcat` nodes at atomic boundaries, then
 /// rewrite all `LocationId`s to use the representative tick ID.
 #[cfg(feature = "build")]
 pub fn unify_atomic_ticks(ir: &mut [HydroRoot]) {
@@ -2462,7 +2554,9 @@ pub fn unify_atomic_ticks(ir: &mut [HydroRoot]) {
         ir,
         &mut |_| {},
         &mut |node: &mut HydroNode| match node {
-            HydroNode::Batch { inner, metadata } | HydroNode::YieldConcat { inner, metadata } => {
+            HydroNode::Batch { inner, metadata }
+            | HydroNode::Snapshot { inner, metadata }
+            | HydroNode::YieldConcat { inner, metadata } => {
                 if let (Some(a), Some(b)) = (
                     tick_of(&inner.metadata().location_id),
                     tick_of(&metadata.location_id),
@@ -2811,16 +2905,40 @@ pub enum OptionalBoundKind {
     Bounded,
 }
 
-#[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum StreamOrder {
     NoOrder,
     TotalOrder,
 }
 
-#[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum StreamRetry {
     AtLeastOnce,
     ExactlyOnce,
+}
+
+#[cfg(feature = "build")]
+impl StreamOrder {
+    /// The `Ordering` type for this order.
+    pub fn type_tokens(&self) -> TokenStream {
+        let root = crate::staging_util::get_this_crate();
+        match self {
+            StreamOrder::TotalOrder => quote! { #root::live_collections::stream::TotalOrder },
+            StreamOrder::NoOrder => quote! { #root::live_collections::stream::NoOrder },
+        }
+    }
+}
+
+#[cfg(feature = "build")]
+impl StreamRetry {
+    /// The `Retries` type for this retry guarantee.
+    pub fn type_tokens(&self) -> TokenStream {
+        let root = crate::staging_util::get_this_crate();
+        match self {
+            StreamRetry::ExactlyOnce => quote! { #root::live_collections::stream::ExactlyOnce },
+            StreamRetry::AtLeastOnce => quote! { #root::live_collections::stream::AtLeastOnce },
+        }
+    }
 }
 
 #[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
@@ -3071,9 +3189,9 @@ pub enum NetworkSend {
     /// expression. This is how channels using [`crate::networking::Bincode`] are lowered.
     Custom { serialize_fn: Option<DebugExpr> },
     /// Serialization is left to code outside of Hydro (see [`crate::networking::Embedded`]). The
-    /// raw `element_type` is passed through unserialized; the only transformation is converting a
-    /// routing [`crate::location::MemberId`] (the destination cluster `tag`, when demuxing) into
-    /// the raw `TaglessMemberId` used by the transport. Only supported by the embedded backend.
+    /// raw `element_type` is passed through unserialized. When demuxing, the destination
+    /// [`crate::location::MemberId`] is unwrapped to its `Id`, because the host's transport routes
+    /// by plain IDs. Only supported by the embedded backend.
     ///
     /// Stored as structured info (rather than a pre-baked expression) so that the code can be
     /// synthesized in a post-IR codegen pass.
@@ -3092,10 +3210,11 @@ pub enum NetworkRecv {
     Custom { deserialize_fn: Option<DebugExpr> },
     /// Deserialization is left to code outside of Hydro (see [`crate::networking::Embedded`]). The
     /// raw `element_type` is delivered to the receiver directly, with no transport `Result` to
-    /// unwrap (the external code that produces the stream decides how to handle faults). The only
-    /// transformation is converting a `TaglessMemberId` back into a typed
-    /// [`crate::location::MemberId`] (the sender cluster `tag`, when the receiver is keyed by
-    /// sender). Only supported by the embedded backend.
+    /// unwrap (the external code that produces the stream decides how to handle faults). When the
+    /// receiver is keyed by sender, the host's plain sender ID is wrapped in a
+    /// [`crate::location::MemberId`] again. The wrapper records the sender's cluster, so the
+    /// dataflow cannot mistake it for a member of another cluster. Only supported by the embedded
+    /// backend.
     Embedded {
         tag: Option<DebugType>,
         element_type: DebugType,
@@ -3137,7 +3256,7 @@ impl NetworkSend {
                 let expr: syn::Expr = if let Some(tag) = tag {
                     let tag = &tag.0;
                     parse_quote! {
-                        #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<#tag>, #element_type), _>(
+                        #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<#tag, _>, #element_type), _>(
                             |(id, data)| (id.into_tagless(), data)
                         )
                     }
@@ -3169,7 +3288,7 @@ impl NetworkRecv {
                 let root = crate::staging_util::get_this_crate();
                 let tag = &tag.0;
                 let expr: syn::Expr = parse_quote! {
-                    |(id, b)| (#root::__staged::location::MemberId::<#tag>::from_tagless(id as #root::__staged::location::TaglessMemberId), b)
+                    |(id, b)| (#root::__staged::location::MemberId::<#tag, _>::from_tagless(id), b)
                 };
                 Some(expr.into())
             }
@@ -3266,7 +3385,25 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
+    /// Windows a stream-like collection (a stream, a keyed stream, or a keyed singleton whose
+    /// per-key values are bounded) into a tick. Each firing of the tick observes a *batch* of
+    /// the elements (or finalized entries) that have arrived since the previous batch, and
+    /// never sees an element twice.
+    ///
+    /// The simulator fuzzes how the arriving elements are split into batches.
     Batch {
+        inner: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
+    /// Windows a singleton-like collection (a singleton, an optional, or a keyed singleton
+    /// whose per-key values may change, as well as a fully bounded keyed singleton) into a
+    /// tick. Each firing of the tick observes a *snapshot* of the collection's current value,
+    /// so a value that has not changed since the previous firing is observed again.
+    ///
+    /// The simulator fuzzes which of the collection's intermediate states each snapshot
+    /// observes.
+    Snapshot {
         inner: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
@@ -3642,6 +3779,7 @@ impl HydroNode {
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
             | HydroNode::Batch { inner, .. }
+            | HydroNode::Snapshot { inner, .. }
             | HydroNode::YieldConcat { inner, .. }
             | HydroNode::UnboundSingleton { inner, .. }
             | HydroNode::AssertIsConsistent { inner, .. } => {
@@ -3868,6 +4006,10 @@ impl HydroNode {
                 metadata: metadata.clone(),
             },
             HydroNode::Batch { inner, metadata } => HydroNode::Batch {
+                inner: Box::new(inner.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::Snapshot { inner, metadata } => HydroNode::Snapshot {
                 inner: Box::new(inner.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -4360,23 +4502,16 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                if graph_builders.singleton_intermediates() {
-                                    graph_builders.add_dfir_at(
-                                        &out_location,
-                                        parse_quote! {
-                                            #out_ident = #inner_ident;
-                                        },
-                                        None,
-                                    );
-                                } else {
-                                    graph_builders.add_dfir_at(
-                                        &out_location,
-                                        parse_quote! {
-                                            #out_ident = #inner_ident -> persist::<'static>();
-                                        },
-                                        None,
-                                    );
-                                }
+                                // A bounded value's update feed is already a valid feed of
+                                // the unbounded singleton: consumers hold the latest update, so
+                                // it need not be replayed on every tick.
+                                graph_builders.add_dfir_at(
+                                    &out_location,
+                                    parse_quote! {
+                                        #out_ident = #inner_ident;
+                                    },
+                                    None,
+                                );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
                                 node_callback(node, next_stmt_id);
@@ -4469,6 +4604,35 @@ impl HydroNode {
                         }
 
                         ident_stack.push(batch_ident);
+                    }
+
+                    HydroNode::Snapshot {
+                        inner, metadata, ..
+                    } => {
+                        let inner_ident = ident_stack.pop().unwrap();
+
+                        let stmt_id = next_stmt_id.get_and_increment();
+                        let snapshot_ident =
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                graph_builders.snapshot(
+                                    inner_ident,
+                                    &inner.metadata().location_id,
+                                    &inner.metadata().collection_kind,
+                                    &snapshot_ident,
+                                    &out_location,
+                                    &metadata.op,
+                                    fold_hooked_idents,
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        ident_stack.push(snapshot_ident);
                     }
 
                     HydroNode::YieldConcat {
@@ -4693,23 +4857,17 @@ impl HydroNode {
                                         Some(&stmt_id.to_string()),
                                     );
                                 } else if metadata.location_id.is_root() {
-                                    if metadata.collection_kind.is_bounded() {
-                                        graph_builders.add_dfir_at(
-                                            &out_location,
-                                            parse_quote! {
-                                                #source_ident = source_iter([#value]);
-                                            },
-                                            Some(&stmt_id.to_string()),
-                                        );
-                                    } else {
-                                        graph_builders.add_dfir_at(
-                                            &out_location,
-                                            parse_quote! {
-                                                #source_ident = source_iter([#value]) -> persist::<'static>();
-                                            },
-                                            Some(&stmt_id.to_string()),
-                                        );
-                                    }
+                                    // Bounded or not, a root singleton's update feed for a
+                                    // constant is the single update carrying it: consumers of the
+                                    // feed hold the latest update, so it need not be replayed on
+                                    // every tick.
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
+                                        parse_quote! {
+                                            #source_ident = source_iter([#value]);
+                                        },
+                                        Some(&stmt_id.to_string()),
+                                    );
                                 } else {
                                     // A tick- or atomic-located singleton source (the atomic
                                     // region is fused into its tick's loop) that yields its value
@@ -5948,6 +6106,23 @@ impl HydroNode {
 
                                 if matches!(node, HydroNode::Fold { .. })
                                     && node.metadata().location_id.is_root()
+                                    && !graph_builders.singleton_intermediates()
+                                    && !node.metadata().collection_kind.is_bounded()
+                                {
+                                    // At the root, the singleton is an update feed: `fold_no_replay`
+                                    // emits the initial value once (it always emits on the first
+                                    // tick, even with no input), then the accumulator only on ticks
+                                    // with new input (consumers hold the latest update), instead of
+                                    // replaying it on every tick.
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
+                                        parse_quote! {
+                                            #fold_ident = #input_ident -> fold_no_replay::<#lifetime>(#init_tokens, #acc_tokens);
+                                        },
+                                        Some(&stmt_id.to_string()),
+                                    );
+                                } else if matches!(node, HydroNode::Fold { .. })
+                                    && node.metadata().location_id.is_root()
                                     && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
                                 {
@@ -6005,10 +6180,14 @@ impl HydroNode {
                                     }
                                 } else if matches!(node, HydroNode::FoldKeyed { .. })
                                     && node.metadata().location_id.is_root()
-                                    && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
                                 {
+                                    // At the root, the keyed singleton is an update feed: emit only
+                                    // the entry each input updates (consumers hold the latest value
+                                    // per key), not every entry every tick. (In production
+                                    // `emit_fold_hook` is a no-op.)
                                     let HydroNode::FoldKeyed { input, .. } = &*node else { unreachable!() };
+                                    let root = crate::staging_util::get_this_crate();
                                     let hooked_input_ident = graph_builders.emit_fold_hook(
                                         &input.metadata().location_id,
                                         &input_ident,
@@ -6023,7 +6202,7 @@ impl HydroNode {
                                             // TODO(shadaj): we can avoid the clone when the entry exists
                                             let __state = __state
                                                 .entry(::std::clone::Clone::clone(&__kv.0))
-                                                .or_insert_with(|| (__init)());
+                                                .or_insert_with(&__init);
                                             __inner(__state, __kv.1);
                                             Some((__kv.0, ::std::clone::Clone::clone(&*__state)))
                                         }
@@ -6033,7 +6212,7 @@ impl HydroNode {
                                         graph_builders.add_dfir_at(
                                             &out_location,
                                             parse_quote! {
-                                                #fold_ident = #hooked_input_ident -> flatten() -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #wrapped_acc);
+                                                #fold_ident = #hooked_input_ident -> flatten() -> scan::<#lifetime>(|| #root::runtime_support::dfir_rs::rustc_hash::FxHashMap::default(), #wrapped_acc);
                                             },
                                             Some(&stmt_id.to_string()),
                                         );
@@ -6043,7 +6222,7 @@ impl HydroNode {
                                         graph_builders.add_dfir_at(
                                             &out_location,
                                             parse_quote! {
-                                                #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #wrapped_acc);
+                                                #fold_ident = #input_ident -> scan::<#lifetime>(|| #root::runtime_support::dfir_rs::rustc_hash::FxHashMap::default(), #wrapped_acc);
                                             },
                                             Some(&stmt_id.to_string()),
                                         );
@@ -6104,9 +6283,9 @@ impl HydroNode {
 
                     HydroNode::Reduce { .. } | HydroNode::ReduceKeyed { .. } => {
                         let operator: syn::Ident = if let HydroNode::Reduce { input, .. } = node {
-                            if input.metadata().location_id.is_root()
-                                && input.metadata().collection_kind.is_bounded()
-                            {
+                            // At the root, the result is an update feed: emit it only on ticks with
+                            // new input (consumers hold the latest update), bounded or not.
+                            if input.metadata().location_id.is_root() {
                                 parse_quote!(reduce_no_replay)
                             } else {
                                 parse_quote!(reduce)
@@ -6184,13 +6363,46 @@ impl HydroNode {
                                     } else {
                                         quote! {}
                                     };
-                                    graph_builders.add_dfir_at(
-                                        &out_location,
-                                        parse_quote! {
-                                            #reduce_ident = #input_ident -> #operator::<#lifetime>(#f_tokens) #wrap_op;
-                                        },
-                                        Some(&stmt_id.to_string()),
-                                    );
+                                    if matches!(node, HydroNode::ReduceKeyed { .. })
+                                        && node.metadata().location_id.is_root()
+                                        && !node.metadata().collection_kind.is_bounded()
+                                    {
+                                        let root = crate::staging_util::get_this_crate();
+                                        // At the root, the keyed singleton is an update feed:
+                                        // emit only the entry each input updates (consumers hold
+                                        // the latest value per key), not every entry every tick.
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
+                                            parse_quote! {
+                                                #reduce_ident = #input_ident -> scan::<#lifetime>(
+                                                    || #root::runtime_support::dfir_rs::rustc_hash::FxHashMap::default(),
+                                                    {
+                                                        let __reduce_keyed_fn = #f_tokens;
+                                                        move |__state, (__key, __value)| {
+                                                            let __acc = match __state.entry(::std::clone::Clone::clone(&__key)) {
+                                                                ::std::collections::hash_map::Entry::Occupied(e) => {
+                                                                    let __acc = e.into_mut();
+                                                                    __reduce_keyed_fn(__acc, __value);
+                                                                    __acc
+                                                                }
+                                                                ::std::collections::hash_map::Entry::Vacant(e) => e.insert(__value),
+                                                            };
+                                                            Some((__key, ::std::clone::Clone::clone(&*__acc)))
+                                                        }
+                                                    },
+                                                ) #wrap_op;
+                                            },
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    } else {
+                                        graph_builders.add_dfir_at(
+                                            &out_location,
+                                            parse_quote! {
+                                                #reduce_ident = #input_ident -> #operator::<#lifetime>(#f_tokens) #wrap_op;
+                                            },
+                                            Some(&stmt_id.to_string()),
+                                        );
+                                    }
                                 }
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
@@ -6657,6 +6869,7 @@ impl HydroNode {
             | HydroNode::BeginAtomic { .. }
             | HydroNode::EndAtomic { .. }
             | HydroNode::Batch { .. }
+            | HydroNode::Snapshot { .. }
             | HydroNode::Chain { .. }
             | HydroNode::MergeOrdered { .. }
             | HydroNode::ChainFirst { .. }
@@ -6750,6 +6963,7 @@ impl HydroNode {
             | HydroNode::BeginAtomic { metadata, .. }
             | HydroNode::EndAtomic { metadata, .. }
             | HydroNode::Batch { metadata, .. }
+            | HydroNode::Snapshot { metadata, .. }
             | HydroNode::Chain { metadata, .. }
             | HydroNode::MergeOrdered { metadata, .. }
             | HydroNode::ChainFirst { metadata, .. }
@@ -6811,6 +7025,7 @@ impl HydroNode {
             | HydroNode::BeginAtomic { metadata, .. }
             | HydroNode::EndAtomic { metadata, .. }
             | HydroNode::Batch { metadata, .. }
+            | HydroNode::Snapshot { metadata, .. }
             | HydroNode::Chain { metadata, .. }
             | HydroNode::MergeOrdered { metadata, .. }
             | HydroNode::ChainFirst { metadata, .. }
@@ -6868,6 +7083,7 @@ impl HydroNode {
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
             | HydroNode::Batch { inner, .. }
+            | HydroNode::Snapshot { inner, .. }
             | HydroNode::UnboundSingleton { inner, .. }
             | HydroNode::AssertIsConsistent { inner, .. } => {
                 vec![inner]
@@ -6981,6 +7197,7 @@ impl HydroNode {
             HydroNode::BeginAtomic { .. } => "BeginAtomic()".to_owned(),
             HydroNode::EndAtomic { .. } => "EndAtomic()".to_owned(),
             HydroNode::Batch { .. } => "Batch()".to_owned(),
+            HydroNode::Snapshot { .. } => "Snapshot()".to_owned(),
             HydroNode::Chain { first, second, .. } => {
                 format!("Chain({}, {})", first.print_root(), second.print_root())
             }
@@ -7087,9 +7304,9 @@ where
     if external_types.is_some() {
         assert!(
             D::SUPPORTS_EXTERNAL_SERIALIZATION,
-            "`.embedded()` serialization leaves serialization to code outside of Hydro and is \
-             only supported by the embedded deployment backend. Use `.bincode()` (or another \
-             supported serialization backend) for this deployment target instead."
+            "`EMBEDDED` channels are implemented by the host of an embedded dataflow and are \
+             only supported by the embedded deployment backend (and the simulator). Use `TCP` \
+             or `UDP` (with `.bincode()`) for this deployment target instead."
         );
     }
 

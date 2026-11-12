@@ -1,0 +1,459 @@
+---
+sidebar_position: 2
+title: Hydro Lean, TLA+ and Veil
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Link from "@docusaurus/Link";
+
+import quorumSrc from '!!raw-loader!../../../../hydro_lean/Examples/Tutorials/Quorum.lean';
+import tlaSrc from '!!raw-loader!../../../../hydro_lean/Comparisons/VoteQuorum.tla';
+import veilSrc from '!!raw-loader!../../../../hydro_lean/Comparisons/VoteQuorumVeil.lean';
+import quorumBaseSrc from '!!raw-loader!../../../../hydro_lean/Examples/Tutorials/QuorumBase.lean';
+import { getLines } from '../../../src/util';
+
+# Hydro Lean, TLA+ and Veil
+
+Most verification of distributed protocols is done on a **model**: a transition system over a global state, written for verification and separate from the code that runs. TLA+ is a widely used language for such models; its model checker TLC explores a finite instance exhaustively, and its proof system TLAPS proves properties for every instance. Veil is a framework embedded in Lean 4 in the tradition of Ivy: a protocol is a transition system whose invariants Veil checks with SMT solvers when they lie in a decidable fragment of first-order logic, and proves interactively in Lean when they do not. Hydro Lean starts from the program instead: there is one Lean program, its contract is proved at a semantics in which the network is not part of the state, and generated theorems carry the contract to the processes that run it.
+
+This page compares the three on one protocol, the voting quorum of the [Quickstart](./quickstart/implementing-quorum.mdx): a coordinator broadcasts requests, each participant votes on each request and sends its vote back, and the coordinator collects votes tick by tick and decides a request once `minYes` yes votes have arrived, never twice. The protocol is written once in each tool:
+
+- `vote_quorum` in `hydro_lean/Examples/Tutorials/Quorum.lean`, with its contract `QuorumEnsures` proved;
+- `hydro_lean/Comparisons/VoteQuorum.tla`, a TLA+ specification checked with TLC;
+- `hydro_lean/Comparisons/VoteQuorumVeil.lean`, a Veil 2.0 module checked with Veil's SMT-backed invariant checker, its model checker and its temporal checker. It builds inside a Veil checkout, with Veil's own Lean toolchain, and is not part of the Hydro Lean package.
+
+Every tool output on this page is from a real run; `hydro_lean/Comparisons/README.md` has the commands and the full outputs. The section [Compared with a TLA+ Proof](./quickstart/proving-quorum.mdx#compared-with-a-tla-proof) of the Quickstart gives the short version of the TLA+ comparison. This page goes through the differences one at a time: what is verified, what the properties are about, how the network and the nondeterminism are represented, what invariant you must state, what the induction runs over, what each tool automates, liveness, and what each costs.
+
+## What Is Verified
+
+A TLA+ specification and a Veil module are models. The TLA+ model of the quorum has seven variables, and the coordinator's tick is one action:
+
+<CodeBlock language="tla" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorum.tla">Comparisons/VoteQuorum.tla</Link>
+}>{getLines(tlaSrc, 57, 69, `
+\\* one coordinator tick: consume any batch of the votes that have arrived,
+\\* count yes votes per request, and emit the requests newly at quorum
+Tick ==
+  \\E batch \\in SUBSET voteMsgs :
+    LET all     == seen \\cup batch
+        reached == {r \\in Requests : /\\ \\E m \\in all : m[2] = r
+                                     /\\ Cardinality(YesIn(all, r)) >= MinYes}
+        fresh   == reached \\ decided
+    IN /\\ voteMsgs' = voteMsgs \\ batch
+       /\\ seen' = all
+       /\\ decided' = decided \\cup fresh
+       /\\ out' = [r \\in Requests |-> out[r] + (IF r \\in fresh THEN 1 ELSE 0)]
+       /\\ UNCHANGED <<vote, proposed, reqMsgs>>
+`)}</CodeBlock>
+
+The Veil module has the same structure, written as imperative actions over relations:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorumVeil.lean">Comparisons/VoteQuorumVeil.lean</Link>
+}>{getLines(veilSrc, 'actions', `
+action propose (r : request) {
+  require ¬ proposed r
+  proposed r := true
+  reqMsg r J := true
+}
+
+action cast_vote (j : participant) (r : request) {
+  require reqMsg r j
+  reqMsg r j := false
+  voteMsg j r (vote j r) := true
+}
+
+action deliver (j : participant) (r : request) (b : Bool) {
+  require voteMsg j r b
+  voteMsg j r b := false
+  arrived j r b := true
+}
+
+-- one coordinator tick: consume what has arrived, emit the requests newly at quorum
+action tick {
+  seen J R B := decide $ seen J R B ∨ arrived J R B
+  arrived J R B := false
+  dup R := decide $ dup R ∨
+    (emitted R ∧ ¬ decided R ∧ ∃ q, ∀ j, member j q → seen j R true)
+  emitted R := decide $ emitted R ∨
+    (¬ decided R ∧ ∃ q, ∀ j, member j q → seen j R true)
+  decided R := decide $ decided R ∨ ∃ q, ∀ j, member j q → seen j R true
+}
+`)}</CodeBlock>
+
+Neither model is the code that runs. TLC and Veil verify that the model satisfies its properties, and the correspondence between the model and the implementation is kept by hand, or checked outside the tool by testing techniques such as trace validation. Veil's actions are executable Lean, which its model checker compiles and runs, but they describe the protocol's transitions over a global state, not a process that reads sockets.
+
+In Hydro Lean the contract reaches the program that runs. `vote_quorum.ensures` is proved at the denotational semantics `Values`, `vote_quorum_safe_sched` carries the `quorum` field to the step machine `SchedSem`, and `vote_quorum_safe_wired` carries it to processes exchanging bytes, for every byte-level trace. `lake exe quorum` runs `quorumBody` as four processes over local TCP, and `vote_quorum_safe_wired` quantifies over `quorumBody` ([Running the Quorum](./quickstart/running-quorum.mdx)).
+
+Hydro Lean has a correspondence gap of its own, at a different place. The Lean program mirrors a Hydro Rust program line by line, and the theorems are about the Lean program and its Lean runtime, not the Rust binary. The transcription is checked by a reviewer against the Rust quoted above each Lean line and by the `#nondet_census`, and the runtime model is audited against `hydro_lang` and DFIR ([Fidelity to the Rust](https://github.com/hydro-project/hydro/blob/main/hydro_lean/internal/FIDELITY.md)). Below the wired theorem lie the sockets, the Lean compiler, and the assumption that each connection delivers a prefix of what was sent ([The Trust Base](../internals/soundness.md#the-trust-base)).
+
+The three versions also differ in scope. The two models have one coordinator and propose each request at most once. The TLA+ model counts yes votes with `Cardinality`, as `vote_quorum` does. The Veil model has no number `minYes`, for a reason explained [below](#automation). `vote_quorum` takes a multiset of requests at any number of coordinator members, and its `quorum` field carries the premise that the request was proposed at most once.
+
+## The Properties
+
+The three versions state the quorum's safety as the same three properties: a decided request was proposed, it has `minYes` yes voters, and it is decided at most once. They differ in how and where they are applied.
+
+In TLA+ and Veil a safety property is a predicate over the state, and the tool checks it in every reachable state. A property about the output therefore needs the output in the state. The TLA+ model keeps `out`, a bag that counts how often each request was emitted, and its properties read `out`:
+
+<CodeBlock language="tla" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorum.tla">Comparisons/VoteQuorum.tla</Link>
+}>{getLines(tlaSrc, 78, 81, `
+\\* the three fields of \`QuorumEnsures\`
+DecidedProposed == MinYes >= 1 => \\A r \\in Requests : out[r] >= 1 => r \\in proposed
+Quorum          == \\A r \\in Requests : out[r] >= 1 => Cardinality(YesVoters(r)) >= MinYes
+Once            == \\A r \\in Requests : out[r] <= 1
+`)}</CodeBlock>
+
+`VoteQuorum.cfg` lists them as invariants of the specification, so TLC checks each one in every reachable state of the instance:
+
+```text
+INVARIANT TypeOK DecidedProposed Quorum Once Inv
+```
+
+The Veil module keeps the output as two relations, `emitted` and `dup`, which `tick` updates. `dup` records a second emission, so that "decided at most once" becomes the state predicate `¬ dup R`:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorumVeil.lean">Comparisons/VoteQuorumVeil.lean</Link>
+}>{getLines(veilSrc, 'safety', `
+safety [decided_proposed] emitted R → proposed R
+safety [quorum] emitted R → ∃ q, ∀ j, member j q → vote j R
+safety [once] ¬ dup R
+`)}</CodeBlock>
+
+Veil's `quorum` clause has no `minYes`, for a reason explained [below](#automation).
+
+In Hydro Lean the contract relates the program's inputs to its output. The signature of `vote_quorum` declares it as `ensures out => QuorumEnsures minYes vote requests out`, where `requests` is the input stream and `out` is the output stream:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/QuorumBase.lean">Examples/Tutorials/QuorumBase.lean</Link>
+}>{getLines(quorumBaseSrc, 'ensures', `
+/-- What \`vote_quorum\` ensures, over the \`Values\` denotation: per coordinator member \`c\`, its
+decisions \`out c\`, for any batching of the votes. -/
+structure QuorumEnsures {nCoord nPart : Nat} (minYes : Nat) (vote : Fin nPart → Nat → Bool)
+    (requests : Fin nCoord → Multiset Nat) (out : Fin nCoord → Multiset Nat) : Prop where
+  /-- A decided request was proposed. -/
+  decided_proposed : ∀ c, ∀ p ∈ out c, 1 ≤ minYes → p ∈ proposed requests
+  /-- A request proposed at most once is decided only if \`minYes\` participants voted yes. -/
+  quorum : ∀ c, ∀ p ∈ out c, (proposed requests).count p ≤ 1 → minYes ≤ yesVoters vote p
+  /-- A request is decided at most once. -/
+  once : ∀ c p, (out c).count p ≤ 1
+`)}</CodeBlock>
+
+`out c` is the output of coordinator member `c`, at `Values` the multiset of every request it decides. The program keeps no record of its output for the contract to read. `vote_quorum.ensures` holds for every value of the batch decision `dec`, so the contract covers every batching. The premise of `quorum`, `(proposed requests).count p ≤ 1`, is a hypothesis about the input. The two models instead make every request proposed at most once by construction: `Propose` and `propose` require that the request was not proposed before.
+
+## The Network and Nondeterminism
+
+The largest difference is where the network is. In TLA+ it is part of the state: `reqMsgs` and `voteMsgs` hold the messages in flight, and sending and receiving are actions.
+
+<CodeBlock language="tla" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorum.tla">Comparisons/VoteQuorum.tla</Link>
+}>{getLines(tlaSrc, 17, 24, `
+VARIABLES
+  vote,      \\* vote[j][r]: participant j's voting rule, fixed in Init
+  proposed,  \\* the requests the coordinator has broadcast
+  reqMsgs,   \\* requests in flight to participants: <<r, j>>
+  voteMsgs,  \\* votes in flight to the coordinator: <<j, r, yes?>>
+  seen,      \\* the coordinator's state: every vote it has consumed
+  decided,   \\* the coordinator's state: every request it has decided
+  out        \\* the output stream, as a bag: out[r] = times r was emitted
+`)}</CodeBlock>
+
+The Veil module has the same components as relations, plus `arrived`, the votes that have reached the coordinator since its last tick:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorumVeil.lean">Comparisons/VoteQuorumVeil.lean</Link>
+}>{getLines(veilSrc, 'state', `
+-- quorums are sets of participants; none is empty (Hydro's \`1 ≤ minYes\`)
+immutable relation member (j : participant) (q : qset)
+-- vote j r: participant j's voting rule, chosen at init and never changed
+relation vote (j : participant) (r : request)
+relation proposed (r : request)
+-- requests in flight to participants, and votes in flight to the coordinator
+relation reqMsg (r : request) (j : participant)
+relation voteMsg (j : participant) (r : request) (yes : Bool)
+-- votes that have arrived at the coordinator since its last tick
+relation arrived (j : participant) (r : request) (yes : Bool)
+-- the coordinator's state, as in the \`tick\` block
+relation seen (j : participant) (r : request) (yes : Bool)
+relation decided (r : request)
+-- the output stream: emitted at least once, emitted twice
+relation emitted (r : request)
+relation dup (r : request)
+`)}</CodeBlock>
+
+Delay and reordering are then the interleavings of the actions, and every invariant must hold after each of them. The batching nondeterminism of the coordinator's tick appears in each model in its own way. TLA+'s `Tick` chooses any subset of the votes in flight, `\E batch \in SUBSET voteMsgs`. Veil's `tick` consumes whatever `deliver` steps have moved into `arrived`, so the interleaving of `deliver` and `tick` determines the batching.
+
+Hydro Lean encodes the same delay and reordering in types. At `Values`, the votes the coordinator receives form a `.noOrder` stream, a multiset that stands for every arrival order and interleaving, and the pool holds every vote ever sent, however late it arrives. The network's nondeterminism is resolved only where the program observes it, through a decision, so the transport itself changes no content ([The Network at `Values`](./programs/distributed-programs.mdx#the-network-at-values)). The votes at the coordinator are one equation, proved by `rfl`:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/Quorum.lean">Examples/Tutorials/Quorum.lean</Link>
+}>{getLines(quorumSrc, 113, 116, `
+-- the votes at the coordinator, read at \`Values\`: every participant's vote on every
+-- proposed request
+ghost have hvotes : ∀ c, c_votes c = ((List.finRange (mem part)).map (fun j =>
+    (proposed requests).map (fun q => (q, vote j q)))).sum := fun _ => rfl
+`)}</CodeBlock>
+
+The batching comes from the program's one `nondet!`, the batch decision `dec.votes`: an argument of `vote_quorum` that lists where each tick's batch ends ([Nondeterminism and Decisions](./programs/nondeterminism.md)). `vote_quorum.ensures` holds for every value of it, so "for every batching" is a `∀` in the theorem rather than a set of interleavings. Delivery and timing are not gone. They are explicit in the operational semantics `SchedSem`, where every stream is one concrete history per member and every message is delivered at some step, and the coupling theorem, proved once for every program, shows that every `SchedSem` run is covered by the denotation at a decision built from that run ([Transferring to the Machine and the Network](./proving/transferring-to-the-machine.md)).
+
+## Invariants
+
+A TLA+ or Veil safety proof rests on an **inductive invariant**: a predicate over the global state that holds initially and that every action preserves. The safety properties of [The Properties](#the-properties) are rarely inductive by themselves. Here a tick from a state with a forged vote in flight decides a request nobody voted for, so the invariant must say what every message in flight contains. The TLA+ invariant:
+
+<CodeBlock language="tla" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorum.tla">Comparisons/VoteQuorum.tla</Link>
+}>{getLines(tlaSrc, 101, 112, `
+\\* the inductive invariant; drop any conjunct and TLC finds a state that
+\\* satisfies the rest and steps out of it, or violates safety
+Inv ==
+  /\\ TypeOK
+  \\* requests in flight were proposed
+  /\\ \\A m \\in reqMsgs : m[1] \\in proposed
+  \\* every vote in flight or consumed is its sender's vote on a proposed request
+  /\\ \\A m \\in voteMsgs \\cup seen : m[2] \\in proposed /\\ m[3] = vote[m[1]][m[2]]
+  \\* the output is exactly the decided set, each once
+  /\\ \\A r \\in Requests : out[r] = IF r \\in decided THEN 1 ELSE 0
+  \\* a decided request was proposed and has \`MinYes\` yes voters
+  /\\ \\A r \\in decided : r \\in proposed /\\ Cardinality(YesVoters(r)) >= MinYes
+`)}</CodeBlock>
+
+The Veil invariant, which Veil checks together with the three `safety` clauses:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorumVeil.lean">Comparisons/VoteQuorumVeil.lean</Link>
+}>{getLines(veilSrc, 'inv', `
+-- with the safety clauses, an inductive invariant; dropping any clause makes
+-- \`#check_invariants\` fail
+invariant [req_proposed] reqMsg R J → proposed R
+invariant [vote_honest] voteMsg J R B → proposed R ∧ B = vote J R
+invariant [arrived_honest] arrived J R B → proposed R ∧ B = vote J R
+invariant [seen_honest] seen J R B → proposed R ∧ B = vote J R
+invariant [emitted_decided] emitted R ↔ decided R
+`)}</CodeBlock>
+
+In both, most of the invariant describes messages: that a request in flight was proposed, and that every vote, wherever it sits, is its sender's own vote on a proposed request. Veil needs one such clause per place a vote can sit (`voteMsg`, `arrived`, `seen`). Every clause is needed: with any one removed, TLC finds a state that satisfies the rest and leaves it in one step or violates safety, and `#check_invariants` reports a failed check. Without `emitted_decided`, for example, `tick` fails `once`.
+
+The Hydro Lean proof has no global state to state an invariant over. Its facts are about the program's live collections, stated as ghosts between the program's lines, and can relate live collections at different members and locations. Two facts carry the safety argument.
+
+`hvotes` ([above](#the-network-and-nondeterminism)) says what every vote at the coordinator is: each participant's vote on each proposed request. It replaces the message clauses of both invariants: `vote_honest`, `arrived_honest` and `seen_honest` in Veil, and the clause over `voteMsgs \cup seen` in TLA+. In Veil a vote starts in `voteMsg`, `deliver` moves it to `arrived`, and `tick` moves it to `seen`. Each of the three relations is a separate part of the state, so the invariant needs one clause per relation. In Hydro Lean every vote the coordinator receives is in one live collection, `c_votes`, and every batch the coordinator consumes is drawn from it, so the single equation `hvotes` covers every vote. From `hvotes`, `hyes` counts the yes votes for `p` in `c_votes` as `yesVoters vote p * (proposed requests).count p`.
+
+`htick` is the counting argument for one tick. Tick `n`'s decisions are distinct, each has `minYes` yes votes among the votes consumed through tick `n`, and none was decided at an earlier tick:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/Quorum.lean">Examples/Tutorials/Quorum.lean</Link>
+}>{getLines(quorumSrc, 'ghost-tick', `
+-- the register before every tick, opaque, with the invariant at each tick
+ghost obtain ⟨reg, -, hreg_at, -, -, hreg_inv⟩ := hdecisions_reg
+-- one tick, decoded: tick \`n\`'s decisions are distinct, each has \`minYes\` yes votes among
+-- the votes consumed through tick \`n\`, and none was decided before
+ghost have htick : ∀ (c : Fin (mem coord)) (n : Nat) (e : Multiset Nat),
+    (decisions c)[n]? = some e →
+    ∃ b_t, (incoming c)[n]? = some b_t ∧ e.Nodup ∧
+      ∀ p ∈ e, minYes ≤ yesVotes (((incoming c).take n).sum + b_t) p
+        ∧ p ∉ ((decisions c).take n).sum := fun c n e he => by
+  have hn := Trace.read_lt he
+  -- tick \`n\`'s decisions are the step on \`reg c n\` and this tick's batch \`b_t\`
+  obtain ⟨b_t, hb, rfl⟩ := (hreg_at c n e).mp he
+  -- the invariant before tick \`n\`: \`reg c n\` is the votes consumed and the requests decided
+  obtain ⟨hseen, hdecided⟩ := hreg_inv c n
+  rw [List.length_take_of_le (Nat.le_of_lt hn)] at hseen
+  refine ⟨b_t, hb, ?_⟩
+  -- evaluate the step at \`Values\`, then rewrite the state with what the invariant says it holds
+  simp only [decisions_step, den]
+  rw [← hseen, ← hdecided]
+  -- the reached requests are a counter's keys, so distinct; the filter keeps the undecided
+  refine ⟨(reached_nodup minYes _).filter _, fun p hp => ?_⟩
+  obtain ⟨hr, hnot⟩ := Multiset.mem_filter.mp hp
+  exact ⟨le_yesVotes_of_mem_reached hr, fun hm => by
+    revert hnot
+    simp only [Bool.not_eq_true']
+    exact fun h => (decide_eq_false_iff_not.mp h) hm⟩
+`)}</CodeBlock>
+
+The proof reads tick `n` off the block's register `reg`, which holds `seen` and `decided` before each tick. The `tick` block's invariant, declared in its header, says what the register holds:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/Quorum.lean">Examples/Tutorials/Quorum.lean</Link>
+}>{getLines(quorumSrc, 'tick-header', `
+tick (state seen : H.BoundedStream (Nat × Bool) .noOrder .exactlyOnce)
+    (state decided : H.BoundedStream Nat .noOrder .exactlyOnce)
+    (input incoming := H.batch c_votes dec.votes)
+    (invariant ((decisions : List (Multiset Nat)) (seen : Multiset (Nat × Bool))
+        (decided : Multiset Nat) (incoming : Trace (Multiset (Nat × Bool)))) =>
+      seen = (incoming.take decisions.length).sum ∧ decided = decisions.sum) :=
+`)}</CodeBlock>
+
+The invariant is bookkeeping: each state is the sum of what it has absorbed. `seen` is the sum of the batches consumed so far, and `decided` is the sum of the decisions so far. In `htick`, `rw [← hseen, ← hdecided]` uses it to replace the state with the inputs consumed, and the rest of the proof reads the body. The counter's keys are distinct (`reached_nodup`). Each key at or above `minYes` has that many yes votes among the consumed votes (`le_yesVotes_of_mem_reached`). The filter against `decided` drops every earlier decision. `hdecided` carries the second clause from the consumed votes to all of `c_votes`, because the consumed votes are a sub-multiset of `c_votes` ([Down to One Tick](./quickstart/proving-quorum.mdx#down-to-one-tick)).
+
+Veil's last clause, `emitted_decided`, links the output to the coordinator's state so that `tick` preserves `once`, and the TLA+ clause on `out` does the same. In Hydro Lean the output at `Values` is `(decisions c).sum`, the coordinator's per-tick decisions added up, and the third clause of `htick` is a statement about that list. A program with a `forward_ref` cycle has a second kind of loop invariant, on the cycle's `fix` block ([Knots and Loop Invariants](./proving/knot-invariants.md)). Every fact here, and both kinds of loop invariant, is about values of the program. None is about messages in flight or the network.
+
+## Induction
+
+In TLA+ and Veil the induction runs over transitions. The obligations are `Init ⇒ Inv` and, for each action `A`, `Inv ∧ A ⇒ Inv'`. Veil generates them and reports each one, per action and per clause (shortened here to the `tick` action):
+
+```text
+info: Examples/Hydro/VoteQuorumVeil.lean:130:0: Initialization must establish the invariant:
+  doesNotThrow ... ✅
+  decided_proposed ... ✅
+  quorum ... ✅
+  once ... ✅
+  …
+The following set of actions must preserve the invariant and successfully terminate:
+  …
+  tick
+    doesNotThrow ... ✅
+    decided_proposed ... ✅
+    quorum ... ✅
+    once ... ✅
+    req_proposed ... ✅
+    vote_honest ... ✅
+    arrived_honest ... ✅
+    seen_honest ... ✅
+    emitted_decided ... ✅
+```
+
+That is eight clauses and a `doesNotThrow` check, for initialization and each of the four actions: 45 checks. TLC can check inductiveness on a finite instance by starting from every state that satisfies `Inv` and taking one step; for two participants and two requests that is 104,976 states, and every successor is again one of them:
+
+```text
+Model checking completed. No error has been found.
+839104 states generated, 104976 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 1.
+Finished in 07s
+```
+
+In Hydro Lean the induction that carries the counting argument is in `once`, and it runs over one coordinator member's list of decisions. `key` says the decisions of the first `n` ticks contain `p` at most once, by induction on `n`, and the step is `htick` at tick `n`. If tick `n` decides `p`, `htick` says `p` occurs once in that tick's decisions and was not decided earlier. Otherwise the count does not change:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/Quorum.lean">Examples/Tutorials/Quorum.lean</Link>
+}>{getLines(quorumSrc, 'once', `
+once := fun c p => by
+  show ((decisions c).sum).count p ≤ 1
+  -- the decisions of the first \`n\` ticks hold \`p\` at most once
+  have key : ∀ n, (((decisions c).take n).sum).count p ≤ 1 := by
+    intro n
+    induction n with
+    | zero => simp
+    | succ n ih =>
+      rw [List.take_add_one]
+      cases he : (decisions c)[n]? with
+      -- no tick \`n\`: nothing is added
+      | none => simpa using ih
+      | some e =>
+        -- tick \`n\` decides \`e\`: distinct (\`hnd\`), none decided before (\`(hall p _).2\`)
+        obtain ⟨_b_t, _hb, hnd, hall⟩ := htick c n e he
+        rw [Option.toList_some, List.sum_append, List.sum_singleton, Multiset.count_add]
+        by_cases hpe : p ∈ e
+        -- \`p\` decided now: 0 times before, once in \`e\`
+        · rw [Multiset.count_eq_zero.mpr (hall p hpe).2, Multiset.count_eq_one_of_mem hnd hpe]
+        -- \`p\` not decided now: the count before is at most 1
+        · rw [Multiset.count_eq_zero.mpr hpe]
+          exact ih
+  simpa using key (decisions c).length
+`)}</CodeBlock>
+
+`once` does the work of TLA+'s `Once` together with the `out` clause, and of Veil's `once` together with `emitted_decided`. `decided_proposed` and `quorum` need no induction. Each combines `hdecided` with `hyes` and finishes with arithmetic (`omega` in `decided_proposed`, `Nat.mul_le_mul_left` in `quorum`).
+
+The `tick` block generates the induction for its own invariant: an `init` obligation before the first tick, and a `tick` obligation over one evaluation of the body ([The Invariant Normal Form](./proving/tick-invariants.md#the-invariant-normal-form)). For `vote_quorum` both close with `simp` and two rewrites. A `fix` block's invariant has `base` and `step` obligations over the Kleene stages of the fixpoint ([The Invariant Clause](./proving/knot-invariants.md#the-invariant-clause)).
+
+Every one of these obligations is about values of the program: `once` is about a list of multisets, and `htick` about one evaluation of the body. None of them is about a message in flight or another process's steps, because asynchrony is captured in the denotational semantics. The reasoning about interleavings is done once: the coupling between the step machine and the denotation is proved once per operator, and `hydro def` generates the lemmas that compose those proofs for this program ([Transferring to the Machine and the Network](./proving/transferring-to-the-machine.md)).
+
+## Automation {#automation}
+
+The three tools put the work in different places.
+
+**TLC** explores every reachable state of a finite instance. It needs neither an invariant nor a proof: given the properties, it checks them in every state. For three participants, two requests and all 64 voting rules:
+
+```text
+Model checking completed. No error has been found.
+370816 states generated, 50176 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 10.
+Finished in 01s
+```
+
+When the protocol is wrong, TLC returns a trace. With the filter against `decided` removed from `Tick` (`fresh == reached`), it reports, in six states (shortened here to the actions and the output):
+
+```text
+Error: Invariant Once is violated.
+State 1: <Initial predicate>
+State 2: <Propose(r2) line 45, col 3 to line 48, col 53 of module VoteQuorum>
+State 3: <CastVote(p2,r2) line 52, col 3 to line 55, col 53 of module VoteQuorum>
+State 4: <CastVote(p3,r2) line 52, col 3 to line 55, col 53 of module VoteQuorum>
+State 5: <Tick line 60, col 3 to line 69, col 47 of module VoteQuorum>
+/\ out = (r1 :> 0 @@ r2 :> 1)
+State 6: <Tick line 60, col 3 to line 69, col 47 of module VoteQuorum>
+/\ out = (r1 :> 0 @@ r2 :> 2)
+```
+
+TLC's result holds for the instance it explored. The state space grows exponentially with the number of participants and requests, so the instances stay small. A proof for every instance is a TLAPS proof, which you write by hand as a hierarchy of steps discharged by backend provers.
+
+**Veil** checks the 45 obligations above with SMT solvers, for every instance at once (the sorts `participant`, `request` and `qset` are uninterpreted). With `set_option veil.smt.trust false`, which the module sets, Veil asks the solver to reconstruct a Lean proof of each obligation instead of trusting its answer. When an invariant is not inductive, Veil reports a counterexample to induction, a pre-state that satisfies the invariant and a post-state that does not, and you strengthen the invariant until no counterexample is left. Veil also has an explicit-state model checker, which found no violation on three participants, two requests and three quorums (`✅ No violation (explored 270400 states)`), and symbolic trace queries such as `sat trace`, which here found a four-action run that emits a request. When the solver cannot discharge an obligation, you prove it in Lean with `prove_veil_invariant_goal`.
+
+The automation rests on the decidable fragment. A threshold such as "at least `minYes` yes votes" needs cardinality, which is outside it, so the Veil module has no `minYes`: a quorum is an element of an uninterpreted sort `qset` with a membership relation, and "enough participants voted yes" is "every member of some quorum voted yes", as in the `quorum` clause shown in [The Properties](#the-properties).
+
+The model check instantiates the quorums as the 2-subsets of three participants. Properties that rest on counting, such as quorum intersection, become axioms about the quorum sort (Veil's standard library provides them, for example `ByzNodeSet`).
+
+**Hydro Lean** has no model checker and no SMT backend. A contract is proved by hand in Lean over the program's values: equations about multisets and lists, `simp`, `omega`, and the readers each `tick` block generates. For `vote_quorum` that is under a hundred lines of ghost facts and tactics inside the program, plus a few lemmas in `QuorumBase.lean`. In return the proof is about arbitrary sizes and arbitrary data: any number of participants and coordinator members, any voting rule, any multiset of requests, a count `minYes`. What is automated is the transfer. `hydro def` generates the coupling lemmas, the dataflow graph and its correctness theorem, and the three theorems that carry the contract to the step machine and the processes cite them, with the same shape for every program. Testing at `Values` evaluates the program under decisions you choose with `#guard` ([Running at `Values`](./quickstart/running-quorum.mdx#running-at-values)); it is not exhaustive. When a Hydro Lean proof is wrong, you see an open goal, not a trace.
+
+## Liveness
+
+TLA+ and Veil check that a proposed request with enough yes votes is eventually decided. TLA+ states the property with weak fairness on casting votes and on ticks, and the leads-to operator `~>`:
+
+<CodeBlock language="tla" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorum.tla">Comparisons/VoteQuorum.tla</Link>
+}>{getLines(tlaSrc, 83, 90, `
+\\* every vote is eventually cast, and the coordinator keeps consuming votes
+Fairness ==
+  /\\ \\A j \\in Participants, r \\in Requests : WF_vars(CastVote(j, r))
+  /\\ WF_vars(Tick)
+LiveSpec == Spec /\\ Fairness
+\\* a proposed request with enough yes voters is eventually emitted
+Decides == \\A r \\in Requests :
+  (r \\in proposed /\\ Cardinality(YesVoters(r)) >= MinYes) ~> (out[r] = 1)
+`)}</CodeBlock>
+
+TLC checks it on the same instance in six seconds. Without `WF_vars(Tick)` it reports `Temporal property Decides was violated`.
+
+Veil states the same property in Lentil's temporal logic, with weak fairness `𝒲ℱ` on actions, and `#temporal_check` explores every infinite run of a finite instance:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Comparisons/VoteQuorumVeil.lean">Comparisons/VoteQuorumVeil.lean</Link>
+}>{getLines(veilSrc, 'liveness', `
+-- under weak fairness of voting, delivery and ticking, a proposed request that some quorum
+-- votes yes on is eventually emitted
+temporal [decides]
+  (∀ j, ∀ r, 𝒲ℱ (cast_vote j r)) ∧ (∀ j, ∀ r, ∀ b, 𝒲ℱ (deliver j r b)) ∧ 𝒲ℱ tick →
+    ∀ r, (⌜ proposed r ∧ ∃ q, ∀ j, member j q → vote j r ⌝ ↝ ⌜ emitted r ⌝)
+`)}</CodeBlock>
+
+```text
+info: Examples/Hydro/VoteQuorumVeil.lean:132:0: ✅ No liveness violation (checked 1 properties, explored 770 product states)
+```
+
+The check uses one request to keep the product with the property small. Without the fairness assumption on `deliver`, it reports `❌ Violation: liveness_failure (violates: decides)`. Veil proves temporal properties for every instance with `prove_temporal_by`, interactively.
+
+In Hydro Lean the transfer from the denotation to the machine is an inclusion: whatever the machine emits by step `T` is below what the denotation emits. An inclusion cannot carry "eventually emitted", because a machine that has emitted nothing is below every denotation. Liveness therefore needs its own argument, with fairness stated as predicates on the schedule (`FairTicks`, `FairCursor`) and an equality between the machine's output and the denotation at the decision the run realized. The framework proves it for the `collect_quorum` stage (`cq_live`); `vote_quorum` has no liveness theorem, and liveness of multi-stage protocols is open ([Liveness under Fairness](../internals/liveness.md)).
+
+:::warning
+
+Liveness reasoning is an early experiment in Hydro Lean and is under active development. It currently covers a single stage, `collect_quorum`, and its statements, fairness assumptions and proof support are expected to change.
+
+:::
+
+## Costs and When Each Is the Better Tool
+
+| | TLA+ with TLC | Veil | Hydro Lean |
+|---|---|---|---|
+| what is verified | a model | a model, executable in Lean | the program that runs, down to byte-level traces |
+| the network | variables changed by actions | relations changed by actions (generated by the `network` DSL, or written by hand) | not in the denotation; delivery is handled once, in the coupling |
+| what the properties are about | the state, including the output variable `out` | the state, including the output relations `emitted` and `dup` | the program's inputs and outputs |
+| what you state | the properties; an inductive invariant only for a proof | an inductive invariant over the global state | the contract, ghost facts, a loop invariant per stateful `tick` or `fix` block |
+| the induction | over transitions | over transitions | over ticks and fixpoint stages, per location |
+| automation | exhaustive search of small instances | SMT proofs in a decidable fragment, model checking, Lean fallback | none for the contract; the transfer to production is generated |
+| sizes covered | the instance explored | every instance | every instance |
+| counting, arithmetic, data | anything TLC can evaluate | abstracted into the fragment (quorum sorts) | anything Lean can state |
+| liveness | `~>` under fairness, checked by TLC | temporal properties, checked or proved | proved per program, so far for `collect_quorum` |
+| the quorum's safety | about 1 s to check the instance; no proof | 45 obligations discharged in seconds | about 155 lines of proof, plus about 140 for the transfer |
+
+TLA+ with TLC is a fast way to find a bug in a protocol design: it needs no invariant and returns a concrete trace, and it checks liveness as readily as safety. It works on any protocol you can describe, including ones that are not Hydro programs. Its results cover the instances it explored, and a proof for every instance is TLAPS work of a different order. Veil proves every instance automatically once you have an inductive invariant in the decidable fragment; its counterexamples to induction guide the search for one, and Lean takes the obligations the solver cannot. Both verify a model, and the model must be kept in step with the implementation.
+
+Hydro Lean is the better tool when the guarantee must hold of the code that runs, and when the properties are about data the decidable fragment abstracts away: counts, multisets, arithmetic, contracts that a caller's proof uses in place of the callee's body ([Contracts](./programs/contracts.md)). It costs more in other places. Every contract is a manual Lean proof; the program must be written in Hydro Lean and fit the generator's grammar; elaboration of large programs takes time and memory ([Elaboration and Kernel Cost](../internals/cost-model.md)); liveness is mostly open; and the program proved is the Lean port, tied to the Rust by transcription and audit. The tools also combine: a model check of the protocol is a cheap way to find a design bug before writing either proof.

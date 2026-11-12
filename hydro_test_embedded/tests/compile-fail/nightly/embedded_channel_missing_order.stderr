@@ -1,0 +1,28 @@
+error[E0277]: `hydro_test_embedded::echo_network_embedded::echo_receiver::incoming::messages` relies on its elements arriving in order, but the host does not promise it
+  --> tests/compile-fail/nightly/embedded_channel_missing_order.rs:18:13
+   |
+15 |           messages: EmbeddedNetworkInputChannel::new(
+   |                     -------------------------------- required by a bound introduced by this call
+...
+18 | /             Promises::new()
+19 | |                 .exactly_once(manual_proof!(/** each message appears once in the list */)),
+   | |__________________________________________________________________________________________^ does not promise `TotalOrder`
+   |
+   = note: add `.total_order(manual_proof!(/** why the order is kept */))` to its `Promises`
+help: the trait `OrderPromisedBy<hydro_lang::live_collections::stream::NoOrder, messages>` is not implemented for `hydro_lang::live_collections::stream::TotalOrder`
+      but trait `OrderPromisedBy<hydro_lang::live_collections::stream::TotalOrder, messages>` is implemented for it
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   | impl<End> OrderPromisedBy<TotalOrder, End> for TotalOrder {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `hydro_lang::live_collections::stream::TotalOrder`, found `hydro_lang::live_collections::stream::NoOrder`
+   = note: required for `hydro_test_embedded::echo_network_embedded::echo_receiver::incoming::messages` to implement `SatisfiedBy<hydro_lang::live_collections::stream::NoOrder, hydro_lang::live_collections::stream::ExactlyOnce>`
+note: required by a bound in `EmbeddedNetworkInputChannel::<C, S>::new`
+  --> $WORKSPACE/hydro_lang/src/compile/embedded_runtime.rs
+   |
+   | impl<C: EmbeddedNetworkChannel, S> EmbeddedNetworkInputChannel<C, S> {
+...
+   |     pub fn new<Tr, Ser, O, R>(
+...
+   |         C: ConfiguredAs<Tr, Ser> + SatisfiedBy<O, R>,
+   |                                    ^^^^^^^^^^^^^^^^^ required by this bound in `EmbeddedNetworkInputChannel::<C, S>::new`

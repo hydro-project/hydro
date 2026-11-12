@@ -26,6 +26,12 @@ const REJECT_FEATURES: &[&str] = &[
     "reject_rate_limit_filter",
     "reject_weak_panic_guard",
     "reject_guarded_halving_fold",
+    "reject_sum_fold_idempotent",
+    "reject_reduce_seed",
+    "reject_counter_map_idempotent",
+    "reject_is_new_map",
+    "reject_keep_retries_filter",
+    "reject_toggle_effect",
 ];
 
 fn workspace_root() -> PathBuf {

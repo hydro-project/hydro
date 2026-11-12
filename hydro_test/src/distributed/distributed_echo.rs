@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use hydro_lang::live_collections::stream::TotalOrder;
 use hydro_lang::location::NetworkHint;
 use hydro_lang::location::external_process::{ExternalBytesPort, Many};
@@ -9,11 +11,14 @@ pub struct C2 {}
 pub struct C3 {}
 pub struct P4 {}
 
-pub fn distributed_echo<'a>(
+/// Generic over `Id`, the member ID type.
+/// That lets the same program run on backends that number members (`u32`) and ones that name
+/// them (`String`).
+pub fn distributed_echo<'a, Id: Clone + Eq + Hash + 'a>(
     external: &External<'a, ()>,
     p1: &Process<'a, P1>,
-    c2: &Cluster<'a, C2>,
-    c3: &Cluster<'a, C3>,
+    c2: &Cluster<'a, C2, Id>,
+    c3: &Cluster<'a, C3, Id>,
     p4: &Process<'a, P4>,
 ) -> ExternalBytesPort<Many> {
     let (bidi_port, raw_input, _external_membership, response_sink) = p1

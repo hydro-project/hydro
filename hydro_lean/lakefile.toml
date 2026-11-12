@@ -1,0 +1,60 @@
+name = "hydro_lean"
+version = "0.1.0"
+defaultTargets = ["Hydro", "Examples"]
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.33.1"
+
+[[lean_lib]]
+name = "Hydro"
+globs = ["Hydro.**"]
+
+# The example protocols (Paxos, 2PC, the quickstart tutorials), their axiom audit, and the
+# staged benchmark (`benchRun`) that the `bench` and `benchprof` entry points import. The
+# executables' roots (`Examples/Demo/`) and the tutorial steps are not in the library.
+[[lean_lib]]
+name = "Examples"
+globs = ["Examples", "Examples.AxCheck", "Examples.Paxos.+", "Examples.TwoPC",
+  "Examples.Tutorials.+", "Examples.Demo.BenchDemo"]
+
+[[lean_exe]]
+name = "falsify"
+root = "Examples.Demo.Falsify"
+
+[[lean_exe]]
+name = "explore"
+root = "Examples.Demo.Explore"
+
+[[lean_exe]]
+name = "paxos"
+root = "Examples.Demo.PaxosDemo"
+
+[[lean_exe]]
+name = "twopc"
+root = "Examples.Demo.TwoPCDemo"
+
+[[lean_exe]]
+name = "wired"
+root = "Examples.Demo.WiredDemo"
+
+[[lean_exe]]
+name = "quorum"
+root = "Examples.Demo.QuorumDemo"
+
+[[lean_exe]]
+name = "bench"
+root = "Examples.Demo.Bench"
+
+[[lean_exe]]
+name = "benchprof"
+root = "Examples.Demo.BenchProfile"
+
+# The quickstart's intermediate stages of `vote_quorum` (`Examples/TutorialSteps/`), quoted by
+# the docs. `Examples.lean` does not import them and `Examples/AxCheck.lean` does not check them:
+# their `sorry`s are the only ones the tree allows. The finished program is
+# `Examples/Tutorials/Quorum.lean`.
+[[lean_lib]]
+name = "HydroTutorialSteps"
+globs = ["Examples.TutorialSteps.+"]

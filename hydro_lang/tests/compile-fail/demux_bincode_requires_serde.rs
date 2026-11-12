@@ -29,7 +29,7 @@ fn test<'a>(p1: &Process<'a, P1>, workers: &Cluster<'a, Workers>) {
         .map(q!(|s| (MemberId::from_raw_id(0), OpaquePayload { text: s })));
 
     // `.bincode()` serializes items, so the payload must implement
-    // `Serialize` (and `DeserializeOwned`); `.embedded()` would accept it.
+    // `Serialize` (and `DeserializeOwned`); an `EMBEDDED` channel would accept it.
     payloads.demux(workers, TCP.fail_stop().bincode());
 }
 

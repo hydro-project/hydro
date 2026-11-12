@@ -62,7 +62,7 @@ If we send a stream from a cluster to a process and flatten the values across se
 # use hydro_lang::prelude::*;
 # let mut flow = FlowBuilder::new();
 use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
-let workers: Cluster<()> = flow.cluster::<()>();
+let workers: Cluster<()> = flow.cluster();
 let numbers: Stream<_, Cluster<_>, Bounded, TotalOrder> =
     workers.source_iter(q!(vec![1, 2, 3]));
 let process: Process<()> = flow.process::<()>();
@@ -77,7 +77,7 @@ A particularly common API that faces this restriction is [`fold`](rust:hydro_lan
 ```compile_fail
 # use hydro_lang::prelude::*;
 # let mut flow = FlowBuilder::new();
-let workers: Cluster<()> = flow.cluster::<()>();
+let workers: Cluster<()> = flow.cluster();
 let process: Process<()> = flow.process::<()>();
 let all_words: Stream<_, Process<_>, Unbounded, NoOrder> = workers
     .source_iter(q!(vec!["hello", "world"]))
@@ -104,7 +104,7 @@ To perform an aggregation with an unordered stream, you must add a **property an
 # use hydro_lang::prelude::*;
 # use futures::StreamExt;
 # let mut flow = FlowBuilder::new();
-# let workers = flow.cluster::<()>();
+# let workers = flow.cluster::<(), u32>();
 # let process = flow.process::<()>();
 # let all_words: Stream<_, Process<_>, _, hydro_lang::live_collections::stream::NoOrder> = workers
 #     .source_iter(q!(vec!["hello", "world"]))
@@ -122,7 +122,7 @@ Developers are responsible for the correctness of a `manual_proof!`; the compile
 ```rust,no_run
 # use hydro_lang::prelude::*;
 # let mut flow = FlowBuilder::new();
-# let workers = flow.cluster::<()>();
+# let workers = flow.cluster::<(), u32>();
 # let process = flow.process::<()>();
 # let all_words: Stream<_, Process<_>, _, hydro_lang::live_collections::stream::NoOrder> = workers
 #     .source_iter(q!(vec!["hello", "world"]))
@@ -151,7 +151,7 @@ To do this, you can use [`assume_ordering`](rust:hydro_lang::live_collections::S
 # use hydro_lang::prelude::*;
 # let mut flow = FlowBuilder::new();
 use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
-let workers: Cluster<()> = flow.cluster::<()>();
+let workers: Cluster<()> = flow.cluster();
 let process: Process<()> = flow.process::<()>();
 let unordered: Stream<_, Process<_>, Unbounded, NoOrder> = workers
     .source_iter(q!(vec![1, 2, 3]))

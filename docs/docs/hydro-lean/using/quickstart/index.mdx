@@ -1,0 +1,248 @@
+---
+sidebar_position: 0
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Link from "@docusaurus/Link";
+
+import helloSrc from '!!raw-loader!../../../../../hydro_lean/Examples/Tutorials/HelloWorld.lean';
+import { getLines } from '../../../../src/util';
+
+# Quickstart
+
+In this tutorial, you will write a distributed program in Hydro Lean, prove a property of it, and carry that property to the processes that run it. You will start with a broadcast from a leader to a cluster of workers. Then you will build a voting quorum, in which a coordinator collects votes from participants and decides a request once enough of them vote yes, prove its contract, and run it as four processes over TCP.
+
+If you have written Hydro programs in Rust, Hydro Lean programs will look familiar: they are built from the same live collections and stream APIs (`map`, `broadcast`, `batch`, `fold`, `sliced!` blocks with `use::state`), with each Lean line mirroring a line of Rust, and a `nondet!` site becomes an explicit argument. This tutorial assumes that familiarity; if you are new to Hydro, start with the [Hydro quickstart](../../../hydro/learn/quickstart/).
+
+On this page, you will write the broadcast, prove its contract, and transfer the contract to production.
+
+:::learn
+- How to write a `hydro def` over locations and network edges
+- Why a contract about a network hop is proved by `rfl`
+- How a contract proved at `Values` becomes a theorem about processes exchanging bytes
+- How to run a program at `Values` with `#guard`
+:::
+
+Every file of the tutorial is part of the `Examples` library, so `lake build Examples` checks all of it. [Setup](../setup.md) installs the toolchain. Both tutorial programs are under `hydro_lean/Examples/Tutorials/`.
+
+## Hello World in Hydro Lean
+
+In Rust, the broadcast is one function:
+
+```rust
+pub fn hello_broadcast<'a>(
+    leader: &Cluster<'a, Leader>,
+    workers: &Cluster<'a, Worker>,
+    payloads: Stream<u64, Cluster<'a, Leader>, Unbounded, NoOrder>,
+) -> Stream<u64, Cluster<'a, Worker>, Unbounded, NoOrder> {
+    payloads
+        .broadcast(workers, TCP.fail_stop().bincode(), nondet!(/** membership is stable */))
+        .values()
+}
+```
+
+The Lean program below has the same shape: the locations and the input stream are parameters, and the body is a `broadcast` followed by `values`. The Rust's `nondet!` is about cluster membership changing, which Hydro Lean fixes at deployment, so it has no counterpart.
+
+A program is a Lean function of a semantics `H : HydroSem L mem`, where `L` is the type of locations and `mem ℓ` is the number of members of cluster `ℓ` ([Locations](../programs/distributed-programs.mdx#locations)). The program runs under several semantics without changes. You prove its contract at the **denotational** semantics `Values`, and Hydro Lean transfers it to the compiled graph the processes run. The program also takes a **schedule record**, `sched`. It connects the proofs to production execution: on the step machine it holds, for the broadcast's one network edge, how far each worker has been handed the leader's stream. At `Values` it is `Unit` and plays no part in the proof:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/HelloWorld.lean">Examples/Tutorials/HelloWorld.lean</Link>
+}>{getLines(helloSrc, 'sched', `
+/-- The program's one network edge: how far each worker has been handed the leader's
+stream. \`Unit\` at \`Values\`; delivery cursors at \`SchedSem\`. -/
+structure HelloSched (H : HydroSem L mem) (nWorkers nLeader : Nat) where
+  toWorkers : H.TransportDec nWorkers nLeader
+`)}</CodeBlock>
+
+`H.TransportDec nWorkers nLeader` is the type of that choice in semantics `H`: `Unit` at `Values`, a delivery cursor per receiver and sender on the step machine ([Nondeterminism](../programs/nondeterminism.md)). The program never inspects the record. It only hands each field to the operator that uses it.
+
+The contract is a structure whose fields are the facts the program guarantees:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/HelloWorld.lean">Examples/Tutorials/HelloWorld.lean</Link>
+}>{getLines(helloSrc, 'ensures', `
+/-- What \`hello_broadcast\` ensures, over the \`Values\` denotation. -/
+structure HelloEnsures {nLeader nWorkers : Nat} (payloads : Fin nLeader → Multiset Nat)
+    (out : Fin nWorkers → Multiset Nat) : Prop where
+  /-- Every worker receives exactly the payloads of every leader member. -/
+  recv : ∀ j, out j = ((List.finRange nLeader).map payloads).sum
+`)}</CodeBlock>
+
+`payloads` and `out` are functions from members to multisets. Under the denotational semantics `Values`, a `noOrder`, `exactlyOnce` stream is one multiset per member, which captures all its arrival orders. `recv` says that each worker receives the sum of the leader members' pools.
+
+The program declares its contract with `ensures` and discharges it with `prove`:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/HelloWorld.lean">Examples/Tutorials/HelloWorld.lean</Link>
+}>{getLines(helloSrc, 'program', `
+hydro def hello_broadcast (H : HydroSem L mem) (leader workers : L)
+    (payloads : H.Stream leader Nat .noOrder .exactlyOnce)
+    (sched : HelloSched H (mem workers) (mem leader)) :
+    H.Stream workers Nat .noOrder .exactlyOnce
+  ensures out => HelloEnsures payloads out :=
+  H.values (H.broadcast_closed sched.toWorkers payloads)
+  prove
+    recv := fun _ => rfl
+`)}</CodeBlock>
+
+`H.broadcast_closed` sends the leader's stream to every worker, keyed by sender, and `H.values` drops the keys. In Rust this is `payloads.broadcast(&workers, …).values()`.
+
+The proof of `recv` is `rfl`. At `Values` the network's delay and reordering are encoded in the stream's type: a `.noOrder` stream is a multiset, one value for every arrival order, and it holds every payload ever sent, however late it arrives. A program observes that nondeterminism only through a decision, and `hello_broadcast` observes none, so the transport changes no content. At `Values`, `values (broadcast_closed d s)` at a worker is defined as the sum of the senders' pools (`values_broadcast_sum` in `Hydro/Values.lean`). There is no message in flight to account for. In a state-machine model such as a TLA+ specification, the network would be a bag of in-flight messages, and even this property would be an inductive invariant over every interleaving of sends and deliveries ([The Network at `Values`](../programs/distributed-programs.mdx#the-network-at-values)).
+
+`hydro def` also generates the theorems that relate this program's semantics to each other, and the dataflow graph that the processes run. A proof cites them by name, without unfolding anything.
+
+The last line checks the program's sources of nondeterminism against the expected counts:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/HelloWorld.lean">Examples/Tutorials/HelloWorld.lean</Link>
+}>{getLines(helloSrc, 'census', `
+#nondet_census hello_broadcast (nondets := 0) (scheds := 1) (fuels := 0)
+`)}</CodeBlock>
+
+The program has no `nondet!` (`nondets := 0`), one network edge (`scheds := 1`) and no cycle (`fuels := 0`). If a count differs from the program, the build fails.
+
+## Running at `Values`
+
+`Values` is executable. Choose a location type, cluster sizes and inputs, and apply the program to the `Values` instance:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/HelloWorld.lean">Examples/Tutorials/HelloWorld.lean</Link>
+}>{getLines(helloSrc, 'locs', `
+/-- One leader, three workers. -/
+inductive HelloLoc | leader | workers
+  deriving DecidableEq
+
+@[reducible] def helloMem : HelloLoc → Nat
+  | .leader => 1
+  | .workers => 3
+`)}</CodeBlock>
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/HelloWorld.lean">Examples/Tutorials/HelloWorld.lean</Link>
+}>{getLines(helloSrc, 'run-values', `
+-- at \`Values\`: worker 2's pool is the leader's
+#guard hello_broadcast (Values HelloLoc helloMem) .leader .workers
+    (.mk' fun _ => ({1, 2} : Multiset Nat)) ⟨()⟩ 2
+  = ({1, 2} : Multiset Nat)
+`)}</CodeBlock>
+
+`.mk' fun _ => {1, 2}` gives the one leader member the pool `{1, 2}`, `⟨()⟩` is the schedule record at `Values`, and `2` selects the third worker. `#guard` evaluates the proposition when the file elaborates, and the build fails if it is false.
+
+## From the Contract to Production
+
+The contract describes what the program computes at `Values`. In a deployment each member runs as a process with its own state, exchanging bytes over connections that deliver arbitrary prefixes, cut anywhere. `hello_safe_wired` states the contract for that setting:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/HelloWorld.lean">Examples/Tutorials/HelloWorld.lean</Link>
+}>{getLines(helloSrc, 'safe-wired', `
+/-- **Hello World, as processes exchanging bytes.** For any trace at the wire, every payload a
+worker process has output by step \`T\` was injected at a leader process by then. -/
+theorem hello_safe_wired (leader workers : L)
+    (τ : WireTrace (hello_broadcast.dag (mem := mem) leader workers))
+    (T : Nat) (j : Fin (mem workers)) (x : Nat)
+    (hx : x ∈ τ.streamOutputsAt (helloBody leader workers) T ⟨workers, j⟩ Var.zero ⟨j, rfl⟩) :
+    x ∈ ((List.finRange (mem leader)).map fun i => helloInjected τ i T).sum := by
+  -- the staged body equals the interpreter's; the trace's run equals its induced interleaving's
+  have hbody : helloBody (mem := mem) leader workers
+      = WireTrace.Body.ofCodecs (hello_broadcast.wireCodecs (mem := mem) leader workers) := by
+    funext m r chans Δ s
+    exact helloRun.eq leader workers m true r chans Δ s
+  rw [hbody, τ.streamOutputsAt_eq (hello_broadcast.dag_valid leader workers)] at hx
+  set I := τ.interleaving (hello_broadcast.wireCodecs (mem := mem) leader workers) with hI
+  -- the activation that output it, and its outputs as the lock-step step's
+  obtain ⟨k, hkT, _hk, hx⟩ := I.mem_streamOutputsAt hx
+  rw [I.loopPass_outputs] at hx
+  let ssched := hello_broadcast.recordOf I.pacing leader workers I.sched
+  have hS : hello_broadcast.schedOf I.pacing leader workers ssched = I.sched :=
+    hello_broadcast.schedOf_recordOf I.pacing leader workers I.sched
+  have hout : ∀ k (i : Hosted (I.who k) workers),
+      (I.active k).2.1.get Var.zero i
+        = (incView ((hello_broadcast (SchedSem L mem I.pacing) leader workers
+            (I.wires.get Var.zero) ssched) i.1) k).toArray := by
+    intro k i
+    rw [I.outputs (hello_broadcast.dag_valid leader workers) k]
+    show (envRestrict (I.who k) (envIncAt (Dag.denote I.pacing
+      (hello_broadcast.dag leader workers) I.sched I.wires) k)).get Var.zero i = _
+    rw [← hS, hello_broadcast.dag_denote I.pacing leader workers ssched I.wires, envRestrict_get]
+    rfl
+  rw [hout k _] at hx
+  -- the step-machine theorem at step \`k\`, and the injected payloads only grow
+  have h := hello_safe_sched leader workers _ ssched k _ x
+    (mem_view_of_mem_incView _ _ (List.mem_toArray.mp hx))
+  refine Multiset.mem_of_le (List.sum_le_sum (fun i _ => ?_)) h
+  have hv : ((I.wires.get Var.zero) i).view k
+      = accum (fun t => ((envMask (τ.who t) (τ.inp t)).get Var.zero i).toList) k := rfl
+  rw [hv]
+  exact Multiset.coe_le.mpr (accum_prefix_le _ (Nat.le_of_lt hkT)).sublist.subperm
+`)}</CodeBlock>
+
+Read the statement, not yet the proof:
+
+- `τ` is any **trace at the wire** (`WireTrace`): which process runs at each step, which input increments it is handed, and how many bytes it reads from each connection. Nothing restricts it. A process that never runs is a trace that never activates it.
+- `helloBody` is the function each process runs at an activation: the graph compiled into straight-line code by `hydro_run`. It is the same function an executable would call (`lake exe quorum` does this for the quorum).
+- `hx` says that worker `j` has output `x` by step `T`. The conclusion says that `x` was handed to some leader process by then (`helloInjected`).
+
+The proof uses only theorems that Hydro Lean and `hydro def` provide, and it has the same two steps for every program.
+
+**The step-machine lemma.** `SchedSem` is the **operational** semantics: the same Hydro function run on a global clock of steps, where every stream is one concrete history per member and every message is delivered at some step. `SchedSem` connects `Values` to the processes: the coupling relates its runs to `Values`, and the graph theorems relate the processes to its runs. The machine has one actual order and one actual delivery schedule, not chosen to suit the proof, so carrying the contract to it means showing that the denotational semantics covers whatever the machine produced. `hello_safe_sched` states the contract on that machine, for any input history, any **pacing** (which members step, and when) and any delivery cursors:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/HelloWorld.lean">Examples/Tutorials/HelloWorld.lean</Link>
+}>{getLines(helloSrc, 'sched-lemma', `
+/-- The step-machine form of the contract, for any input history: a payload worker \`j\` holds by
+step \`T\` was given to some leader member by \`T\`. The proof makes the four moves of every machine
+theorem, then the input frozen at \`T\` (causality through the graph). -/
+theorem hello_safe_sched {pacing : Pacing L mem} (leader workers : L)
+    (h : (SchedSem L mem pacing).Stream leader Nat .noOrder .exactlyOnce)
+    (sched : HelloSched (SchedSem L mem pacing) (mem workers) (mem leader))
+    (T : Nat) (j : Fin (mem workers)) (x : Nat)
+    (hx : x ∈ ((hello_broadcast (SchedSem L mem pacing) leader workers h sched) j).view T) :
+    x ∈ ((List.finRange (mem leader)).map fun i => (↑((h i).view T) : Multiset Nat)).sum := by
+  -- the input frozen at \`T\`, and causality through the graph
+  let h' : (SchedSem L mem pacing).Stream leader Nat .noOrder .exactlyOnce :=
+    fun i => (h i).truncate T
+  let env : Project.HList (Project.Kind.sched (mem := mem))
+      [Project.Kind.stream leader Nat inferInstance .noOrder .exactlyOnce] :=
+    Project.HList.cons (f := Project.Kind.sched (mem := mem)) h Project.HList.nil
+  let env' : Project.HList (Project.Kind.sched (mem := mem))
+      [Project.Kind.stream leader Nat inferInstance .noOrder .exactlyOnce] :=
+    Project.HList.cons (f := Project.Kind.sched (mem := mem)) h' Project.HList.nil
+  have hagree : Project.HAgree T env env' := by
+    refine ⟨fun i t ht => ?_, trivial⟩
+    show (h i).view t = (h i).view (min t T)
+    rw [Nat.min_eq_left ht]
+  have hcaus := Project.Dag.denote_causal (pacing := pacing) (hello_broadcast.dag leader workers)
+    (hello_broadcast.schedOf pacing leader workers sched) T env env' hagree
+  rw [hello_broadcast.dag_denote, hello_broadcast.dag_denote] at hcaus
+  have hout : ((hello_broadcast (SchedSem L mem pacing) leader workers h sched) j).view T
+      = ((hello_broadcast (SchedSem L mem pacing) leader workers h' sched) j).view T :=
+    hcaus.1 j T (Nat.le_refl T)
+  rw [hout] at hx
+  -- the pool above the frozen input
+  let v : (Values L mem).Stream leader Nat .noOrder .exactlyOnce := .mk' fun i => ↑((h i).view T)
+  have hc : ∀ t i, ListLe .noOrder .exactlyOnce ((h' i).view t) (v i) := fun t i =>
+    Multiset.coe_le.mpr ((h i).mono_le (Nat.min_le_right t T)).sublist.subperm
+  -- 1. run at the coupling and open the output corner's \`cpl\`
+  have hcpl := (hello_broadcast (CoupleSem L mem pacing T T (Nat.le_refl T)) leader workers
+      (CoStream.inputC h' v hc) ⟨CoDec.cursors sched.toWorkers⟩).cpl
+    (hello_broadcast_co_wf₁ leader workers (CoStream.inputC h' v hc)
+      ⟨CoDec.cursors sched.toWorkers⟩ trivial)
+    T (by co_lag [hello_broadcast_co_lag₁]) j
+  -- 2. and 3. rewrite \`sr\` and \`rr\` to the \`SchedSem\` and \`Values\` runs
+  rw [hello_broadcast_co_sr₁, hello_broadcast_co_rr₁] at hcpl
+  -- 4. apply the contract
+  rw [← (hello_broadcast.ensures leader workers v ⟨()⟩).recv j]
+  exact Multiset.mem_of_le hcpl (Multiset.mem_coe.mpr hx)
+`)}</CodeBlock>
+
+The proof has two parts. It first freezes the input at `T`: `h'` is the input history cut off at step `T`, and causality through the graph (`Dag.denote_causal`, read back as `SchedSem` runs by `hello_broadcast.dag_denote`) shows that freezing it does not change the output up to `T`. The frozen input's content at `T` then serves as the `Values` pool `v`, which lies above the machine's input at every step (`hc`).
+
+Then come the four moves every machine theorem makes. The program is run at the coupling instance `CoupleSem`, where every collection holds a machine run and a denotational run together with a proof, `cpl`, that the first lies below the second. Move 1 opens the output's `cpl`, closing its side conditions with `hello_broadcast_co_wf₁` and `co_lag`. Moves 2 and 3 rewrite the two runs with `hello_broadcast_co_sr₁` (the machine run equals the `SchedSem` run) and `hello_broadcast_co_rr₁` (the denotational run equals the `Values` run). Move 4 applies the contract `hello_broadcast.ensures`. [Proving the Quorum](./proving-quorum.mdx#the-four-moves) walks through each move.
+
+**The wired theorem.** The proof of `hello_safe_wired` replaces the compiled body with the graph interpreter (`helloRun.eq`, proved by the kernel when `hydro_run` stages the code). It replaces the byte trace with the lock-step interleaving it induces (`WireTrace.streamOutputsAt_eq`, which needs `hello_broadcast.dag_valid`). It reads the interleaving's schedule back as the program's schedule record (`recordOf`), turns the graph's outputs into the `SchedSem` run (`dag_denote`), and applies `hello_safe_sched` at the step of the activation that output `x`.
+
+`Examples/AxCheck.lean` reports `hello_safe_wired` as resting on `propext`, `Classical.choice` and `Quot.sound` only.
+
+## Next Steps
+
+You have written a distributed program, proved its contract by `rfl`, and carried the contract to processes exchanging bytes. The broadcast has no state and no nondeterminism of its own. In [Implementing a Quorum](./implementing-quorum.mdx), you will write a program that has both: a coordinator that batches votes, keeps state across ticks, and decides once a quorum is reached.

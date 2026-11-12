@@ -6,22 +6,33 @@ on:
       - main
       - feature/**
   pull_request:
+  merge_group:
   workflow_dispatch:
 
 permissions: {}
 
+# Without a group, two runs for the same commit (which GitHub triggers for every stacked PR push) would
+# both run in full. Grouping them by commit makes the second wait for the first, after which `pre_job`
+# skips it as a duplicate. Deliberately no `cancel-in-progress`: see
+# https://github.com/hydro-project/hydro/pull/3344 and https://github.com/orgs/community/discussions/211754.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.base.sha }}-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha || github.ref }}
 
 jobs:
   pre_job:
     runs-on: ubuntu-slim
+    permissions:
+      actions: write # for `cancel_others`
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
+        with:
+          # Cancel still-running runs of this workflow for older commits of the same PR branch (instead of
+          # `concurrency.cancel-in-progress`, see the comment there). PRs only: a scheduled or manual
+          # run must not cancel an in-flight `main` run.
+          cancel_others: ${{ github.event_name == 'pull_request' }}
 
   docs:
     name: Docs (rustdoc)
@@ -44,13 +55,23 @@ jobs:
           RUSTDOCFLAGS: --cfg docsrs -Dwarnings
         run: cargo +nightly doc --no-deps --all-features
 
+      # Hand the compiled rustdoc to the `build-website` job below so the website build does not
+      # have to run `cargo doc` a second time.
+      - name: Upload rustdoc artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: rustdoc
+          path: target/doc/
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Move design docs to output
         shell: bash
         run: |
           mv design_docs "$WWW_DIR/"
 
       - name: Push to gh-pages
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' }}
         shell: bash
         run: |
           git -C "$WWW_DIR" init -q
@@ -70,3 +91,35 @@ jobs:
           else
             echo 'No changes to commit'
           fi
+
+  build-website:
+    name: Build Website
+    # Skipped automatically (via `needs`) if the `docs` job is skipped or fails.
+    timeout-minutes: 25
+    needs: docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: "docs/package-lock.json"
+
+      # Reuse the rustdoc built by the `docs` job. `build_docs.bash` expects it at
+      # `docs/static/rustdoc` (where it would otherwise `cp` it from `target/doc`).
+      - name: Download rustdoc artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: rustdoc
+          path: docs/static/rustdoc
+
+      - name: Build Website
+        env:
+          SKIP_RUSTDOC: "1"
+        run: bash build_docs.bash x86_64-linux-gnu-ubuntu-20.04
+
+      - name: Check README Links
+        run: bash scripts/check_readme_links.sh

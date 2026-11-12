@@ -6,12 +6,10 @@ use dfir_lang::graph::{AsCodeOptions, DfirGraph};
 use futures::{Sink, Stream};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use stageleft::QuotedWithContext;
 
 use crate::compile::builder::ExternalPortId;
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MembershipEvent, NetworkHint};
+use crate::location::{LocationKey, NetworkHint};
 
 pub trait Deploy<'a> {
     type Meta: Default;
@@ -239,17 +237,20 @@ pub trait Deploy<'a> {
         todo!("m2e_sink is not yet supported for this deploy backend")
     }
 
-    fn cluster_ids(
-        of_cluster: LocationKey,
-    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a;
+    /// The IDs of `of_cluster`'s members, as an expression of type `&[Id]`.
+    /// `Id` is this backend's member ID type (see [`SupportsMemberId`]).
+    fn cluster_ids(of_cluster: LocationKey) -> syn::Expr;
 
-    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a;
+    /// This member's own ID, as an expression of type `Id`.
+    fn cluster_self_id() -> syn::Expr;
 
+    /// The membership events of `location_id`, as seen from `at_location`.
+    /// The expression has type `Box<dyn Stream<Item = (Id, MembershipEvent)> + Unpin>`.
     fn cluster_membership_stream(
         env: &mut Self::InstantiateEnv,
         at_location: &LocationId,
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>;
+    ) -> syn::Expr;
 
     /// Registers an embedded stream input for the given ident and element type.
     ///
@@ -396,3 +397,14 @@ where
     where
         T: DeserializeOwned + 'static;
 }
+
+/// A deployment backend that can run clusters whose member IDs have type `Id`.
+/// Each backend's generated code works with particular ID types.
+/// Hydro Deploy and the simulator use `u32`, Docker, ECS, and Maelstrom use `String`, and the
+/// embedded backend accepts any type.
+/// `with_cluster` requires this trait, so a mismatch is a compile error.
+#[diagnostic::on_unimplemented(
+    message = "this deployment backend does not identify cluster members with `{Id}`",
+    note = "create the cluster with an identifier type the backend supports, for example `flow.cluster::<Tag, u32>()` for `u32`"
+)]
+pub trait SupportsMemberId<Id> {}

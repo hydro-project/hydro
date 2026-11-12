@@ -69,9 +69,10 @@ impl Boundedness for Bounded {
 
 #[sealed]
 #[diagnostic::on_unimplemented(
-    message = "The input collection must be bounded (`Bounded`), but has bound `{Self}`. Strengthen the boundedness upstream or consider a different API.",
+    message = "the input collection must be bounded (`Bounded`), but has bound `{Self}`",
     label = "required here",
-    note = "To intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region. This introduces non-determinism so avoid unless necessary."
+    note = "strengthen the boundedness upstream, or consider a different API",
+    note = "to intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region; this introduces non-determinism, so avoid it unless necessary"
 )]
 /// Marker trait that is implemented for the [`Bounded`] boundedness guarantee.
 pub trait IsBounded: Boundedness {}

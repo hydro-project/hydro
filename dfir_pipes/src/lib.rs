@@ -28,6 +28,10 @@ pub use futures_sink::Sink;
 pub use itertools::{self, Either, EitherOrBoth};
 use sealed::sealed;
 
+/// Shared accumulator state machinery (fold/reduce/sort) used by both pull and push
+/// accumulate combinators.
+pub mod accum;
+
 /// Pull-based stream combinators.
 pub mod pull;
 

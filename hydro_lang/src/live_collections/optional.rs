@@ -83,9 +83,10 @@ impl OptionalBound for InitNone {
 
 #[sealed]
 #[diagnostic::on_unimplemented(
-    message = "The optional must be null-only-initially (`InitNone`) or bounded (`Bounded`), but has bound `{Self}`. Strengthen the guarantee upstream or consider a different API.",
+    message = "the optional must be null-only-initially (`InitNone`) or bounded (`Bounded`), but has bound `{Self}`",
     label = "required here",
-    note = "To intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region. This introduces non-determinism so avoid unless necessary."
+    note = "strengthen the guarantee upstream, or consider a different API",
+    note = "to intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region; this introduces non-determinism, so avoid it unless necessary"
 )]
 /// Marker trait that is implemented for [`OptionalBound`] types that are null only initially:
 /// once the optional becomes non-null it remains non-null (or it is [`Bounded`]).
@@ -1456,7 +1457,7 @@ where
         );
         Optional::new(
             tick.drop_consistency(),
-            HydroNode::Batch {
+            HydroNode::Snapshot {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
                     .new_node_metadata(Optional::<T, Tick<L>, Bounded>::collection_kind()),
@@ -1488,7 +1489,7 @@ where
         );
         Optional::new(
             tick.drop_consistency(),
-            HydroNode::Batch {
+            HydroNode::Snapshot {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
                     .new_node_metadata(Optional::<T, Tick<L>, Bounded>::collection_kind()),

@@ -65,6 +65,7 @@ hydro_lang = { path = "../hydro_lang", version = "=0.17.0-alpha.6", features = [
 ] }
 include_mdtests = { path = "../include_mdtests", version = "^0.0.0" }
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.1", features = ["insta"] }
+prettyplease = { version = "0.2.0", features = ["verbatim"] }
 regex = "1"
 tokio = { version = "1.29.0", features = ["full"] }
 tokio-util = { version = "0.7.5", features = [ "codec" ] }

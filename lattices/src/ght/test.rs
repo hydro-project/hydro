@@ -437,6 +437,46 @@ mod tests {
     }
 
     #[test]
+    fn test_partial_cmp_incomparable_children() {
+        use std::cmp::Ordering::{Equal, Greater, Less};
+
+        use variadics::var_expr;
+
+        use crate::GhtType;
+        use crate::ght::GeneralizedHashTrieNode;
+
+        // Counted multisets are not lattices; `PartialOrd` is only implemented for set storage.
+        type MyGht = GhtType!(u32 => u32: VariadicHashSetStd);
+
+        // Disjoint keys.
+        let left = MyGht::new_from(vec![var_expr!(1, 10)]);
+        let right = MyGht::new_from(vec![var_expr!(2, 20)]);
+        assert_eq!(left.partial_cmp(&right), None);
+        assert_eq!(right.partial_cmp(&left), None);
+
+        // One child is greater and another is less.
+        let left = MyGht::new_from(vec![var_expr!(1, 10), var_expr!(1, 11), var_expr!(2, 20)]);
+        let right = MyGht::new_from(vec![var_expr!(1, 10), var_expr!(2, 20), var_expr!(2, 21)]);
+        assert_eq!(left.partial_cmp(&right), None);
+        assert_eq!(right.partial_cmp(&left), None);
+
+        // Subset and equality stay ordered.
+        let smaller = MyGht::new_from(vec![var_expr!(1, 10)]);
+        let larger = MyGht::new_from(vec![var_expr!(1, 10), var_expr!(1, 11)]);
+        assert_eq!(smaller.partial_cmp(&larger), Some(Less));
+        assert_eq!(larger.partial_cmp(&smaller), Some(Greater));
+
+        let same = MyGht::new_from(vec![var_expr!(1, 10), var_expr!(2, 20)]);
+        let same_again = MyGht::new_from(vec![var_expr!(2, 20), var_expr!(1, 10)]);
+        assert_eq!(same.partial_cmp(&same_again), Some(Equal));
+
+        let empty = MyGht::default();
+        assert_eq!(empty.partial_cmp(&MyGht::default()), Some(Equal));
+        assert_eq!(empty.partial_cmp(&smaller), Some(Less));
+        assert_eq!(smaller.partial_cmp(&empty), Some(Greater));
+    }
+
+    #[test]
     fn test_cartesian_bimorphism() {
         use variadics::var_expr;
 

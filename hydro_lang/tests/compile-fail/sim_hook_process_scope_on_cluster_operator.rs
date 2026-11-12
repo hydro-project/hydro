@@ -9,7 +9,7 @@ struct Workers {}
 
 fn main() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<Workers>();
+    let cluster = flow.cluster::<Workers, u32>();
 
     // This handle defaults to the `OnProcess` scope, but the operator below runs on a
     // cluster: it must be created as `OrderingHook<u32, Unbounded, ExactlyOnce, OnCluster<Workers>>`

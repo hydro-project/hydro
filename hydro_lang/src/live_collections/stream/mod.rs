@@ -8,8 +8,6 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q, quote_type};
-#[cfg(feature = "tokio")]
-use tokio::time::Instant;
 
 use super::OperatorContext;
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
@@ -17,6 +15,8 @@ use super::keyed_singleton::KeyedSingleton;
 use super::keyed_stream::{Generate, KeyedStream};
 use super::optional::Optional;
 use super::singleton::Singleton;
+#[cfg(feature = "tokio")]
+use super::sliced::sliced;
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode, StreamOrder, StreamRetry,
@@ -153,9 +153,10 @@ impl<R: Retries> MinRetries<R> for AtLeastOnce {
 
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "The input stream must be totally-ordered (`TotalOrder`), but has order `{Self}`. Strengthen the order upstream or consider a different API.",
+    message = "the input stream must be totally ordered (`TotalOrder`), but has order `{Self}`",
     label = "required here",
-    note = "To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+    note = "strengthen the order upstream, or consider a different API",
+    note = "to intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`; this introduces non-determinism, so avoid it unless necessary"
 )]
 /// Marker trait that is implemented for the [`TotalOrder`] ordering guarantee.
 pub trait IsOrdered: Ordering {}
@@ -166,9 +167,10 @@ impl IsOrdered for TotalOrder {}
 
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "The input stream must be exactly-once (`ExactlyOnce`), but has retries `{Self}`. Strengthen the retries guarantee upstream or consider a different API.",
+    message = "the input stream must be exactly-once (`ExactlyOnce`), but has retries `{Self}`",
     label = "required here",
-    note = "To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+    note = "strengthen the retries guarantee upstream, or consider a different API",
+    note = "to intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`; this introduces non-determinism, so avoid it unless necessary"
 )]
 /// Marker trait that is implemented for the [`ExactlyOnce`] retries guarantee.
 pub trait IsExactlyOnce: Retries {}
@@ -573,6 +575,13 @@ where
     /// processing order (e.g. emitting a running total is not commutative even though
     /// addition is).
     ///
+    /// Similarly, if the input stream has retries (`AtLeastOnce`) **and** `f` mutably
+    /// captures state, `f` must be proven **idempotent**: processing an element twice in
+    /// a row must leave the mutably-captured state in the same final value as processing
+    /// it once *and* return the same output both times. In particular, outputs must not
+    /// expose whether an element is a retry (e.g. emitting "is this a new maximum?" is not
+    /// idempotent even though `max` is).
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -858,6 +867,12 @@ where
     /// processing order: a stateful predicate like a rate limiter is not commutative —
     /// its budget converges either way, but *which* element passes depends on the order.
     ///
+    /// Similarly, if the input stream has retries (`AtLeastOnce`) **and** `f` mutably
+    /// captures state, `f` must be proven **idempotent**: processing an element twice in
+    /// a row must leave the mutably-captured state in the same final value as processing
+    /// it once *and* make the same decision both times. In particular, the decision must
+    /// not depend on whether the element was seen before.
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -916,6 +931,12 @@ where
     /// The closure `f` receives a reference `&T` rather than an owned value `T` because
     /// the predicate is only used for routing; the element itself is moved to the
     /// appropriate output stream.
+    ///
+    /// If the input stream has retries (`AtLeastOnce`) **and** `f` mutably captures
+    /// state, `f` must be proven **idempotent**: processing an element twice in a row
+    /// must leave the mutably-captured state in the same final value as processing it
+    /// once *and* make the same decision both times (otherwise a retried element would
+    /// appear in the *other* output).
     ///
     /// # Example
     /// ```rust
@@ -1319,7 +1340,10 @@ where
     /// If the input stream is unordered **and** `f` mutably captures state, `f` must be
     /// proven **commutative**: executing it on any two elements in either order must
     /// leave the mutably-captured state in the same final value. (The elements
-    /// themselves pass through unchanged.)
+    /// themselves pass through unchanged.) Similarly, if the input stream has retries
+    /// (`AtLeastOnce`), `f` must be proven **idempotent**: executing it on an element
+    /// twice in a row must leave the mutably-captured state in the same final value as
+    /// executing it once.
     ///
     /// # Example
     /// ```rust
@@ -1384,7 +1408,9 @@ where
     ///
     /// **Commutative** here means that executing the closure on any two elements in
     /// either order must leave its side effects (e.g. mutably-captured state) in the
-    /// same final value.
+    /// same final value. **Idempotent** here means that executing the closure on an
+    /// element twice in a row must leave its side effects in the same final value as
+    /// executing it once.
     ///
     /// On a `TotalOrder + ExactlyOnce` stream, no annotations are needed.
     ///
@@ -2148,7 +2174,7 @@ where
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
         mut nondet: NonDet<(
             Option<crate::sim_hooks::BatchHook<T, O, R, L::SimHookScope>>,
-            Option<crate::sim_hooks::BatchHook<(), TotalOrder, ExactlyOnce, L::SimHookScope>>,
+            Option<crate::sim_hooks::BatchHook<(), TotalOrder, AtLeastOnce, L::SimHookScope>>,
         )>,
     ) -> Stream<T, L::DropConsistency, Unbounded, O, AtLeastOnce>
     where
@@ -2184,6 +2210,10 @@ where
     /// Given a timeout duration, returns an [`Optional`]  which will have a value if the
     /// stream has not emitted a value since that duration.
     ///
+    /// The clock is read once per tick (`use::time`); the time of the latest arrival is a
+    /// `use::state` register stamped with that reading. No wall-clock read hides inside a
+    /// closure: the verdict at a tick is a function of the tick's inputs and its time.
+    ///
     /// # Non-Determinism
     /// Timeout relies on non-deterministic sampling of the stream, so depending on when
     /// samples take place, timeouts may be non-deterministically generated or missed,
@@ -2204,44 +2234,39 @@ where
     where
         L: TopLevel<'a>,
     {
-        let tick = self.location.tick();
-
-        let latest_received = self
-            .assume_retries::<ExactlyOnce>(nondet!(
-                /// duplicates only affect the timestamp of the latest element, which is
-                /// captured by the caller's guard
+        sliced! {
+            let new_arrivals = use::batch(self, nondet!(
+                /// sampling timing is captured by the caller's guard
                 nondet
-            ))
-            .fold(
-                q!(|| None),
-                q!(
-                    |latest, _| {
-                        *latest = Some(Instant::now());
-                    },
-                    commutative = manual_proof!(/** TODO */)
-                ),
-            );
+            ));
+            let now = use::time(nondet!(
+                /// the verdict depends on when the tick runs; captured by the caller's guard
+                nondet
+            ));
+            let mut latest_received = use::state_null::<Optional<tokio::time::Instant, Tick<_>, Bounded>>();
 
-        latest_received
-            .snapshot(
-                &tick,
-                nondet!(
-                    /// sampling timing is captured by the caller's guard
-                    nondet
-                ),
-            )
-            .filter_map(q!(move |latest_received| {
-                if let Some(latest_received) = latest_received {
-                    if Instant::now().duration_since(latest_received) > duration {
-                        Some(())
+            // the latest arrival is stamped with this tick's clock reading
+            latest_received = now
+                .clone()
+                .filter_if(new_arrivals.is_empty().map(q!(|empty| !empty)))
+                .or(latest_received);
+
+            latest_received
+                .clone()
+                .into_singleton()
+                .zip(now)
+                .filter_map(q!(move |(latest_received, now)| {
+                    if let Some(latest_received) = latest_received {
+                        if now.duration_since(latest_received) > duration {
+                            Some(())
+                        } else {
+                            None
+                        }
                     } else {
-                        None
+                        Some(())
                     }
-                } else {
-                    Some(())
-                }
-            }))
-            .latest()
+                }))
+        }
     }
 
     /// Shifts this stream into an atomic context, which guarantees that any downstream logic
@@ -4094,7 +4119,7 @@ mod tests {
 
         let instance_count = flow.sim().exhaustive(async || {
             in_send.send_many_unordered([1, 2, 3, 4]);
-            assert!(out_recv.collect::<Vec<_>>().await.last().unwrap() == &4);
+            assert_eq!(out_recv.collect::<Vec<_>>().await.last(), Some(&4));
         });
 
         assert_eq!(

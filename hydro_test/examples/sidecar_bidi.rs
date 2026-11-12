@@ -72,7 +72,7 @@ async fn localhost() {
 
     let mut flow = FlowBuilder::new();
     let process = flow.process::<SidecarProcess>();
-    let cluster = flow.cluster::<SidecarCluster>();
+    let cluster = flow.cluster::<SidecarCluster, u32>();
 
     // Process sidecar on port 9000: echoes with "process: " prefix
     let (proc_inbound, proc_response_handle) =
@@ -140,7 +140,7 @@ async fn docker() {
 
     let mut flow = FlowBuilder::new();
     let process = flow.process::<SidecarProcess>();
-    let cluster = flow.cluster::<SidecarCluster>();
+    let cluster = flow.cluster::<SidecarCluster, String>();
 
     // Process sidecar on port 9000: echoes with "process: " prefix
     let (proc_inbound, proc_response_handle) =

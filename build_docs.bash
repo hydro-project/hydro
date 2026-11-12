@@ -30,9 +30,20 @@ cd ..
 echo "========================================="
 echo "Step 5/7: Building Rust documentation..."
 echo "========================================="
-RUSTUP_TOOLCHAIN="nightly" RUSTDOCFLAGS="--cfg docsrs -Dwarnings" cargo doc --no-deps --all-features
+# Set `SKIP_RUSTDOC=1` to use a prebuilt rustdoc tree already placed at `docs/static/rustdoc`
+# instead of running `cargo doc` here. CI does this to reuse the rustdoc built by the
+# `docs` job (see `.github/workflows/docs.yml`) rather than building it a second time.
+if [ "${SKIP_RUSTDOC:-0}" = "1" ]; then
+  if [ ! -f docs/static/rustdoc/hydro_lang/index.html ]; then
+    echo "SKIP_RUSTDOC=1 but docs/static/rustdoc does not contain a rustdoc build" >&2
+    exit 1
+  fi
+  echo "SKIP_RUSTDOC=1: using prebuilt rustdoc in docs/static/rustdoc"
+else
+  RUSTUP_TOOLCHAIN="nightly" RUSTDOCFLAGS="--cfg docsrs -Dwarnings" cargo doc --no-deps --all-features
 
-cp -r target/doc docs/static/rustdoc
+  cp -r target/doc docs/static/rustdoc
+fi
 
 cd docs
 

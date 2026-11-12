@@ -11,7 +11,7 @@ fn test<'a>(p1: &Process<'a, P1>, workers: &Cluster<'a, Workers>) {
 
     // A `lossy` network can drop messages for some members while delivering them to
     // others, so the output of `broadcast_closed` is only `NoConsistency`.
-    let _: Stream<_, Cluster<'a, Workers, EventualConsistency>, _, _, _> =
+    let _: Stream<_, Cluster<'a, Workers, u32, EventualConsistency>, _, _, _> =
         numbers.broadcast_closed(workers, TCP.lossy(nondet!(/** test */)).bincode());
 }
 

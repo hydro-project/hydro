@@ -21,7 +21,6 @@ use super::dynamic::LocationId;
 use super::{Location, MemberId};
 use crate::compile::builder::FlowState;
 use crate::location::dynamic::ClusterConsistency;
-use crate::location::member_id::TaglessMemberId;
 use crate::location::{LocationKey, TopLevel};
 use crate::staging_util::{Invariant, get_this_crate};
 
@@ -58,27 +57,27 @@ impl Consistency for EventualConsistency {
 ///
 /// The `ClusterTag` type parameter is a phantom tag used to distinguish between
 /// different clusters in the type system, preventing accidental mixing of
-/// member IDs across clusters.
-pub struct Cluster<'a, ClusterTag, Con: Consistency = NoConsistency> {
+/// member IDs across clusters. `Id` is the type of its members' IDs (see [`MemberId`]).
+pub struct Cluster<'a, ClusterTag, Id = u32, Con: Consistency = NoConsistency> {
     pub(crate) key: LocationKey,
     pub(crate) flow_state: FlowState,
-    pub(crate) _phantom: Invariant<'a, (ClusterTag, Con)>,
+    pub(crate) _phantom: Invariant<'a, (ClusterTag, Con, Id)>,
 }
 
-impl<C, Con: Consistency> Debug for Cluster<'_, C, Con> {
+impl<C, Con: Consistency, Id> Debug for Cluster<'_, C, Id, Con> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Cluster({})", self.key)
     }
 }
 
-impl<C, Con: Consistency> Eq for Cluster<'_, C, Con> {}
-impl<C, Con: Consistency> PartialEq for Cluster<'_, C, Con> {
+impl<C, Con: Consistency, Id> Eq for Cluster<'_, C, Id, Con> {}
+impl<C, Con: Consistency, Id> PartialEq for Cluster<'_, C, Id, Con> {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key && FlowState::ptr_eq(&self.flow_state, &other.flow_state)
     }
 }
 
-impl<C, Con: Consistency> Clone for Cluster<'_, C, Con> {
+impl<C, Con: Consistency, Id> Clone for Cluster<'_, C, Id, Con> {
     fn clone(&self) -> Self {
         Cluster {
             key: self.key,
@@ -88,7 +87,7 @@ impl<C, Con: Consistency> Clone for Cluster<'_, C, Con> {
     }
 }
 
-impl<'a, C, Con: Consistency> super::dynamic::DynLocation for Cluster<'a, C, Con> {
+impl<'a, C, Con: Consistency, Id> super::dynamic::DynLocation for Cluster<'a, C, Id, Con> {
     fn dyn_id(&self) -> LocationId {
         LocationId::Cluster(self.key)
     }
@@ -110,12 +109,12 @@ impl<'a, C, Con: Consistency> super::dynamic::DynLocation for Cluster<'a, C, Con
     }
 }
 
-impl<'a, C, Con: Consistency> Location<'a> for Cluster<'a, C, Con> {
-    type Root = Cluster<'a, C, Con>;
+impl<'a, C, Con: Consistency, Id> Location<'a> for Cluster<'a, C, Id, Con> {
+    type Root = Cluster<'a, C, Id, Con>;
 
     type SimHookScope = crate::sim_hooks::OnCluster<C>;
 
-    type DropConsistency = Cluster<'a, C, NoConsistency>;
+    type DropConsistency = Cluster<'a, C, Id>;
 
     fn consistency() -> Option<ClusterConsistency> {
         Some(Con::consistency())
@@ -142,7 +141,7 @@ impl<'a, C, Con: Consistency> Location<'a> for Cluster<'a, C, Con> {
     }
 }
 
-impl<'a, C, Con: Consistency> TopLevel<'a> for Cluster<'a, C, Con> {}
+impl<'a, C, Con: Consistency, Id> TopLevel<'a> for Cluster<'a, C, Id, Con> {}
 
 #[cfg(feature = "sim")]
 impl<'a, C> Cluster<'a, C> {
@@ -226,16 +225,15 @@ impl<'a, C> Cluster<'a, C> {
 
 /// A free variable that resolves to the list of member IDs in a cluster at runtime.
 ///
-/// When spliced into a quoted snippet, this provides access to the set of
-/// [`TaglessMemberId`]s that belong to the cluster.
-pub struct ClusterIds<'a> {
+/// When spliced into a quoted snippet, it gives the IDs of the cluster's members.
+pub struct ClusterIds<'a, Id> {
     /// The location key identifying which cluster this refers to.
     pub key: LocationKey,
-    /// Phantom data binding the lifetime.
-    pub _phantom: PhantomData<&'a ()>,
+    /// Binds the lifetime and the ID type.
+    pub _phantom: PhantomData<&'a Id>,
 }
 
-impl<'a> Clone for ClusterIds<'a> {
+impl<'a, Id> Clone for ClusterIds<'a, Id> {
     fn clone(&self) -> Self {
         Self {
             key: self.key,
@@ -244,8 +242,8 @@ impl<'a> Clone for ClusterIds<'a> {
     }
 }
 
-impl<'a, Ctx> FreeVariableWithContextWithProps<Ctx, ()> for ClusterIds<'a> {
-    type O = &'a [TaglessMemberId];
+impl<'a, Ctx, Id: 'a> FreeVariableWithContextWithProps<Ctx, ()> for ClusterIds<'a, Id> {
+    type O = &'a [Id];
 
     fn to_tokens(self, _ctx: &Ctx) -> (QuoteTokens, ())
     where
@@ -266,16 +264,19 @@ impl<'a, Ctx> FreeVariableWithContextWithProps<Ctx, ()> for ClusterIds<'a> {
     }
 }
 
-impl<'a, Ctx> QuotedWithContextWithProps<'a, &'a [TaglessMemberId], Ctx, ()> for ClusterIds<'a> {}
+impl<'a, Ctx, Id: 'a> QuotedWithContextWithProps<'a, &'a [Id], Ctx, ()> for ClusterIds<'a, Id> {}
 
 /// Marker trait implemented by [`Cluster`] locations, providing access to the cluster tag type.
 pub trait IsCluster {
     /// The phantom tag type that distinguishes this cluster from others.
     type Tag;
+    /// The type of the cluster's member IDs.
+    type Id;
 }
 
-impl<C> IsCluster for Cluster<'_, C> {
+impl<C, Id> IsCluster for Cluster<'_, C, Id> {
     type Tag = C;
+    type Id = Id;
 }
 
 /// A free variable representing the cluster's own ID. When spliced in
@@ -296,7 +297,10 @@ where
     Ctx: crate::live_collections::ContextWithLocation<'a>,
     <Ctx::Location as Location<'a>>::Root: IsCluster,
 {
-    type O = MemberId<<<Ctx::Location as Location<'a>>::Root as IsCluster>::Tag>;
+    type O = MemberId<
+        <<Ctx::Location as Location<'a>>::Root as IsCluster>::Tag,
+        <<Ctx::Location as Location<'a>>::Root as IsCluster>::Id,
+    >;
 
     fn to_tokens(self, ctx: &Ctx) -> (QuoteTokens, ())
     where
@@ -305,6 +309,10 @@ where
         let LocationId::Cluster(cluster_id) = ctx.context_location().root().id() else {
             unreachable!()
         };
+        crate::location::dynamic::DynLocation::flow_state(ctx.context_location())
+            .borrow_mut()
+            .clusters_reading_self_id
+            .insert(cluster_id);
 
         let ident = syn::Ident::new(
             &format!("__hydro_lang_cluster_self_id_{}", cluster_id),
@@ -318,7 +326,7 @@ where
             QuoteTokens {
                 prelude: None,
                 expr: Some(
-                    quote! { #root::__staged::location::MemberId::<#c_type>::from_tagless((#ident).clone()) },
+                    quote! { #root::__staged::location::MemberId::<#c_type, _>::from_tagless((#ident).clone()) },
                 ),
             },
             (),
@@ -329,7 +337,10 @@ where
 impl<'a, Ctx>
     QuotedWithContextWithProps<
         'a,
-        MemberId<<<Ctx::Location as Location<'a>>::Root as IsCluster>::Tag>,
+        MemberId<
+            <<Ctx::Location as Location<'a>>::Root as IsCluster>::Tag,
+            <<Ctx::Location as Location<'a>>::Root as IsCluster>::Id,
+        >,
         Ctx,
         (),
     > for ClusterSelfId<'a>
@@ -359,8 +370,8 @@ mod tests {
     #[test]
     fn sim_cluster_self_id() {
         let mut flow = FlowBuilder::new();
-        let cluster1 = flow.cluster::<()>();
-        let cluster2 = flow.cluster::<()>();
+        let cluster1 = flow.cluster::<(), u32>();
+        let cluster2 = flow.cluster::<(), u32>();
 
         let node = flow.process::<()>();
 
@@ -392,7 +403,7 @@ mod tests {
         use std::collections::HashMap;
 
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), u32>();
         let node = flow.process::<()>();
 
         let out_recv = cluster
@@ -417,9 +428,9 @@ mod tests {
                     },
                 );
 
-                assert!(grouped.len() == 2);
+                assert_eq!(grouped.len(), 2);
                 for (_id, v) in grouped {
-                    assert!(v == 3);
+                    assert_eq!(v, 3);
                 }
             });
 
@@ -433,7 +444,7 @@ mod tests {
     #[test]
     fn sim_cluster_membership() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), u32>();
         let node = flow.process::<()>();
 
         let out_recv = node

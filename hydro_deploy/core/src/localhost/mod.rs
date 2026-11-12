@@ -231,21 +231,18 @@ impl LaunchedHost for LaunchedLocalhost {
             std::env::var_os(dylib_path_var).map_or_else(
                 || {
                     std::env::join_paths(
-                        [
-                            binary.shared_library_path.as_ref(),
-                            Some(&std::path::PathBuf::from(local_libdir)),
-                        ]
-                        .into_iter()
-                        .flatten(),
+                        binary
+                            .shared_library_paths
+                            .iter()
+                            .cloned()
+                            .chain([std::path::PathBuf::from(local_libdir)]),
                     )
                     .unwrap()
                 },
                 |paths| {
                     let mut paths = std::env::split_paths(&paths).collect::<Vec<_>>();
                     paths.insert(0, std::path::PathBuf::from(local_libdir));
-                    if let Some(shared_path) = &binary.shared_library_path {
-                        paths.insert(0, shared_path.clone());
-                    }
+                    paths.splice(0..0, binary.shared_library_paths.iter().cloned());
                     std::env::join_paths(paths).unwrap()
                 },
             ),

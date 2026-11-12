@@ -60,12 +60,14 @@ pub mod prelude {
     pub use crate::live_collections::sliced::sliced;
     pub use crate::live_collections::stream::Stream;
     pub use crate::location::{Cluster, External, Location as _, Process, Tick};
-    pub use crate::networking::{TCP, UDP};
+    pub use crate::networking::{EMBEDDED, TCP, UDP};
     pub use crate::nondet::{NonDet, nondet};
     pub use crate::properties::{
-        ConsistencyProof, ManualProof, VerusCommutativeProof, manual_proof, verus_panic,
-        verus_proof_commutative_effect, verus_proof_commutative_filter,
-        verus_proof_commutative_fold, verus_proof_commutative_map,
+        ConsistencyProof, ManualProof, VerusCommutativeProof, VerusIdempotentProof, manual_proof,
+        verus_panic, verus_proof_commutative_effect, verus_proof_commutative_filter,
+        verus_proof_commutative_fold, verus_proof_commutative_map, verus_proof_idempotent_effect,
+        verus_proof_idempotent_filter, verus_proof_idempotent_fold, verus_proof_idempotent_map,
+        verus_proof_idempotent_reduce,
     };
 
     #[cfg(feature = "trybuild")]
@@ -164,6 +166,15 @@ ctor::declarative::ctor!(
             vec!["core", "io", "error", "Error"],
             vec!["std", "io", "Error"],
         );
+        // Nightly moved `Rc`/`Arc` (and their `Weak`s) into a private `alloc::rcs` module, so
+        // `type_name` reports `alloc::rcs::rc::Rc` / `alloc::rcs::arc::Arc`. Stageleft's
+        // built-in `alloc -> std` rule runs first and recurses, so match the rewritten form.
+        // TODO: remove once stageleft ships these rules (or the paths stabilize).
+        #[cfg(nightly)]
+        {
+            stageleft::add_private_reexport(vec!["std", "rcs", "rc"], vec!["std", "rc"]);
+            stageleft::add_private_reexport(vec!["std", "rcs", "arc"], vec!["std", "sync"]);
+        }
     }
 );
 

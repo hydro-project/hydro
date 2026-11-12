@@ -99,7 +99,6 @@ use super::runtime::{
 };
 use super::{SimClusterReceiver, SimClusterSender, SimReceiver, SimSender};
 use crate::compile::builder::ExternalPortId;
-use crate::compile::trybuild::generate::BuiltArtifact;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder};
 use crate::location::dynamic::LocationId;
 use crate::sim::graph::{SimExternalPort, SimExternalPortRegistry};
@@ -771,7 +770,6 @@ tokio::task_local! {
 
 /// A handle to a compiled Hydro simulation, which can be instantiated and run.
 pub struct CompiledSim {
-    pub(super) _path: BuiltArtifact,
     pub(super) lib: Library,
     pub(super) externals_port_registry: SimExternalPortRegistry,
     pub(super) unit_test_fuzz_iterations: usize,
@@ -811,8 +809,8 @@ type SimLoaded<'a> = libloading::Symbol<
         println_handler: fn(fmt::Arguments<'_>),
         eprintln_handler: fn(fmt::Arguments<'_>),
     ) -> (
-        Vec<(LocationId, Option<u32>, DfirErased)>,
-        Vec<(LocationId, Option<u32>, DfirErased)>,
+        Vec<(LocationId, Option<u32>, DfirErased<()>)>,
+        Vec<(LocationId, Option<u32>, DfirErased<()>)>,
         Hooks,
         ObservationHooks,
         InlineHooks,
@@ -1128,8 +1126,8 @@ impl CompiledSim {
 
 // This must be a tuple because it is referenced from generated code in `graph.rs`.
 type DylibResult = (
-    Vec<(LocationId, Option<u32>, DfirErased)>,
-    Vec<(LocationId, Option<u32>, DfirErased)>,
+    Vec<(LocationId, Option<u32>, DfirErased<()>)>,
+    Vec<(LocationId, Option<u32>, DfirErased<()>)>,
     Hooks,
     ObservationHooks,
     InlineHooks,
@@ -2286,7 +2284,7 @@ struct SimTick {
     /// The cluster member ID, if the tick lives on a cluster.
     cluster_id: Option<u32>,
     /// The tick DFIR, executed once per tick.
-    dfir: DfirErased,
+    dfir: DfirErased<()>,
     /// Hooks (e.g. from `batch`) resolved *before* the tick runs, deciding what data to
     /// release into it.
     hooks: Vec<Box<dyn TickInputHook>>,
@@ -2387,7 +2385,7 @@ impl SimObservation {
 struct LaunchedSim<W: std::io::Write> {
     /// Top-level async DFIRs, one per process/cluster member. These run continuously and
     /// produce data that feeds into ticks and observations.
-    async_dfirs: Vec<(LocationId, Option<u32>, DfirErased)>,
+    async_dfirs: Vec<(LocationId, Option<u32>, DfirErased<()>)>,
     /// Ticks whose parent async DFIR has made progress, so they may be ready to run.
     /// The scheduler further filters these by checking whether their hooks have pending decisions.
     possibly_ready_ticks: Vec<SimTick>,

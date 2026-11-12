@@ -1,0 +1,162 @@
+---
+sidebar_position: 1
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Link from "@docusaurus/Link";
+
+import baseSrc from '!!raw-loader!../../../../../hydro_lean/Examples/Tutorials/QuorumBase.lean';
+import programSrc from '!!raw-loader!../../../../../hydro_lean/Examples/TutorialSteps/QuorumProgram.lean';
+import { getLines } from '../../../../src/util';
+
+# Implementing a Quorum
+
+The broadcast had no state and made no choices of its own. The quorum has both. A coordinator sends every request to a cluster of participants. Each participant votes yes or no and sends its vote back. The coordinator collects the votes tick by tick, and decides a request once `minYes` yes votes for it have arrived, deciding each request only once. In Rust this is a `broadcast`, a `map`, a second `broadcast` back, and a `sliced!` block with two `use::state_null` streams and a `use::batch`. The Lean program has the same lines.
+
+On this page, you will write only the program. [Proving the Quorum](./proving-quorum.mdx) states its contract and proves it.
+
+:::learn
+- How to write a `tick` block with persisted state, the Lean form of `sliced!`
+- Why `use::batch` takes a decision argument and the commutative count does not
+- How the census checks a program's nondeterminism
+:::
+
+The program as written here is `hydro_lean/Examples/TutorialSteps/QuorumProgram.lean`. That directory holds every stage of the tutorial, each a file that compiles, so you can open one and see the goals and warnings the tutorial shows. The finished program, with its proofs, is `hydro_lean/Examples/Tutorials/Quorum.lean`.
+
+## Records
+
+The program has three runtime choices, which become arguments collected in two records:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/QuorumBase.lean">Examples/Tutorials/QuorumBase.lean</Link>
+}>{getLines(baseSrc, 'records', `
+/-- The program's one \`nondet!\`: where the coordinator's batches of votes end. -/
+structure QuorumDec (H : HydroSem L mem) (nCoord : Nat) where
+  votes : H.BatchDec nCoord (Nat × Bool) .noOrder .exactlyOnce
+
+/-- The program's two network edges: \`Unit\` at \`Values\`, delivery cursors on the machine. -/
+structure QuorumSched (H : HydroSem L mem) (nCoord nPart : Nat) where
+  toParticipants : H.TransportDec nPart nCoord
+  toCoordinator : H.TransportDec nCoord nPart
+`)}</CodeBlock>
+
+`QuorumDec` holds the program's **decisions**, one per `nondet!` site. Here there is one: where the coordinator's batches of votes end. The contract holds for every value of this record, so it holds however the votes are batched. `QuorumSched` holds the delivery timing of the two network edges, like `HelloSched` in [Hello World](./index.mdx). It is `Unit` at `Values`.
+
+## The Signature
+
+Besides the two locations, the program takes the quorum size, each participant's voting rule, the request stream and the two records:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumProgram.lean">Examples/TutorialSteps/QuorumProgram.lean</Link>
+}>{getLines(programSrc, 'signature', `
+hydro def vote_quorum (H : HydroSem L mem) (coord part : L) (minYes : Nat)
+    (vote : Fin (mem part) → Nat → Bool)
+    (requests : H.Stream coord Nat .noOrder .exactlyOnce)
+    (dec : QuorumDec H (mem coord)) (sched : QuorumSched H (mem coord) (mem part)) :
+    H.Stream coord Nat .noOrder .exactlyOnce :=
+`)}</CodeBlock>
+
+`vote j p` is participant `j`'s vote on request `p`. A participant's local logic is an ordinary Lean function passed in as an argument, so every theorem about the program holds for every voting rule. The output is the stream of decided requests at the coordinator.
+
+## The Network
+
+The body begins with the two network hops:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumProgram.lean">Examples/TutorialSteps/QuorumProgram.lean</Link>
+}>{getLines(programSrc, 'network', `
+-- the coordinator broadcasts every request to every participant
+let p_requests := H.values (H.broadcast_closed sched.toParticipants requests)
+-- each participant votes on each request it receives
+let p_votes := H.map p_requests (fun j p => (p, vote j p))
+-- the votes travel back to the coordinator
+let c_votes := H.values (H.broadcast_closed sched.toCoordinator p_votes)
+`)}</CodeBlock>
+
+In Rust these are `requests.broadcast(&participants, …).values()`, a `map`, and the same back to the coordinator. The closure that `H.map` takes also receives the member index `j`, so each participant can tag a request with its own vote.
+
+## The Tick Block
+
+The coordinator's `sliced!` block becomes a `tick` block. Its header declares the state and the batched input, as the Rust `use::` lines do:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumProgram.lean">Examples/TutorialSteps/QuorumProgram.lean</Link>
+}>{getLines(programSrc, 'tick-header', `
+tick (state seen : H.BoundedStream (Nat × Bool) .noOrder .exactlyOnce)
+    (state decided : H.BoundedStream Nat .noOrder .exactlyOnce)
+    (input incoming := H.batch c_votes dec.votes) :=
+`)}</CodeBlock>
+
+- `(state seen : H.BoundedStream …)` is a persisted stream, Rust's `use::state_null::<Stream<…>>()`. It starts empty and holds every vote consumed so far. `decided` holds every request already decided.
+- `(input incoming := H.batch c_votes dec.votes)` is `use::batch(&c_votes, nondet!(…))`. Where a batch ends depends on arrival timing, so `H.batch` takes the decision `dec.votes` as an argument. At `Values` a batch decision is a list of cuts, one per tick, and any list is allowed: a cut that asks for a vote that has not arrived ends the run at that tick ([Total Decision Spaces](../programs/nondeterminism.md#total-decision-spaces)).
+
+The body runs once per tick:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumProgram.lean">Examples/TutorialSteps/QuorumProgram.lean</Link>
+}>{getLines(programSrc, 'tick-body', `
+let all := H.bchain seen incoming
+let yes := H.bkfold yesStep 0 (fun _ _ => True) (fun s x y _ => yesStep_comm s x y)
+  (H.binto_keyed all)
+let reached := H.bksKeys (H.bksFilter yes (fun n => decide (minYes ≤ n)))
+let fresh := H.bfilterNotIn reached decided
+rebind (seen := all, decided := H.bchain decided fresh)
+yield (decisions := fresh);
+`)}</CodeBlock>
+
+1. `all` is the votes seen so far with this tick's batch appended (`chain`).
+2. `yes` counts the yes votes per request: `binto_keyed` groups the votes by request, and `bkfold` folds each group with `yesStep`.
+3. `reached` is the requests whose count is at least `minYes`, and `fresh` is those not already in `decided`.
+4. `rebind` gives the next tick's state, and `yield` emits `fresh` as this tick's decisions. The `;` ends the block.
+
+The count runs over an unordered batch, so, as in Rust, it needs no `nondet!` as long as the fold is commutative. Rust states the claim as `commutative = manual_proof!(…)`; `bkfold` takes the proof itself as an argument:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/Tutorials/QuorumBase.lean">Examples/Tutorials/QuorumBase.lean</Link>
+}>{getLines(baseSrc, 'yesStep', `
+/-- The coordinator's per-key counter: one more for each yes vote. -/
+def yesStep (n : Nat) (v : Bool) : Nat := if v then n + 1 else n
+
+theorem yesStep_comm (s : Nat) (x y : Bool) :
+    yesStep (yesStep s x) y = yesStep (yesStep s y) x := by
+  cases x <;> cases y <;> rfl
+`)}</CodeBlock>
+
+After the block, `decisions` is in scope as a stream of per-tick batches at the coordinator. The program's result flattens it into an unbounded stream, Rust's `.all_ticks()`:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumProgram.lean">Examples/TutorialSteps/QuorumProgram.lean</Link>
+}>{getLines(programSrc, 'result', `
+H.allTicks decisions
+`)}</CodeBlock>
+
+## The Census
+
+The census checks that the records hold exactly the nondeterminism the program is meant to have:
+
+<CodeBlock language="lean" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_lean/Examples/TutorialSteps/QuorumProgram.lean">Examples/TutorialSteps/QuorumProgram.lean</Link>
+}>{getLines(programSrc, 'census', `
+#nondet_census vote_quorum (nondets := 1) (scheds := 2) (fuels := 0)
+`)}</CodeBlock>
+
+The program has one content decision (the batch), two network edges and no cycle. If a count disagrees, the build fails, so a `nondet!` you forgot to turn into a decision, or one you added by accident, is caught here ([The Census](../programs/nondeterminism.md#the-census)).
+
+## What the Build Generates
+
+When the file elaborates, `hydro def` reports what it generated:
+
+```text
+info: Examples/TutorialSteps/QuorumProgram.lean:24:0: hydro def Hydro.TutorialSteps.QuorumProgram.vote_quorum: callees [], inlines [], fix := false
+info: Examples/TutorialSteps/QuorumProgram.lean:24:0: hydro_couple Hydro.TutorialSteps.QuorumProgram.vote_quorum: 1 sr, 1 rr, 1 lag (+ex/vdec)
+…
+info: Examples/TutorialSteps/QuorumProgram.lean:24:0: hydro_project Hydro.TutorialSteps.QuorumProgram.vote_quorum: Hydro.TutorialSteps.QuorumProgram.vote_quorum.dag, Hydro.TutorialSteps.QuorumProgram.vote_quorum.dag_denote (kernel rfl)
+info: Examples/TutorialSteps/QuorumProgram.lean:24:0: hydro_project Hydro.TutorialSteps.QuorumProgram.vote_quorum: Hydro.TutorialSteps.QuorumProgram.vote_quorum.dag_valid (per node), Hydro.TutorialSteps.QuorumProgram.vote_quorum.dag_agreeL
+info: Examples/TutorialSteps/QuorumProgram.lean:57:0: #nondet_census Hydro.TutorialSteps.QuorumProgram.vote_quorum: nondets 1, scheds 2, fuels 0
+```
+
+None of this needs a contract. `fix := false` says the program has no cycle. The `hydro_couple` line generates the coupling lemmas, and `+ex/vdec` says the generator also built the function that reads a `Values` batch decision off a machine run. `vote_quorum.dag` is the dataflow graph the processes run, and `dag_denote` says that running the graph gives the same result as running the program at `SchedSem`. A proof carries the contract to production by citing these lemmas by name.
+
+## Next Steps
+
+The program is written, it compiles, and its nondeterminism matches the census, but it guarantees nothing yet. In [Proving the Quorum](./proving-quorum.mdx), you will write its contract, start with every proof a `sorry`, and work backwards until none is left.

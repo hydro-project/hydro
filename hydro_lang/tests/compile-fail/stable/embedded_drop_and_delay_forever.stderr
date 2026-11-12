@@ -1,0 +1,13 @@
+error[E0599]: no method named `may_delay_forever` found for struct `NetworkingConfig<EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::Lossy>, hydro_lang::networking::Embedded>` in the current scope
+  --> tests/compile-fail/stable/embedded_drop_and_delay_forever.rs:16:14
+   |
+12 | /         EMBEDDED
+13 | |             .never_reorders()
+14 | |             .never_duplicates()
+15 | |             .may_drop(nondet!(/** test */))
+16 | |             .may_delay_forever()
+   | |             -^^^^^^^^^^^^^^^^^ method not found in `NetworkingConfig<EmbeddedTransport<hydro_lang::live_collections::stream::ExactlyOnce, hydro_lang::live_collections::stream::TotalOrder, hydro_lang::networking::Lossy>, hydro_lang::networking::Embedded>`
+   | |_____________|
+   |
+   |
+   = note: the method was found for `NetworkingConfig<EmbeddedTransport<R, O, ()>, S>`

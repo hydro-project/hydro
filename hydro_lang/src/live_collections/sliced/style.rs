@@ -11,10 +11,12 @@ use super::Slicable;
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
 use crate::forward_handle::{TickCycle, TickCycleHandle};
 use crate::live_collections::boundedness::{Bounded, Boundedness, Unbounded};
-use crate::live_collections::keyed_singleton::{BoundedValue, KeyedSingletonBound};
+use crate::live_collections::keyed_singleton::{
+    BoundedValue, KeyedSingletonBound, KeyedSingletonSnapshotBound,
+};
 use crate::live_collections::optional::OptionalBound;
 use crate::live_collections::singleton::SingletonBound;
-use crate::live_collections::stream::{Ordering, Retries};
+use crate::live_collections::stream::{ExactlyOnce, Ordering, Retries, TotalOrder};
 use crate::location::Location;
 use crate::location::tick::{DeferTick, Tick};
 use crate::nondet::{NonDet, nondet};
@@ -89,6 +91,35 @@ impl<T, H> Snapshot<T, H> {
 /// values) to be sliced into non-deterministic snapshots of its continuously changing value.
 pub fn snapshot<T, H>(t: T, nondet: NonDet<H>) -> Snapshot<T, H> {
     Snapshot::new(t, nondet)
+}
+
+/// Time style wrapper that stores the non-determinism guard for reading the wall clock.
+///
+/// This is used by the `sliced!` macro when `use::time(...)` is specified. It carries no
+/// collection: the slice is the tick's current wall-clock reading
+/// ([`Tick::current_tick_instant`]).
+#[cfg(feature = "tokio")]
+pub struct Time {
+    pub(crate) nondet: NonDet,
+}
+
+#[cfg(feature = "tokio")]
+impl Time {
+    /// Creates a new time-styled wrapper.
+    pub fn new(nondet: NonDet) -> Self {
+        Self { nondet }
+    }
+}
+
+/// Reads the wall clock at each tick of the slice, as a bounded [`Singleton`] of
+/// [`tokio::time::Instant`] (the value depends on when the tick executes, hence the
+/// non-determinism guard). Since it carries no collection, it cannot be the first `use`
+/// of a `sliced!` block (the tick's location comes from a collection).
+///
+/// [`Singleton`]: crate::live_collections::Singleton
+#[cfg(feature = "tokio")]
+pub fn time(nondet: NonDet) -> Time {
+    Time::new(nondet)
 }
 
 /// Atomic style wrapper that stores a collection and its non-determinism guard.
@@ -198,6 +229,28 @@ impl<'t, 'a, S, L: Location<'a>> StateNullBuilder<'t, S, L> {
 }
 
 // ============================================================================
+// Time style Slicable implementation
+// ============================================================================
+
+#[cfg(feature = "tokio")]
+impl<'a, L: Location<'a>> Slicable<'a, L> for Time {
+    type Slice =
+        crate::live_collections::Singleton<tokio::time::Instant, Tick<L::DropConsistency>, Bounded>;
+    type Backtrace = crate::compile::ir::backtrace::Backtrace;
+
+    fn get_location(&self) -> L {
+        unreachable!(
+            "`use::time(...)` carries no collection; it cannot be the first `use` of a `sliced!` block"
+        )
+    }
+    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+        let out = tick.current_tick_instant(self.nondet);
+        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
+        out
+    }
+}
+
+// ============================================================================
 // Default style Slicable implementations
 //
 // All of these drop consistency because they are performing non-deterministic
@@ -282,7 +335,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>>
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonSnapshotBound<ValueBound = Unbounded>>
     Slicable<'a, L::DropConsistency>
     for Default<crate::live_collections::KeyedSingleton<K, V, L, B>>
 {
@@ -371,10 +424,11 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
+    Slicable<'a, L::DropConsistency>
     for Batch<
-        crate::live_collections::KeyedSingleton<K, V, L, BoundedValue>,
-        Option<crate::sim_hooks::KeyedSnapshotHook<K, V, L::SimHookScope>>,
+        crate::live_collections::KeyedSingleton<K, V, L, B>,
+        Option<crate::sim_hooks::KeyedBatchHook<K, V, TotalOrder, ExactlyOnce, L::SimHookScope>>,
     >
 {
     type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;
@@ -432,8 +486,7 @@ impl<'a, T, L: Location<'a>, B: OptionalBound> Slicable<'a, L::DropConsistency>
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>>
-    Slicable<'a, L::DropConsistency>
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonSnapshotBound> Slicable<'a, L::DropConsistency>
     for Snapshot<
         crate::live_collections::KeyedSingleton<K, V, L, B>,
         Option<crate::sim_hooks::KeyedSnapshotHook<K, V, L::SimHookScope>>,
@@ -531,7 +584,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>>
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonSnapshotBound<ValueBound = Unbounded>>
     Slicable<'a, L::DropConsistency>
     for Atomic<crate::live_collections::KeyedSingleton<K, V, crate::location::Atomic<L>, B>>
 {

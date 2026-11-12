@@ -6,7 +6,9 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::live_collections::stream::networking::{deserialize_bincode, serialize_bincode};
-use crate::live_collections::stream::{NoOrder, TotalOrder};
+use crate::live_collections::stream::{
+    AtLeastOnce, ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder,
+};
 use crate::location::cluster::{Consistency, EventualConsistency, NoConsistency};
 use crate::nondet::NonDet;
 use crate::sim_hooks::LossHook;
@@ -39,7 +41,7 @@ impl<T: Serialize + DeserializeOwned> SerKind<T> for Bincode {
     }
 }
 
-/// Leaves serialization of items to code outside of Hydro.
+/// Leaves serialization of items to code outside of Hydro. Every [`EMBEDDED`] channel uses it.
 ///
 /// This serialization backend is only supported by the embedded deployment backend (it will panic
 /// on all other backends). The generated network channel exposes the raw element type `T` to the
@@ -69,7 +71,11 @@ pub enum NoSer {}
 #[sealed::sealed]
 pub trait TransportKind {
     /// The ordering guarantee provided by this transport.
-    type OrderingGuarantee: crate::live_collections::stream::Ordering;
+    type OrderingGuarantee: Ordering;
+
+    /// The retry guarantee provided by this transport: [`ExactlyOnce`] if it never delivers a
+    /// message more than once.
+    type RetriesGuarantee: Retries;
 
     /// The consistency guarantee this transport can preserve for replicated outputs
     /// (see [`NetworkFor::ConsistencyGuarantee`]).
@@ -81,13 +87,14 @@ pub trait TransportKind {
 
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "TCP transport requires a failure policy. For example, `TCP.fail_stop()` stops sending messages after a failed connection."
+    message = "the TCP transport requires a failure policy",
+    note = "for example, `TCP.fail_stop()` stops delivering messages after a failed connection"
 )]
 /// A failure policy for TCP connections, determining how the transport handles
 /// connection failures and what ordering guarantees the output stream provides.
 pub trait TcpFailPolicy {
     /// The ordering guarantee provided by this failure policy.
-    type OrderingGuarantee: crate::live_collections::stream::Ordering;
+    type OrderingGuarantee: Ordering;
 
     /// The consistency guarantee this failure policy can preserve for replicated outputs
     /// (see [`NetworkFor::ConsistencyGuarantee`]).
@@ -156,7 +163,8 @@ impl TcpFailPolicy for LossyDelayedForever {
 
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
-    message = "UDP transport requires a failure policy. For example, `UDP.lossy_delayed_forever()` treats dropped messages as indefinitely delayed."
+    message = "the UDP transport requires a failure policy",
+    note = "for example, `UDP.lossy_delayed_forever()` treats dropped messages as indefinitely delayed"
 )]
 /// A failure policy for UDP channels, determining how the transport handles
 /// message loss. Because UDP provides no ordering guarantees, all policies
@@ -203,11 +211,128 @@ pub struct Tcp<F> {
 impl<F: TcpFailPolicy> TransportKind for Tcp<F> {
     type OrderingGuarantee = F::OrderingGuarantee;
 
+    type RetriesGuarantee = ExactlyOnce;
+
     type ConsistencyGuarantee = F::ConsistencyGuarantee;
 
     fn networking_info() -> NetworkingInfo {
         NetworkingInfo::Tcp {
             fault: F::tcp_fault(),
+        }
+    }
+}
+
+/// Items cross a channel that the host of an embedded program implements however it likes (a
+/// network connection, an in-memory queue, ...), keeping the retries `R`, ordering `O`, and
+/// failure policy `F` that follow from what the channel declares about each anomaly (`()` until
+/// declared).
+pub struct EmbeddedTransport<R, O, F> {
+    _phantom: PhantomData<(R, O, F)>,
+}
+
+/// The retries an [`EMBEDDED`] channel declares: [`ExactlyOnce`]
+/// ([`never_duplicates`](NetworkingConfig::never_duplicates)) or [`AtLeastOnce`]
+/// ([`may_duplicate`](NetworkingConfig::may_duplicate)).
+#[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "this `EMBEDDED` channel does not declare whether it may duplicate messages",
+    note = "add `.never_duplicates()` or `.may_duplicate()` to the network config"
+)]
+pub trait EmbeddedRetries: Retries {}
+
+#[sealed::sealed]
+impl EmbeddedRetries for ExactlyOnce {}
+
+#[sealed::sealed]
+impl EmbeddedRetries for AtLeastOnce {}
+
+/// The ordering an [`EMBEDDED`] channel declares: [`TotalOrder`]
+/// ([`never_reorders`](NetworkingConfig::never_reorders)) or [`NoOrder`]
+/// ([`may_reorder`](NetworkingConfig::may_reorder)).
+#[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "this `EMBEDDED` channel does not declare whether it may reorder messages",
+    note = "add `.never_reorders()` or `.may_reorder()` to the network config"
+)]
+pub trait EmbeddedOrdering: Ordering {}
+
+#[sealed::sealed]
+impl EmbeddedOrdering for TotalOrder {}
+
+#[sealed::sealed]
+impl EmbeddedOrdering for NoOrder {}
+
+/// The failure policy an [`EMBEDDED`] channel declares: [`FailStop`]
+/// ([`never_drops`](NetworkingConfig::never_drops)), [`Lossy`]
+/// ([`may_drop`](NetworkingConfig::may_drop)), or [`LossyDelayedForever`]
+/// ([`may_delay_forever`](NetworkingConfig::may_delay_forever)).
+#[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "this `EMBEDDED` channel does not declare whether it may drop messages",
+    note = "add `.never_drops()`, `.may_drop(nondet!(..))`, or `.may_delay_forever()` to the network config"
+)]
+pub trait EmbeddedFailPolicy {
+    /// The ordering of the received stream when the channel declares ordering `O`.
+    type Ordering<O: Ordering>: Ordering;
+
+    /// The consistency guarantee this failure policy can preserve for replicated outputs
+    /// (see [`NetworkFor::ConsistencyGuarantee`]).
+    type ConsistencyGuarantee: Consistency;
+
+    /// Returns the [`EmbeddedFault`] variant for this failure policy.
+    fn embedded_fault() -> EmbeddedFault;
+}
+
+#[sealed::sealed]
+impl EmbeddedFailPolicy for FailStop {
+    type Ordering<O: Ordering> = O;
+
+    type ConsistencyGuarantee = EventualConsistency;
+
+    fn embedded_fault() -> EmbeddedFault {
+        EmbeddedFault::FailStop
+    }
+}
+
+#[sealed::sealed]
+impl EmbeddedFailPolicy for Lossy {
+    type Ordering<O: Ordering> = O;
+
+    type ConsistencyGuarantee = NoConsistency;
+
+    fn embedded_fault() -> EmbeddedFault {
+        EmbeddedFault::Lossy
+    }
+}
+
+#[sealed::sealed]
+impl EmbeddedFailPolicy for LossyDelayedForever {
+    type Ordering<O: Ordering> = NoOrder;
+
+    type ConsistencyGuarantee = EventualConsistency;
+
+    fn embedded_fault() -> EmbeddedFault {
+        EmbeddedFault::LossyDelayedForever
+    }
+}
+
+/// An [`EMBEDDED`] channel's guarantees are the ones its declarations leave, with the
+/// consistency guarantee of its failure policy (as for [`Tcp`] and [`Udp`]).
+#[sealed::sealed]
+impl<R: EmbeddedRetries, O: EmbeddedOrdering, F: EmbeddedFailPolicy> TransportKind
+    for EmbeddedTransport<R, O, F>
+{
+    type OrderingGuarantee = F::Ordering<O>;
+
+    type RetriesGuarantee = R;
+
+    type ConsistencyGuarantee = F::ConsistencyGuarantee;
+
+    fn networking_info() -> NetworkingInfo {
+        NetworkingInfo::Embedded {
+            retries: R::RETRIES_KIND,
+            ordering: O::ORDERING_KIND,
+            fault: F::embedded_fault(),
         }
     }
 }
@@ -220,6 +345,8 @@ pub struct Udp<F> {
 #[sealed::sealed]
 impl<F: UdpFailPolicy> TransportKind for Udp<F> {
     type OrderingGuarantee = NoOrder;
+
+    type RetriesGuarantee = ExactlyOnce;
 
     type ConsistencyGuarantee = F::ConsistencyGuarantee;
 
@@ -236,7 +363,12 @@ pub trait NetworkFor<T: ?Sized> {
     /// The ordering guarantee provided by this network configuration.
     /// When combined with an input stream's ordering `O`, the output ordering
     /// will be `<O as MinOrder<Self::OrderingGuarantee>>::Min`.
-    type OrderingGuarantee: crate::live_collections::stream::Ordering;
+    type OrderingGuarantee: Ordering;
+
+    /// The retry guarantee provided by this network configuration.
+    /// When combined with an input stream's retries `R`, the output retries
+    /// will be `<R as MinRetries<Self::RetriesGuarantee>>::Min`.
+    type RetriesGuarantee: Retries;
 
     /// The consistency guarantee this network configuration can preserve when the same data is
     /// replicated to several recipients (e.g. via
@@ -257,9 +389,10 @@ pub trait NetworkFor<T: ?Sized> {
     /// Generates deserialization logic for receiving `T`.
     fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr;
 
-    /// Whether this network channel leaves serialization to code outside of Hydro (see
-    /// [`Embedded`]). When `true`, [`Self::serialize_thunk`] and [`Self::deserialize_thunk`] are
-    /// never called; the raw element type flows across the channel unserialized.
+    /// Whether this network channel leaves serialization to code outside of Hydro (an
+    /// [`EMBEDDED`] channel). When `true`, [`Self::serialize_thunk`] and
+    /// [`Self::deserialize_thunk`] are never called; the raw element type flows across the
+    /// channel unserialized.
     fn is_embedded() -> bool {
         false
     }
@@ -316,6 +449,17 @@ pub enum TcpFault {
     LossyDelayedForever,
 }
 
+/// The failure policy of an [`EMBEDDED`] channel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
+pub enum EmbeddedFault {
+    /// Stops delivering a sender's messages once its channel fails.
+    FailStop,
+    /// Messages may be lost.
+    Lossy,
+    /// Undelivered messages are treated as indefinitely delayed.
+    LossyDelayedForever,
+}
+
 /// The fault model for a UDP channel.
 ///
 /// UDP is connectionless and never guarantees delivery, so there is no
@@ -340,6 +484,18 @@ pub enum NetworkingInfo {
     Udp {
         /// The fault model for this UDP channel.
         fault: UdpFault,
+    },
+    /// A channel implemented by the host of an embedded program ([`EMBEDDED`]), described by
+    /// the guarantees it is declared with, which the host's channel must keep.
+    Embedded {
+        /// Whether the channel may deliver a message more than once (`AtLeastOnce`) or not
+        /// (`ExactlyOnce`).
+        retries: crate::compile::ir::StreamRetry,
+        /// The order the channel must deliver each sender's messages in: `TotalOrder` (the order
+        /// they were sent) or `NoOrder` (any).
+        ordering: crate::compile::ir::StreamOrder,
+        /// What the channel may leave undelivered.
+        fault: EmbeddedFault,
     },
 }
 
@@ -373,23 +529,6 @@ impl<Tr: ?Sized, S: ?Sized, Hook> NetworkingConfig<Tr, S, (), Hook> {
 impl<Tr: ?Sized, N, Hook> NetworkingConfig<Tr, NoSer, N, Hook> {
     /// Configures the network channel to use [`bincode`] to serialize items.
     pub const fn bincode(mut self) -> NetworkingConfig<Tr, Bincode, N, Hook> {
-        let taken_name = self.name.take();
-        let sim_hook_id = self.sim_hook_id;
-        std::mem::forget(self); // nothing else is stored
-        NetworkingConfig {
-            name: taken_name,
-            sim_hook_id,
-            _phantom: (PhantomData, PhantomData, PhantomData),
-        }
-    }
-
-    /// Configures the network channel to leave serialization to code outside of Hydro.
-    ///
-    /// This is only supported by the embedded deployment backend (it will panic on all other
-    /// backends). The generated network channel exposes the raw element type to the developer
-    /// (rather than serialized bytes), so they can perform custom serialization logic outside of
-    /// the Hydro program for that channel.
-    pub const fn embedded(mut self) -> NetworkingConfig<Tr, Embedded, N, Hook> {
         let taken_name = self.name.take();
         let sim_hook_id = self.sim_hook_id;
         std::mem::forget(self); // nothing else is stored
@@ -478,6 +617,108 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
     }
 }
 
+impl<O, F, S: ?Sized> NetworkingConfig<EmbeddedTransport<(), O, F>, S> {
+    /// Declares that the host's channel never delivers a message more than once, so the
+    /// received stream keeps the sent stream's retries.
+    #[must_use]
+    pub const fn never_duplicates(
+        self,
+    ) -> NetworkingConfig<EmbeddedTransport<ExactlyOnce, O, F>, S> {
+        NetworkingConfig {
+            name: self.name,
+            sim_hook_id: None,
+            _phantom: (PhantomData, PhantomData, PhantomData),
+        }
+    }
+
+    /// Declares that the host's channel may deliver a message more than once, so the received
+    /// stream is [`AtLeastOnce`].
+    #[must_use]
+    pub const fn may_duplicate(self) -> NetworkingConfig<EmbeddedTransport<AtLeastOnce, O, F>, S> {
+        NetworkingConfig {
+            name: self.name,
+            sim_hook_id: None,
+            _phantom: (PhantomData, PhantomData, PhantomData),
+        }
+    }
+}
+
+impl<R, F, S: ?Sized> NetworkingConfig<EmbeddedTransport<R, (), F>, S> {
+    /// Declares that the host's channel delivers each sender's messages in the order it sent
+    /// them, so the received stream keeps the sent stream's order.
+    #[must_use]
+    pub const fn never_reorders(self) -> NetworkingConfig<EmbeddedTransport<R, TotalOrder, F>, S> {
+        NetworkingConfig {
+            name: self.name,
+            sim_hook_id: None,
+            _phantom: (PhantomData, PhantomData, PhantomData),
+        }
+    }
+
+    /// Declares that the host's channel may deliver a sender's messages in a different order
+    /// than it sent them, so the received stream is [`NoOrder`].
+    #[must_use]
+    pub const fn may_reorder(self) -> NetworkingConfig<EmbeddedTransport<R, NoOrder, F>, S> {
+        NetworkingConfig {
+            name: self.name,
+            sim_hook_id: None,
+            _phantom: (PhantomData, PhantomData, PhantomData),
+        }
+    }
+}
+
+impl<R, O, S: ?Sized> NetworkingConfig<EmbeddedTransport<R, O, ()>, S> {
+    /// Declares that the host's channel never drops a message: while it stays live, it delivers
+    /// every message sent. Like [`never_reorders`](NetworkingConfig::never_reorders) and
+    /// [`never_duplicates`](NetworkingConfig::never_duplicates), this holds as long as the
+    /// channel remains live; if it fails, it delivers nothing more, like
+    /// [`TCP.fail_stop()`](NetworkingConfig::fail_stop).
+    #[must_use]
+    pub const fn never_drops(self) -> NetworkingConfig<EmbeddedTransport<R, O, FailStop>, S> {
+        NetworkingConfig {
+            name: self.name,
+            sim_hook_id: None,
+            _phantom: (PhantomData, PhantomData, PhantomData),
+        }
+    }
+
+    /// Declares that the host's channel may lose messages and keep delivering later ones, like
+    /// [`TCP.lossy()`](NetworkingConfig::lossy).
+    ///
+    /// # Non-Determinism
+    /// A lossy channel will non-deterministically drop messages during execution.
+    #[must_use]
+    pub const fn may_drop(
+        self,
+        nondet: NonDet,
+    ) -> NetworkingConfig<EmbeddedTransport<R, O, Lossy>, S> {
+        let _ = nondet;
+        NetworkingConfig {
+            name: self.name,
+            sim_hook_id: None,
+            _phantom: (PhantomData, PhantomData, PhantomData),
+        }
+    }
+
+    /// Declares that the host's channel may never deliver a message, which is treated as
+    /// indefinitely delayed, like
+    /// [`TCP.lossy_delayed_forever()`](NetworkingConfig::lossy_delayed_forever). The received
+    /// stream is [`NoOrder`].
+    ///
+    /// The Hydro simulator requires
+    /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) for this mode.
+    #[must_use]
+    pub const fn may_delay_forever(
+        self,
+    ) -> NetworkingConfig<EmbeddedTransport<R, O, LossyDelayedForever>, S> {
+        NetworkingConfig {
+            name: self.name,
+            sim_hook_id: None,
+            _phantom: (PhantomData, PhantomData, PhantomData),
+        }
+    }
+}
+
 impl<S: ?Sized> NetworkingConfig<Udp<()>, S> {
     /// Configures the UDP transport to allow messages to be lost.
     ///
@@ -546,6 +787,8 @@ where
 {
     type OrderingGuarantee = Tr::OrderingGuarantee;
 
+    type RetriesGuarantee = Tr::RetriesGuarantee;
+
     type ConsistencyGuarantee = Tr::ConsistencyGuarantee;
 
     fn serialize_thunk(is_demux: bool) -> syn::Expr {
@@ -576,6 +819,8 @@ where
     S: ?Sized + SerKind<T>,
 {
     type OrderingGuarantee = Tr::OrderingGuarantee;
+
+    type RetriesGuarantee = Tr::RetriesGuarantee;
 
     type ConsistencyGuarantee = Tr::ConsistencyGuarantee;
 
@@ -612,6 +857,8 @@ where
     S: ?Sized + SerKind<T>,
 {
     type OrderingGuarantee = Tr::OrderingGuarantee;
+
+    type RetriesGuarantee = Tr::RetriesGuarantee;
 
     type ConsistencyGuarantee = Tr::ConsistencyGuarantee;
 
@@ -653,6 +900,8 @@ where
     S: ?Sized + SerKind<T>,
 {
     type OrderingGuarantee = Tr::OrderingGuarantee;
+
+    type RetriesGuarantee = Tr::RetriesGuarantee;
 
     type ConsistencyGuarantee = Tr::ConsistencyGuarantee;
 
@@ -731,6 +980,33 @@ pub const TCP: NetworkingConfig<Tcp<()>, NoSer> = NetworkingConfig {
     _phantom: (PhantomData, PhantomData, PhantomData),
 };
 
+/// A network channel implemented by the host of an embedded program, which chooses how messages
+/// travel: a network connection, an in-memory queue, or anything else. The program declares, for
+/// each anomaly, whether the host's channel may introduce it, and the received stream is weakened
+/// by each one it may:
+///
+/// - reordering: [`never_reorders`](NetworkingConfig::never_reorders) or
+///   [`may_reorder`](NetworkingConfig::may_reorder);
+/// - duplication: [`never_duplicates`](NetworkingConfig::never_duplicates) or
+///   [`may_duplicate`](NetworkingConfig::may_duplicate);
+/// - loss: [`never_drops`](NetworkingConfig::never_drops),
+///   [`may_drop`](NetworkingConfig::may_drop), or
+///   [`may_delay_forever`](NetworkingConfig::may_delay_forever).
+///
+/// Each axis must be declared (for example
+/// `EMBEDDED.may_reorder().never_duplicates().never_drops().name("messages")`). The `never_*`
+/// declarations hold as long as the channel remains live.
+///
+/// Items cross the channel unserialized: the generated channel ends carry the raw element type,
+/// and the host encodes it if its transport needs to. The program names only the anomalies, not
+/// a transport, so it is only supported by the embedded deployment backend and the Hydro
+/// simulator (which carries the raw values in memory); other backends use [`TCP`] or [`UDP`].
+pub const EMBEDDED: NetworkingConfig<EmbeddedTransport<(), (), ()>, Embedded> = NetworkingConfig {
+    name: None,
+    sim_hook_id: None,
+    _phantom: (PhantomData, PhantomData, PhantomData),
+};
+
 /// A network channel that uses UDP for transport.
 ///
 /// Unlike [`TCP`], UDP does not guarantee delivery or ordering, so output streams
@@ -753,3 +1029,45 @@ pub const UDP: NetworkingConfig<Udp<()>, NoSer> = NetworkingConfig {
     sim_hook_id: None,
     _phantom: (PhantomData, PhantomData, PhantomData),
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Compiles only if `K` gives retries `R`, ordering `O`, and consistency guarantee `C`.
+    fn guarantees<K, R, O, C>()
+    where
+        K: TransportKind<RetriesGuarantee = R, OrderingGuarantee = O, ConsistencyGuarantee = C>,
+    {
+    }
+
+    /// An `EMBEDDED` channel's retries and ordering are the declared ones (except that
+    /// `lossy_delayed_forever` is `NoOrder`), and its consistency guarantee follows from its
+    /// failure policy: only `lossy` drops to `NoConsistency`.
+    #[test]
+    fn embedded_guarantees_follow_declaration() {
+        type E<R, O, F> = EmbeddedTransport<R, O, F>;
+        guarantees::<
+            E<ExactlyOnce, TotalOrder, FailStop>,
+            ExactlyOnce,
+            TotalOrder,
+            EventualConsistency,
+        >();
+        guarantees::<E<AtLeastOnce, NoOrder, FailStop>, AtLeastOnce, NoOrder, EventualConsistency>(
+        );
+        guarantees::<E<ExactlyOnce, TotalOrder, Lossy>, ExactlyOnce, TotalOrder, NoConsistency>();
+        guarantees::<E<AtLeastOnce, NoOrder, Lossy>, AtLeastOnce, NoOrder, NoConsistency>();
+        guarantees::<
+            E<ExactlyOnce, TotalOrder, LossyDelayedForever>,
+            ExactlyOnce,
+            NoOrder,
+            EventualConsistency,
+        >();
+        guarantees::<
+            E<AtLeastOnce, NoOrder, LossyDelayedForever>,
+            AtLeastOnce,
+            NoOrder,
+            EventualConsistency,
+        >();
+    }
+}

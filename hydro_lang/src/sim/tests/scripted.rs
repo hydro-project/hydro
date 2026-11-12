@@ -1917,6 +1917,34 @@ fn scripted_keyed_batch_release_values_unordered() {
     });
 }
 
+/// A `batch` over a keyed singleton with bounded per-key values is a keyed *batch* (each
+/// finalized entry is released exactly once), so it is scripted with a `KeyedBatchHook`
+/// naming the entries each batch contains.
+#[test]
+fn scripted_keyed_singleton_batch_release_values() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let batch_hook: KeyedBatchHook<u32, char> = flow.sim_hook();
+    let (in_send, input) = node.sim_input::<(u32, char), TotalOrder, ExactlyOnce>();
+    // `first()` yields a `BoundedValue` keyed singleton: each key's value is fixed once it appears.
+    let firsts = input.into_keyed().first();
+    let output = sliced! {
+        let b = use::batch(firsts, nondet!(/** scripted */ hook = batch_hook));
+        b.entries().sort().collect_vec().into_stream()
+    }
+    .sim_output();
+
+    flow.sim().deterministic(async || {
+        in_send.send_many([(1, 'a'), (2, 'x'), (1, 'z'), (3, 'q')]);
+        // (1, 'z') is not a new entry (key 1 is already final), so it never appears.
+        batch_hook.release_values([(1, 'a'), (3, 'q')]).await;
+        batch_hook.release_values([(2, 'x')]).await;
+        output
+            .assert_yields_only([vec![(1, 'a'), (3, 'q')], vec![(2, 'x')]])
+            .await;
+    });
+}
+
 /// A keyed snapshot is scripted with `reveal`, naming the version each key observes:
 /// one decision can advance several keys at once, and unnamed keys observe their
 /// previously revealed version again.
@@ -2458,7 +2486,7 @@ fn scripted_inline_keyed_merge_ordered_wrong_per_key_order_panics() {
 #[test]
 fn scripted_cluster_batch_members_scripted_independently() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let batch_hook: BatchHook<i32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
     let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
     let out_recv = sliced! {
@@ -2500,7 +2528,7 @@ fn scripted_cluster_batch_members_scripted_independently() {
 #[should_panic(expected = "cluster member 1")]
 fn scripted_cluster_forgotten_member_panics() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let batch_hook: BatchHook<i32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
     let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
     let out_recv = sliced! {
@@ -2526,7 +2554,7 @@ fn scripted_cluster_forgotten_member_panics() {
 #[test]
 fn scripted_cluster_top_level_ordering_per_member() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let ordering: OrderingHook<u32, Unbounded, ExactlyOnce, OnCluster> = flow.sim_hook();
     let (in_send, input) = cluster.sim_input::<u32, NoOrder, ExactlyOnce>();
     let out = input
@@ -2561,7 +2589,7 @@ fn scripted_cluster_top_level_ordering_per_member() {
 #[test]
 fn scripted_cluster_inline_ordering_joins_member_tick_group() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let batch_hook: BatchHook<u32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
     let ordering: OrderingHook<u32, Bounded, ExactlyOnce, OnCluster> = flow.sim_hook();
     let (in_send, input) = cluster.sim_input::<u32, NoOrder, ExactlyOnce>();
@@ -2599,7 +2627,7 @@ fn scripted_cluster_inline_ordering_joins_member_tick_group() {
 #[should_panic(expected = "does not name a member of the cluster")]
 fn scripted_cluster_nonexistent_member_panics() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let batch_hook: BatchHook<i32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
     let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
     let _out = sliced! {
@@ -2623,7 +2651,7 @@ fn scripted_cluster_nonexistent_member_panics() {
 #[should_panic(expected = "cluster member 1")]
 fn scripted_cluster_waiting_decision_does_not_shield_other_member() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let batch_hook: BatchHook<i32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
     let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
     let _out = sliced! {
@@ -3560,7 +3588,7 @@ fn scripted_lossy_o2m_channel_scripted_per_recipient() {
 
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let loss: LossHook<u32, TotalOrder, OnProcess, OnCluster> = flow.sim_hook();
 
     let (in_send, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
@@ -3609,7 +3637,7 @@ fn scripted_lossy_m2o_channel_names_sender() {
     use crate::networking::TCP;
 
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let node = flow.process::<()>();
     let loss: LossHook<u32, TotalOrder, OnCluster> = flow.sim_hook();
 
@@ -3656,7 +3684,7 @@ fn scripted_lossy_m2o_sender_front_mismatch_panics() {
     use crate::networking::TCP;
 
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let node = flow.process::<()>();
     let loss: LossHook<u32, TotalOrder, OnCluster> = flow.sim_hook();
 
@@ -3690,7 +3718,7 @@ fn scripted_lossy_udp_m2o_reorders_within_sender() {
     use crate::networking::UDP;
 
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let node = flow.process::<()>();
     let loss: LossHook<u32, NoOrder, OnCluster> = flow.sim_hook();
 
@@ -3735,8 +3763,8 @@ fn scripted_lossy_m2m_channel_scripts_both_endpoints() {
     use crate::networking::TCP;
 
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
-    let cluster2 = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
+    let cluster2 = flow.cluster::<(), u32>();
     let loss: LossHook<u32, TotalOrder, OnCluster, OnCluster> = flow.sim_hook();
 
     let (in_send, input) = cluster.sim_input::<u32, TotalOrder, ExactlyOnce>();

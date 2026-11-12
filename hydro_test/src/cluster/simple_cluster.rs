@@ -218,8 +218,8 @@ mod tests {
         let num_partitions = 2;
         let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
         let (cluster1, cluster2) = super::partition(
-            builder.cluster::<()>(),
-            builder.cluster::<()>(),
+            builder.cluster::<(), u32>(),
+            builder.cluster::<(), u32>(),
             q!(move |(id, msg)| (
                 MemberId::<()>::from_raw_id(id.get_raw_id() * num_partitions as u32),
                 msg
