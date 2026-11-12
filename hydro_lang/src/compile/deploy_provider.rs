@@ -237,14 +237,15 @@ pub trait Deploy<'a> {
         todo!("m2e_sink is not yet supported for this deploy backend")
     }
 
-    /// The member IDs of `of_cluster`'s members, as a `&[TaglessMemberId]` expression.
+    /// The IDs of `of_cluster`'s members, as an expression of type `&[Id]`.
+    /// `Id` is this backend's member ID type (see [`SupportsMemberId`]).
     fn cluster_ids(of_cluster: LocationKey) -> syn::Expr;
 
-    /// This member's own ID, as a `TaglessMemberId` expression.
+    /// This member's own ID, as an expression of type `Id`.
     fn cluster_self_id() -> syn::Expr;
 
-    /// A `Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>` expression: the
-    /// membership events of `location_id`, as seen from `at_location`.
+    /// The membership events of `location_id`, as seen from `at_location`.
+    /// The expression has type `Box<dyn Stream<Item = (Id, MembershipEvent)> + Unpin>`.
     fn cluster_membership_stream(
         env: &mut Self::InstantiateEnv,
         at_location: &LocationId,
@@ -396,3 +397,14 @@ where
     where
         T: DeserializeOwned + 'static;
 }
+
+/// A deployment backend that can run clusters whose member IDs have type `Id`.
+/// Each backend's generated code works with particular ID types.
+/// Hydro Deploy and the simulator use `u32`, Docker, ECS, and Maelstrom use `String`, and the
+/// embedded backend accepts any type.
+/// `with_cluster` requires this trait, so a mismatch is a compile error.
+#[diagnostic::on_unimplemented(
+    message = "this deployment backend does not identify cluster members with `{Id}`",
+    note = "create the cluster with an identifier type the backend supports, for example `flow.cluster::<Tag, u32>()` for `u32`"
+)]
+pub trait SupportsMemberId<Id> {}

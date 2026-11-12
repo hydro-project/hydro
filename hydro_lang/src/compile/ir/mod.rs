@@ -3185,9 +3185,9 @@ pub enum NetworkSend {
     /// expression. This is how channels using [`crate::networking::Bincode`] are lowered.
     Custom { serialize_fn: Option<DebugExpr> },
     /// Serialization is left to code outside of Hydro (see [`crate::networking::Embedded`]). The
-    /// raw `element_type` is passed through unserialized; the only transformation is converting a
-    /// routing [`crate::location::MemberId`] (the destination cluster `tag`, when demuxing) into
-    /// the raw `TaglessMemberId` used by the transport. Only supported by the embedded backend.
+    /// raw `element_type` is passed through unserialized. When demuxing, the destination
+    /// [`crate::location::MemberId`] is unwrapped to its `Id`, because the host's transport routes
+    /// by plain IDs. Only supported by the embedded backend.
     ///
     /// Stored as structured info (rather than a pre-baked expression) so that the code can be
     /// synthesized in a post-IR codegen pass.
@@ -3206,10 +3206,11 @@ pub enum NetworkRecv {
     Custom { deserialize_fn: Option<DebugExpr> },
     /// Deserialization is left to code outside of Hydro (see [`crate::networking::Embedded`]). The
     /// raw `element_type` is delivered to the receiver directly, with no transport `Result` to
-    /// unwrap (the external code that produces the stream decides how to handle faults). The only
-    /// transformation is converting a `TaglessMemberId` back into a typed
-    /// [`crate::location::MemberId`] (the sender cluster `tag`, when the receiver is keyed by
-    /// sender). Only supported by the embedded backend.
+    /// unwrap (the external code that produces the stream decides how to handle faults). When the
+    /// receiver is keyed by sender, the host's plain sender ID is wrapped in a
+    /// [`crate::location::MemberId`] again. The wrapper records the sender's cluster, so the
+    /// dataflow cannot mistake it for a member of another cluster. Only supported by the embedded
+    /// backend.
     Embedded {
         tag: Option<DebugType>,
         element_type: DebugType,
@@ -3251,7 +3252,7 @@ impl NetworkSend {
                 let expr: syn::Expr = if let Some(tag) = tag {
                     let tag = &tag.0;
                     parse_quote! {
-                        #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<#tag>, #element_type), _>(
+                        #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<#tag, _>, #element_type), _>(
                             |(id, data)| (id.into_tagless(), data)
                         )
                     }
@@ -3283,7 +3284,7 @@ impl NetworkRecv {
                 let root = crate::staging_util::get_this_crate();
                 let tag = &tag.0;
                 let expr: syn::Expr = parse_quote! {
-                    |(id, b)| (#root::__staged::location::MemberId::<#tag>::from_tagless(id as #root::__staged::location::TaglessMemberId), b)
+                    |(id, b)| (#root::__staged::location::MemberId::<#tag, _>::from_tagless(id), b)
                 };
                 Some(expr.into())
             }

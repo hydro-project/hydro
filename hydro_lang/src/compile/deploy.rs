@@ -15,6 +15,7 @@ use super::built::build_inner;
 use super::compiled::CompiledFlow;
 use super::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
+    SupportsMemberId,
 };
 use super::ir::HydroRoot;
 use crate::live_collections::stream::{Ordering, Retries};
@@ -34,6 +35,7 @@ where
 
     pub(super) locations: SlotMap<LocationKey, LocationType>,
     pub(super) location_names: SecondaryMap<LocationKey, String>,
+    pub(super) cluster_id_types: SecondaryMap<LocationKey, syn::Type>,
 
     /// Deployed instances of each process in the flow
     pub(super) processes: SparseSecondaryMap<LocationKey, D::Process>,
@@ -118,11 +120,14 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         self
     }
 
-    pub fn with_cluster<C>(
+    pub fn with_cluster<C, Id>(
         mut self,
-        cluster: &Cluster<'_, C>,
+        cluster: &Cluster<'_, C, Id>,
         spec: impl ClusterSpec<'a, D>,
-    ) -> Self {
+    ) -> Self
+    where
+        D: SupportsMemberId<Id>,
+    {
         self.clusters.insert(
             cluster.key,
             spec.build(cluster.key, &self.location_names[cluster.key]),
@@ -261,7 +266,11 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     }
 
     /// Adds a [`Sidecar`] to a specific cluster in the flow.
-    pub fn with_sidecar_cluster(self, cluster: &Cluster<'_, ()>, sidecar: &impl Sidecar) -> Self {
+    pub fn with_sidecar_cluster<Id>(
+        self,
+        cluster: &Cluster<'_, (), Id>,
+        sidecar: &impl Sidecar,
+    ) -> Self {
         self.with_sidecar_internal(cluster.key, sidecar)
     }
 
@@ -531,7 +540,7 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
         self.processes.get(location_key).unwrap()
     }
 
-    pub fn get_cluster<C>(&self, c: &Cluster<'a, C>) -> &D::Cluster {
+    pub fn get_cluster<C, Id>(&self, c: &Cluster<'a, C, Id>) -> &D::Cluster {
         let LocationId::Cluster(location_key) = c.id() else {
             panic!("Cluster ID expected")
         };

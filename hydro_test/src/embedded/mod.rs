@@ -2,6 +2,7 @@ pub mod echo_network;
 pub mod echo_network_embedded;
 pub mod m2m_broadcast;
 pub mod m2o_send;
+pub mod named_members;
 pub mod o2m_broadcast;
 pub mod o2m_demux_embedded;
 pub mod self_id;

@@ -83,7 +83,7 @@ pub mod cluster;
 pub use cluster::Cluster;
 
 pub mod member_id;
-pub use member_id::{MemberId, TaglessMemberId};
+pub use member_id::MemberId;
 
 pub mod tick;
 pub use tick::{Atomic, Tick};
@@ -488,7 +488,7 @@ pub trait Location<'a>: DynLocation {
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// # // do nothing on each worker
     /// # workers.source_iter(q!(vec![])).for_each(q!(|_: ()| {}));
     /// let cluster_members = p1.source_cluster_members(&workers, nondet!(/** late joiners may miss events */));
@@ -505,11 +505,11 @@ pub trait Location<'a>: DynLocation {
     /// # }));
     /// # }
     /// ```
-    fn source_cluster_members<C: 'a>(
+    fn source_cluster_members<C: 'a, Id: Clone + 'a>(
         &self,
-        cluster: &Cluster<'a, C>,
+        cluster: &Cluster<'a, C, Id>,
         nondet_start: NonDet,
-    ) -> KeyedStream<MemberId<C>, MembershipEvent, Self::DropConsistency, Unbounded>
+    ) -> KeyedStream<MemberId<C, Id>, MembershipEvent, Self::DropConsistency, Unbounded>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -537,7 +537,7 @@ pub trait Location<'a>: DynLocation {
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// # // do nothing on each worker
     /// # workers.source_iter(q!(vec![])).for_each(q!(|_: ()| {}));
     /// let cluster_members = p1.source_cluster_membership_stream(&workers, nondet!(/** late joiners may miss events */));
@@ -554,11 +554,11 @@ pub trait Location<'a>: DynLocation {
     /// # }));
     /// # }
     /// ```
-    fn source_cluster_membership_stream<C: 'a>(
+    fn source_cluster_membership_stream<C: 'a, Id: Clone + 'a>(
         &self,
-        cluster: &Cluster<'a, C>,
+        cluster: &Cluster<'a, C, Id>,
         _nondet_start: NonDet,
-    ) -> KeyedStream<MemberId<C>, MembershipEvent, Self::DropConsistency, Unbounded>
+    ) -> KeyedStream<MemberId<C, Id>, MembershipEvent, Self::DropConsistency, Unbounded>
     where
         Self: TopLevel<'a> + Sized,
     {
@@ -568,7 +568,7 @@ pub trait Location<'a>: DynLocation {
             HydroNode::Source {
                 source: HydroSource::ClusterMembers(cluster.id(), ClusterMembersState::Uninit),
                 metadata: target_consistency.new_node_metadata(Stream::<
-                    (TaglessMemberId, MembershipEvent),
+                    (Id, MembershipEvent),
                     Self,
                     Unbounded,
                     TotalOrder,

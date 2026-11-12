@@ -22,7 +22,6 @@ use crate::live_collections::boundedness::Unbounded;
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, TotalOrder};
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
 use crate::location::{Cluster, LocationKey, MembershipEvent};
 use crate::nondet::nondet;
 
@@ -214,13 +213,13 @@ pub fn maelstrom_init() -> MaelstromMeta {
 pub(super) fn cluster_members<'a>(
     meta: RuntimeData<&'a MaelstromMeta>,
     _of_cluster: LocationKey,
-) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
+) -> impl QuotedWithContext<'a, &'a [String], ()> + Clone + 'a {
     q!({
-        let members: &'static [TaglessMemberId] = Box::leak(
+        let members: &'static [String] = Box::leak(
             meta.node_ids
                 .iter()
-                .map(|id| TaglessMemberId::from_maelstrom_node_id(id.clone()))
-                .collect::<Vec<TaglessMemberId>>()
+                .cloned()
+                .collect::<Vec<String>>()
                 .into_boxed_slice(),
         );
         members
@@ -230,30 +229,24 @@ pub(super) fn cluster_members<'a>(
 /// Get the self ID for this cluster member.
 pub(super) fn cluster_self_id<'a>(
     meta: RuntimeData<&'a MaelstromMeta>,
-) -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
-    q!(TaglessMemberId::from_maelstrom_node_id(
-        meta.node_id.clone()
-    ))
+) -> impl QuotedWithContext<'a, String, ()> + Clone + 'a {
+    q!(meta.node_id.clone())
 }
 
 /// Get the cluster membership stream (static for Maelstrom - all members join at start).
 /// This references `__hydro_lang_maelstrom_meta` which will be in scope at runtime.
 pub(super) fn cluster_membership_stream<'a>(
     _location_id: &LocationId,
-) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
-{
+) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (String, MembershipEvent)> + Unpin>, ()> {
     let meta: RuntimeData<&MaelstromMeta> = RuntimeData::new("__hydro_lang_maelstrom_meta");
     q!(Box::new(futures::stream::iter(
         meta.node_ids
             .iter()
-            .map(|id| (
-                TaglessMemberId::from_maelstrom_node_id(id.clone()),
-                MembershipEvent::Joined
-            ))
+            .map(|id| (id.clone(), MembershipEvent::Joined))
             .collect::<Vec<_>>()
     ))
         as Box<
-            dyn futures::Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin,
+            dyn futures::Stream<Item = (String, MembershipEvent)> + Unpin,
         >)
 }
 
@@ -267,10 +260,10 @@ pub(super) fn deploy_maelstrom_m2m(meta: RuntimeData<&MaelstromMeta>) -> (syn::E
         let node_id = meta.node_id.clone();
         let peers_ready = meta.peers_ready();
         sinktools::map(
-            move |(dest_id, payload): (TaglessMemberId, bytes::Bytes)| {
+            move |(dest_id, payload): (String, bytes::Bytes)| {
                 let msg = serde_json::json!({
                     "src": node_id,
-                    "dest": dest_id.get_maelstrom_node_id(),
+                    "dest": dest_id.as_str(),
                     "body": {
                         "type": "hydro_data",
                         "data": payload.to_vec()
@@ -320,7 +313,7 @@ pub(super) fn deploy_maelstrom_m2m(meta: RuntimeData<&MaelstromMeta>) -> (syn::E
                     let deser: Vec<u8> =
                         serde_json::from_value(msg.body.get_mut("data").unwrap().take()).unwrap();
                     Some(Ok::<_, std::io::Error>((
-                        TaglessMemberId::from_maelstrom_node_id(msg.src),
+                        msg.src,
                         bytes::BytesMut::from(&deser[..]),
                     )))
                 } else {

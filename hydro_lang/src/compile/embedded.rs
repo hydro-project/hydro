@@ -33,8 +33,8 @@
 //!   across the channel, so sinks are `FnMut(T)` and sources are `Stream<Item = T>` (with no
 //!   transport `Result` — the caller decides how to handle faults).
 //!
-//! Channels keyed by a cluster member (demux / cluster send) additionally carry a
-//! `TaglessMemberId` alongside the payload in these types.
+//! Channels addressed to cluster members (demux, cluster sends) also carry the member's ID.
+//! Its type is the `Id` the cluster was created with, which the host chooses.
 //!
 //! The caller is responsible for wiring these together (e.g. via in-memory channels,
 //! sockets, etc.). External ports are not supported.
@@ -175,7 +175,8 @@ impl<S: Into<String>> ExternalSpec<'_, EmbeddedDeploy> for S {
 #[derive(Clone)]
 struct EmbeddedNetworkPort {
     name: String,
-    /// Whether each element is paired with a `TaglessMemberId` (its destination or sender).
+    /// Whether each element is paired with a member ID of the peer cluster.
+    /// The ID is the destination when sending and the sender when receiving.
     is_tagged: bool,
     /// The raw payload type of an unserialized `EMBEDDED` channel; `None` for bincode.
     external_type: Option<syn::Type>,
@@ -458,6 +459,10 @@ impl BoundaryGuarantees {
         self.networks[name].clone()
     }
 }
+
+/// The host of an embedded program identifies each cluster's members with whatever type it
+/// chooses.
+impl<Id> super::deploy_provider::SupportsMemberId<Id> for EmbeddedDeploy {}
 
 impl<'a> Deploy<'a> for EmbeddedDeploy {
     type Meta = ();
@@ -1149,8 +1154,9 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             if self.clusters.contains_key(location_key)
                 && self.clusters_reading_self_id.contains(&location_key)
             {
+                let id_type = &self.cluster_id_types[location_key];
                 cluster_params.push(quote! {
-                    __cluster_self_id: #root::location::member_id::TaglessMemberId
+                    __cluster_self_id: #id_type
                 });
                 // Alias to the name the generated DFIR code expects.
                 let self_id_ident = syn::Ident::new(
@@ -1181,9 +1187,13 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                     })
                     .collect();
 
-                let mem_item = quote! {
-                    (#root::location::member_id::TaglessMemberId, #root::location::MembershipEvent)
-                };
+                let mem_items: Vec<proc_macro2::TokenStream> = loc_memberships
+                    .iter()
+                    .map(|k| {
+                        let id_type = &self.cluster_id_types[*k];
+                        quote! { (#id_type, #root::location::MembershipEvent) }
+                    })
+                    .collect();
                 // Each member's events, in the order they happened, each once.
                 let mem_guarantees = EmbeddedStreamGuarantees {
                     order: crate::compile::ir::StreamOrder::TotalOrder,
@@ -1217,10 +1227,11 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
 
                 let struct_generics: Vec<proc_macro2::TokenStream> = mem_generic_idents
                     .iter()
-                    .map(|generic| quote! { #generic: __root_dfir_rs::futures::Stream<Item = #mem_item> + Unpin })
+                    .zip(&mem_items)
+                    .map(|(generic, mem_item)| quote! { #generic: __root_dfir_rs::futures::Stream<Item = #mem_item> + Unpin })
                     .collect();
 
-                for generic in &mem_generic_idents {
+                for (generic, mem_item) in mem_generic_idents.iter().zip(&mem_items) {
                     extra_fn_generics.push(
                         quote! { #generic: __root_dfir_rs::futures::Stream<Item = #mem_item> + Unpin + 'a },
                     );
@@ -1422,7 +1433,8 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                             quote! { #root::runtime_support::dfir_rs::bytes::Bytes }
                         };
                         if port.is_tagged {
-                            quote! { (#root::location::member_id::TaglessMemberId, #payload) }
+                            let id_type = &self.cluster_id_types[port.peer];
+                            quote! { (#id_type, #payload) }
                         } else {
                             payload
                         }
@@ -1478,15 +1490,16 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                     |port| {
                         // With embedded (external) serialization, the raw payload is delivered
                         // directly, with no transport `Result` wrapper.
-                        match (&port.external_type, port.is_tagged) {
-                            (Some(ty), true) => {
-                                quote! { (#root::location::member_id::TaglessMemberId, #ty) }
+                        let id_type = port.is_tagged.then(|| &self.cluster_id_types[port.peer]);
+                        match (&port.external_type, id_type) {
+                            (Some(ty), Some(id_type)) => {
+                                quote! { (#id_type, #ty) }
                             }
-                            (Some(ty), false) => quote! { #ty },
-                            (None, true) => {
-                                quote! { Result<(#root::location::member_id::TaglessMemberId, __root_dfir_rs::bytes::BytesMut), std::io::Error> }
+                            (Some(ty), None) => quote! { #ty },
+                            (None, Some(id_type)) => {
+                                quote! { Result<(#id_type, __root_dfir_rs::bytes::BytesMut), std::io::Error> }
                             }
-                            (None, false) => {
+                            (None, None) => {
                                 quote! { Result<__root_dfir_rs::bytes::BytesMut, std::io::Error> }
                             }
                         }
@@ -1555,7 +1568,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             let ret_type: syn::Type = syn::parse_quote! { #root::runtime_support::dfir_rs::scheduled::context::Dfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure<Metrics = #dfir_metrics_ty> + 'a> };
 
             let func = syn::parse_quote! {
-                #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
+                #[allow(unused, non_snake_case, clippy::suspicious_else_formatting, clippy::clone_on_copy)]
                 pub fn #fn_ident<'a, #(#extra_fn_generics),*>(#(#all_params),*) -> #ret_type {
                     #(#extra_destructure)*
                     #dfir_tokens

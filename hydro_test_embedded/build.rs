@@ -242,7 +242,7 @@ fn generate_embedded() {
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
         let process = flow.process::<hydro_test::embedded::o2m_broadcast::Src>();
-        let cluster = flow.cluster::<hydro_test::embedded::o2m_broadcast::Dst>();
+        let cluster = flow.cluster::<hydro_test::embedded::o2m_broadcast::Dst, u32>();
         hydro_test::embedded::o2m_broadcast::o2m_broadcast(
             &cluster,
             process.embedded_input("input"),
@@ -261,13 +261,34 @@ fn generate_embedded() {
         .unwrap();
     }
 
+    // --- named_members (process -> cluster broadcast; the host names members with strings) ---
+    {
+        use hydro_test::embedded::named_members::{Dst, Src, broadcast_to_members};
+
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<Src>();
+        let cluster = flow.cluster::<Dst, String>();
+        broadcast_to_members(&cluster, process.embedded_input("input")).embedded_output("output");
+
+        let code = flow
+            .with_process(&process, "named_sender")
+            .with_cluster(&cluster, "named_receiver")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/named_members.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
     // --- o2m_demux_embedded (process -> cluster demux, an `EMBEDDED` channel) ---
     // The payload type has no serde derives; constructing this flow in a build script
     // (a non-test context) is the regression scenario for hydro-project/hydro#3158.
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
         let process = flow.process::<hydro_test::embedded::o2m_demux_embedded::Src>();
-        let cluster = flow.cluster::<hydro_test::embedded::o2m_demux_embedded::Dst>();
+        let cluster = flow.cluster::<hydro_test::embedded::o2m_demux_embedded::Dst, u32>();
         hydro_test::embedded::o2m_demux_embedded::o2m_demux_embedded(
             &cluster,
             process.embedded_input("input"),
@@ -289,7 +310,7 @@ fn generate_embedded() {
     // --- self_id (local cluster; reads its own member ID) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
-        let cluster = flow.cluster::<hydro_test::embedded::self_id::Members>();
+        let cluster = flow.cluster::<hydro_test::embedded::self_id::Members, u32>();
         hydro_test::embedded::self_id::tag_with_self_id(cluster.embedded_input("input"))
             .embedded_output("output");
 
@@ -307,7 +328,7 @@ fn generate_embedded() {
     // --- m2o_send (cluster -> process) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
-        let cluster = flow.cluster::<hydro_test::embedded::m2o_send::Src>();
+        let cluster = flow.cluster::<hydro_test::embedded::m2o_send::Src, u32>();
         let process = flow.process::<hydro_test::embedded::m2o_send::Dst>();
         hydro_test::embedded::m2o_send::m2o_send(&process, cluster.embedded_input("input"))
             .embedded_output("output");
@@ -327,8 +348,8 @@ fn generate_embedded() {
     // --- m2m_broadcast (cluster -> cluster) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
-        let src = flow.cluster::<hydro_test::embedded::m2m_broadcast::Src>();
-        let dst = flow.cluster::<hydro_test::embedded::m2m_broadcast::Dst>();
+        let src = flow.cluster::<hydro_test::embedded::m2m_broadcast::Src, u32>();
+        let dst = flow.cluster::<hydro_test::embedded::m2m_broadcast::Dst, u32>();
         hydro_test::embedded::m2m_broadcast::m2m_broadcast(&dst, src.embedded_input("input"))
             .embedded_output("output");
 

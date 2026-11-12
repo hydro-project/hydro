@@ -81,7 +81,7 @@ async fn main() {
     };
 
     let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
-    let replicas = builder.cluster::<Replica>();
+    let replicas = builder.cluster::<Replica, u32>();
 
     // Each member submits a request of its own every second; only requests received
     // by the current leader are appended (the rest surface on `redirected` with a

@@ -2486,7 +2486,7 @@ fn scripted_inline_keyed_merge_ordered_wrong_per_key_order_panics() {
 #[test]
 fn scripted_cluster_batch_members_scripted_independently() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let batch_hook: BatchHook<i32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
     let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
     let out_recv = sliced! {
@@ -2528,7 +2528,7 @@ fn scripted_cluster_batch_members_scripted_independently() {
 #[should_panic(expected = "cluster member 1")]
 fn scripted_cluster_forgotten_member_panics() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let batch_hook: BatchHook<i32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
     let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
     let out_recv = sliced! {
@@ -2554,7 +2554,7 @@ fn scripted_cluster_forgotten_member_panics() {
 #[test]
 fn scripted_cluster_top_level_ordering_per_member() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let ordering: OrderingHook<u32, Unbounded, ExactlyOnce, OnCluster> = flow.sim_hook();
     let (in_send, input) = cluster.sim_input::<u32, NoOrder, ExactlyOnce>();
     let out = input
@@ -2589,7 +2589,7 @@ fn scripted_cluster_top_level_ordering_per_member() {
 #[test]
 fn scripted_cluster_inline_ordering_joins_member_tick_group() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let batch_hook: BatchHook<u32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
     let ordering: OrderingHook<u32, Bounded, ExactlyOnce, OnCluster> = flow.sim_hook();
     let (in_send, input) = cluster.sim_input::<u32, NoOrder, ExactlyOnce>();
@@ -2627,7 +2627,7 @@ fn scripted_cluster_inline_ordering_joins_member_tick_group() {
 #[should_panic(expected = "does not name a member of the cluster")]
 fn scripted_cluster_nonexistent_member_panics() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let batch_hook: BatchHook<i32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
     let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
     let _out = sliced! {
@@ -2651,7 +2651,7 @@ fn scripted_cluster_nonexistent_member_panics() {
 #[should_panic(expected = "cluster member 1")]
 fn scripted_cluster_waiting_decision_does_not_shield_other_member() {
     let mut flow = FlowBuilder::new();
-    let cluster = flow.cluster::<()>();
+    let cluster = flow.cluster::<(), u32>();
     let batch_hook: BatchHook<i32, NoOrder, ExactlyOnce, OnCluster> = flow.sim_hook();
     let (in_send, input) = cluster.sim_input::<i32, NoOrder, ExactlyOnce>();
     let _out = sliced! {

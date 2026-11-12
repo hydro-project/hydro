@@ -1,5 +1,6 @@
 //! Networking APIs for [`Stream`].
 
+use std::hash::Hash;
 use std::marker::PhantomData;
 
 use serde::Serialize;
@@ -19,7 +20,7 @@ use crate::live_collections::sliced::sliced;
 use crate::live_collections::stream::Retries;
 #[cfg(feature = "sim")]
 use crate::location::LocationKey;
-use crate::location::cluster::{ClusterIds, Consistency, NoConsistency};
+use crate::location::cluster::{ClusterIds, Consistency};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::external_process::ExternalBincodeStream;
@@ -32,9 +33,9 @@ use crate::sim::SimReceiver;
 use crate::staging_util::get_this_crate;
 
 // same as the one in `hydro_std`, but internal use only
-fn track_membership<'a, C, L: Location<'a>>(
-    membership: KeyedStream<MemberId<C>, MembershipEvent, L, Unbounded>,
-) -> KeyedSingleton<MemberId<C>, bool, L, MonotonicKeys> {
+fn track_membership<'a, C, Id: Clone + Eq + Hash, L: Location<'a>>(
+    membership: KeyedStream<MemberId<C, Id>, MembershipEvent, L, Unbounded>,
+) -> KeyedSingleton<MemberId<C, Id>, bool, L, MonotonicKeys> {
     membership.fold(
         q!(|| false),
         q!(|present, event| {
@@ -51,7 +52,7 @@ fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr 
 
     if is_demux {
         parse_quote! {
-            #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<_>, #t_type), _>(
+            #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<_, _>, #t_type), _>(
                 |(id, data)| {
                     (id.into_tagless(), #root::runtime_support::bincode::serialize(&data).unwrap().into())
                 }
@@ -78,7 +79,7 @@ fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type)
         parse_quote! {
             |res| {
                 let (id, b) = res.unwrap();
-                (#root::__staged::location::MemberId::<#c_type>::from_tagless(id as #root::__staged::location::TaglessMemberId), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
+                (#root::__staged::location::MemberId::<#c_type, _>::from_tagless(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
             }
         }
     } else {
@@ -247,7 +248,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![123]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers.broadcast_bincode(&workers, nondet!(/** assuming stable membership */));
     /// # on_worker.send_bincode(&p2).entries()
@@ -266,11 +267,11 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # }));
     /// # }
     /// ```
-    pub fn broadcast_bincode<L2: 'a>(
+    pub fn broadcast_bincode<L2: 'a, Id2: Clone + Eq + Hash + 'a>(
         self,
-        other: &Cluster<'a, L2>,
+        other: &Cluster<'a, L2, Id2>,
         nondet_membership: NonDet,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> Stream<T, Cluster<'a, L2, Id2>, Unbounded, O, R>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
@@ -298,7 +299,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![123]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers.broadcast(&workers, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */));
     /// # on_worker.send(&p2, TCP.fail_stop().bincode()).entries()
@@ -317,14 +318,14 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # }));
     /// # }
     /// ```
-    pub fn broadcast<L2: 'a, N: NetworkFor<T>>(
+    pub fn broadcast<L2: 'a, Id2: Clone + Eq + Hash + 'a, N: NetworkFor<T>>(
         self,
-        to: &Cluster<'a, L2>,
+        to: &Cluster<'a, L2, Id2>,
         via: N,
         nondet_membership: NonDet,
     ) -> Stream<
         T,
-        Cluster<'a, L2>,
+        Cluster<'a, L2, Id2>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         <R as MinRetries<N::RetriesGuarantee>>::Min,
@@ -374,7 +375,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// [`EventualConsistency`](crate::location::cluster::EventualConsistency). A plain `lossy`
     /// policy can drop individual messages for some members while delivering them to others, so
     /// replicas may permanently diverge and the output only has
-    /// [`NoConsistency`].
+    /// [`NoConsistency`](crate::location::cluster::NoConsistency).
     ///
     /// This is only available in deployment targets with static cluster
     /// membership (legacy Hydro Deploy and simulation). There are no late
@@ -389,7 +390,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![123]));
     /// let on_worker = numbers.broadcast_closed(&workers, TCP.fail_stop().bincode());
     /// # on_worker.send(&p2, TCP.fail_stop().bincode()).entries()
@@ -404,13 +405,13 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # }));
     /// # }
     /// ```
-    pub fn broadcast_closed<L2: 'a, N: NetworkFor<T>>(
+    pub fn broadcast_closed<L2: 'a, Id2: Clone + Eq + Hash + 'a, N: NetworkFor<T>>(
         self,
-        to: &Cluster<'a, L2>,
+        to: &Cluster<'a, L2, Id2>,
         via: N,
     ) -> Stream<
         T,
-        Cluster<'a, L2, N::ConsistencyGuarantee>,
+        Cluster<'a, L2, Id2, N::ConsistencyGuarantee>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         <R as MinRetries<N::RetriesGuarantee>>::Min,
@@ -420,7 +421,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         O: MinOrder<N::OrderingGuarantee>,
         R: MinRetries<N::RetriesGuarantee>,
     {
-        let cluster_ids = ClusterIds {
+        let cluster_ids = ClusterIds::<Id2> {
             key: to.key,
             _phantom: PhantomData,
         };
@@ -573,8 +574,8 @@ impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Stream<T, 
     }
 }
 
-impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
-    Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R>
+impl<'a, T, L, L2, Id2: Clone + Eq + Hash + 'a, B: Boundedness, O: Ordering, R: Retries>
+    Stream<(MemberId<L2, Id2>, T), Process<'a, L>, B, O, R>
 {
     #[deprecated = "use Stream::demux(..., TCP.fail_stop().bincode()) instead"]
     /// Sends elements of this stream to specific members of a cluster, identified by a [`MemberId`],
@@ -592,7 +593,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
@@ -615,8 +616,8 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn demux_bincode(
         self,
-        other: &Cluster<'a, L2>,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, O, R>
+        other: &Cluster<'a, L2, Id2>,
+    ) -> Stream<T, Cluster<'a, L2, Id2>, Unbounded, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -638,7 +639,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
@@ -661,11 +662,11 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn demux<N: NetworkFor<T>>(
         self,
-        to: &Cluster<'a, L2>,
+        to: &Cluster<'a, L2, Id2>,
         via: N,
     ) -> Stream<
         T,
-        Cluster<'a, L2, NoConsistency>,
+        Cluster<'a, L2, Id2>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         <R as MinRetries<N::RetriesGuarantee>>::Min,
@@ -705,7 +706,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(vec![1, 2, 3, 4]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers.round_robin_bincode(&workers, nondet!(/** assuming stable membership */));
     /// on_worker.send_bincode(&p2)
@@ -725,11 +726,11 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     /// # }));
     /// # }
     /// ```
-    pub fn round_robin_bincode<L2: 'a>(
+    pub fn round_robin_bincode<L2: 'a, Id2: Clone + Eq + Hash + 'a>(
         self,
-        other: &Cluster<'a, L2>,
+        other: &Cluster<'a, L2, Id2>,
         nondet_membership: NonDet,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> Stream<T, Cluster<'a, L2, Id2>, Unbounded, TotalOrder, ExactlyOnce>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -761,7 +762,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(vec![1, 2, 3, 4]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers.round_robin(&workers, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */));
     /// on_worker.send(&p2, TCP.fail_stop().bincode())
@@ -781,12 +782,12 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     /// # }));
     /// # }
     /// ```
-    pub fn round_robin<L2: 'a, N: NetworkFor<T>>(
+    pub fn round_robin<L2: 'a, Id2: Clone + Eq + Hash + 'a, N: NetworkFor<T>>(
         self,
-        to: &Cluster<'a, L2>,
+        to: &Cluster<'a, L2, Id2>,
         via: N,
         nondet_membership: NonDet,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, N::RetriesGuarantee> {
+    ) -> Stream<T, Cluster<'a, L2, Id2>, Unbounded, N::OrderingGuarantee, N::RetriesGuarantee> {
         // TODO(#1875): the membership snapshot below is over a `KeyedSingleton`, and keyed
         // sim hooks do not exist yet. Once they do, expose a composite hook payload here
         // (`NonDet<(Option<KeyedSnapshotHook<..>>, Option<BatchHook<T, O, R>>)>`) so tests
@@ -825,8 +826,8 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     }
 }
 
-impl<'a, T, L, B: Boundedness, C: Consistency>
-    Stream<T, Cluster<'a, L, C>, B, TotalOrder, ExactlyOnce>
+impl<'a, T, L, Id: Clone + Eq + Hash + 'a, B: Boundedness, C: Consistency>
+    Stream<T, Cluster<'a, L, Id, C>, B, TotalOrder, ExactlyOnce>
 {
     #[deprecated = "use Stream::round_robin(..., TCP.fail_stop().bincode()) instead"]
     /// Distributes elements of this stream to cluster members in a round-robin fashion, using
@@ -855,8 +856,8 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers1: Cluster<()> = flow.cluster::<()>();
-    /// let workers2: Cluster<()> = flow.cluster::<()>();
+    /// let workers1: Cluster<()> = flow.cluster();
+    /// let workers2: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(0..=16));
     /// let on_worker1: Stream<_, Cluster<_>, _> = numbers.round_robin_bincode(&workers1, nondet!(/** assuming stable membership */));
     /// let on_worker2: Stream<_, Cluster<_>, _> = on_worker1.round_robin_bincode(&workers2, nondet!(/** assuming stable membership */)).entries().assume_ordering(nondet!(/** assuming stable membership */));
@@ -877,11 +878,11 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
     /// # }));
     /// # }
     /// ```
-    pub fn round_robin_bincode<L2: 'a>(
+    pub fn round_robin_bincode<L2: 'a, Id2: Clone + Eq + Hash + 'a>(
         self,
-        other: &Cluster<'a, L2>,
+        other: &Cluster<'a, L2, Id2>,
         nondet_membership: NonDet,
-    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> KeyedStream<MemberId<L, Id>, T, Cluster<'a, L2, Id2>, Unbounded, TotalOrder, ExactlyOnce>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -914,8 +915,8 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
-    /// let workers1: Cluster<()> = flow.cluster::<()>();
-    /// let workers2: Cluster<()> = flow.cluster::<()>();
+    /// let workers1: Cluster<()> = flow.cluster();
+    /// let workers2: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(0..=16));
     /// let on_worker1: Stream<_, Cluster<_>, _> = numbers.round_robin(&workers1, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */));
     /// let on_worker2: Stream<_, Cluster<_>, _> = on_worker1.round_robin(&workers2, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */)).entries().assume_ordering(nondet!(/** assuming stable membership */));
@@ -936,15 +937,15 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
     /// # }));
     /// # }
     /// ```
-    pub fn round_robin<L2: 'a, N: NetworkFor<T>>(
+    pub fn round_robin<L2: 'a, Id2: Clone + Eq + Hash + 'a, N: NetworkFor<T>>(
         self,
-        to: &Cluster<'a, L2>,
+        to: &Cluster<'a, L2, Id2>,
         via: N,
         nondet_membership: NonDet,
     ) -> KeyedStream<
-        MemberId<L>,
+        MemberId<L, Id>,
         T,
-        Cluster<'a, L2>,
+        Cluster<'a, L2, Id2>,
         Unbounded,
         N::OrderingGuarantee,
         N::RetriesGuarantee,
@@ -987,8 +988,8 @@ impl<'a, T, L, B: Boundedness, C: Consistency>
     }
 }
 
-impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
-    Stream<T, Cluster<'a, L, C>, B, O, R>
+impl<'a, T, L, Id: Clone + Eq + Hash + 'a, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
+    Stream<T, Cluster<'a, L, Id, C>, B, O, R>
 {
     #[deprecated = "use Stream::send(..., TCP.fail_stop().bincode()) instead"]
     /// "Moves" elements of this stream from a cluster to a process by sending them over the network,
@@ -1003,7 +1004,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
     /// let all_received = numbers.send_bincode(&process); // KeyedStream<MemberId<()>, i32, ...>
     /// # all_received.entries()
@@ -1028,7 +1029,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # use hydro_lang::live_collections::stream::NoOrder;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
-    /// # let workers: Cluster<()> = flow.cluster::<()>();
+    /// # let workers: Cluster<()> = flow.cluster();
     /// # let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
     /// let values: Stream<i32, _, _, NoOrder> = numbers.send_bincode(&process).values();
     /// # values
@@ -1047,7 +1048,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     pub fn send_bincode<L2>(
         self,
         other: &Process<'a, L2>,
-    ) -> KeyedStream<MemberId<L>, T, Process<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<MemberId<L, Id>, T, Process<'a, L2>, Unbounded, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -1066,7 +1067,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
-    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let workers: Cluster<()> = flow.cluster();
     /// let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
     /// let all_received = numbers.send(&process, TCP.fail_stop().bincode()); // KeyedStream<MemberId<()>, i32, ...>
     /// # all_received.entries()
@@ -1091,7 +1092,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # use hydro_lang::live_collections::stream::NoOrder;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
-    /// # let workers: Cluster<()> = flow.cluster::<()>();
+    /// # let workers: Cluster<()> = flow.cluster();
     /// # let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
     /// let values: Stream<i32, _, _, NoOrder> =
     ///     numbers.send(&process, TCP.fail_stop().bincode()).values();
@@ -1113,7 +1114,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         to: &Process<'a, L2>,
         via: N,
     ) -> KeyedStream<
-        MemberId<L>,
+        MemberId<L, Id>,
         T,
         Process<'a, L2>,
         Unbounded,
@@ -1153,7 +1154,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         };
 
         let raw_stream: Stream<
-            (MemberId<L>, T),
+            (MemberId<L, Id>, T),
             Process<'a, L2>,
             Unbounded,
             <O as MinOrder<N::OrderingGuarantee>>::Min,
@@ -1168,7 +1169,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
                 instantiate_fn: DebugInstantiate::Building,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: to.new_node_metadata(Stream::<
-                    (MemberId<L>, T),
+                    (MemberId<L, Id>, T),
                     Process<'a, L2>,
                     Unbounded,
                     <O as MinOrder<N::OrderingGuarantee>>::Min,
@@ -1204,9 +1205,9 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// # type Source = ();
     /// # type Destination = ();
-    /// let source: Cluster<Source> = flow.cluster::<Source>();
+    /// let source: Cluster<Source> = flow.cluster();
     /// let numbers: Stream<_, Cluster<Source>, _> = source.source_iter(q!(vec![123]));
-    /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
+    /// let destination: Cluster<Destination> = flow.cluster();
     /// let on_destination: KeyedStream<MemberId<Source>, _, Cluster<Destination>, _> = numbers.broadcast_bincode(&destination, nondet!(/** assuming stable membership */));
     /// # on_destination.entries().send_bincode(&p2).entries()
     /// // if there are 4 members in the desination, each receives one element from each source member
@@ -1228,11 +1229,11 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn broadcast_bincode<L2: 'a>(
+    pub fn broadcast_bincode<L2: 'a, Id2: Clone + Eq + Hash + 'a>(
         self,
-        other: &Cluster<'a, L2>,
+        other: &Cluster<'a, L2, Id2>,
         nondet_membership: NonDet,
-    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<MemberId<L, Id>, T, Cluster<'a, L2, Id2>, Unbounded, O, R>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
@@ -1262,9 +1263,9 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// # type Source = ();
     /// # type Destination = ();
-    /// let source: Cluster<Source> = flow.cluster::<Source>();
+    /// let source: Cluster<Source> = flow.cluster();
     /// let numbers: Stream<_, Cluster<Source>, _> = source.source_iter(q!(vec![123]));
-    /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
+    /// let destination: Cluster<Destination> = flow.cluster();
     /// let on_destination: KeyedStream<MemberId<Source>, _, Cluster<Destination>, _> = numbers.broadcast(&destination, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */));
     /// # on_destination.entries().send(&p2, TCP.fail_stop().bincode()).entries()
     /// // if there are 4 members in the desination, each receives one element from each source member
@@ -1286,15 +1287,15 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn broadcast<L2: 'a, N: NetworkFor<T>>(
+    pub fn broadcast<L2: 'a, Id2: Clone + Eq + Hash + 'a, N: NetworkFor<T>>(
         self,
-        to: &Cluster<'a, L2>,
+        to: &Cluster<'a, L2, Id2>,
         via: N,
         nondet_membership: NonDet,
     ) -> KeyedStream<
-        MemberId<L>,
+        MemberId<L, Id>,
         T,
-        Cluster<'a, L2>,
+        Cluster<'a, L2, Id2>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         <R as MinRetries<N::RetriesGuarantee>>::Min,
@@ -1342,18 +1343,22 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// [`EventualConsistency`](crate::location::cluster::EventualConsistency). A plain `lossy`
     /// policy can drop individual messages for some
     /// members while delivering them to others, so replicas may permanently diverge and the
-    /// output only has [`NoConsistency`].
+    /// output only has [`NoConsistency`](crate::location::cluster::NoConsistency).
     ///
     /// This is only available in deployment targets with static cluster membership
     /// (legacy Hydro Deploy and simulation). On dynamic targets, use [`Stream::broadcast`].
-    pub fn broadcast_closed<L2: 'a, N: NetworkFor<T>>(
+    #[expect(
+        clippy::type_complexity,
+        reason = "the output is keyed by the sender's member ID and lives on the destination cluster"
+    )]
+    pub fn broadcast_closed<L2: 'a, Id2: Clone + Eq + Hash + 'a, N: NetworkFor<T>>(
         self,
-        to: &Cluster<'a, L2>,
+        to: &Cluster<'a, L2, Id2>,
         via: N,
     ) -> KeyedStream<
-        MemberId<L>,
+        MemberId<L, Id>,
         T,
-        Cluster<'a, L2, N::ConsistencyGuarantee>,
+        Cluster<'a, L2, Id2, N::ConsistencyGuarantee>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         <R as MinRetries<N::RetriesGuarantee>>::Min,
@@ -1363,7 +1368,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         O: MinOrder<N::OrderingGuarantee>,
         R: MinRetries<N::RetriesGuarantee>,
     {
-        let cluster_ids = ClusterIds {
+        let cluster_ids = ClusterIds::<Id2> {
             key: to.key,
             _phantom: PhantomData,
         };
@@ -1372,7 +1377,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
             .source_iter(q!(cluster_ids
                 .iter()
                 .map(|id| MemberId::from_tagless(id.clone()))))
-            .assert_has_consistency_of_trusted::<Cluster<'a, L, C>>(manual_proof!(
+            .assert_has_consistency_of_trusted::<Cluster<'a, L, Id, C>>(manual_proof!(
                 /// ClusterIds is deploy-time metadata, identical on every cluster member.
             ));
 
@@ -1447,8 +1452,18 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
-    Stream<(MemberId<L2>, T), Cluster<'a, L, C>, B, O, R>
+impl<
+    'a,
+    T,
+    L,
+    Id: Clone + Eq + Hash + 'a,
+    L2,
+    Id2: Clone + Eq + Hash + 'a,
+    B: Boundedness,
+    C: Consistency,
+    O: Ordering,
+    R: Retries,
+> Stream<(MemberId<L2, Id2>, T), Cluster<'a, L, Id, C>, B, O, R>
 {
     #[deprecated = "use Stream::demux(..., TCP.fail_stop().bincode()) instead"]
     /// Sends elements of this stream at each source member to specific members of a destination
@@ -1470,11 +1485,11 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// # type Source = ();
     /// # type Destination = ();
-    /// let source: Cluster<Source> = flow.cluster::<Source>();
+    /// let source: Cluster<Source> = flow.cluster();
     /// let to_send: Stream<_, Cluster<_>, _> = source
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)));
-    /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
+    /// let destination: Cluster<Destination> = flow.cluster();
     /// let all_received = to_send.demux_bincode(&destination); // KeyedStream<MemberId<Source>, i32, ...>
     /// # all_received.entries().send_bincode(&p2).entries()
     /// # }, |mut stream| async move {
@@ -1498,8 +1513,8 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// ```
     pub fn demux_bincode(
         self,
-        other: &Cluster<'a, L2>,
-    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+        other: &Cluster<'a, L2, Id2>,
+    ) -> KeyedStream<MemberId<L, Id>, T, Cluster<'a, L2, Id2>, Unbounded, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -1526,11 +1541,11 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// # type Source = ();
     /// # type Destination = ();
-    /// let source: Cluster<Source> = flow.cluster::<Source>();
+    /// let source: Cluster<Source> = flow.cluster();
     /// let to_send: Stream<_, Cluster<_>, _> = source
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)));
-    /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
+    /// let destination: Cluster<Destination> = flow.cluster();
     /// let all_received = to_send.demux(&destination, TCP.fail_stop().bincode()); // KeyedStream<MemberId<Source>, i32, ...>
     /// # all_received.entries().send(&p2, TCP.fail_stop().bincode()).entries()
     /// # }, |mut stream| async move {
@@ -1554,12 +1569,12 @@ impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
     /// ```
     pub fn demux<N: NetworkFor<T>>(
         self,
-        to: &Cluster<'a, L2>,
+        to: &Cluster<'a, L2, Id2>,
         via: N,
     ) -> KeyedStream<
-        MemberId<L>,
+        MemberId<L, Id>,
         T,
-        Cluster<'a, L2, NoConsistency>,
+        Cluster<'a, L2, Id2>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         <R as MinRetries<N::RetriesGuarantee>>::Min,
@@ -1622,7 +1637,7 @@ mod tests {
     #[test]
     fn sim_send_bincode_m2o() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), u32>();
         let node = flow.process::<()>();
 
         let input = cluster.source_iter(q!(vec![1]));
@@ -1655,8 +1670,8 @@ mod tests {
     #[test]
     fn sim_send_bincode_multiple_m2o() {
         let mut flow = FlowBuilder::new();
-        let cluster1 = flow.cluster::<()>();
-        let cluster2 = flow.cluster::<()>();
+        let cluster1 = flow.cluster::<(), u32>();
+        let cluster2 = flow.cluster::<(), u32>();
         let node = flow.process::<()>();
 
         let out_recv_1 = cluster1
@@ -1701,7 +1716,7 @@ mod tests {
     #[test]
     fn sim_send_bincode_o2m() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), u32>();
         let node = flow.process::<()>();
 
         let input = node.source_iter(q!(vec![
@@ -1732,7 +1747,7 @@ mod tests {
     #[test]
     fn sim_broadcast_bincode_o2m() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), u32>();
         let node = flow.process::<()>();
 
         let input = node.source_iter(q!(vec![123, 456]));
@@ -1782,7 +1797,7 @@ mod tests {
     #[test]
     fn sim_send_bincode_m2m() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), u32>();
         let node = flow.process::<()>();
 
         let input = node.source_iter(q!(vec![
@@ -1930,7 +1945,7 @@ mod tests {
     #[test]
     fn sim_broadcast_closed_o2m() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), u32>();
         let node = flow.process::<()>();
 
         let input = node.source_iter(q!(vec![123, 456]));
@@ -1959,8 +1974,8 @@ mod tests {
     #[test]
     fn sim_broadcast_closed_m2m() {
         let mut flow = FlowBuilder::new();
-        let source = flow.cluster::<()>();
-        let dest: crate::location::Cluster<'_, ()> = flow.cluster::<()>();
+        let source = flow.cluster::<(), u32>();
+        let dest: crate::location::Cluster<'_, ()> = flow.cluster::<(), u32>();
         let node = flow.process::<()>();
 
         let input = source.source_iter(q!(vec![123]));
@@ -2000,38 +2015,38 @@ mod tests {
         use crate::live_collections::keyed_stream::KeyedStream;
         use crate::live_collections::stream::Stream;
         use crate::location::Cluster;
-        use crate::location::cluster::{EventualConsistency, NoConsistency};
+        use crate::location::cluster::EventualConsistency;
 
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
-        let source = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), u32>();
+        let source = flow.cluster::<(), u32>();
         let node = flow.process::<()>();
 
         // `fail_stop` models a failed connection as the recipient having failed, preserving
         // eventual consistency across live members.
-        let _: Stream<u32, Cluster<'_, (), EventualConsistency>, _, _, _> = node
+        let _: Stream<u32, Cluster<'_, (), u32, EventualConsistency>, _, _, _> = node
             .source_iter(q!(vec![1u32]))
             .broadcast_closed(&cluster, TCP.fail_stop().bincode());
 
         // `lossy_delayed_forever` models drops as indefinite delays, preserving eventual
         // consistency.
-        let _: Stream<u32, Cluster<'_, (), EventualConsistency>, _, _, _> = node
+        let _: Stream<u32, Cluster<'_, (), u32, EventualConsistency>, _, _, _> = node
             .source_iter(q!(vec![1u32]))
             .broadcast_closed(&cluster, TCP.lossy_delayed_forever().bincode());
 
         // Plain `lossy` can drop messages for some members while delivering them to others,
         // so replicas may permanently diverge.
-        let _: Stream<u32, Cluster<'_, (), NoConsistency>, _, _, _> = node
+        let _: Stream<u32, Cluster<'_, ()>, _, _, _> = node
             .source_iter(q!(vec![1u32]))
             .broadcast_closed(&cluster, TCP.lossy(nondet!(/** test */)).bincode());
 
         // The same applies to cluster-to-cluster closed broadcasts.
-        let _: KeyedStream<MemberId<()>, u32, Cluster<'_, (), EventualConsistency>, _, _, _> =
+        let _: KeyedStream<MemberId<()>, u32, Cluster<'_, (), u32, EventualConsistency>, _, _, _> =
             source
                 .source_iter(q!(vec![1u32]))
                 .broadcast_closed(&cluster, TCP.fail_stop().bincode());
 
-        let _: KeyedStream<MemberId<()>, u32, Cluster<'_, (), NoConsistency>, _, _, _> = source
+        let _: KeyedStream<MemberId<()>, u32, Cluster<'_, ()>, _, _, _> = source
             .source_iter(q!(vec![1u32]))
             .broadcast_closed(&cluster, TCP.lossy(nondet!(/** test */)).bincode());
 

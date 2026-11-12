@@ -996,6 +996,9 @@ impl DockerDeploy {
     }
 }
 
+/// Docker names each cluster's members with `String`s.
+impl crate::compile::deploy_provider::SupportsMemberId<String> for DockerDeploy {}
+
 impl<'a> Deploy<'a> for DockerDeploy {
     type Meta = ();
     type InstantiateEnv = Self;

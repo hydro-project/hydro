@@ -166,6 +166,9 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
 }
 
 pub(super) struct SimDeploy {}
+/// Sim numbers each cluster's members with `u32`s.
+impl crate::compile::deploy_provider::SupportsMemberId<u32> for SimDeploy {}
+
 impl<'a> Deploy<'a> for SimDeploy {
     type Meta = ();
     type InstantiateEnv = ();
@@ -633,7 +636,7 @@ fn compile_sim_graph_trybuild(
                         Some(__current_cluster_id),
                         {
                             #(#extra_stmts_per_cluster)*
-                            let #self_id_ident = &*Box::leak(Box::new(#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id)));
+                            let #self_id_ident = &*Box::leak(Box::new(__current_cluster_id));
 
                             #(#tick_dfir_stmts)*
 
@@ -661,13 +664,11 @@ fn compile_sim_graph_trybuild(
     // )]
     let mut cluster_max_sizes = cluster_max_sizes.into_iter().collect::<Vec<_>>();
     cluster_max_sizes.sort();
-    let cluster_ids_stmts = cluster_max_sizes.into_iter()
+    let cluster_ids_stmts = cluster_max_sizes
+        .into_iter()
         .map(|(loc_key, max_size)| {
             let ident = syn::Ident::new(
-                &format!(
-                    "__hydro_lang_cluster_ids_{}",
-                    loc_key,
-                ),
+                &format!("__hydro_lang_cluster_ids_{}", loc_key,),
                 Span::call_site(),
             );
 
@@ -676,7 +677,7 @@ fn compile_sim_graph_trybuild(
                 .collect::<Vec<syn::Expr>>();
 
             syn::parse_quote! {
-                let #ident: &'static [#root::__staged::location::TaglessMemberId] = Box::leak(Box::new([#(#root::__staged::location::TaglessMemberId::from_raw_id(#elements)),*]));
+                let #ident: &'static [u32] = Box::leak(Box::new([#(#elements),*]));
             }
         })
         .collect::<Vec<syn::Stmt>>();

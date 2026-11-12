@@ -12,8 +12,8 @@ pub struct EchoMessage {
 }
 
 pub fn echo_server<'a, C>(
-    input: KeyedStream<String, EchoMessage, Cluster<'a, C>>,
-) -> KeyedStream<String, serde_json::Value, Cluster<'a, C>> {
+    input: KeyedStream<String, EchoMessage, Cluster<'a, C, String>>,
+) -> KeyedStream<String, serde_json::Value, Cluster<'a, C, String>> {
     input.map(q!(|msg| {
         serde_json::json!({
             "type": "echo_ok",
@@ -42,7 +42,7 @@ mod tests {
     )]
     async fn test_with_maelstrom() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), String>();
 
         let (input, output_handle) = maelstrom_bidi_clients(&cluster);
         output_handle.complete(echo_server(input));

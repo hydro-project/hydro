@@ -31,7 +31,7 @@ use std::marker::PhantomData;
 use hydro_lang::forward_handle::ForwardHandle;
 use hydro_lang::live_collections::stream::{ExactlyOnce, MinOrder, NoOrder, Ordering, TotalOrder};
 use hydro_lang::location::cluster::{
-    CLUSTER_SELF_ID, ClusterIds, Consistency, EventualConsistency, NoConsistency,
+    CLUSTER_SELF_ID, ClusterIds, Consistency, EventualConsistency,
 };
 use hydro_lang::location::dynamic::LocationId;
 use hydro_lang::location::{Atomic, Cluster, Location, MemberId};
@@ -804,19 +804,15 @@ pub struct RaftOutputs<'a, T, ClusterTag> {
     /// are completed before the protocol treats the entries as committed.
     pub committed: Stream<
         LogEntry<T>,
-        Atomic<Cluster<'a, ClusterTag, EventualConsistency>>,
+        Atomic<Cluster<'a, ClusterTag, u32, EventualConsistency>>,
         Unbounded,
         TotalOrder,
     >,
     /// Requests that arrived at a member that was not the leader, paired with the
     /// best-known leader hint for the client to retry against (`None` when the
     /// member does not know who leads).
-    pub redirected: Stream<
-        (T, Option<MemberId<ClusterTag>>),
-        Cluster<'a, ClusterTag, NoConsistency>,
-        Unbounded,
-        TotalOrder,
-    >,
+    pub redirected:
+        Stream<(T, Option<MemberId<ClusterTag>>), Cluster<'a, ClusterTag>, Unbounded, TotalOrder>,
     /// Each member's view transitions (term and known leader), emitted whenever the
     /// view changes. Useful for tests and observability; may be left unobserved.
     pub leader_views: Stream<LeaderView<ClusterTag>, Cluster<'a, ClusterTag>>,
@@ -876,7 +872,7 @@ where
     let LocationId::Cluster(cluster_key) = Location::id(cluster) else {
         unreachable!("raft_server always runs on a cluster")
     };
-    let cluster_members = ClusterIds {
+    let cluster_members = ClusterIds::<u32> {
         key: cluster_key,
         _phantom: PhantomData,
     };
@@ -1028,7 +1024,7 @@ where
         // The RAFT protocol itself is what justifies the consistency cast: every
         // member emits the same totally-ordered committed sequence, eventually.
         committed: committed
-            .assert_has_consistency_of::<Cluster<'a, ClusterTag, EventualConsistency>>(
+            .assert_has_consistency_of::<Cluster<'a, ClusterTag, u32, EventualConsistency>>(
                 manual_proof!(
                     /** RAFT's election restriction, log-matching, and majority-commit
                     rules guarantee every member emits the same committed sequence,
@@ -1084,7 +1080,7 @@ where
     reason = "the return type spells out the exact consistency/ordering guarantees"
 )]
 pub fn raft<'a, T, ClusterTag, Con, O, Net>(
-    requests: Stream<T, Cluster<'a, ClusterTag, Con>, Unbounded, O>,
+    requests: Stream<T, Cluster<'a, ClusterTag, u32, Con>, Unbounded, O>,
     election_timer_interrupts: Stream<(), Cluster<'a, ClusterTag>>,
     heartbeat_timer_interrupts: Stream<(), Cluster<'a, ClusterTag>>,
     config: RaftConfig,
@@ -1093,16 +1089,11 @@ pub fn raft<'a, T, ClusterTag, Con, O, Net>(
 ) -> (
     Stream<
         LogEntry<T>,
-        Atomic<Cluster<'a, ClusterTag, EventualConsistency>>,
+        Atomic<Cluster<'a, ClusterTag, u32, EventualConsistency>>,
         Unbounded,
         TotalOrder,
     >,
-    Stream<
-        (T, Option<MemberId<ClusterTag>>),
-        Cluster<'a, ClusterTag, NoConsistency>,
-        Unbounded,
-        TotalOrder,
-    >,
+    Stream<(T, Option<MemberId<ClusterTag>>), Cluster<'a, ClusterTag>, Unbounded, TotalOrder>,
 )
 where
     T: Clone + Serialize + DeserializeOwned + 'a,
@@ -1171,7 +1162,7 @@ mod tests {
     #[test]
     fn even_cluster_simultaneous_candidates_exactly_one_leader_per_term() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<Replica>();
+        let cluster = flow.cluster::<Replica, u32>();
 
         let (interrupt_send, election_timer_interrupts) = cluster.sim_input();
         // The heartbeat timer never fires and no requests arrive: every election
@@ -1293,7 +1284,7 @@ mod tests {
     #[test]
     fn heartbeats_converge_leader_views() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<Replica>();
+        let cluster = flow.cluster::<Replica, u32>();
 
         let (interrupt_send, election_timer_interrupts) = cluster.sim_input();
         let (heartbeat_interrupt_send, heartbeat_timer_interrupts) = cluster.sim_input();
@@ -2136,7 +2127,7 @@ mod tests {
         const N: usize = 3;
         const MAX_ROUNDS: usize = 16;
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<Replica>();
+        let cluster = flow.cluster::<Replica, u32>();
 
         let (election_interrupt_send, election_timer_interrupts) = cluster.sim_input();
         let (heartbeat_interrupt_send, heartbeat_timer_interrupts) = cluster.sim_input();
@@ -2334,7 +2325,7 @@ mod tests {
         }
 
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<Replica>();
+        let cluster = flow.cluster::<Replica, u32>();
 
         let (election_interrupt_send, election_timer_interrupts) = cluster.sim_input();
         let (heartbeat_interrupt_send, heartbeat_timer_interrupts) = cluster.sim_input();
@@ -2477,7 +2468,7 @@ mod tests {
         const HEARTBEAT_PUMPS_PER_MEMBER: usize = 6;
 
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<Replica>();
+        let cluster = flow.cluster::<Replica, u32>();
 
         let (election_interrupt_send, election_timer_interrupts) = cluster.sim_input();
         let (heartbeat_interrupt_send, heartbeat_timer_interrupts) = cluster.sim_input();
@@ -2631,7 +2622,7 @@ mod tests {
         use hydro_lang::deploy::HydroDeploy;
 
         let mut builder = FlowBuilder::new();
-        let replicas = builder.cluster::<Replica>();
+        let replicas = builder.cluster::<Replica, u32>();
         create_raft(&replicas);
         let mut built = builder.with_default_optimize::<HydroDeploy>();
 

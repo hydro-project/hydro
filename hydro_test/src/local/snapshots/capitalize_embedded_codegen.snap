@@ -52,7 +52,12 @@ Acknowledge what it may do with `EmbeddedOutputChannel::new(.., Acknowledgements
         }
     }
 }
-#[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
+#[allow(
+    unused,
+    non_snake_case,
+    clippy::suspicious_else_formatting,
+    clippy::clone_on_copy
+)]
 pub fn capitalize<
     'a,
     __In0: __root_dfir_rs::futures::Stream<Item = std::string::String> + Unpin + 'a,

@@ -21,7 +21,6 @@ pub use super::deploy_runtime_containerized::{
     get_or_init_channel_mux, send_handshake,
 };
 use crate::location::dynamic::LocationId;
-use crate::location::member_id::TaglessMemberId;
 use crate::location::{LocationKey, MembershipEvent};
 
 pub fn deploy_containerized_o2o(
@@ -67,13 +66,13 @@ pub fn deploy_containerized_o2o(
 pub fn deploy_containerized_o2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
         q!(sinktools::demux_map_lazy::<_, _, _, _>(
-            move |key: &TaglessMemberId| {
+            move |key: &String| {
                 let key = key.clone();
                 let channel_name = channel_name.to_owned();
 
                 LazySink::<_, _, _, bytes::Bytes>::new(move || {
                     Box::pin(async move {
-                        let task_id = key.get_container_name();
+                        let task_id = key.as_str();
                         let ip = self::resolve_task_ip(task_id).await;
                         let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
                         debug!(name: "connecting", %target, %task_id, channel_name = %channel_name);
@@ -146,7 +145,7 @@ pub fn deploy_containerized_m2o(
 
                         Some((
                             source.map(move |v| {
-                                v.map(|v| (TaglessMemberId::from_container_name(from_task_id.clone()), v))
+                                v.map(|v| (from_task_id.clone(), v))
                             }),
                             rx,
                         ))
@@ -162,13 +161,13 @@ pub fn deploy_containerized_m2o(
 pub fn deploy_containerized_m2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
         q!(sinktools::demux_map_lazy::<_, _, _, _>(
-            move |key: &TaglessMemberId| {
+            move |key: &String| {
                 let key = key.clone();
                 let channel_name = channel_name.to_owned();
 
                 LazySink::<_, _, _, bytes::Bytes>::new(move || {
                     Box::pin(async move {
-                        let task_id = key.get_container_name();
+                        let task_id = key.as_str();
                         let ip = self::resolve_task_ip(task_id).await;
                         let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
                         debug!(name: "connecting", %target, %task_id, channel_name = %channel_name);
@@ -199,14 +198,7 @@ pub fn deploy_containerized_m2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
                         debug!(name: "m2m_channel_connected", %from_task_id);
 
                         Some((
-                            source.map(move |v| {
-                                v.map(|v| {
-                                    (
-                                        TaglessMemberId::from_container_name(from_task_id.clone()),
-                                        v,
-                                    )
-                                })
-                            }),
+                            source.map(move |v| v.map(|v| (from_task_id.clone(), v))),
                             rx,
                         ))
                     })
@@ -250,16 +242,13 @@ pub fn deploy_containerized_external_sink_source_ident(
     .splice_untyped_ctx(&())
 }
 
-pub fn cluster_self_id<'a>() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
-    q!(TaglessMemberId::from_container_name(
-        self::get_self_task_id()
-    ))
+pub fn cluster_self_id<'a>() -> impl QuotedWithContext<'a, String, ()> + Clone + 'a {
+    q!(self::get_self_task_id())
 }
 
 pub fn cluster_membership_stream<'a>(
     location_id: &LocationId,
-) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
-{
+) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (String, MembershipEvent)> + Unpin>, ()> {
     let location_key = location_id.key();
 
     q!(Box::new(self::ecs_membership_stream(
@@ -267,7 +256,7 @@ pub fn cluster_membership_stream<'a>(
         location_key
     ))
         as Box<
-            dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin,
+            dyn Stream<Item = (String, MembershipEvent)> + Unpin,
         >)
 }
 
@@ -275,7 +264,7 @@ pub fn cluster_membership_stream<'a>(
 fn ecs_membership_stream(
     cluster_name: String,
     location_key: LocationKey,
-) -> impl Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin {
+) -> impl Stream<Item = (String, MembershipEvent)> + Unpin {
     use std::collections::HashSet;
 
     use futures::stream::{StreamExt, once};
@@ -407,7 +396,6 @@ fn ecs_membership_stream(
 
     Box::pin(
         poll_stream
-            .map(|(k, v)| (TaglessMemberId::from_container_name(k), v))
             .inspect(|(member_id, event)| trace!(name: "membership_event", ?member_id, ?event)),
     )
 }

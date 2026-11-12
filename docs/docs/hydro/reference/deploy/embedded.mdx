@@ -220,19 +220,22 @@ let mut flow = embedded::greet(inputs, outputs);
 When a location is a cluster (registered with [`with_cluster`](rust:hydro_lang::compile::builder::FlowBuilder::with_cluster) in `build.rs`), the generated function receives additional parameters for the cluster's identity and membership information.
 
 ### Self ID
-If a cluster's code reads its own member ID ([`CLUSTER_SELF_ID`](rust:hydro_lang::location::cluster::CLUSTER_SELF_ID)), the function generated for it receives a `__cluster_self_id` parameter of type [`TaglessMemberId`](rust:hydro_lang::location::member_id::TaglessMemberId). This tells the running instance which member of the cluster it is. You provide this when you call the generated function:
+If a cluster's code reads its own member ID ([`CLUSTER_SELF_ID`](rust:hydro_lang::location::cluster::CLUSTER_SELF_ID)), the generated function for that cluster takes a `__cluster_self_id` parameter. You pass it the member's plain `Id`, the type the cluster was created with (for example `u32` or `String`). Inside the dataflow, `CLUSTER_SELF_ID` is that same ID wrapped as a [`MemberId<Tag, Id>`](rust:hydro_lang::location::member_id::MemberId). The wrapper records which cluster the ID belongs to, so it can't be mistaken for an ID from another cluster.
+
+You choose `Id` when you create the cluster in `build.rs` with `flow.cluster::<Tag, Id>()`. It can be any type you like, such as a number, a host name, an address, or your own newtype. Hydro compares, hashes, orders, and passes `Id`s along, but never interprets them, so the dataflow pays only for the type you pick. A program that should run with different `Id`s is generic over it (`fn program<'a, Id: Clone + Eq + Hash>(cluster: &Cluster<'a, Tag, Id>, ..)`). The same IDs must appear in the membership streams you supply and in the tags your transport puts on messages.
 
 ```rust,ignore
-let member_id = TaglessMemberId::from_raw_id(0);
+// build.rs: let workers = flow.cluster::<Worker, String>();
+let member_id = "worker-0".to_owned();
 let mut flow = my_cluster_fn(member_id, my_cluster_fn::EmbeddedInputs { input: EmbeddedInputChannel::new(input, Promises::new().total_order(manual_proof!(/** ... */)).exactly_once(manual_proof!(/** ... */))) }, outputs);
 ```
 
 ### Membership Streams
-When a location (process or cluster) needs to know the members of another cluster — for example, to broadcast to it — the generated function receives an `EmbeddedMembershipStreams` struct parameter. This struct has one field per cluster whose membership is needed, named after that cluster's function name. Each field is a stream of ([`TaglessMemberId`](rust:hydro_lang::location::member_id::TaglessMemberId), [`MembershipEvent`](rust:hydro_lang::location::MembershipEvent)) pairs, wrapped in an `EmbeddedInputChannel` like a stream input (see [Promising and Acknowledging Guarantees](#promising-and-acknowledging-guarantees)):
+When a location (process or cluster) needs to know the members of another cluster — for example, to broadcast to it — the generated function receives an `EmbeddedMembershipStreams` struct parameter. This struct has one field per cluster whose membership is needed, named after that cluster's function name. Each field is a stream of (the cluster's `Id`, [`MembershipEvent`](rust:hydro_lang::location::MembershipEvent)) pairs, wrapped in an `EmbeddedInputChannel` like a stream input (see [Promising and Acknowledging Guarantees](#promising-and-acknowledging-guarantees)). As with the self ID, you supply plain `Id`s, and the dataflow sees them as `MemberId<Tag, Id>`s:
 
 ```rust,ignore
 pub mod my_sender {
-    pub struct EmbeddedMembershipStreams<S: Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin> {
+    pub struct EmbeddedMembershipStreams<S: Stream<Item = (Id, MembershipEvent)> + Unpin> {
         pub my_receiver: EmbeddedInputChannel<membership::my_receiver, S>,
     }
 }
@@ -242,9 +245,8 @@ You provide the membership stream when calling the function. For example, a proc
 
 ```rust,ignore
 use hydro_lang::location::MembershipEvent;
-use hydro_lang::location::member_id::TaglessMemberId;
 
-let member_id = TaglessMemberId::from_raw_id(0);
+let member_id = 0u32;
 let membership = my_sender::EmbeddedMembershipStreams {
     my_receiver: EmbeddedInputChannel::new(
         futures::stream::iter(vec![(member_id.clone(), MembershipEvent::Joined)]),
@@ -265,7 +267,7 @@ let mut flow = m2m_sender(membership, m2m_sender::EmbeddedInputs { input: Embedd
 In `build.rs`, use `with_cluster` instead of `with_process` to register cluster locations:
 
 ```rust,ignore
-let cluster = flow.cluster::<MyClusterTag>();
+let cluster = flow.cluster::<MyClusterTag, u32>();
 // ...
 let code = flow
     .with_cluster(&cluster, "my_cluster_fn")
@@ -318,15 +320,15 @@ pub fn echo_receiver<'a, S: Stream<Item = Result<BytesMut, io::Error>> + Unpin +
 
 ### Cluster Networking
 
-When a cluster is involved in networking, the generated structs become **tagged** with `TaglessMemberId` so you can route messages to and from individual cluster members.
+When a cluster is involved in networking, the generated structs become **tagged** with the cluster's `Id` so you can route messages to and from individual cluster members. Your transport works with plain `Id`s; the dataflow wraps and unwraps them as `MemberId<Tag, Id>`s at the boundary.
 
 #### Process → Cluster (o2m)
 
-When a process sends to a cluster, the sender's `EmbeddedNetworkOut` fields become `FnMut((TaglessMemberId, Bytes))` — each outgoing message is paired with the target member ID:
+When a process sends to a cluster, the sender's `EmbeddedNetworkOut` fields become `FnMut((Id, Bytes))` — each outgoing message is paired with the target member ID:
 
 ```rust,ignore
 pub mod o2m_sender {
-    pub struct EmbeddedNetworkOut<F: FnMut((TaglessMemberId, Bytes))> {
+    pub struct EmbeddedNetworkOut<F: FnMut((Id, Bytes))> {
         pub data: EmbeddedNetworkOutputChannel<outgoing::data, F>,
     }
 }
@@ -356,35 +358,35 @@ pub mod m2o_sender {
 }
 ```
 
-The receiving process's `EmbeddedNetworkIn` fields become `Stream<Item = Result<(TaglessMemberId, BytesMut), io::Error>>` — each incoming message is tagged with the sender's member ID:
+The receiving process's `EmbeddedNetworkIn` fields become `Stream<Item = Result<(Id, BytesMut), io::Error>>` — each incoming message is tagged with the sender's member ID:
 
 ```rust,ignore
 pub mod m2o_receiver {
-    pub struct EmbeddedNetworkIn<S: Stream<Item = Result<(TaglessMemberId, BytesMut), io::Error>> + Unpin> {
+    pub struct EmbeddedNetworkIn<S: Stream<Item = Result<(Id, BytesMut), io::Error>> + Unpin> {
         pub data: EmbeddedNetworkInputChannel<incoming::data, S>,
     }
 }
 ```
 
-Your transport layer must tag each incoming message with the `TaglessMemberId` of the cluster member that sent it.
+Your transport layer must tag each incoming message with the `Id` of the cluster member that sent it.
 
 #### Cluster → Cluster (m2m)
 
-When a cluster sends to another cluster, both sides are tagged. The sender's `EmbeddedNetworkOut` fields are `FnMut((TaglessMemberId, Bytes))` (tagged with the target member ID):
+When a cluster sends to another cluster, both sides are tagged. The sender's `EmbeddedNetworkOut` fields are `FnMut((Id, Bytes))` (tagged with the target member ID):
 
 ```rust,ignore
 pub mod m2m_sender {
-    pub struct EmbeddedNetworkOut<F: FnMut((TaglessMemberId, Bytes))> {
+    pub struct EmbeddedNetworkOut<F: FnMut((Id, Bytes))> {
         pub data: EmbeddedNetworkOutputChannel<outgoing::data, F>,
     }
 }
 ```
 
-The receiver's `EmbeddedNetworkIn` fields are `Stream<Item = Result<(TaglessMemberId, BytesMut), io::Error>>` (tagged with the source member ID):
+The receiver's `EmbeddedNetworkIn` fields are `Stream<Item = Result<(Id, BytesMut), io::Error>>` (tagged with the source member ID):
 
 ```rust,ignore
 pub mod m2m_receiver {
-    pub struct EmbeddedNetworkIn<S: Stream<Item = Result<(TaglessMemberId, BytesMut), io::Error>> + Unpin> {
+    pub struct EmbeddedNetworkIn<S: Stream<Item = Result<(Id, BytesMut), io::Error>> + Unpin> {
         pub data: EmbeddedNetworkInputChannel<incoming::data, S>,
     }
 }
@@ -453,8 +455,8 @@ input.send(receiver, EMBEDDED.never_reorders().never_duplicates().never_drops().
 
 An `EMBEDDED` channel is unserialized, so the generated network parameters expose the **raw element type** `T` instead of bytes:
 
-- The sender's `EmbeddedNetworkOut` field becomes `FnMut(T)` (or `FnMut((TaglessMemberId, T))` when tagged with a destination member).
-- The receiver's `EmbeddedNetworkIn` field becomes `Stream<Item = T>` (or `Stream<Item = (TaglessMemberId, T)>` when tagged with a source member).
+- The sender's `EmbeddedNetworkOut` field becomes `FnMut(T)` (or `FnMut((Id, T))` when tagged with a destination member).
+- The receiver's `EmbeddedNetworkIn` field becomes `Stream<Item = T>` (or `Stream<Item = (Id, T)>` when tagged with a source member).
 
 Note that unlike bincode channels, there is **no transport `Result` wrapper** on the receiving side: since your external code performs serialization and transport, it decides how to handle serialization and delivery faults before feeding elements into the stream.
 
