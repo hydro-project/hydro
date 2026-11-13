@@ -195,10 +195,32 @@ impl<SetOut> Default for CartesianProductBimorphism<SetOut> {
         }
     }
 }
+
+fn cartesian_product_from_refs<SetA, SetB, SetOut>(set_a: &SetA, set_b: &SetB) -> SetUnion<SetOut>
+where
+    SetA: Iter + SimpleCollectionRef,
+    SetB: Iter + SimpleCollectionRef,
+    SetA::Item: Clone,
+    SetB::Item: Clone,
+    SetOut: FromIterator<(SetA::Item, SetB::Item)>,
+{
+    let set_out = set_a
+        .iter()
+        .map(<SetA as SimpleCollectionRef>::into_ref)
+        .flat_map(|a_item| {
+            set_b
+                .iter()
+                .map(<SetB as SimpleCollectionRef>::into_ref)
+                .map(move |b_item| (a_item.clone(), b_item.clone()))
+        })
+        .collect::<SetOut>();
+    SetUnion::new(set_out)
+}
+
 impl<SetA, SetB, SetOut> LatticeBimorphism<SetUnion<SetA>, SetUnion<SetB>>
     for CartesianProductBimorphism<SetOut>
 where
-    SetA: IntoIterator,
+    SetA: Iter + SimpleCollectionRef,
     SetB: Iter + SimpleCollectionRef,
     SetA::Item: Clone,
     SetB::Item: Clone,
@@ -207,19 +229,15 @@ where
     type Output = SetUnion<SetOut>;
 
     fn call(&mut self, lat_a: SetUnion<SetA>, lat_b: SetUnion<SetB>) -> Self::Output {
-        let set_a = lat_a.into_reveal();
-        let set_b = lat_b.into_reveal();
-        let set_out = set_a
-            .into_iter()
-            .flat_map(|a_item| {
-                set_b
-                    .iter()
-                    .map(<SetB as SimpleCollectionRef>::into_ref)
-                    .cloned()
-                    .map(move |b_item| (a_item.clone(), b_item))
-            })
-            .collect::<SetOut>();
-        SetUnion::new(set_out)
+        cartesian_product_from_refs(lat_a.as_reveal_ref(), lat_b.as_reveal_ref())
+    }
+
+    fn call_ref(&mut self, lat_a: &SetUnion<SetA>, lat_b: &SetUnion<SetB>) -> Self::Output
+    where
+        SetUnion<SetA>: Clone,
+        SetUnion<SetB>: Clone,
+    {
+        cartesian_product_from_refs(lat_a.as_reveal_ref(), lat_b.as_reveal_ref())
     }
 }
 
@@ -316,6 +334,32 @@ mod test {
             CartesianProductBimorphism::<HashSet<_>>::default(),
             items_b,
             items_b,
+        );
+    }
+
+    /// `call_ref` borrows the input lattices. Each `Rc` starts at strong count 2
+    /// (local binding + set); the output pair accounts for one more clone.
+    #[test]
+    fn cartesian_product_references_do_not_clone_inputs() {
+        use std::rc::Rc;
+
+        let item_a = Rc::new(1);
+        let item_b = Rc::new(2);
+        let lat_a = SetUnionHashSet::new_from([Rc::clone(&item_a)]);
+        let lat_b = SetUnionHashSet::new_from([Rc::clone(&item_b)]);
+        assert_eq!(2, Rc::strong_count(&item_a));
+        assert_eq!(2, Rc::strong_count(&item_b));
+
+        let mut bim = CartesianProductBimorphism::<HashSet<_>>::default();
+        let out = LatticeBimorphism::call_ref(&mut bim, &lat_a, &lat_b);
+
+        assert_eq!(3, Rc::strong_count(&item_a));
+        assert_eq!(3, Rc::strong_count(&item_b));
+        assert!(lat_a.as_reveal_ref().contains(&item_a));
+        assert!(lat_b.as_reveal_ref().contains(&item_b));
+        assert_eq!(
+            SetUnionHashSet::new_from([(Rc::clone(&item_a), Rc::clone(&item_b))]),
+            out
         );
     }
 }
