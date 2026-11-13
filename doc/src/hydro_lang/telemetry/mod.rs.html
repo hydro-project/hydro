@@ -157,27 +157,28 @@
 <a href=#157 id=157 data-nosnippet>157</a></span><span class="kw">pub trait </span>Sidecar {
 <a href=#158 id=158 data-nosnippet>158</a>    <span class="doccomment">/// Generates code to create a sidecar.
 <a href=#159 id=159 data-nosnippet>159</a>    ///
-<a href=#160 id=160 data-nosnippet>160</a>    /// The generated code should be an expression which evaluates as a `Future`.
-<a href=#161 id=161 data-nosnippet>161</a>    </span><span class="kw">fn </span>to_expr(
-<a href=#162 id=162 data-nosnippet>162</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#163 id=163 data-nosnippet>163</a>        flow_name: <span class="kw-2">&amp;</span>str,
-<a href=#164 id=164 data-nosnippet>164</a>        location_key: LocationKey,
-<a href=#165 id=165 data-nosnippet>165</a>        location_type: LocationType,
-<a href=#166 id=166 data-nosnippet>166</a>        location_name: <span class="kw-2">&amp;</span>str,
-<a href=#167 id=167 data-nosnippet>167</a>        dfir_ident: <span class="kw-2">&amp;</span>syn::Ident,
-<a href=#168 id=168 data-nosnippet>168</a>    ) -&gt; syn::Expr;
-<a href=#169 id=169 data-nosnippet>169</a>
-<a href=#170 id=170 data-nosnippet>170</a>    <span class="doccomment">/// Edits the [`AsCodeOptions`](dfir_lang::graph::AsCodeOptions) which will later be used when
-<a href=#171 id=171 data-nosnippet>171</a>    /// generating the DFIR code for each location this sidecar is attached to.
-<a href=#172 id=172 data-nosnippet>172</a>    ///
-<a href=#173 id=173 data-nosnippet>173</a>    /// For example, a metrics-recording sidecar can use this to opt in to (otherwise disabled)
-<a href=#174 id=174 data-nosnippet>174</a>    /// runtime metrics tracking, via
-<a href=#175 id=175 data-nosnippet>175</a>    /// [`AsCodeOptions::include_metrics_tracking`](dfir_lang::graph::AsCodeOptions::include_metrics_tracking).
-<a href=#176 id=176 data-nosnippet>176</a>    ///
-<a href=#177 id=177 data-nosnippet>177</a>    /// The default implementation makes no changes.
-<a href=#178 id=178 data-nosnippet>178</a>    </span><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-<a href=#179 id=179 data-nosnippet>179</a>    </span><span class="kw">fn </span>edit_as_code_options(<span class="kw-2">&amp;</span><span class="self">self</span>, options: <span class="kw-2">&amp;mut </span>dfir_lang::graph::AsCodeOptions) {
-<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">let _ </span>= options;
-<a href=#181 id=181 data-nosnippet>181</a>    }
-<a href=#182 id=182 data-nosnippet>182</a>}
+<a href=#160 id=160 data-nosnippet>160</a>    /// The generated code should be an expression which evaluates as a `Future + Send + 'static`,
+<a href=#161 id=161 data-nosnippet>161</a>    /// as it is spawned onto the location's tokio runtime via `tokio::spawn`.
+<a href=#162 id=162 data-nosnippet>162</a>    </span><span class="kw">fn </span>to_expr(
+<a href=#163 id=163 data-nosnippet>163</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#164 id=164 data-nosnippet>164</a>        flow_name: <span class="kw-2">&amp;</span>str,
+<a href=#165 id=165 data-nosnippet>165</a>        location_key: LocationKey,
+<a href=#166 id=166 data-nosnippet>166</a>        location_type: LocationType,
+<a href=#167 id=167 data-nosnippet>167</a>        location_name: <span class="kw-2">&amp;</span>str,
+<a href=#168 id=168 data-nosnippet>168</a>        dfir_ident: <span class="kw-2">&amp;</span>syn::Ident,
+<a href=#169 id=169 data-nosnippet>169</a>    ) -&gt; syn::Expr;
+<a href=#170 id=170 data-nosnippet>170</a>
+<a href=#171 id=171 data-nosnippet>171</a>    <span class="doccomment">/// Edits the [`AsCodeOptions`](dfir_lang::graph::AsCodeOptions) which will later be used when
+<a href=#172 id=172 data-nosnippet>172</a>    /// generating the DFIR code for each location this sidecar is attached to.
+<a href=#173 id=173 data-nosnippet>173</a>    ///
+<a href=#174 id=174 data-nosnippet>174</a>    /// For example, a metrics-recording sidecar can use this to opt in to (otherwise disabled)
+<a href=#175 id=175 data-nosnippet>175</a>    /// runtime metrics tracking, via
+<a href=#176 id=176 data-nosnippet>176</a>    /// [`AsCodeOptions::include_metrics_tracking`](dfir_lang::graph::AsCodeOptions::include_metrics_tracking).
+<a href=#177 id=177 data-nosnippet>177</a>    ///
+<a href=#178 id=178 data-nosnippet>178</a>    /// The default implementation makes no changes.
+<a href=#179 id=179 data-nosnippet>179</a>    </span><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+<a href=#180 id=180 data-nosnippet>180</a>    </span><span class="kw">fn </span>edit_as_code_options(<span class="kw-2">&amp;</span><span class="self">self</span>, options: <span class="kw-2">&amp;mut </span>dfir_lang::graph::AsCodeOptions) {
+<a href=#181 id=181 data-nosnippet>181</a>        <span class="kw">let _ </span>= options;
+<a href=#182 id=182 data-nosnippet>182</a>    }
+<a href=#183 id=183 data-nosnippet>183</a>}
 </code></pre></div></section></main></body></html>

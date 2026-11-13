@@ -320,7 +320,7 @@
 <a href=#320 id=320 data-nosnippet>320</a>        }
 <a href=#321 id=321 data-nosnippet>321</a>
 <a href=#322 id=322 data-nosnippet>322</a>        <span class="comment">// Process sidecar declarations — compile-time directives that
-<a href=#323 id=323 data-nosnippet>323</a>        // produce futures to spawn on each location's LocalSet.
+<a href=#323 id=323 data-nosnippet>323</a>        // produce futures to spawn on each location's tokio runtime.
 <a href=#324 id=324 data-nosnippet>324</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>sidecars: SparseSecondaryMap&lt;LocationKey, Vec&lt;syn::Expr&gt;&gt; =
 <a href=#325 id=325 data-nosnippet>325</a>            SparseSecondaryMap::new();
 <a href=#326 id=326 data-nosnippet>326</a>        <span class="kw">for </span>decl <span class="kw">in </span>std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.sidecars) {
