@@ -467,6 +467,259 @@ function ScrollyStory() {
 }
 
 // ---------------------------------------------------------------------------
+// Correctness toolbox
+// ---------------------------------------------------------------------------
+
+interface Tool {
+  name: string;
+  /** When in the development lifecycle this tool catches bugs. */
+  stage: string;
+  accent: string;
+  code: string;
+  body: React.ReactNode;
+  link: { label: string; to?: string; href?: string };
+}
+
+const TOOLS: Tool[] = [
+  {
+    name: "Type system",
+    stage: "At compile time",
+    accent: COLOR_VARS.client,
+    code: "Stream<Vote,\n  Process<Leader>,\n  NoOrder, AtLeastOnce>",
+    body: (
+      <>
+        Locations, ordering, and retries live in the types. Code whose result
+        depends on timing or duplication does not compile until you prove it
+        safe (commutativity and idempotence proofs, optionally machine-checked
+        with Verus) or mark it with a <code>nondet!</code> guard.
+      </>
+    ),
+    link: {
+      label: "Safety and correctness",
+      to: "/docs/hydro/reference/correctness/",
+    },
+  },
+  {
+    name: "Model checker",
+    stage: "Every interleaving",
+    accent: COLOR_VARS.server,
+    code: "flow.sim()\n    .exhaustive(async || …)",
+    body: (
+      <>
+        The simulator enumerates every outcome of every <code>nondet!</code>{" "}
+        point, so assertions hold for <em>all</em> executions, not just the
+        ones your laptop happened to produce. Failures come with the exact
+        schedule, replayable deterministically.
+      </>
+    ),
+    link: {
+      label: "Simulation testing",
+      to: "/docs/hydro/reference/simulation/",
+    },
+  },
+  {
+    name: "Coverage-guided fuzzing",
+    stage: "Large state spaces",
+    accent: COLOR_VARS.network,
+    code: "flow.sim()\n    .fuzz(async || …)",
+    body: (
+      <>
+        When a protocol is too big to enumerate, switch one method call.{" "}
+        <code>cargo sim</code> drives libFuzzer toward unexplored code paths,
+        saves a reproducer for every failure, and <code>cargo test</code>{" "}
+        replays it in CI as a regression test.
+      </>
+    ),
+    link: {
+      label: "Coverage-guided fuzzing",
+      to: "/docs/hydro/reference/simulation/fuzzing",
+    },
+  },
+  {
+    name: "Multi-version simulation",
+    stage: "Across deployments",
+    accent: COLOR_VARS.chanB,
+    code: "let v2 = flow\n    .next_version(&v1);",
+    body: (
+      <>
+        Rolling upgrades mix old and new code on the same network. Simulate v1
+        and v2 members side by side and catch incompatible protocol changes
+        before they reach a live cluster.
+      </>
+    ),
+    link: {
+      label: "See an example",
+      href: "https://github.com/hydro-project/hydro/blob/main/hydro_test/src/distributed/versioning.rs",
+    },
+  },
+];
+
+function Toolbox() {
+  return (
+    <section className={styles.block}>
+      <h2 className={styles.blockTitle}>A toolbox for avoiding bugs</h2>
+      <p className={styles.blockLede}>
+        Because Hydro sees your whole distributed system as one program, it can
+        check that program in several complementary ways. Each tool picks up
+        where the previous one leaves off, and all of them work on the same
+        code you deploy.
+      </p>
+      <div className={styles.toolGrid}>
+        {TOOLS.map((tool) => (
+          <div
+            key={tool.name}
+            className={styles.toolCard}
+            style={{ "--tool-accent": tool.accent } as React.CSSProperties}
+          >
+            <div className={styles.toolStage}>{tool.stage}</div>
+            <h3 className={styles.toolName}>{tool.name}</h3>
+            <code className={styles.toolCode}>{tool.code}</code>
+            <p className={styles.toolBody}>{tool.body}</p>
+            <Link
+              className={styles.toolLink}
+              to={tool.link.to}
+              href={tool.link.href}
+            >
+              {tool.link.label} →
+            </Link>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FAQ
+// ---------------------------------------------------------------------------
+
+const FAQS: { q: string; a: React.ReactNode }[] = [
+  {
+    q: "Can I migrate from Rust to Hydro incrementally?",
+    a: (
+      <p>
+        Yes. <Link to="/docs/hydro/reference/deploy/embedded">Embedded mode</Link>{" "}
+        compiles your Hydro logic in <code>build.rs</code> into plain Rust
+        functions, one per location, that you call from your existing
+        application. Start with a single component, keep the rest of your
+        codebase unchanged, and even ship a crate that uses Hydro internally
+        behind a normal Rust API.
+      </p>
+    ),
+  },
+  {
+    q: "Can I keep my high-performance I/O?",
+    a: (
+      <p>
+        Yes. In embedded mode you own the event loop and the transport: you
+        decide when the dataflow runs, what feeds it, and where its outputs
+        go, whether that is DPDK, shared memory, or your own sockets.{" "}
+        <Link to="/docs/hydro/reference/locations/network-configuration#embedded">
+          <code>.embedded()</code> channels
+        </Link>{" "}
+        hand you typed values instead of bytes, so you can use a zero-copy
+        encoding or an existing wire format, while Hydro's types still hold
+        the program to the delivery guarantees you declare.
+      </p>
+    ),
+  },
+  {
+    q: "Can I use my existing libraries, databases, and services?",
+    a: (
+      <p>
+        Yes. <Link to="/docs/hydro/reference/io/sidecar">Sidecars</Link> wrap
+        any async Rust code, such as a database driver, a gRPC or HTTP server,
+        or a cloud SDK client, as a pair of streams that plug into your
+        dataflow. The sidecar owns its handles and resources for the lifetime
+        of the process; Hydro only sees the two ends.
+      </p>
+    ),
+  },
+  {
+    q: "Do I have to adopt a new deployment system?",
+    a: (
+      <p>
+        No. Embedded mode runs inside your own binaries on your existing
+        infrastructure, and is how we recommend running Hydro in production.{" "}
+        <Link to="/docs/hydro/reference/deploy/">Hydro Deploy</Link> is an
+        optional tool for quickly standing up clusters for development and
+        experiments.
+      </p>
+    ),
+  },
+  {
+    q: "Does Hydro add runtime overhead?",
+    a: (
+      <p>
+        Hydro's abstractions are zero-cost: locations, types, and proofs are
+        resolved at compile time, and each location compiles to a{" "}
+        <Link to="/docs/hydro/reference/introduction/dataflow-programming">
+          dataflow graph
+        </Link>{" "}
+        of ordinary Rust code. You keep control over the network protocol,
+        compute placement, and serialization format.
+      </p>
+    ),
+  },
+  {
+    q: "What if the type system rejects code I know is correct?",
+    a: (
+      <p>
+        You have two ways out, both explicit. Attach a proof that your logic is
+        commutative or idempotent, or wrap the operation in a{" "}
+        <Link to="/docs/hydro/reference/correctness/nondet">
+          <code>nondet!</code> guard
+        </Link>{" "}
+        that documents why it is safe. Guards mark exactly the code reviewers
+        should focus on, and they are exactly the points the simulator
+        explores in testing.
+      </p>
+    ),
+  },
+  {
+    q: "How do I test a rolling upgrade?",
+    a: (
+      <p>
+        With multi-version simulation: <code>flow.next_version(&amp;cluster)</code>{" "}
+        declares a second version of a cluster whose members run new code on
+        the same network as the old ones. The simulator then explores how v1
+        and v2 interact, just like any other simulation test.
+      </p>
+    ),
+  },
+  {
+    q: "What happens when a simulation test fails?",
+    a: (
+      <p>
+        You get the exact sequence of decisions that caused the failure. The
+        fuzzer saves it as a reproducer that <code>cargo test</code> replays
+        deterministically until the bug is fixed, and you can turn it into a{" "}
+        <Link to="/docs/hydro/reference/simulation/deterministic">
+          scripted regression test
+        </Link>{" "}
+        that replays exactly that interleaving.
+      </p>
+    ),
+  },
+];
+
+function Faq() {
+  return (
+    <section className={styles.block} id="faq">
+      <h2 className={styles.blockTitle}>Frequently asked questions</h2>
+      <div className={styles.faqList}>
+        {FAQS.map(({ q, a }) => (
+          <details key={q} className={styles.faqItem}>
+            <summary className={styles.faqQuestion}>{q}</summary>
+            <div className={styles.faqAnswer}>{a}</div>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -528,6 +781,10 @@ export default function Home() {
         </div>
 
         <ScrollyStory />
+
+        <Toolbox />
+
+        <Faq />
 
         <div className={styles.panel}>
           <div
