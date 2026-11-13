@@ -107,11 +107,17 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
             arguments: &parse_quote_spanned! {op_span=>
                 #root::dfir_pipes::pull::FoldFrom::new(
                     <#lhs_type as #root::lattices::LatticeFrom::<_>>::lattice_from,
-                    |state, delta| { #root::lattices::Merge::merge(state, delta); },
+                    |state, delta| {
+                        // `Merge::merge` returns whether the value changed; the fold only writes.
+                        let _ = #root::lattices::Merge::merge(state, delta);
+                    },
                 ),
                 #root::dfir_pipes::pull::FoldFrom::new(
                     <#rhs_type as #root::lattices::LatticeFrom::<_>>::lattice_from,
-                    |state, delta| { #root::lattices::Merge::merge(state, delta); },
+                    |state, delta| {
+                        // `Merge::merge` returns whether the value changed; the fold only writes.
+                        let _ = #root::lattices::Merge::merge(state, delta);
+                    },
                 ),
             },
             ..wc.clone()
