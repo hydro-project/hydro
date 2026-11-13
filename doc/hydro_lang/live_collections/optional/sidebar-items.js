@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["InitNone"],"struct":["Optional"],"trait":["IsInitNone","OptionalBound"]};
+window.SIDEBAR_ITEMS = {"enum":["InitNone"],"struct":["Optional"],"trait":["IsInitNone","OptionalBound","OrAt"]};
