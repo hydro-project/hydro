@@ -11,9 +11,13 @@ use super::{
 ///
 /// > Three argument, one `LatticeBimorphism` function `Func`, an `LhsState` singleton reference, and an `RhsState` singleton reference.
 ///
-/// > 1 output stream of the output type of the `LatticeBimorphism` function.
+/// > 1 output stream of the `(LhsState, RhsState)` bimorphism output type.
 ///
-/// The function must be a lattice bimorphism for both `(LhsState, RhsItem)` and `(RhsState, LhsItem)`.
+/// The function must be a lattice bimorphism for `(LhsItem, RhsState)`, `(LhsState, RhsItem)`, and
+/// `(LhsState, RhsState)`. The emitted value has the `(LhsState, RhsState)` output type. Each
+/// delta is converted with `LatticeFrom` and merged, so `PairBimorphism` can pair
+/// singleton-collection deltas with set or map state even though those `Pair`s do not implement
+/// `Merge<Self>`.
 ///
 /// ```dfir
 /// use std::collections::HashSet;
@@ -40,6 +44,33 @@ use super::{
 ///        (2, 3),
 ///        (2, 4),
 ///    ]))]);
+/// ```
+///
+/// `PairBimorphism` over singleton collections. The deltas contain `SetUnionSingletonSet`, which
+/// is not `Merge<Self>`; they merge into the `Pair` of the two accumulated sets.
+///
+/// ```dfir
+/// use lattices::Pair;
+/// use lattices::PairBimorphism;
+/// use lattices::set_union::{SetUnionHashSet, SetUnionSingletonSet};
+///
+/// lhs_op = source_iter([0, 1])
+///     -> map(SetUnionSingletonSet::new_from)
+///     -> state::<'static, SetUnionHashSet<u32>>();
+/// rhs_op = source_iter([10, 20])
+///     -> map(SetUnionSingletonSet::new_from)
+///     -> state::<'static, SetUnionHashSet<u32>>();
+///
+/// lhs_op[items] -> [0]my_join;
+/// rhs_op[items] -> [1]my_join;
+/// lhs = lhs_op[state] -> singleton();
+/// rhs = rhs_op[state] -> singleton();
+///
+/// my_join = lattice_bimorphism(PairBimorphism, #lhs, #rhs)
+///     -> assert_eq([Pair::new(
+///         SetUnionHashSet::new_from([0, 1]),
+///         SetUnionHashSet::new_from([10, 20]),
+///     )]);
 /// ```
 pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
     name: "lattice_bimorphism",
@@ -82,7 +113,7 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                     #rhs_state,
                 );
                 #[inline(always)]
-                fn check_inputs<'a, Func, LhsPull, RhsPull, LhsState, RhsState, Output>(
+                fn check_inputs<'a, Func, LhsPull, RhsPull, LhsState, RhsState, Output, DeltaLhs, DeltaRhs>(
                     lhs_pull: LhsPull,
                     rhs_pull: RhsPull,
                     func: Func,
@@ -96,13 +127,17 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                 >
                 where
                     Func: 'a
-                        + #root::lattices::LatticeBimorphism<LhsState, RhsPull::Item, Output = Output>
-                        + #root::lattices::LatticeBimorphism<LhsPull::Item, RhsState, Output = Output>,
+                        + #root::lattices::LatticeBimorphism<LhsState, RhsState, Output = Output>
+                        + #root::lattices::LatticeBimorphism<LhsPull::Item, RhsState, Output = DeltaLhs>
+                        + #root::lattices::LatticeBimorphism<LhsState, RhsPull::Item, Output = DeltaRhs>,
                     LhsPull: 'a + #root::dfir_pipes::pull::Pull,
                     RhsPull: 'a + #root::dfir_pipes::pull::Pull,
                     LhsState: 'static + ::std::clone::Clone,
                     RhsState: 'static + ::std::clone::Clone,
-                    Output: #root::lattices::Merge<Output>,
+                    Output: #root::lattices::LatticeFrom<DeltaLhs>
+                        + #root::lattices::Merge<DeltaLhs>
+                        + #root::lattices::LatticeFrom<DeltaRhs>
+                        + #root::lattices::Merge<DeltaRhs>,
                 {
                     #root::compiled::pull::LatticeBimorphismPull::new(
                         #root::dfir_pipes::pull::Pull::fuse(lhs_pull),

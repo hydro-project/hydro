@@ -2,7 +2,7 @@ use std::pin::Pin;
 
 use dfir_pipes::pull::{FusedPull, Pull, PullStep};
 use dfir_pipes::{Context, Toggle};
-use lattices::{LatticeBimorphism, Merge};
+use lattices::{LatticeBimorphism, LatticeFrom, Merge};
 use pin_project_lite::pin_project;
 
 pin_project! {
@@ -23,17 +23,18 @@ pin_project! {
     }
 }
 
-impl<'a, Func, LhsPrev, RhsPrev, LhsState, RhsState, Output>
+impl<'a, Func, LhsPrev, RhsPrev, LhsState, RhsState, Output, DeltaLhs, DeltaRhs>
     LatticeBimorphismPull<'a, Func, LhsPrev, RhsPrev, LhsState, RhsState, Output>
 where
     Func: 'a
-        + LatticeBimorphism<LhsState, RhsPrev::Item, Output = Output>
-        + LatticeBimorphism<LhsPrev::Item, RhsState, Output = Output>,
+        + LatticeBimorphism<LhsState, RhsState, Output = Output>
+        + LatticeBimorphism<LhsPrev::Item, RhsState, Output = DeltaLhs>
+        + LatticeBimorphism<LhsState, RhsPrev::Item, Output = DeltaRhs>,
     LhsPrev: 'a + FusedPull,
     RhsPrev: 'a + FusedPull,
     LhsState: 'static + Clone,
     RhsState: 'static + Clone,
-    Output: Merge<Output>,
+    Output: LatticeFrom<DeltaLhs> + Merge<DeltaLhs> + LatticeFrom<DeltaRhs> + Merge<DeltaRhs>,
 {
     /// Creates a new `LatticeBimorphismPull`.
     pub fn new(
@@ -54,17 +55,18 @@ where
     }
 }
 
-impl<'a, Func, LhsPrev, RhsPrev, LhsState, RhsState, Output> Pull
+impl<'a, Func, LhsPrev, RhsPrev, LhsState, RhsState, Output, DeltaLhs, DeltaRhs> Pull
     for LatticeBimorphismPull<'a, Func, LhsPrev, RhsPrev, LhsState, RhsState, Output>
 where
     Func: 'a
-        + LatticeBimorphism<LhsState, RhsPrev::Item, Output = Output>
-        + LatticeBimorphism<LhsPrev::Item, RhsState, Output = Output>,
+        + LatticeBimorphism<LhsState, RhsState, Output = Output>
+        + LatticeBimorphism<LhsPrev::Item, RhsState, Output = DeltaLhs>
+        + LatticeBimorphism<LhsState, RhsPrev::Item, Output = DeltaRhs>,
     LhsPrev: 'a + FusedPull,
     RhsPrev: 'a + FusedPull,
     LhsState: 'static + Clone,
     RhsState: 'static + Clone,
-    Output: Merge<Output>,
+    Output: LatticeFrom<DeltaLhs> + Merge<DeltaLhs> + LatticeFrom<DeltaRhs> + Merge<DeltaRhs>,
 {
     type Ctx<'ctx> = <LhsPrev::Ctx<'ctx> as Context<'ctx>>::Merged<RhsPrev::Ctx<'ctx>>;
 
@@ -94,7 +96,7 @@ where
                 if let Some(output) = this.output.as_mut() {
                     output.merge(delta);
                 } else {
-                    *this.output = Some(delta);
+                    *this.output = Some(LatticeFrom::lattice_from(delta));
                 }
             }
 
@@ -109,7 +111,7 @@ where
                 if let Some(output) = this.output.as_mut() {
                     output.merge(delta);
                 } else {
-                    *this.output = Some(delta);
+                    *this.output = Some(LatticeFrom::lattice_from(delta));
                 }
             }
 
