@@ -276,34 +276,70 @@ impl OpInstGenerics {
 pub fn get_operator_generics(diagnostics: &mut Diagnostics, operator: &Operator) -> OpInstGenerics {
     // Generic arguments.
     let generic_args = operator.type_arguments().cloned();
-    let persistence_args = generic_args.iter().flatten().map_while(|generic_arg| match generic_arg {
-            GenericArgument::Lifetime(lifetime) => {
-                match &*lifetime.ident.to_string() {
-                    "tick" => Some(Persistence::Tick),
-                    "static" => Some(Persistence::Static),
-                    _ => {
-                        diagnostics.push(Diagnostic::spanned(
-                            generic_arg.span(),
-                            Level::Error,
-                            format!("Unknown lifetime generic argument `'{}`, expected `'tick` or `'static`.", lifetime.ident),
-                        ));
-                        // TODO(mingwei): should really keep going and not short circuit?
-                        None
-                    }
-                }
-            },
-            _ => None,
-        }).collect::<Vec<_>>();
-    let type_args = generic_args
+    // Leading lifetimes are the persistence prefix. A non-lifetime ends that prefix.
+    // An unknown lifetime is reported and not stored, but does not end the prefix, so
+    // following type arguments are still collected and checked.
+    let mut persistence_prefix_len = 0usize;
+    let persistence_args = generic_args
         .iter()
         .flatten()
-        .skip(persistence_args.len())
         .map_while(|generic_arg| match generic_arg {
-            GenericArgument::Type(typ) => Some(typ),
+            GenericArgument::Lifetime(lifetime) => Some((generic_arg, lifetime)),
             _ => None,
+        })
+        .filter_map(|(generic_arg, lifetime)| {
+            // Every leading lifetime counts, including ones that are not `'tick` or `'static`.
+            persistence_prefix_len += 1;
+            match &*lifetime.ident.to_string() {
+                "tick" => Some(Persistence::Tick),
+                "static" => Some(Persistence::Static),
+                _ => {
+                    diagnostics.push(Diagnostic::spanned(
+                        generic_arg.span(),
+                        Level::Error,
+                        format!(
+                            "Unknown lifetime generic argument `'{}`, expected `'tick` or `'static`.",
+                            lifetime.ident
+                        ),
+                    ));
+                    None
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+
+    // Types are collected only until the first non-type. Anything after that, including a
+    // type that shows up later, is a spanned error instead of being dropped by `map_while`.
+    let unexpected_after_types = |generic_arg: &GenericArgument| {
+        let message = if let GenericArgument::Lifetime(lifetime) = generic_arg {
+            format!(
+                "Unexpected lifetime `'{}` after a type argument. \
+                 Persistence lifetimes (`'tick`, `'static`) must come before type arguments.",
+                lifetime.ident
+            )
+        } else {
+            "Unexpected generic argument. \
+             Persistence lifetimes (`'tick`, `'static`) must come before type arguments."
+                .to_owned()
+        };
+        Diagnostic::spanned(generic_arg.span(), Level::Error, message)
+    };
+    let mut after_prefix = generic_args.iter().flatten().skip(persistence_prefix_len);
+    let type_args = after_prefix
+        .by_ref()
+        .map_while(|generic_arg| {
+            if let GenericArgument::Type(typ) = generic_arg {
+                Some(typ)
+            } else {
+                diagnostics.push(unexpected_after_types(generic_arg));
+                None
+            }
         })
         .cloned()
         .collect::<Vec<_>>();
+    for generic_arg in after_prefix {
+        diagnostics.push(unexpected_after_types(generic_arg));
+    }
 
     OpInstGenerics {
         generic_args,
