@@ -3142,6 +3142,13 @@ pub struct HydroIrOpMetadata {
     /// non-simulator backends.
     #[serde(skip)]
     pub sim_hook_id: Option<usize>,
+    /// When set on a `snapshot` of a bounded singleton-like collection (which has a single,
+    /// immutable value), the snapshot is deterministic (e.g. from `use::clone` in
+    /// `sliced!`): the simulator releases that value into every tick without treating it as a
+    /// non-deterministic choice or as a reason to run the tick. Ignored by non-simulator
+    /// backends.
+    #[serde(skip)]
+    pub sim_deterministic_snapshot: bool,
 }
 
 impl HydroIrOpMetadata {
@@ -3160,6 +3167,7 @@ impl HydroIrOpMetadata {
             network_recv_cpu_usage: None,
             id: None,
             sim_hook_id: None,
+            sim_deterministic_snapshot: false,
         }
     }
 }
@@ -7453,7 +7461,7 @@ mod test {
         ignore = "expects inclusion of feature-gated fields"
     )]
     fn hydro_node_size() {
-        assert_eq!(size_of::<HydroNode>(), 280);
+        assert_eq!(size_of::<HydroNode>(), 288);
     }
 
     #[test]
@@ -7462,7 +7470,7 @@ mod test {
         ignore = "expects inclusion of feature-gated fields"
     )]
     fn hydro_root_size() {
-        assert_eq!(size_of::<HydroRoot>(), 152);
+        assert_eq!(size_of::<HydroRoot>(), 160);
     }
 
     #[test]
