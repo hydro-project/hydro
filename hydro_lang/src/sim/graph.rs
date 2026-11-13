@@ -436,6 +436,13 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<PathB
         example_name: "sim-dylib".to_owned(),
         crate_type: Some("cdylib"),
         set_trybuild_lib_name: true,
+        // The generated example monomorphizes the whole simulation runtime (hooks, `dfir_pipes`
+        // combinators, channels, codecs) and runs it for thousands of fuzz iterations, so an
+        // unoptimized build spends nearly all its time copying `PullStep`s through combinator
+        // layers: `opt-level=1` runs the raft fuzz test ~3.5x faster than `opt-level=0` while
+        // adding ~0.5s to the example's ~2s compile. Debug assertions and line tables are
+        // unaffected, so panics from the program under test still point at their source.
+        opt_level: Some(1),
     })
 }
 
