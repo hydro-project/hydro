@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1794484661840,
+  "lastUpdate": 1794570057835,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -322743,6 +322743,208 @@
             "name": "paxos_bench",
             "value": 200380,
             "range": "± 6526.99",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "luckyworkama",
+            "username": "luckyworkama",
+            "email": "220770177+luckyworkama@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "59e91711089790dc04954ea7b5da008bd306672e",
+          "message": "feat(hydro_lang)!: generic member IDs: `MemberId<Tag, Id>` and `Cluster<'a, Tag, Id, Con>` (#3361)\n\nWhoever runs a cluster now chooses the type that identifies its members\nat\nruntime, and the generated code uses that type directly, rather than\nHydro\nfixing one representation per Cargo feature set (`TaglessMemberId`'s\nfeature-gated\nvariants).\n\nBREAKING CHANGE: a `Deploy` implementation must define `member_id_type`\nBREAKING CHANGE: `TaglessMemberId` is removed (use the cluster's `Id`,\n`u32` by\ndefault); a cluster deployed to Docker, ECS, or Maelstrom must be\ncreated with\n`flow.cluster_with_id::<Tag, String>()`; a cluster type with a\nnon-default\nconsistency is now spelled `Cluster<'a, Tag, Id, Con>`.",
+          "timestamp": "2026-11-12T19:46:53Z",
+          "url": "https://github.com/hydro-project/hydro/commit/59e91711089790dc04954ea7b5da008bd306672e"
+        },
+        "date": 1794570057773,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 310987,
+            "range": "± 1301",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6528957,
+            "range": "± 7255",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6855359,
+            "range": "± 228189",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 11307,
+            "range": "± 107",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 8447744,
+            "range": "± 25663",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 946852,
+            "range": "± 12685",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1020708,
+            "range": "± 41371",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 46992727,
+            "range": "± 1330875",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6527816,
+            "range": "± 7772",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 42347287,
+            "range": "± 393602",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6528878,
+            "range": "± 115137",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6840374,
+            "range": "± 90430",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 38513131,
+            "range": "± 210733",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 3873,
+            "range": "± 68",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 23616,
+            "range": "± 598",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 3915,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6653,
+            "range": "± 91",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 373924,
+            "range": "± 4161",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 53959,
+            "range": "± 344",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 43427,
+            "range": "± 219",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 16963,
+            "range": "± 133",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6902,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1072,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 72264,
+            "range": "± 495",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 74888,
+            "range": "± 373",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 6693,
+            "range": "± 159",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 16180,
+            "range": "± 112",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 26612,
+            "range": "± 443",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 7026,
+            "range": "± 98",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 218460,
+            "range": "± 811.42",
             "unit": "ops/s"
           }
         ]
