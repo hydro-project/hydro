@@ -52,17 +52,20 @@
 <a href=#52 id=52 data-nosnippet>52</a>
 <a href=#53 id=53 data-nosnippet>53</a>        <span class="kw">let </span>arguments = <span class="kw-2">&amp;</span><span class="macro">parse_quote_spanned!</span> {op_span=&gt;
 <a href=#54 id=54 data-nosnippet>54</a>            #first_arg,
-<a href=#55 id=55 data-nosnippet>55</a>            |acc, item| { #root::lattices::Merge::&lt;<span class="kw">_</span>&gt;::merge(acc, item); }
-<a href=#56 id=56 data-nosnippet>56</a>        };
-<a href=#57 id=57 data-nosnippet>57</a>
-<a href=#58 id=58 data-nosnippet>58</a>        <span class="kw">let </span>wc = WriteContextArgs {
-<a href=#59 id=59 data-nosnippet>59</a>            arguments,
-<a href=#60 id=60 data-nosnippet>60</a>            ..wc.clone()
-<a href=#61 id=61 data-nosnippet>61</a>        };
-<a href=#62 id=62 data-nosnippet>62</a>
-<a href=#63 id=63 data-nosnippet>63</a>        <span class="comment">// Can't do better type checking here because we need heavy type inference
-<a href=#64 id=64 data-nosnippet>64</a>        // to support different accumulator and input types.
-<a href=#65 id=65 data-nosnippet>65</a>        </span>(<span class="kw">super</span>::fold::FOLD.write_fn)(<span class="kw-2">&amp;</span>wc, diagnostics)
-<a href=#66 id=66 data-nosnippet>66</a>    },
-<a href=#67 id=67 data-nosnippet>67</a>};
+<a href=#55 id=55 data-nosnippet>55</a>            |acc, item| {
+<a href=#56 id=56 data-nosnippet>56</a>                <span class="comment">// `Merge::merge` returns whether the value changed; fold only needs the write.
+<a href=#57 id=57 data-nosnippet>57</a>                </span><span class="kw">let _ </span>= #root::lattices::Merge::&lt;<span class="kw">_</span>&gt;::merge(acc, item);
+<a href=#58 id=58 data-nosnippet>58</a>            }
+<a href=#59 id=59 data-nosnippet>59</a>        };
+<a href=#60 id=60 data-nosnippet>60</a>
+<a href=#61 id=61 data-nosnippet>61</a>        <span class="kw">let </span>wc = WriteContextArgs {
+<a href=#62 id=62 data-nosnippet>62</a>            arguments,
+<a href=#63 id=63 data-nosnippet>63</a>            ..wc.clone()
+<a href=#64 id=64 data-nosnippet>64</a>        };
+<a href=#65 id=65 data-nosnippet>65</a>
+<a href=#66 id=66 data-nosnippet>66</a>        <span class="comment">// Can't do better type checking here because we need heavy type inference
+<a href=#67 id=67 data-nosnippet>67</a>        // to support different accumulator and input types.
+<a href=#68 id=68 data-nosnippet>68</a>        </span>(<span class="kw">super</span>::fold::FOLD.write_fn)(<span class="kw-2">&amp;</span>wc, diagnostics)
+<a href=#69 id=69 data-nosnippet>69</a>    },
+<a href=#70 id=70 data-nosnippet>70</a>};
 </code></pre></div></section></main></body></html>
