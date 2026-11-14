@@ -20,21 +20,21 @@ help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 1 + #![feature(trivial_bounds)]
   |
 
-error[E0277]: the trait bound `String: IsBot` is not satisfied
+error[E0277]: the trait bound `String: LatticeFrom<String>` is not satisfied
  --> tests/compile-fail/nightly/non_lattice_field.rs:3:10
   |
 3 | #[derive(Lattice)]
-  |          ^^^^^^^ the trait `IsBot` is not implemented for `String`
+  |          ^^^^^^^ the trait `LatticeFrom<String>` is not implemented for `String`
   |
-  = help: the following other types implement trait `IsBot`:
-            ()
-            Conflict<T>
-            DomPair<Key, Val>
-            GhtInner<Head, Node>
-            GhtLeaf<Schema, SuffixSchema, Storage>
-            MapUnion<Map>
-            MapUnionWithTombstones<Map, TombstoneSet>
-            Max<()>
+  = help: the following other types implement trait `LatticeFrom<Other>`:
+            `()` implements `LatticeFrom<()>`
+            `Conflict<T>` implements `LatticeFrom<Conflict<T>>`
+            `DomPair<KeySelf, ValSelf>` implements `LatticeFrom<DomPair<KeyOther, ValOther>>`
+            `MapUnion<MapSelf>` implements `LatticeFrom<MapUnion<MapOther>>`
+            `MapUnionWithTombstones<MapSelf, TombstoneSetSelf>` implements `LatticeFrom<MapUnionWithTombstones<MapOther, TombstoneSetOther>>`
+            `Max<T>` implements `LatticeFrom<Max<T>>`
+            `Min<T>` implements `LatticeFrom<Min<T>>`
+            `NotALattice` implements `LatticeFrom<NotALattice>`
           and $N others
   = note: this error originates in the derive macro `Lattice` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
@@ -64,21 +64,21 @@ help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 1 + #![feature(trivial_bounds)]
   |
 
-error[E0277]: the trait bound `String: LatticeFrom<String>` is not satisfied
+error[E0277]: the trait bound `String: IsBot` is not satisfied
  --> tests/compile-fail/nightly/non_lattice_field.rs:3:10
   |
 3 | #[derive(Lattice)]
-  |          ^^^^^^^ the trait `LatticeFrom<String>` is not implemented for `String`
+  |          ^^^^^^^ the trait `IsBot` is not implemented for `String`
   |
-  = help: the following other types implement trait `LatticeFrom<Other>`:
-            `()` implements `LatticeFrom<()>`
-            `Conflict<T>` implements `LatticeFrom<Conflict<T>>`
-            `DomPair<KeySelf, ValSelf>` implements `LatticeFrom<DomPair<KeyOther, ValOther>>`
-            `MapUnion<MapSelf>` implements `LatticeFrom<MapUnion<MapOther>>`
-            `MapUnionWithTombstones<MapSelf, TombstoneSetSelf>` implements `LatticeFrom<MapUnionWithTombstones<MapOther, TombstoneSetOther>>`
-            `Max<T>` implements `LatticeFrom<Max<T>>`
-            `Min<T>` implements `LatticeFrom<Min<T>>`
-            `NotALattice` implements `LatticeFrom<NotALattice>`
+  = help: the following other types implement trait `IsBot`:
+            ()
+            Conflict<T>
+            DomPair<Key, Val>
+            GhtInner<Head, Node>
+            GhtLeaf<Schema, SuffixSchema, Storage>
+            MapUnion<Map>
+            MapUnionWithTombstones<Map, TombstoneSet>
+            Max<()>
           and $N others
   = note: this error originates in the derive macro `Lattice` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable

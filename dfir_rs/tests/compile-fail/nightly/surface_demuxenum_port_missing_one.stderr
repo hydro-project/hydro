@@ -32,6 +32,20 @@ note: required by a bound in `dfir_rs::dfir_pipes::pull::Pull::map`
    |         F: FnMut(Self::Item) -> B,
    |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Pull::map`
 
+error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
+  --> tests/compile-fail/nightly/surface_demuxenum_port_missing_one.rs:15:15
+   |
+15 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `SingleVariant` is not implemented for `Shape`
+  --> tests/compile-fail/nightly/surface_demuxenum_port_missing_one.rs:6:5
+   |
+ 6 |     enum Shape {
+   |     ^^^^^^^^^^
+   = note: requires that the enum have only one variant.
+   = note: ensure there are no missing outputs; there must be exactly one output for each enum variant.
+
 error[E0277]: expected `FnOnce(Shape)` signature, found `fn(Shape) -> <Shape as SingleVariant>::Output {<Shape as SingleVariant>::single_variant}`
   --> tests/compile-fail/nightly/surface_demuxenum_port_missing_one.rs:15:15
    |
