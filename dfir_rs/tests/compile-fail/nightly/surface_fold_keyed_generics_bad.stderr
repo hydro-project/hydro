@@ -40,6 +40,27 @@ note: required by a bound in `check_input`
 6 | |             })
   | |______________^ required by this bound in `check_input`
 
+error[E0271]: type mismatch resolving `<impl Pull<Item = &str, Meta = (), CanPend = <Iter<&mut impl Iterator<Item = &str>> as Pull>::CanPend, CanEnd = <Iter<&mut impl Iterator<Item = &str>> as Pull>::CanEnd> as Pull>::Item == (_, _)`
+ --> tests/compile-fail/nightly/surface_fold_keyed_generics_bad.rs:4:16
+  |
+4 |               -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
+  |  ________________^
+5 | |                 *old += val;
+6 | |             })
+  | |______________^ expected `(_, _)`, found `&str`
+  |
+  = note:  expected tuple `(_, _)`
+          found reference `&str`
+note: required by a bound in `check_input`
+ --> tests/compile-fail/nightly/surface_fold_keyed_generics_bad.rs:4:16
+  |
+4 |               -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
+  |  ________________^
+5 | |                 *old += val;
+6 | |             })
+  | |______________^ required by this bound in `check_input`
+  = note: this error originates in the macro `dfir_rs::dfir_syntax` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0271]: expected `new` to return `usize`, but it returns `String`
  --> tests/compile-fail/nightly/surface_fold_keyed_generics_bad.rs:4:49
   |
