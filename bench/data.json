@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1794654066699,
+  "lastUpdate": 1794742604555,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -323351,6 +323351,208 @@
             "name": "paxos_bench",
             "value": 291560,
             "range": "± 527.64",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "92e6451bb997872928384323481bc18b22ef850b",
+          "message": "feat(hydro_lang): allow `defer_tick` on top-level streams (#3277)\n\nAdds `Stream::defer_tick` for top-level (`Process` / `Cluster`) streams,\nwhich delays every\nelement by one internal tick. A top-level stream has no observable\nticks, so this only makes each\nelement arrive slightly later; its purpose is to break top-level\ndataflow cycles, e.g. a stream\nthat is batched into a tick, yielded back out, and fed back (through a\n`forward_ref`) into the\nsame tick, which DFIR otherwise rejects as cyclical within a tick.\n\nLowering: a `HydroNode::DeferTick` at the root lowers to a root-level\nDFIR `defer_tick()`, which is\nnon-lazy, so deferred elements schedule the next DFIR tick on their own.\nInside a tick it is\nstill `defer_tick_lazy()` (deferred data must not fire the tick by\nitself). The tick-located\n`DeferTick` impl now names `Stream::<T, Tick<L>, Bounded, O,\nR>::defer_tick` explicitly, since\nthe new method makes `Stream::defer_tick` ambiguous there.\n\nTests (sim): `sim_top_level_defer_tick` (elements pass through\nunchanged) and\n`sim_top_level_defer_tick_breaks_tick_cycle` (a tick -> top level ->\nsame tick feedback cycle,\nbroken by a top-level `defer_tick`, iterates 0 -> 3).",
+          "timestamp": "2026-11-13T18:41:02Z",
+          "url": "https://github.com/hydro-project/hydro/commit/92e6451bb997872928384323481bc18b22ef850b"
+        },
+        "date": 1794742604507,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 163102,
+            "range": "± 626",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 3073496,
+            "range": "± 43619",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 3185418,
+            "range": "± 25610",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 6812,
+            "range": "± 49",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 4721809,
+            "range": "± 31763",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 529489,
+            "range": "± 3087",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 847279,
+            "range": "± 7979",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 31358975,
+            "range": "± 184979",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 2902112,
+            "range": "± 18382",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 32028001,
+            "range": "± 752104",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 2747351,
+            "range": "± 18066",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 3132006,
+            "range": "± 9393",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 30409355,
+            "range": "± 218106",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 2766,
+            "range": "± 66",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 17028,
+            "range": "± 166",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 2997,
+            "range": "± 117",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 5702,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 279427,
+            "range": "± 2053",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 41280,
+            "range": "± 241",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 30317,
+            "range": "± 177",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 11373,
+            "range": "± 160",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 4170,
+            "range": "± 89",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1115,
+            "range": "± 63",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 59026,
+            "range": "± 404",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 65940,
+            "range": "± 225",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 5069,
+            "range": "± 39",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 13184,
+            "range": "± 84",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 14228,
+            "range": "± 121",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 3969,
+            "range": "± 38",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 356940,
+            "range": "± 2508.07",
             "unit": "ops/s"
           }
         ]
