@@ -70,52 +70,56 @@
 <a href=#70 id=70 data-nosnippet>70</a>
 <a href=#71 id=71 data-nosnippet>71</a><span class="attr">#[cfg(stageleft_runtime)]
 <a href=#72 id=72 data-nosnippet>72</a>#[doc(hidden)]
-<a href=#73 id=73 data-nosnippet>73</a></span><span class="kw">pub use </span>compiled::continue_if_impl;
-<a href=#74 id=74 data-nosnippet>74</a><span class="attr">#[cfg(stageleft_runtime)]
-<a href=#75 id=75 data-nosnippet>75</a></span><span class="kw">pub use </span>compiled::quiesce;
-<a href=#76 id=76 data-nosnippet>76</a>
-<a href=#77 id=77 data-nosnippet>77</a><span class="doccomment">/// Continues the current simulation instance only if the given condition holds, otherwise
-<a href=#78 id=78 data-nosnippet>78</a>/// stopping and discarding the instance.
-<a href=#79 id=79 data-nosnippet>79</a>///
-<a href=#80 id=80 data-nosnippet>80</a>/// This is the same concept as `assume` in verification tools and property-based testing
-<a href=#81 id=81 data-nosnippet>81</a>/// libraries (e.g. `kani::assume` or proptest's `prop_assume!`). It is useful inside
-<a href=#82 id=82 data-nosnippet>82</a>/// simulation tests ([`crate::sim::flow::SimFlow::fuzz`],
-<a href=#83 id=83 data-nosnippet>83</a>/// [`crate::sim::flow::SimFlow::exhaustive`], and the corresponding
-<a href=#84 id=84 data-nosnippet>84</a>/// [`crate::sim::compiled::CompiledSim`] APIs) to restrict exploration to executions that
-<a href=#85 id=85 data-nosnippet>85</a>/// satisfy some precondition. When the condition is false, the current instance is stopped
-<a href=#86 id=86 data-nosnippet>86</a>/// and discarded: it is **not** treated as a test failure (and will never be recorded as a
-<a href=#87 id=87 data-nosnippet>87</a>/// fuzzing reproducer), and the fuzzer / exhaustive search simply moves on to the next
-<a href=#88 id=88 data-nosnippet>88</a>/// instance. If logging is enabled (always during replays, or when `HYDRO_SIM_LOG=1`), the
-<a href=#89 id=89 data-nosnippet>89</a>/// failed assumption is logged.
-<a href=#90 id=90 data-nosnippet>90</a>///
-<a href=#91 id=91 data-nosnippet>91</a>/// Like the standard `assert!` macro, an optional custom message with format arguments can be
-<a href=#92 id=92 data-nosnippet>92</a>/// provided.
-<a href=#93 id=93 data-nosnippet>93</a>///
-<a href=#94 id=94 data-nosnippet>94</a>/// ```rust,ignore
-<a href=#95 id=95 data-nosnippet>95</a>/// flow.sim().fuzz(async || {
-<a href=#96 id=96 data-nosnippet>96</a>///     in_send.send_many([1, 2]);
-<a href=#97 id=97 data-nosnippet>97</a>///     let all: Vec&lt;u32&gt; = out_recv.collect().await;
-<a href=#98 id=98 data-nosnippet>98</a>///     hydro_lang::sim::continue_if!(all.len() == 2, "expected both values in one batch, got {:?}", all);
-<a href=#99 id=99 data-nosnippet>99</a>///     // ... assertions that only make sense when the assumption holds ...
-<a href=#100 id=100 data-nosnippet>100</a>/// });
-<a href=#101 id=101 data-nosnippet>101</a>/// ```
-<a href=#102 id=102 data-nosnippet>102</a></span><span class="attr">#[doc(hidden)]
-<a href=#103 id=103 data-nosnippet>103</a>#[macro_export]
-<a href=#104 id=104 data-nosnippet>104</a></span><span class="macro">macro_rules!</span> continue_if {
-<a href=#105 id=105 data-nosnippet>105</a>    (<span class="macro-nonterminal">$cond</span>:expr $(,)<span class="question-mark">?</span>) =&gt; {
-<a href=#106 id=106 data-nosnippet>106</a>        <span class="macro-nonterminal">$crate::sim::continue_if_impl</span>(
-<a href=#107 id=107 data-nosnippet>107</a>            <span class="macro-nonterminal">$cond</span>,
-<a href=#108 id=108 data-nosnippet>108</a>            <span class="macro">::core::format_args!</span>(<span class="string">"{}"</span>, <span class="macro">::core::stringify!</span>(<span class="macro-nonterminal">$cond</span>)),
-<a href=#109 id=109 data-nosnippet>109</a>        )
-<a href=#110 id=110 data-nosnippet>110</a>    };
-<a href=#111 id=111 data-nosnippet>111</a>    (<span class="macro-nonterminal">$cond</span>:expr, $(<span class="macro-nonterminal">$arg</span>:tt)+) =&gt; {
-<a href=#112 id=112 data-nosnippet>112</a>        <span class="macro-nonterminal">$crate::sim::continue_if_impl</span>(<span class="macro-nonterminal">$cond</span>, <span class="macro">::core::format_args!</span>($(<span class="macro-nonterminal">$arg</span>)+))
-<a href=#113 id=113 data-nosnippet>113</a>    };
-<a href=#114 id=114 data-nosnippet>114</a>}
-<a href=#115 id=115 data-nosnippet>115</a>
-<a href=#116 id=116 data-nosnippet>116</a><span class="attr">#[doc(inline)]
-<a href=#117 id=117 data-nosnippet>117</a></span><span class="kw">pub use </span><span class="kw">crate</span>::continue_if;
-<a href=#118 id=118 data-nosnippet>118</a>
-<a href=#119 id=119 data-nosnippet>119</a><span class="attr">#[cfg(test)]
-<a href=#120 id=120 data-nosnippet>120</a></span><span class="kw">mod </span>tests;
+<a href=#73 id=73 data-nosnippet>73</a></span><span class="kw">pub mod </span>panic_guard;
+<a href=#74 id=74 data-nosnippet>74</a>
+<a href=#75 id=75 data-nosnippet>75</a><span class="attr">#[cfg(stageleft_runtime)]
+<a href=#76 id=76 data-nosnippet>76</a>#[doc(hidden)]
+<a href=#77 id=77 data-nosnippet>77</a></span><span class="kw">pub use </span>compiled::continue_if_impl;
+<a href=#78 id=78 data-nosnippet>78</a><span class="attr">#[cfg(stageleft_runtime)]
+<a href=#79 id=79 data-nosnippet>79</a></span><span class="kw">pub use </span>compiled::quiesce;
+<a href=#80 id=80 data-nosnippet>80</a>
+<a href=#81 id=81 data-nosnippet>81</a><span class="doccomment">/// Continues the current simulation instance only if the given condition holds, otherwise
+<a href=#82 id=82 data-nosnippet>82</a>/// stopping and discarding the instance.
+<a href=#83 id=83 data-nosnippet>83</a>///
+<a href=#84 id=84 data-nosnippet>84</a>/// This is the same concept as `assume` in verification tools and property-based testing
+<a href=#85 id=85 data-nosnippet>85</a>/// libraries (e.g. `kani::assume` or proptest's `prop_assume!`). It is useful inside
+<a href=#86 id=86 data-nosnippet>86</a>/// simulation tests ([`crate::sim::flow::SimFlow::fuzz`],
+<a href=#87 id=87 data-nosnippet>87</a>/// [`crate::sim::flow::SimFlow::exhaustive`], and the corresponding
+<a href=#88 id=88 data-nosnippet>88</a>/// [`crate::sim::compiled::CompiledSim`] APIs) to restrict exploration to executions that
+<a href=#89 id=89 data-nosnippet>89</a>/// satisfy some precondition. When the condition is false, the current instance is stopped
+<a href=#90 id=90 data-nosnippet>90</a>/// and discarded: it is **not** treated as a test failure (and will never be recorded as a
+<a href=#91 id=91 data-nosnippet>91</a>/// fuzzing reproducer), and the fuzzer / exhaustive search simply moves on to the next
+<a href=#92 id=92 data-nosnippet>92</a>/// instance. If logging is enabled (always during replays, or when `HYDRO_SIM_LOG=1`), the
+<a href=#93 id=93 data-nosnippet>93</a>/// failed assumption is logged.
+<a href=#94 id=94 data-nosnippet>94</a>///
+<a href=#95 id=95 data-nosnippet>95</a>/// Like the standard `assert!` macro, an optional custom message with format arguments can be
+<a href=#96 id=96 data-nosnippet>96</a>/// provided.
+<a href=#97 id=97 data-nosnippet>97</a>///
+<a href=#98 id=98 data-nosnippet>98</a>/// ```rust,ignore
+<a href=#99 id=99 data-nosnippet>99</a>/// flow.sim().fuzz(async || {
+<a href=#100 id=100 data-nosnippet>100</a>///     in_send.send_many([1, 2]);
+<a href=#101 id=101 data-nosnippet>101</a>///     let all: Vec&lt;u32&gt; = out_recv.collect().await;
+<a href=#102 id=102 data-nosnippet>102</a>///     hydro_lang::sim::continue_if!(all.len() == 2, "expected both values in one batch, got {:?}", all);
+<a href=#103 id=103 data-nosnippet>103</a>///     // ... assertions that only make sense when the assumption holds ...
+<a href=#104 id=104 data-nosnippet>104</a>/// });
+<a href=#105 id=105 data-nosnippet>105</a>/// ```
+<a href=#106 id=106 data-nosnippet>106</a></span><span class="attr">#[doc(hidden)]
+<a href=#107 id=107 data-nosnippet>107</a>#[macro_export]
+<a href=#108 id=108 data-nosnippet>108</a></span><span class="macro">macro_rules!</span> continue_if {
+<a href=#109 id=109 data-nosnippet>109</a>    (<span class="macro-nonterminal">$cond</span>:expr $(,)<span class="question-mark">?</span>) =&gt; {
+<a href=#110 id=110 data-nosnippet>110</a>        <span class="macro-nonterminal">$crate::sim::continue_if_impl</span>(
+<a href=#111 id=111 data-nosnippet>111</a>            <span class="macro-nonterminal">$cond</span>,
+<a href=#112 id=112 data-nosnippet>112</a>            <span class="macro">::core::format_args!</span>(<span class="string">"{}"</span>, <span class="macro">::core::stringify!</span>(<span class="macro-nonterminal">$cond</span>)),
+<a href=#113 id=113 data-nosnippet>113</a>        )
+<a href=#114 id=114 data-nosnippet>114</a>    };
+<a href=#115 id=115 data-nosnippet>115</a>    (<span class="macro-nonterminal">$cond</span>:expr, $(<span class="macro-nonterminal">$arg</span>:tt)+) =&gt; {
+<a href=#116 id=116 data-nosnippet>116</a>        <span class="macro-nonterminal">$crate::sim::continue_if_impl</span>(<span class="macro-nonterminal">$cond</span>, <span class="macro">::core::format_args!</span>($(<span class="macro-nonterminal">$arg</span>)+))
+<a href=#117 id=117 data-nosnippet>117</a>    };
+<a href=#118 id=118 data-nosnippet>118</a>}
+<a href=#119 id=119 data-nosnippet>119</a>
+<a href=#120 id=120 data-nosnippet>120</a><span class="attr">#[doc(inline)]
+<a href=#121 id=121 data-nosnippet>121</a></span><span class="kw">pub use </span><span class="kw">crate</span>::continue_if;
+<a href=#122 id=122 data-nosnippet>122</a>
+<a href=#123 id=123 data-nosnippet>123</a><span class="attr">#[cfg(test)]
+<a href=#124 id=124 data-nosnippet>124</a></span><span class="kw">mod </span>tests;
 </code></pre></div></section></main></body></html>
