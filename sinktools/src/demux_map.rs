@@ -2,10 +2,10 @@
 use core::fmt::Debug;
 use core::hash::Hash;
 use core::pin::Pin;
-use core::task::{Context, Poll};
+use core::task::{Context, Poll, ready};
 use std::collections::HashMap;
 
-use crate::{Sink, ready_both};
+use crate::Sink;
 
 /// Sink which receives keys paired with items `(Key, Item)`, and pushes to the corresponding output sink in a [`HashMap`] of sinks.
 pub struct DemuxMap<Key, Si> {
@@ -32,17 +32,10 @@ where
     type Error = Si::Error;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "nondeterministic iteration order, the `try_fold` is not order-dependent"
-        )]
-        self.get_mut()
-            .sinks
-            .values_mut()
-            .try_fold(Poll::Ready(()), |poll, sink| {
-                ready_both!(poll, Pin::new(sink).poll_ready(cx)?);
-                Poll::Ready(Ok(()))
-            })
+        for sink in self.get_mut().sinks.values_mut() {
+            ready!(Pin::new(sink).poll_ready(cx))?;
+        }
+        Poll::Ready(Ok(()))
     }
 
     fn start_send(self: Pin<&mut Self>, item: (Key, Item)) -> Result<(), Self::Error> {
@@ -55,31 +48,17 @@ where
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "nondeterministic iteration order, the `try_fold` is not order-dependent"
-        )]
-        self.get_mut()
-            .sinks
-            .values_mut()
-            .try_fold(Poll::Ready(()), |poll, sink| {
-                ready_both!(poll, Pin::new(sink).poll_flush(cx)?);
-                Poll::Ready(Ok(()))
-            })
+        for sink in self.get_mut().sinks.values_mut() {
+            ready!(Pin::new(sink).poll_flush(cx))?;
+        }
+        Poll::Ready(Ok(()))
     }
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "nondeterministic iteration order, the `try_fold` is not order-dependent"
-        )]
-        self.get_mut()
-            .sinks
-            .values_mut()
-            .try_fold(Poll::Ready(()), |poll, sink| {
-                ready_both!(poll, Pin::new(sink).poll_close(cx)?);
-                Poll::Ready(Ok(()))
-            })
+        for sink in self.get_mut().sinks.values_mut() {
+            ready!(Pin::new(sink).poll_close(cx))?;
+        }
+        Poll::Ready(Ok(()))
     }
 }
 
