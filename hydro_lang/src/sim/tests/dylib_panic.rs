@@ -53,6 +53,31 @@ fn a_program_panic_is_caught_on_the_host() {
     assert!(runs >= 1);
 }
 
+/// The payload the host receives must not reference the dylib: here the `CompiledSim` (and so
+/// the dylib) is dropped before the payload is inspected and dropped. This is the order of
+/// events in a `#[should_panic]` test, where unwinding drops the `CompiledSim` before the test
+/// harness downcasts the payload to check `expected`.
+#[test]
+fn a_program_panic_payload_outlives_the_dylib() {
+    let (sim, in_send, out_recv) = panicking_echo();
+
+    let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        sim.exhaustive(async || {
+            in_send.send(7);
+            out_recv.assert_yields_only(Vec::<u32>::new()).await;
+        });
+    }));
+    let payload = caught.expect_err("the program's panic must propagate to the host");
+
+    drop(sim);
+
+    let msg = payload
+        .downcast_ref::<String>()
+        .expect("the panic carries its message");
+    assert!(msg.contains("program panicked on 7"), "{msg}");
+    drop(payload);
+}
+
 #[test]
 #[should_panic(expected = "program panicked on 7")]
 fn a_program_panic_fails_the_test_with_its_message() {
