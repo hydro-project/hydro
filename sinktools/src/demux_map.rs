@@ -2,7 +2,7 @@
 use core::fmt::Debug;
 use core::hash::Hash;
 use core::pin::Pin;
-use core::task::{Context, Poll, ready};
+use core::task::{Context, Poll};
 use std::collections::HashMap;
 
 use crate::Sink;
@@ -32,10 +32,21 @@ where
     type Error = Si::Error;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        // Poll *every* sink, even after one returns `Pending`, so that all sinks can make progress
+        // and register wakers. Only errors short-circuit.
+        let mut any_pending = false;
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, but the loop is not order-dependent"
+        )]
         for sink in self.get_mut().sinks.values_mut() {
-            ready!(Pin::new(sink).poll_ready(cx))?;
+            any_pending |= Pin::new(sink).poll_ready(cx)?.is_pending();
         }
-        Poll::Ready(Ok(()))
+        if any_pending {
+            Poll::Pending
+        } else {
+            Poll::Ready(Ok(()))
+        }
     }
 
     fn start_send(self: Pin<&mut Self>, item: (Key, Item)) -> Result<(), Self::Error> {
@@ -48,17 +59,39 @@ where
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        // Poll *every* sink, even after one returns `Pending`, so that all sinks can make progress
+        // and register wakers. Only errors short-circuit.
+        let mut any_pending = false;
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, but the loop is not order-dependent"
+        )]
         for sink in self.get_mut().sinks.values_mut() {
-            ready!(Pin::new(sink).poll_flush(cx))?;
+            any_pending |= Pin::new(sink).poll_flush(cx)?.is_pending();
         }
-        Poll::Ready(Ok(()))
+        if any_pending {
+            Poll::Pending
+        } else {
+            Poll::Ready(Ok(()))
+        }
     }
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        // Poll *every* sink, even after one returns `Pending`, so that all sinks can make progress
+        // and register wakers. Only errors short-circuit.
+        let mut any_pending = false;
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, but the loop is not order-dependent"
+        )]
         for sink in self.get_mut().sinks.values_mut() {
-            ready!(Pin::new(sink).poll_close(cx))?;
+            any_pending |= Pin::new(sink).poll_close(cx)?.is_pending();
         }
-        Poll::Ready(Ok(()))
+        if any_pending {
+            Poll::Pending
+        } else {
+            Poll::Ready(Ok(()))
+        }
     }
 }
 
