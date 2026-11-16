@@ -67,35 +67,41 @@ pub fn paxos_bench<'a>(
 
             // Get the latest checkpoint sequence per replica
             let a_checkpoint = {
+                // Batch the checkpoint messages into the acceptors' tick (which drives it), fold
+                // them into the largest checkpoint per replica in the matching atomic region, and
+                // snapshot that back into the same tick.
                 let a_checkpoint_largest_seqs = replica_checkpoint
                     .broadcast(&acceptors, TCP.fail_stop().bincode(), nondet!(/** TODO */))
-                    .reduce(q!(
-                        |curr_seq, seq| {
-                            if seq > *curr_seq {
-                                *curr_seq = seq;
-                            }
-                        },
-                        commutative = verus_proof_commutative_fold!(acc = usize, item = usize)
-                    ));
+                    .batch(
+                        &acceptors.tick(),
+                        nondet!(
+                            /// even though we batch the checkpoint messages, because we reduce over the entire history,
+                            /// the final min checkpoint is deterministic
+                        ),
+                    )
+                    .across_ticks(|checkpoints| {
+                        checkpoints.reduce(q!(
+                            |curr_seq, seq| {
+                                if seq > *curr_seq {
+                                    *curr_seq = seq;
+                                }
+                            },
+                            commutative = verus_proof_commutative_fold!(acc = usize, item = usize)
+                        ))
+                    });
 
-                sliced! {
-                    let snapshot = use::snapshot(a_checkpoint_largest_seqs, nondet!(
-                        /// even though we batch the checkpoint messages, because we reduce over the entire history,
-                        /// the final min checkpoint is deterministic
-                    ));
+                let a_checkpoints_quorum_reached = a_checkpoint_largest_seqs
+                    .clone()
+                    .key_count()
+                    .map(q!(move |num_received| num_received == f + 1));
 
-                    let a_checkpoints_quorum_reached = snapshot
-                        .clone()
-                        .key_count()
-                        .map(q!(move |num_received| num_received == f + 1));
-
-                    // Find the smallest checkpoint seq that everyone agrees to
-                    snapshot
-                        .entries()
-                        .filter_if(a_checkpoints_quorum_reached)
-                        .map(q!(|(_sender, seq)| seq))
-                        .min()
-                }
+                // Find the smallest checkpoint seq that everyone agrees to
+                a_checkpoint_largest_seqs
+                    .entries()
+                    .filter_if(a_checkpoints_quorum_reached)
+                    .map(q!(|(_sender, seq)| seq))
+                    .min()
+                    .latest()
             };
 
             acceptor_checkpoint_complete.complete(a_checkpoint);
