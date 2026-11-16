@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1794831042266,
+  "lastUpdate": 1794859511614,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -323756,6 +323756,210 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 281000,
             "range": "± 1502",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shadaj@users.noreply.github.com",
+            "name": "Shadaj Laddad",
+            "username": "shadaj"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": false,
+          "id": "3f8b82e783e4253f5aac5cce1dc4ece4d8111e81",
+          "message": "refactor(hydro_lang, hydro_test): replace snapshot-only ticks with non-lazy inputs (#3278)\n\n[ci-bench]\n\nPrepares for lazy snapshot ingress (#3270), under which a tick whose\nonly inputs are snapshots\n/ state (no batched-in stream) can never fire. Rewrites the\nsnapshot-only ticks in hydro_lang and\nhydro_test so each tick is driven by a batched (non-lazy) input:\n\n- `Stream::timeout`: instead of snapshotting a fold of `Instant::now()`\ninto a fresh tick, every\nbatch of inputs arms a countdown (`tokio::time::sleep(duration)`\nresolved at the top level),\ntagged with a fresh epoch. A `sliced!` region batches the inputs and the\nexpired countdowns and\nkeeps the current epoch as state: a countdown whose epoch is still\ncurrent (no newer input) is\na timeout; stale countdowns are ignored; the next input clears it. No\n`Instant` reads in the\ntick. The countdown feedback into the slice is broken by a top-level\n`defer_tick` (added in\nthe preceding revision). `duration` is now quoted in the top-level\noperator context, and\n  `L::DropConsistency: TopLevel` is required.\n- `map_reduce`: the leader batches the partial counts into its tick and\nuses `across_ticks`\n(atomic `reduce` + snapshot back into the same tick) instead of\nsnapshotting a top-level\n  `reduce` into a fresh tick.\n- `echo_server`: the connection-count log batches a 1-second\n`source_interval` into the slice\nthat snapshots the membership, instead of a snapshot-only slice followed\nby `sample_every`.\n\nRemaining snapshot-only ticks, still to do: `bench_client`'s\nvirtual-client spawner\n(`new_payload_ids`) and `paxos_bench`'s checkpoint quorum.\n\nhydro_test IR snapshots updated (map_reduce, paxos). hydro_test: all\ntests pass.",
+          "timestamp": "2026-11-16T18:56:41Z",
+          "tree_id": "8cc397524fccae4385c73b05e51870f8351341c9",
+          "url": "https://github.com/hydro-project/hydro/commit/3f8b82e783e4253f5aac5cce1dc4ece4d8111e81"
+        },
+        "date": 1794859511505,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 161918,
+            "range": "± 4399",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 3063924,
+            "range": "± 38406",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 3215383,
+            "range": "± 9856",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 6789,
+            "range": "± 308",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 4675825,
+            "range": "± 15986",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 525527,
+            "range": "± 1161",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 840336,
+            "range": "± 4569",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 31076132,
+            "range": "± 95104",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 2909082,
+            "range": "± 9107",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 33846451,
+            "range": "± 402371",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 2768373,
+            "range": "± 18543",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 3119790,
+            "range": "± 17818",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 31016937,
+            "range": "± 213963",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 2764,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 16820,
+            "range": "± 79",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 3211,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 5656,
+            "range": "± 38",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 279332,
+            "range": "± 1887",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 40903,
+            "range": "± 1452",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 30145,
+            "range": "± 94",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 11298,
+            "range": "± 127",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 4158,
+            "range": "± 98",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1104,
+            "range": "± 59",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 57107,
+            "range": "± 674",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 65630,
+            "range": "± 179",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 5048,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 13050,
+            "range": "± 71",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 14148,
+            "range": "± 118",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 3959,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 350080,
+            "range": "± 16400.17",
             "unit": "ops/s"
           }
         ]
