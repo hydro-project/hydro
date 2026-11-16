@@ -8,10 +8,27 @@
 //!
 //! Generated code therefore wraps every poll of every DFIR tick in [`guard_tick`], and the
 //! program's instantiation in [`guard_runtime`]. Both run in the dylib, so their `catch_unwind`
-//! is the dylib's own and catches the panic. They hand its message to the host's
-//! [`PanicHandler`], which raises it again as an ordinary host panic with a `String` payload.
-//! That panic unwinds out of the handler, through the guard's frame (no longer catching), and
-//! into the host like any other.
+//! is the dylib's own and catches the panic. They lend its message to the host's
+//! [`PanicHandler`], which copies it and raises it again as an ordinary host panic with a
+//! `String` payload. That panic unwinds out of the handler, through the guard's frame (no longer
+//! catching, and dropping the dylib's copy of the message), and into the host like any other.
+//!
+//! Only the message crosses the boundary, as a borrowed `&str`, never the caught
+//! `Box<dyn Any + Send>` itself. That box's vtable (`type_id`, `drop_in_place`) lives in the
+//! dylib's image, so the host must not hold it past the dylib's lifetime, and a panic payload
+//! routinely does: in a `#[should_panic]` test, unwinding drops the `CompiledSim` (and with it
+//! the `libloading::Library`) before the test harness downcasts the payload to check `expected`.
+//! Nothing is lost by converting in the dylib: `&str` and `String` are the only payload types the
+//! host could downcast anyway (`String` is the same sysroot `alloc` type on both sides), while a
+//! type from any other crate is compiled separately for the dylib and so has a different `TypeId`
+//! than the host's.
+//!
+//! The message is lent rather than given (`&str`, not `String`) so that no heap allocation
+//! changes owner across the boundary: the host and the dylib each have their own global
+//! allocator, and freeing one side's allocation with the other's is only sound while both happen
+//! to be the default `System` allocator (see hydro-project/hydro#3379). Like the
+//! `println_handler: fn(fmt::Arguments<'_>)`, the host copies what it needs while the dylib's
+//! frame is still live.
 
 use std::any::Any;
 use std::future::Future;
@@ -19,11 +36,14 @@ use std::panic::AssertUnwindSafe;
 
 use dfir_rs::scheduled::context::{Context, TickClosure, TickClosureFn};
 
-/// The host function the dylib reports a program panic to, with its message. It raises the
+/// The host function the dylib reports a program panic to, lending its message. It raises the
 /// panic on the host, so it never returns.
-pub type PanicHandler = fn(String) -> !;
+pub type PanicHandler = fn(&str) -> !;
 
 /// The message of a caught panic payload, as `panic!` formats it.
+///
+/// Runs in the dylib. The payload must be consumed here rather than handed to the host (see the
+/// module docs).
 fn panic_message(payload: Box<dyn Any + Send>) -> String {
     if let Some(s) = payload.downcast_ref::<&'static str>() {
         (*s).to_owned()
@@ -40,7 +60,12 @@ fn panic_message(payload: Box<dyn Any + Send>) -> String {
 fn guarded<R>(handler: PanicHandler, f: impl FnOnce() -> R) -> R {
     match std::panic::catch_unwind(AssertUnwindSafe(f)) {
         Ok(r) => r,
-        Err(payload) => handler(panic_message(payload)),
+        Err(payload) => {
+            let message = panic_message(payload);
+            handler(&message)
+            // `handler` never returns; the host's panic unwinds back through this frame, whose
+            // landing pad drops `message` with the dylib's allocator.
+        }
     }
 }
 
@@ -65,7 +90,7 @@ pub fn guard_runtime<R>(handler: PanicHandler, f: impl FnOnce() -> R) -> R {
     guarded(handler, f)
 }
 
-/// The host's [`PanicHandler`].
-pub(crate) fn host_handler(message: String) -> ! {
-    std::panic::resume_unwind(Box::new(message))
+/// The host's [`PanicHandler`]. Copies the message into a host-owned `String` before raising.
+pub(crate) fn host_handler(message: &str) -> ! {
+    std::panic::resume_unwind(Box::new(message.to_owned()))
 }
