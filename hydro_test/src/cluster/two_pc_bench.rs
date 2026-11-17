@@ -64,6 +64,8 @@ mod tests {
     use hydro_lang::location::{Cluster, Process};
 
     #[cfg(stageleft_runtime)]
+    use crate::cluster::bench_test_util;
+    #[cfg(stageleft_runtime)]
     use crate::cluster::{
         two_pc::{Coordinator, Participant},
         two_pc_bench::{Aggregator, Client},
@@ -172,24 +174,11 @@ mod tests {
 
         deployment.start().await.unwrap();
 
-        use std::str::FromStr;
-
-        use regex::Regex;
-
-        let re = Regex::new(r"Throughput: ([^ ]+) requests/s").unwrap();
-        let mut found = 0;
-        let mut client_out = client_out;
-        while let Some(line) = client_out.recv().await {
-            if let Some(caps) = re.captures(&line)
-                && let Ok(lower) = f64::from_str(&caps[1])
-                && 0.0 < lower
-            {
-                println!("Found throughput lower-bound: {}", lower);
-                found += 1;
-                if found == 2 {
-                    break;
-                }
-            }
-        }
+        bench_test_util::assert_positive_throughput(
+            client_out,
+            2,
+            bench_test_util::FIRST_THROUGHPUT_TIMEOUT,
+        )
+        .await;
     }
 }
