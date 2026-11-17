@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1794859511614,
+  "lastUpdate": 1794918737135,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -323960,6 +323960,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 350080,
             "range": "± 16400.17",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Peter Alvaro",
+            "username": "palvaro",
+            "email": "palvaro@eecs.berkeley.edu"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "4c7f9c2c0f1d6f0caa14eb534845a52bfdc9989c",
+          "message": "fix(hydro_lang): a program panic in a simulation no longer aborts the test process (#3258)\n\nA compiled simulation is a `cdylib` with its own copy of the standard\nlibrary, so a panic raised by program code inside it (say, an `unwrap`\nin a `map` closure) is a foreign exception to the host. Unwinding it\ninto the host's `catch_unwind` (bolero's, or a test's) aborts the whole\nprocess:\n\n```\nprogram panicked on 7\nfatal runtime error: Rust cannot catch foreign exceptions, aborting\n(signal: 6, SIGABRT)\n```\n\nso `#[should_panic]` never sees it, and every other test in the process\ndies with it. This resolves the `TODO(mingwei)` in `sim/compiled.rs`,\nwhich assumed these panics were caught by bolero.\n\n## Fix\n\n- Generated code wraps every poll of every DFIR tick, and the program's\ninstantiation, in a `catch_unwind` that runs inside the dylib\n(`sim::panic_guard`).\n- The guard extracts the panic's message *inside the dylib* and lends it\nto a host handler (`fn(&str) -> !`), which copies it and raises it again\nas an ordinary host panic with a `String` payload. The host panic\nunwinds back through the guard's frame, which drops the dylib's copy of\nthe message.\n- `dfir_rs` gets a `#[doc(hidden)]` `Dfir::map_tick_closure` so\ngenerated code can wrap the tick.\n\nWhen nothing panics, the only cost is one `catch_unwind` per poll.\n\n### Why only the message crosses, and why as `&str`\n\n- **Not the raw `Box<dyn Any + Send>`:** its vtable (`type_id`,\n`drop_in_place`) lives in the dylib's image, so the host must not hold\nit past the dylib's lifetime — and a panic payload routinely does. In a\n`#[should_panic]` test, unwinding drops the `CompiledSim` (and its\n`libloading::Library`) *before* libtest downcasts the payload to check\n`expected`. Nothing is lost by converting in the dylib: `&str`/`String`\nare the only payload types the host could downcast anyway (`String` is\nthe same sysroot `alloc` type on both sides, so its `TypeId` matches);\nany other type is compiled separately for the dylib and has a different\n`TypeId`.\n- **Not an owned `String`:** that would be allocated by the dylib's\nglobal allocator and freed by the host's, which is only sound while both\nhappen to be the default `System` allocator. The rest of the sim already\nmakes that assumption (tracked in #3379); the panic handler doesn't need\nto, and lending `&str` matches the existing host-callback convention\n(`println_handler: fn(fmt::Arguments<'_>)`).\n\n## Tests\n\n`sim/tests/dylib_panic.rs`: a program panic reaches `catch_unwind` with\nits message, the compiled simulation stays usable afterwards,\n`#[should_panic(expected = ..)]` works, a non-string payload is reported\nwith a fallback message, and the payload stays valid after the\n`CompiledSim` (and so the dylib) is dropped. On `main` without the fix,\nthese tests abort the test binary.\n\n---------\n\nCo-authored-by: Peter Alvaro <palvarox@amazon.com>\nCo-authored-by: Mingwei Samuel <mingwes@amazon.com>\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-11-16T22:03:12Z",
+          "url": "https://github.com/hydro-project/hydro/commit/4c7f9c2c0f1d6f0caa14eb534845a52bfdc9989c"
+        },
+        "date": 1794918737084,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 272752,
+            "range": "± 628",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 5726562,
+            "range": "± 35789",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6001226,
+            "range": "± 66782",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 12125,
+            "range": "± 377",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 9869492,
+            "range": "± 16655",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 1075574,
+            "range": "± 18307",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1137667,
+            "range": "± 26175",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 35620556,
+            "range": "± 878108",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 5730504,
+            "range": "± 69496",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 36369901,
+            "range": "± 218549",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 5728064,
+            "range": "± 17669",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6002547,
+            "range": "± 49345",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 32157586,
+            "range": "± 156068",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 3238,
+            "range": "± 73",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 19054,
+            "range": "± 74",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 3222,
+            "range": "± 82",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 5656,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 461453,
+            "range": "± 5683",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 46427,
+            "range": "± 465",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 35264,
+            "range": "± 77",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 14185,
+            "range": "± 263",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 5599,
+            "range": "± 156",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 844,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 61481,
+            "range": "± 718",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 76372,
+            "range": "± 187",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 5705,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 13054,
+            "range": "± 208",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 22578,
+            "range": "± 325",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 4586,
+            "range": "± 507",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 284640,
+            "range": "± 11503.5",
             "unit": "ops/s"
           }
         ]
