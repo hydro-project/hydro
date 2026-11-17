@@ -1624,3 +1624,31 @@ mod custom_codec {
 }
 
 mod dylib_panic;
+
+#[test]
+fn sim_root_fold_evaluates_init_once() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (in_send, input) = node.sim_input::<usize, TotalOrder, ExactlyOnce>();
+    let folded = input.fold(
+        q!(|| Box::into_raw(Box::new(0u8)).addr()),
+        q!(|acc, v| *acc += v),
+    );
+    let out_recv = sliced! {
+        let snapshot = use::snapshot(folded, nondet!(/** test */));
+        snapshot.into_stream()
+    }
+    .sim_output();
+
+    flow.sim().exhaustive(async || {
+        in_send.send(1);
+
+        let observed: Vec<usize> = out_recv.collect().await;
+        let last = *observed.last().unwrap();
+        assert!(
+            observed.iter().all(|v| *v == last || *v + 1 == last),
+            "snapshots {observed:?} do not come from one initial value"
+        );
+    });
+}
