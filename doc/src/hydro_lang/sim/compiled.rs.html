@@ -2876,58 +2876,66 @@
 <a href=#2876 id=2876 data-nosnippet>2876</a>
 <a href=#2877 id=2877 data-nosnippet>2877</a>    <span class="kw">if </span>!hooks.is_empty() {
 <a href=#2878 id=2878 data-nosnippet>2878</a>        <span class="kw">let </span><span class="kw-2">mut </span>decided = <span class="macro">vec!</span>[<span class="bool-val">false</span>; hooks.len()];
-<a href=#2879 id=2879 data-nosnippet>2879</a>        <span class="kw">let </span><span class="kw-2">mut </span>remaining_decision_count = hooks.len();
-<a href=#2880 id=2880 data-nosnippet>2880</a>        bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
-<a href=#2881 id=2881 data-nosnippet>2881</a>            <span class="comment">// First, resolve every hook that faces no choice (its decision consumes no
-<a href=#2882 id=2882 data-nosnippet>2882</a>            // entropy). Doing this before the second pass lets the final undecided hook
-<a href=#2883 id=2883 data-nosnippet>2883</a>            // be forced to trigger when no earlier hook made a triggering decision.
-<a href=#2884 id=2884 data-nosnippet>2884</a>            </span><span class="kw">for </span>(hook, decided) <span class="kw">in </span>hooks.iter_mut().zip(decided.iter_mut()) {
-<a href=#2885 id=2885 data-nosnippet>2885</a>                <span class="kw">if </span>hook.only_one_possible_decision() {
-<a href=#2886 id=2886 data-nosnippet>2886</a>                    <span class="comment">// The no-choice decision can still trigger the tick (the passthrough
-<a href=#2887 id=2887 data-nosnippet>2887</a>                    // singleton always releases the latest value), so its result counts.
-<a href=#2888 id=2888 data-nosnippet>2888</a>                    </span>made_triggering_decision |= hook.autonomous_decision(driver, <span class="bool-val">false</span>);
-<a href=#2889 id=2889 data-nosnippet>2889</a>                    <span class="kw-2">*</span>decided = <span class="bool-val">true</span>;
-<a href=#2890 id=2890 data-nosnippet>2890</a>                    remaining_decision_count -= <span class="number">1</span>;
-<a href=#2891 id=2891 data-nosnippet>2891</a>                }
-<a href=#2892 id=2892 data-nosnippet>2892</a>            }
-<a href=#2893 id=2893 data-nosnippet>2893</a>
-<a href=#2894 id=2894 data-nosnippet>2894</a>            <span class="kw">for </span>(hook, decided) <span class="kw">in </span>hooks.iter_mut().zip(decided.iter()) {
-<a href=#2895 id=2895 data-nosnippet>2895</a>                <span class="kw">if </span>!decided {
-<a href=#2896 id=2896 data-nosnippet>2896</a>                    made_triggering_decision |= hook.autonomous_decision(
-<a href=#2897 id=2897 data-nosnippet>2897</a>                        driver,
-<a href=#2898 id=2898 data-nosnippet>2898</a>                        !made_triggering_decision &amp;&amp; remaining_decision_count == <span class="number">1</span>,
-<a href=#2899 id=2899 data-nosnippet>2899</a>                    );
-<a href=#2900 id=2900 data-nosnippet>2900</a>                    remaining_decision_count -= <span class="number">1</span>;
-<a href=#2901 id=2901 data-nosnippet>2901</a>                }
-<a href=#2902 id=2902 data-nosnippet>2902</a>
-<a href=#2903 id=2903 data-nosnippet>2903</a>                hook.release_decision(
-<a href=#2904 id=2904 data-nosnippet>2904</a>                    tick_decision_writer
-<a href=#2905 id=2905 data-nosnippet>2905</a>                        .as_deref_mut()
-<a href=#2906 id=2906 data-nosnippet>2906</a>                        .map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write),
-<a href=#2907 id=2907 data-nosnippet>2907</a>                );
-<a href=#2908 id=2908 data-nosnippet>2908</a>            }
-<a href=#2909 id=2909 data-nosnippet>2909</a>        });
-<a href=#2910 id=2910 data-nosnippet>2910</a>    }
-<a href=#2911 id=2911 data-nosnippet>2911</a>
-<a href=#2912 id=2912 data-nosnippet>2912</a>    <span class="macro">abort_assert!</span>(
-<a href=#2913 id=2913 data-nosnippet>2913</a>        made_triggering_decision,
-<a href=#2914 id=2914 data-nosnippet>2914</a>        <span class="string">"runnable tick had no hook make a triggering decision"
-<a href=#2915 id=2915 data-nosnippet>2915</a>    </span>);
-<a href=#2916 id=2916 data-nosnippet>2916</a>}
-<a href=#2917 id=2917 data-nosnippet>2917</a>
-<a href=#2918 id=2918 data-nosnippet>2918</a><span class="doccomment">/// Resolves a single unscripted observation hook. The observation was only scheduled
-<a href=#2919 id=2919 data-nosnippet>2919</a>/// because it has pending input (running an observation *is* releasing), so its
-<a href=#2920 id=2920 data-nosnippet>2920</a>/// autonomous decision must stage a release — running an observation without releasing
-<a href=#2921 id=2921 data-nosnippet>2921</a>/// would be a wasted schedule step the exploration must not contain.
-<a href=#2922 id=2922 data-nosnippet>2922</a></span><span class="kw">fn </span>run_observation_hook&lt;W: std::fmt::Write&gt;(
-<a href=#2923 id=2923 data-nosnippet>2923</a>    writer: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>W&gt;,
-<a href=#2924 id=2924 data-nosnippet>2924</a>    hook: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>ObservationHook,
-<a href=#2925 id=2925 data-nosnippet>2925</a>) {
-<a href=#2926 id=2926 data-nosnippet>2926</a>    bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
-<a href=#2927 id=2927 data-nosnippet>2927</a>        hook.autonomous_decision(driver);
-<a href=#2928 id=2928 data-nosnippet>2928</a>    });
-<a href=#2929 id=2929 data-nosnippet>2929</a>    <span class="comment">// `release_decision` panics if the autonomous decision staged nothing, so a
-<a href=#2930 id=2930 data-nosnippet>2930</a>    // contract violation cannot pass silently.
-<a href=#2931 id=2931 data-nosnippet>2931</a>    </span>hook.release_decision(writer.map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write));
-<a href=#2932 id=2932 data-nosnippet>2932</a>}
+<a href=#2879 id=2879 data-nosnippet>2879</a>        <span class="comment">// Snapshot hooks never trigger ([`TickInputHook::can_trigger_tick`] is false), so
+<a href=#2880 id=2880 data-nosnippet>2880</a>        // forcing must land on a hook that *can* trigger: track how many undecided hooks
+<a href=#2881 id=2881 data-nosnippet>2881</a>        // remain capable of triggering, and force the last one when nothing has triggered.
+<a href=#2882 id=2882 data-nosnippet>2882</a>        </span><span class="kw">let </span>can_trigger: Vec&lt;bool&gt; = hooks.iter().map(|hook| hook.can_trigger_tick()).collect();
+<a href=#2883 id=2883 data-nosnippet>2883</a>        <span class="kw">let </span><span class="kw-2">mut </span>remaining_trigger_capable = can_trigger.iter().filter(|&amp;&amp;c| c).count();
+<a href=#2884 id=2884 data-nosnippet>2884</a>        bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
+<a href=#2885 id=2885 data-nosnippet>2885</a>            <span class="comment">// First, resolve every hook that faces no choice (its decision consumes no
+<a href=#2886 id=2886 data-nosnippet>2886</a>            // entropy). Doing this before the second pass lets the final undecided hook
+<a href=#2887 id=2887 data-nosnippet>2887</a>            // that can trigger be forced to do so when no earlier hook made a triggering
+<a href=#2888 id=2888 data-nosnippet>2888</a>            // decision.
+<a href=#2889 id=2889 data-nosnippet>2889</a>            </span><span class="kw">for </span>((hook, decided), can_trigger) <span class="kw">in
+<a href=#2890 id=2890 data-nosnippet>2890</a>                </span>hooks.iter_mut().zip(decided.iter_mut()).zip(<span class="kw-2">&amp;</span>can_trigger)
+<a href=#2891 id=2891 data-nosnippet>2891</a>            {
+<a href=#2892 id=2892 data-nosnippet>2892</a>                <span class="kw">if </span>hook.only_one_possible_decision() {
+<a href=#2893 id=2893 data-nosnippet>2893</a>                    <span class="comment">// The no-choice decision can still trigger the tick (the passthrough
+<a href=#2894 id=2894 data-nosnippet>2894</a>                    // singleton always releases the latest value), so its result counts.
+<a href=#2895 id=2895 data-nosnippet>2895</a>                    </span>made_triggering_decision |= hook.autonomous_decision(driver, <span class="bool-val">false</span>);
+<a href=#2896 id=2896 data-nosnippet>2896</a>                    <span class="kw-2">*</span>decided = <span class="bool-val">true</span>;
+<a href=#2897 id=2897 data-nosnippet>2897</a>                    remaining_trigger_capable -= usize::from(<span class="kw-2">*</span>can_trigger);
+<a href=#2898 id=2898 data-nosnippet>2898</a>                }
+<a href=#2899 id=2899 data-nosnippet>2899</a>            }
+<a href=#2900 id=2900 data-nosnippet>2900</a>
+<a href=#2901 id=2901 data-nosnippet>2901</a>            <span class="kw">for </span>((hook, decided), can_trigger) <span class="kw">in
+<a href=#2902 id=2902 data-nosnippet>2902</a>                </span>hooks.iter_mut().zip(decided.iter()).zip(<span class="kw-2">&amp;</span>can_trigger)
+<a href=#2903 id=2903 data-nosnippet>2903</a>            {
+<a href=#2904 id=2904 data-nosnippet>2904</a>                <span class="kw">if </span>!decided {
+<a href=#2905 id=2905 data-nosnippet>2905</a>                    <span class="kw">let </span>force_trigger =
+<a href=#2906 id=2906 data-nosnippet>2906</a>                        <span class="kw-2">*</span>can_trigger &amp;&amp; !made_triggering_decision &amp;&amp; remaining_trigger_capable == <span class="number">1</span>;
+<a href=#2907 id=2907 data-nosnippet>2907</a>                    made_triggering_decision |= hook.autonomous_decision(driver, force_trigger);
+<a href=#2908 id=2908 data-nosnippet>2908</a>                    remaining_trigger_capable -= usize::from(<span class="kw-2">*</span>can_trigger);
+<a href=#2909 id=2909 data-nosnippet>2909</a>                }
+<a href=#2910 id=2910 data-nosnippet>2910</a>
+<a href=#2911 id=2911 data-nosnippet>2911</a>                hook.release_decision(
+<a href=#2912 id=2912 data-nosnippet>2912</a>                    tick_decision_writer
+<a href=#2913 id=2913 data-nosnippet>2913</a>                        .as_deref_mut()
+<a href=#2914 id=2914 data-nosnippet>2914</a>                        .map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write),
+<a href=#2915 id=2915 data-nosnippet>2915</a>                );
+<a href=#2916 id=2916 data-nosnippet>2916</a>            }
+<a href=#2917 id=2917 data-nosnippet>2917</a>        });
+<a href=#2918 id=2918 data-nosnippet>2918</a>    }
+<a href=#2919 id=2919 data-nosnippet>2919</a>
+<a href=#2920 id=2920 data-nosnippet>2920</a>    <span class="macro">abort_assert!</span>(
+<a href=#2921 id=2921 data-nosnippet>2921</a>        made_triggering_decision,
+<a href=#2922 id=2922 data-nosnippet>2922</a>        <span class="string">"runnable tick had no hook make a triggering decision"
+<a href=#2923 id=2923 data-nosnippet>2923</a>    </span>);
+<a href=#2924 id=2924 data-nosnippet>2924</a>}
+<a href=#2925 id=2925 data-nosnippet>2925</a>
+<a href=#2926 id=2926 data-nosnippet>2926</a><span class="doccomment">/// Resolves a single unscripted observation hook. The observation was only scheduled
+<a href=#2927 id=2927 data-nosnippet>2927</a>/// because it has pending input (running an observation *is* releasing), so its
+<a href=#2928 id=2928 data-nosnippet>2928</a>/// autonomous decision must stage a release — running an observation without releasing
+<a href=#2929 id=2929 data-nosnippet>2929</a>/// would be a wasted schedule step the exploration must not contain.
+<a href=#2930 id=2930 data-nosnippet>2930</a></span><span class="kw">fn </span>run_observation_hook&lt;W: std::fmt::Write&gt;(
+<a href=#2931 id=2931 data-nosnippet>2931</a>    writer: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>W&gt;,
+<a href=#2932 id=2932 data-nosnippet>2932</a>    hook: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>ObservationHook,
+<a href=#2933 id=2933 data-nosnippet>2933</a>) {
+<a href=#2934 id=2934 data-nosnippet>2934</a>    bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
+<a href=#2935 id=2935 data-nosnippet>2935</a>        hook.autonomous_decision(driver);
+<a href=#2936 id=2936 data-nosnippet>2936</a>    });
+<a href=#2937 id=2937 data-nosnippet>2937</a>    <span class="comment">// `release_decision` panics if the autonomous decision staged nothing, so a
+<a href=#2938 id=2938 data-nosnippet>2938</a>    // contract violation cannot pass silently.
+<a href=#2939 id=2939 data-nosnippet>2939</a>    </span>hook.release_decision(writer.map(|w| w <span class="kw">as </span><span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write));
+<a href=#2940 id=2940 data-nosnippet>2940</a>}
 </code></pre></div></section></main></body></html>

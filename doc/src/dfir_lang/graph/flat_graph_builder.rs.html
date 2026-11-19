@@ -1243,144 +1243,194 @@
 <a href=#1243 id=1243 data-nosnippet>1243</a>                }
 <a href=#1244 id=1244 data-nosnippet>1244</a>            }
 <a href=#1245 id=1245 data-nosnippet>1245</a>        }
-<a href=#1246 id=1246 data-nosnippet>1246</a>    }
-<a href=#1247 id=1247 data-nosnippet>1247</a>}
-<a href=#1248 id=1248 data-nosnippet>1248</a>
-<a href=#1249 id=1249 data-nosnippet>1249</a><span class="attr">#[cfg(test)]
-<a href=#1250 id=1250 data-nosnippet>1250</a></span><span class="kw">mod </span>test {
-<a href=#1251 id=1251 data-nosnippet>1251</a>    <span class="kw">use </span>syn::parse_quote;
-<a href=#1252 id=1252 data-nosnippet>1252</a>
-<a href=#1253 id=1253 data-nosnippet>1253</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-<a href=#1254 id=1254 data-nosnippet>1254</a>
-<a href=#1255 id=1255 data-nosnippet>1255</a>    <span class="doccomment">/// Test that [`FlatGraphBuilder::insert_loop`] can be used to programmatically build a loop
-<a href=#1256 id=1256 data-nosnippet>1256</a>    /// context, with statements added across multiple [`FlatGraphBuilder::add_dfir`] calls.
-<a href=#1257 id=1257 data-nosnippet>1257</a>    </span><span class="attr">#[test]
-<a href=#1258 id=1258 data-nosnippet>1258</a>    </span><span class="kw">fn </span>test_insert_loop_programmatic() {
-<a href=#1259 id=1259 data-nosnippet>1259</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = FlatGraphBuilder::new();
-<a href=#1260 id=1260 data-nosnippet>1260</a>        builder.add_dfir(
-<a href=#1261 id=1261 data-nosnippet>1261</a>            <span class="macro">parse_quote!</span> {
-<a href=#1262 id=1262 data-nosnippet>1262</a>                inp = source_iter([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#1263 id=1263 data-nosnippet>1263</a>            },
-<a href=#1264 id=1264 data-nosnippet>1264</a>            <span class="prelude-val">None</span>,
-<a href=#1265 id=1265 data-nosnippet>1265</a>            <span class="prelude-val">None</span>,
-<a href=#1266 id=1266 data-nosnippet>1266</a>        );
-<a href=#1267 id=1267 data-nosnippet>1267</a>        <span class="kw">let </span>loop_id = builder.insert_loop(<span class="prelude-val">None</span>);
-<a href=#1268 id=1268 data-nosnippet>1268</a>        builder.add_dfir(
-<a href=#1269 id=1269 data-nosnippet>1269</a>            <span class="macro">parse_quote!</span> {
-<a href=#1270 id=1270 data-nosnippet>1270</a>                batched = inp -&gt; batch();
-<a href=#1271 id=1271 data-nosnippet>1271</a>            },
-<a href=#1272 id=1272 data-nosnippet>1272</a>            <span class="prelude-val">Some</span>(loop_id),
-<a href=#1273 id=1273 data-nosnippet>1273</a>            <span class="prelude-val">None</span>,
-<a href=#1274 id=1274 data-nosnippet>1274</a>        );
-<a href=#1275 id=1275 data-nosnippet>1275</a>        builder.add_dfir(
-<a href=#1276 id=1276 data-nosnippet>1276</a>            <span class="macro">parse_quote!</span> {
-<a href=#1277 id=1277 data-nosnippet>1277</a>                batched -&gt; for_each(std::mem::drop);
-<a href=#1278 id=1278 data-nosnippet>1278</a>            },
-<a href=#1279 id=1279 data-nosnippet>1279</a>            <span class="prelude-val">Some</span>(loop_id),
-<a href=#1280 id=1280 data-nosnippet>1280</a>            <span class="prelude-val">None</span>,
-<a href=#1281 id=1281 data-nosnippet>1281</a>        );
-<a href=#1282 id=1282 data-nosnippet>1282</a>
-<a href=#1283 id=1283 data-nosnippet>1283</a>        <span class="kw">let </span>output = builder.build().unwrap_or_else(|diagnostics| {
-<a href=#1284 id=1284 data-nosnippet>1284</a>            <span class="macro">panic!</span>(<span class="string">"Should build without errors, got: {:?}"</span>, diagnostics);
-<a href=#1285 id=1285 data-nosnippet>1285</a>        });
-<a href=#1286 id=1286 data-nosnippet>1286</a>        <span class="kw">let </span>flat_graph = output.flat_graph;
-<a href=#1287 id=1287 data-nosnippet>1287</a>
-<a href=#1288 id=1288 data-nosnippet>1288</a>        <span class="comment">// One root loop, containing the `batch()` and `for_each()` (but not `source_iter()`).
-<a href=#1289 id=1289 data-nosnippet>1289</a>        </span><span class="macro">assert_eq!</span>(<span class="number">1</span>, flat_graph.loops().count());
-<a href=#1290 id=1290 data-nosnippet>1290</a>        <span class="kw">let </span>(built_loop_id, <span class="kw">_</span>) = flat_graph.loops().next().unwrap();
-<a href=#1291 id=1291 data-nosnippet>1291</a>        <span class="macro">assert_eq!</span>(loop_id, built_loop_id);
-<a href=#1292 id=1292 data-nosnippet>1292</a>        <span class="macro">assert_eq!</span>(<span class="prelude-val">None</span>, flat_graph.loop_parent(built_loop_id));
-<a href=#1293 id=1293 data-nosnippet>1293</a>
-<a href=#1294 id=1294 data-nosnippet>1294</a>        <span class="kw">for </span>(node_id, _node) <span class="kw">in </span>flat_graph.nodes() {
-<a href=#1295 id=1295 data-nosnippet>1295</a>            <span class="kw">let </span><span class="prelude-val">Some</span>(op_inst) = flat_graph.node_op_inst(node_id) <span class="kw">else </span>{
-<a href=#1296 id=1296 data-nosnippet>1296</a>                <span class="kw">continue</span>;
-<a href=#1297 id=1297 data-nosnippet>1297</a>            };
-<a href=#1298 id=1298 data-nosnippet>1298</a>            <span class="kw">let </span>expected_loop = <span class="kw">match </span>op_inst.op_constraints.name {
-<a href=#1299 id=1299 data-nosnippet>1299</a>                <span class="string">"source_iter" </span>=&gt; <span class="prelude-val">None</span>,
-<a href=#1300 id=1300 data-nosnippet>1300</a>                <span class="string">"batch" </span>| <span class="string">"for_each" </span>=&gt; <span class="prelude-val">Some</span>(built_loop_id),
-<a href=#1301 id=1301 data-nosnippet>1301</a>                other =&gt; <span class="macro">panic!</span>(<span class="string">"Unexpected operator: {}"</span>, other),
-<a href=#1302 id=1302 data-nosnippet>1302</a>            };
-<a href=#1303 id=1303 data-nosnippet>1303</a>            <span class="macro">assert_eq!</span>(
-<a href=#1304 id=1304 data-nosnippet>1304</a>                expected_loop,
-<a href=#1305 id=1305 data-nosnippet>1305</a>                flat_graph.node_loop(node_id),
-<a href=#1306 id=1306 data-nosnippet>1306</a>                <span class="string">"Wrong loop context for operator `{}`."</span>,
-<a href=#1307 id=1307 data-nosnippet>1307</a>                op_inst.op_constraints.name,
-<a href=#1308 id=1308 data-nosnippet>1308</a>            );
-<a href=#1309 id=1309 data-nosnippet>1309</a>        }
-<a href=#1310 id=1310 data-nosnippet>1310</a>    }
-<a href=#1311 id=1311 data-nosnippet>1311</a>
-<a href=#1312 id=1312 data-nosnippet>1312</a>    <span class="doccomment">/// Test that programmatically-built nested loops have the correct parent relationship.
-<a href=#1313 id=1313 data-nosnippet>1313</a>    </span><span class="attr">#[test]
-<a href=#1314 id=1314 data-nosnippet>1314</a>    </span><span class="kw">fn </span>test_insert_loop_nested() {
-<a href=#1315 id=1315 data-nosnippet>1315</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = FlatGraphBuilder::new();
-<a href=#1316 id=1316 data-nosnippet>1316</a>        <span class="kw">let </span>outer_loop = builder.insert_loop(<span class="prelude-val">None</span>);
-<a href=#1317 id=1317 data-nosnippet>1317</a>        <span class="kw">let </span>inner_loop = builder.insert_loop(<span class="prelude-val">Some</span>(outer_loop));
-<a href=#1318 id=1318 data-nosnippet>1318</a>
-<a href=#1319 id=1319 data-nosnippet>1319</a>        builder.add_dfir(
-<a href=#1320 id=1320 data-nosnippet>1320</a>            <span class="macro">parse_quote!</span> {
-<a href=#1321 id=1321 data-nosnippet>1321</a>                inp = source_iter([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#1322 id=1322 data-nosnippet>1322</a>            },
+<a href=#1246 id=1246 data-nosnippet>1246</a>
+<a href=#1247 id=1247 data-nosnippet>1247</a>        <span class="comment">// A root-level loop only ever fires on account of a non-lazy windowing input
+<a href=#1248 id=1248 data-nosnippet>1248</a>        // (`batch()` / `batch_eager()`) or a non-lazy `defer_tick()` back-edge. Lazy
+<a href=#1249 id=1249 data-nosnippet>1249</a>        // windowing inputs (`batch_lazy()` / `snapshot()`) deliberately never fire the
+<a href=#1250 id=1250 data-nosnippet>1250</a>        // loop, so a root-level loop whose inputs are *all* lazy could never fire — a
+<a href=#1251 id=1251 data-nosnippet>1251</a>        // logical bug. Reject it here instead of silently generating a loop body that
+<a href=#1252 id=1252 data-nosnippet>1252</a>        // never runs.
+<a href=#1253 id=1253 data-nosnippet>1253</a>        </span><span class="kw">for </span>(loop_id, loop_nodes) <span class="kw">in </span><span class="self">self</span>.flat_graph.loops() {
+<a href=#1254 id=1254 data-nosnippet>1254</a>            <span class="kw">if </span><span class="self">self</span>.flat_graph.loop_parent(loop_id).is_some() {
+<a href=#1255 id=1255 data-nosnippet>1255</a>                <span class="comment">// Nested loops iterate within a single firing of their parent, driven by
+<a href=#1256 id=1256 data-nosnippet>1256</a>                // the parent's data; this check is about tick-level (root) scheduling.
+<a href=#1257 id=1257 data-nosnippet>1257</a>                </span><span class="kw">continue</span>;
+<a href=#1258 id=1258 data-nosnippet>1258</a>            }
+<a href=#1259 id=1259 data-nosnippet>1259</a>
+<a href=#1260 id=1260 data-nosnippet>1260</a>            <span class="kw">let </span><span class="kw-2">mut </span>lazy_entry_spans = Vec::new();
+<a href=#1261 id=1261 data-nosnippet>1261</a>            <span class="kw">let </span><span class="kw-2">mut </span>has_firing_cause = <span class="bool-val">false</span>;
+<a href=#1262 id=1262 data-nosnippet>1262</a>            <span class="kw">for </span><span class="kw-2">&amp;</span>node_id <span class="kw">in </span>loop_nodes {
+<a href=#1263 id=1263 data-nosnippet>1263</a>                <span class="kw">let </span><span class="prelude-val">Some</span>(op_inst) = <span class="self">self</span>.flat_graph.node_op_inst(node_id) <span class="kw">else </span>{
+<a href=#1264 id=1264 data-nosnippet>1264</a>                    <span class="kw">continue</span>;
+<a href=#1265 id=1265 data-nosnippet>1265</a>                };
+<a href=#1266 id=1266 data-nosnippet>1266</a>                <span class="kw">match </span>op_inst.op_constraints.flo_type {
+<a href=#1267 id=1267 data-nosnippet>1267</a>                    <span class="prelude-val">Some</span>(FloType::Windowing | FloType::WindowingEager) =&gt; {
+<a href=#1268 id=1268 data-nosnippet>1268</a>                        has_firing_cause = <span class="bool-val">true</span>;
+<a href=#1269 id=1269 data-nosnippet>1269</a>                    }
+<a href=#1270 id=1270 data-nosnippet>1270</a>                    <span class="prelude-val">Some</span>(FloType::WindowingLazy | FloType::WindowingRetain) =&gt; {
+<a href=#1271 id=1271 data-nosnippet>1271</a>                        lazy_entry_spans.push(<span class="self">self</span>.flat_graph.node(node_id).span());
+<a href=#1272 id=1272 data-nosnippet>1272</a>                    }
+<a href=#1273 id=1273 data-nosnippet>1273</a>                    <span class="kw">_ </span>=&gt; {
+<a href=#1274 id=1274 data-nosnippet>1274</a>                        <span class="comment">// A non-lazy `defer_tick()` back-edge fires the loop on the next
+<a href=#1275 id=1275 data-nosnippet>1275</a>                        // tick whenever it holds deferred data.
+<a href=#1276 id=1276 data-nosnippet>1276</a>                        </span><span class="kw">let </span>delay_type = (op_inst.op_constraints.input_delaytype_fn)(
+<a href=#1277 id=1277 data-nosnippet>1277</a>                            <span class="kw-2">&amp;</span>PortIndexValue::Elided(<span class="prelude-val">None</span>),
+<a href=#1278 id=1278 data-nosnippet>1278</a>                        );
+<a href=#1279 id=1279 data-nosnippet>1279</a>                        <span class="kw">if </span><span class="prelude-val">Some</span>(DelayType::Tick) == delay_type {
+<a href=#1280 id=1280 data-nosnippet>1280</a>                            has_firing_cause = <span class="bool-val">true</span>;
+<a href=#1281 id=1281 data-nosnippet>1281</a>                        }
+<a href=#1282 id=1282 data-nosnippet>1282</a>                    }
+<a href=#1283 id=1283 data-nosnippet>1283</a>                }
+<a href=#1284 id=1284 data-nosnippet>1284</a>            }
+<a href=#1285 id=1285 data-nosnippet>1285</a>
+<a href=#1286 id=1286 data-nosnippet>1286</a>            <span class="kw">if </span>!has_firing_cause &amp;&amp; !lazy_entry_spans.is_empty() {
+<a href=#1287 id=1287 data-nosnippet>1287</a>                <span class="kw">for </span>span <span class="kw">in </span>lazy_entry_spans {
+<a href=#1288 id=1288 data-nosnippet>1288</a>                    <span class="self">self</span>.diagnostics.push(Diagnostic::spanned(
+<a href=#1289 id=1289 data-nosnippet>1289</a>                        span,
+<a href=#1290 id=1290 data-nosnippet>1290</a>                        Level::Error,
+<a href=#1291 id=1291 data-nosnippet>1291</a>                        <span class="string">"Root-level `loop { ... }` can never fire: all of its windowing inputs are lazy (`batch_lazy()` / `snapshot()`), which never cause the loop to fire on their own, and it has no `defer_tick()` back-edge. Add at least one non-lazy windowing input (`batch()` / `batch_eager()`) or a `defer_tick()`."</span>,
+<a href=#1292 id=1292 data-nosnippet>1292</a>                    ));
+<a href=#1293 id=1293 data-nosnippet>1293</a>                }
+<a href=#1294 id=1294 data-nosnippet>1294</a>            }
+<a href=#1295 id=1295 data-nosnippet>1295</a>        }
+<a href=#1296 id=1296 data-nosnippet>1296</a>    }
+<a href=#1297 id=1297 data-nosnippet>1297</a>}
+<a href=#1298 id=1298 data-nosnippet>1298</a>
+<a href=#1299 id=1299 data-nosnippet>1299</a><span class="attr">#[cfg(test)]
+<a href=#1300 id=1300 data-nosnippet>1300</a></span><span class="kw">mod </span>test {
+<a href=#1301 id=1301 data-nosnippet>1301</a>    <span class="kw">use </span>syn::parse_quote;
+<a href=#1302 id=1302 data-nosnippet>1302</a>
+<a href=#1303 id=1303 data-nosnippet>1303</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+<a href=#1304 id=1304 data-nosnippet>1304</a>
+<a href=#1305 id=1305 data-nosnippet>1305</a>    <span class="doccomment">/// Test that [`FlatGraphBuilder::insert_loop`] can be used to programmatically build a loop
+<a href=#1306 id=1306 data-nosnippet>1306</a>    /// context, with statements added across multiple [`FlatGraphBuilder::add_dfir`] calls.
+<a href=#1307 id=1307 data-nosnippet>1307</a>    </span><span class="attr">#[test]
+<a href=#1308 id=1308 data-nosnippet>1308</a>    </span><span class="kw">fn </span>test_insert_loop_programmatic() {
+<a href=#1309 id=1309 data-nosnippet>1309</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = FlatGraphBuilder::new();
+<a href=#1310 id=1310 data-nosnippet>1310</a>        builder.add_dfir(
+<a href=#1311 id=1311 data-nosnippet>1311</a>            <span class="macro">parse_quote!</span> {
+<a href=#1312 id=1312 data-nosnippet>1312</a>                inp = source_iter([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#1313 id=1313 data-nosnippet>1313</a>            },
+<a href=#1314 id=1314 data-nosnippet>1314</a>            <span class="prelude-val">None</span>,
+<a href=#1315 id=1315 data-nosnippet>1315</a>            <span class="prelude-val">None</span>,
+<a href=#1316 id=1316 data-nosnippet>1316</a>        );
+<a href=#1317 id=1317 data-nosnippet>1317</a>        <span class="kw">let </span>loop_id = builder.insert_loop(<span class="prelude-val">None</span>);
+<a href=#1318 id=1318 data-nosnippet>1318</a>        builder.add_dfir(
+<a href=#1319 id=1319 data-nosnippet>1319</a>            <span class="macro">parse_quote!</span> {
+<a href=#1320 id=1320 data-nosnippet>1320</a>                batched = inp -&gt; batch();
+<a href=#1321 id=1321 data-nosnippet>1321</a>            },
+<a href=#1322 id=1322 data-nosnippet>1322</a>            <span class="prelude-val">Some</span>(loop_id),
 <a href=#1323 id=1323 data-nosnippet>1323</a>            <span class="prelude-val">None</span>,
-<a href=#1324 id=1324 data-nosnippet>1324</a>            <span class="prelude-val">None</span>,
-<a href=#1325 id=1325 data-nosnippet>1325</a>        );
-<a href=#1326 id=1326 data-nosnippet>1326</a>        builder.add_dfir(
-<a href=#1327 id=1327 data-nosnippet>1327</a>            <span class="macro">parse_quote!</span> {
-<a href=#1328 id=1328 data-nosnippet>1328</a>                outer = inp -&gt; batch();
-<a href=#1329 id=1329 data-nosnippet>1329</a>            },
-<a href=#1330 id=1330 data-nosnippet>1330</a>            <span class="prelude-val">Some</span>(outer_loop),
-<a href=#1331 id=1331 data-nosnippet>1331</a>            <span class="prelude-val">None</span>,
-<a href=#1332 id=1332 data-nosnippet>1332</a>        );
-<a href=#1333 id=1333 data-nosnippet>1333</a>        builder.add_dfir(
-<a href=#1334 id=1334 data-nosnippet>1334</a>            <span class="macro">parse_quote!</span> {
-<a href=#1335 id=1335 data-nosnippet>1335</a>                outer -&gt; batch() -&gt; for_each(std::mem::drop);
-<a href=#1336 id=1336 data-nosnippet>1336</a>            },
-<a href=#1337 id=1337 data-nosnippet>1337</a>            <span class="prelude-val">Some</span>(inner_loop),
-<a href=#1338 id=1338 data-nosnippet>1338</a>            <span class="prelude-val">None</span>,
-<a href=#1339 id=1339 data-nosnippet>1339</a>        );
-<a href=#1340 id=1340 data-nosnippet>1340</a>
-<a href=#1341 id=1341 data-nosnippet>1341</a>        <span class="kw">let </span>output = builder.build().unwrap_or_else(|diagnostics| {
-<a href=#1342 id=1342 data-nosnippet>1342</a>            <span class="macro">panic!</span>(<span class="string">"Should build without errors, got: {:?}"</span>, diagnostics);
-<a href=#1343 id=1343 data-nosnippet>1343</a>        });
-<a href=#1344 id=1344 data-nosnippet>1344</a>        <span class="kw">let </span>flat_graph = output.flat_graph;
-<a href=#1345 id=1345 data-nosnippet>1345</a>
-<a href=#1346 id=1346 data-nosnippet>1346</a>        <span class="macro">assert_eq!</span>(<span class="number">2</span>, flat_graph.loops().count());
-<a href=#1347 id=1347 data-nosnippet>1347</a>        <span class="macro">assert_eq!</span>(<span class="prelude-val">None</span>, flat_graph.loop_parent(outer_loop));
-<a href=#1348 id=1348 data-nosnippet>1348</a>        <span class="macro">assert_eq!</span>(<span class="prelude-val">Some</span>(outer_loop), flat_graph.loop_parent(inner_loop));
-<a href=#1349 id=1349 data-nosnippet>1349</a>    }
-<a href=#1350 id=1350 data-nosnippet>1350</a>
-<a href=#1351 id=1351 data-nosnippet>1351</a>    <span class="doccomment">/// Test that loop validation (windowing operator required at loop entry) applies to
-<a href=#1352 id=1352 data-nosnippet>1352</a>    /// programmatically-created loop contexts, same as parsed `loop { ... }` blocks.
-<a href=#1353 id=1353 data-nosnippet>1353</a>    </span><span class="attr">#[test]
-<a href=#1354 id=1354 data-nosnippet>1354</a>    </span><span class="kw">fn </span>test_insert_loop_requires_windowing() {
-<a href=#1355 id=1355 data-nosnippet>1355</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = FlatGraphBuilder::new();
-<a href=#1356 id=1356 data-nosnippet>1356</a>        builder.add_dfir(
-<a href=#1357 id=1357 data-nosnippet>1357</a>            <span class="macro">parse_quote!</span> {
-<a href=#1358 id=1358 data-nosnippet>1358</a>                inp = source_iter([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#1359 id=1359 data-nosnippet>1359</a>            },
-<a href=#1360 id=1360 data-nosnippet>1360</a>            <span class="prelude-val">None</span>,
-<a href=#1361 id=1361 data-nosnippet>1361</a>            <span class="prelude-val">None</span>,
-<a href=#1362 id=1362 data-nosnippet>1362</a>        );
-<a href=#1363 id=1363 data-nosnippet>1363</a>        <span class="kw">let </span>loop_id = builder.insert_loop(<span class="prelude-val">None</span>);
-<a href=#1364 id=1364 data-nosnippet>1364</a>        <span class="comment">// `map` is not a windowing operator, so this should fail to build.
-<a href=#1365 id=1365 data-nosnippet>1365</a>        </span>builder.add_dfir(
-<a href=#1366 id=1366 data-nosnippet>1366</a>            <span class="macro">parse_quote!</span> {
-<a href=#1367 id=1367 data-nosnippet>1367</a>                inp -&gt; map(|x: usize| x) -&gt; for_each(std::mem::drop);
-<a href=#1368 id=1368 data-nosnippet>1368</a>            },
-<a href=#1369 id=1369 data-nosnippet>1369</a>            <span class="prelude-val">Some</span>(loop_id),
-<a href=#1370 id=1370 data-nosnippet>1370</a>            <span class="prelude-val">None</span>,
-<a href=#1371 id=1371 data-nosnippet>1371</a>        );
-<a href=#1372 id=1372 data-nosnippet>1372</a>
-<a href=#1373 id=1373 data-nosnippet>1373</a>        <span class="kw">let </span><span class="prelude-val">Err</span>(diagnostics) = builder.build() <span class="kw">else </span>{
-<a href=#1374 id=1374 data-nosnippet>1374</a>            <span class="macro">panic!</span>(<span class="string">"Should fail to build due to missing windowing operator."</span>);
-<a href=#1375 id=1375 data-nosnippet>1375</a>        };
-<a href=#1376 id=1376 data-nosnippet>1376</a>        <span class="macro">assert!</span>(
-<a href=#1377 id=1377 data-nosnippet>1377</a>            diagnostics.iter().any(|diagnostic| {
-<a href=#1378 id=1378 data-nosnippet>1378</a>                Level::Error == diagnostic.level
-<a href=#1379 id=1379 data-nosnippet>1379</a>                    &amp;&amp; diagnostic.message.contains(<span class="string">"windowing operator"</span>)
-<a href=#1380 id=1380 data-nosnippet>1380</a>            }),
-<a href=#1381 id=1381 data-nosnippet>1381</a>            <span class="string">"Expected a windowing operator error, got: {:?}"</span>,
-<a href=#1382 id=1382 data-nosnippet>1382</a>            diagnostics,
-<a href=#1383 id=1383 data-nosnippet>1383</a>        );
-<a href=#1384 id=1384 data-nosnippet>1384</a>    }
-<a href=#1385 id=1385 data-nosnippet>1385</a>}
+<a href=#1324 id=1324 data-nosnippet>1324</a>        );
+<a href=#1325 id=1325 data-nosnippet>1325</a>        builder.add_dfir(
+<a href=#1326 id=1326 data-nosnippet>1326</a>            <span class="macro">parse_quote!</span> {
+<a href=#1327 id=1327 data-nosnippet>1327</a>                batched -&gt; for_each(std::mem::drop);
+<a href=#1328 id=1328 data-nosnippet>1328</a>            },
+<a href=#1329 id=1329 data-nosnippet>1329</a>            <span class="prelude-val">Some</span>(loop_id),
+<a href=#1330 id=1330 data-nosnippet>1330</a>            <span class="prelude-val">None</span>,
+<a href=#1331 id=1331 data-nosnippet>1331</a>        );
+<a href=#1332 id=1332 data-nosnippet>1332</a>
+<a href=#1333 id=1333 data-nosnippet>1333</a>        <span class="kw">let </span>output = builder.build().unwrap_or_else(|diagnostics| {
+<a href=#1334 id=1334 data-nosnippet>1334</a>            <span class="macro">panic!</span>(<span class="string">"Should build without errors, got: {:?}"</span>, diagnostics);
+<a href=#1335 id=1335 data-nosnippet>1335</a>        });
+<a href=#1336 id=1336 data-nosnippet>1336</a>        <span class="kw">let </span>flat_graph = output.flat_graph;
+<a href=#1337 id=1337 data-nosnippet>1337</a>
+<a href=#1338 id=1338 data-nosnippet>1338</a>        <span class="comment">// One root loop, containing the `batch()` and `for_each()` (but not `source_iter()`).
+<a href=#1339 id=1339 data-nosnippet>1339</a>        </span><span class="macro">assert_eq!</span>(<span class="number">1</span>, flat_graph.loops().count());
+<a href=#1340 id=1340 data-nosnippet>1340</a>        <span class="kw">let </span>(built_loop_id, <span class="kw">_</span>) = flat_graph.loops().next().unwrap();
+<a href=#1341 id=1341 data-nosnippet>1341</a>        <span class="macro">assert_eq!</span>(loop_id, built_loop_id);
+<a href=#1342 id=1342 data-nosnippet>1342</a>        <span class="macro">assert_eq!</span>(<span class="prelude-val">None</span>, flat_graph.loop_parent(built_loop_id));
+<a href=#1343 id=1343 data-nosnippet>1343</a>
+<a href=#1344 id=1344 data-nosnippet>1344</a>        <span class="kw">for </span>(node_id, _node) <span class="kw">in </span>flat_graph.nodes() {
+<a href=#1345 id=1345 data-nosnippet>1345</a>            <span class="kw">let </span><span class="prelude-val">Some</span>(op_inst) = flat_graph.node_op_inst(node_id) <span class="kw">else </span>{
+<a href=#1346 id=1346 data-nosnippet>1346</a>                <span class="kw">continue</span>;
+<a href=#1347 id=1347 data-nosnippet>1347</a>            };
+<a href=#1348 id=1348 data-nosnippet>1348</a>            <span class="kw">let </span>expected_loop = <span class="kw">match </span>op_inst.op_constraints.name {
+<a href=#1349 id=1349 data-nosnippet>1349</a>                <span class="string">"source_iter" </span>=&gt; <span class="prelude-val">None</span>,
+<a href=#1350 id=1350 data-nosnippet>1350</a>                <span class="string">"batch" </span>| <span class="string">"for_each" </span>=&gt; <span class="prelude-val">Some</span>(built_loop_id),
+<a href=#1351 id=1351 data-nosnippet>1351</a>                other =&gt; <span class="macro">panic!</span>(<span class="string">"Unexpected operator: {}"</span>, other),
+<a href=#1352 id=1352 data-nosnippet>1352</a>            };
+<a href=#1353 id=1353 data-nosnippet>1353</a>            <span class="macro">assert_eq!</span>(
+<a href=#1354 id=1354 data-nosnippet>1354</a>                expected_loop,
+<a href=#1355 id=1355 data-nosnippet>1355</a>                flat_graph.node_loop(node_id),
+<a href=#1356 id=1356 data-nosnippet>1356</a>                <span class="string">"Wrong loop context for operator `{}`."</span>,
+<a href=#1357 id=1357 data-nosnippet>1357</a>                op_inst.op_constraints.name,
+<a href=#1358 id=1358 data-nosnippet>1358</a>            );
+<a href=#1359 id=1359 data-nosnippet>1359</a>        }
+<a href=#1360 id=1360 data-nosnippet>1360</a>    }
+<a href=#1361 id=1361 data-nosnippet>1361</a>
+<a href=#1362 id=1362 data-nosnippet>1362</a>    <span class="doccomment">/// Test that programmatically-built nested loops have the correct parent relationship.
+<a href=#1363 id=1363 data-nosnippet>1363</a>    </span><span class="attr">#[test]
+<a href=#1364 id=1364 data-nosnippet>1364</a>    </span><span class="kw">fn </span>test_insert_loop_nested() {
+<a href=#1365 id=1365 data-nosnippet>1365</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = FlatGraphBuilder::new();
+<a href=#1366 id=1366 data-nosnippet>1366</a>        <span class="kw">let </span>outer_loop = builder.insert_loop(<span class="prelude-val">None</span>);
+<a href=#1367 id=1367 data-nosnippet>1367</a>        <span class="kw">let </span>inner_loop = builder.insert_loop(<span class="prelude-val">Some</span>(outer_loop));
+<a href=#1368 id=1368 data-nosnippet>1368</a>
+<a href=#1369 id=1369 data-nosnippet>1369</a>        builder.add_dfir(
+<a href=#1370 id=1370 data-nosnippet>1370</a>            <span class="macro">parse_quote!</span> {
+<a href=#1371 id=1371 data-nosnippet>1371</a>                inp = source_iter([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#1372 id=1372 data-nosnippet>1372</a>            },
+<a href=#1373 id=1373 data-nosnippet>1373</a>            <span class="prelude-val">None</span>,
+<a href=#1374 id=1374 data-nosnippet>1374</a>            <span class="prelude-val">None</span>,
+<a href=#1375 id=1375 data-nosnippet>1375</a>        );
+<a href=#1376 id=1376 data-nosnippet>1376</a>        builder.add_dfir(
+<a href=#1377 id=1377 data-nosnippet>1377</a>            <span class="macro">parse_quote!</span> {
+<a href=#1378 id=1378 data-nosnippet>1378</a>                outer = inp -&gt; batch();
+<a href=#1379 id=1379 data-nosnippet>1379</a>            },
+<a href=#1380 id=1380 data-nosnippet>1380</a>            <span class="prelude-val">Some</span>(outer_loop),
+<a href=#1381 id=1381 data-nosnippet>1381</a>            <span class="prelude-val">None</span>,
+<a href=#1382 id=1382 data-nosnippet>1382</a>        );
+<a href=#1383 id=1383 data-nosnippet>1383</a>        builder.add_dfir(
+<a href=#1384 id=1384 data-nosnippet>1384</a>            <span class="macro">parse_quote!</span> {
+<a href=#1385 id=1385 data-nosnippet>1385</a>                outer -&gt; batch() -&gt; for_each(std::mem::drop);
+<a href=#1386 id=1386 data-nosnippet>1386</a>            },
+<a href=#1387 id=1387 data-nosnippet>1387</a>            <span class="prelude-val">Some</span>(inner_loop),
+<a href=#1388 id=1388 data-nosnippet>1388</a>            <span class="prelude-val">None</span>,
+<a href=#1389 id=1389 data-nosnippet>1389</a>        );
+<a href=#1390 id=1390 data-nosnippet>1390</a>
+<a href=#1391 id=1391 data-nosnippet>1391</a>        <span class="kw">let </span>output = builder.build().unwrap_or_else(|diagnostics| {
+<a href=#1392 id=1392 data-nosnippet>1392</a>            <span class="macro">panic!</span>(<span class="string">"Should build without errors, got: {:?}"</span>, diagnostics);
+<a href=#1393 id=1393 data-nosnippet>1393</a>        });
+<a href=#1394 id=1394 data-nosnippet>1394</a>        <span class="kw">let </span>flat_graph = output.flat_graph;
+<a href=#1395 id=1395 data-nosnippet>1395</a>
+<a href=#1396 id=1396 data-nosnippet>1396</a>        <span class="macro">assert_eq!</span>(<span class="number">2</span>, flat_graph.loops().count());
+<a href=#1397 id=1397 data-nosnippet>1397</a>        <span class="macro">assert_eq!</span>(<span class="prelude-val">None</span>, flat_graph.loop_parent(outer_loop));
+<a href=#1398 id=1398 data-nosnippet>1398</a>        <span class="macro">assert_eq!</span>(<span class="prelude-val">Some</span>(outer_loop), flat_graph.loop_parent(inner_loop));
+<a href=#1399 id=1399 data-nosnippet>1399</a>    }
+<a href=#1400 id=1400 data-nosnippet>1400</a>
+<a href=#1401 id=1401 data-nosnippet>1401</a>    <span class="doccomment">/// Test that loop validation (windowing operator required at loop entry) applies to
+<a href=#1402 id=1402 data-nosnippet>1402</a>    /// programmatically-created loop contexts, same as parsed `loop { ... }` blocks.
+<a href=#1403 id=1403 data-nosnippet>1403</a>    </span><span class="attr">#[test]
+<a href=#1404 id=1404 data-nosnippet>1404</a>    </span><span class="kw">fn </span>test_insert_loop_requires_windowing() {
+<a href=#1405 id=1405 data-nosnippet>1405</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = FlatGraphBuilder::new();
+<a href=#1406 id=1406 data-nosnippet>1406</a>        builder.add_dfir(
+<a href=#1407 id=1407 data-nosnippet>1407</a>            <span class="macro">parse_quote!</span> {
+<a href=#1408 id=1408 data-nosnippet>1408</a>                inp = source_iter([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#1409 id=1409 data-nosnippet>1409</a>            },
+<a href=#1410 id=1410 data-nosnippet>1410</a>            <span class="prelude-val">None</span>,
+<a href=#1411 id=1411 data-nosnippet>1411</a>            <span class="prelude-val">None</span>,
+<a href=#1412 id=1412 data-nosnippet>1412</a>        );
+<a href=#1413 id=1413 data-nosnippet>1413</a>        <span class="kw">let </span>loop_id = builder.insert_loop(<span class="prelude-val">None</span>);
+<a href=#1414 id=1414 data-nosnippet>1414</a>        <span class="comment">// `map` is not a windowing operator, so this should fail to build.
+<a href=#1415 id=1415 data-nosnippet>1415</a>        </span>builder.add_dfir(
+<a href=#1416 id=1416 data-nosnippet>1416</a>            <span class="macro">parse_quote!</span> {
+<a href=#1417 id=1417 data-nosnippet>1417</a>                inp -&gt; map(|x: usize| x) -&gt; for_each(std::mem::drop);
+<a href=#1418 id=1418 data-nosnippet>1418</a>            },
+<a href=#1419 id=1419 data-nosnippet>1419</a>            <span class="prelude-val">Some</span>(loop_id),
+<a href=#1420 id=1420 data-nosnippet>1420</a>            <span class="prelude-val">None</span>,
+<a href=#1421 id=1421 data-nosnippet>1421</a>        );
+<a href=#1422 id=1422 data-nosnippet>1422</a>
+<a href=#1423 id=1423 data-nosnippet>1423</a>        <span class="kw">let </span><span class="prelude-val">Err</span>(diagnostics) = builder.build() <span class="kw">else </span>{
+<a href=#1424 id=1424 data-nosnippet>1424</a>            <span class="macro">panic!</span>(<span class="string">"Should fail to build due to missing windowing operator."</span>);
+<a href=#1425 id=1425 data-nosnippet>1425</a>        };
+<a href=#1426 id=1426 data-nosnippet>1426</a>        <span class="macro">assert!</span>(
+<a href=#1427 id=1427 data-nosnippet>1427</a>            diagnostics.iter().any(|diagnostic| {
+<a href=#1428 id=1428 data-nosnippet>1428</a>                Level::Error == diagnostic.level
+<a href=#1429 id=1429 data-nosnippet>1429</a>                    &amp;&amp; diagnostic.message.contains(<span class="string">"windowing operator"</span>)
+<a href=#1430 id=1430 data-nosnippet>1430</a>            }),
+<a href=#1431 id=1431 data-nosnippet>1431</a>            <span class="string">"Expected a windowing operator error, got: {:?}"</span>,
+<a href=#1432 id=1432 data-nosnippet>1432</a>            diagnostics,
+<a href=#1433 id=1433 data-nosnippet>1433</a>        );
+<a href=#1434 id=1434 data-nosnippet>1434</a>    }
+<a href=#1435 id=1435 data-nosnippet>1435</a>}
 </code></pre></div></section></main></body></html>

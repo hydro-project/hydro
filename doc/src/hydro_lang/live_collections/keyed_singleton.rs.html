@@ -2601,506 +2601,534 @@
 <a href=#2601 id=2601 data-nosnippet>2601</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#2602 id=2602 data-nosnippet>2602</a>
 <a href=#2603 id=2603 data-nosnippet>2603</a>        <span class="kw">let </span>(input_port, input) = node.sim_input();
-<a href=#2604 id=2604 data-nosnippet>2604</a>        <span class="kw">let </span>output = input
-<a href=#2605 id=2605 data-nosnippet>2605</a>            .into_keyed()
-<a href=#2606 id=2606 data-nosnippet>2606</a>            .fold(<span class="macro">q!</span>(|| <span class="number">0</span>), <span class="macro">q!</span>(|acc, <span class="kw">_</span>| <span class="kw-2">*</span>acc += <span class="number">1</span>))
-<a href=#2607 id=2607 data-nosnippet>2607</a>            .snapshot(<span class="kw-2">&amp;</span>node.tick(), <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#2608 id=2608 data-nosnippet>2608</a>            .entries()
-<a href=#2609 id=2609 data-nosnippet>2609</a>            .all_ticks()
-<a href=#2610 id=2610 data-nosnippet>2610</a>            .sim_output();
-<a href=#2611 id=2611 data-nosnippet>2611</a>
-<a href=#2612 id=2612 data-nosnippet>2612</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#2613 id=2613 data-nosnippet>2613</a>            input_port.send((<span class="number">1</span>, <span class="number">123</span>));
-<a href=#2614 id=2614 data-nosnippet>2614</a>            input_port.send((<span class="number">1</span>, <span class="number">456</span>));
-<a href=#2615 id=2615 data-nosnippet>2615</a>            input_port.send((<span class="number">2</span>, <span class="number">123</span>));
-<a href=#2616 id=2616 data-nosnippet>2616</a>
-<a href=#2617 id=2617 data-nosnippet>2617</a>            <span class="kw">let </span>all = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#2618 id=2618 data-nosnippet>2618</a>            <span class="macro">assert_eq!</span>(all.last().unwrap(), <span class="kw-2">&amp;</span>(<span class="number">2</span>, <span class="number">1</span>));
-<a href=#2619 id=2619 data-nosnippet>2619</a>        });
+<a href=#2604 id=2604 data-nosnippet>2604</a>        <span class="comment">// Snapshot ingress is lazy and never wakes the tick on its own, so an auxiliary
+<a href=#2605 id=2605 data-nosnippet>2605</a>        // trigger stream drives the tick.
+<a href=#2606 id=2606 data-nosnippet>2606</a>        </span><span class="kw">let </span>(trigger_port, trigger) = node.sim_input::&lt;i32, <span class="kw">_</span>, <span class="kw">_</span>&gt;();
+<a href=#2607 id=2607 data-nosnippet>2607</a>
+<a href=#2608 id=2608 data-nosnippet>2608</a>        <span class="kw">let </span>tick = node.tick();
+<a href=#2609 id=2609 data-nosnippet>2609</a>        <span class="kw">let </span>output = input
+<a href=#2610 id=2610 data-nosnippet>2610</a>            .into_keyed()
+<a href=#2611 id=2611 data-nosnippet>2611</a>            .fold(<span class="macro">q!</span>(|| <span class="number">0</span>), <span class="macro">q!</span>(|acc, <span class="kw">_</span>| <span class="kw-2">*</span>acc += <span class="number">1</span>))
+<a href=#2612 id=2612 data-nosnippet>2612</a>            .snapshot(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#2613 id=2613 data-nosnippet>2613</a>            .entries()
+<a href=#2614 id=2614 data-nosnippet>2614</a>            .cross_singleton(trigger.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)).count())
+<a href=#2615 id=2615 data-nosnippet>2615</a>            .map(<span class="macro">q!</span>(|(entry, <span class="kw">_</span>)| entry))
+<a href=#2616 id=2616 data-nosnippet>2616</a>            .all_ticks()
+<a href=#2617 id=2617 data-nosnippet>2617</a>            .sim_output();
+<a href=#2618 id=2618 data-nosnippet>2618</a>
+<a href=#2619 id=2619 data-nosnippet>2619</a>        <span class="kw">let </span><span class="kw-2">mut </span>saw_final_state = <span class="bool-val">false</span>;
 <a href=#2620 id=2620 data-nosnippet>2620</a>
-<a href=#2621 id=2621 data-nosnippet>2621</a>        <span class="macro">assert_eq!</span>(count, <span class="number">8</span>);
-<a href=#2622 id=2622 data-nosnippet>2622</a>    }
-<a href=#2623 id=2623 data-nosnippet>2623</a>
-<a href=#2624 id=2624 data-nosnippet>2624</a>    <span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
-<a href=#2625 id=2625 data-nosnippet>2625</a>    #[tokio::test]
-<a href=#2626 id=2626 data-nosnippet>2626</a>    </span><span class="kw">async fn </span>join_keyed_stream() {
-<a href=#2627 id=2627 data-nosnippet>2627</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
-<a href=#2628 id=2628 data-nosnippet>2628</a>
-<a href=#2629 id=2629 data-nosnippet>2629</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#2630 id=2630 data-nosnippet>2630</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#2631 id=2631 data-nosnippet>2631</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
-<a href=#2632 id=2632 data-nosnippet>2632</a>
-<a href=#2633 id=2633 data-nosnippet>2633</a>        <span class="kw">let </span>tick = node.tick();
-<a href=#2634 id=2634 data-nosnippet>2634</a>        <span class="kw">let </span>keyed_data = node
-<a href=#2635 id=2635 data-nosnippet>2635</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">10</span>), (<span class="number">2</span>, <span class="number">20</span>)]))
-<a href=#2636 id=2636 data-nosnippet>2636</a>            .into_keyed()
-<a href=#2637 id=2637 data-nosnippet>2637</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#2638 id=2638 data-nosnippet>2638</a>            .first();
-<a href=#2639 id=2639 data-nosnippet>2639</a>        <span class="kw">let </span>requests = node
-<a href=#2640 id=2640 data-nosnippet>2640</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">100</span>), (<span class="number">2</span>, <span class="number">200</span>), (<span class="number">3</span>, <span class="number">300</span>)]))
-<a href=#2641 id=2641 data-nosnippet>2641</a>            .into_keyed()
-<a href=#2642 id=2642 data-nosnippet>2642</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
-<a href=#2643 id=2643 data-nosnippet>2643</a>
-<a href=#2644 id=2644 data-nosnippet>2644</a>        <span class="kw">let </span>out = keyed_data
-<a href=#2645 id=2645 data-nosnippet>2645</a>            .join_keyed_stream(requests)
-<a href=#2646 id=2646 data-nosnippet>2646</a>            .entries()
-<a href=#2647 id=2647 data-nosnippet>2647</a>            .all_ticks()
-<a href=#2648 id=2648 data-nosnippet>2648</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
-<a href=#2649 id=2649 data-nosnippet>2649</a>
-<a href=#2650 id=2650 data-nosnippet>2650</a>        <span class="kw">let </span>nodes = flow
-<a href=#2651 id=2651 data-nosnippet>2651</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
-<a href=#2652 id=2652 data-nosnippet>2652</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
-<a href=#2653 id=2653 data-nosnippet>2653</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
-<a href=#2654 id=2654 data-nosnippet>2654</a>
-<a href=#2655 id=2655 data-nosnippet>2655</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
+<a href=#2621 id=2621 data-nosnippet>2621</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#2622 id=2622 data-nosnippet>2622</a>            input_port.send((<span class="number">1</span>, <span class="number">123</span>));
+<a href=#2623 id=2623 data-nosnippet>2623</a>            input_port.send((<span class="number">1</span>, <span class="number">456</span>));
+<a href=#2624 id=2624 data-nosnippet>2624</a>            input_port.send((<span class="number">2</span>, <span class="number">123</span>));
+<a href=#2625 id=2625 data-nosnippet>2625</a>            trigger_port.send(<span class="number">1</span>);
+<a href=#2626 id=2626 data-nosnippet>2626</a>
+<a href=#2627 id=2627 data-nosnippet>2627</a>            <span class="comment">// The single trigger drives exactly one tick, which observes a per-key
+<a href=#2628 id=2628 data-nosnippet>2628</a>            // snapshot of the keyed fold (each key may be withheld or revealed at any
+<a href=#2629 id=2629 data-nosnippet>2629</a>            // of its buffered versions).
+<a href=#2630 id=2630 data-nosnippet>2630</a>            </span><span class="kw">let </span>all = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#2631 id=2631 data-nosnippet>2631</a>            <span class="kw">let </span><span class="kw-2">mut </span>last_by_key = std::collections::HashMap::new();
+<a href=#2632 id=2632 data-nosnippet>2632</a>            <span class="kw">for </span>(k, v) <span class="kw">in </span>all {
+<a href=#2633 id=2633 data-nosnippet>2633</a>                <span class="kw">match </span>k {
+<a href=#2634 id=2634 data-nosnippet>2634</a>                    <span class="number">1 </span>=&gt; <span class="macro">assert!</span>([<span class="number">1</span>, <span class="number">2</span>].contains(<span class="kw-2">&amp;</span>v), <span class="string">"invalid version for key 1: {v}"</span>),
+<a href=#2635 id=2635 data-nosnippet>2635</a>                    <span class="number">2 </span>=&gt; <span class="macro">assert_eq!</span>(v, <span class="number">1</span>, <span class="string">"invalid version for key 2"</span>),
+<a href=#2636 id=2636 data-nosnippet>2636</a>                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"unexpected key: {k}"</span>),
+<a href=#2637 id=2637 data-nosnippet>2637</a>                }
+<a href=#2638 id=2638 data-nosnippet>2638</a>                last_by_key.insert(k, v);
+<a href=#2639 id=2639 data-nosnippet>2639</a>            }
+<a href=#2640 id=2640 data-nosnippet>2640</a>            <span class="kw">if </span>last_by_key.get(<span class="kw-2">&amp;</span><span class="number">1</span>) == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">2</span>) &amp;&amp; last_by_key.get(<span class="kw-2">&amp;</span><span class="number">2</span>) == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">1</span>) {
+<a href=#2641 id=2641 data-nosnippet>2641</a>                saw_final_state = <span class="bool-val">true</span>;
+<a href=#2642 id=2642 data-nosnippet>2642</a>            }
+<a href=#2643 id=2643 data-nosnippet>2643</a>        });
+<a href=#2644 id=2644 data-nosnippet>2644</a>
+<a href=#2645 id=2645 data-nosnippet>2645</a>        <span class="comment">// Some schedule must reveal the fully folded value for every key.
+<a href=#2646 id=2646 data-nosnippet>2646</a>        </span><span class="macro">assert!</span>(saw_final_state);
+<a href=#2647 id=2647 data-nosnippet>2647</a>        <span class="comment">// 3 choices for key 1 (withheld, reveal 1, reveal 2) × 2 choices for key 2
+<a href=#2648 id=2648 data-nosnippet>2648</a>        // (withheld, reveal 1).
+<a href=#2649 id=2649 data-nosnippet>2649</a>        </span><span class="macro">assert_eq!</span>(count, <span class="number">6</span>);
+<a href=#2650 id=2650 data-nosnippet>2650</a>    }
+<a href=#2651 id=2651 data-nosnippet>2651</a>
+<a href=#2652 id=2652 data-nosnippet>2652</a>    <span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
+<a href=#2653 id=2653 data-nosnippet>2653</a>    #[tokio::test]
+<a href=#2654 id=2654 data-nosnippet>2654</a>    </span><span class="kw">async fn </span>join_keyed_stream() {
+<a href=#2655 id=2655 data-nosnippet>2655</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#2656 id=2656 data-nosnippet>2656</a>
-<a href=#2657 id=2657 data-nosnippet>2657</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect(out).<span class="kw">await</span>;
-<a href=#2658 id=2658 data-nosnippet>2658</a>
-<a href=#2659 id=2659 data-nosnippet>2659</a>        deployment.start().<span class="kw">await</span>.unwrap();
+<a href=#2657 id=2657 data-nosnippet>2657</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#2658 id=2658 data-nosnippet>2658</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#2659 id=2659 data-nosnippet>2659</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#2660 id=2660 data-nosnippet>2660</a>
-<a href=#2661 id=2661 data-nosnippet>2661</a>        <span class="kw">let </span><span class="kw-2">mut </span>results = <span class="macro">vec!</span>[];
-<a href=#2662 id=2662 data-nosnippet>2662</a>        <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">2 </span>{
-<a href=#2663 id=2663 data-nosnippet>2663</a>            results.push(external_out.next().<span class="kw">await</span>.unwrap());
-<a href=#2664 id=2664 data-nosnippet>2664</a>        }
-<a href=#2665 id=2665 data-nosnippet>2665</a>        results.sort();
-<a href=#2666 id=2666 data-nosnippet>2666</a>
-<a href=#2667 id=2667 data-nosnippet>2667</a>        <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, (<span class="number">10</span>, <span class="number">100</span>)), (<span class="number">2</span>, (<span class="number">20</span>, <span class="number">200</span>))]);
-<a href=#2668 id=2668 data-nosnippet>2668</a>    }
-<a href=#2669 id=2669 data-nosnippet>2669</a>
-<a href=#2670 id=2670 data-nosnippet>2670</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#2671 id=2671 data-nosnippet>2671</a>    #[test]
-<a href=#2672 id=2672 data-nosnippet>2672</a>    </span><span class="kw">fn </span>threshold_greater_or_equal_monotonic() {
-<a href=#2673 id=2673 data-nosnippet>2673</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#2674 id=2674 data-nosnippet>2674</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#2675 id=2675 data-nosnippet>2675</a>
-<a href=#2676 id=2676 data-nosnippet>2676</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
-<a href=#2677 id=2677 data-nosnippet>2677</a>        <span class="kw">let </span>(thresh_port, thresh_input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
-<a href=#2678 id=2678 data-nosnippet>2678</a>
-<a href=#2679 id=2679 data-nosnippet>2679</a>        <span class="comment">// Create a monotonically increasing keyed singleton via fold with monotone proof
-<a href=#2680 id=2680 data-nosnippet>2680</a>        </span><span class="kw">let </span>counts: <span class="kw">super</span>::KeyedSingleton&lt;u32, usize, <span class="kw">_</span>, <span class="kw">super</span>::MonotonicValue&gt; =
-<a href=#2681 id=2681 data-nosnippet>2681</a>            input.into_keyed().fold(
-<a href=#2682 id=2682 data-nosnippet>2682</a>                <span class="macro">q!</span>(|| <span class="number">0usize</span>),
-<a href=#2683 id=2683 data-nosnippet>2683</a>                <span class="macro">q!</span>(
-<a href=#2684 id=2684 data-nosnippet>2684</a>                    |acc, v| <span class="kw-2">*</span>acc += v,
-<a href=#2685 id=2685 data-nosnippet>2685</a>                    monotone = <span class="macro">crate::properties::manual_proof!</span>(<span class="doccomment">/** += is monotonic */</span>)
-<a href=#2686 id=2686 data-nosnippet>2686</a>                ),
-<a href=#2687 id=2687 data-nosnippet>2687</a>            );
+<a href=#2661 id=2661 data-nosnippet>2661</a>        <span class="kw">let </span>tick = node.tick();
+<a href=#2662 id=2662 data-nosnippet>2662</a>        <span class="kw">let </span>keyed_data = node
+<a href=#2663 id=2663 data-nosnippet>2663</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">10</span>), (<span class="number">2</span>, <span class="number">20</span>)]))
+<a href=#2664 id=2664 data-nosnippet>2664</a>            .into_keyed()
+<a href=#2665 id=2665 data-nosnippet>2665</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#2666 id=2666 data-nosnippet>2666</a>            .first();
+<a href=#2667 id=2667 data-nosnippet>2667</a>        <span class="kw">let </span>requests = node
+<a href=#2668 id=2668 data-nosnippet>2668</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">100</span>), (<span class="number">2</span>, <span class="number">200</span>), (<span class="number">3</span>, <span class="number">300</span>)]))
+<a href=#2669 id=2669 data-nosnippet>2669</a>            .into_keyed()
+<a href=#2670 id=2670 data-nosnippet>2670</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#2671 id=2671 data-nosnippet>2671</a>
+<a href=#2672 id=2672 data-nosnippet>2672</a>        <span class="kw">let </span>out = keyed_data
+<a href=#2673 id=2673 data-nosnippet>2673</a>            .join_keyed_stream(requests)
+<a href=#2674 id=2674 data-nosnippet>2674</a>            .entries()
+<a href=#2675 id=2675 data-nosnippet>2675</a>            .all_ticks()
+<a href=#2676 id=2676 data-nosnippet>2676</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#2677 id=2677 data-nosnippet>2677</a>
+<a href=#2678 id=2678 data-nosnippet>2678</a>        <span class="kw">let </span>nodes = flow
+<a href=#2679 id=2679 data-nosnippet>2679</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
+<a href=#2680 id=2680 data-nosnippet>2680</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
+<a href=#2681 id=2681 data-nosnippet>2681</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
+<a href=#2682 id=2682 data-nosnippet>2682</a>
+<a href=#2683 id=2683 data-nosnippet>2683</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
+<a href=#2684 id=2684 data-nosnippet>2684</a>
+<a href=#2685 id=2685 data-nosnippet>2685</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect(out).<span class="kw">await</span>;
+<a href=#2686 id=2686 data-nosnippet>2686</a>
+<a href=#2687 id=2687 data-nosnippet>2687</a>        deployment.start().<span class="kw">await</span>.unwrap();
 <a href=#2688 id=2688 data-nosnippet>2688</a>
-<a href=#2689 id=2689 data-nosnippet>2689</a>        <span class="comment">// BoundedValue keyed singleton of thresholds (from .first() on unbounded stream)
-<a href=#2690 id=2690 data-nosnippet>2690</a>        </span><span class="kw">let </span>thresholds = thresh_input.into_keyed().first();
-<a href=#2691 id=2691 data-nosnippet>2691</a>
-<a href=#2692 id=2692 data-nosnippet>2692</a>        <span class="kw">let </span>output = counts
-<a href=#2693 id=2693 data-nosnippet>2693</a>            .threshold_greater_or_equal(thresholds)
-<a href=#2694 id=2694 data-nosnippet>2694</a>            .entries()
-<a href=#2695 id=2695 data-nosnippet>2695</a>            .sim_output();
-<a href=#2696 id=2696 data-nosnippet>2696</a>
-<a href=#2697 id=2697 data-nosnippet>2697</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#2698 id=2698 data-nosnippet>2698</a>            <span class="comment">// Set thresholds: key 1 needs value &gt;= 5, key 2 needs value &gt;= 10
-<a href=#2699 id=2699 data-nosnippet>2699</a>            </span>thresh_port.send((<span class="number">1</span>, <span class="number">5</span>));
-<a href=#2700 id=2700 data-nosnippet>2700</a>            thresh_port.send((<span class="number">2</span>, <span class="number">10</span>));
-<a href=#2701 id=2701 data-nosnippet>2701</a>
-<a href=#2702 id=2702 data-nosnippet>2702</a>            <span class="comment">// key 1 gets increments: 3 + 3 = 6, which is &gt;= 5 ✓
-<a href=#2703 id=2703 data-nosnippet>2703</a>            </span>input_port.send((<span class="number">1</span>, <span class="number">3</span>));
-<a href=#2704 id=2704 data-nosnippet>2704</a>            input_port.send((<span class="number">1</span>, <span class="number">3</span>));
-<a href=#2705 id=2705 data-nosnippet>2705</a>            <span class="comment">// key 2 gets increments: 3 + 3 = 6, which is &lt; 10 ✗
-<a href=#2706 id=2706 data-nosnippet>2706</a>            </span>input_port.send((<span class="number">2</span>, <span class="number">3</span>));
-<a href=#2707 id=2707 data-nosnippet>2707</a>            input_port.send((<span class="number">2</span>, <span class="number">3</span>));
-<a href=#2708 id=2708 data-nosnippet>2708</a>
-<a href=#2709 id=2709 data-nosnippet>2709</a>            <span class="kw">let </span>results = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#2710 id=2710 data-nosnippet>2710</a>            <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">5</span>)]);
-<a href=#2711 id=2711 data-nosnippet>2711</a>        });
-<a href=#2712 id=2712 data-nosnippet>2712</a>
-<a href=#2713 id=2713 data-nosnippet>2713</a>        <span class="macro">assert!</span>(count &gt; <span class="number">0</span>);
-<a href=#2714 id=2714 data-nosnippet>2714</a>    }
-<a href=#2715 id=2715 data-nosnippet>2715</a>
-<a href=#2716 id=2716 data-nosnippet>2716</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#2717 id=2717 data-nosnippet>2717</a>    #[test]
-<a href=#2718 id=2718 data-nosnippet>2718</a>    </span><span class="kw">fn </span>threshold_greater_or_equal_uniform() {
-<a href=#2719 id=2719 data-nosnippet>2719</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#2720 id=2720 data-nosnippet>2720</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#2721 id=2721 data-nosnippet>2721</a>
-<a href=#2722 id=2722 data-nosnippet>2722</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
-<a href=#2723 id=2723 data-nosnippet>2723</a>
-<a href=#2724 id=2724 data-nosnippet>2724</a>        <span class="kw">let </span>counts: <span class="kw">super</span>::KeyedSingleton&lt;u32, usize, <span class="kw">_</span>, <span class="kw">super</span>::MonotonicValue&gt; =
-<a href=#2725 id=2725 data-nosnippet>2725</a>            input.into_keyed().fold(
-<a href=#2726 id=2726 data-nosnippet>2726</a>                <span class="macro">q!</span>(|| <span class="number">0usize</span>),
-<a href=#2727 id=2727 data-nosnippet>2727</a>                <span class="macro">q!</span>(
-<a href=#2728 id=2728 data-nosnippet>2728</a>                    |acc, v| <span class="kw-2">*</span>acc += v,
-<a href=#2729 id=2729 data-nosnippet>2729</a>                    monotone = <span class="macro">crate::properties::manual_proof!</span>(<span class="doccomment">/** += is monotonic */</span>)
-<a href=#2730 id=2730 data-nosnippet>2730</a>                ),
-<a href=#2731 id=2731 data-nosnippet>2731</a>            );
-<a href=#2732 id=2732 data-nosnippet>2732</a>
-<a href=#2733 id=2733 data-nosnippet>2733</a>        <span class="comment">// Uniform threshold: all keys need value &gt;= 5
-<a href=#2734 id=2734 data-nosnippet>2734</a>        </span><span class="kw">let </span>threshold = node.singleton(<span class="macro">q!</span>(<span class="number">5usize</span>));
-<a href=#2735 id=2735 data-nosnippet>2735</a>
-<a href=#2736 id=2736 data-nosnippet>2736</a>        <span class="kw">let </span>output = counts
-<a href=#2737 id=2737 data-nosnippet>2737</a>            .threshold_greater_or_equal_uniform(threshold)
-<a href=#2738 id=2738 data-nosnippet>2738</a>            .entries()
-<a href=#2739 id=2739 data-nosnippet>2739</a>            .sim_output();
+<a href=#2689 id=2689 data-nosnippet>2689</a>        <span class="kw">let </span><span class="kw-2">mut </span>results = <span class="macro">vec!</span>[];
+<a href=#2690 id=2690 data-nosnippet>2690</a>        <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">2 </span>{
+<a href=#2691 id=2691 data-nosnippet>2691</a>            results.push(external_out.next().<span class="kw">await</span>.unwrap());
+<a href=#2692 id=2692 data-nosnippet>2692</a>        }
+<a href=#2693 id=2693 data-nosnippet>2693</a>        results.sort();
+<a href=#2694 id=2694 data-nosnippet>2694</a>
+<a href=#2695 id=2695 data-nosnippet>2695</a>        <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, (<span class="number">10</span>, <span class="number">100</span>)), (<span class="number">2</span>, (<span class="number">20</span>, <span class="number">200</span>))]);
+<a href=#2696 id=2696 data-nosnippet>2696</a>    }
+<a href=#2697 id=2697 data-nosnippet>2697</a>
+<a href=#2698 id=2698 data-nosnippet>2698</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#2699 id=2699 data-nosnippet>2699</a>    #[test]
+<a href=#2700 id=2700 data-nosnippet>2700</a>    </span><span class="kw">fn </span>threshold_greater_or_equal_monotonic() {
+<a href=#2701 id=2701 data-nosnippet>2701</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#2702 id=2702 data-nosnippet>2702</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#2703 id=2703 data-nosnippet>2703</a>
+<a href=#2704 id=2704 data-nosnippet>2704</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
+<a href=#2705 id=2705 data-nosnippet>2705</a>        <span class="kw">let </span>(thresh_port, thresh_input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
+<a href=#2706 id=2706 data-nosnippet>2706</a>
+<a href=#2707 id=2707 data-nosnippet>2707</a>        <span class="comment">// Create a monotonically increasing keyed singleton via fold with monotone proof
+<a href=#2708 id=2708 data-nosnippet>2708</a>        </span><span class="kw">let </span>counts: <span class="kw">super</span>::KeyedSingleton&lt;u32, usize, <span class="kw">_</span>, <span class="kw">super</span>::MonotonicValue&gt; =
+<a href=#2709 id=2709 data-nosnippet>2709</a>            input.into_keyed().fold(
+<a href=#2710 id=2710 data-nosnippet>2710</a>                <span class="macro">q!</span>(|| <span class="number">0usize</span>),
+<a href=#2711 id=2711 data-nosnippet>2711</a>                <span class="macro">q!</span>(
+<a href=#2712 id=2712 data-nosnippet>2712</a>                    |acc, v| <span class="kw-2">*</span>acc += v,
+<a href=#2713 id=2713 data-nosnippet>2713</a>                    monotone = <span class="macro">crate::properties::manual_proof!</span>(<span class="doccomment">/** += is monotonic */</span>)
+<a href=#2714 id=2714 data-nosnippet>2714</a>                ),
+<a href=#2715 id=2715 data-nosnippet>2715</a>            );
+<a href=#2716 id=2716 data-nosnippet>2716</a>
+<a href=#2717 id=2717 data-nosnippet>2717</a>        <span class="comment">// BoundedValue keyed singleton of thresholds (from .first() on unbounded stream)
+<a href=#2718 id=2718 data-nosnippet>2718</a>        </span><span class="kw">let </span>thresholds = thresh_input.into_keyed().first();
+<a href=#2719 id=2719 data-nosnippet>2719</a>
+<a href=#2720 id=2720 data-nosnippet>2720</a>        <span class="kw">let </span>output = counts
+<a href=#2721 id=2721 data-nosnippet>2721</a>            .threshold_greater_or_equal(thresholds)
+<a href=#2722 id=2722 data-nosnippet>2722</a>            .entries()
+<a href=#2723 id=2723 data-nosnippet>2723</a>            .sim_output();
+<a href=#2724 id=2724 data-nosnippet>2724</a>
+<a href=#2725 id=2725 data-nosnippet>2725</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#2726 id=2726 data-nosnippet>2726</a>            <span class="comment">// Set thresholds: key 1 needs value &gt;= 5, key 2 needs value &gt;= 10
+<a href=#2727 id=2727 data-nosnippet>2727</a>            </span>thresh_port.send((<span class="number">1</span>, <span class="number">5</span>));
+<a href=#2728 id=2728 data-nosnippet>2728</a>            thresh_port.send((<span class="number">2</span>, <span class="number">10</span>));
+<a href=#2729 id=2729 data-nosnippet>2729</a>
+<a href=#2730 id=2730 data-nosnippet>2730</a>            <span class="comment">// key 1 gets increments: 3 + 3 = 6, which is &gt;= 5 ✓
+<a href=#2731 id=2731 data-nosnippet>2731</a>            </span>input_port.send((<span class="number">1</span>, <span class="number">3</span>));
+<a href=#2732 id=2732 data-nosnippet>2732</a>            input_port.send((<span class="number">1</span>, <span class="number">3</span>));
+<a href=#2733 id=2733 data-nosnippet>2733</a>            <span class="comment">// key 2 gets increments: 3 + 3 = 6, which is &lt; 10 ✗
+<a href=#2734 id=2734 data-nosnippet>2734</a>            </span>input_port.send((<span class="number">2</span>, <span class="number">3</span>));
+<a href=#2735 id=2735 data-nosnippet>2735</a>            input_port.send((<span class="number">2</span>, <span class="number">3</span>));
+<a href=#2736 id=2736 data-nosnippet>2736</a>
+<a href=#2737 id=2737 data-nosnippet>2737</a>            <span class="kw">let </span>results = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#2738 id=2738 data-nosnippet>2738</a>            <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">5</span>)]);
+<a href=#2739 id=2739 data-nosnippet>2739</a>        });
 <a href=#2740 id=2740 data-nosnippet>2740</a>
-<a href=#2741 id=2741 data-nosnippet>2741</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#2742 id=2742 data-nosnippet>2742</a>            <span class="comment">// key 1: 3 + 3 = 6 &gt;= 5 ✓
-<a href=#2743 id=2743 data-nosnippet>2743</a>            </span>input_port.send((<span class="number">1</span>, <span class="number">3</span>));
-<a href=#2744 id=2744 data-nosnippet>2744</a>            input_port.send((<span class="number">1</span>, <span class="number">3</span>));
-<a href=#2745 id=2745 data-nosnippet>2745</a>            <span class="comment">// key 2: 2 + 2 = 4 &lt; 5 ✗
-<a href=#2746 id=2746 data-nosnippet>2746</a>            </span>input_port.send((<span class="number">2</span>, <span class="number">2</span>));
-<a href=#2747 id=2747 data-nosnippet>2747</a>            input_port.send((<span class="number">2</span>, <span class="number">2</span>));
-<a href=#2748 id=2748 data-nosnippet>2748</a>
-<a href=#2749 id=2749 data-nosnippet>2749</a>            <span class="kw">let </span>results = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#2750 id=2750 data-nosnippet>2750</a>            <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">5</span>)]);
-<a href=#2751 id=2751 data-nosnippet>2751</a>        });
-<a href=#2752 id=2752 data-nosnippet>2752</a>
-<a href=#2753 id=2753 data-nosnippet>2753</a>        <span class="macro">assert!</span>(count &gt; <span class="number">0</span>);
-<a href=#2754 id=2754 data-nosnippet>2754</a>    }
-<a href=#2755 id=2755 data-nosnippet>2755</a>
-<a href=#2756 id=2756 data-nosnippet>2756</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#2757 id=2757 data-nosnippet>2757</a>    #[test]
-<a href=#2758 id=2758 data-nosnippet>2758</a>    </span><span class="kw">fn </span>threshold_greater_or_equal_bounded_value() {
-<a href=#2759 id=2759 data-nosnippet>2759</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#2760 id=2760 data-nosnippet>2760</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#2761 id=2761 data-nosnippet>2761</a>
-<a href=#2762 id=2762 data-nosnippet>2762</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
-<a href=#2763 id=2763 data-nosnippet>2763</a>        <span class="kw">let </span>(thresh_port, thresh_input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
-<a href=#2764 id=2764 data-nosnippet>2764</a>
-<a href=#2765 id=2765 data-nosnippet>2765</a>        <span class="comment">// BoundedValue keyed singleton (values fixed once per key via .first())
-<a href=#2766 id=2766 data-nosnippet>2766</a>        </span><span class="kw">let </span>values = input.into_keyed().first();
-<a href=#2767 id=2767 data-nosnippet>2767</a>
-<a href=#2768 id=2768 data-nosnippet>2768</a>        <span class="comment">// BoundedValue keyed singleton of thresholds
-<a href=#2769 id=2769 data-nosnippet>2769</a>        </span><span class="kw">let </span>thresholds = thresh_input.into_keyed().first();
-<a href=#2770 id=2770 data-nosnippet>2770</a>
-<a href=#2771 id=2771 data-nosnippet>2771</a>        <span class="kw">let </span>output = values
-<a href=#2772 id=2772 data-nosnippet>2772</a>            .threshold_greater_or_equal(thresholds)
-<a href=#2773 id=2773 data-nosnippet>2773</a>            .entries()
-<a href=#2774 id=2774 data-nosnippet>2774</a>            .sim_output();
-<a href=#2775 id=2775 data-nosnippet>2775</a>
-<a href=#2776 id=2776 data-nosnippet>2776</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#2777 id=2777 data-nosnippet>2777</a>            <span class="comment">// Set thresholds: key 1 needs &gt;= 3, key 2 needs &gt;= 10
-<a href=#2778 id=2778 data-nosnippet>2778</a>            </span>thresh_port.send((<span class="number">1</span>, <span class="number">3</span>));
-<a href=#2779 id=2779 data-nosnippet>2779</a>            thresh_port.send((<span class="number">2</span>, <span class="number">10</span>));
+<a href=#2741 id=2741 data-nosnippet>2741</a>        <span class="macro">assert!</span>(count &gt; <span class="number">0</span>);
+<a href=#2742 id=2742 data-nosnippet>2742</a>    }
+<a href=#2743 id=2743 data-nosnippet>2743</a>
+<a href=#2744 id=2744 data-nosnippet>2744</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#2745 id=2745 data-nosnippet>2745</a>    #[test]
+<a href=#2746 id=2746 data-nosnippet>2746</a>    </span><span class="kw">fn </span>threshold_greater_or_equal_uniform() {
+<a href=#2747 id=2747 data-nosnippet>2747</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#2748 id=2748 data-nosnippet>2748</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#2749 id=2749 data-nosnippet>2749</a>
+<a href=#2750 id=2750 data-nosnippet>2750</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
+<a href=#2751 id=2751 data-nosnippet>2751</a>
+<a href=#2752 id=2752 data-nosnippet>2752</a>        <span class="kw">let </span>counts: <span class="kw">super</span>::KeyedSingleton&lt;u32, usize, <span class="kw">_</span>, <span class="kw">super</span>::MonotonicValue&gt; =
+<a href=#2753 id=2753 data-nosnippet>2753</a>            input.into_keyed().fold(
+<a href=#2754 id=2754 data-nosnippet>2754</a>                <span class="macro">q!</span>(|| <span class="number">0usize</span>),
+<a href=#2755 id=2755 data-nosnippet>2755</a>                <span class="macro">q!</span>(
+<a href=#2756 id=2756 data-nosnippet>2756</a>                    |acc, v| <span class="kw-2">*</span>acc += v,
+<a href=#2757 id=2757 data-nosnippet>2757</a>                    monotone = <span class="macro">crate::properties::manual_proof!</span>(<span class="doccomment">/** += is monotonic */</span>)
+<a href=#2758 id=2758 data-nosnippet>2758</a>                ),
+<a href=#2759 id=2759 data-nosnippet>2759</a>            );
+<a href=#2760 id=2760 data-nosnippet>2760</a>
+<a href=#2761 id=2761 data-nosnippet>2761</a>        <span class="comment">// Uniform threshold: all keys need value &gt;= 5
+<a href=#2762 id=2762 data-nosnippet>2762</a>        </span><span class="kw">let </span>threshold = node.singleton(<span class="macro">q!</span>(<span class="number">5usize</span>));
+<a href=#2763 id=2763 data-nosnippet>2763</a>
+<a href=#2764 id=2764 data-nosnippet>2764</a>        <span class="kw">let </span>output = counts
+<a href=#2765 id=2765 data-nosnippet>2765</a>            .threshold_greater_or_equal_uniform(threshold)
+<a href=#2766 id=2766 data-nosnippet>2766</a>            .entries()
+<a href=#2767 id=2767 data-nosnippet>2767</a>            .sim_output();
+<a href=#2768 id=2768 data-nosnippet>2768</a>
+<a href=#2769 id=2769 data-nosnippet>2769</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#2770 id=2770 data-nosnippet>2770</a>            <span class="comment">// key 1: 3 + 3 = 6 &gt;= 5 ✓
+<a href=#2771 id=2771 data-nosnippet>2771</a>            </span>input_port.send((<span class="number">1</span>, <span class="number">3</span>));
+<a href=#2772 id=2772 data-nosnippet>2772</a>            input_port.send((<span class="number">1</span>, <span class="number">3</span>));
+<a href=#2773 id=2773 data-nosnippet>2773</a>            <span class="comment">// key 2: 2 + 2 = 4 &lt; 5 ✗
+<a href=#2774 id=2774 data-nosnippet>2774</a>            </span>input_port.send((<span class="number">2</span>, <span class="number">2</span>));
+<a href=#2775 id=2775 data-nosnippet>2775</a>            input_port.send((<span class="number">2</span>, <span class="number">2</span>));
+<a href=#2776 id=2776 data-nosnippet>2776</a>
+<a href=#2777 id=2777 data-nosnippet>2777</a>            <span class="kw">let </span>results = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#2778 id=2778 data-nosnippet>2778</a>            <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">5</span>)]);
+<a href=#2779 id=2779 data-nosnippet>2779</a>        });
 <a href=#2780 id=2780 data-nosnippet>2780</a>
-<a href=#2781 id=2781 data-nosnippet>2781</a>            <span class="comment">// key 1 gets value 5 &gt;= 3 ✓, key 2 gets value 4 &lt; 10 ✗
-<a href=#2782 id=2782 data-nosnippet>2782</a>            </span>input_port.send((<span class="number">1</span>, <span class="number">5</span>));
-<a href=#2783 id=2783 data-nosnippet>2783</a>            input_port.send((<span class="number">2</span>, <span class="number">4</span>));
-<a href=#2784 id=2784 data-nosnippet>2784</a>
-<a href=#2785 id=2785 data-nosnippet>2785</a>            <span class="kw">let </span>results = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#2786 id=2786 data-nosnippet>2786</a>            <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">3</span>)]);
-<a href=#2787 id=2787 data-nosnippet>2787</a>        });
-<a href=#2788 id=2788 data-nosnippet>2788</a>
-<a href=#2789 id=2789 data-nosnippet>2789</a>        <span class="macro">assert!</span>(count &gt; <span class="number">0</span>);
-<a href=#2790 id=2790 data-nosnippet>2790</a>    }
-<a href=#2791 id=2791 data-nosnippet>2791</a>
-<a href=#2792 id=2792 data-nosnippet>2792</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#2793 id=2793 data-nosnippet>2793</a>    #[test]
-<a href=#2794 id=2794 data-nosnippet>2794</a>    </span><span class="kw">fn </span>threshold_greater_or_equal_uniform_bounded_value() {
-<a href=#2795 id=2795 data-nosnippet>2795</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#2796 id=2796 data-nosnippet>2796</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#2797 id=2797 data-nosnippet>2797</a>
-<a href=#2798 id=2798 data-nosnippet>2798</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
-<a href=#2799 id=2799 data-nosnippet>2799</a>
-<a href=#2800 id=2800 data-nosnippet>2800</a>        <span class="comment">// BoundedValue keyed singleton (values fixed once per key via .first())
-<a href=#2801 id=2801 data-nosnippet>2801</a>        </span><span class="kw">let </span>values = input.into_keyed().first();
-<a href=#2802 id=2802 data-nosnippet>2802</a>
-<a href=#2803 id=2803 data-nosnippet>2803</a>        <span class="comment">// Uniform threshold: all keys need value &gt;= 5
-<a href=#2804 id=2804 data-nosnippet>2804</a>        </span><span class="kw">let </span>threshold = node.singleton(<span class="macro">q!</span>(<span class="number">5usize</span>));
-<a href=#2805 id=2805 data-nosnippet>2805</a>
-<a href=#2806 id=2806 data-nosnippet>2806</a>        <span class="kw">let </span>output = values
-<a href=#2807 id=2807 data-nosnippet>2807</a>            .threshold_greater_or_equal_uniform(threshold)
-<a href=#2808 id=2808 data-nosnippet>2808</a>            .entries()
-<a href=#2809 id=2809 data-nosnippet>2809</a>            .sim_output();
-<a href=#2810 id=2810 data-nosnippet>2810</a>
-<a href=#2811 id=2811 data-nosnippet>2811</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#2812 id=2812 data-nosnippet>2812</a>            <span class="comment">// key 1 gets value 7 &gt;= 5 ✓, key 2 gets value 3 &lt; 5 ✗
-<a href=#2813 id=2813 data-nosnippet>2813</a>            </span>input_port.send((<span class="number">1</span>, <span class="number">7</span>));
-<a href=#2814 id=2814 data-nosnippet>2814</a>            input_port.send((<span class="number">2</span>, <span class="number">3</span>));
-<a href=#2815 id=2815 data-nosnippet>2815</a>
-<a href=#2816 id=2816 data-nosnippet>2816</a>            <span class="kw">let </span>results = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#2817 id=2817 data-nosnippet>2817</a>            <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">5</span>)]);
-<a href=#2818 id=2818 data-nosnippet>2818</a>        });
+<a href=#2781 id=2781 data-nosnippet>2781</a>        <span class="macro">assert!</span>(count &gt; <span class="number">0</span>);
+<a href=#2782 id=2782 data-nosnippet>2782</a>    }
+<a href=#2783 id=2783 data-nosnippet>2783</a>
+<a href=#2784 id=2784 data-nosnippet>2784</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#2785 id=2785 data-nosnippet>2785</a>    #[test]
+<a href=#2786 id=2786 data-nosnippet>2786</a>    </span><span class="kw">fn </span>threshold_greater_or_equal_bounded_value() {
+<a href=#2787 id=2787 data-nosnippet>2787</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#2788 id=2788 data-nosnippet>2788</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#2789 id=2789 data-nosnippet>2789</a>
+<a href=#2790 id=2790 data-nosnippet>2790</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
+<a href=#2791 id=2791 data-nosnippet>2791</a>        <span class="kw">let </span>(thresh_port, thresh_input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
+<a href=#2792 id=2792 data-nosnippet>2792</a>
+<a href=#2793 id=2793 data-nosnippet>2793</a>        <span class="comment">// BoundedValue keyed singleton (values fixed once per key via .first())
+<a href=#2794 id=2794 data-nosnippet>2794</a>        </span><span class="kw">let </span>values = input.into_keyed().first();
+<a href=#2795 id=2795 data-nosnippet>2795</a>
+<a href=#2796 id=2796 data-nosnippet>2796</a>        <span class="comment">// BoundedValue keyed singleton of thresholds
+<a href=#2797 id=2797 data-nosnippet>2797</a>        </span><span class="kw">let </span>thresholds = thresh_input.into_keyed().first();
+<a href=#2798 id=2798 data-nosnippet>2798</a>
+<a href=#2799 id=2799 data-nosnippet>2799</a>        <span class="kw">let </span>output = values
+<a href=#2800 id=2800 data-nosnippet>2800</a>            .threshold_greater_or_equal(thresholds)
+<a href=#2801 id=2801 data-nosnippet>2801</a>            .entries()
+<a href=#2802 id=2802 data-nosnippet>2802</a>            .sim_output();
+<a href=#2803 id=2803 data-nosnippet>2803</a>
+<a href=#2804 id=2804 data-nosnippet>2804</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#2805 id=2805 data-nosnippet>2805</a>            <span class="comment">// Set thresholds: key 1 needs &gt;= 3, key 2 needs &gt;= 10
+<a href=#2806 id=2806 data-nosnippet>2806</a>            </span>thresh_port.send((<span class="number">1</span>, <span class="number">3</span>));
+<a href=#2807 id=2807 data-nosnippet>2807</a>            thresh_port.send((<span class="number">2</span>, <span class="number">10</span>));
+<a href=#2808 id=2808 data-nosnippet>2808</a>
+<a href=#2809 id=2809 data-nosnippet>2809</a>            <span class="comment">// key 1 gets value 5 &gt;= 3 ✓, key 2 gets value 4 &lt; 10 ✗
+<a href=#2810 id=2810 data-nosnippet>2810</a>            </span>input_port.send((<span class="number">1</span>, <span class="number">5</span>));
+<a href=#2811 id=2811 data-nosnippet>2811</a>            input_port.send((<span class="number">2</span>, <span class="number">4</span>));
+<a href=#2812 id=2812 data-nosnippet>2812</a>
+<a href=#2813 id=2813 data-nosnippet>2813</a>            <span class="kw">let </span>results = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#2814 id=2814 data-nosnippet>2814</a>            <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">3</span>)]);
+<a href=#2815 id=2815 data-nosnippet>2815</a>        });
+<a href=#2816 id=2816 data-nosnippet>2816</a>
+<a href=#2817 id=2817 data-nosnippet>2817</a>        <span class="macro">assert!</span>(count &gt; <span class="number">0</span>);
+<a href=#2818 id=2818 data-nosnippet>2818</a>    }
 <a href=#2819 id=2819 data-nosnippet>2819</a>
-<a href=#2820 id=2820 data-nosnippet>2820</a>        <span class="macro">assert!</span>(count &gt; <span class="number">0</span>);
-<a href=#2821 id=2821 data-nosnippet>2821</a>    }
-<a href=#2822 id=2822 data-nosnippet>2822</a>
-<a href=#2823 id=2823 data-nosnippet>2823</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#2824 id=2824 data-nosnippet>2824</a>    #[test]
-<a href=#2825 id=2825 data-nosnippet>2825</a>    </span><span class="kw">fn </span>threshold_greater_or_equal_bounded() {
-<a href=#2826 id=2826 data-nosnippet>2826</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#2827 id=2827 data-nosnippet>2827</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#2828 id=2828 data-nosnippet>2828</a>
-<a href=#2829 id=2829 data-nosnippet>2829</a>        <span class="comment">// Bounded keyed singleton (fully known upfront)
-<a href=#2830 id=2830 data-nosnippet>2830</a>        </span><span class="kw">let </span>values = node
-<a href=#2831 id=2831 data-nosnippet>2831</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">6usize</span>), (<span class="number">2</span>, <span class="number">4usize</span>)]))
-<a href=#2832 id=2832 data-nosnippet>2832</a>            .into_keyed()
-<a href=#2833 id=2833 data-nosnippet>2833</a>            .first();
-<a href=#2834 id=2834 data-nosnippet>2834</a>
-<a href=#2835 id=2835 data-nosnippet>2835</a>        <span class="comment">// BoundedValue thresholds (from async source)
-<a href=#2836 id=2836 data-nosnippet>2836</a>        </span><span class="kw">let </span>(thresh_port, thresh_input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
-<a href=#2837 id=2837 data-nosnippet>2837</a>        <span class="kw">let </span>thresholds = thresh_input.into_keyed().first();
+<a href=#2820 id=2820 data-nosnippet>2820</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#2821 id=2821 data-nosnippet>2821</a>    #[test]
+<a href=#2822 id=2822 data-nosnippet>2822</a>    </span><span class="kw">fn </span>threshold_greater_or_equal_uniform_bounded_value() {
+<a href=#2823 id=2823 data-nosnippet>2823</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#2824 id=2824 data-nosnippet>2824</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#2825 id=2825 data-nosnippet>2825</a>
+<a href=#2826 id=2826 data-nosnippet>2826</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
+<a href=#2827 id=2827 data-nosnippet>2827</a>
+<a href=#2828 id=2828 data-nosnippet>2828</a>        <span class="comment">// BoundedValue keyed singleton (values fixed once per key via .first())
+<a href=#2829 id=2829 data-nosnippet>2829</a>        </span><span class="kw">let </span>values = input.into_keyed().first();
+<a href=#2830 id=2830 data-nosnippet>2830</a>
+<a href=#2831 id=2831 data-nosnippet>2831</a>        <span class="comment">// Uniform threshold: all keys need value &gt;= 5
+<a href=#2832 id=2832 data-nosnippet>2832</a>        </span><span class="kw">let </span>threshold = node.singleton(<span class="macro">q!</span>(<span class="number">5usize</span>));
+<a href=#2833 id=2833 data-nosnippet>2833</a>
+<a href=#2834 id=2834 data-nosnippet>2834</a>        <span class="kw">let </span>output = values
+<a href=#2835 id=2835 data-nosnippet>2835</a>            .threshold_greater_or_equal_uniform(threshold)
+<a href=#2836 id=2836 data-nosnippet>2836</a>            .entries()
+<a href=#2837 id=2837 data-nosnippet>2837</a>            .sim_output();
 <a href=#2838 id=2838 data-nosnippet>2838</a>
-<a href=#2839 id=2839 data-nosnippet>2839</a>        <span class="kw">let </span>output = values
-<a href=#2840 id=2840 data-nosnippet>2840</a>            .threshold_greater_or_equal(thresholds)
-<a href=#2841 id=2841 data-nosnippet>2841</a>            .entries()
-<a href=#2842 id=2842 data-nosnippet>2842</a>            .sim_output();
+<a href=#2839 id=2839 data-nosnippet>2839</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#2840 id=2840 data-nosnippet>2840</a>            <span class="comment">// key 1 gets value 7 &gt;= 5 ✓, key 2 gets value 3 &lt; 5 ✗
+<a href=#2841 id=2841 data-nosnippet>2841</a>            </span>input_port.send((<span class="number">1</span>, <span class="number">7</span>));
+<a href=#2842 id=2842 data-nosnippet>2842</a>            input_port.send((<span class="number">2</span>, <span class="number">3</span>));
 <a href=#2843 id=2843 data-nosnippet>2843</a>
-<a href=#2844 id=2844 data-nosnippet>2844</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#2845 id=2845 data-nosnippet>2845</a>            thresh_port.send((<span class="number">1</span>, <span class="number">5</span>));
-<a href=#2846 id=2846 data-nosnippet>2846</a>            thresh_port.send((<span class="number">2</span>, <span class="number">10</span>));
+<a href=#2844 id=2844 data-nosnippet>2844</a>            <span class="kw">let </span>results = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#2845 id=2845 data-nosnippet>2845</a>            <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">5</span>)]);
+<a href=#2846 id=2846 data-nosnippet>2846</a>        });
 <a href=#2847 id=2847 data-nosnippet>2847</a>
-<a href=#2848 id=2848 data-nosnippet>2848</a>            <span class="comment">// key 1: 6 &gt;= 5 ✓, key 2: 4 &lt; 10 ✗
-<a href=#2849 id=2849 data-nosnippet>2849</a>            </span><span class="kw">let </span>results = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#2850 id=2850 data-nosnippet>2850</a>            <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">5</span>)]);
-<a href=#2851 id=2851 data-nosnippet>2851</a>        });
-<a href=#2852 id=2852 data-nosnippet>2852</a>
-<a href=#2853 id=2853 data-nosnippet>2853</a>        <span class="macro">assert!</span>(count &gt; <span class="number">0</span>);
-<a href=#2854 id=2854 data-nosnippet>2854</a>    }
-<a href=#2855 id=2855 data-nosnippet>2855</a>
-<a href=#2856 id=2856 data-nosnippet>2856</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#2857 id=2857 data-nosnippet>2857</a>    #[test]
-<a href=#2858 id=2858 data-nosnippet>2858</a>    </span><span class="kw">fn </span>threshold_greater_or_equal_uniform_bounded() {
-<a href=#2859 id=2859 data-nosnippet>2859</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#2860 id=2860 data-nosnippet>2860</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#2861 id=2861 data-nosnippet>2861</a>
-<a href=#2862 id=2862 data-nosnippet>2862</a>        <span class="kw">let </span>values = node
-<a href=#2863 id=2863 data-nosnippet>2863</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">6usize</span>), (<span class="number">2</span>, <span class="number">4usize</span>)]))
-<a href=#2864 id=2864 data-nosnippet>2864</a>            .into_keyed()
-<a href=#2865 id=2865 data-nosnippet>2865</a>            .first();
-<a href=#2866 id=2866 data-nosnippet>2866</a>        <span class="kw">let </span>threshold = node.singleton(<span class="macro">q!</span>(<span class="number">5usize</span>));
-<a href=#2867 id=2867 data-nosnippet>2867</a>
-<a href=#2868 id=2868 data-nosnippet>2868</a>        <span class="kw">let </span>output = values
-<a href=#2869 id=2869 data-nosnippet>2869</a>            .threshold_greater_or_equal_uniform(threshold)
-<a href=#2870 id=2870 data-nosnippet>2870</a>            .entries()
-<a href=#2871 id=2871 data-nosnippet>2871</a>            .sim_output();
-<a href=#2872 id=2872 data-nosnippet>2872</a>
-<a href=#2873 id=2873 data-nosnippet>2873</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#2874 id=2874 data-nosnippet>2874</a>            <span class="comment">// key 1: 6 &gt;= 5 ✓, key 2: 4 &lt; 5 ✗
-<a href=#2875 id=2875 data-nosnippet>2875</a>            </span><span class="kw">let </span>results = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#2876 id=2876 data-nosnippet>2876</a>            <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">5</span>)]);
-<a href=#2877 id=2877 data-nosnippet>2877</a>        });
-<a href=#2878 id=2878 data-nosnippet>2878</a>
-<a href=#2879 id=2879 data-nosnippet>2879</a>        <span class="macro">assert!</span>(count &gt; <span class="number">0</span>);
-<a href=#2880 id=2880 data-nosnippet>2880</a>    }
-<a href=#2881 id=2881 data-nosnippet>2881</a>
-<a href=#2882 id=2882 data-nosnippet>2882</a>    <span class="doccomment">/// A root `MonotonicKeys` keyed singleton's update stream re-sends a key's value whenever it
-<a href=#2883 id=2883 data-nosnippet>2883</a>    /// changes. `key_count` must count each key once (repeated updates must not inflate it), and
-<a href=#2884 id=2884 data-nosnippet>2884</a>    /// every intermediate count is a valid count of a prefix of the inputs.
-<a href=#2885 id=2885 data-nosnippet>2885</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#2886 id=2886 data-nosnippet>2886</a>    #[test]
-<a href=#2887 id=2887 data-nosnippet>2887</a>    </span><span class="kw">fn </span>sim_top_level_key_count_monotonic() {
-<a href=#2888 id=2888 data-nosnippet>2888</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::{ExactlyOnce, TotalOrder};
+<a href=#2848 id=2848 data-nosnippet>2848</a>        <span class="macro">assert!</span>(count &gt; <span class="number">0</span>);
+<a href=#2849 id=2849 data-nosnippet>2849</a>    }
+<a href=#2850 id=2850 data-nosnippet>2850</a>
+<a href=#2851 id=2851 data-nosnippet>2851</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#2852 id=2852 data-nosnippet>2852</a>    #[test]
+<a href=#2853 id=2853 data-nosnippet>2853</a>    </span><span class="kw">fn </span>threshold_greater_or_equal_bounded() {
+<a href=#2854 id=2854 data-nosnippet>2854</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#2855 id=2855 data-nosnippet>2855</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#2856 id=2856 data-nosnippet>2856</a>
+<a href=#2857 id=2857 data-nosnippet>2857</a>        <span class="comment">// Bounded keyed singleton (fully known upfront)
+<a href=#2858 id=2858 data-nosnippet>2858</a>        </span><span class="kw">let </span>values = node
+<a href=#2859 id=2859 data-nosnippet>2859</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">6usize</span>), (<span class="number">2</span>, <span class="number">4usize</span>)]))
+<a href=#2860 id=2860 data-nosnippet>2860</a>            .into_keyed()
+<a href=#2861 id=2861 data-nosnippet>2861</a>            .first();
+<a href=#2862 id=2862 data-nosnippet>2862</a>
+<a href=#2863 id=2863 data-nosnippet>2863</a>        <span class="comment">// BoundedValue thresholds (from async source)
+<a href=#2864 id=2864 data-nosnippet>2864</a>        </span><span class="kw">let </span>(thresh_port, thresh_input) = node.sim_input::&lt;(u32, usize), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
+<a href=#2865 id=2865 data-nosnippet>2865</a>        <span class="kw">let </span>thresholds = thresh_input.into_keyed().first();
+<a href=#2866 id=2866 data-nosnippet>2866</a>
+<a href=#2867 id=2867 data-nosnippet>2867</a>        <span class="kw">let </span>output = values
+<a href=#2868 id=2868 data-nosnippet>2868</a>            .threshold_greater_or_equal(thresholds)
+<a href=#2869 id=2869 data-nosnippet>2869</a>            .entries()
+<a href=#2870 id=2870 data-nosnippet>2870</a>            .sim_output();
+<a href=#2871 id=2871 data-nosnippet>2871</a>
+<a href=#2872 id=2872 data-nosnippet>2872</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#2873 id=2873 data-nosnippet>2873</a>            thresh_port.send((<span class="number">1</span>, <span class="number">5</span>));
+<a href=#2874 id=2874 data-nosnippet>2874</a>            thresh_port.send((<span class="number">2</span>, <span class="number">10</span>));
+<a href=#2875 id=2875 data-nosnippet>2875</a>
+<a href=#2876 id=2876 data-nosnippet>2876</a>            <span class="comment">// key 1: 6 &gt;= 5 ✓, key 2: 4 &lt; 10 ✗
+<a href=#2877 id=2877 data-nosnippet>2877</a>            </span><span class="kw">let </span>results = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#2878 id=2878 data-nosnippet>2878</a>            <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">5</span>)]);
+<a href=#2879 id=2879 data-nosnippet>2879</a>        });
+<a href=#2880 id=2880 data-nosnippet>2880</a>
+<a href=#2881 id=2881 data-nosnippet>2881</a>        <span class="macro">assert!</span>(count &gt; <span class="number">0</span>);
+<a href=#2882 id=2882 data-nosnippet>2882</a>    }
+<a href=#2883 id=2883 data-nosnippet>2883</a>
+<a href=#2884 id=2884 data-nosnippet>2884</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#2885 id=2885 data-nosnippet>2885</a>    #[test]
+<a href=#2886 id=2886 data-nosnippet>2886</a>    </span><span class="kw">fn </span>threshold_greater_or_equal_uniform_bounded() {
+<a href=#2887 id=2887 data-nosnippet>2887</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#2888 id=2888 data-nosnippet>2888</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#2889 id=2889 data-nosnippet>2889</a>
-<a href=#2890 id=2890 data-nosnippet>2890</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#2891 id=2891 data-nosnippet>2891</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#2892 id=2892 data-nosnippet>2892</a>
-<a href=#2893 id=2893 data-nosnippet>2893</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;(u32, u32), TotalOrder, ExactlyOnce&gt;();
-<a href=#2894 id=2894 data-nosnippet>2894</a>        <span class="kw">let </span>(trigger_port, trigger) = node.sim_input::&lt;(), TotalOrder, ExactlyOnce&gt;();
+<a href=#2890 id=2890 data-nosnippet>2890</a>        <span class="kw">let </span>values = node
+<a href=#2891 id=2891 data-nosnippet>2891</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">6usize</span>), (<span class="number">2</span>, <span class="number">4usize</span>)]))
+<a href=#2892 id=2892 data-nosnippet>2892</a>            .into_keyed()
+<a href=#2893 id=2893 data-nosnippet>2893</a>            .first();
+<a href=#2894 id=2894 data-nosnippet>2894</a>        <span class="kw">let </span>threshold = node.singleton(<span class="macro">q!</span>(<span class="number">5usize</span>));
 <a href=#2895 id=2895 data-nosnippet>2895</a>
-<a href=#2896 id=2896 data-nosnippet>2896</a>        <span class="kw">let </span>count = input
-<a href=#2897 id=2897 data-nosnippet>2897</a>            .into_keyed()
-<a href=#2898 id=2898 data-nosnippet>2898</a>            .fold(<span class="macro">q!</span>(|| <span class="number">0u32</span>), <span class="macro">q!</span>(|acc, v| <span class="kw-2">*</span>acc += v))
-<a href=#2899 id=2899 data-nosnippet>2899</a>            .key_count();
+<a href=#2896 id=2896 data-nosnippet>2896</a>        <span class="kw">let </span>output = values
+<a href=#2897 id=2897 data-nosnippet>2897</a>            .threshold_greater_or_equal_uniform(threshold)
+<a href=#2898 id=2898 data-nosnippet>2898</a>            .entries()
+<a href=#2899 id=2899 data-nosnippet>2899</a>            .sim_output();
 <a href=#2900 id=2900 data-nosnippet>2900</a>
-<a href=#2901 id=2901 data-nosnippet>2901</a>        <span class="kw">let </span>tick = node.tick();
-<a href=#2902 id=2902 data-nosnippet>2902</a>        <span class="kw">let </span>output = trigger
-<a href=#2903 id=2903 data-nosnippet>2903</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#2904 id=2904 data-nosnippet>2904</a>            .cross_singleton(count.snapshot(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)))
-<a href=#2905 id=2905 data-nosnippet>2905</a>            .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, count)| count))
-<a href=#2906 id=2906 data-nosnippet>2906</a>            .all_ticks()
-<a href=#2907 id=2907 data-nosnippet>2907</a>            .sim_output();
-<a href=#2908 id=2908 data-nosnippet>2908</a>
-<a href=#2909 id=2909 data-nosnippet>2909</a>        <span class="kw">let </span><span class="kw-2">mut </span>observed = std::collections::HashSet::new();
-<a href=#2910 id=2910 data-nosnippet>2910</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#2911 id=2911 data-nosnippet>2911</a>            input_port.send((<span class="number">1</span>, <span class="number">10</span>));
-<a href=#2912 id=2912 data-nosnippet>2912</a>            input_port.send((<span class="number">1</span>, <span class="number">20</span>));
-<a href=#2913 id=2913 data-nosnippet>2913</a>            input_port.send((<span class="number">1</span>, <span class="number">30</span>));
-<a href=#2914 id=2914 data-nosnippet>2914</a>            input_port.send((<span class="number">2</span>, <span class="number">40</span>));
-<a href=#2915 id=2915 data-nosnippet>2915</a>            trigger_port.send(());
-<a href=#2916 id=2916 data-nosnippet>2916</a>
-<a href=#2917 id=2917 data-nosnippet>2917</a>            <span class="kw">let </span>out = output.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#2918 id=2918 data-nosnippet>2918</a>            <span class="macro">assert_eq!</span>(out.len(), <span class="number">1</span>);
-<a href=#2919 id=2919 data-nosnippet>2919</a>            <span class="macro">assert!</span>(
-<a href=#2920 id=2920 data-nosnippet>2920</a>                out[<span class="number">0</span>] &lt;= <span class="number">2</span>,
-<a href=#2921 id=2921 data-nosnippet>2921</a>                <span class="string">"key count inflated by repeated updates: {}"</span>,
-<a href=#2922 id=2922 data-nosnippet>2922</a>                out[<span class="number">0</span>]
-<a href=#2923 id=2923 data-nosnippet>2923</a>            );
-<a href=#2924 id=2924 data-nosnippet>2924</a>            observed.insert(out[<span class="number">0</span>]);
-<a href=#2925 id=2925 data-nosnippet>2925</a>        });
-<a href=#2926 id=2926 data-nosnippet>2926</a>
-<a href=#2927 id=2927 data-nosnippet>2927</a>        <span class="macro">assert_eq!</span>(observed, [<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>].into_iter().collect());
-<a href=#2928 id=2928 data-nosnippet>2928</a>    }
-<a href=#2929 id=2929 data-nosnippet>2929</a>
-<a href=#2930 id=2930 data-nosnippet>2930</a>    <span class="doccomment">/// `into_singleton` of a root `MonotonicKeys` keyed singleton applies each key's updates in
-<a href=#2931 id=2931 data-nosnippet>2931</a>    /// order: every observed map holds, for each key, some version of that key's value, and the
-<a href=#2932 id=2932 data-nosnippet>2932</a>    /// final map is reachable.
-<a href=#2933 id=2933 data-nosnippet>2933</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#2934 id=2934 data-nosnippet>2934</a>    #[test]
-<a href=#2935 id=2935 data-nosnippet>2935</a>    </span><span class="kw">fn </span>sim_top_level_into_singleton_monotonic() {
-<a href=#2936 id=2936 data-nosnippet>2936</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::{ExactlyOnce, TotalOrder};
-<a href=#2937 id=2937 data-nosnippet>2937</a>
-<a href=#2938 id=2938 data-nosnippet>2938</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#2939 id=2939 data-nosnippet>2939</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#2940 id=2940 data-nosnippet>2940</a>
-<a href=#2941 id=2941 data-nosnippet>2941</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;(u32, u32), TotalOrder, ExactlyOnce&gt;();
-<a href=#2942 id=2942 data-nosnippet>2942</a>        <span class="kw">let </span>(trigger_port, trigger) = node.sim_input::&lt;(), TotalOrder, ExactlyOnce&gt;();
-<a href=#2943 id=2943 data-nosnippet>2943</a>
-<a href=#2944 id=2944 data-nosnippet>2944</a>        <span class="kw">let </span>map = input
-<a href=#2945 id=2945 data-nosnippet>2945</a>            .into_keyed()
-<a href=#2946 id=2946 data-nosnippet>2946</a>            .fold(<span class="macro">q!</span>(|| <span class="number">0u32</span>), <span class="macro">q!</span>(|acc, v| <span class="kw-2">*</span>acc += v))
-<a href=#2947 id=2947 data-nosnippet>2947</a>            .into_singleton();
-<a href=#2948 id=2948 data-nosnippet>2948</a>
-<a href=#2949 id=2949 data-nosnippet>2949</a>        <span class="kw">let </span>tick = node.tick();
-<a href=#2950 id=2950 data-nosnippet>2950</a>        <span class="kw">let </span>output = trigger
-<a href=#2951 id=2951 data-nosnippet>2951</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#2952 id=2952 data-nosnippet>2952</a>            .cross_singleton(map.snapshot(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)))
-<a href=#2953 id=2953 data-nosnippet>2953</a>            .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, map)| {
-<a href=#2954 id=2954 data-nosnippet>2954</a>                <span class="kw">let </span><span class="kw-2">mut </span>entries = map.into_iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#2955 id=2955 data-nosnippet>2955</a>                entries.sort();
-<a href=#2956 id=2956 data-nosnippet>2956</a>                entries
-<a href=#2957 id=2957 data-nosnippet>2957</a>            }))
-<a href=#2958 id=2958 data-nosnippet>2958</a>            .all_ticks()
-<a href=#2959 id=2959 data-nosnippet>2959</a>            .sim_output();
-<a href=#2960 id=2960 data-nosnippet>2960</a>
-<a href=#2961 id=2961 data-nosnippet>2961</a>        <span class="kw">let </span><span class="kw-2">mut </span>saw_final = <span class="bool-val">false</span>;
-<a href=#2962 id=2962 data-nosnippet>2962</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#2963 id=2963 data-nosnippet>2963</a>            input_port.send((<span class="number">1</span>, <span class="number">10</span>));
-<a href=#2964 id=2964 data-nosnippet>2964</a>            input_port.send((<span class="number">1</span>, <span class="number">20</span>));
-<a href=#2965 id=2965 data-nosnippet>2965</a>            input_port.send((<span class="number">2</span>, <span class="number">5</span>));
-<a href=#2966 id=2966 data-nosnippet>2966</a>            trigger_port.send(());
-<a href=#2967 id=2967 data-nosnippet>2967</a>
-<a href=#2968 id=2968 data-nosnippet>2968</a>            <span class="kw">let </span>out = output.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#2969 id=2969 data-nosnippet>2969</a>            <span class="macro">assert_eq!</span>(out.len(), <span class="number">1</span>);
-<a href=#2970 id=2970 data-nosnippet>2970</a>            <span class="kw">for </span>(k, v) <span class="kw">in </span><span class="kw-2">&amp;</span>out[<span class="number">0</span>] {
-<a href=#2971 id=2971 data-nosnippet>2971</a>                <span class="kw">match </span>k {
-<a href=#2972 id=2972 data-nosnippet>2972</a>                    <span class="number">1 </span>=&gt; <span class="macro">assert!</span>([<span class="number">10</span>, <span class="number">30</span>].contains(v), <span class="string">"invalid version for key 1: {v}"</span>),
-<a href=#2973 id=2973 data-nosnippet>2973</a>                    <span class="number">2 </span>=&gt; <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>v, <span class="number">5</span>, <span class="string">"invalid version for key 2"</span>),
-<a href=#2974 id=2974 data-nosnippet>2974</a>                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"unexpected key {k}"</span>),
-<a href=#2975 id=2975 data-nosnippet>2975</a>                }
-<a href=#2976 id=2976 data-nosnippet>2976</a>            }
-<a href=#2977 id=2977 data-nosnippet>2977</a>            <span class="kw">if </span>out[<span class="number">0</span>] == <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">30</span>), (<span class="number">2</span>, <span class="number">5</span>)] {
-<a href=#2978 id=2978 data-nosnippet>2978</a>                saw_final = <span class="bool-val">true</span>;
-<a href=#2979 id=2979 data-nosnippet>2979</a>            }
-<a href=#2980 id=2980 data-nosnippet>2980</a>        });
-<a href=#2981 id=2981 data-nosnippet>2981</a>
-<a href=#2982 id=2982 data-nosnippet>2982</a>        <span class="macro">assert!</span>(saw_final);
-<a href=#2983 id=2983 data-nosnippet>2983</a>    }
-<a href=#2984 id=2984 data-nosnippet>2984</a>
-<a href=#2985 id=2985 data-nosnippet>2985</a>    <span class="doccomment">/// A root `Unbounded` keyed singleton (a tombstoned update feed) that holds the latest entry
-<a href=#2986 id=2986 data-nosnippet>2986</a>    /// sent on `input`: when the entry moves to a different key, `into_keyed_singleton`
-<a href=#2987 id=2987 data-nosnippet>2987</a>    /// tombstones the previous key. Built from a `sliced!` state singleton so that it can be
-<a href=#2988 id=2988 data-nosnippet>2988</a>    /// simulated.
-<a href=#2989 id=2989 data-nosnippet>2989</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#2990 id=2990 data-nosnippet>2990</a>    </span><span class="kw">fn </span>sim_unbounded_keyed_singleton&lt;<span class="lifetime">'a</span>&gt;(
-<a href=#2991 id=2991 data-nosnippet>2991</a>        input: <span class="kw">crate</span>::live_collections::Stream&lt;
-<a href=#2992 id=2992 data-nosnippet>2992</a>            <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
-<a href=#2993 id=2993 data-nosnippet>2993</a>            <span class="kw">crate</span>::location::Process&lt;<span class="lifetime">'a</span>&gt;,
-<a href=#2994 id=2994 data-nosnippet>2994</a>            <span class="kw">crate</span>::live_collections::boundedness::Unbounded,
-<a href=#2995 id=2995 data-nosnippet>2995</a>        &gt;,
-<a href=#2996 id=2996 data-nosnippet>2996</a>    ) -&gt; <span class="kw">super</span>::KeyedSingleton&lt;
-<a href=#2997 id=2997 data-nosnippet>2997</a>        u32,
-<a href=#2998 id=2998 data-nosnippet>2998</a>        u32,
-<a href=#2999 id=2999 data-nosnippet>2999</a>        <span class="kw">crate</span>::location::Process&lt;<span class="lifetime">'a</span>&gt;,
-<a href=#3000 id=3000 data-nosnippet>3000</a>        <span class="kw">crate</span>::live_collections::boundedness::Unbounded,
-<a href=#3001 id=3001 data-nosnippet>3001</a>    &gt; {
-<a href=#3002 id=3002 data-nosnippet>3002</a>        <span class="macro">crate::live_collections::sliced::sliced!</span> {
-<a href=#3003 id=3003 data-nosnippet>3003</a>            <span class="kw">let </span>batch = <span class="kw">use</span>::batch(input, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
-<a href=#3004 id=3004 data-nosnippet>3004</a>            <span class="kw">let </span><span class="kw-2">mut </span>latest = <span class="kw">use</span>::state(|l| l.singleton(<span class="macro">q!</span>(<span class="prelude-val">None</span>)));
-<a href=#3005 id=3005 data-nosnippet>3005</a>            latest = batch.last().unwrap_or(latest);
-<a href=#3006 id=3006 data-nosnippet>3006</a>            latest.clone()
-<a href=#3007 id=3007 data-nosnippet>3007</a>        }
-<a href=#3008 id=3008 data-nosnippet>3008</a>        .filter_map(<span class="macro">q!</span>(|v| v))
-<a href=#3009 id=3009 data-nosnippet>3009</a>        .into_keyed_singleton()
-<a href=#3010 id=3010 data-nosnippet>3010</a>    }
-<a href=#3011 id=3011 data-nosnippet>3011</a>
-<a href=#3012 id=3012 data-nosnippet>3012</a>    <span class="doccomment">/// `key_count` of a root `Unbounded` keyed singleton applies removals (tombstones): moving
-<a href=#3013 id=3013 data-nosnippet>3013</a>    /// the only entry from key 1 to key 2 never counts more than both keys, and a count of 1 is
-<a href=#3014 id=3014 data-nosnippet>3014</a>    /// reached after the removal.
-<a href=#3015 id=3015 data-nosnippet>3015</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#3016 id=3016 data-nosnippet>3016</a>    #[test]
-<a href=#3017 id=3017 data-nosnippet>3017</a>    </span><span class="kw">fn </span>sim_top_level_key_count_unbounded() {
-<a href=#3018 id=3018 data-nosnippet>3018</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::{ExactlyOnce, TotalOrder};
-<a href=#3019 id=3019 data-nosnippet>3019</a>
-<a href=#3020 id=3020 data-nosnippet>3020</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#3021 id=3021 data-nosnippet>3021</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#3022 id=3022 data-nosnippet>3022</a>
-<a href=#3023 id=3023 data-nosnippet>3023</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;<span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;, TotalOrder, ExactlyOnce&gt;();
-<a href=#3024 id=3024 data-nosnippet>3024</a>        <span class="kw">let </span>(trigger_port, trigger) = node.sim_input::&lt;(), TotalOrder, ExactlyOnce&gt;();
-<a href=#3025 id=3025 data-nosnippet>3025</a>
-<a href=#3026 id=3026 data-nosnippet>3026</a>        <span class="kw">let </span>count = sim_unbounded_keyed_singleton(input).key_count();
-<a href=#3027 id=3027 data-nosnippet>3027</a>
-<a href=#3028 id=3028 data-nosnippet>3028</a>        <span class="kw">let </span>tick = node.tick();
-<a href=#3029 id=3029 data-nosnippet>3029</a>        <span class="kw">let </span>output = trigger
-<a href=#3030 id=3030 data-nosnippet>3030</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#3031 id=3031 data-nosnippet>3031</a>            .cross_singleton(count.snapshot(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)))
-<a href=#3032 id=3032 data-nosnippet>3032</a>            .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, count)| count))
-<a href=#3033 id=3033 data-nosnippet>3033</a>            .all_ticks()
-<a href=#3034 id=3034 data-nosnippet>3034</a>            .sim_output();
-<a href=#3035 id=3035 data-nosnippet>3035</a>
-<a href=#3036 id=3036 data-nosnippet>3036</a>        <span class="kw">let </span><span class="kw-2">mut </span>observed = std::collections::HashSet::new();
-<a href=#3037 id=3037 data-nosnippet>3037</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#3038 id=3038 data-nosnippet>3038</a>            input_port.send(<span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="number">10</span>)));
-<a href=#3039 id=3039 data-nosnippet>3039</a>            <span class="comment">// Moves to key 2, tombstoning key 1.
-<a href=#3040 id=3040 data-nosnippet>3040</a>            </span>input_port.send(<span class="prelude-val">Some</span>((<span class="number">2</span>, <span class="number">20</span>)));
-<a href=#3041 id=3041 data-nosnippet>3041</a>            trigger_port.send(());
-<a href=#3042 id=3042 data-nosnippet>3042</a>
-<a href=#3043 id=3043 data-nosnippet>3043</a>            <span class="kw">let </span>out = output.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#3044 id=3044 data-nosnippet>3044</a>            <span class="macro">assert!</span>(out.len() &lt;= <span class="number">1</span>);
-<a href=#3045 id=3045 data-nosnippet>3045</a>            <span class="kw">for </span>count <span class="kw">in </span>out {
-<a href=#3046 id=3046 data-nosnippet>3046</a>                <span class="comment">// Keys evolve independently (updates are only ordered per key), so both keys
-<a href=#3047 id=3047 data-nosnippet>3047</a>                // may be counted at once, but never more.
-<a href=#3048 id=3048 data-nosnippet>3048</a>                </span><span class="macro">assert!</span>(count &lt;= <span class="number">2</span>, <span class="string">"key count inflated: {count}"</span>);
-<a href=#3049 id=3049 data-nosnippet>3049</a>                observed.insert(count);
-<a href=#3050 id=3050 data-nosnippet>3050</a>            }
-<a href=#3051 id=3051 data-nosnippet>3051</a>        });
-<a href=#3052 id=3052 data-nosnippet>3052</a>
-<a href=#3053 id=3053 data-nosnippet>3053</a>        <span class="macro">assert!</span>(observed.contains(<span class="kw-2">&amp;</span><span class="number">1</span>));
-<a href=#3054 id=3054 data-nosnippet>3054</a>    }
+<a href=#2901 id=2901 data-nosnippet>2901</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#2902 id=2902 data-nosnippet>2902</a>            <span class="comment">// key 1: 6 &gt;= 5 ✓, key 2: 4 &lt; 5 ✗
+<a href=#2903 id=2903 data-nosnippet>2903</a>            </span><span class="kw">let </span>results = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#2904 id=2904 data-nosnippet>2904</a>            <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">5</span>)]);
+<a href=#2905 id=2905 data-nosnippet>2905</a>        });
+<a href=#2906 id=2906 data-nosnippet>2906</a>
+<a href=#2907 id=2907 data-nosnippet>2907</a>        <span class="macro">assert!</span>(count &gt; <span class="number">0</span>);
+<a href=#2908 id=2908 data-nosnippet>2908</a>    }
+<a href=#2909 id=2909 data-nosnippet>2909</a>
+<a href=#2910 id=2910 data-nosnippet>2910</a>    <span class="doccomment">/// A root `MonotonicKeys` keyed singleton's update stream re-sends a key's value whenever it
+<a href=#2911 id=2911 data-nosnippet>2911</a>    /// changes. `key_count` must count each key once (repeated updates must not inflate it), and
+<a href=#2912 id=2912 data-nosnippet>2912</a>    /// every intermediate count is a valid count of a prefix of the inputs.
+<a href=#2913 id=2913 data-nosnippet>2913</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#2914 id=2914 data-nosnippet>2914</a>    #[test]
+<a href=#2915 id=2915 data-nosnippet>2915</a>    </span><span class="kw">fn </span>sim_top_level_key_count_monotonic() {
+<a href=#2916 id=2916 data-nosnippet>2916</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::{ExactlyOnce, TotalOrder};
+<a href=#2917 id=2917 data-nosnippet>2917</a>
+<a href=#2918 id=2918 data-nosnippet>2918</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#2919 id=2919 data-nosnippet>2919</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#2920 id=2920 data-nosnippet>2920</a>
+<a href=#2921 id=2921 data-nosnippet>2921</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;(u32, u32), TotalOrder, ExactlyOnce&gt;();
+<a href=#2922 id=2922 data-nosnippet>2922</a>        <span class="kw">let </span>(trigger_port, trigger) = node.sim_input::&lt;(), TotalOrder, ExactlyOnce&gt;();
+<a href=#2923 id=2923 data-nosnippet>2923</a>
+<a href=#2924 id=2924 data-nosnippet>2924</a>        <span class="kw">let </span>count = input
+<a href=#2925 id=2925 data-nosnippet>2925</a>            .into_keyed()
+<a href=#2926 id=2926 data-nosnippet>2926</a>            .fold(<span class="macro">q!</span>(|| <span class="number">0u32</span>), <span class="macro">q!</span>(|acc, v| <span class="kw-2">*</span>acc += v))
+<a href=#2927 id=2927 data-nosnippet>2927</a>            .key_count();
+<a href=#2928 id=2928 data-nosnippet>2928</a>
+<a href=#2929 id=2929 data-nosnippet>2929</a>        <span class="kw">let </span>tick = node.tick();
+<a href=#2930 id=2930 data-nosnippet>2930</a>        <span class="kw">let </span>output = trigger
+<a href=#2931 id=2931 data-nosnippet>2931</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#2932 id=2932 data-nosnippet>2932</a>            .cross_singleton(count.snapshot(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)))
+<a href=#2933 id=2933 data-nosnippet>2933</a>            .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, count)| count))
+<a href=#2934 id=2934 data-nosnippet>2934</a>            .all_ticks()
+<a href=#2935 id=2935 data-nosnippet>2935</a>            .sim_output();
+<a href=#2936 id=2936 data-nosnippet>2936</a>
+<a href=#2937 id=2937 data-nosnippet>2937</a>        <span class="kw">let </span><span class="kw-2">mut </span>observed = std::collections::HashSet::new();
+<a href=#2938 id=2938 data-nosnippet>2938</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#2939 id=2939 data-nosnippet>2939</a>            input_port.send((<span class="number">1</span>, <span class="number">10</span>));
+<a href=#2940 id=2940 data-nosnippet>2940</a>            input_port.send((<span class="number">1</span>, <span class="number">20</span>));
+<a href=#2941 id=2941 data-nosnippet>2941</a>            input_port.send((<span class="number">1</span>, <span class="number">30</span>));
+<a href=#2942 id=2942 data-nosnippet>2942</a>            input_port.send((<span class="number">2</span>, <span class="number">40</span>));
+<a href=#2943 id=2943 data-nosnippet>2943</a>            trigger_port.send(());
+<a href=#2944 id=2944 data-nosnippet>2944</a>
+<a href=#2945 id=2945 data-nosnippet>2945</a>            <span class="kw">let </span>out = output.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#2946 id=2946 data-nosnippet>2946</a>            <span class="macro">assert_eq!</span>(out.len(), <span class="number">1</span>);
+<a href=#2947 id=2947 data-nosnippet>2947</a>            <span class="macro">assert!</span>(
+<a href=#2948 id=2948 data-nosnippet>2948</a>                out[<span class="number">0</span>] &lt;= <span class="number">2</span>,
+<a href=#2949 id=2949 data-nosnippet>2949</a>                <span class="string">"key count inflated by repeated updates: {}"</span>,
+<a href=#2950 id=2950 data-nosnippet>2950</a>                out[<span class="number">0</span>]
+<a href=#2951 id=2951 data-nosnippet>2951</a>            );
+<a href=#2952 id=2952 data-nosnippet>2952</a>            observed.insert(out[<span class="number">0</span>]);
+<a href=#2953 id=2953 data-nosnippet>2953</a>        });
+<a href=#2954 id=2954 data-nosnippet>2954</a>
+<a href=#2955 id=2955 data-nosnippet>2955</a>        <span class="macro">assert_eq!</span>(observed, [<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>].into_iter().collect());
+<a href=#2956 id=2956 data-nosnippet>2956</a>    }
+<a href=#2957 id=2957 data-nosnippet>2957</a>
+<a href=#2958 id=2958 data-nosnippet>2958</a>    <span class="doccomment">/// `into_singleton` of a root `MonotonicKeys` keyed singleton applies each key's updates in
+<a href=#2959 id=2959 data-nosnippet>2959</a>    /// order: every observed map holds, for each key, some version of that key's value, and the
+<a href=#2960 id=2960 data-nosnippet>2960</a>    /// final map is reachable.
+<a href=#2961 id=2961 data-nosnippet>2961</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#2962 id=2962 data-nosnippet>2962</a>    #[test]
+<a href=#2963 id=2963 data-nosnippet>2963</a>    </span><span class="kw">fn </span>sim_top_level_into_singleton_monotonic() {
+<a href=#2964 id=2964 data-nosnippet>2964</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::{ExactlyOnce, TotalOrder};
+<a href=#2965 id=2965 data-nosnippet>2965</a>
+<a href=#2966 id=2966 data-nosnippet>2966</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#2967 id=2967 data-nosnippet>2967</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#2968 id=2968 data-nosnippet>2968</a>
+<a href=#2969 id=2969 data-nosnippet>2969</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;(u32, u32), TotalOrder, ExactlyOnce&gt;();
+<a href=#2970 id=2970 data-nosnippet>2970</a>        <span class="kw">let </span>(trigger_port, trigger) = node.sim_input::&lt;(), TotalOrder, ExactlyOnce&gt;();
+<a href=#2971 id=2971 data-nosnippet>2971</a>
+<a href=#2972 id=2972 data-nosnippet>2972</a>        <span class="kw">let </span>map = input
+<a href=#2973 id=2973 data-nosnippet>2973</a>            .into_keyed()
+<a href=#2974 id=2974 data-nosnippet>2974</a>            .fold(<span class="macro">q!</span>(|| <span class="number">0u32</span>), <span class="macro">q!</span>(|acc, v| <span class="kw-2">*</span>acc += v))
+<a href=#2975 id=2975 data-nosnippet>2975</a>            .into_singleton();
+<a href=#2976 id=2976 data-nosnippet>2976</a>
+<a href=#2977 id=2977 data-nosnippet>2977</a>        <span class="kw">let </span>tick = node.tick();
+<a href=#2978 id=2978 data-nosnippet>2978</a>        <span class="kw">let </span>output = trigger
+<a href=#2979 id=2979 data-nosnippet>2979</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#2980 id=2980 data-nosnippet>2980</a>            .cross_singleton(map.snapshot(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)))
+<a href=#2981 id=2981 data-nosnippet>2981</a>            .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, map)| {
+<a href=#2982 id=2982 data-nosnippet>2982</a>                <span class="kw">let </span><span class="kw-2">mut </span>entries = map.into_iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#2983 id=2983 data-nosnippet>2983</a>                entries.sort();
+<a href=#2984 id=2984 data-nosnippet>2984</a>                entries
+<a href=#2985 id=2985 data-nosnippet>2985</a>            }))
+<a href=#2986 id=2986 data-nosnippet>2986</a>            .all_ticks()
+<a href=#2987 id=2987 data-nosnippet>2987</a>            .sim_output();
+<a href=#2988 id=2988 data-nosnippet>2988</a>
+<a href=#2989 id=2989 data-nosnippet>2989</a>        <span class="kw">let </span><span class="kw-2">mut </span>saw_final = <span class="bool-val">false</span>;
+<a href=#2990 id=2990 data-nosnippet>2990</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#2991 id=2991 data-nosnippet>2991</a>            input_port.send((<span class="number">1</span>, <span class="number">10</span>));
+<a href=#2992 id=2992 data-nosnippet>2992</a>            input_port.send((<span class="number">1</span>, <span class="number">20</span>));
+<a href=#2993 id=2993 data-nosnippet>2993</a>            input_port.send((<span class="number">2</span>, <span class="number">5</span>));
+<a href=#2994 id=2994 data-nosnippet>2994</a>            trigger_port.send(());
+<a href=#2995 id=2995 data-nosnippet>2995</a>
+<a href=#2996 id=2996 data-nosnippet>2996</a>            <span class="kw">let </span>out = output.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#2997 id=2997 data-nosnippet>2997</a>            <span class="macro">assert_eq!</span>(out.len(), <span class="number">1</span>);
+<a href=#2998 id=2998 data-nosnippet>2998</a>            <span class="kw">for </span>(k, v) <span class="kw">in </span><span class="kw-2">&amp;</span>out[<span class="number">0</span>] {
+<a href=#2999 id=2999 data-nosnippet>2999</a>                <span class="kw">match </span>k {
+<a href=#3000 id=3000 data-nosnippet>3000</a>                    <span class="number">1 </span>=&gt; <span class="macro">assert!</span>([<span class="number">10</span>, <span class="number">30</span>].contains(v), <span class="string">"invalid version for key 1: {v}"</span>),
+<a href=#3001 id=3001 data-nosnippet>3001</a>                    <span class="number">2 </span>=&gt; <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>v, <span class="number">5</span>, <span class="string">"invalid version for key 2"</span>),
+<a href=#3002 id=3002 data-nosnippet>3002</a>                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"unexpected key {k}"</span>),
+<a href=#3003 id=3003 data-nosnippet>3003</a>                }
+<a href=#3004 id=3004 data-nosnippet>3004</a>            }
+<a href=#3005 id=3005 data-nosnippet>3005</a>            <span class="kw">if </span>out[<span class="number">0</span>] == <span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">30</span>), (<span class="number">2</span>, <span class="number">5</span>)] {
+<a href=#3006 id=3006 data-nosnippet>3006</a>                saw_final = <span class="bool-val">true</span>;
+<a href=#3007 id=3007 data-nosnippet>3007</a>            }
+<a href=#3008 id=3008 data-nosnippet>3008</a>        });
+<a href=#3009 id=3009 data-nosnippet>3009</a>
+<a href=#3010 id=3010 data-nosnippet>3010</a>        <span class="macro">assert!</span>(saw_final);
+<a href=#3011 id=3011 data-nosnippet>3011</a>    }
+<a href=#3012 id=3012 data-nosnippet>3012</a>
+<a href=#3013 id=3013 data-nosnippet>3013</a>    <span class="doccomment">/// A root `Unbounded` keyed singleton (a tombstoned update feed) that holds the latest entry
+<a href=#3014 id=3014 data-nosnippet>3014</a>    /// sent on `input`: when the entry moves to a different key, `into_keyed_singleton`
+<a href=#3015 id=3015 data-nosnippet>3015</a>    /// tombstones the previous key. Built from a `sliced!` state singleton so that it can be
+<a href=#3016 id=3016 data-nosnippet>3016</a>    /// simulated.
+<a href=#3017 id=3017 data-nosnippet>3017</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#3018 id=3018 data-nosnippet>3018</a>    </span><span class="kw">fn </span>sim_unbounded_keyed_singleton&lt;<span class="lifetime">'a</span>&gt;(
+<a href=#3019 id=3019 data-nosnippet>3019</a>        input: <span class="kw">crate</span>::live_collections::Stream&lt;
+<a href=#3020 id=3020 data-nosnippet>3020</a>            <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
+<a href=#3021 id=3021 data-nosnippet>3021</a>            <span class="kw">crate</span>::location::Process&lt;<span class="lifetime">'a</span>&gt;,
+<a href=#3022 id=3022 data-nosnippet>3022</a>            <span class="kw">crate</span>::live_collections::boundedness::Unbounded,
+<a href=#3023 id=3023 data-nosnippet>3023</a>        &gt;,
+<a href=#3024 id=3024 data-nosnippet>3024</a>    ) -&gt; <span class="kw">super</span>::KeyedSingleton&lt;
+<a href=#3025 id=3025 data-nosnippet>3025</a>        u32,
+<a href=#3026 id=3026 data-nosnippet>3026</a>        u32,
+<a href=#3027 id=3027 data-nosnippet>3027</a>        <span class="kw">crate</span>::location::Process&lt;<span class="lifetime">'a</span>&gt;,
+<a href=#3028 id=3028 data-nosnippet>3028</a>        <span class="kw">crate</span>::live_collections::boundedness::Unbounded,
+<a href=#3029 id=3029 data-nosnippet>3029</a>    &gt; {
+<a href=#3030 id=3030 data-nosnippet>3030</a>        <span class="macro">crate::live_collections::sliced::sliced!</span> {
+<a href=#3031 id=3031 data-nosnippet>3031</a>            <span class="kw">let </span>batch = <span class="kw">use</span>::batch(input, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
+<a href=#3032 id=3032 data-nosnippet>3032</a>            <span class="kw">let </span><span class="kw-2">mut </span>latest = <span class="kw">use</span>::state(|l| l.singleton(<span class="macro">q!</span>(<span class="prelude-val">None</span>)));
+<a href=#3033 id=3033 data-nosnippet>3033</a>            latest = batch.last().unwrap_or(latest);
+<a href=#3034 id=3034 data-nosnippet>3034</a>            latest.clone()
+<a href=#3035 id=3035 data-nosnippet>3035</a>        }
+<a href=#3036 id=3036 data-nosnippet>3036</a>        .filter_map(<span class="macro">q!</span>(|v| v))
+<a href=#3037 id=3037 data-nosnippet>3037</a>        .into_keyed_singleton()
+<a href=#3038 id=3038 data-nosnippet>3038</a>    }
+<a href=#3039 id=3039 data-nosnippet>3039</a>
+<a href=#3040 id=3040 data-nosnippet>3040</a>    <span class="doccomment">/// `key_count` of a root `Unbounded` keyed singleton applies removals (tombstones): moving
+<a href=#3041 id=3041 data-nosnippet>3041</a>    /// the only entry from key 1 to key 2 never counts more than both keys, and a count of 1 is
+<a href=#3042 id=3042 data-nosnippet>3042</a>    /// reached after the removal.
+<a href=#3043 id=3043 data-nosnippet>3043</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#3044 id=3044 data-nosnippet>3044</a>    #[test]
+<a href=#3045 id=3045 data-nosnippet>3045</a>    </span><span class="kw">fn </span>sim_top_level_key_count_unbounded() {
+<a href=#3046 id=3046 data-nosnippet>3046</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::{ExactlyOnce, TotalOrder};
+<a href=#3047 id=3047 data-nosnippet>3047</a>
+<a href=#3048 id=3048 data-nosnippet>3048</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#3049 id=3049 data-nosnippet>3049</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#3050 id=3050 data-nosnippet>3050</a>
+<a href=#3051 id=3051 data-nosnippet>3051</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;<span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;, TotalOrder, ExactlyOnce&gt;();
+<a href=#3052 id=3052 data-nosnippet>3052</a>        <span class="kw">let </span>(trigger_port, trigger) = node.sim_input::&lt;(), TotalOrder, ExactlyOnce&gt;();
+<a href=#3053 id=3053 data-nosnippet>3053</a>
+<a href=#3054 id=3054 data-nosnippet>3054</a>        <span class="kw">let </span>count = sim_unbounded_keyed_singleton(input).key_count();
 <a href=#3055 id=3055 data-nosnippet>3055</a>
-<a href=#3056 id=3056 data-nosnippet>3056</a>    <span class="doccomment">/// `into_singleton` of a root `Unbounded` keyed singleton applies removals (tombstones):
-<a href=#3057 id=3057 data-nosnippet>3057</a>    /// every observed map holds valid versions of each key, and the final map (with key 1
-<a href=#3058 id=3058 data-nosnippet>3058</a>    /// removed) is reachable.
-<a href=#3059 id=3059 data-nosnippet>3059</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#3060 id=3060 data-nosnippet>3060</a>    #[test]
-<a href=#3061 id=3061 data-nosnippet>3061</a>    </span><span class="kw">fn </span>sim_top_level_into_singleton_unbounded() {
-<a href=#3062 id=3062 data-nosnippet>3062</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::{ExactlyOnce, TotalOrder};
+<a href=#3056 id=3056 data-nosnippet>3056</a>        <span class="kw">let </span>tick = node.tick();
+<a href=#3057 id=3057 data-nosnippet>3057</a>        <span class="kw">let </span>output = trigger
+<a href=#3058 id=3058 data-nosnippet>3058</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#3059 id=3059 data-nosnippet>3059</a>            .cross_singleton(count.snapshot(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)))
+<a href=#3060 id=3060 data-nosnippet>3060</a>            .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, count)| count))
+<a href=#3061 id=3061 data-nosnippet>3061</a>            .all_ticks()
+<a href=#3062 id=3062 data-nosnippet>3062</a>            .sim_output();
 <a href=#3063 id=3063 data-nosnippet>3063</a>
-<a href=#3064 id=3064 data-nosnippet>3064</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#3065 id=3065 data-nosnippet>3065</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#3066 id=3066 data-nosnippet>3066</a>
-<a href=#3067 id=3067 data-nosnippet>3067</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;<span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;, TotalOrder, ExactlyOnce&gt;();
-<a href=#3068 id=3068 data-nosnippet>3068</a>        <span class="kw">let </span>(trigger_port, trigger) = node.sim_input::&lt;(), TotalOrder, ExactlyOnce&gt;();
-<a href=#3069 id=3069 data-nosnippet>3069</a>
-<a href=#3070 id=3070 data-nosnippet>3070</a>        <span class="kw">let </span>map = sim_unbounded_keyed_singleton(input).into_singleton();
-<a href=#3071 id=3071 data-nosnippet>3071</a>
-<a href=#3072 id=3072 data-nosnippet>3072</a>        <span class="kw">let </span>tick = node.tick();
-<a href=#3073 id=3073 data-nosnippet>3073</a>        <span class="kw">let </span>output = trigger
-<a href=#3074 id=3074 data-nosnippet>3074</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#3075 id=3075 data-nosnippet>3075</a>            .cross_singleton(map.snapshot(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)))
-<a href=#3076 id=3076 data-nosnippet>3076</a>            .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, map)| {
-<a href=#3077 id=3077 data-nosnippet>3077</a>                <span class="kw">let </span><span class="kw-2">mut </span>entries = map.into_iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#3078 id=3078 data-nosnippet>3078</a>                entries.sort();
-<a href=#3079 id=3079 data-nosnippet>3079</a>                entries
-<a href=#3080 id=3080 data-nosnippet>3080</a>            }))
-<a href=#3081 id=3081 data-nosnippet>3081</a>            .all_ticks()
-<a href=#3082 id=3082 data-nosnippet>3082</a>            .sim_output();
+<a href=#3064 id=3064 data-nosnippet>3064</a>        <span class="kw">let </span><span class="kw-2">mut </span>observed = std::collections::HashSet::new();
+<a href=#3065 id=3065 data-nosnippet>3065</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#3066 id=3066 data-nosnippet>3066</a>            input_port.send(<span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="number">10</span>)));
+<a href=#3067 id=3067 data-nosnippet>3067</a>            <span class="comment">// Moves to key 2, tombstoning key 1.
+<a href=#3068 id=3068 data-nosnippet>3068</a>            </span>input_port.send(<span class="prelude-val">Some</span>((<span class="number">2</span>, <span class="number">20</span>)));
+<a href=#3069 id=3069 data-nosnippet>3069</a>            trigger_port.send(());
+<a href=#3070 id=3070 data-nosnippet>3070</a>
+<a href=#3071 id=3071 data-nosnippet>3071</a>            <span class="kw">let </span>out = output.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#3072 id=3072 data-nosnippet>3072</a>            <span class="macro">assert!</span>(out.len() &lt;= <span class="number">1</span>);
+<a href=#3073 id=3073 data-nosnippet>3073</a>            <span class="kw">for </span>count <span class="kw">in </span>out {
+<a href=#3074 id=3074 data-nosnippet>3074</a>                <span class="comment">// Keys evolve independently (updates are only ordered per key), so both keys
+<a href=#3075 id=3075 data-nosnippet>3075</a>                // may be counted at once, but never more.
+<a href=#3076 id=3076 data-nosnippet>3076</a>                </span><span class="macro">assert!</span>(count &lt;= <span class="number">2</span>, <span class="string">"key count inflated: {count}"</span>);
+<a href=#3077 id=3077 data-nosnippet>3077</a>                observed.insert(count);
+<a href=#3078 id=3078 data-nosnippet>3078</a>            }
+<a href=#3079 id=3079 data-nosnippet>3079</a>        });
+<a href=#3080 id=3080 data-nosnippet>3080</a>
+<a href=#3081 id=3081 data-nosnippet>3081</a>        <span class="macro">assert!</span>(observed.contains(<span class="kw-2">&amp;</span><span class="number">1</span>));
+<a href=#3082 id=3082 data-nosnippet>3082</a>    }
 <a href=#3083 id=3083 data-nosnippet>3083</a>
-<a href=#3084 id=3084 data-nosnippet>3084</a>        <span class="kw">let </span><span class="kw-2">mut </span>saw_final = <span class="bool-val">false</span>;
-<a href=#3085 id=3085 data-nosnippet>3085</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#3086 id=3086 data-nosnippet>3086</a>            input_port.send(<span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="number">10</span>)));
-<a href=#3087 id=3087 data-nosnippet>3087</a>            <span class="comment">// Moves to key 2, tombstoning key 1.
-<a href=#3088 id=3088 data-nosnippet>3088</a>            </span>input_port.send(<span class="prelude-val">Some</span>((<span class="number">2</span>, <span class="number">20</span>)));
-<a href=#3089 id=3089 data-nosnippet>3089</a>            trigger_port.send(());
-<a href=#3090 id=3090 data-nosnippet>3090</a>
-<a href=#3091 id=3091 data-nosnippet>3091</a>            <span class="kw">let </span>out = output.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#3092 id=3092 data-nosnippet>3092</a>            <span class="macro">assert!</span>(out.len() &lt;= <span class="number">1</span>);
-<a href=#3093 id=3093 data-nosnippet>3093</a>            <span class="kw">for </span>entries <span class="kw">in </span>out {
-<a href=#3094 id=3094 data-nosnippet>3094</a>                <span class="kw">for </span>(k, v) <span class="kw">in </span><span class="kw-2">&amp;</span>entries {
-<a href=#3095 id=3095 data-nosnippet>3095</a>                    <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>v, <span class="kw-2">*</span>k * <span class="number">10</span>, <span class="string">"invalid value for key {k}"</span>);
-<a href=#3096 id=3096 data-nosnippet>3096</a>                }
-<a href=#3097 id=3097 data-nosnippet>3097</a>                <span class="kw">if </span>entries == <span class="macro">vec!</span>[(<span class="number">2</span>, <span class="number">20</span>)] {
-<a href=#3098 id=3098 data-nosnippet>3098</a>                    saw_final = <span class="bool-val">true</span>;
-<a href=#3099 id=3099 data-nosnippet>3099</a>                }
-<a href=#3100 id=3100 data-nosnippet>3100</a>            }
-<a href=#3101 id=3101 data-nosnippet>3101</a>        });
-<a href=#3102 id=3102 data-nosnippet>3102</a>
-<a href=#3103 id=3103 data-nosnippet>3103</a>        <span class="macro">assert!</span>(saw_final);
-<a href=#3104 id=3104 data-nosnippet>3104</a>    }
-<a href=#3105 id=3105 data-nosnippet>3105</a>}
+<a href=#3084 id=3084 data-nosnippet>3084</a>    <span class="doccomment">/// `into_singleton` of a root `Unbounded` keyed singleton applies removals (tombstones):
+<a href=#3085 id=3085 data-nosnippet>3085</a>    /// every observed map holds valid versions of each key, and the final map (with key 1
+<a href=#3086 id=3086 data-nosnippet>3086</a>    /// removed) is reachable.
+<a href=#3087 id=3087 data-nosnippet>3087</a>    </span><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#3088 id=3088 data-nosnippet>3088</a>    #[test]
+<a href=#3089 id=3089 data-nosnippet>3089</a>    </span><span class="kw">fn </span>sim_top_level_into_singleton_unbounded() {
+<a href=#3090 id=3090 data-nosnippet>3090</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::{ExactlyOnce, TotalOrder};
+<a href=#3091 id=3091 data-nosnippet>3091</a>
+<a href=#3092 id=3092 data-nosnippet>3092</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#3093 id=3093 data-nosnippet>3093</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#3094 id=3094 data-nosnippet>3094</a>
+<a href=#3095 id=3095 data-nosnippet>3095</a>        <span class="kw">let </span>(input_port, input) = node.sim_input::&lt;<span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;, TotalOrder, ExactlyOnce&gt;();
+<a href=#3096 id=3096 data-nosnippet>3096</a>        <span class="kw">let </span>(trigger_port, trigger) = node.sim_input::&lt;(), TotalOrder, ExactlyOnce&gt;();
+<a href=#3097 id=3097 data-nosnippet>3097</a>
+<a href=#3098 id=3098 data-nosnippet>3098</a>        <span class="kw">let </span>map = sim_unbounded_keyed_singleton(input).into_singleton();
+<a href=#3099 id=3099 data-nosnippet>3099</a>
+<a href=#3100 id=3100 data-nosnippet>3100</a>        <span class="kw">let </span>tick = node.tick();
+<a href=#3101 id=3101 data-nosnippet>3101</a>        <span class="kw">let </span>output = trigger
+<a href=#3102 id=3102 data-nosnippet>3102</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#3103 id=3103 data-nosnippet>3103</a>            .cross_singleton(map.snapshot(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)))
+<a href=#3104 id=3104 data-nosnippet>3104</a>            .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, map)| {
+<a href=#3105 id=3105 data-nosnippet>3105</a>                <span class="kw">let </span><span class="kw-2">mut </span>entries = map.into_iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#3106 id=3106 data-nosnippet>3106</a>                entries.sort();
+<a href=#3107 id=3107 data-nosnippet>3107</a>                entries
+<a href=#3108 id=3108 data-nosnippet>3108</a>            }))
+<a href=#3109 id=3109 data-nosnippet>3109</a>            .all_ticks()
+<a href=#3110 id=3110 data-nosnippet>3110</a>            .sim_output();
+<a href=#3111 id=3111 data-nosnippet>3111</a>
+<a href=#3112 id=3112 data-nosnippet>3112</a>        <span class="kw">let </span><span class="kw-2">mut </span>saw_final = <span class="bool-val">false</span>;
+<a href=#3113 id=3113 data-nosnippet>3113</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#3114 id=3114 data-nosnippet>3114</a>            input_port.send(<span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="number">10</span>)));
+<a href=#3115 id=3115 data-nosnippet>3115</a>            <span class="comment">// Moves to key 2, tombstoning key 1.
+<a href=#3116 id=3116 data-nosnippet>3116</a>            </span>input_port.send(<span class="prelude-val">Some</span>((<span class="number">2</span>, <span class="number">20</span>)));
+<a href=#3117 id=3117 data-nosnippet>3117</a>            trigger_port.send(());
+<a href=#3118 id=3118 data-nosnippet>3118</a>
+<a href=#3119 id=3119 data-nosnippet>3119</a>            <span class="kw">let </span>out = output.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#3120 id=3120 data-nosnippet>3120</a>            <span class="macro">assert!</span>(out.len() &lt;= <span class="number">1</span>);
+<a href=#3121 id=3121 data-nosnippet>3121</a>            <span class="kw">for </span>entries <span class="kw">in </span>out {
+<a href=#3122 id=3122 data-nosnippet>3122</a>                <span class="kw">for </span>(k, v) <span class="kw">in </span><span class="kw-2">&amp;</span>entries {
+<a href=#3123 id=3123 data-nosnippet>3123</a>                    <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>v, <span class="kw-2">*</span>k * <span class="number">10</span>, <span class="string">"invalid value for key {k}"</span>);
+<a href=#3124 id=3124 data-nosnippet>3124</a>                }
+<a href=#3125 id=3125 data-nosnippet>3125</a>                <span class="kw">if </span>entries == <span class="macro">vec!</span>[(<span class="number">2</span>, <span class="number">20</span>)] {
+<a href=#3126 id=3126 data-nosnippet>3126</a>                    saw_final = <span class="bool-val">true</span>;
+<a href=#3127 id=3127 data-nosnippet>3127</a>                }
+<a href=#3128 id=3128 data-nosnippet>3128</a>            }
+<a href=#3129 id=3129 data-nosnippet>3129</a>        });
+<a href=#3130 id=3130 data-nosnippet>3130</a>
+<a href=#3131 id=3131 data-nosnippet>3131</a>        <span class="macro">assert!</span>(saw_final);
+<a href=#3132 id=3132 data-nosnippet>3132</a>    }
+<a href=#3133 id=3133 data-nosnippet>3133</a>}
 </code></pre></div></section></main></body></html>

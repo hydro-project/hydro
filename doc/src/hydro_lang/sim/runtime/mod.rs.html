@@ -148,16 +148,16 @@
 <a href=#148 id=148 data-nosnippet>148</a>    <span class="doccomment">/// Whether this hook can make a decision that would trigger its tick, making the
 <a href=#149 id=149 data-nosnippet>149</a>    /// tick runnable on this hook's account. Deliberately separate from
 <a href=#150 id=150 data-nosnippet>150</a>    /// [`RuntimeHook::only_one_possible_decision`]: [`PassthroughSingletonHook`] can
-<a href=#151 id=151 data-nosnippet>151</a>    /// trigger without facing any choice, and snapshot hooks are planned to face a
-<a href=#152 id=152 data-nosnippet>152</a>    /// choice (reveal or keep) without ever offering to trigger — revealing only when
-<a href=#153 id=153 data-nosnippet>153</a>    /// the tick runs for some other reason.
+<a href=#151 id=151 data-nosnippet>151</a>    /// trigger without facing any choice, and snapshot hooks face a choice (reveal or
+<a href=#152 id=152 data-nosnippet>152</a>    /// keep) without ever offering to trigger — snapshot ingress is lazy, so a new
+<a href=#153 id=153 data-nosnippet>153</a>    /// version is revealed only when the tick runs for some other reason.
 <a href=#154 id=154 data-nosnippet>154</a>    </span><span class="kw">fn </span>can_trigger_tick(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
 <a href=#155 id=155 data-nosnippet>155</a>
 <a href=#156 id=156 data-nosnippet>156</a>    <span class="doccomment">/// Make an autonomous decision from fuzzer entropy. When `force_trigger` is true,
 <a href=#157 id=157 data-nosnippet>157</a>    /// the decision must trigger the tick: the scheduler only runs a tick to do
 <a href=#158 id=158 data-nosnippet>158</a>    /// meaningful work, so when no other hook has triggered and this is the last
-<a href=#159 id=159 data-nosnippet>159</a>    /// undecided hook, it is forced to make the run count. Returns whether the decision
-<a href=#160 id=160 data-nosnippet>160</a>    /// triggers the tick.
+<a href=#159 id=159 data-nosnippet>159</a>    /// undecided hook that can trigger ([`TickInputHook::can_trigger_tick`]), it is
+<a href=#160 id=160 data-nosnippet>160</a>    /// forced to make the run count. Returns whether the decision triggers the tick.
 <a href=#161 id=161 data-nosnippet>161</a>    </span><span class="kw">fn </span>autonomous_decision&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, driver: <span class="kw-2">&amp;mut </span>Borrowed&lt;<span class="lifetime">'a</span>&gt;, force_trigger: bool) -&gt; bool;
 <a href=#162 id=162 data-nosnippet>162</a>}
 <a href=#163 id=163 data-nosnippet>163</a>

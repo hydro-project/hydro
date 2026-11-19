@@ -2491,7 +2491,7 @@
 <a href=#2491 id=2491 data-nosnippet>2491</a>
 <a href=#2492 id=2492 data-nosnippet>2492</a>            observed.insert(output.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>);
 <a href=#2493 id=2493 data-nosnippet>2493</a>        });
-<a href=#2494 id=2494 data-nosnippet>2494</a>        <span class="macro">assert_eq!</span>(instances, <span class="number">207069</span>);
+<a href=#2494 id=2494 data-nosnippet>2494</a>        <span class="macro">assert_eq!</span>(instances, <span class="number">5157</span>);
 <a href=#2495 id=2495 data-nosnippet>2495</a>
 <a href=#2496 id=2496 data-nosnippet>2496</a>        <span class="comment">// Every trajectory production allows. The left side goes null -&gt; 1 -&gt; null (covering
 <a href=#2497 id=2497 data-nosnippet>2497</a>        // both the override and the fallback), the right side null -&gt; 2, independently, so the
@@ -2556,7 +2556,7 @@
 <a href=#2556 id=2556 data-nosnippet>2556</a>
 <a href=#2557 id=2557 data-nosnippet>2557</a>            observed.insert(output.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>);
 <a href=#2558 id=2558 data-nosnippet>2558</a>        });
-<a href=#2559 id=2559 data-nosnippet>2559</a>        <span class="macro">assert_eq!</span>(instances, <span class="number">76299</span>);
+<a href=#2559 id=2559 data-nosnippet>2559</a>        <span class="macro">assert_eq!</span>(instances, <span class="number">1823</span>);
 <a href=#2560 id=2560 data-nosnippet>2560</a>
 <a href=#2561 id=2561 data-nosnippet>2561</a>        <span class="comment">// Every trajectory production allows. `zipped` goes null -&gt; (1, 2) and `present` goes
 <a href=#2562 id=2562 data-nosnippet>2562</a>        // false -&gt; true -&gt; false, independently; the two trigger firings observe both at two
