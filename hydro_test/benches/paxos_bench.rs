@@ -10,6 +10,8 @@ use stageleft::q;
 
 const BENCH_DURATION_SECS: u64 = 15;
 const TAIL_SAMPLES: usize = 5;
+/// Max wait for leader election (first positive sample); measurement starts after it.
+const FIRST_THROUGHPUT_TIMEOUT_SECS: u64 = 60;
 
 #[tokio::main]
 async fn main() {
@@ -23,7 +25,9 @@ async fn main() {
     let num_clients = 1;
     let num_clients_per_node = 100;
     let checkpoint_frequency = 1000;
-    let i_am_leader_send_timeout = 5;
+    // 1s (not 5s) so the standby proposer sees a heartbeat before its first election check at
+    // 15s; otherwise it may dethrone the leader and in-flight requests are dropped (no retry).
+    let i_am_leader_send_timeout = 1;
     let i_am_leader_check_timeout = 10;
     let i_am_leader_check_timeout_delay_multiplier = 15;
     let print_result_frequency = 1000; // millis
@@ -103,6 +107,43 @@ async fn main() {
 
     deployment.start().await.unwrap();
 
+    // Wait for the leader to be elected: the first positive sample.
+    let warmup_start = Instant::now();
+    let warmup_deadline =
+        warmup_start + std::time::Duration::from_secs(FIRST_THROUGHPUT_TIMEOUT_SECS);
+    let mut zero_samples = 0usize;
+    loop {
+        let timeout = warmup_deadline.saturating_duration_since(Instant::now());
+        match tokio::time::timeout(timeout, throughput_recv.next()).await {
+            Ok(Some(throughput)) if 0 < throughput => {
+                eprintln!(
+                    "First positive throughput sample after {:.1?} ({} zero samples): {} ops/s",
+                    warmup_start.elapsed(),
+                    zero_samples,
+                    throughput
+                );
+                break;
+            }
+            Ok(Some(_zero)) => zero_samples += 1,
+            Ok(None) => {
+                eprintln!(
+                    "Throughput stream closed after {:.1?} without a positive sample ({} zero samples)",
+                    warmup_start.elapsed(),
+                    zero_samples
+                );
+                std::process::exit(1);
+            }
+            Err(_) => {
+                eprintln!(
+                    "No positive throughput sample within {} seconds ({} zero samples)",
+                    FIRST_THROUGHPUT_TIMEOUT_SECS, zero_samples
+                );
+                std::process::exit(1);
+            }
+        }
+    }
+
+    // Measure steady-state throughput for `BENCH_DURATION_SECS` after election.
     let start = Instant::now();
     let deadline = start + std::time::Duration::from_secs(BENCH_DURATION_SECS);
     let mut samples: Vec<f64> = Vec::new();
@@ -134,6 +175,14 @@ async fn main() {
     }
 
     let avg = tail.iter().sum::<f64>() / tail.len() as f64;
+    if avg <= 0.0 {
+        eprintln!(
+            "Throughput dropped to zero: the last {} samples were {:?}",
+            tail.len(),
+            tail
+        );
+        std::process::exit(1);
+    }
     let variance = tail.iter().map(|s| (s - avg).powi(2)).sum::<f64>() / tail.len() as f64;
     let stddev = variance.sqrt();
 
