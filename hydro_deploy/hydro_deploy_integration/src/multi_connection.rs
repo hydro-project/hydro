@@ -297,6 +297,12 @@ impl<O, C: Encoder<O>> Sink<(u64, O)> for MultiConnectionSink<O, C> {
     }
 
     fn start_send(mut self: Pin<&mut Self>, item: (u64, O)) -> Result<(), Self::Error> {
+        // The source registers a connection's sink before yielding any of that connection's
+        // data, but the last `poll_ready` may have run before the registration. Without draining
+        // here, the first replies to a newly accepted connection are dropped as unknown.
+        while let Ok((connection_id, sink)) = self.new_sink_receiver.try_recv() {
+            self.connection_sinks.insert(connection_id, sink);
+        }
         if let Some(sink) = self.connection_sinks.get_mut(&item.0) {
             let _ = sink.as_mut().start_send(item.1); // TODO(shadaj): log errors when we have principled logging
         }
@@ -479,6 +485,12 @@ impl<I, C: Encoder<I> + Unpin> Sink<(u64, I)> for TcpMultiConnectionSink<I, C> {
 
     fn start_send(self: Pin<&mut Self>, item: (u64, I)) -> Result<(), Self::Error> {
         let me = self.get_mut();
+        // The source registers a connection's sink before yielding any of that connection's
+        // data, but the last `poll_ready` may have run before the registration. Without draining
+        // here, the first replies to a newly accepted connection are dropped as unknown.
+        while let Ok((id, sink)) = me.new_sink_receiver.try_recv() {
+            me.connection_sinks.insert(id, sink);
+        }
         if let Some(sink) = me.connection_sinks.get_mut(&item.0) {
             let _ = Pin::new(sink).start_send(item.1);
         }
