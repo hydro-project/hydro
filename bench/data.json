@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1795114513328,
+  "lastUpdate": 1795129035895,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -324973,6 +324973,210 @@
             "name": "paxos_bench",
             "value": 353580,
             "range": "± 2386.13",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shadaj@users.noreply.github.com",
+            "name": "Shadaj Laddad",
+            "username": "shadaj"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": false,
+          "id": "2f96867f40c5d982bfa81a16e7e5653225293c1d",
+          "message": "refactor(hydro_lang): make Hydro tick ingress lazy for everything except batched-in streams (#3270)\n\n[ci-bench]\n\nRule: a Hydro tick (DFIR root-level `loop { ... }`) is fired only by\nstream inputs batched\nin from outside the tick. Those stay `batch_eager()` in this PR.\nEverything else that enters\na tick is now lazy and never fires it on its own. Builds on the parent's\n`snapshot()`,\n`snapshot_keyed()`, and `snapshot_prefix()` operators (lazy, persistent\ncells that are not\nconsumed when the loop fires).\n\nDFIR (`flat_graph_builder.rs`):\n- New validation error for a root-level loop that can never fire: all\nwindowing inputs\n  lazy, no non-lazy windowing input or `defer_tick()` (compile-fail test\n  `surface_loop_all_lazy`).\n\nProduction ingress (`ProdDfirBuilder`):\n- `snapshot()` into a tick uses the lazy cells instead of\n`batch_eager()` + a cross-firing\n  `fold`:\n  - Singleton / Bounded and InitNone Optional: `snapshot()`.\n  - Unbounded Optional: `snapshot() -> flatten()`.\n  - Unbounded KeyedSingleton: `snapshot_keyed()`.\n  - Bounded / MonotonicKeys / MonotonicValue KeyedSingleton: a root\n    `map(|(k, v)| (k, Some(v)))`, then `snapshot_keyed()`.\n- Tick-located sources: `add_tick_source` takes the source's\n`CollectionKind`:\n  - replayed stream-like: `snapshot_prefix()`\n  - replayed singleton-like (`tick.singleton(..)`): `snapshot()`\n  - first tick only (`optional_first_tick`): `batch_lazy()`\n  None of these need a `persist` any more.\n\nSimulator:\n- Snapshot hooks never trigger a tick (`can_trigger_tick` is false). The\nforced trigger\n  lands on the last undecided hook that can trigger.\n\nTests:\n- Ticks driven only by lazy inputs that the test itself creates now get\na trigger\n  (`reduce_watermark_*`, `optional_or_cardinality`, `first_cardinality`,\n`into_singleton_unbounded_top_level_none_cardinality`, the sim tests'\ntrigger-driven\nobservers). Instance counts and assertions are updated for lazy\nsnapshots.\n- `hydro_test` `keyed_counter_non_atomic`: 2 instances instead of 3 (a\ncounter change alone\n  no longer fires the tick).\n\nKnown follow-up:\n- Regenerate the `hydro_test` IR / mermaid snapshots.",
+          "timestamp": "2026-11-19T21:46:52Z",
+          "tree_id": "32f0c1d8e5c560a4a7b6f4abba3a7f10cbf40f1d",
+          "url": "https://github.com/hydro-project/hydro/commit/2f96867f40c5d982bfa81a16e7e5653225293c1d"
+        },
+        "date": 1795129035827,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 311348,
+            "range": "± 5837",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6530943,
+            "range": "± 11479",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6841247,
+            "range": "± 58562",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 11328,
+            "range": "± 135",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 8446049,
+            "range": "± 221639",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 948337,
+            "range": "± 10176",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1021679,
+            "range": "± 16586",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 46936989,
+            "range": "± 1511186",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6528446,
+            "range": "± 38127",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 42303616,
+            "range": "± 608776",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6527611,
+            "range": "± 156370",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6840340,
+            "range": "± 40788",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 38460361,
+            "range": "± 540274",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 6382,
+            "range": "± 98",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 24517,
+            "range": "± 294",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 6371,
+            "range": "± 114",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6582,
+            "range": "± 179",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 373357,
+            "range": "± 7926",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 53915,
+            "range": "± 476",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 44156,
+            "range": "± 1204",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 14998,
+            "range": "± 141",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6899,
+            "range": "± 57",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1082,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 73028,
+            "range": "± 161",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 76356,
+            "range": "± 582",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 6888,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15726,
+            "range": "± 109",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 27532,
+            "range": "± 520",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 6902,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 222620,
+            "range": "± 1719.77",
             "unit": "ops/s"
           }
         ]
