@@ -130,8 +130,9 @@ let purchases = process.source_iter(q!(vec![
 purchases.fold(q!(|| 0), q!(|acc, amount| *acc += amount))
 # ;
 # sliced! {
+#     let read_request = use::batch(process.source_iter(q!([()])), nondet!(/** test */));
 #     let snap = use::snapshot(out, nondet!(/** test */));
-#     snap.entries()
+#     snap.entries().filter_if(read_request.first().is_some())
 # }.map(q!(|(k, v)| (k.to_string(), v)))
 # }, |mut stream| async move {
 // { "alice": 28, "bob": 13 }
@@ -176,8 +177,9 @@ health_checks.fold(
 )
 # ;
 # sliced! {
+#     let read_request = use::batch(process.source_iter(q!([()])), nondet!(/** test */));
 #     let snap = use::snapshot(out, nondet!(/** test */));
-#     snap.entries()
+#     snap.entries().filter_if(read_request.first().is_some())
 # }.map(q!(|(k, v)| (k.to_string(), v)))
 # }, |mut stream| async move {
 // { "server1": true, "server2": false }

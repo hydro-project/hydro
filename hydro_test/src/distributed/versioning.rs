@@ -248,18 +248,14 @@ mod tests {
         flow.sim()
             .with_cluster_size(&servers, 2)
             .exhaustive(async || {
-                // Wait until both members have discovered full membership.
-                for member in [0, 1] {
-                    loop {
-                        match membership_output.try_next(member).await {
-                            Some(count) if count >= 2 => break,
-                            Some(_) => continue,
-                            None => return,
-                        }
-                    }
-                }
-
                 inputter.send(0, Request::Write { value: 42 });
+                // The tick that batches this write also reports the membership snapshot it
+                // routed with; only consider executions where that snapshot is complete.
+                let members = membership_output.try_next(0).await;
+                hydro_lang::sim::continue_if!(
+                    members.is_some_and(|count| count >= 2),
+                    "member 0 routed the write with membership {members:?}"
+                );
 
                 match output.next_only(0).await {
                     Response { value: 42 } => {
@@ -269,6 +265,13 @@ mod tests {
                 }
 
                 inputter.send(1, Request::Read);
+                // The tick that batches this read also reports the membership snapshot it
+                // routed with; only consider executions where that snapshot is complete.
+                let members = membership_output.try_next(1).await;
+                hydro_lang::sim::continue_if!(
+                    members.is_some_and(|count| count >= 2),
+                    "member 1 routed the read with membership {members:?}"
+                );
                 let r2 = output.collect_sorted::<Vec<_>>(1).await;
                 match r2.as_slice() {
                     [Response { value: 42 }] => {}
@@ -315,23 +318,14 @@ mod tests {
             .with_cluster_size(&servers_v1, 1)
             .with_cluster_size(&servers_v2, 1)
             .exhaustive(async || {
-                loop {
-                    match membership_output.try_next(0).await {
-                        Some(count) if count >= 2 => break,
-                        Some(_) => continue,
-                        None => return,
-                    }
-                }
-
-                loop {
-                    match membership_output_v2.try_next(1).await {
-                        Some(count) if count >= 2 => break,
-                        Some(_) => continue,
-                        None => return,
-                    }
-                }
-
                 inputter.send(0, Request::Write { value: 42 });
+                // The tick that batches this write also reports the membership snapshot it
+                // routed with; only consider executions where that snapshot is complete.
+                let members = membership_output.try_next(0).await;
+                hydro_lang::sim::continue_if!(
+                    members.is_some_and(|count| count >= 2),
+                    "member 0 routed the write with membership {members:?}"
+                );
 
                 match output.next_only(0).await {
                     Response { value: 42 } => {
@@ -342,6 +336,13 @@ mod tests {
 
                 // v2 routes differently than v1, exposing the bug: the read should see 42 but won't.
                 inputter_v2.send(1, Request::Read);
+                // The tick that batches this read also reports the membership snapshot it
+                // routed with; only consider executions where that snapshot is complete.
+                let members = membership_output_v2.try_next(1).await;
+                hydro_lang::sim::continue_if!(
+                    members.is_some_and(|count| count >= 2),
+                    "member 1 routed the read with membership {members:?}"
+                );
                 let r2 = output_v2.collect_sorted::<Vec<_>>(1).await;
                 match r2.as_slice() {
                     [] => {}
@@ -392,17 +393,14 @@ mod tests {
             .with_cluster_size(&servers_v1, 1)
             .with_cluster_size(&servers_v2, 1)
             .exhaustive(async || {
-                for (handle, member) in [(&membership_output, 0u32), (&membership_output_v2, 1)] {
-                    loop {
-                        match handle.try_next(member).await {
-                            Some(count) if count >= 2 => break,
-                            Some(_) => continue,
-                            None => return,
-                        }
-                    }
-                }
-
                 inputter.send(0, Request::Write { value: 42 });
+                // The tick that batches this write also reports the membership snapshot it
+                // routed with; only consider executions where that snapshot is complete.
+                let members = membership_output.try_next(0).await;
+                hydro_lang::sim::continue_if!(
+                    members.is_some_and(|count| count >= 2),
+                    "member 0 routed the write with membership {members:?}"
+                );
 
                 match output.next_only(0).await {
                     Response { value: 42 } => {
@@ -413,6 +411,13 @@ mod tests {
 
                 // Both versions route identically, so the read must observe the write.
                 inputter_v2.send(1, Request::Read);
+                // The tick that batches this read also reports the membership snapshot it
+                // routed with; only consider executions where that snapshot is complete.
+                let members = membership_output_v2.try_next(1).await;
+                hydro_lang::sim::continue_if!(
+                    members.is_some_and(|count| count >= 2),
+                    "member 1 routed the read with membership {members:?}"
+                );
                 let r2 = output_v2.collect_sorted::<Vec<_>>(1).await;
                 match r2.as_slice() {
                     [Response { value: 42 }] => {}
@@ -478,17 +483,14 @@ mod tests {
             .with_cluster_size(&servers_v3, 1)
             .with_cluster_size(&loggers_v3, 1)
             .exhaustive(async || {
-                for (handle, member) in [(&membership_output, 0u32), (&membership_output_v3, 1)] {
-                    loop {
-                        match handle.try_next(member).await {
-                            Some(count) if count >= 2 => break,
-                            Some(_) => continue,
-                            None => return,
-                        }
-                    }
-                }
-
                 inputter.send(0, Request::Write { value: 42 });
+                // The tick that batches this write also reports the membership snapshot it
+                // routed with; only consider executions where that snapshot is complete.
+                let members = membership_output.try_next(0).await;
+                hydro_lang::sim::continue_if!(
+                    members.is_some_and(|count| count >= 2),
+                    "member 0 routed the write with membership {members:?}"
+                );
 
                 match output.next_only(0).await {
                     Response { value: 42 } => {
@@ -500,6 +502,13 @@ mod tests {
                 // v1 and v3 route identically, so a read through v3's member must observe the
                 // value written through v1 — exercising v3's external input and output.
                 inputter_v3.send(1, Request::Read);
+                // The tick that batches this read also reports the membership snapshot it
+                // routed with; only consider executions where that snapshot is complete.
+                let members = membership_output_v3.try_next(1).await;
+                hydro_lang::sim::continue_if!(
+                    members.is_some_and(|count| count >= 2),
+                    "member 1 routed the read with membership {members:?}"
+                );
                 let r2 = output_v3.collect_sorted::<Vec<_>>(1).await;
                 match r2.as_slice() {
                     [] => {}
