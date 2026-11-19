@@ -624,6 +624,7 @@ impl<'a> Deploy<'a> for EcsDeploy {
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         codec_type: &syn::Type,
+        encode_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr {
         p2.exposed_ports
@@ -659,7 +660,7 @@ impl<'a> Deploy<'a> for EcsDeploy {
         let root = crate::staging_util::get_this_crate();
 
         extra_stmts.push(syn::parse_quote! {
-            let (#source_ident, #sink_ident, #membership_ident) = #root::runtime_support::hydro_deploy_integration::multi_connection::tcp_multi_connection::<_, #codec_type>(#socket_ident);
+            let (#source_ident, #sink_ident, #membership_ident) = #root::runtime_support::hydro_deploy_integration::multi_connection::tcp_multi_connection::<#encode_type, #codec_type>(#socket_ident);
         });
 
         parse_quote!(#source_ident)
@@ -682,6 +683,7 @@ impl<'a> Deploy<'a> for EcsDeploy {
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         codec_type: &syn::Type,
+        _encode_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr {
         // Record the port for manifest export

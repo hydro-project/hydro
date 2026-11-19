@@ -48,7 +48,7 @@ pub fn create(port: u16) -> (ReceiverStream<String>, PollSender<String>) {
         // Read from dataflow, write to TCP
         while let Some(resp) = from_df_rx.recv().await {
             let bytes = resp.into_bytes();
-            if framed_write.send(bytes.into()).await.is_err() {
+            if framed_write.send(bytes::Bytes::from(bytes)).await.is_err() {
                 break;
             }
         }

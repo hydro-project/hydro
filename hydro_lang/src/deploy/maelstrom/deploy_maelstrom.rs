@@ -160,6 +160,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _p2: &Self::Process,
         _p2_port: &<Self::Process as Node>::Port,
         _codec_type: &syn::Type,
+        _encode_type: &syn::Type,
         _shared_handle: String,
     ) -> syn::Expr {
         panic!("Maelstrom deployment does not support processes, only clusters")
@@ -176,6 +177,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _p2: &Self::Process,
         _p2_port: &<Self::Process as Node>::Port,
         _codec_type: &syn::Type,
+        _encode_type: &syn::Type,
         _shared_handle: String,
     ) -> syn::Expr {
         panic!("Maelstrom deployment does not support processes, only clusters")

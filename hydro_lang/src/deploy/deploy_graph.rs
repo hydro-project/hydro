@@ -288,6 +288,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         _p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         codec_type: &syn::Type,
+        encode_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr {
         let connect_ident = syn::Ident::new(
@@ -312,7 +313,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         extra_stmts.push(syn::parse_quote! {
             let #connect_ident = __hydro_lang_trybuild_cli
                 .port(#p2_port)
-                .connect::<#root::runtime_support::hydro_deploy_integration::multi_connection::ConnectedMultiConnection<_, _, #codec_type>>();
+                .connect::<#root::runtime_support::hydro_deploy_integration::multi_connection::ConnectedMultiConnection<_, #encode_type, #codec_type>>();
         });
 
         extra_stmts.push(syn::parse_quote! {
@@ -345,6 +346,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         _p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         codec_type: &syn::Type,
+        encode_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr {
         let connect_ident = syn::Ident::new(
@@ -365,7 +367,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         extra_stmts.push(syn::parse_quote! {
             let #connect_ident = __hydro_lang_trybuild_cli
                 .port(#p2_port)
-                .connect::<#root::runtime_support::hydro_deploy_integration::single_connection::ConnectedSingleConnection<_, _, #codec_type>>();
+                .connect::<#root::runtime_support::hydro_deploy_integration::single_connection::ConnectedSingleConnection<_, #encode_type, #codec_type>>();
         });
 
         extra_stmts.push(syn::parse_quote! {

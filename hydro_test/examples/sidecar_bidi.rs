@@ -43,7 +43,7 @@ async fn send_and_verify(
     let mut framed_read = tokio_util::codec::FramedRead::new(reader, LengthDelimitedCodec::new());
 
     framed_write
-        .send(msg.to_owned().into_bytes().into())
+        .send(bytes::Bytes::from(msg.to_owned()))
         .await?;
 
     if let Some(Ok(frame)) = framed_read.next().await {

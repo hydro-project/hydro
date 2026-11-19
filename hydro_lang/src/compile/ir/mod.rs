@@ -1671,6 +1671,7 @@ impl HydroRoot {
                                                 &to_node, &source_port,
                                                 &from_node, &sink_port,
                                                 &quote_type::<LengthDelimitedCodec>(),
+                                                &quote_type::<bytes::Bytes>(),
                                                 format!("{}_{}", *to_external_key, *to_port_id)
                                             );
                                         }
@@ -1813,6 +1814,7 @@ impl HydroRoot {
                     from_port_id,
                     from_many,
                     codec_type,
+                    encode_type,
                     port_hint,
                     instantiate_fn,
                     metadata,
@@ -1853,6 +1855,7 @@ impl HydroRoot {
                                                     refcell_extra_stmts.borrow_mut().entry(process_key).expect("location was removed").or_default(),
                                                     &to_node, &source_port,
                                                     codec_type.0.as_ref(),
+                                                    encode_type.0.as_ref(),
                                                     format!("{}_{}", *from_external_key, *from_port_id)
                                                 )
                                             } else {
@@ -1861,6 +1864,7 @@ impl HydroRoot {
                                                     &from_node, &sink_port,
                                                     &to_node, &source_port,
                                                     codec_type.0.as_ref(),
+                                                    encode_type.0.as_ref(),
                                                     format!("{}_{}", *from_external_key, *from_port_id)
                                                 )
                                             },
@@ -1889,6 +1893,7 @@ impl HydroRoot {
                                                 &from_node, &sink_port,
                                                 &to_node, &source_port,
                                                 codec_type.0.as_ref(),
+                                                encode_type.0.as_ref(),
                                                 format!("{}_{}", *from_external_key, *from_port_id)
                                             ),
                                         ),
@@ -3660,6 +3665,10 @@ pub enum HydroNode {
         from_port_id: ExternalPortId,
         from_many: bool,
         codec_type: DebugType,
+        /// Item type that `codec_type` encodes for messages sent back to the external client.
+        /// A codec can implement `Encoder` for several item types (`LengthDelimitedCodec` encodes
+        /// both `Bytes` and `&[u8]`), so generated code names this type instead of inferring it.
+        encode_type: DebugType,
         #[serde(skip)]
         port_hint: NetworkHint,
         instantiate_fn: DebugInstantiate,
@@ -4298,6 +4307,7 @@ impl HydroNode {
                 from_port_id,
                 from_many,
                 codec_type,
+                encode_type,
                 port_hint,
                 instantiate_fn,
                 deserialize_fn,
@@ -4307,6 +4317,7 @@ impl HydroNode {
                 from_port_id: *from_port_id,
                 from_many: *from_many,
                 codec_type: codec_type.clone(),
+                encode_type: encode_type.clone(),
                 port_hint: *port_hint,
                 instantiate_fn: instantiate_fn.clone(),
                 deserialize_fn: deserialize_fn.clone(),

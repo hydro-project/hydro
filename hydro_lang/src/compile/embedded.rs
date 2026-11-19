@@ -684,6 +684,7 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         _p2: &Self::Process,
         _p2_port: &(),
         _codec_type: &syn::Type,
+        _encode_type: &syn::Type,
         _shared_handle: String,
     ) -> syn::Expr {
         panic!("EmbeddedDeploy does not support networking (e2o)")
@@ -700,6 +701,7 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         _p2: &Self::Process,
         _p2_port: &(),
         _codec_type: &syn::Type,
+        _encode_type: &syn::Type,
         _shared_handle: String,
     ) -> syn::Expr {
         panic!("EmbeddedDeploy does not support networking (e2o)")
