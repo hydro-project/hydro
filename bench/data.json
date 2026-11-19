@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1795111984523,
+  "lastUpdate": 1795114513328,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -324769,6 +324769,210 @@
             "name": "paxos_bench",
             "value": 354280,
             "range": "± 15495.6",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mingwei.samuel@gmail.com",
+            "name": "Mingwei Samuel",
+            "username": "MingweiSamuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "735c25e3d4b18b54172a4d7ecb4eaf53e2379679",
+          "message": "test(hydro_test): make the Paxos benchmark and `*_some_throughput` tests fail on zero throughput (#3380)\n\n[ci-bench]\n\n## Background\n\nThe `paxos_bench` CI run on #3324 reported `0 ops/s`. Its log shows the\nfirst leader election\n(\"Proposer leader expired, sending P1a\") coming from **proposer 1 at\nt=15s**, exactly when the\nbench's fixed 15s window closed, so every sample was 0. The bench only\nexits non-zero when *no*\nsample arrives, so all-zero samples were recorded as a valid `0 ops/s`\ndata point. One second\nlater the system was at full throughput.\n\nMechanism: proposer 0's election check (`source_interval_delayed(0,\ni_am_leader_check_timeout)`)\nand its heartbeat `timeout(i_am_leader_check_timeout)` are both due at\nt=10s. If the check's\ntick runs before the timeout has been snapshotted, proposer 0 skips that\ncheck and the first\nelection is proposer 1's at `1 *\ni_am_leader_check_timeout_delay_multiplier` = 15s.\n\nThe existing `paxos_some_throughput` test did not catch this because it\nhas no deadline (it waits\nfor two positive samples however long they take) and, if the\naggregator's stdout closes first,\nthe `while let Some(..)` loop ends and the test passes without asserting\nanything.\n\n## Is it intermittent? Unclear.\n\nThe deployed binaries for `no-snapshot-triggering-tests` and `main` are\nbuilt from identical\nsource (all diffs are in `#[cfg(test)]` or doc comments). Locally the\nrace is lost on **both**\nbranches, which says \"intermittent\". But the CI pattern is hard to\nsquare with that:\n\n| | 10s election (proposer 0) | 15s election (proposer 1) → bench\nreports 0 |\n|---|---|---|\n| CI, `main` (294 runs) | 294 | 0 |\n| CI, `lazy-ingress` (3 runs) | 3 | 0 |\n| CI, `no-snapshot-triggering-tests` (2 runs) | 0 | **2** |\n| Local, `no-snapshot-triggering-tests` (15 runs) | 11 | 4 |\n| Local, `lazy-ingress` (14 runs) | 12 | 2 |\n\n2/2 losses in CI for a binary identical to one that is 294/294 is\npossible by chance (p≈0.07 at\nthe local loss rate) but suspicious, and the\nslot-rounding/scheduler-order explanation predicts\n*more* losses on slower CI runners, not fewer on `main`. So there may be\nan environmental or\nbuild factor not yet understood. The bench changes here print `First\npositive throughput sample\nafter Xs`, so further `[ci-bench]` runs on each branch will tell which\nproposer won each time.\n\nIndependent of that question, the race itself is real and not fixed by\n`lazy-ingress`; fixing it\nin `paxos.rs` (de-aligning the election check from the heartbeat\ntimeout) is a possible follow-up.\n\n## Changes\n\n- `hydro_test/benches/paxos_bench.rs`\n- Wait (up to 60s) for the first positive sample, i.e. leader election,\nand only then measure for\n`BENCH_DURATION_SECS`. Exit non-zero if no positive sample arrives, if\nthe stream closes, or if\nthe tail average is zero. The reported number is steady-state throughput\nregardless of which\n    proposer wins the first election.\n- `i_am_leader_send_timeout` 5s → 1s. The extended window exposed a\nsecond race: the standby\nproposer's heartbeat timeout has already expired when the leader is\nelected at ~10s, and with\n5s heartbeats the first one lands at ~15s, racing the standby's own 15s\nelection check. A lost\nrace dethrones the leader, in-flight requests are dropped at the stale\nleader and (bench\nclients do not retry, see the TODO in `paxos_bench`) throughput stays at\nzero for the rest of\nthe run (1 of 6 local runs on this branch, 1 of 8 on `lazy-ingress`).\nWith 1s heartbeats the\n    standby sees the leader at ~11s; 0 of 10 runs re-elected.\n- `hydro_test/src/cluster/mod.rs`: new `#[cfg(all(test, feature =\n\"tokio\"))]`\n`bench_test_util::assert_positive_throughput`, shared by the three\n`*_some_throughput` tests.\nPanics (with elapsed time and zero/positive sample counts) if the\nrequired number of positive\nsamples does not arrive within 60s or if the aggregator's stdout closes\nfirst.\n- `paxos_bench.rs`, `paxos_log_bench.rs`, `two_pc_bench.rs` tests: use\nthe helper.\n\nVerified locally: `cargo test -p hydro_test --lib some_throughput`\npasses (3 tests; one run had a\n16s election and passed within the deadline); `cargo bench -p hydro_test\n--profile=dev` 5/5 passes\non this branch with the new bench (one run had a 16s election and still\nreported ~380k ops/s);\n`cargo +nightly fmt --check` and `cargo clippy -p hydro_test\n--all-targets -D warnings` (with and\nwithout `--no-default-features`) are clean.\n\n---------\n\nCo-authored-by: Shadaj Laddad <shadajl@amazon.com>\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-11-19T17:46:02Z",
+          "tree_id": "dde61ece247e02d91b5ef608c3214db2ba8f038a",
+          "url": "https://github.com/hydro-project/hydro/commit/735c25e3d4b18b54172a4d7ecb4eaf53e2379679"
+        },
+        "date": 1795114513276,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 162598,
+            "range": "± 714",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 3059862,
+            "range": "± 99175",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 3160891,
+            "range": "± 25020",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 6730,
+            "range": "± 81",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 4693816,
+            "range": "± 67588",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 527139,
+            "range": "± 2208",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 742277,
+            "range": "± 5546",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 31325856,
+            "range": "± 178620",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 2893077,
+            "range": "± 20507",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 31741434,
+            "range": "± 956750",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 2751565,
+            "range": "± 18854",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 3141920,
+            "range": "± 9716",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 29962818,
+            "range": "± 214893",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 2806,
+            "range": "± 43",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 16628,
+            "range": "± 97",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 2983,
+            "range": "± 89",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 5681,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 274179,
+            "range": "± 811",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 41039,
+            "range": "± 224",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 30242,
+            "range": "± 153",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 11293,
+            "range": "± 63",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 4067,
+            "range": "± 86",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1114,
+            "range": "± 93",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 57745,
+            "range": "± 280",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 65614,
+            "range": "± 212",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 4939,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 13070,
+            "range": "± 175",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 14198,
+            "range": "± 120",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 3988,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 353580,
+            "range": "± 2386.13",
             "unit": "ops/s"
           }
         ]
