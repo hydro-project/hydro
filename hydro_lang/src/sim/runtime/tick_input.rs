@@ -880,8 +880,8 @@ where
 pub struct SingletonHook<T> {
     input: Rc<RefCell<VecDeque<T>>>,
     /// `Some(None)` releases an empty snapshot: the tick fired before the singleton had any
-    /// version (e.g. it was triggered by another input), and, like production's snapshot
-    /// ingress, nothing is delivered.
+    /// version (snapshot ingress is lazy, so this is possible), and, like production's
+    /// `snapshot()`, nothing is delivered.
     to_release: Option<Option<(T, bool)>>, // (data, is new)
     last_released: Option<T>,
     skipped_states: Vec<T>,
@@ -999,18 +999,19 @@ impl<T: Clone> RuntimeHook for SingletonHook<T> {
 
 impl<T: Clone> TickInputHook for SingletonHook<T> {
     fn can_trigger_tick(&self) -> bool {
-        // TODO(mingwei): Singletons/Optionals will soon not trigger a tick, so then this will always return false.
-        !self.input.borrow().is_empty()
+        // Snapshot ingress is lazy: a new buffered version never wakes the tick on its
+        // own. It is only revealed when the tick runs for some other reason.
+        false
     }
 
     fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool {
+        assert!(
+            !force_trigger,
+            "Snapshot hooks never trigger a tick, so they must not be forced to"
+        );
+
         let mut current_input = self.input.borrow_mut();
         if current_input.is_empty() {
-            assert!(
-                !force_trigger,
-                "Cannot make a triggering decision when there is no input"
-            );
-
             if let Some(last) = &self.last_released {
                 // Re-release the last item
                 self.to_release = Some(Some((last.clone(), false)));
@@ -1018,22 +1019,20 @@ impl<T: Clone> TickInputHook for SingletonHook<T> {
                 // No version yet: the snapshot is empty.
                 self.to_release = Some(None);
             }
-            false
-        } else if !force_trigger
-            && let Some(last) = &self.last_released
+        } else if let Some(last) = &self.last_released
             && produce().generate(driver).unwrap()
         {
             // Re-release the last item
             self.to_release = Some(Some((last.clone(), false)));
-            false
         } else {
             // Release a new item
             let idx_to_release = (0..current_input.len()).generate(driver).unwrap();
             self.skipped_states = current_input.drain(0..idx_to_release).collect(); // Drop earlier items
             let item = current_input.pop_front().unwrap();
             self.to_release = Some(Some((item, true)));
-            true
         }
+        // Revealing a new version is lazy: it never counts as triggering the tick.
+        false
     }
 }
 
@@ -1149,25 +1148,20 @@ impl<T: Clone> RuntimeHook for OptionalInitNoneHook<T> {
 
 impl<T: Clone> TickInputHook for OptionalInitNoneHook<T> {
     fn can_trigger_tick(&self) -> bool {
-        // TODO(mingwei): Singletons/Optionals will soon not trigger a tick, so then this will always return false.
-        // Only advancing to a new value is nontrivial; releasing null (or re-releasing the
-        // latest value) does not, by itself, drive a tick.
-        !self.input.borrow().is_empty()
+        // Snapshot ingress is lazy: a new buffered version never wakes the tick on its
+        // own. It is only revealed when the tick runs for some other reason.
+        false
     }
 
-    fn autonomous_decision<'a>(
-        &mut self,
-        driver: &mut Borrowed<'a>,
-        force_nontrivial: bool,
-    ) -> bool {
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool {
+        assert!(
+            !force_trigger,
+            "Snapshot hooks never trigger a tick, so they must not be forced to"
+        );
+
         let mut current_input = self.input.borrow_mut();
         if current_input.is_empty() {
             // Case 1 (trivial): No input.
-            assert!(
-                !force_nontrivial,
-                "Cannot make nontrivial decision when there is no input"
-            );
-
             if let Some(last) = &self.last_released {
                 // Presence is monotone: once non-null, re-release the latest value.
                 self.to_release = Some((Some(last.clone()), false));
@@ -1175,9 +1169,8 @@ impl<T: Clone> TickInputHook for OptionalInitNoneHook<T> {
                 // Still in the initial-null prefix.
                 self.to_release = Some((None, false));
             }
-            false
-        } else if !force_nontrivial && produce().generate(driver).unwrap() {
-            // Case 2 (trivial): Keep latest value (may be `Some` or `None`)
+        } else if produce().generate(driver).unwrap() {
+            // Case 2: Keep latest value (may be `Some` or `None`)
             if let Some(last) = &self.last_released {
                 // Already non-null; re-release the latest value (models snapshot lag).
                 self.to_release = Some((Some(last.clone()), false));
@@ -1186,15 +1179,15 @@ impl<T: Clone> TickInputHook for OptionalInitNoneHook<T> {
                 // snapshot that does not yet include the first value.
                 self.to_release = Some((None, false));
             }
-            false
         } else {
-            // Case 3 (non-trivial): Advance to new value.
+            // Case 3: Advance to new value.
             let idx_to_release = (0..current_input.len()).generate(driver).unwrap();
             self.skipped_states = current_input.drain(0..idx_to_release).collect(); // Drop earlier items
             let item = current_input.pop_front().unwrap();
             self.to_release = Some((Some(item), true));
-            true
         }
+        // Revealing a new version is lazy: it never counts as triggering the tick.
+        false
     }
 }
 
@@ -1527,22 +1520,19 @@ impl<K: Hash + Eq + Clone, V: Clone> RuntimeHook for KeyedSingletonHook<K, V> {
 
 impl<K: Hash + Eq + Clone, V: Clone> TickInputHook for KeyedSingletonHook<K, V> {
     fn can_trigger_tick(&self) -> bool {
-        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-        !self.input.borrow().values().all(|q| q.is_empty())
+        // Snapshot ingress is lazy: a new buffered version never wakes the tick on its
+        // own. It is only revealed when the tick runs for some other reason.
+        false
     }
 
-    fn autonomous_decision<'a>(
-        &mut self,
-        driver: &mut Borrowed<'a>,
-        mut force_trigger: bool,
-    ) -> bool {
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>, force_trigger: bool) -> bool {
+        assert!(
+            !force_trigger,
+            "Snapshot hooks never trigger a tick, so they must not be forced to"
+        );
+
         let mut current_input = self.input.borrow_mut();
         self.to_release = Some(vec![]);
-        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-        let nonempty_key_count = current_input.values().filter(|q| !q.is_empty()).count();
-
-        let mut remaining_nonempty_keys = nonempty_key_count;
-        let mut any_triggered = false;
         #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         for (key, queue) in current_input.iter_mut() {
             if queue.is_empty() {
@@ -1555,14 +1545,7 @@ impl<K: Hash + Eq + Clone, V: Clone> TickInputHook for KeyedSingletonHook<K, V> 
                 continue;
             }
 
-            remaining_nonempty_keys -= 1;
-
-            let must_reveal = force_trigger && remaining_nonempty_keys == 0;
-
-            if !must_reveal
-                && self.last_released.contains_key(key)
-                && produce().generate(driver).unwrap()
-            {
+            if self.last_released.contains_key(key) && produce().generate(driver).unwrap() {
                 // Re-release the last item for this key
                 let last = self.last_released.get(key).unwrap().clone();
                 self.to_release
@@ -1570,7 +1553,7 @@ impl<K: Hash + Eq + Clone, V: Clone> TickInputHook for KeyedSingletonHook<K, V> 
                     .unwrap()
                     .push((key.clone(), last, false));
             } else {
-                let allow_null_release = !must_reveal && !self.last_released.contains_key(key);
+                let allow_null_release = !self.last_released.contains_key(key);
                 if allow_null_release && produce().generate(driver).unwrap() {
                     // Don't emit anything, this key is not yet added to the snapshot
                     continue;
@@ -1586,13 +1569,11 @@ impl<K: Hash + Eq + Clone, V: Clone> TickInputHook for KeyedSingletonHook<K, V> 
                     .unwrap()
                     .push((key.clone(), item.clone(), true));
                 self.last_released.insert(key.clone(), item);
-
-                any_triggered |= true;
-                force_trigger = false;
             }
         }
 
-        any_triggered
+        // Revealing new versions is lazy: it never counts as triggering the tick.
+        false
     }
 }
 

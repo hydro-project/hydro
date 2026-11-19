@@ -2491,7 +2491,7 @@ mod tests {
 
             observed.insert(output.collect::<Vec<_>>().await);
         });
-        assert_eq!(instances, 207069);
+        assert_eq!(instances, 5157);
 
         // Every trajectory production allows. The left side goes null -> 1 -> null (covering
         // both the override and the fallback), the right side null -> 2, independently, so the
@@ -2556,7 +2556,7 @@ mod tests {
 
             observed.insert(output.collect::<Vec<_>>().await);
         });
-        assert_eq!(instances, 76299);
+        assert_eq!(instances, 1823);
 
         // Every trajectory production allows. `zipped` goes null -> (1, 2) and `present` goes
         // false -> true -> false, independently; the two trigger firings observe both at two
