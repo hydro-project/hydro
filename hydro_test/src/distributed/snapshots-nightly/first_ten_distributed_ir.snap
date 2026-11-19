@@ -74,6 +74,7 @@ expression: builder.finalize().ir()
             ),
             from_many: false,
             codec_type: hydro_test :: __staged :: __deps :: tokio_util :: codec :: length_delimited :: LengthDelimitedCodec,
+            encode_type: hydro_test :: __staged :: __deps :: bytes :: Bytes,
             port_hint: Auto,
             instantiate_fn: <network instantiate>,
             deserialize_fn: Some(

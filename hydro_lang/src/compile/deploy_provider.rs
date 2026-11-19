@@ -164,10 +164,12 @@ pub trait Deploy<'a> {
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         codec_type: &syn::Type,
+        encode_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr;
     fn e2o_many_sink(shared_handle: String) -> syn::Expr;
 
+    #[expect(clippy::too_many_arguments, reason = "networking codegen")]
     fn e2o_source(
         extra_stmts: &mut Vec<syn::Stmt>,
         p1: &Self::External,
@@ -175,6 +177,7 @@ pub trait Deploy<'a> {
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         codec_type: &syn::Type,
+        encode_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr;
     fn e2o_connect(
@@ -194,6 +197,7 @@ pub trait Deploy<'a> {
         shared_handle: String,
     ) -> syn::Expr;
 
+    #[expect(clippy::too_many_arguments, reason = "networking codegen")]
     fn e2m_source(
         extra_stmts: &mut Vec<syn::Stmt>,
         p1: &Self::External,
@@ -201,6 +205,7 @@ pub trait Deploy<'a> {
         c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
         codec_type: &syn::Type,
+        encode_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr {
         let _ = (
@@ -210,6 +215,7 @@ pub trait Deploy<'a> {
             c2,
             c2_port,
             codec_type,
+            encode_type,
             shared_handle,
         );
         todo!("e2m_source is not yet supported for this deploy backend")

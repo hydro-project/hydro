@@ -18,7 +18,7 @@ profile-folding = ["dep:inferno", "dep:wholesym", "dep:itertools"]
 [dependencies]
 anyhow = { version = "1.0.82", features = ["backtrace"] }
 append-only-vec = "0.1.8"
-async-ssh2-russh = { version = "0.2.0", features = [ "sftp" ] }
+async-ssh2-russh = { version = "0.4.0", features = [ "sftp" ] }
 async-process = "2.0.0"
 async-recursion = "1.0.0"
 async-trait = "0.1.54"

@@ -841,6 +841,7 @@ pub trait Location<'a>: DynLocation {
                 from_port_id: next_external_port_id,
                 from_many: false,
                 codec_type: quote_type::<Codec>().into(),
+                encode_type: quote_type::<T>().into(),
                 port_hint,
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: None,
@@ -915,6 +916,7 @@ pub trait Location<'a>: DynLocation {
                     from_port_id: next_external_port_id,
                     from_many: false,
                     codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                    encode_type: quote_type::<Bytes>().into(),
                     port_hint: NetworkHint::Auto,
                     instantiate_fn: DebugInstantiate::Building,
                     deserialize_fn: Some(deserialize_fn.into()),
@@ -1067,6 +1069,7 @@ pub trait Location<'a>: DynLocation {
                 from_port_id: next_external_port_id,
                 from_many: true,
                 codec_type: quote_type::<Codec>().into(),
+                encode_type: quote_type::<T>().into(),
                 port_hint,
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: None,
@@ -1229,6 +1232,7 @@ pub trait Location<'a>: DynLocation {
                 from_port_id: next_external_port_id,
                 from_many: true,
                 codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                encode_type: quote_type::<Bytes>().into(),
                 port_hint: NetworkHint::Auto,
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: Some(deser_fn.into()),
@@ -1805,7 +1809,10 @@ mod tests {
         let external = flow.external::<()>();
 
         let (in_port, input, _membership, complete_sink) = first_node
-            .bidi_external_many_bytes::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
+            .bidi_external_many_bytes::<_, bytes::Bytes, LengthDelimitedCodec>(
+                &external,
+                NetworkHint::Auto,
+            );
         let out = input.entries().send_bincode_external(&external);
         complete_sink.complete(
             first_node
@@ -1848,7 +1855,10 @@ mod tests {
         let first_node = flow.process::<()>();
         let external = flow.external::<()>();
         let (port, input, complete_sink) = first_node
-            .bind_single_client::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
+            .bind_single_client::<_, bytes::Bytes, LengthDelimitedCodec>(
+                &external,
+                NetworkHint::Auto,
+            );
         complete_sink.complete(input.map(q!(|data| {
             let mut resp: Vec<u8> = data.into();
             resp.push(42);
@@ -1881,7 +1891,10 @@ mod tests {
         let external = flow.external::<()>();
 
         let (port, input, _membership, complete_sink) = first_node
-            .bidi_external_many_bytes::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
+            .bidi_external_many_bytes::<_, bytes::Bytes, LengthDelimitedCodec>(
+                &external,
+                NetworkHint::Auto,
+            );
         complete_sink
             .complete(input.map(q!(|bytes| { bytes.into_iter().map(|x| x + 1).collect() })));
 

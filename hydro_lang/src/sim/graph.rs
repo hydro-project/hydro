@@ -311,6 +311,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _p2: &Self::Process,
         _p2_port: &<Self::Process as Node>::Port,
         _codec_type: &syn::Type,
+        _encode_type: &syn::Type,
         _shared_handle: String,
     ) -> syn::Expr {
         todo!("e2o_many_source is not yet supported in simulation")
@@ -327,6 +328,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _p2: &Self::Process,
         _p2_port: &<Self::Process as Node>::Port,
         _codec_type: &syn::Type,
+        _encode_type: &syn::Type,
         _shared_handle: String,
     ) -> syn::Expr {
         let ident = syn::Ident::new("__hydro_external_in", Span::call_site());
@@ -372,6 +374,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _c2: &Self::Cluster,
         _c2_port: &<Self::Cluster as Node>::Port,
         _codec_type: &syn::Type,
+        _encode_type: &syn::Type,
         _shared_handle: String,
     ) -> syn::Expr {
         let ident = syn::Ident::new("__hydro_cluster_external_in", Span::call_site());
