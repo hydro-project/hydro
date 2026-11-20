@@ -8,7 +8,6 @@ use std::rc::{Rc, Weak};
 use std::task::{Context, Poll, Waker};
 
 use futures::{Sink, Stream, ready};
-use smallvec::SmallVec;
 #[doc(inline)]
 pub use tokio::sync::mpsc::error::{SendError, TrySendError};
 
@@ -200,10 +199,15 @@ impl<T> Stream for Receiver<T> {
 }
 
 /// Struct shared between sender and receiver.
+///
+/// Hydro's simulator creates channels inside a `dlopen`ed dylib and polls them from the host
+/// test binary, so this layout must agree across two separate compilations of `dfir_rs`. Keep
+/// it to `std` types (whose layout is fixed by the shared toolchain) — third-party types can
+/// change layout under cargo feature unification (e.g. `smallvec/union`).
 struct Shared<T> {
     buffer: VecDeque<T>,
     capacity: Option<NonZeroUsize>,
-    send_wakers: SmallVec<[Waker; 1]>,
+    send_wakers: SendWakers,
     recv_waker: Option<Waker>,
 }
 impl<T> Shared<T> {
@@ -215,12 +219,58 @@ impl<T> Shared<T> {
     }
     /// Wakes all senders and removes their wakers.
     pub fn wake_all_senders(&mut self) {
-        self.send_wakers.drain(..).for_each(Waker::wake);
+        self.send_wakers.wake_all();
     }
     /// Wakes the receiver (if the waker is set) and removes it.
     pub fn wake_receiver(&mut self) {
         if let Some(waker) = self.recv_waker.take() {
             waker.wake();
+        }
+    }
+}
+
+/// Wakers of senders blocked on a full bounded channel.
+///
+/// Stores a single waker inline and only allocates once a second sender blocks concurrently
+/// (like the `SmallVec<[Waker; 1]>` it replaces), but is `std`-only for the layout reason
+/// documented on [`Shared`]. Wakers are popped LIFO.
+#[derive(Default)]
+enum SendWakers {
+    #[default]
+    Empty,
+    One(Waker),
+    Many(Vec<Waker>),
+}
+impl SendWakers {
+    fn push(&mut self, waker: Waker) {
+        *self = match std::mem::take(self) {
+            Self::Empty => Self::One(waker),
+            Self::One(first) => Self::Many(vec![first, waker]),
+            Self::Many(mut wakers) => {
+                wakers.push(waker);
+                Self::Many(wakers)
+            }
+        };
+    }
+
+    fn pop(&mut self) -> Option<Waker> {
+        match std::mem::take(self) {
+            Self::Empty => None,
+            Self::One(waker) => Some(waker),
+            Self::Many(mut wakers) => {
+                let waker = wakers.pop();
+                // Keep the allocation for the next burst of blocked senders.
+                *self = Self::Many(wakers);
+                waker
+            }
+        }
+    }
+
+    fn wake_all(&mut self) {
+        match std::mem::take(self) {
+            Self::Empty => {}
+            Self::One(waker) => waker.wake(),
+            Self::Many(wakers) => wakers.into_iter().for_each(Waker::wake),
         }
     }
 }
@@ -383,5 +433,51 @@ mod test {
         let mut recv_ref = recv.by_ref().map(|x| x + 1).map(Ok).take(N);
         send.send_all(&mut recv_ref).await.unwrap();
         assert_eq!(Some(N), recv.recv().await);
+    }
+
+    /// Several senders blocked on a full channel: freeing one slot wakes exactly one of
+    /// them, and closing the receiver wakes every remaining one (and fails their sends).
+    #[test]
+    fn test_bounded_blocked_senders_wakes() {
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::task::Wake;
+
+        #[derive(Default)]
+        struct CountWakes(AtomicUsize);
+        impl Wake for CountWakes {
+            fn wake(self: Arc<Self>) {
+                self.0.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+
+        let wakes = Arc::new(CountWakes::default());
+        let waker = Waker::from(Arc::clone(&wakes));
+        let mut cx = Context::from_waker(&waker);
+        let wake_count = || wakes.0.load(Ordering::Relaxed);
+
+        let (send, mut recv) = bounded::<u8>(1);
+        assert_eq!(
+            Poll::Ready(Ok(())),
+            Box::pin(send.send(0)).as_mut().poll(&mut cx)
+        );
+
+        let mut blocked: Vec<_> = (1..=3).map(|x| Box::pin(send.send(x))).collect();
+        for fut in &mut blocked {
+            assert!(fut.as_mut().poll(&mut cx).is_pending());
+        }
+        assert_eq!(0, wake_count());
+
+        // Freeing one slot wakes one blocked sender, not all of them.
+        assert_eq!(Poll::Ready(Some(0)), recv.poll_recv(&cx));
+        assert_eq!(1, wake_count());
+        assert!(recv.poll_recv(&cx).is_pending());
+
+        // Closing wakes the remaining blocked senders, whose sends then fail.
+        recv.close();
+        assert_eq!(3, wake_count());
+        for fut in &mut blocked {
+            assert!(matches!(fut.as_mut().poll(&mut cx), Poll::Ready(Err(_))));
+        }
     }
 }
