@@ -2,10 +2,13 @@ error[E0277]: the trait bound `{integer}: dfir_rs::lattices::Merge<{integer}>` i
  --> tests/compile-fail/nightly/surface_lattice_reduce_push_wrongtype.rs:6:19
   |
 6 |         my_tee -> lattice_reduce() -> for_each(|x| println!("{:?}", x));
-  |                   ^^^^^^^^^^^^^^^^ the trait `dfir_rs::lattices::Merge<{integer}>` is not implemented for `{integer}`
+  |                   ^^^^^^^^^^^^^^^^
+  |                   |
+  |                   the trait `dfir_rs::lattices::Merge<{integer}>` is not implemented for `{integer}`
+  |                   required by a bound introduced by this call
   |
   = help: the following other types implement trait `dfir_rs::lattices::Merge<Other>`:
-            `()` implements `dfir_rs::lattices::Merge<()>`
+            `(T₁, T₂, …, Tₙ)` up to tuples of arity 0 implements `dfir_rs::lattices::Merge<()>`
             `Conflict<T>` implements `dfir_rs::lattices::Merge<Conflict<O>>`
             `DomPair<KeySelf, ValSelf>` implements `dfir_rs::lattices::Merge<DomPair<KeyOther, ValOther>>`
             `GhtInner<Head, Node>` implements `dfir_rs::lattices::Merge<GhtInner<Head, Node>>`
