@@ -5,17 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.17.0-alpha.1 (2026-06-11)
+## 0.17.0-alpha.5 (2026-11-20)
 
-### Chore
-
- - <csr-id-e70eab6a0c793ef095e2cd747220d5419f7bf1a4/> revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version
+## 0.17.0-alpha.4 (2026-09-21)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release over the course of 69 calendar days.
+ - 91 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release hydro_build_utils v0.1.1-alpha.1, dfir_lang v0.17.0-alpha.4, dfir_macro v0.17.0-alpha.4, variadics v0.2.0-alpha.3, variadics_macro v0.8.0-alpha.2, lattices v0.8.0-alpha.4, example_test v0.0.2-alpha.0, sinktools v0.2.0-alpha.4, hydro_deploy_integration v0.17.0-alpha.3, dfir_rs v0.17.0-alpha.5, copy_span v0.1.2-alpha.0, hydro_concurrent_cargo v0.1.1-alpha.0, hydro_deploy v0.17.0-alpha.4, hydro_lang v0.17.0-alpha.5, hydro_std v0.17.0-alpha.5, safety bump 4 crates ([`38ccb27`](https://github.com/hydro-project/hydro/commit/38ccb27ae7a08b9ac1ab544f4047a4f4592ee230))
+    - Release dfir_lang v0.17.0-alpha.3, variadics v0.2.0-alpha.2, lattices v0.8.0-alpha.3, dfir_pipes v0.1.0-alpha.3, multiplatform_test v0.7.1-alpha.0, dfir_rs v0.17.0-alpha.4, hydro_concurrent_cargo v0.1.0-alpha.0, hydro_deploy v0.17.0-alpha.3, hydro_lang v0.17.0-alpha.4, hydro_std v0.17.0-alpha.4, safety bump 3 crates ([`6287d84`](https://github.com/hydro-project/hydro/commit/6287d84c83b0a37798d6afdeb6bfacaf9a8ce3d1))
+</details>
+
+## 0.17.0-alpha.3 (2026-06-22)
+
+### Chore
+
+ - <csr-id-1f2935de5a1f5096d293e58d4ee5e633d72e13f2/> manually bump to released version `0.17.0-alpha.2`
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release over the course of 3 calendar days.
+ - 11 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -26,6 +51,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release dfir_macro v0.17.0-alpha.3, lattices v0.8.0-alpha.2, sinktools v0.2.0-alpha.3, hydro_deploy_integration v0.17.0-alpha.2, dfir_rs v0.17.0-alpha.3, hydro_deploy v0.17.0-alpha.2, hydro_lang v0.17.0-alpha.3, hydro_std v0.17.0-alpha.3 ([`295c0ec`](https://github.com/hydro-project/hydro/commit/295c0ec5d2d3f182598972d9a0c5511f5812c6ae))
+    - Manually bump to released version `0.17.0-alpha.2` ([`1f2935d`](https://github.com/hydro-project/hydro/commit/1f2935de5a1f5096d293e58d4ee5e633d72e13f2))
+    - Release dfir_lang v0.17.0-alpha.2, dfir_pipes v0.1.0-alpha.2, sinktools v0.2.0-alpha.2, hydro_deploy_integration v0.17.0-alpha.1, dfir_rs v0.17.0-alpha.2, hydro_deploy v0.17.0-alpha.1, hydro_lang v0.17.0-alpha.2, hydro_std v0.17.0-alpha.2 ([`faa7a90`](https://github.com/hydro-project/hydro/commit/faa7a90d1d9524d1870360d4701a8746c804c10c))
+</details>
+
+## 0.17.0-alpha.1 (2026-06-11)
+
+### Chore
+
+ - <csr-id-e70eab6a0c793ef095e2cd747220d5419f7bf1a4/> revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 1 day passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release dfir_lang v0.17.0-alpha.1, dfir_macro v0.17.0-alpha.1, variadics v0.2.0-alpha.1, variadics_macro v0.8.0-alpha.1, lattices v0.8.0-alpha.1, dfir_pipes v0.1.0-alpha.1, sinktools v0.2.0-alpha.1, dfir_rs v0.17.0-alpha.1, hydro_lang v0.17.0-alpha.1, hydro_std v0.17.0-alpha.1 ([`2035d2e`](https://github.com/hydro-project/hydro/commit/2035d2e29fabae26c069bb01aefbed58b631742c))
     - Revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version ([`e70eab6`](https://github.com/hydro-project/hydro/commit/e70eab6a0c793ef095e2cd747220d5419f7bf1a4))
 </details>
 
@@ -35,18 +88,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - <csr-id-938cf91f4adff7b96f3f3536f4427f38f07f4ea6/> gate proc_macro_diagnostics behind codegen feature, remove several stabilized features. [ci-full]
 
-### Refactor (BREAKING)
-
- - <csr-id-bfec02db5b1176505770eb30db6d0ce537696f8b/> rename Push::poll_flush to Push::poll_finalize in dfir_pipes
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release.
+ - 2 commits contributed to the release.
  - 40 days passed between releases.
- - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 2 unique issues were worked on: [#2853](https://github.com/hydro-project/hydro/issues/2853), [#2878](https://github.com/hydro-project/hydro/issues/2878)
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#2878](https://github.com/hydro-project/hydro/issues/2878)
 
 ### Commit Details
 
@@ -54,8 +103,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <details><summary>view details</summary>
 
- * **[#2853](https://github.com/hydro-project/hydro/issues/2853)**
-    - Rename Push::poll_flush to Push::poll_finalize in dfir_pipes ([`bfec02d`](https://github.com/hydro-project/hydro/commit/bfec02db5b1176505770eb30db6d0ce537696f8b))
  * **[#2878](https://github.com/hydro-project/hydro/issues/2878)**
     - Gate proc_macro_diagnostics behind codegen feature, remove several stabilized features. [ci-full] ([`938cf91`](https://github.com/hydro-project/hydro/commit/938cf91f4adff7b96f3f3536f4427f38f07f4ea6))
  * **Uncategorized**
@@ -66,125 +113,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New Features
 
- - <csr-id-67c066ef77042b337100de5e119f20ced0cae394/> advance dfir_syntax_inline! migration — expose current_tick, fix singleton ordering, convert ~77 tests
-   Three changes stacked:
-   
-   1. feat(dfir_rs): expose `current_tick()` on `InlineDfir` via shared
-   `Rc<Cell<TickInstant>>`
-   - Resolves #2741
-   - Shares tick counter between InlineContext (inside closure) and
-   InlineDfir (outer handle)
-   - Updated codegen in dfir_lang and dfir_macro
-   
-   2. refactor(dfir_rs): convert 55+ non-blocked tests to
-   dfir_syntax_inline!
-   - surface_scan.rs (8/8), surface_state_scheduling.rs (8/8),
-   surface_difference.rs (8/10), surface_codegen.rs (17/20),
-   surface_fold.rs (6/7), surface_fold_keyed.rs (4/5),
-   surface_reduce_keyed.rs (3/4), surface_unique.rs (5/6),
-   surface_zip_unzip.rs (3/5), surface_lattice_fold.rs (1/3)
-   - Tests with loop {} blocks or intra-tick cycles remain on dfir_syntax!
-   
-   3. fix(dfir_lang): include singleton reference edges in inline
-   topological sort
-   - Root cause of "behavioral differences" blocker for
-   surface_singleton.rs
-   - Singleton refs (`#name`) now create ordering constraints in the topo
-   sort
-   - Converts surface_singleton.rs (10/10 tests) to dfir_syntax_inline!
-   
-   ---------
- - <csr-id-2633db89ef2768285219a0e5af18f5a971a9aa1c/> port runtime metrics to inline codegen path
-   ### Summary
-   
-   Ports per-subgraph and per-handoff runtime metrics from the scheduled
-   `Dfir<'_>` codegen path to the new `InlineDfir` inline codegen path, and
-   updates the EMF telemetry sidecar to work with both.
-   
-   ### Changes
-   
-   **`dfir_rs/src/scheduled/context.rs`**
-   - Added `Rc<DfirMetrics>` to `InlineDfir` with `metrics()` and
-   `metrics_intervals()` accessors, threaded through `into_erased()`.
-   
-   **`dfir_rs/src/scheduled/metrics.rs`**
-   - Made `InstrumentSubgraph` and its constructor `pub #[doc(hidden)]` for
-   codegen access.
-   - `define_metrics!` macro now hardcodes `pub #[doc(hidden)]` on fields
-   internally instead of accepting a visibility specifier at the call site.
-   
-   **`dfir_lang/src/graph/meta_graph.rs`**
-   - Inline codegen now builds `DfirMetrics` with pre-initialized entries
-   for each subgraph and handoff, using slotmap raw indices
-   (`KeyData::as_ffi() & 0xFFFF_FFFF`) so runtime metrics IDs match the
-   meta graph for cross-referencing with Mermaid/Dot visualizations.
-   - Recv port code instruments handoff metrics (`total_items_count`,
-   `curr_items_count`) before draining, matching the scheduled path's
-   "measure at recv" strategy.
-   - Each subgraph async block is wrapped with `InstrumentSubgraph` for
-   per-subgraph
-   `total_poll_duration`/`total_poll_count`/`total_idle_duration`/`total_idle_count`
-   tracking, with `total_run_count` incremented after each run.
-   - Send-side `curr_items_count` updated after each subgraph completes.
-   
-   **`hydro_lang/src/telemetry/emf.rs`**
-   - `record_metrics_sidecar` now takes `DfirMetricsIntervals` directly
-   instead of `&Dfir<'_>`. The generated sidecar code calls
-   `.metrics_intervals()` on the dfir instance, which works for both `Dfir`
-   and `InlineDfir`.
-   
-   **`dfir_macro/src/lib.rs`**
-   - Updated error fallback to pass default metrics `Rc` to
-   `InlineDfir::new`.
-   
-   ---------
- - <csr-id-476e22fe79049d5f92a066937b18fe4abc7d4cc0/> add `meta_graph` & `diagnostics` support to `InlineDfir`
- - <csr-id-de0fa9767573e2968b7e7f6e271bf371c3207775/> switch all codegen paths to inline DFIR execution [ci-bench]
-   Switches all three Hydro compilation paths (trybuild, embedded, sim)
-   from the scheduler-based `Dfir` runtime to inline codegen, building on
-   the `as_code_inline` infrastructure from the previous PR.
-   
-   ## Results
-   
-   - **35-50% throughput improvement on the Paxos benchmark** — zero
-   application code changes
-   - **All Hydro tests pass** — 51 sim, 6 embedded, deploy tests (paxos,
-   two_pc, many_to_many, etc.)
-   
-   ## Changes
-   
-   ### Hydro compilation paths
-   - **trybuild/generate.rs** — `as_code` → `as_code_inline`, generated
-   binaries return `InlineFlow` instead of `Dfir`
-   - **embedded.rs** — `generate_embedded` defaults to inline; removed
-   redundant `generate_embedded_inline`
-   - **sim/graph.rs** — `as_code` → `as_code_inline`, each location wrapped
-   with `into_erased()` for `Vec` storage
-   - **sim/compiled.rs** — `Dfir<'static>` → `ErasedInlineDfir` throughout
-   
-   ### Runtime support
-   - **launch.rs** — Added `Runnable` trait with impls for both `Dfir` and
-   `InlineFlow`, making `run_stdin_commands` generic
-   - (likely will be removed in a future PR)
-   - **InlineDfir** — A new wrapper around the tick closure provides an API
-   which matches the existing `Dfir<'_>` API. Of note: `run_tick()` returns
-   `bool` (whether subgraphs were run in a meaningful way, [see
-   here](https://github.com/hydro-project/hydro/pull/2732#issuecomment-4240163682)),
-   matching `Dfir::run_tick` semantics. First tick pre-set to true to match
-   Dfir's pre-scheduling behavior. Necessary for the simulator to work
-   properly.
-   - **TickClosure** — `call_tick` returns `bool` directly; eliminated
-   `work_done` shared state and `__mark_work_done`
-   
-   ### Type erasure for sim
-   - **`ErasedTickFn`** / **`ErasedInlineFlow`** — enables storing multiple
-   locations with different closure types in `Vec`. Uses object-safe inner
-   trait (`ErasedTickFnInner`) since `AsyncFnMut` is not object-safe. Zero
-   overhead on the concrete (trybuild/embedded) path.
-   - **`into_erased()`** — converts concrete `InlineDfir` to
-   `ErasedInlineDfir`, one box allocation per tick (for the `dyn Future`)
-   
-   ---------
  - <csr-id-7181305785e9f69fc07258b07d38d7bdc805794f/> add experimental inline DAG codegen (S3+Ref3 prototype) [ci-bench]
    Add `dfir_syntax_inline!` macro that generates inline dataflow code
    using
@@ -222,11 +150,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    Out of an abundance of caution, the `hydro_lang` IR `Demux` variants
    containing `HashMap<u32 ...>` have been replaced with `BTreeMap`
 
-### Refactor
-
- - <csr-id-bafcb57e02f0b538a2bedc9051dd36a05f3ad7e9/> replace stratification with plain topo sort, remove next_stratum
- - <csr-id-4eea87b5466e52d8b7ea7709f0a19836b18440ca/> pass `&mut InlineContext` as argument to tick closure instead of capturing it
-
 ### Chore (BREAKING)
 
  - <csr-id-efaa8f61c124c4b3c691b92a58df1686751cf45c/> update pinned rust to 1.92, add lints/fixes for redundant cloning, string handling
@@ -246,36 +169,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    `Vec::reserve(hint.0)` for pre-allocation. Gated on `alloc` feature.
    - Constructor: `push::vec_push(buf)` creates a VecPush from a `&mut
    Vec<T>`.
- - <csr-id-a662ff38541e58bec801644b81b2bfc505779e7b/> use custom `dfir_pipes::Pull` trait [ci-bench]
-   This is the pull-half of a big change from using other iterators
-   (`std::iter::Iterator` or `futures_core::stream::Stream`) to our own
-   `Pull` trait. Key to this more powerful iterator trait is the step enum:
-   ```rust
-   pub enum Step<Item, Meta, CanPend: Toggle, CanEnd: Toggle> {
-   /// An item is ready with associated metadata.
-   Ready(Item, Meta),
-   /// The pull is not ready yet (only possible when `CanPend = Yes`).
-   Pending(CanPend),
-   /// The pull has ended (only possible when `CanEnd = Yes`).
-   Ended(CanEnd),
-   }
-   ```
-   This abstraction allows `Pull` to represent both synchronous `Iterator`s
-   and asynchronous `Stream`s with zero cost. (As well as distinguishing
-   between infinite vs finite iterators, which I guess is not actually that
-   useful to us). In the future we will also add an `Error` variant
-   (#2635). The `Meta` metadata field may be used for full record-level
-   tracing (#2242).
-   
-   This trait has some pseudo-specialization around `Fuse`, and further
-   performance improvements may come from true nightly
-   `min_specialization`, as well as from converting from `Pusherator/Sink`
-   to a new `Push` trait.
-   
-   Other changes:
-   * Moves much of `dfir_rs::compiled::pull` into `dfir_pipes`, using new
-   trait
-   * Update itertools to `0.14`
 
 ### Bug Fixes (BREAKING)
 
@@ -283,19 +176,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Refactor (BREAKING)
 
- - <csr-id-16f1c0bf960c3b4238adb020a833f214bd3fd064/> remove scheduled Dfir runtime, rename Inline types
- - <csr-id-9cb780085e19197381653eb010d8abdaeb23729d/> remove scheduled codegen path, rename inline codegen
- - <csr-id-296a491c80546eb7f48327b48f9d50951abdf172/> switch `dfir_syntax!` to inline codegen, begin removing scheduled DFIR [ci-bench]
  - <csr-id-3e6e26c4cc87d6f7857591b10876074cba97caff/> use custom `dfir_pipes::Push` trait instead of `Sink` [ci-bench]
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 17 commits contributed to the release.
- - 156 days passed between releases.
- - 16 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 16 unique issues were worked on: [#2511](https://github.com/hydro-project/hydro/issues/2511), [#2525](https://github.com/hydro-project/hydro/issues/2525), [#2541](https://github.com/hydro-project/hydro/issues/2541), [#2618](https://github.com/hydro-project/hydro/issues/2618), [#2644](https://github.com/hydro-project/hydro/issues/2644), [#2678](https://github.com/hydro-project/hydro/issues/2678), [#2716](https://github.com/hydro-project/hydro/issues/2716), [#2732](https://github.com/hydro-project/hydro/issues/2732), [#2737](https://github.com/hydro-project/hydro/issues/2737), [#2740](https://github.com/hydro-project/hydro/issues/2740), [#2769](https://github.com/hydro-project/hydro/issues/2769), [#2776](https://github.com/hydro-project/hydro/issues/2776), [#2779](https://github.com/hydro-project/hydro/issues/2779), [#2782](https://github.com/hydro-project/hydro/issues/2782), [#2795](https://github.com/hydro-project/hydro/issues/2795), [#2797](https://github.com/hydro-project/hydro/issues/2797)
+ - 7 commits contributed to the release.
+ - 157 days passed between releases.
+ - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 6 unique issues were worked on: [#2511](https://github.com/hydro-project/hydro/issues/2511), [#2525](https://github.com/hydro-project/hydro/issues/2525), [#2541](https://github.com/hydro-project/hydro/issues/2541), [#2644](https://github.com/hydro-project/hydro/issues/2644), [#2678](https://github.com/hydro-project/hydro/issues/2678), [#2716](https://github.com/hydro-project/hydro/issues/2716)
 
 ### Commit Details
 
@@ -309,32 +199,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Update pinned rust to 1.92, add lints/fixes for redundant cloning, string handling ([`efaa8f6`](https://github.com/hydro-project/hydro/commit/efaa8f61c124c4b3c691b92a58df1686751cf45c))
  * **[#2541](https://github.com/hydro-project/hydro/issues/2541)**
     - Fix & test sim DFIR codegen; DFIR use `Result` to force error handling ([`024cfd6`](https://github.com/hydro-project/hydro/commit/024cfd693b884f51b13dee5a0c51b1a2ce4e0a27))
- * **[#2618](https://github.com/hydro-project/hydro/issues/2618)**
-    - Use custom `dfir_pipes::Pull` trait [ci-bench] ([`a662ff3`](https://github.com/hydro-project/hydro/commit/a662ff38541e58bec801644b81b2bfc505779e7b))
  * **[#2644](https://github.com/hydro-project/hydro/issues/2644)**
     - Use custom `dfir_pipes::Push` trait instead of `Sink` [ci-bench] ([`3e6e26c`](https://github.com/hydro-project/hydro/commit/3e6e26c4cc87d6f7857591b10876074cba97caff))
  * **[#2678](https://github.com/hydro-project/hydro/issues/2678)**
     - Add `Push::size_hint`, `VecPush` terminal operator, use in dfir codegen [ci-bench] ([`52ed106`](https://github.com/hydro-project/hydro/commit/52ed1062f8fb30b9b2ec8f4615d9187bba62e2b0))
  * **[#2716](https://github.com/hydro-project/hydro/issues/2716)**
     - Add experimental inline DAG codegen (S3+Ref3 prototype) [ci-bench] ([`7181305`](https://github.com/hydro-project/hydro/commit/7181305785e9f69fc07258b07d38d7bdc805794f))
- * **[#2732](https://github.com/hydro-project/hydro/issues/2732)**
-    - Switch all codegen paths to inline DFIR execution [ci-bench] ([`de0fa97`](https://github.com/hydro-project/hydro/commit/de0fa9767573e2968b7e7f6e271bf371c3207775))
- * **[#2737](https://github.com/hydro-project/hydro/issues/2737)**
-    - Add `meta_graph` & `diagnostics` support to `InlineDfir` ([`476e22f`](https://github.com/hydro-project/hydro/commit/476e22fe79049d5f92a066937b18fe4abc7d4cc0))
- * **[#2740](https://github.com/hydro-project/hydro/issues/2740)**
-    - Port runtime metrics to inline codegen path ([`2633db8`](https://github.com/hydro-project/hydro/commit/2633db89ef2768285219a0e5af18f5a971a9aa1c))
- * **[#2769](https://github.com/hydro-project/hydro/issues/2769)**
-    - Advance dfir_syntax_inline! migration — expose current_tick, fix singleton ordering, convert ~77 tests ([`67c066e`](https://github.com/hydro-project/hydro/commit/67c066ef77042b337100de5e119f20ced0cae394))
- * **[#2776](https://github.com/hydro-project/hydro/issues/2776)**
-    - Pass `&mut InlineContext` as argument to tick closure instead of capturing it ([`4eea87b`](https://github.com/hydro-project/hydro/commit/4eea87b5466e52d8b7ea7709f0a19836b18440ca))
- * **[#2779](https://github.com/hydro-project/hydro/issues/2779)**
-    - Switch `dfir_syntax!` to inline codegen, begin removing scheduled DFIR [ci-bench] ([`296a491`](https://github.com/hydro-project/hydro/commit/296a491c80546eb7f48327b48f9d50951abdf172))
- * **[#2782](https://github.com/hydro-project/hydro/issues/2782)**
-    - Remove scheduled codegen path, rename inline codegen ([`9cb7800`](https://github.com/hydro-project/hydro/commit/9cb780085e19197381653eb010d8abdaeb23729d))
- * **[#2795](https://github.com/hydro-project/hydro/issues/2795)**
-    - Remove scheduled Dfir runtime, rename Inline types ([`16f1c0b`](https://github.com/hydro-project/hydro/commit/16f1c0bf960c3b4238adb020a833f214bd3fd064))
- * **[#2797](https://github.com/hydro-project/hydro/issues/2797)**
-    - Replace stratification with plain topo sort, remove next_stratum ([`bafcb57`](https://github.com/hydro-project/hydro/commit/bafcb57e02f0b538a2bedc9051dd36a05f3ad7e9))
  * **Uncategorized**
     - Release hydro_build_utils v0.1.0, dfir_lang v0.16.0, dfir_macro v0.16.0, variadics v0.1.0, dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0, safety bump 13 crates ([`c20757a`](https://github.com/hydro-project/hydro/commit/c20757ae0e9e10463b2a499de4b7d37ab02269d0))
 </details>
@@ -355,7 +225,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 6 commits contributed to the release.
- - 117 days passed between releases.
+ - 118 days passed between releases.
  - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#1977](https://github.com/hydro-project/hydro/issues/1977), [#2024](https://github.com/hydro-project/hydro/issues/2024), [#2028](https://github.com/hydro-project/hydro/issues/2028), [#2134](https://github.com/hydro-project/hydro/issues/2134)
 
@@ -388,7 +258,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 3 commits contributed to the release.
- - 109 days passed between releases.
+ - 110 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 2 unique issues were worked on: [#1843](https://github.com/hydro-project/hydro/issues/1843), [#1944](https://github.com/hydro-project/hydro/issues/1944)
 
@@ -454,10 +324,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release.
- - 6 days passed between releases.
- - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 3 unique issues were worked on: [#1769](https://github.com/hydro-project/hydro/issues/1769), [#1785](https://github.com/hydro-project/hydro/issues/1785), [#1787](https://github.com/hydro-project/hydro/issues/1787)
+ - 3 commits contributed to the release.
+ - 7 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 2 unique issues were worked on: [#1785](https://github.com/hydro-project/hydro/issues/1785), [#1787](https://github.com/hydro-project/hydro/issues/1787)
 
 ### Commit Details
 
@@ -465,8 +335,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <details><summary>view details</summary>
 
- * **[#1769](https://github.com/hydro-project/hydro/issues/1769)**
-    - Move markdown doctesting macro into own crate, fix #1651 ([`8058d2d`](https://github.com/hydro-project/hydro/commit/8058d2d6fe45e0286feb8ad48a44b1228f56d9bc))
  * **[#1785](https://github.com/hydro-project/hydro/issues/1785)**
     - Cleanup old clippy lints, remove deprecated `relalg` crate ([`056ac62`](https://github.com/hydro-project/hydro/commit/056ac62611319b7bd10a751d7e231423a1b8dc4e))
  * **[#1787](https://github.com/hydro-project/hydro/issues/1787)**
@@ -497,7 +365,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 7 commits contributed to the release.
- - 74 days passed between releases.
+ - 75 days passed between releases.
  - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 5 unique issues were worked on: [#1649](https://github.com/hydro-project/hydro/issues/1649), [#1686](https://github.com/hydro-project/hydro/issues/1686), [#1690](https://github.com/hydro-project/hydro/issues/1690), [#1713](https://github.com/hydro-project/hydro/issues/1713), [#1747](https://github.com/hydro-project/hydro/issues/1747)
 

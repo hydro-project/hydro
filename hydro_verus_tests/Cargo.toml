@@ -38,7 +38,7 @@ reject_wrapping_double_map = []
 
 [dependencies]
 # The `verus` feature exports `hydro_lang`'s Verus specifications (e.g. `verus_panic`).
-hydro_lang = { path = "../hydro_lang", version = "=0.17.0-alpha.6", default-features = false, features = ["verus"] }
+hydro_lang = { path = "../hydro_lang", version = "=0.17.0-alpha.7", default-features = false, features = ["verus"] }
 stageleft.workspace = true
 # Unlike production crates (where `vstd` is gated behind a `verus` feature), this
 # crate exists solely to test Verus proofs, so `vstd` is a regular dependency (it
@@ -47,8 +47,8 @@ vstd = "=0.0.0-2026-09-06-0133"
 
 [build-dependencies]
 stageleft_tool.workspace = true
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.1" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "=0.1.1-alpha.2" }
 
 [dev-dependencies]
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.1", features = ["insta"] }
+hydro_build_utils = { path = "../hydro_build_utils", version = "=0.1.1-alpha.2", features = ["insta"] }
 

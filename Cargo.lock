@@ -1816,7 +1816,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_lang"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.5"
 dependencies = [
  "auto_impl",
  "clap",
@@ -1837,7 +1837,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_macro"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.5"
 dependencies = [
  "dfir_lang",
  "hydro_build_utils",
@@ -1850,7 +1850,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_pipes"
-version = "0.1.0-alpha.4"
+version = "0.1.0-alpha.5"
 dependencies = [
  "futures-core",
  "futures-sink",
@@ -1867,7 +1867,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_rs"
-version = "0.17.0-alpha.6"
+version = "0.17.0-alpha.7"
 dependencies = [
  "bincode",
  "bumpalo",
@@ -2185,7 +2185,7 @@ dependencies = [
 
 [[package]]
 name = "example_test"
-version = "0.0.2-alpha.0"
+version = "0.0.2-alpha.1"
 dependencies = [
  "ctor",
  "log",
@@ -2713,7 +2713,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_build_utils"
-version = "0.1.1-alpha.1"
+version = "0.1.1-alpha.2"
 dependencies = [
  "insta",
  "rustc_version",
@@ -2722,7 +2722,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_concurrent_cargo"
-version = "0.1.2-alpha.0"
+version = "0.2.0-alpha.0"
 dependencies = [
  "parking_lot",
  "toml_edit 0.23.9",
@@ -2730,7 +2730,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_deploy"
-version = "0.17.0-alpha.5"
+version = "0.17.0-alpha.6"
 dependencies = [
  "anyhow",
  "append-only-vec",
@@ -2766,7 +2766,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_deploy_integration"
-version = "0.17.0-alpha.3"
+version = "0.17.0-alpha.4"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -2783,7 +2783,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_lang"
-version = "0.17.0-alpha.6"
+version = "0.17.0-alpha.7"
 dependencies = [
  "anyhow",
  "auto_impl",
@@ -2849,7 +2849,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_std"
-version = "0.17.0-alpha.6"
+version = "0.17.0-alpha.7"
 dependencies = [
  "hdrhistogram",
  "hydro_deploy",
@@ -3406,7 +3406,7 @@ dependencies = [
 
 [[package]]
 name = "lattices"
-version = "0.8.0-alpha.4"
+version = "0.8.0-alpha.5"
 dependencies = [
  "cc-traits",
  "fst",
@@ -3421,7 +3421,7 @@ dependencies = [
 
 [[package]]
 name = "lattices_macro"
-version = "0.6.1-alpha.1"
+version = "0.6.1-alpha.2"
 dependencies = [
  "hydro_build_utils",
  "prettyplease",
@@ -5561,7 +5561,7 @@ checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
 name = "sinktools"
-version = "0.2.0-alpha.4"
+version = "0.2.0-alpha.5"
 dependencies = [
  "bytes",
  "futures-task",
@@ -6563,7 +6563,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "variadics"
-version = "0.2.0-alpha.3"
+version = "0.2.0-alpha.4"
 dependencies = [
  "hashbrown 0.14.5",
  "hydro_build_utils",
@@ -6572,7 +6572,7 @@ dependencies = [
 
 [[package]]
 name = "variadics_macro"
-version = "0.8.0-alpha.2"
+version = "0.8.0-alpha.3"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.4.0",
