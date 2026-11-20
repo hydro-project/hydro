@@ -137,3 +137,34 @@ let count_snapshot = use::snapshot(current_count, nondet!(/** ... */));
 If the count has progressed through values 0 → 1 → 2, the simulator might snapshot any of these values. It can also re-release the same snapshot multiple times, simulating the case where state updates haven't propagated yet.
 
 For unordered streams, the simulator has additional freedom. When batching elements from an unordered stream, it selects *which* elements to include but doesn't need to simulate all possible orderings *within* the batch. Since the batch is also unordered, testing different internal orderings would be redundant. Such optimizations are key to making exhaustive testing tractable.
+
+### Retries on `AtLeastOnce` Streams
+
+An `AtLeastOnce` stream may deliver each element more than once. The operators that observe this (`assume_retries::<ExactlyOnce>`, and `assume_ordering` or `batch` on an `AtLeastOnce` stream) are decision points like any other: the simulator decides how many times each element is delivered, whether a redelivery comes after other elements, or whether an element shows up again in a later batch. Since every element admits arbitrarily many duplicates, this decision space is infinite:
+
+- `fuzz()` explores it **unbounded**, so [coverage-guided fuzzing](./fuzzing.mdx) can find bugs that only appear after many redeliveries.
+- `exhaustive()` **requires a bound**: `.retries_depth(n)` on the `SimFlow` allows at most `n` retries per operator (and also bounds `fuzz()` if set). `retries_depth(0)` delivers every element exactly once.
+
+The budget is per operator (and per cluster member). Operators inside a tick get a fresh budget on every tick execution, others share one budget over the whole run.
+
+```rust
+# use hydro_lang::prelude::*;
+# use hydro_lang::live_collections::stream::{AtLeastOnce, ExactlyOnce, NoOrder};
+# let mut flow = FlowBuilder::new();
+# let node = flow.process::<()>();
+let (input_send, input) = node.sim_input::<u32, NoOrder, ExactlyOnce>();
+let output = input
+    .weaken_retries::<AtLeastOnce>()
+    .assume_retries::<ExactlyOnce>(nondet!(/** explored by the simulator */))
+    .sim_output();
+
+flow.sim().retries_depth(1).exhaustive(async || {
+    input_send.send_many_unordered([1, 2]);
+    let all: Vec<u32> = output.collect_sorted().await;
+    // Every element is delivered at least once, and at most one is delivered twice.
+    assert!(all.contains(&1) && all.contains(&2));
+    assert!(all.len() <= 3);
+});
+```
+
+Operators bound to a [simulator hook](./scripting.mdx#retries-hooks) ignore the depth. [Deterministic mode](./deterministic.mdx) requires every at-least-once operator to be hooked.
