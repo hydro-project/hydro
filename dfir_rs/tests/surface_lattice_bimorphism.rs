@@ -2,11 +2,11 @@ use std::collections::{HashMap, HashSet};
 
 use dfir_rs::util::collect_ready;
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
-use lattices::GhtType;
 use lattices::ght::GeneralizedHashTrieNode;
 use lattices::ght::lattice::{DeepJoinLatticeBimorphism, GhtBimorphism};
 use lattices::map_union::{KeyedBimorphism, MapUnionHashMap, MapUnionSingletonMap};
 use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
+use lattices::{GhtType, Pair, PairBimorphism};
 use multiplatform_test::multiplatform_test;
 use variadics::CloneVariadic;
 use variadics::variadic_collections::VariadicHashSetStd;
@@ -216,4 +216,38 @@ fn test_ght_join_bimorphism() {
             -> null();
     };
     hf.run_available_sync();
+}
+
+/// `PairBimorphism` deltas are `Pair`s that contain `SetUnionSingletonSet`, which does not
+/// implement `Merge<Self>`. The accumulated value is still the `Pair` of the two set states.
+#[multiplatform_test]
+pub fn test_pair_bimorphism_singleton_collections() {
+    let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
+
+    let mut df = dfir_syntax! {
+        lhs_op = source_iter([0, 1])
+            -> map(SetUnionSingletonSet::new_from)
+            -> state::<'static, SetUnionHashSet<u32>>();
+        rhs_op = source_iter([10, 20])
+            -> map(SetUnionSingletonSet::new_from)
+            -> state::<'static, SetUnionHashSet<u32>>();
+
+        lhs_op[items] -> [0]my_join;
+        rhs_op[items] -> [1]my_join;
+        lhs = lhs_op[state] -> singleton();
+        rhs = rhs_op[state] -> singleton();
+
+        my_join = lattice_bimorphism(PairBimorphism, #lhs, #rhs)
+            -> for_each(|x| out_send.send(x).unwrap());
+    };
+
+    df.run_available_sync();
+
+    assert_eq!(
+        &[Pair::new(
+            SetUnionHashSet::new_from([0, 1]),
+            SetUnionHashSet::new_from([10, 20]),
+        )],
+        &*collect_ready::<Vec<_>, _>(out_recv)
+    );
 }
