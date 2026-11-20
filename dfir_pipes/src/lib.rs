@@ -85,6 +85,10 @@ impl Toggle for No {
     type And<T: Toggle> = No;
 }
 
+// `from_task` for `()` runs on every pull of every sync combinator inside an async pipeline.
+// It is trivially inlinable, but the generated simulation dylib is compiled at `opt-level=1`,
+// whose inliner leaves it as a call; forcing it keeps that hot path call-free.
+#[inline(always)]
 const fn mut_unit<'a>() -> &'a mut () {
     // SAFETY: `UNIT` is a zero-sized type (ZST), so its pointer cannot dangle.
     // https://doc.rust-lang.org/reference/behavior-considered-undefined.html#r-undefined.dangling.zero-size
@@ -113,6 +117,7 @@ pub trait Context<'ctx>: Sized {
 impl<'ctx> Context<'ctx> for () {
     type Merged<Other: Context<'ctx>> = Other;
 
+    #[inline(always)]
     fn from_task<'s>(_task_ctx: &'s mut core::task::Context<'ctx>) -> &'s mut Self {
         mut_unit()
     }
