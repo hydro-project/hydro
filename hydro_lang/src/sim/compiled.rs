@@ -79,8 +79,8 @@ use core::{fmt, panic};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
-use std::panic::RefUnwindSafe;
-use std::path::Path;
+use std::panic::{Location, RefUnwindSafe};
+use std::path::{Path, PathBuf};
 use std::pin::{Pin, pin};
 use std::rc::Rc;
 use std::task::{Poll, ready};
@@ -707,7 +707,7 @@ pub fn continue_if_impl(condition: bool, message: fmt::Arguments<'_>) {
     if log {
         eprintln!(
             "{}",
-            render_continue_if_failure(std::panic::Location::caller(), message)
+            render_continue_if_failure(Location::caller(), message)
         );
     }
 
@@ -719,21 +719,13 @@ pub fn continue_if_impl(condition: bool, message: fmt::Arguments<'_>) {
 
 /// Renders the log message for a failed assumption, echoing the source line with a caret
 /// pointing at the `continue_if!` call site, in the same style as the other simulator logs.
-fn render_continue_if_failure(
-    location: &std::panic::Location<'_>,
-    message: fmt::Arguments<'_>,
-) -> String {
+fn render_continue_if_failure(location: &Location<'_>, message: fmt::Arguments<'_>) -> String {
     use std::fmt::Write;
 
-    // `Location::file()` is relative to the directory the crate was compiled from (e.g. the
-    // workspace root), which may not match the current working directory (e.g. the crate
-    // root when running `cargo test`), so walk up from the current directory to find it.
     let source_line = std::env::current_dir()
         .ok()
-        .and_then(|cwd| {
-            cwd.ancestors()
-                .find_map(|base| std::fs::read_to_string(base.join(location.file())).ok())
-        })
+        .and_then(|cwd| resolve_source_file(Path::new(location.file()), &cwd))
+        .and_then(|path| std::fs::read_to_string(path).ok())
         .and_then(|content| {
             content
                 .lines()
@@ -864,24 +856,17 @@ impl CompiledSim {
     /// When running the test with `cargo test` (such as in CI), if a reproducer is found it will
     /// be executed, and if no reproducer is found a small number of random executions will be
     /// performed.
+    #[track_caller]
     pub fn fuzz(&self, mut thunk: impl AsyncFnMut() + RefUnwindSafe) {
-        let caller_fn = crate::compile::ir::backtrace::Backtrace::get_backtrace(0)
-            .elements()
-            .into_iter()
-            .find(|e| {
-                !e.fn_name.starts_with("hydro_lang::sim::compiled")
-                    && !e.fn_name.starts_with("hydro_lang::sim::flow")
-                    && !e.fn_name.starts_with("fuzz<")
-                    && !e.fn_name.starts_with("<hydro_lang::sim")
-            })
-            .unwrap();
-
-        let caller_path = Path::new(&caller_fn.filename.unwrap()).to_path_buf();
-        let repro_folder = caller_path.parent().unwrap().join("sim-failures");
-
-        let caller_fuzz_repro_path = repro_folder
-            .join(caller_fn.fn_name.replace("::", "__"))
-            .with_extension("bin");
+        // The reproducer's path comes from compile-time facts, the caller's location and
+        // `thunk`'s type, so debug info and inlining cannot change which reproducer a test runs.
+        let caller = Location::caller();
+        let caller_fuzz_repro_path = repro_path(
+            Path::new(caller.file()),
+            std::env::current_dir(),
+            std::any::type_name_of_val(&thunk),
+        )
+        .map_err(|reason| format!("for the `fuzz` call at {caller}, {reason}"));
 
         if std::env::var("BOLERO_FUZZER").is_ok() {
             let corpus_dir = std::env::current_dir().unwrap().join(".fuzz-corpus");
@@ -893,9 +878,11 @@ impl CompiledSim {
                 corpus_dir.to_str().unwrap(),
             );
 
-            std::fs::create_dir_all(&repro_folder).unwrap();
-
             if !std::env::var("HYDRO_NO_FAILURE_OUTPUT").is_ok_and(|v| v == "1") {
+                let caller_fuzz_repro_path = caller_fuzz_repro_path.unwrap_or_else(|reason| {
+                    panic!("`cargo sim` cannot save a failure as a reproducer: {reason}")
+                });
+                std::fs::create_dir_all(caller_fuzz_repro_path.parent().unwrap()).unwrap();
                 unsafe {
                     std::env::set_var(
                         "BOLERO_FAILURE_OUTPUT",
@@ -943,16 +930,26 @@ impl CompiledSim {
                 },
                 false,
             );
-        } else if let Ok(existing_bytes) = std::fs::read(&caller_fuzz_repro_path) {
+        } else if let Some(existing_bytes) = caller_fuzz_repro_path
+            .as_ref()
+            .ok()
+            .and_then(|path| std::fs::read(path).ok())
+        {
             self.fuzz_repro(existing_bytes, async |compiled| {
                 compiled.run_with_scheduler(thunk()).await
             });
         } else {
-            eprintln!(
-                "Running a fuzz test without `cargo sim` and no reproducer found at {}, using {} iterations with random inputs.",
-                caller_fuzz_repro_path.display(),
-                self.unit_test_fuzz_iterations,
-            );
+            match &caller_fuzz_repro_path {
+                Ok(path) => eprintln!(
+                    "Running a fuzz test without `cargo sim` and no reproducer found at {}, using {} iterations with random inputs.",
+                    path.display(),
+                    self.unit_test_fuzz_iterations,
+                ),
+                Err(reason) => eprintln!(
+                    "Running a fuzz test without `cargo sim` and without looking for a reproducer: {reason}. Using {} iterations with random inputs.",
+                    self.unit_test_fuzz_iterations,
+                ),
+            }
             self.with_instantiator(
                 |instantiator| {
                     bolero::test(bolero::TargetLocation {
@@ -2937,4 +2934,90 @@ fn run_observation_hook<W: std::fmt::Write>(
     // `release_decision` panics if the autonomous decision staged nothing, so a
     // contract violation cannot pass silently.
     hook.release_decision(writer.map(|w| w as &mut dyn std::fmt::Write));
+}
+
+/// Returns the path of the source file `file`, as [`Location::file`] gives it, or `None` if it
+/// does not exist. A relative `file` is relative to the workspace root, and `cargo test` runs
+/// in the crate's directory, so `file` is looked for in `cwd` and each of its parents.
+fn resolve_source_file(file: &Path, cwd: &Path) -> Option<PathBuf> {
+    cwd.ancestors()
+        .map(|dir| dir.join(file))
+        .find(|candidate| candidate.is_file())
+}
+
+/// Returns the reproducer of a `fuzz` call in `source_file` whose closure has the type name
+/// `closure_type_name`, or why it cannot be located. It is in `sim-failures` next to the source
+/// file, named after the function that defines the closure: the type name without its
+/// `::{{closure}}` suffixes.
+fn repro_path(
+    source_file: &Path,
+    cwd: std::io::Result<PathBuf>,
+    closure_type_name: &str,
+) -> Result<PathBuf, String> {
+    let cwd = cwd.map_err(|error| format!("the current directory cannot be read: {error}"))?;
+    let source_path = resolve_source_file(source_file, &cwd).ok_or_else(|| {
+        format!(
+            "its source file `{}` is not in `{}` or any of that directory's parents",
+            source_file.display(),
+            cwd.display(),
+        )
+    })?;
+    let mut fn_path = closure_type_name;
+    while let Some(outer) = fn_path.strip_suffix("::{{closure}}") {
+        fn_path = outer;
+    }
+    Ok(source_path
+        .parent()
+        .unwrap()
+        .join("sim-failures")
+        .join(fn_path.replace("::", "__"))
+        .with_extension("bin"))
+}
+
+#[cfg(test)]
+mod repro_path_tests {
+    use std::env::current_dir;
+    use std::path::Path;
+
+    use super::repro_path;
+
+    #[test]
+    fn the_reproducer_is_in_sim_failures_next_to_the_source_file() {
+        // `file!()` is relative to the workspace root, the parent of the crate directory that
+        // `cargo test` runs in.
+        let this_file = current_dir().unwrap().parent().unwrap().join(file!());
+        assert_eq!(
+            repro_path(Path::new(file!()), current_dir(), "a::b::{{closure}}"),
+            Ok(this_file.with_file_name("sim-failures").join("a__b.bin"))
+        );
+    }
+
+    #[test]
+    fn a_missing_source_file_is_the_reason() {
+        let reason = repro_path(
+            Path::new("hydro_lang/src/sim/missing.rs"),
+            current_dir(),
+            "a::{{closure}}",
+        )
+        .unwrap_err();
+        assert!(
+            reason.starts_with("its source file `hydro_lang/src/sim/missing.rs` is not in"),
+            "{reason}"
+        );
+    }
+
+    #[test]
+    fn a_nested_closure_is_named_after_the_function_that_defines_it() {
+        let outer = || async || {};
+        let path = repro_path(
+            Path::new(file!()),
+            current_dir(),
+            std::any::type_name_of_val(&outer()),
+        )
+        .unwrap();
+        assert_eq!(
+            path.file_name().unwrap(),
+            "hydro_lang__sim__compiled__repro_path_tests__a_nested_closure_is_named_after_the_function_that_defines_it.bin"
+        );
+    }
 }
