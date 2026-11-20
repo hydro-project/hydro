@@ -35,8 +35,9 @@ use hydro_lang::location::cluster::{
 };
 use hydro_lang::location::dynamic::LocationId;
 use hydro_lang::location::{Atomic, Cluster, Location, MemberId};
-use hydro_lang::networking::NetworkFor;
+use hydro_lang::networking::NetworkForLink;
 use hydro_lang::prelude::*;
+use hydro_lang::sim_hooks::OnCluster;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -839,7 +840,12 @@ where
     T: Clone + Serialize + DeserializeOwned + 'a,
     ClusterTag: 'a,
     O: Ordering,
-    Net: NetworkFor<RaftRpc<T>, RetriesGuarantee = ExactlyOnce>,
+    Net: NetworkForLink<
+            RaftRpc<T>,
+            OnCluster<ClusterTag>,
+            OnCluster<ClusterTag>,
+            RetriesGuarantee = ExactlyOnce,
+        >,
     NoOrder: MinOrder<Net::OrderingGuarantee, Min = NoOrder>,
 {
     let cluster_size = config.cluster_size;
@@ -1100,7 +1106,12 @@ where
     O: Ordering,
     Con: Consistency,
     ClusterTag: 'a,
-    Net: NetworkFor<RaftRpc<T>, RetriesGuarantee = ExactlyOnce>,
+    Net: NetworkForLink<
+            RaftRpc<T>,
+            OnCluster<ClusterTag>,
+            OnCluster<ClusterTag>,
+            RetriesGuarantee = ExactlyOnce,
+        >,
     NoOrder: MinOrder<Net::OrderingGuarantee, Min = NoOrder>,
 {
     // The server runs on the consistency-less view of the cluster: `Cluster`'s

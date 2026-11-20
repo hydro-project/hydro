@@ -65,16 +65,17 @@ use crate::sim::compiled::{
 };
 use crate::sim::runtime::{
     AtLeastOnceOrderingDecision, BatchDecision, InlineOrderingDecision, InlineRetriesDecision,
-    KeyedBatchDecision, KeyedSnapshotDecision, MergeDecision, NoOrderRetriesDecision,
-    OrderedRetriesDecision, ScriptDecision, SnapshotDecision, TopLevelOrderingDecision,
-    UnorderedBatchDecision, UnorderedKeyedBatchDecision,
+    KeyedBatchDecision, KeyedSnapshotDecision, LossDecision, MergeDecision, NoOrderRetriesDecision,
+    OrderedLossDecision, OrderedRetriesDecision, ScriptDecision, SenderLossDecision,
+    SenderOrderedLossDecision, SnapshotDecision, TopLevelOrderingDecision, UnorderedBatchDecision,
+    UnorderedKeyedBatchDecision,
 };
 pub use crate::sim::runtime::{
     BatchStatus, KeyedSnapshotStatus, MergeStatus, OrderingStatus, SnapshotStatus,
 };
 pub use crate::sim_hooks::{
     BatchHook, BindableHookScope, KeyedBatchHook, KeyedMergeOrderedHook, KeyedOrderingHook,
-    KeyedSnapshotHook, MergeOrderedHook, OnCluster, OnMember, OnProcess, OrderingHook,
+    KeyedSnapshotHook, LossHook, MergeOrderedHook, OnCluster, OnMember, OnProcess, OrderingHook,
     PartialOrderingHook, RetriesHook, ScriptableHookScope, SimHook, SnapshotHook,
 };
 
@@ -650,6 +651,167 @@ where
             self.id,
             self.member,
             &InlineRetriesDecision::Release(values.into_iter().collect()),
+        )
+    }
+}
+
+impl<T, O: Ordering, Sender, Scope: ScriptableHookScope> LossHook<T, O, Sender, Scope> {
+    pause_family!(OrderingStatus);
+
+    /// Pauses a loss hook until at least `n` messages are in flight (buffered at the
+    /// channel); see [`Self::pause_until`].
+    pub fn pause_until_count(
+        &self,
+        n: usize,
+    ) -> PauseUntilFuture<OrderingStatus, impl Fn(&OrderingStatus) -> bool + Unpin> {
+        self.pause_until_labeled(format!("pause_until_count({})", n), move |status| {
+            status.buffered >= n
+        })
+    }
+}
+
+impl<T, P, Scope: ScriptableHookScope> LossHook<T, NoOrder, OnProcess<P>, Scope>
+where
+    T: Serialize + DeserializeOwned,
+{
+    /// Scripts a lossy network channel to **deliver** the in-flight message equal to
+    /// `value`, consuming it. The transport is unordered (`UDP.lossy`), so any buffered
+    /// message may be named — delivery order is part of the decision.
+    pub fn deliver(&self, value: T) -> DecisionFuture {
+        DecisionFuture::new(self.id, self.member, &LossDecision::Deliver(value))
+    }
+
+    /// Scripts a lossy network channel to **drop** the in-flight message equal to
+    /// `value`, consuming it without delivering anything to the destination. This is
+    /// where the simulator injects the losses the channel's fault model says the
+    /// program must tolerate.
+    pub fn lose(&self, value: T) -> DecisionFuture {
+        DecisionFuture::new(self.id, self.member, &LossDecision::Lose(value))
+    }
+}
+
+impl<T, P, Scope: ScriptableHookScope> LossHook<T, TotalOrder, OnProcess<P>, Scope>
+where
+    T: Serialize + DeserializeOwned,
+{
+    /// Scripts a lossy network channel to **deliver** the front of its in-flight queue,
+    /// which must equal `value`, consuming it. The transport preserves the order of
+    /// delivered messages (`TCP.lossy` injects only losses), so messages are resolved in
+    /// send order and a mismatching front is a permanent error.
+    pub fn deliver(&self, value: T) -> DecisionFuture {
+        DecisionFuture::new(self.id, self.member, &OrderedLossDecision::Deliver(value))
+    }
+
+    /// Scripts a lossy network channel to **drop** the front of its in-flight queue,
+    /// which must equal `value`, consuming it without delivering anything to the
+    /// destination. This is where the simulator injects the losses the channel's fault
+    /// model says the program must tolerate; a mismatching front is a permanent error
+    /// (messages are resolved in send order).
+    pub fn lose(&self, value: T) -> DecisionFuture {
+        DecisionFuture::new(self.id, self.member, &OrderedLossDecision::Lose(value))
+    }
+
+    /// Scripts a lossy network channel to **deliver** the front of its in-flight queue,
+    /// whatever it is (waiting for a message to arrive if the queue is empty). Unlike
+    /// [`Self::deliver`], this does not assert the delivered value; prefer
+    /// `deliver(value)`, which names the message it means and fails loudly when the
+    /// script falls out of sync with the program.
+    pub fn deliver_next(&self) -> DecisionFuture {
+        DecisionFuture::new(self.id, self.member, &OrderedLossDecision::<T>::DeliverNext)
+    }
+
+    /// Scripts a lossy network channel to **drop** the front of its in-flight queue,
+    /// whatever it is; see [`Self::deliver_next`]. Prefer `lose(value)`, which names the
+    /// message it means and fails loudly on mis-synchronization.
+    pub fn lose_next(&self) -> DecisionFuture {
+        DecisionFuture::new(self.id, self.member, &OrderedLossDecision::<T>::LoseNext)
+    }
+}
+
+impl<T, C, Scope: ScriptableHookScope> LossHook<T, NoOrder, OnCluster<C>, Scope>
+where
+    T: Serialize + DeserializeOwned,
+{
+    /// Scripts a lossy network channel from a cluster to **deliver** the in-flight
+    /// message from cluster member `sender` equal to `value`, consuming it. The
+    /// transport is unordered (`UDP.lossy`), so any of the sender's buffered messages
+    /// may be named — delivery order is part of the decision.
+    pub fn deliver(&self, sender: u32, value: T) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &SenderLossDecision::Deliver(sender, value),
+        )
+    }
+
+    /// Scripts a lossy network channel from a cluster to **drop** the in-flight message
+    /// from cluster member `sender` equal to `value`, consuming it without delivering
+    /// anything to the destination. This is where the simulator injects the losses the
+    /// channel's fault model says the program must tolerate.
+    pub fn lose(&self, sender: u32, value: T) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &SenderLossDecision::Lose(sender, value),
+        )
+    }
+}
+
+impl<T, C, Scope: ScriptableHookScope> LossHook<T, TotalOrder, OnCluster<C>, Scope>
+where
+    T: Serialize + DeserializeOwned,
+{
+    /// Scripts a lossy network channel from a cluster to **deliver** the front of
+    /// cluster member `sender`'s in-flight queue, which must equal `value`, consuming
+    /// it. Each sender's delivered messages preserve that sender's send order
+    /// (`TCP.lossy` injects only losses over each member's connection), so a sender's
+    /// messages are resolved in send order — a mismatching front is a permanent error —
+    /// while the interleaving *across* senders is part of the decision.
+    pub fn deliver(&self, sender: u32, value: T) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &SenderOrderedLossDecision::Deliver(sender, value),
+        )
+    }
+
+    /// Scripts a lossy network channel from a cluster to **drop** the front of cluster
+    /// member `sender`'s in-flight queue, which must equal `value`, consuming it
+    /// without delivering anything to the destination. This is where the simulator
+    /// injects the losses the channel's fault model says the program must tolerate; a
+    /// mismatching front is a permanent error (each sender's messages are resolved in
+    /// send order).
+    pub fn lose(&self, sender: u32, value: T) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &SenderOrderedLossDecision::Lose(sender, value),
+        )
+    }
+
+    /// Scripts a lossy network channel from a cluster to **deliver** the front of
+    /// cluster member `sender`'s in-flight queue, whatever it is (waiting for one of
+    /// that sender's messages to arrive if its queue is empty). Unlike
+    /// [`Self::deliver`], this does not assert the delivered value; prefer
+    /// `deliver(sender, value)`, which names the message it means and fails loudly when
+    /// the script falls out of sync with the program.
+    pub fn deliver_next(&self, sender: u32) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &SenderOrderedLossDecision::<T>::DeliverNext(sender),
+        )
+    }
+
+    /// Scripts a lossy network channel from a cluster to **drop** the front of cluster
+    /// member `sender`'s in-flight queue, whatever it is; see [`Self::deliver_next`].
+    /// Prefer `lose(sender, value)`, which names the message it means and fails loudly
+    /// on mis-synchronization.
+    pub fn lose_next(&self, sender: u32) -> DecisionFuture {
+        DecisionFuture::new(
+            self.id,
+            self.member,
+            &SenderOrderedLossDecision::<T>::LoseNext(sender),
         )
     }
 }

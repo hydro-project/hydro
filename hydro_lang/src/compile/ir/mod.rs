@@ -654,6 +654,8 @@ pub trait DfirBuilder {
         external_element_type: Option<&syn::Type>,
         tag_id: StmtId,
         networking_info: &crate::networking::NetworkingInfo,
+        out_kind: &CollectionKind,
+        op_meta: &HydroIrOpMetadata,
     );
 
     fn create_external_source(
@@ -1336,6 +1338,8 @@ impl DfirBuilder for ProdDfirBuilder {
         _external_element_type: Option<&syn::Type>,
         tag_id: StmtId,
         _networking_info: &crate::networking::NetworkingInfo,
+        _out_kind: &CollectionKind,
+        _op_meta: &HydroIrOpMetadata,
     ) {
         let sender_builder = self.graph_mut(from);
         if let Some(serialize_pipeline) = serialize {
@@ -6702,6 +6706,7 @@ impl HydroNode {
                         deserialize,
                         instantiate_fn,
                         input,
+                        metadata,
                         ..
                     } => {
                         let input_ident = ident_stack.pop().unwrap();
@@ -6740,6 +6745,8 @@ impl HydroNode {
                                     serialize.external_element_type(),
                                     stmt_id,
                                     networking_info,
+                                    &metadata.collection_kind,
+                                    &metadata.op,
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {

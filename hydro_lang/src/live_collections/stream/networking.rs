@@ -25,11 +25,12 @@ use crate::location::cluster::{ClusterIds, Consistency};
 use crate::location::dynamic::DynLocation;
 use crate::location::external_process::ExternalBincodeStream;
 use crate::location::{Cluster, External, Location, MemberId, MembershipEvent, Process};
-use crate::networking::{NetworkFor, TCP};
+use crate::networking::{NetworkForLink, TCP};
 use crate::nondet::{NonDet, nondet};
 use crate::properties::manual_proof;
 #[cfg(feature = "sim")]
 use crate::sim::SimReceiver;
+use crate::sim_hooks::{OnCluster, OnProcess};
 use crate::staging_util::get_this_crate;
 
 // same as the one in `hydro_std`, but internal use only
@@ -163,7 +164,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # }));
     /// # }
     /// ```
-    pub fn send<L2, N: NetworkFor<T>>(
+    pub fn send<L2, N: NetworkForLink<T, OnProcess<L>, OnProcess<L2>>>(
         self,
         to: &Process<'a, L2>,
         via: N,
@@ -215,13 +216,18 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
                 deserialize,
                 instantiate_fn: DebugInstantiate::Building,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: to.new_node_metadata(Stream::<
-                    T,
-                    Process<'a, L2>,
-                    Unbounded,
-                    <O as MinOrder<N::OrderingGuarantee>>::Min,
-                    <R as MinRetries<N::RetriesGuarantee>>::Min,
-                >::collection_kind()),
+                metadata: {
+                    let mut metadata = to.new_node_metadata(Stream::<
+                        T,
+                        Process<'a, L2>,
+                        Unbounded,
+                        <O as MinOrder<N::OrderingGuarantee>>::Min,
+                        <R as MinRetries<N::RetriesGuarantee>>::Min,
+                    >::collection_kind(
+                    ));
+                    metadata.op.sim_hook_id = via.sim_hook_id();
+                    metadata
+                },
             },
         )
     }
@@ -318,7 +324,11 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # }));
     /// # }
     /// ```
-    pub fn broadcast<L2: 'a, Id2: Clone + Eq + Hash + 'a, N: NetworkFor<T>>(
+    pub fn broadcast<
+        L2: 'a,
+        Id2: Clone + Eq + Hash + 'a,
+        N: NetworkForLink<T, OnProcess<L>, OnCluster<L2>>,
+    >(
         self,
         to: &Cluster<'a, L2, Id2>,
         via: N,
@@ -369,7 +379,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// deterministic.
     ///
     /// The consistency guarantee of the output depends on the network's failure policy
-    /// ([`NetworkFor::ConsistencyGuarantee`]). Policies like `fail_stop` and
+    /// ([`NetworkFor::ConsistencyGuarantee`](crate::networking::NetworkFor::ConsistencyGuarantee)). Policies like `fail_stop` and
     /// `lossy_delayed_forever` guarantee that every live member eventually materializes the same
     /// elements, so the output is
     /// [`EventualConsistency`](crate::location::cluster::EventualConsistency). A plain `lossy`
@@ -405,7 +415,11 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # }));
     /// # }
     /// ```
-    pub fn broadcast_closed<L2: 'a, Id2: Clone + Eq + Hash + 'a, N: NetworkFor<T>>(
+    pub fn broadcast_closed<
+        L2: 'a,
+        Id2: Clone + Eq + Hash + 'a,
+        N: NetworkForLink<T, OnProcess<L>, OnCluster<L2>>,
+    >(
         self,
         to: &Cluster<'a, L2, Id2>,
         via: N,
@@ -660,7 +674,7 @@ impl<'a, T, L, L2, Id2: Clone + Eq + Hash + 'a, B: Boundedness, O: Ordering, R: 
     /// # }));
     /// # }
     /// ```
-    pub fn demux<N: NetworkFor<T>>(
+    pub fn demux<N: NetworkForLink<T, OnProcess<L>, OnCluster<L2>>>(
         self,
         to: &Cluster<'a, L2, Id2>,
         via: N,
@@ -782,7 +796,11 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     /// # }));
     /// # }
     /// ```
-    pub fn round_robin<L2: 'a, Id2: Clone + Eq + Hash + 'a, N: NetworkFor<T>>(
+    pub fn round_robin<
+        L2: 'a,
+        Id2: Clone + Eq + Hash + 'a,
+        N: NetworkForLink<T, OnProcess<L>, OnCluster<L2>>,
+    >(
         self,
         to: &Cluster<'a, L2, Id2>,
         via: N,
@@ -937,7 +955,11 @@ impl<'a, T, L, Id: Clone + Eq + Hash + 'a, B: Boundedness, C: Consistency>
     /// # }));
     /// # }
     /// ```
-    pub fn round_robin<L2: 'a, Id2: Clone + Eq + Hash + 'a, N: NetworkFor<T>>(
+    pub fn round_robin<
+        L2: 'a,
+        Id2: Clone + Eq + Hash + 'a,
+        N: NetworkForLink<T, OnCluster<L>, OnCluster<L2>>,
+    >(
         self,
         to: &Cluster<'a, L2, Id2>,
         via: N,
@@ -1109,7 +1131,7 @@ impl<'a, T, L, Id: Clone + Eq + Hash + 'a, B: Boundedness, C: Consistency, O: Or
     /// # }));
     /// # }
     /// ```
-    pub fn send<L2, N: NetworkFor<T>>(
+    pub fn send<L2, N: NetworkForLink<T, OnCluster<L>, OnProcess<L2>>>(
         self,
         to: &Process<'a, L2>,
         via: N,
@@ -1168,13 +1190,18 @@ impl<'a, T, L, Id: Clone + Eq + Hash + 'a, B: Boundedness, C: Consistency, O: Or
                 deserialize,
                 instantiate_fn: DebugInstantiate::Building,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: to.new_node_metadata(Stream::<
-                    (MemberId<L, Id>, T),
-                    Process<'a, L2>,
-                    Unbounded,
-                    <O as MinOrder<N::OrderingGuarantee>>::Min,
-                    <R as MinRetries<N::RetriesGuarantee>>::Min,
-                >::collection_kind()),
+                metadata: {
+                    let mut metadata = to.new_node_metadata(Stream::<
+                        (MemberId<L, Id>, T),
+                        Process<'a, L2>,
+                        Unbounded,
+                        <O as MinOrder<N::OrderingGuarantee>>::Min,
+                        <R as MinRetries<N::RetriesGuarantee>>::Min,
+                    >::collection_kind(
+                    ));
+                    metadata.op.sim_hook_id = via.sim_hook_id();
+                    metadata
+                },
             },
         );
 
@@ -1287,7 +1314,11 @@ impl<'a, T, L, Id: Clone + Eq + Hash + 'a, B: Boundedness, C: Consistency, O: Or
     /// # }));
     /// # }
     /// ```
-    pub fn broadcast<L2: 'a, Id2: Clone + Eq + Hash + 'a, N: NetworkFor<T>>(
+    pub fn broadcast<
+        L2: 'a,
+        Id2: Clone + Eq + Hash + 'a,
+        N: NetworkForLink<T, OnCluster<L>, OnCluster<L2>>,
+    >(
         self,
         to: &Cluster<'a, L2, Id2>,
         via: N,
@@ -1337,7 +1368,7 @@ impl<'a, T, L, Id: Clone + Eq + Hash + 'a, B: Boundedness, C: Consistency, O: Or
     /// broadcast fully deterministic.
     ///
     /// The consistency guarantee of the output depends on the network's failure policy
-    /// ([`NetworkFor::ConsistencyGuarantee`]). Policies like `fail_stop` and
+    /// ([`NetworkFor::ConsistencyGuarantee`](crate::networking::NetworkFor::ConsistencyGuarantee)). Policies like `fail_stop` and
     /// `lossy_delayed_forever` guarantee that every live destination member eventually
     /// materializes the same elements from each source, so the output is
     /// [`EventualConsistency`](crate::location::cluster::EventualConsistency). A plain `lossy`
@@ -1351,7 +1382,11 @@ impl<'a, T, L, Id: Clone + Eq + Hash + 'a, B: Boundedness, C: Consistency, O: Or
         clippy::type_complexity,
         reason = "the output is keyed by the sender's member ID and lives on the destination cluster"
     )]
-    pub fn broadcast_closed<L2: 'a, Id2: Clone + Eq + Hash + 'a, N: NetworkFor<T>>(
+    pub fn broadcast_closed<
+        L2: 'a,
+        Id2: Clone + Eq + Hash + 'a,
+        N: NetworkForLink<T, OnCluster<L>, OnCluster<L2>>,
+    >(
         self,
         to: &Cluster<'a, L2, Id2>,
         via: N,
@@ -1567,7 +1602,7 @@ impl<
     /// # }));
     /// # }
     /// ```
-    pub fn demux<N: NetworkFor<T>>(
+    pub fn demux<N: NetworkForLink<T, OnCluster<L>, OnCluster<L2>>>(
         self,
         to: &Cluster<'a, L2, Id2>,
         via: N,
