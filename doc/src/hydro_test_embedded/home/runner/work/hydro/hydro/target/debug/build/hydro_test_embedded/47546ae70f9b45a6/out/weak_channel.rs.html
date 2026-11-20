@@ -1,8 +1,8 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded/e4cf3afeaef0cdc5/out/echo_network_embedded.rs`."><title>echo_network_embedded.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../../../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/rustdoc-1f5a765c.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../../../../../../" data-static-root-path="../../../../../../../../../../../../../static.files/" data-current-crate="hydro_test_embedded" data-themes="" data-resource-suffix="" data-rustdoc-version="1.102.0-nightly (65ce8611f 2026-11-18)" data-channel="nightly" data-search-js="search-69faa2c4.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-9b351432.js" ><script src="../../../../../../../../../../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../../../../../../../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../../../../../../../../../../src-files.js"></script><script defer src="../../../../../../../../../../../../../static.files/main-419f3a3f.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/noscript-101b5a15.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../../../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test_embedded/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded/e4cf3afeaef0cdc5/out/</div>echo_network_embedded.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded/47546ae70f9b45a6/out/weak_channel.rs`."><title>weak_channel.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../../../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/rustdoc-1f5a765c.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../../../../../../" data-static-root-path="../../../../../../../../../../../../../static.files/" data-current-crate="hydro_test_embedded" data-themes="" data-resource-suffix="" data-rustdoc-version="1.102.0-nightly (6905905bb 2026-11-19)" data-channel="nightly" data-search-js="search-69faa2c4.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-9b351432.js" ><script src="../../../../../../../../../../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../../../../../../../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../../../../../../../../../../src-files.js"></script><script defer src="../../../../../../../../../../../../../static.files/main-419f3a3f.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../../../../../static.files/noscript-101b5a15.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../../../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test_embedded/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded/47546ae70f9b45a6/out/</div>weak_channel.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>hydro_lang::runtime_support::dfir_rs <span class="kw">as </span>__root_dfir_rs;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">pub use </span>hydro_test::__staged;
-<a href=#5 id=5 data-nosnippet>5</a><span class="kw">pub mod </span>echo_sender {
+<a href=#5 id=5 data-nosnippet>5</a><span class="kw">pub mod </span>weak_channel_sender {
 <a href=#6 id=6 data-nosnippet>6</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 <a href=#7 id=7 data-nosnippet>7</a>    <span class="kw">pub struct </span>EmbeddedInputs&lt;
 <a href=#8 id=8 data-nosnippet>8</a>        __In0: __root_dfir_rs::futures::Stream&lt;Item = std::string::String&gt; + Unpin,
@@ -28,7 +28,7 @@
 <a href=#28 id=28 data-nosnippet>28</a>        }
 <a href=#29 id=29 data-nosnippet>29</a>    }
 <a href=#30 id=30 data-nosnippet>30</a>    <span class="kw">pub struct </span>EmbeddedNetworkOut&lt;__NetOut0: FnMut(std::string::String)&gt; {
-<a href=#31 id=31 data-nosnippet>31</a>        <span class="doccomment">///Sends on `messages` to `echo_receiver` (marker type: [`outgoing::messages`]).
+<a href=#31 id=31 data-nosnippet>31</a>        <span class="doccomment">///Sends on `messages` to `weak_channel_receiver` (marker type: [`outgoing::messages`]).
 <a href=#32 id=32 data-nosnippet>32</a>        </span><span class="kw">pub </span>messages: hydro_lang::compile::embedded_runtime::EmbeddedNetworkOutputChannel&lt;
 <a href=#33 id=33 data-nosnippet>33</a>            outgoing::messages,
 <a href=#34 id=34 data-nosnippet>34</a>            __NetOut0,
@@ -38,9 +38,9 @@
 <a href=#38 id=38 data-nosnippet>38</a>    /// channels, describing each field of `EmbeddedNetworkOut`.
 <a href=#39 id=39 data-nosnippet>39</a>    </span><span class="kw">pub mod </span>outgoing {
 <a href=#40 id=40 data-nosnippet>40</a>        <span class="kw">use super</span>::<span class="kw-2">*</span>;
-<a href=#41 id=41 data-nosnippet>41</a>        <span class="doccomment">/**The `messages` channel's end at this location; its other end is at `echo_receiver`.
+<a href=#41 id=41 data-nosnippet>41</a>        <span class="doccomment">/**The `messages` channel's end at this location; its other end is at `weak_channel_receiver`.
 <a href=#42 id=42 data-nosnippet>42</a>
-<a href=#43 id=43 data-nosnippet>43</a>Acknowledge the channel's configuration and what the stream sent on it may do with `EmbeddedNetworkOutputChannel::new(.., ChannelConfiguration::new(EMBEDDED.never_reorders().never_duplicates().never_drops()), Acknowledgements::new())`.*/
+<a href=#43 id=43 data-nosnippet>43</a>Acknowledge the channel's configuration and what the stream sent on it may do with `EmbeddedNetworkOutputChannel::new(.., ChannelConfiguration::new(EMBEDDED.may_reorder().may_duplicate().never_drops()), Acknowledgements::new())`.*/
 <a href=#44 id=44 data-nosnippet>44</a>        </span><span class="attr">#[allow(non_camel_case_types, reason = <span class="string">"named after its field"</span>)]
 <a href=#45 id=45 data-nosnippet>45</a>        </span><span class="kw">pub struct </span>messages;
 <a href=#46 id=46 data-nosnippet>46</a>        <span class="kw">impl </span>hydro_lang::compile::embedded_runtime::EmbeddedChannel <span class="kw">for </span>messages {
@@ -49,8 +49,8 @@
 <a href=#49 id=49 data-nosnippet>49</a>        }
 <a href=#50 id=50 data-nosnippet>50</a>        <span class="kw">impl </span>hydro_lang::compile::embedded_runtime::EmbeddedNetworkChannel <span class="kw">for </span>messages {
 <a href=#51 id=51 data-nosnippet>51</a>            <span class="kw">type </span>Transport = hydro_lang::networking::EmbeddedTransport&lt;
-<a href=#52 id=52 data-nosnippet>52</a>                hydro_lang::live_collections::stream::ExactlyOnce,
-<a href=#53 id=53 data-nosnippet>53</a>                hydro_lang::live_collections::stream::TotalOrder,
+<a href=#52 id=52 data-nosnippet>52</a>                hydro_lang::live_collections::stream::AtLeastOnce,
+<a href=#53 id=53 data-nosnippet>53</a>                hydro_lang::live_collections::stream::NoOrder,
 <a href=#54 id=54 data-nosnippet>54</a>                hydro_lang::networking::FailStop,
 <a href=#55 id=55 data-nosnippet>55</a>            &gt;;
 <a href=#56 id=56 data-nosnippet>56</a>            <span class="kw">type </span>Serialization = hydro_lang::networking::Embedded;
@@ -63,13 +63,13 @@
 <a href=#63 id=63 data-nosnippet>63</a>    clippy::suspicious_else_formatting,
 <a href=#64 id=64 data-nosnippet>64</a>    clippy::clone_on_copy
 <a href=#65 id=65 data-nosnippet>65</a>)]
-<a href=#66 id=66 data-nosnippet>66</a></span><span class="kw">pub fn </span>echo_sender&lt;
+<a href=#66 id=66 data-nosnippet>66</a></span><span class="kw">pub fn </span>weak_channel_sender&lt;
 <a href=#67 id=67 data-nosnippet>67</a>    <span class="lifetime">'a</span>,
 <a href=#68 id=68 data-nosnippet>68</a>    __In0: __root_dfir_rs::futures::Stream&lt;Item = std::string::String&gt; + Unpin + <span class="lifetime">'a</span>,
 <a href=#69 id=69 data-nosnippet>69</a>    __NetOut0: FnMut(std::string::String) + <span class="lifetime">'a</span>,
 <a href=#70 id=70 data-nosnippet>70</a>&gt;(
-<a href=#71 id=71 data-nosnippet>71</a>    __inputs: echo_sender::EmbeddedInputs&lt;__In0&gt;,
-<a href=#72 id=72 data-nosnippet>72</a>    __network_out: echo_sender::EmbeddedNetworkOut&lt;__NetOut0&gt;,
+<a href=#71 id=71 data-nosnippet>71</a>    __inputs: weak_channel_sender::EmbeddedInputs&lt;__In0&gt;,
+<a href=#72 id=72 data-nosnippet>72</a>    __network_out: weak_channel_sender::EmbeddedNetworkOut&lt;__NetOut0&gt;,
 <a href=#73 id=73 data-nosnippet>73</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
 <a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure&lt;
 <a href=#75 id=75 data-nosnippet>75</a>        Metrics = (),
@@ -153,7 +153,7 @@
 <a href=#153 id=153 data-nosnippet>153</a>        )
 <a href=#154 id=154 data-nosnippet>154</a>    }
 <a href=#155 id=155 data-nosnippet>155</a>}
-<a href=#156 id=156 data-nosnippet>156</a><span class="kw">pub mod </span>echo_receiver {
+<a href=#156 id=156 data-nosnippet>156</a><span class="kw">pub mod </span>weak_channel_receiver {
 <a href=#157 id=157 data-nosnippet>157</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 <a href=#158 id=158 data-nosnippet>158</a>    <span class="kw">pub struct </span>EmbeddedOutputs&lt;__Out0: FnMut(std::string::String)&gt; {
 <a href=#159 id=159 data-nosnippet>159</a>        <span class="doccomment">///The `output` output (marker type: [`outputs::output`]).
@@ -167,18 +167,18 @@
 <a href=#167 id=167 data-nosnippet>167</a>        <span class="kw">use super</span>::<span class="kw-2">*</span>;
 <a href=#168 id=168 data-nosnippet>168</a>        <span class="doccomment">/**The `output` output.
 <a href=#169 id=169 data-nosnippet>169</a>
-<a href=#170 id=170 data-nosnippet>170</a>Acknowledge what it may do with `EmbeddedOutputChannel::new(.., Acknowledgements::new())`.*/
+<a href=#170 id=170 data-nosnippet>170</a>Acknowledge what it may do with `EmbeddedOutputChannel::new(.., Acknowledgements::new().no_order().at_least_once())`.*/
 <a href=#171 id=171 data-nosnippet>171</a>        </span><span class="attr">#[allow(non_camel_case_types, reason = <span class="string">"named after its field"</span>)]
 <a href=#172 id=172 data-nosnippet>172</a>        </span><span class="kw">pub struct </span>output;
 <a href=#173 id=173 data-nosnippet>173</a>        <span class="kw">impl </span>hydro_lang::compile::embedded_runtime::EmbeddedChannel <span class="kw">for </span>output {
-<a href=#174 id=174 data-nosnippet>174</a>            <span class="kw">type </span>Ordering = hydro_lang::live_collections::stream::TotalOrder;
-<a href=#175 id=175 data-nosnippet>175</a>            <span class="kw">type </span>Retries = hydro_lang::live_collections::stream::ExactlyOnce;
+<a href=#174 id=174 data-nosnippet>174</a>            <span class="kw">type </span>Ordering = hydro_lang::live_collections::stream::NoOrder;
+<a href=#175 id=175 data-nosnippet>175</a>            <span class="kw">type </span>Retries = hydro_lang::live_collections::stream::AtLeastOnce;
 <a href=#176 id=176 data-nosnippet>176</a>        }
 <a href=#177 id=177 data-nosnippet>177</a>    }
 <a href=#178 id=178 data-nosnippet>178</a>    <span class="kw">pub struct </span>EmbeddedNetworkIn&lt;
 <a href=#179 id=179 data-nosnippet>179</a>        __NetIn0: __root_dfir_rs::futures::Stream&lt;Item = std::string::String&gt; + Unpin,
 <a href=#180 id=180 data-nosnippet>180</a>    &gt; {
-<a href=#181 id=181 data-nosnippet>181</a>        <span class="doccomment">///Receives `messages` from `echo_sender` (marker type: [`incoming::messages`]).
+<a href=#181 id=181 data-nosnippet>181</a>        <span class="doccomment">///Receives `messages` from `weak_channel_sender` (marker type: [`incoming::messages`]).
 <a href=#182 id=182 data-nosnippet>182</a>        </span><span class="kw">pub </span>messages: hydro_lang::compile::embedded_runtime::EmbeddedNetworkInputChannel&lt;
 <a href=#183 id=183 data-nosnippet>183</a>            incoming::messages,
 <a href=#184 id=184 data-nosnippet>184</a>            __NetIn0,
@@ -188,19 +188,19 @@
 <a href=#188 id=188 data-nosnippet>188</a>    /// channels, describing each field of `EmbeddedNetworkIn`.
 <a href=#189 id=189 data-nosnippet>189</a>    </span><span class="kw">pub mod </span>incoming {
 <a href=#190 id=190 data-nosnippet>190</a>        <span class="kw">use super</span>::<span class="kw-2">*</span>;
-<a href=#191 id=191 data-nosnippet>191</a>        <span class="doccomment">/**The `messages` channel's end at this location; its other end is at `echo_sender`.
+<a href=#191 id=191 data-nosnippet>191</a>        <span class="doccomment">/**The `messages` channel's end at this location; its other end is at `weak_channel_sender`.
 <a href=#192 id=192 data-nosnippet>192</a>
-<a href=#193 id=193 data-nosnippet>193</a>Acknowledge the channel's configuration and promise the guarantees of the stream it delivers with `EmbeddedNetworkInputChannel::new(.., ChannelConfiguration::new(EMBEDDED.never_reorders().never_duplicates().never_drops()), Promises::new().total_order(proof).exactly_once(proof))`.*/
+<a href=#193 id=193 data-nosnippet>193</a>Acknowledge the channel's configuration and promise the guarantees of the stream it delivers with `EmbeddedNetworkInputChannel::new(.., ChannelConfiguration::new(EMBEDDED.may_reorder().may_duplicate().never_drops()), Promises::new())`.*/
 <a href=#194 id=194 data-nosnippet>194</a>        </span><span class="attr">#[allow(non_camel_case_types, reason = <span class="string">"named after its field"</span>)]
 <a href=#195 id=195 data-nosnippet>195</a>        </span><span class="kw">pub struct </span>messages;
 <a href=#196 id=196 data-nosnippet>196</a>        <span class="kw">impl </span>hydro_lang::compile::embedded_runtime::EmbeddedChannel <span class="kw">for </span>messages {
-<a href=#197 id=197 data-nosnippet>197</a>            <span class="kw">type </span>Ordering = hydro_lang::live_collections::stream::TotalOrder;
-<a href=#198 id=198 data-nosnippet>198</a>            <span class="kw">type </span>Retries = hydro_lang::live_collections::stream::ExactlyOnce;
+<a href=#197 id=197 data-nosnippet>197</a>            <span class="kw">type </span>Ordering = hydro_lang::live_collections::stream::NoOrder;
+<a href=#198 id=198 data-nosnippet>198</a>            <span class="kw">type </span>Retries = hydro_lang::live_collections::stream::AtLeastOnce;
 <a href=#199 id=199 data-nosnippet>199</a>        }
 <a href=#200 id=200 data-nosnippet>200</a>        <span class="kw">impl </span>hydro_lang::compile::embedded_runtime::EmbeddedNetworkChannel <span class="kw">for </span>messages {
 <a href=#201 id=201 data-nosnippet>201</a>            <span class="kw">type </span>Transport = hydro_lang::networking::EmbeddedTransport&lt;
-<a href=#202 id=202 data-nosnippet>202</a>                hydro_lang::live_collections::stream::ExactlyOnce,
-<a href=#203 id=203 data-nosnippet>203</a>                hydro_lang::live_collections::stream::TotalOrder,
+<a href=#202 id=202 data-nosnippet>202</a>                hydro_lang::live_collections::stream::AtLeastOnce,
+<a href=#203 id=203 data-nosnippet>203</a>                hydro_lang::live_collections::stream::NoOrder,
 <a href=#204 id=204 data-nosnippet>204</a>                hydro_lang::networking::FailStop,
 <a href=#205 id=205 data-nosnippet>205</a>            &gt;;
 <a href=#206 id=206 data-nosnippet>206</a>            <span class="kw">type </span>Serialization = hydro_lang::networking::Embedded;
@@ -213,13 +213,13 @@
 <a href=#213 id=213 data-nosnippet>213</a>    clippy::suspicious_else_formatting,
 <a href=#214 id=214 data-nosnippet>214</a>    clippy::clone_on_copy
 <a href=#215 id=215 data-nosnippet>215</a>)]
-<a href=#216 id=216 data-nosnippet>216</a></span><span class="kw">pub fn </span>echo_receiver&lt;
+<a href=#216 id=216 data-nosnippet>216</a></span><span class="kw">pub fn </span>weak_channel_receiver&lt;
 <a href=#217 id=217 data-nosnippet>217</a>    <span class="lifetime">'a</span>,
 <a href=#218 id=218 data-nosnippet>218</a>    __Out0: FnMut(std::string::String) + <span class="lifetime">'a</span>,
 <a href=#219 id=219 data-nosnippet>219</a>    __NetIn0: __root_dfir_rs::futures::Stream&lt;Item = std::string::String&gt; + Unpin + <span class="lifetime">'a</span>,
 <a href=#220 id=220 data-nosnippet>220</a>&gt;(
-<a href=#221 id=221 data-nosnippet>221</a>    __outputs: echo_receiver::EmbeddedOutputs&lt;__Out0&gt;,
-<a href=#222 id=222 data-nosnippet>222</a>    __network_in: echo_receiver::EmbeddedNetworkIn&lt;__NetIn0&gt;,
+<a href=#221 id=221 data-nosnippet>221</a>    __outputs: weak_channel_receiver::EmbeddedOutputs&lt;__Out0&gt;,
+<a href=#222 id=222 data-nosnippet>222</a>    __network_in: weak_channel_receiver::EmbeddedNetworkIn&lt;__NetIn0&gt;,
 <a href=#223 id=223 data-nosnippet>223</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
 <a href=#224 id=224 data-nosnippet>224</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure&lt;
 <a href=#225 id=225 data-nosnippet>225</a>        Metrics = (),
@@ -255,40 +255,27 @@
 <a href=#255 id=255 data-nosnippet>255</a>                        ),
 <a href=#256 id=256 data-nosnippet>256</a>                    );
 <a href=#257 id=257 data-nosnippet>257</a>                    <span class="kw">let </span>op_1v1 = <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream_fused;
-<a href=#258 id=258 data-nosnippet>258</a>                    <span class="kw">let </span>op_2v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
-<a href=#259 id=259 data-nosnippet>259</a>                        op_1v1,
-<a href=#260 id=260 data-nosnippet>260</a>                        stageleft::runtime_support::fnmut1_type_hint::&lt;
-<a href=#261 id=261 data-nosnippet>261</a>                            std::string::String,
-<a href=#262 id=262 data-nosnippet>262</a>                            std::string::String,
-<a href=#263 id=263 data-nosnippet>263</a>                        &gt;({
-<a href=#264 id=264 data-nosnippet>264</a>                            <span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
-<a href=#265 id=265 data-nosnippet>265</a>                            <span class="kw">use </span>hydro_test::__staged::embedded::echo_network_embedded::<span class="kw-2">*</span>;
-<a href=#266 id=266 data-nosnippet>266</a>                            <span class="macro">hydro_test::__stageleft_quote_src_embedded_echo_network_embedded_rs_22_16!</span>(
-<a href=#267 id=267 data-nosnippet>267</a>                                [] [| s | s.to_uppercase()]
-<a href=#268 id=268 data-nosnippet>268</a>                            )
-<a href=#269 id=269 data-nosnippet>269</a>                        }),
-<a href=#270 id=270 data-nosnippet>270</a>                    );
-<a href=#271 id=271 data-nosnippet>271</a>                    <span class="kw">let </span>op_3v1 = __root_dfir_rs::dfir_pipes::push::for_each(<span class="kw-2">&amp;mut </span>output);
-<a href=#272 id=272 data-nosnippet>272</a>                    __root_dfir_rs::dfir_pipes::pull::Pull::send_push(op_2v1, op_3v1)
-<a href=#273 id=273 data-nosnippet>273</a>                        .<span class="kw">await</span>;
-<a href=#274 id=274 data-nosnippet>274</a>                    __root_dfir_rs::dfir_pipes::pull::Pull::drain_sync(
-<a href=#275 id=275 data-nosnippet>275</a>                        <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream_fused,
-<a href=#276 id=276 data-nosnippet>276</a>                    );
-<a href=#277 id=277 data-nosnippet>277</a>                }
-<a href=#278 id=278 data-nosnippet>278</a>                <span class="attr">#[allow(clippy::nonminimal_bool, reason = <span class="string">"codegen"</span>)]
-<a href=#279 id=279 data-nosnippet>279</a>                </span><span class="kw">if </span><span class="bool-val">false </span>{
-<a href=#280 id=280 data-nosnippet>280</a>                    df.schedule_subgraph(<span class="bool-val">true</span>);
-<a href=#281 id=281 data-nosnippet>281</a>                }
-<a href=#282 id=282 data-nosnippet>282</a>            }
-<a href=#283 id=283 data-nosnippet>283</a>            df.__end_tick();
-<a href=#284 id=284 data-nosnippet>284</a>            ::std::mem::take(<span class="kw-2">&amp;mut </span>__dfir_work_done)
-<a href=#285 id=285 data-nosnippet>285</a>        };
-<a href=#286 id=286 data-nosnippet>286</a>        __root_dfir_rs::scheduled::context::Dfir::new(
-<a href=#287 id=287 data-nosnippet>287</a>            __root_dfir_rs::scheduled::context::TickClosureFn::new(__dfir_inline_tick),
-<a href=#288 id=288 data-nosnippet>288</a>            df,
-<a href=#289 id=289 data-nosnippet>289</a>            <span class="prelude-val">None</span>,
-<a href=#290 id=290 data-nosnippet>290</a>            <span class="prelude-val">None</span>,
-<a href=#291 id=291 data-nosnippet>291</a>        )
-<a href=#292 id=292 data-nosnippet>292</a>    }
-<a href=#293 id=293 data-nosnippet>293</a>}
+<a href=#258 id=258 data-nosnippet>258</a>                    <span class="kw">let </span>op_2v1 = __root_dfir_rs::dfir_pipes::push::for_each(<span class="kw-2">&amp;mut </span>output);
+<a href=#259 id=259 data-nosnippet>259</a>                    __root_dfir_rs::dfir_pipes::pull::Pull::send_push(op_1v1, op_2v1)
+<a href=#260 id=260 data-nosnippet>260</a>                        .<span class="kw">await</span>;
+<a href=#261 id=261 data-nosnippet>261</a>                    __root_dfir_rs::dfir_pipes::pull::Pull::drain_sync(
+<a href=#262 id=262 data-nosnippet>262</a>                        <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream_fused,
+<a href=#263 id=263 data-nosnippet>263</a>                    );
+<a href=#264 id=264 data-nosnippet>264</a>                }
+<a href=#265 id=265 data-nosnippet>265</a>                <span class="attr">#[allow(clippy::nonminimal_bool, reason = <span class="string">"codegen"</span>)]
+<a href=#266 id=266 data-nosnippet>266</a>                </span><span class="kw">if </span><span class="bool-val">false </span>{
+<a href=#267 id=267 data-nosnippet>267</a>                    df.schedule_subgraph(<span class="bool-val">true</span>);
+<a href=#268 id=268 data-nosnippet>268</a>                }
+<a href=#269 id=269 data-nosnippet>269</a>            }
+<a href=#270 id=270 data-nosnippet>270</a>            df.__end_tick();
+<a href=#271 id=271 data-nosnippet>271</a>            ::std::mem::take(<span class="kw-2">&amp;mut </span>__dfir_work_done)
+<a href=#272 id=272 data-nosnippet>272</a>        };
+<a href=#273 id=273 data-nosnippet>273</a>        __root_dfir_rs::scheduled::context::Dfir::new(
+<a href=#274 id=274 data-nosnippet>274</a>            __root_dfir_rs::scheduled::context::TickClosureFn::new(__dfir_inline_tick),
+<a href=#275 id=275 data-nosnippet>275</a>            df,
+<a href=#276 id=276 data-nosnippet>276</a>            <span class="prelude-val">None</span>,
+<a href=#277 id=277 data-nosnippet>277</a>            <span class="prelude-val">None</span>,
+<a href=#278 id=278 data-nosnippet>278</a>        )
+<a href=#279 id=279 data-nosnippet>279</a>    }
+<a href=#280 id=280 data-nosnippet>280</a>}
 </code></pre></div></section></main></body></html>
