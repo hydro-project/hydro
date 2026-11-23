@@ -1900,7 +1900,6 @@ dependencies = [
  "serde_json",
  "sinktools",
  "slotmap",
- "smallvec",
  "static_assertions",
  "time",
  "tokio",
