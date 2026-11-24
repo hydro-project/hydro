@@ -26,7 +26,7 @@ pub fn partition<'a, F>(
 where
     F: Fn((MemberId<()>, String)) -> (MemberId<()>, String) + 'a,
 {
-    let unbounded: Stream<_, _> = cluster1.source_iter(q!(vec!(CLUSTER_SELF_ID))).into();
+    let unbounded: Stream<_, _> = cluster1.source_iter(q!(vec![CLUSTER_SELF_ID])).into();
 
     unbounded
         .map(q!(move |id| (id.clone(), format!("Hello from {}", id))))
@@ -43,7 +43,7 @@ pub fn decouple_cluster<'a>(flow: &mut FlowBuilder<'a>) -> (Cluster<'a, ()>, Clu
     let cluster1 = flow.cluster();
     let cluster2 = flow.cluster();
     cluster1
-        .source_iter(q!(vec!(CLUSTER_SELF_ID)))
+        .source_iter(q!(vec![CLUSTER_SELF_ID]))
         // .for_each(q!(|message| println!("hey, {}", message)))
         .inspect(q!(|message| println!(
             "Cluster1 node sending message: {}",

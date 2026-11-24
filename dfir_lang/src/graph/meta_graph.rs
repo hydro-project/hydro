@@ -2481,7 +2481,7 @@ impl DfirGraph {
                 // start false (from take()) and are set true by recv port code
                 // if any handoff buffer has data.
                 let mut __dfir_work_done = true;
-                #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof)]
+                #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof, clippy::clone_on_copy)]
                 let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context<#context_metrics_ty>| {
                     // Reset arena between ticks (start-of-tick)
                     #bump_ident.reset();

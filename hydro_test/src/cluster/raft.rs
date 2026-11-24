@@ -1611,9 +1611,9 @@ mod tests {
                     index: position + 1,
                 })
                 .collect();
-            for member in 0..self.deployed {
+            for (member, committed) in self.committed.iter().enumerate().take(self.deployed) {
                 assert_eq!(
-                    self.committed[member], expected,
+                    *committed, expected,
                     "member {}'s committed history diverges",
                     member
                 );
@@ -1621,12 +1621,12 @@ mod tests {
         }
 
         fn assert_nothing_redirected(&self) {
-            for member in 0..self.deployed {
+            for (member, redirected) in self.redirected.iter().enumerate().take(self.deployed) {
                 assert!(
-                    self.redirected[member].is_empty(),
+                    redirected.is_empty(),
                     "member {} redirected requests: {:?}",
                     member,
-                    self.redirected[member]
+                    redirected
                 );
             }
         }
@@ -1942,9 +1942,9 @@ mod tests {
             "after heartbeats, redirects must carry the learned leader"
         );
 
-        for member in 0..3 {
+        for committed in cluster.committed.iter().take(3) {
             assert!(
-                cluster.committed[member].is_empty(),
+                committed.is_empty(),
                 "nothing may commit without a leader replicating"
             );
         }

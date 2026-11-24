@@ -185,7 +185,7 @@ mod test {
             for b in [vec![], vec![0], vec![1], vec![0, 1]] {
                 test_vec.push(DomPair::new(
                     SetUnionHashSet::new_from(HashSet::from_iter(a.clone())),
-                    SetUnionHashSet::new_from(HashSet::from_iter(b.clone())),
+                    SetUnionHashSet::new_from(HashSet::from_iter(b)),
                 ));
             }
         }
@@ -245,7 +245,7 @@ mod test {
             for b in [vec![], vec![0], vec![1], vec![0, 1]] {
                 test_vec.push(DomPair::new(
                     Max::new(a),
-                    SetUnionHashSet::new_from(HashSet::from_iter(b.clone())),
+                    SetUnionHashSet::new_from(HashSet::from_iter(b)),
                 ));
             }
         }
