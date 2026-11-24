@@ -782,7 +782,7 @@ mod tests {
     #[test]
     fn sim_clone_cluster() {
         let mut flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
+        let cluster = flow.cluster::<(), u32>();
 
         let (input_send, input) = cluster.sim_input::<i32, _, _>();
         let config = cluster.singleton(q!(Config { offset: 100 }));
