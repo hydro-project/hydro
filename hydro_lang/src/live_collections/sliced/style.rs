@@ -679,8 +679,8 @@ impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
 //
 // These drop consistency so that they compose with the other styles in the same `sliced!`
 // block, but they introduce no non-determinism: a bounded collection has a single immutable
-// value, which is cloned into every slice. The snapshot is marked `sim_deterministic_snapshot`
-// so that the simulator releases the value into every tick without exploring any choices.
+// value, which is cloned into every slice. Like `clone_into_tick`, this lowers to a lazy
+// `snapshot()` of that value, so the simulator never makes a choice for it.
 // ============================================================================
 
 impl<'a, T: Clone, L: Location<'a>, B: SingletonBound + IsBounded> Slicable<'a, L::DropConsistency>
@@ -695,12 +695,7 @@ impl<'a, T: Clone, L: Location<'a>, B: SingletonBound + IsBounded> Slicable<'a, 
 
     fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.clone_into_tick(tick);
-        {
-            let mut node = out.ir_node.borrow_mut();
-            let op_meta = node.op_metadata_mut();
-            op_meta.backtrace = backtrace;
-            op_meta.sim_deterministic_snapshot = true;
-        }
+        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
 }
@@ -717,12 +712,7 @@ impl<'a, T: Clone, L: Location<'a>, B: OptionalBound + IsBounded> Slicable<'a, L
 
     fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.weaken_consistency().clone_into_tick(tick);
-        {
-            let mut node = out.ir_node.borrow_mut();
-            let op_meta = node.op_metadata_mut();
-            op_meta.backtrace = backtrace;
-            op_meta.sim_deterministic_snapshot = true;
-        }
+        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
 }
