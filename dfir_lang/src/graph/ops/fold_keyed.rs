@@ -155,10 +155,9 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     // Play everything (each subgraph runs exactly once per tick).
                     #hashtable_ident.iter()
                         .map(
-                            #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
                             |(k, v)| (
-                                ::std::clone::Clone::clone(k),
-                                ::std::clone::Clone::clone(v),
+                                #root::util::clone_generic(k),
+                                #root::util::clone_generic(v),
                             )
                         )
                 },

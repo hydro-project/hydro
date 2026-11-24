@@ -1603,8 +1603,7 @@ impl DfirGraph {
                                             let __snapshot_keyed_entries = #buf_ident.iter();
                                             #root::dfir_pipes::pull::iter(
                                                 __snapshot_keyed_entries.map(
-                                                    #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-                                                    |(k, v)| (::std::clone::Clone::clone(k), ::std::clone::Clone::clone(v))
+                                                    |(k, v)| (#root::util::clone_generic(k), #root::util::clone_generic(v))
                                                 )
                                             )
                                         }
@@ -1630,7 +1629,7 @@ impl DfirGraph {
                                 // firing until a newer value replaces it. Requires `T: Clone`.
                                 (
                                     quote! { if #buf_ident.is_some() { 1usize } else { 0usize } },
-                                    quote! { #root::dfir_pipes::pull::iter(::std::clone::Clone::clone(&#buf_ident).into_iter()) },
+                                    quote! { #root::dfir_pipes::pull::iter(#root::util::clone_generic(&#buf_ident).into_iter()) },
                                 )
                             }
                             None => match kind {
@@ -2481,7 +2480,7 @@ impl DfirGraph {
                 // start false (from take()) and are set true by recv port code
                 // if any handoff buffer has data.
                 let mut __dfir_work_done = true;
-                #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof, clippy::clone_on_copy)]
+                #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof)]
                 let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context<#context_metrics_ty>| {
                     // Reset arena between ticks (start-of-tick)
                     #bump_ident.reset();

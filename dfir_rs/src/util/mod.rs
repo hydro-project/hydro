@@ -234,6 +234,18 @@ where
     slice.sort_unstable_by(|a, b| f(a).cmp(f(b)))
 }
 
+/// Clones `value` through a generic bound, for use by DFIR operator codegen.
+///
+/// Generated operators must clone items whose type is only known to be `Clone`. Emitting
+/// `Clone::clone(x)` directly with the operator's span makes `clippy::clone_on_copy` fire in the
+/// user's crate whenever the item happens to be `Copy` (since clippy 1.100). Inside this function
+/// the type is a generic `T`, so the lint does not apply, and inlining makes it zero-cost.
+#[doc(hidden)]
+#[inline(always)]
+pub fn clone_generic<T: Clone>(value: &T) -> T {
+    value.clone()
+}
+
 /// Converts an iterator into a stream that emits `n` items at a time, yielding between each batch.
 ///
 /// This is useful for breaking up a large iterator across several ticks: `source_iter(...)` always
