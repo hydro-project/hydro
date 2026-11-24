@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1795441623185,
+  "lastUpdate": 1795530130797,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -325986,6 +325986,208 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 222820,
             "range": "± 574.11",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Shadaj Laddad",
+            "username": "shadaj",
+            "email": "shadaj@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "7a7df06cee1f710a783e9613370f962b608099e5",
+          "message": "feat(hydro_lang): explore at-least-once non-determinism autonomously (unbounded under `fuzz`, bounded by `SimFlow::retries_depth` under `exhaustive`) (#3240)\n\nUnhooked `assume_retries`, and `assume_ordering` / `batch` on\n`AtLeastOnce` streams, used to require a sim hook (and `batch` of an ALO\nstream was a `todo!`). They are now explored by the simulator like other\nnon-deterministic operators.\n\n## Semantics\n\n- Autonomous ALO hooks carry a `RetryBudget` (`Bounded(n)` or\n`Unbounded`). It is passed to the generated `__hydro_runtime` per run\nand chosen by the mode:\n- `fuzz` / `fuzz_repro` / `with_instance`: `Unbounded` unless\n`.retries_depth(n)` is set.\n- `exhaustive`: requires `.retries_depth(n)` when there are unhooked ALO\noperators (the error lists them).\n- `deterministic`: requires every ALO operator to be hooked; the depth\nis ignored.\n- `retries_depth(n)` allows at most `n` retries per operator (and per\ncluster member), so `retries_depth(0)` delivers every element exactly\nonce. Operators inside a tick get a fresh budget on every tick\nexecution, others share one budget over the whole run.\n- Scripted hooks are constructed with `Bounded(0)`, which they never\nread.\n\n## Drawing retries from the fuzzer\n\n- Unbounded counts are drawn by flipping coins until tails\n(`draw_unbounded_extra`): `n` extra copies has probability `2^-(n + 1)`,\nso retries are usually few and random inputs essentially never produce\nlong runs, but each extra flip runs the loop once more, which a\ncoverage-guided fuzzer can climb.\n- Every \"generate another retry?\" choice goes through\n`draw_boolean_false_if_exhausted`, a `0..=1` draw. Plain `bool` draws\nfall back to `true` on the byte-slice driver and `false` on the random\ndriver once entropy runs out, which made some hooks loop forever;\ninteger draws fall back to 0 on every driver, so retries stop and an\nunbounded run always terminates.\n\n## Runtime hooks (`sim/runtime`)\n\n- Top-level `TopLevelNoOrderStreamRetriesHook` /\n`TopLevelOrderedStreamRetriesHook` / `TopLevelAtLeastOnceOrderHook` and\nin-tick `NoOrderStreamRetriesHook` / `OrderedStreamRetriesHook` /\n`AtLeastOnceStreamOrderHook` gain autonomous implementations. New\n`ObservationHook::can_release` lets the ALO ordering hook decline to run\nwhen its only buffered element was just emitted provisionally.\n- The unordered top-level retries hook either duplicates one element or\nreleases everything buffered once. Unlike an ordering hook it doesn't\nneed to release one element at a time: its output is unordered, so\nwhatever consumes it is itself a hook that can delay and reorder.\n- Batch hooks are renamed `StreamBatchHook<T, Order, R>` /\n`KeyedStreamBatchHook<K, V, Order, R>` and are generic over the retries\nguarantee, with private fields and per-`R` constructors (an exactly-once\nhook can't be given a budget). For `AtLeastOnce`, a release may keep\nreleased elements buffered for redelivery in a later batch (ordered:\nonly the last element of the (per-key) batch). A private\n`BatchRetries<T>` trait lets exactly-once hooks skip the keep draw\nentirely and not require `Clone`. Decision enums gain `PrefixKeepLast` /\n`ValuesKeepLast` / `ValuesKeep` (and keyed equivalents).\n\n## API\n\n- `SimFlow::retries_depth(n)`.\n- `SimFlow::fuzz_max_len(n)`: limits how many bytes of random input each\nfuzz iteration may consume (default 4096, matching bolero / libfuzzer);\nonce reached, every remaining decision gets the driver's fallback value.\n- `BatchHook` / `KeyedBatchHook` keep their generic decisions;\n`AtLeastOnce`-only impls add `release_keep_last`,\n`release_values_keep_last` (ordered) and `release_values_keep`\n(unordered).\n\n## Tests & docs\n\n- `sim/tests/retries_depth.rs`: exhaustive tests pinning explored sets\nunder a bound, the mode-specific errors, a feedback-cycle test for the\nunordered retries hook, and `fuzz_reaches_bug_requiring_many_retries`\n(32 copies of one element, i.e. 31 heads in a row; not found by 8192\nrandom iterations, found by `cargo sim` in ~4k executions; reproducer\ncommitted under `sim-failures/`).\n- `sim/tests/exhausted_entropy.rs`: every unhooked ALO operator\n(top-level and in-tick retries / ordering, and ordered / unordered batch\nof both plain and keyed streams), run with the byte-slice and the random\ndriver already out of entropy, delivers each element exactly once and\nterminates.\n- `sim/tests/scripted.rs`: deterministic tests for the keep decisions.\n- Docs: \"Retries on `AtLeastOnce` Streams\" in `simulation/writing.mdx`,\nALO batch scripting in `scripting.mdx`, the support table in\n`index.mdx`, and doc comments on `SimFlow::retries_depth`, `BatchHook`,\n`RetriesHook`, `assume_ordering`.\n\nVerified: `cargo test --features sim --lib` (305 passed), `cargo test\n--doc -p hydro_test -- simulation`, `cargo clippy --features sim\n--tests`, nightly `cargo fmt --check`, `RUSTDOCFLAGS=\"-D warnings\" cargo\ndoc --features sim,deploy`.\n\nCo-authored-by: Infinity 🤖 <infinity@hydro.run>",
+          "timestamp": "2026-11-23T20:05:06Z",
+          "url": "https://github.com/hydro-project/hydro/commit/7a7df06cee1f710a783e9613370f962b608099e5"
+        },
+        "date": 1795530130746,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 162573,
+            "range": "± 8288",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 3057512,
+            "range": "± 52637",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 3133330,
+            "range": "± 57157",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 6648,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 4693513,
+            "range": "± 13834",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 530168,
+            "range": "± 2003",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 780606,
+            "range": "± 14836",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 31346587,
+            "range": "± 98680",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 2863090,
+            "range": "± 14044",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 25695729,
+            "range": "± 1209259",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 2728197,
+            "range": "± 17611",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 3122413,
+            "range": "± 20553",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 29509564,
+            "range": "± 109280",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 2777,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 16857,
+            "range": "± 60",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 2902,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 5699,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 280512,
+            "range": "± 1503",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 41191,
+            "range": "± 251",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 30420,
+            "range": "± 157",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 11331,
+            "range": "± 166",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 4153,
+            "range": "± 114",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1125,
+            "range": "± 60",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 57618,
+            "range": "± 310",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 66280,
+            "range": "± 286",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 5076,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 13162,
+            "range": "± 76",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 14355,
+            "range": "± 116",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 4013,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 354500,
+            "range": "± 1940.1",
             "unit": "ops/s"
           }
         ]
