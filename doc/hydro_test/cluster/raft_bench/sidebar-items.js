@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["raft_bench"],"struct":["Aggregator","Client"]};
