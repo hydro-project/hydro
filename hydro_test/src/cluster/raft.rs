@@ -1,11 +1,11 @@
 //! An implementation of the RAFT consensus protocol for replicating a log across a
 //! cluster.
 //!
-//! The protocol logic is a pure, sequential step function over one unified per-member
-//! state (see [`raft_step`]), hosted in a single dataflow tick — deliberately *not*
-//! decomposed into separately-ticking election/replication components, because RAFT's
-//! safety proofs interlock vote and log decisions through shared state (see the design
-//! notes on [`raft`]).
+//! The protocol is split into two components, [`leader_election`] and
+//! [`log_replication`], which [`raft_server`] runs back to back inside one dataflow tick.
+//! Both take Tick-bounded inputs, so each member advances its election state and its
+//! log against the same batch of inputs, in one sequential order (see the design notes
+//! on [`raft`]).
 //!
 //! # Protocol mechanics
 //!
@@ -139,59 +139,50 @@ pub struct AppendEntriesReply {
     pub match_index: usize,
 }
 
-/// The single wire format for all intra-cluster RAFT traffic: vote RPCs and
-/// replication RPCs travel over one channel, so every message is processed by the
-/// same per-tick step against the same unified state — this is what makes the
-/// vote/ack interlock atomic (see [`raft`]).
-///
-/// Trait impls avoid derive bounds on `ClusterTag` (it only appears inside
-/// [`MemberId`], which implements everything for any tag); serde bounds constrain
-/// only `T`.
+/// The single wire format for all intra-cluster RAFT traffic. `raft_server` splits each
+/// received batch by component: [`leader_election`] consumes the election traffic and
+/// [`log_replication`] consumes the replication traffic of the same tick.
 ///
 /// Public only because staged (`q!`) code must reference it by path; not stable API.
 #[doc(hidden)]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(bound(
     serialize = "T: Serialize",
     deserialize = "T: serde::de::DeserializeOwned"
 ))]
 pub enum RaftRpc<T> {
-    /// Candidate -> everyone: request a vote for `term` (RAFT §5.2).
+    /// Vote traffic, handled by [`leader_election`].
+    Election(ElectionRpc),
+    /// Log traffic, handled by [`log_replication`].
+    Replication(ReplicationRpc<T>),
+}
+
+/// Vote traffic (RAFT §5.2).
+///
+/// Public only because staged (`q!`) code must reference it by path; not stable API.
+#[doc(hidden)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ElectionRpc {
+    /// Candidate -> everyone: request a vote for `term`.
     RequestVote(RequestVoteDto),
     /// Voter -> candidate: grant a vote for `term`.
     RequestVoteResponse(RequestVoteResponseDto),
-    /// Leader -> follower: replicate entries / heartbeat (RAFT §5.3).
+}
+
+/// Log traffic (RAFT §5.3).
+///
+/// Public only because staged (`q!`) code must reference it by path; not stable API.
+#[doc(hidden)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(bound(
+    serialize = "T: Serialize",
+    deserialize = "T: serde::de::DeserializeOwned"
+))]
+pub enum ReplicationRpc<T> {
+    /// Leader -> follower: replicate entries / heartbeat.
     AppendEntries(AppendEntriesRequest<T>),
     /// Follower -> leader: acknowledge or reject an `AppendEntries`.
     AppendEntriesReply(AppendEntriesReply),
-}
-
-impl<T: Clone> Clone for RaftRpc<T> {
-    fn clone(&self) -> Self {
-        match self {
-            RaftRpc::RequestVote(dto) => RaftRpc::RequestVote(dto.clone()),
-            RaftRpc::RequestVoteResponse(dto) => RaftRpc::RequestVoteResponse(dto.clone()),
-            RaftRpc::AppendEntries(request) => RaftRpc::AppendEntries(request.clone()),
-            RaftRpc::AppendEntriesReply(reply) => RaftRpc::AppendEntriesReply(reply.clone()),
-        }
-    }
-}
-
-impl<T: Debug> Debug for RaftRpc<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RaftRpc::RequestVote(dto) => f.debug_tuple("RequestVote").field(dto).finish(),
-            RaftRpc::RequestVoteResponse(dto) => {
-                f.debug_tuple("RequestVoteResponse").field(dto).finish()
-            }
-            RaftRpc::AppendEntries(request) => {
-                f.debug_tuple("AppendEntries").field(request).finish()
-            }
-            RaftRpc::AppendEntriesReply(reply) => {
-                f.debug_tuple("AppendEntriesReply").field(reply).finish()
-            }
-        }
-    }
 }
 
 /// Candidate → everyone vote-request payload (RAFT §5.2).
@@ -220,7 +211,7 @@ pub struct RequestVoteResponseDto {
     pub term: usize,
 }
 
-/// Configuration shared by [`raft`] and its inner server component.
+/// Configuration shared by [`raft`] and its components.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RaftConfig {
     /// The total number of members participating in the protocol. Majorities are
@@ -278,20 +269,16 @@ impl<ClusterTag> Eq for LeaderView<ClusterTag> {}
 #[doc(hidden)]
 pub struct Replica;
 
-/// The complete per-member RAFT state — election *and* replication — persisted
-/// across ticks by the unified server component inside [`raft`].
+/// A member's election state (RAFT's `currentTerm`, `votedFor`, and role), persisted
+/// across ticks by [`raft_server`].
 ///
-/// Keeping `term` / `voted_for` / `log` in one struct, mutated by one sequential
-/// step function ([`raft_step`]), is what makes RAFT's safety argument hold: the
-/// decision to grant a vote and the decision to acknowledge log entries are
-/// read-modify-writes against the *same* state, so no schedule can interleave them
-/// against stale views of each other. (A previous design split this state across
-/// two dataflow components with asynchronous feedback, which was a real,
-/// simulator-reproducible safety bug: committed entries could be truncated.)
+/// [`leader_election`] advances it on vote traffic and election timer interrupts;
+/// [`log_replication`] advances it on the terms and leaders revealed by replication
+/// traffic.
 ///
 /// Public only because staged (`q!`) code must reference it by path; not stable API.
 #[doc(hidden)]
-pub struct RaftServerState<T, ClusterTag> {
+pub struct ElectionState<ClusterTag> {
     /// The latest term this member has observed (RAFT's `currentTerm`).
     pub term: usize,
     /// Who this member voted for in `term`, if anyone (itself, when a candidate).
@@ -306,6 +293,74 @@ pub struct RaftServerState<T, ClusterTag> {
     /// The leader of `term` as learned from received `AppendEntries`, if any. Not
     /// used while this member is itself the leader.
     pub known_leader: Option<MemberId<ClusterTag>>,
+}
+
+impl<ClusterTag> ElectionState<ClusterTag> {
+    /// The initial state of a freshly booted member: a term-0 follower.
+    pub fn new() -> Self {
+        ElectionState {
+            term: 0,
+            voted_for: None,
+            role: RaftState::Follower,
+            votes: HashSet::new(),
+            heartbeat_seen: false,
+            known_leader: None,
+        }
+    }
+
+    /// Adopts `term` if it is above the current term, which forces this member back to
+    /// follower with all per-term state reset (RAFT §5.1). Returns whether `term` is
+    /// the current term afterwards.
+    pub fn observe_term(&mut self, term: usize) -> bool {
+        if term > self.term {
+            self.term = term;
+            self.role = RaftState::Follower;
+            self.voted_for = None;
+            self.votes.clear();
+            self.known_leader = None;
+        }
+        term == self.term
+    }
+
+    /// This member's view of the election, where `me` is this member's identity.
+    pub fn view(&self, me: MemberId<ClusterTag>) -> LeaderView<ClusterTag> {
+        LeaderView {
+            term: self.term,
+            leader: if self.role == RaftState::Leader {
+                Some(me)
+            } else {
+                self.known_leader.clone()
+            },
+        }
+    }
+}
+
+impl<ClusterTag> Default for ElectionState<ClusterTag> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<ClusterTag> Clone for ElectionState<ClusterTag> {
+    fn clone(&self) -> Self {
+        ElectionState {
+            term: self.term,
+            voted_for: self.voted_for.clone(),
+            role: self.role,
+            votes: self.votes.clone(),
+            heartbeat_seen: self.heartbeat_seen,
+            known_leader: self.known_leader.clone(),
+        }
+    }
+}
+
+/// A member's replication state (the log, its commit progress, and the leader's
+/// per-follower bookkeeping), persisted across ticks by [`raft_server`] and advanced by
+/// [`log_replication`].
+///
+/// Public only because staged (`q!`) code must reference it by path; not stable API.
+#[doc(hidden)]
+pub struct ReplicationState<T, ClusterTag> {
     /// The replicated log (1-based indexing via `LogEntry::index`).
     pub log: Vec<LogEntry<T>>,
     /// The highest log index known to be committed (0 = nothing committed).
@@ -313,29 +368,24 @@ pub struct RaftServerState<T, ClusterTag> {
     /// The highest log index already emitted on the `committed` output; used to emit
     /// each committed entry exactly once, in log order.
     pub emitted_index: usize,
-    /// Leader bookkeeping: the next log index to send to each follower. Reset on
-    /// every leadership acquisition.
+    /// The term of the leadership that `next_index` and `match_index` describe. A
+    /// leader whose term differs was just elected, so its bookkeeping is reset.
+    pub leader_term: Option<usize>,
+    /// Leader bookkeeping: the next log index to send to each follower.
     pub next_index: HashMap<MemberId<ClusterTag>, usize>,
     /// Leader bookkeeping: the highest log index known replicated on each follower,
-    /// for the current leadership only (acks are term-filtered). Reset on every
-    /// leadership acquisition.
+    /// for the current leadership only (acks are term-filtered).
     pub match_index: HashMap<MemberId<ClusterTag>, usize>,
 }
 
-impl<T, ClusterTag> RaftServerState<T, ClusterTag> {
-    /// The initial state of a freshly booted member: term 0 follower with an empty
-    /// log.
+impl<T, ClusterTag> ReplicationState<T, ClusterTag> {
+    /// The initial state of a freshly booted member: an empty log.
     pub fn new() -> Self {
-        RaftServerState {
-            term: 0,
-            voted_for: None,
-            role: RaftState::Follower,
-            votes: HashSet::new(),
-            heartbeat_seen: false,
-            known_leader: None,
+        ReplicationState {
             log: Vec::new(),
             commit_index: 0,
             emitted_index: 0,
+            leader_term: None,
             next_index: HashMap::new(),
             match_index: HashMap::new(),
         }
@@ -350,101 +400,225 @@ impl<T, ClusterTag> RaftServerState<T, ClusterTag> {
     }
 }
 
-impl<T, ClusterTag> Default for RaftServerState<T, ClusterTag> {
+impl<T, ClusterTag> Default for ReplicationState<T, ClusterTag> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Clone, ClusterTag> Clone for RaftServerState<T, ClusterTag> {
+impl<T: Clone, ClusterTag> Clone for ReplicationState<T, ClusterTag> {
     fn clone(&self) -> Self {
-        RaftServerState {
-            term: self.term,
-            voted_for: self.voted_for.clone(),
-            role: self.role,
-            votes: self.votes.clone(),
-            heartbeat_seen: self.heartbeat_seen,
-            known_leader: self.known_leader.clone(),
+        ReplicationState {
             log: self.log.clone(),
             commit_index: self.commit_index,
             emitted_index: self.emitted_index,
+            leader_term: self.leader_term,
             next_index: self.next_index.clone(),
             match_index: self.match_index.clone(),
         }
     }
 }
 
-/// One tick's worth of inputs to [`raft_step`]: everything the member observed since
-/// the previous step, plus its static identity/configuration.
+/// One tick's worth of inputs to [`election_step`].
 ///
 /// Public only because staged (`q!`) code must construct it by path; not stable API.
 #[doc(hidden)]
-pub struct RaftStepInput<T, ClusterTag> {
+pub struct ElectionStepInput<'m, ClusterTag> {
     /// This member's identity.
     pub me: MemberId<ClusterTag>,
-    /// Every other member of the cluster (vote and heartbeat broadcast targets).
-    pub other_members: Vec<MemberId<ClusterTag>>,
+    /// Every other member of the cluster (vote request broadcast targets).
+    pub other_members: &'m [MemberId<ClusterTag>],
     /// Total protocol cluster size; majorities are `cluster_size / 2 + 1`.
     pub cluster_size: usize,
     /// Whether the election timer fired this tick.
     pub election_timer_fired: bool,
+    /// The (term, index) position of this member's last log entry at the start of the
+    /// tick, compared by the §5.4.1 election restriction and advertised in vote
+    /// requests.
+    pub last_log_position: (usize, usize),
+    /// Vote traffic received this tick, as an unordered batch; the step sorts it
+    /// canonically so its outcome depends only on the batch *multiset*.
+    pub messages: Vec<(MemberId<ClusterTag>, ElectionRpc)>,
+}
+
+/// Advances one member's [`ElectionState`] by one tick: grants or refuses vote
+/// requests, counts vote grants, and handles the election timer, returning the vote
+/// traffic to send.
+///
+/// Messages are handled one at a time against the live state, after sorting the batch
+/// into a canonical order, so the outcome is a function of the batch multiset
+/// (required for deterministic simulation). The timer is handled after the messages.
+///
+/// Public (and callable outside staged code) so protocol-rule unit tests can drive
+/// members directly and deterministically.
+#[doc(hidden)]
+pub fn election_step<ClusterTag>(
+    state: &mut ElectionState<ClusterTag>,
+    input: ElectionStepInput<'_, ClusterTag>,
+) -> Vec<(MemberId<ClusterTag>, ElectionRpc)> {
+    let ElectionStepInput {
+        me,
+        other_members,
+        cluster_size,
+        election_timer_fired,
+        last_log_position,
+        mut messages,
+    } = input;
+    let majority = cluster_size / 2 + 1;
+    let mut outbound = Vec::new();
+
+    // The leader's per-follower bookkeeping lives in `ReplicationState`;
+    // `replication_step` resets it when it first runs under the new leadership.
+    fn become_leader<ClusterTag>(state: &mut ElectionState<ClusterTag>) {
+        state.role = RaftState::Leader;
+        state.known_leader = None;
+    }
+
+    fn sort_key(rpc: &ElectionRpc) -> (u8, usize, usize, usize) {
+        match rpc {
+            ElectionRpc::RequestVote(dto) => (0, dto.term, dto.last_log_term, dto.last_log_index),
+            ElectionRpc::RequestVoteResponse(dto) => (1, dto.term, 0, 0),
+        }
+    }
+    messages.sort_by(|(sender_a, rpc_a), (sender_b, rpc_b)| {
+        sort_key(rpc_a)
+            .cmp(&sort_key(rpc_b))
+            .then_with(|| sender_a.cmp(sender_b))
+    });
+
+    for (sender, message) in messages {
+        match message {
+            ElectionRpc::RequestVote(dto) => {
+                if !state.observe_term(dto.term) {
+                    // A stale-term candidacy: ignore (the candidate will observe the
+                    // higher term from other traffic or retry at its next timeout).
+                    continue;
+                }
+                // §5.4.1 election restriction: only grant if the candidate's log is
+                // at least as up-to-date as ours. `last_log_position` includes every
+                // entry this member acknowledged in earlier ticks.
+                let candidate_up_to_date =
+                    (dto.last_log_term, dto.last_log_index) >= last_log_position;
+                let can_vote =
+                    state.voted_for.is_none() || state.voted_for.as_ref() == Some(&sender);
+                if candidate_up_to_date && can_vote {
+                    state.voted_for = Some(sender.clone());
+                    outbound.push((
+                        sender,
+                        ElectionRpc::RequestVoteResponse(RequestVoteResponseDto {
+                            term: state.term,
+                        }),
+                    ));
+                }
+            }
+            ElectionRpc::RequestVoteResponse(dto) => {
+                if !state.observe_term(dto.term) {
+                    continue;
+                }
+                if state.role == RaftState::Candidate {
+                    state.votes.insert(sender);
+                    if state.votes.len() >= majority {
+                        become_leader(state);
+                    }
+                }
+            }
+        }
+    }
+
+    // Election timer interrupt. A leader runs no election timer. Otherwise: an
+    // AppendEntries observed since the previous interrupt suppresses (and consumes
+    // the window); if none, become a candidate for the next term (RAFT §5.2).
+    if election_timer_fired && state.role != RaftState::Leader {
+        if state.heartbeat_seen {
+            state.heartbeat_seen = false;
+        } else {
+            state.term += 1;
+            state.role = RaftState::Candidate;
+            state.voted_for = Some(me.clone());
+            state.votes.clear();
+            state.votes.insert(me);
+            state.known_leader = None;
+            if state.votes.len() >= majority {
+                // Single-member cluster: our own vote suffices.
+                become_leader(state);
+            } else {
+                let (last_log_term, last_log_index) = last_log_position;
+                for target in other_members {
+                    outbound.push((
+                        target.clone(),
+                        ElectionRpc::RequestVote(RequestVoteDto {
+                            term: state.term,
+                            last_log_index,
+                            last_log_term,
+                        }),
+                    ));
+                }
+            }
+        }
+    }
+
+    outbound
+}
+
+/// One tick's worth of inputs to [`replication_step`].
+///
+/// Public only because staged (`q!`) code must construct it by path; not stable API.
+#[doc(hidden)]
+pub struct ReplicationStepInput<'m, T, ClusterTag> {
+    /// Every other member of the cluster (heartbeat broadcast targets).
+    pub other_members: &'m [MemberId<ClusterTag>],
+    /// Total protocol cluster size; majorities are `cluster_size / 2 + 1`.
+    pub cluster_size: usize,
     /// Whether the heartbeat timer fired this tick.
     pub heartbeat_timer_fired: bool,
     /// Client requests received this tick, in the (arbitrary but fixed) order the
     /// caller acknowledged as non-deterministic.
     pub requests: Vec<T>,
-    /// Intra-cluster messages received this tick, as an unordered batch; the step
-    /// sorts them canonically so its outcome depends only on the batch *multiset*.
-    pub messages: Vec<(MemberId<ClusterTag>, RaftRpc<T>)>,
+    /// Replication traffic received this tick, as an unordered batch; the step sorts
+    /// it canonically so its outcome depends only on the batch *multiset*.
+    pub messages: Vec<(MemberId<ClusterTag>, ReplicationRpc<T>)>,
 }
 
-/// One tick's worth of outputs from [`raft_step`].
+/// One tick's worth of outputs from [`replication_step`].
 ///
 /// Public only because staged (`q!`) code must destructure it by path; not stable API.
 #[doc(hidden)]
-pub struct RaftStepOutput<T, ClusterTag> {
-    /// Messages to send to specific members.
-    pub outbound: Vec<(MemberId<ClusterTag>, RaftRpc<T>)>,
+pub struct ReplicationStepOutput<T, ClusterTag> {
+    /// Replication traffic to send to specific members.
+    pub outbound: Vec<(MemberId<ClusterTag>, ReplicationRpc<T>)>,
     /// Entries newly committed this tick, in log order (each index emitted exactly
     /// once over the member's lifetime).
     pub committed: Vec<LogEntry<T>>,
     /// Client requests received while not the leader, paired with the best-known
     /// leader hint (`None` if unknown).
     pub redirected: Vec<(T, Option<MemberId<ClusterTag>>)>,
-    /// The member's view after this tick, if it changed during the tick.
-    pub view_transition: Option<LeaderView<ClusterTag>>,
 }
 
-/// Advances one member's [`RaftServerState`] by one tick: processes the received
-/// messages, client requests, and timer events, returning the messages to send and
-/// the entries that became committed.
+/// Advances one member's [`ReplicationState`] by one tick: handles replication
+/// traffic, appends or redirects client requests, advances the leader's commit index,
+/// and handles the heartbeat timer, returning the traffic to send and the entries that
+/// became committed.
 ///
-/// This is deliberately a *pure, sequential* function (plain Rust, no staging): every
-/// message is handled one at a time against the live state, so the protocol's
-/// interlock invariants hold by construction —
+/// `election` is the state [`election_step`] produced for the same tick, so a member
+/// that just voted in a newer term rejects `AppendEntries` from older terms (§5.1).
+/// Replication traffic carrying a higher term, or revealing the current term's leader,
+/// updates `election` in turn.
 ///
-/// * a member that acknowledged entries in term `T` compares any later vote request
-///   against the log that *includes* those entries (§5.4.1 reads the real log);
-/// * a member that voted in term `T'` has `term = T'` when the next `AppendEntries`
-///   arrives, so it rejects any leader of an older term (§5.1's term check reads the
-///   real term).
-///
-/// Message processing is order-insensitive at the batch level: the batch is sorted
-/// into a canonical order first, so the outcome is a function of the batch multiset
+/// Messages are handled one at a time against the live state, after sorting the batch
+/// into a canonical order, so the outcome is a function of the batch multiset
 /// (required for deterministic simulation).
 ///
 /// Public (and callable outside staged code) so protocol-rule unit tests can drive
 /// members directly and deterministically.
 #[doc(hidden)]
-pub fn raft_step<T: Clone, ClusterTag>(
-    state: &mut RaftServerState<T, ClusterTag>,
-    input: RaftStepInput<T, ClusterTag>,
-) -> RaftStepOutput<T, ClusterTag> {
-    let RaftStepInput {
-        me,
+pub fn replication_step<T: Clone, ClusterTag>(
+    election: &mut ElectionState<ClusterTag>,
+    state: &mut ReplicationState<T, ClusterTag>,
+    input: ReplicationStepInput<'_, T, ClusterTag>,
+) -> ReplicationStepOutput<T, ClusterTag> {
+    let ReplicationStepInput {
         other_members,
         cluster_size,
-        election_timer_fired,
         heartbeat_timer_fired,
         requests,
         mut messages,
@@ -455,37 +629,10 @@ pub fn raft_step<T: Clone, ClusterTag>(
     let mut committed = Vec::new();
     let mut redirected = Vec::new();
 
-    let old_view = LeaderView {
-        term: state.term,
-        leader: if state.role == RaftState::Leader {
-            Some(me.clone())
-        } else {
-            state.known_leader.clone()
-        },
-    };
-
-    // A term above ours forces us back to follower with all per-term state reset
-    // (RAFT §5.1). Returns whether the message's term is current afterwards.
-    fn observe_term<T, ClusterTag>(
-        state: &mut RaftServerState<T, ClusterTag>,
-        term: usize,
-    ) -> bool {
-        if term > state.term {
-            state.term = term;
-            state.role = RaftState::Follower;
-            state.voted_for = None;
-            state.votes.clear();
-            state.known_leader = None;
-        }
-        term == state.term
-    }
-
-    fn become_leader<T, ClusterTag>(
-        state: &mut RaftServerState<T, ClusterTag>,
-        other_members: &[MemberId<ClusterTag>],
-    ) {
-        state.role = RaftState::Leader;
-        state.known_leader = None;
+    // (a) A leader whose bookkeeping describes another term was just elected: every
+    // follower starts at the end of the leader's log, with nothing known replicated.
+    if election.role == RaftState::Leader && state.leader_term != Some(election.term) {
+        state.leader_term = Some(election.term);
         state.next_index.clear();
         state.match_index.clear();
         for follower in other_members {
@@ -496,20 +643,18 @@ pub fn raft_step<T: Clone, ClusterTag>(
         }
     }
 
-    // (a) Process this tick's messages in a canonical order (so the step is a
+    // (b) Process this tick's messages in a canonical order (so the step is a
     // function of the batch multiset), each one sequentially against live state.
-    fn sort_key<T>(rpc: &RaftRpc<T>) -> (u8, usize, usize, usize) {
+    fn sort_key<T>(rpc: &ReplicationRpc<T>) -> (u8, usize, usize, usize) {
         match rpc {
-            RaftRpc::RequestVote(dto) => (0, dto.term, dto.last_log_term, dto.last_log_index),
-            RaftRpc::RequestVoteResponse(dto) => (1, dto.term, 0, 0),
-            RaftRpc::AppendEntries(request) => (
-                2,
+            ReplicationRpc::AppendEntries(request) => (
+                0,
                 request.term,
                 request.prev_log_index,
                 request.entries.len(),
             ),
-            RaftRpc::AppendEntriesReply(reply) => {
-                (3, reply.term, reply.match_index, usize::from(reply.success))
+            ReplicationRpc::AppendEntriesReply(reply) => {
+                (1, reply.term, reply.match_index, usize::from(reply.success))
             }
         }
     }
@@ -521,45 +666,13 @@ pub fn raft_step<T: Clone, ClusterTag>(
 
     for (sender, message) in messages {
         match message {
-            RaftRpc::RequestVote(dto) => {
-                if !observe_term(state, dto.term) {
-                    // A stale-term candidacy: ignore (the candidate will observe the
-                    // higher term from other traffic or retry at its next timeout).
-                    continue;
-                }
-                // §5.4.1 election restriction: only grant if the candidate's log is
-                // at least as up-to-date as ours — this reads the *live* log, which
-                // is exactly the interlock the split-component design lacked.
-                let candidate_up_to_date =
-                    (dto.last_log_term, dto.last_log_index) >= state.last_log_position();
-                let can_vote =
-                    state.voted_for.is_none() || state.voted_for.as_ref() == Some(&sender);
-                if candidate_up_to_date && can_vote {
-                    state.voted_for = Some(sender.clone());
-                    outbound.push((
-                        sender,
-                        RaftRpc::RequestVoteResponse(RequestVoteResponseDto { term: state.term }),
-                    ));
-                }
-            }
-            RaftRpc::RequestVoteResponse(dto) => {
-                if !observe_term(state, dto.term) {
-                    continue;
-                }
-                if state.role == RaftState::Candidate {
-                    state.votes.insert(sender);
-                    if state.votes.len() >= majority {
-                        become_leader(state, &other_members);
-                    }
-                }
-            }
-            RaftRpc::AppendEntries(request) => {
-                if !observe_term(state, request.term) {
+            ReplicationRpc::AppendEntries(request) => {
+                if !election.observe_term(request.term) {
                     // Stale leader: reject with our (higher) term so it steps down.
                     outbound.push((
                         sender,
-                        RaftRpc::AppendEntriesReply(AppendEntriesReply {
-                            term: state.term,
+                        ReplicationRpc::AppendEntriesReply(AppendEntriesReply {
+                            term: election.term,
                             success: false,
                             match_index: 0,
                         }),
@@ -569,17 +682,17 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 // A current-term AppendEntries while we lead the same term would
                 // mean two leaders share a term — election safety is broken.
                 assert!(
-                    state.role != RaftState::Leader,
+                    election.role != RaftState::Leader,
                     "protocol violation: two leaders share term {}",
-                    state.term,
+                    election.term,
                 );
                 // A live leader exists for the current term: suppress the next
                 // election, depose our candidacy, learn the leader's identity.
-                state.heartbeat_seen = true;
-                if state.role == RaftState::Candidate {
-                    state.role = RaftState::Follower;
+                election.heartbeat_seen = true;
+                if election.role == RaftState::Candidate {
+                    election.role = RaftState::Follower;
                 }
-                state.known_leader = Some(sender.clone());
+                election.known_leader = Some(sender.clone());
 
                 // Log-matching check (RAFT §5.3).
                 let log_matches = request.prev_log_index == 0
@@ -589,8 +702,8 @@ pub fn raft_step<T: Clone, ClusterTag>(
                 if !log_matches {
                     outbound.push((
                         sender,
-                        RaftRpc::AppendEntriesReply(AppendEntriesReply {
-                            term: state.term,
+                        ReplicationRpc::AppendEntriesReply(AppendEntriesReply {
+                            term: election.term,
                             success: false,
                             match_index: 0,
                         }),
@@ -605,8 +718,8 @@ pub fn raft_step<T: Clone, ClusterTag>(
                         if state.log[entry.index - 1].term_received != entry.term_received {
                             // A committed prefix can never legitimately conflict: the
                             // leader completeness property (enforced by the §5.4.1
-                            // vote check above) guarantees every leader's log
-                            // contains all committed entries. Fail fast if this
+                            // vote check in `election_step`) guarantees every leader's
+                            // log contains all committed entries. Fail fast if this
                             // invariant is ever violated.
                             assert!(
                                 entry.index > state.commit_index,
@@ -632,20 +745,20 @@ pub fn raft_step<T: Clone, ClusterTag>(
 
                 outbound.push((
                     sender,
-                    RaftRpc::AppendEntriesReply(AppendEntriesReply {
-                        term: state.term,
+                    ReplicationRpc::AppendEntriesReply(AppendEntriesReply {
+                        term: election.term,
                         success: true,
                         match_index: new_match,
                     }),
                 ));
             }
-            RaftRpc::AppendEntriesReply(reply) => {
-                if !observe_term(state, reply.term) {
+            ReplicationRpc::AppendEntriesReply(reply) => {
+                if !election.observe_term(reply.term) {
                     // An ack for an earlier leadership: the follower's log may have
                     // been truncated since, so it must not count toward this term.
                     continue;
                 }
-                if state.role != RaftState::Leader {
+                if election.role != RaftState::Leader {
                     continue;
                 }
                 if reply.success {
@@ -668,60 +781,28 @@ pub fn raft_step<T: Clone, ClusterTag>(
         }
     }
 
-    // (b) Client requests: the leader appends them in the caller-fixed order;
+    // (c) Client requests: the leader appends them in the caller-fixed order;
     // everyone else redirects them with the best-known leader hint.
     for message in requests {
-        if state.role == RaftState::Leader {
+        if election.role == RaftState::Leader {
             let index = state.log.len() + 1;
             state.log.push(LogEntry {
                 message,
-                term_received: state.term,
+                term_received: election.term,
                 index,
             });
         } else {
-            redirected.push((message, state.known_leader.clone()));
-        }
-    }
-
-    // (c) Election timer interrupt. A leader runs no election timer. Otherwise: an
-    // AppendEntries observed since the previous interrupt suppresses (and consumes
-    // the window); if none, become a candidate for the next term (RAFT §5.2).
-    if election_timer_fired && state.role != RaftState::Leader {
-        if state.heartbeat_seen {
-            state.heartbeat_seen = false;
-        } else {
-            state.term += 1;
-            state.role = RaftState::Candidate;
-            state.voted_for = Some(me.clone());
-            state.votes.clear();
-            state.votes.insert(me.clone());
-            state.known_leader = None;
-            if state.votes.len() >= majority {
-                // Single-member cluster: our own vote suffices.
-                become_leader(state, &other_members);
-            } else {
-                let (last_log_term, last_log_index) = state.last_log_position();
-                for target in &other_members {
-                    outbound.push((
-                        target.clone(),
-                        RaftRpc::RequestVote(RequestVoteDto {
-                            term: state.term,
-                            last_log_index,
-                            last_log_term,
-                        }),
-                    ));
-                }
-            }
+            redirected.push((message, election.known_leader.clone()));
         }
     }
 
     // (d) Advance the leader's commit index: the §5.4.2 rule — only entries of the
     // leader's own term commit by counting replicas; earlier-term entries commit
     // transitively beneath them.
-    if state.role == RaftState::Leader {
+    if election.role == RaftState::Leader {
         let mut candidate = state.log.len();
         while candidate > state.commit_index {
-            if state.log[candidate - 1].term_received == state.term {
+            if state.log[candidate - 1].term_received == election.term {
                 // Count acks by iterating `other_members` (a fixed, deterministic
                 // list) rather than the `match_index` map, whose iteration order is
                 // nondeterministic.
@@ -745,8 +826,8 @@ pub fn raft_step<T: Clone, ClusterTag>(
 
     // (e) Heartbeat timer interrupt: the leader broadcasts AppendEntries carrying
     // each follower's outstanding suffix and the freshly advanced commit index.
-    if heartbeat_timer_fired && state.role == RaftState::Leader {
-        for follower in &other_members {
+    if heartbeat_timer_fired && election.role == RaftState::Leader {
+        for follower in other_members {
             let next = state
                 .next_index
                 .get(follower)
@@ -760,8 +841,8 @@ pub fn raft_step<T: Clone, ClusterTag>(
             };
             outbound.push((
                 follower.clone(),
-                RaftRpc::AppendEntries(AppendEntriesRequest {
-                    term: state.term,
+                ReplicationRpc::AppendEntries(AppendEntriesRequest {
+                    term: election.term,
                     prev_log_index,
                     prev_log_term,
                     entries: state.log[prev_log_index..].to_vec(),
@@ -777,26 +858,198 @@ pub fn raft_step<T: Clone, ClusterTag>(
         committed.push(state.log[state.emitted_index - 1].clone());
     }
 
-    // (g) Report a view transition iff the view changed this tick.
-    let new_view = LeaderView {
-        term: state.term,
-        leader: if state.role == RaftState::Leader {
-            Some(me)
-        } else {
-            state.known_leader.clone()
-        },
-    };
-    let view_transition = (new_view != old_view).then_some(new_view);
-
-    RaftStepOutput {
+    ReplicationStepOutput {
         outbound,
         committed,
         redirected,
-        view_transition,
     }
 }
 
-/// The streams produced by the unified RAFT server component.
+/// RAFT leader election (§5.2): runs [`election_step`] on one tick's vote traffic and
+/// election timer interrupts.
+///
+/// `state` is the member's election state at the start of the tick; the returned
+/// singleton is that state advanced, alongside the vote traffic to send.
+/// `last_log_position` must be the position of the member's last log entry at the
+/// start of the tick: the §5.4.1 vote check then covers every entry the member
+/// acknowledged in earlier ticks.
+#[expect(
+    clippy::type_complexity,
+    reason = "Tick-bounded live collections spell out their full types"
+)]
+pub fn leader_election<'a, ClusterTag: 'a>(
+    state: Singleton<ElectionState<ClusterTag>, Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    messages: Stream<
+        (MemberId<ClusterTag>, ElectionRpc),
+        Tick<Cluster<'a, ClusterTag>>,
+        Bounded,
+        NoOrder,
+    >,
+    election_timer_fired: Singleton<bool, Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    last_log_position: Singleton<(usize, usize), Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    other_members: Singleton<Vec<MemberId<ClusterTag>>, Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    config: RaftConfig,
+) -> (
+    Singleton<ElectionState<ClusterTag>, Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    Stream<(MemberId<ClusterTag>, ElectionRpc), Tick<Cluster<'a, ClusterTag>>, Bounded>,
+) {
+    let cluster_size = config.cluster_size;
+
+    let message_vec = messages.fold(
+        q!(|| Vec::new()),
+        q!(
+            |messages, message| {
+                messages.push(message);
+            },
+            commutative = manual_proof!(
+                /** election_step sorts the accumulated batch into a canonical order
+                before applying it, so its result depends only on the batch multiset,
+                never on arrival order */
+            )
+        ),
+    );
+
+    // The step advances `state` in place through a mutable reference handle. Handle
+    // accesses run in code order, so the step sees every earlier write to `state` and
+    // every later reader sees the step's writes. The step runs on the one-element
+    // stream of the tick's message batch, whose output is the outbound traffic.
+    let state_mut = state.by_mut();
+    let fired_ref = election_timer_fired.by_ref();
+    let position_ref = last_log_position.by_ref();
+    let members_ref = other_members.by_ref();
+    let outbound = message_vec
+        .into_stream()
+        .flat_map_ordered(q!(move |messages| {
+            crate::cluster::raft::election_step(
+                &mut *state_mut,
+                ElectionStepInput {
+                    me: CLUSTER_SELF_ID.clone(),
+                    other_members: members_ref,
+                    // Written without field shorthand: stageleft renames captured
+                    // free variables, and shorthand hides the use site from it.
+                    cluster_size: { cluster_size },
+                    election_timer_fired: *fired_ref,
+                    last_log_position: *position_ref,
+                    messages,
+                },
+            )
+        }));
+
+    (state, outbound)
+}
+
+/// The Tick-bounded live collections produced by [`log_replication`].
+pub struct LogReplicationOutputs<'a, T, ClusterTag> {
+    /// The member's election state after this tick's replication traffic.
+    pub election_state:
+        Singleton<ElectionState<ClusterTag>, Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    /// The member's replication state after this tick.
+    pub state: Singleton<ReplicationState<T, ClusterTag>, Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    /// Replication traffic to send.
+    pub outbound:
+        Stream<(MemberId<ClusterTag>, ReplicationRpc<T>), Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    /// Entries newly committed this tick, in log order.
+    pub committed: Stream<LogEntry<T>, Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    /// Client requests received while not the leader, paired with the best-known
+    /// leader hint (`None` when the member does not know who leads).
+    pub redirected:
+        Stream<(T, Option<MemberId<ClusterTag>>), Tick<Cluster<'a, ClusterTag>>, Bounded>,
+}
+
+/// RAFT log replication (§5.3): runs [`replication_step`] on one tick's replication
+/// traffic, client requests, and heartbeat timer interrupts.
+///
+/// `election_state` must be the state [`leader_election`] returned for the same tick,
+/// so replication runs under the term this tick's votes adopted. `state` is the
+/// member's replication state at the start of the tick. The returned election state
+/// carries the terms and leaders revealed by replication traffic; it is the state the
+/// next tick's [`leader_election`] must start from.
+pub fn log_replication<'a, T, ClusterTag>(
+    election_state: Singleton<ElectionState<ClusterTag>, Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    state: Singleton<ReplicationState<T, ClusterTag>, Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    messages: Stream<
+        (MemberId<ClusterTag>, ReplicationRpc<T>),
+        Tick<Cluster<'a, ClusterTag>>,
+        Bounded,
+        NoOrder,
+    >,
+    requests: Stream<T, Tick<Cluster<'a, ClusterTag>>, Bounded, TotalOrder>,
+    heartbeat_timer_fired: Singleton<bool, Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    other_members: Singleton<Vec<MemberId<ClusterTag>>, Tick<Cluster<'a, ClusterTag>>, Bounded>,
+    config: RaftConfig,
+) -> LogReplicationOutputs<'a, T, ClusterTag>
+where
+    T: Clone + 'a,
+    ClusterTag: 'a,
+{
+    let cluster_size = config.cluster_size;
+    let tick = messages.location().clone();
+
+    let message_vec = messages.fold(
+        q!(|| Vec::new()),
+        q!(
+            |messages, message| {
+                messages.push(message);
+            },
+            commutative = manual_proof!(
+                /** replication_step sorts the accumulated batch into a canonical
+                order before applying it, so its result depends only on the batch
+                multiset, never on arrival order */
+            )
+        ),
+    );
+    // Requests in the order fixed by the caller (TotalOrder fold).
+    let request_vec = requests.fold(
+        q!(|| Vec::new()),
+        q!(|requests, request| {
+            requests.push(request);
+        }),
+    );
+
+    let committed: Stream<LogEntry<T>, _, Bounded> = tick.source_iter(q!(Vec::new()));
+    let redirected: Stream<(T, Option<MemberId<ClusterTag>>), _, Bounded> =
+        tick.source_iter(q!(Vec::new()));
+
+    // The step advances both states in place and fills `committed` and `redirected`
+    // through mutable reference handles, ordered as in `leader_election`.
+    let election_mut = election_state.by_mut();
+    let state_mut = state.by_mut();
+    let fired_ref = heartbeat_timer_fired.by_ref();
+    let members_ref = other_members.by_ref();
+    let committed_mut = committed.by_mut();
+    let redirected_mut = redirected.by_mut();
+    let outbound = message_vec
+        .zip(request_vec)
+        .into_stream()
+        .flat_map_ordered(q!(move |(messages, requests)| {
+            let output = crate::cluster::raft::replication_step(
+                &mut *election_mut,
+                &mut *state_mut,
+                ReplicationStepInput {
+                    other_members: members_ref,
+                    // Written without field shorthand: stageleft renames captured
+                    // free variables, and shorthand hides the use site from it.
+                    cluster_size: { cluster_size },
+                    heartbeat_timer_fired: *fired_ref,
+                    requests,
+                    messages,
+                },
+            );
+            committed_mut.extend(output.committed);
+            redirected_mut.extend(output.redirected);
+            output.outbound
+        }));
+
+    LogReplicationOutputs {
+        election_state,
+        state,
+        outbound,
+        committed,
+        redirected,
+    }
+}
+
+/// The streams produced by [`raft_server`].
 pub struct RaftOutputs<'a, T, ClusterTag> {
     /// The committed log entries, emitted on every member in log order. This stream
     /// is eventually consistent: all members observe the same sequence, though at
@@ -818,14 +1071,14 @@ pub struct RaftOutputs<'a, T, ClusterTag> {
     pub leader_views: Stream<LeaderView<ClusterTag>, Cluster<'a, ClusterTag>>,
 }
 
-/// The unified RAFT server: one state machine per member, advanced by [`raft_step`]
-/// inside a single tick that consumes every input the protocol reacts to (client
+/// RAFT on every cluster member: [`leader_election`] followed by [`log_replication`]
+/// inside a single tick that batches every input the protocol reacts to (client
 /// requests, both timers, and all intra-cluster traffic over one channel).
 ///
-/// See [`raft`] for the input/timer contracts. The only feedback loop — a member's
-/// outbound messages reaching other members' inputs — passes through the network
-/// demux, which is an asynchronous boundary, so no in-tick cycle exists and no
-/// tick-deferral plumbing is needed.
+/// See [`raft`] for the input/timer contracts and why both components share a tick.
+/// Each member's state feeds its own next tick through `sliced!` state; the only loop
+/// between members — outbound messages reaching other members' inputs — passes through
+/// the network demux, an asynchronous boundary.
 pub fn raft_server<'a, T, ClusterTag, O, Net>(
     cluster: &Cluster<'a, ClusterTag>,
     requests: Stream<T, Cluster<'a, ClusterTag>, Unbounded, O>,
@@ -842,8 +1095,6 @@ where
     Net: NetworkFor<RaftRpc<T>, RetriesGuarantee = ExactlyOnce>,
     NoOrder: MinOrder<Net::OrderingGuarantee, Min = NoOrder>,
 {
-    let cluster_size = config.cluster_size;
-
     // Fix an arbitrary total order for incoming requests up front (a no-op when the
     // input is already `TotalOrder`): the leader must place concurrent requests at
     // *some* log indexes, and which order it picks is exactly the non-determinism
@@ -906,40 +1157,17 @@ where
         let traffic_batch = use::batch(traffic, nondet!(
             /// Message delivery interleavings shift which member wins elections and
             /// when entries replicate and commit, but never the committed sequence
-            /// itself: every message is processed atomically against the member's
-            /// full state.
+            /// itself: both components process each tick's batch against the
+            /// member's full state, one after the other.
             nondet_raft
         ));
 
-        let mut server_state = use::state(|l| l.singleton(q!(RaftServerState::new())));
+        let mut election_state = use::state(|l| l.singleton(q!(ElectionState::new())));
+        let mut replication_state = use::state(|l| l.singleton(q!(ReplicationState::new())));
 
         let tick = request_batch.location().clone();
         let election_fired = election_batch.count().map(q!(|n| n > 0));
         let heartbeat_fired = heartbeat_batch.count().map(q!(|n| n > 0));
-
-        // Requests in the order fixed by assume_ordering (TotalOrder fold).
-        let request_vec = request_batch.fold(
-            q!(|| Vec::new()),
-            q!(|requests, request| {
-                requests.push(request);
-            }),
-        );
-
-        // Received messages as an unordered batch; raft_step sorts them into a
-        // canonical order, so downstream results depend only on the batch multiset.
-        let message_vec = traffic_batch.fold(
-            q!(|| Vec::new()),
-            q!(
-                |messages, message| {
-                    messages.push(message);
-                },
-                commutative = manual_proof!(
-                    /** the accumulated batch is sorted into a canonical order by
-                    raft_step before being applied, so downstream results depend only
-                    on the batch multiset, never on arrival order */
-                )
-            ),
-        );
 
         // The other members of the cluster, the broadcast targets.
         let other_members = tick.singleton(q!(
@@ -950,60 +1178,70 @@ where
                 .collect::<Vec<_>>()
         ));
 
-        // Reference handles for this tick's aggregates, the persistent state, and the
-        // side-channel outputs: reads via `by_ref` (`&T`), writes via `by_mut`
-        // (`&mut T` on the state, `&mut Vec<T>` on streams). The step is hosted on a
-        // one-element-per-tick trigger stream whose output is the outbound message
-        // stream itself — which also guarantees the step is never dead-code pruned.
-        let state_ref = server_state.by_mut();
-        let election_fired_ref = election_fired.by_ref();
-        let heartbeat_fired_ref = heartbeat_fired.by_ref();
-        let request_vec_ref = request_vec.by_ref();
-        let message_vec_ref = message_vec.by_ref();
-        let other_members_ref = other_members.by_ref();
+        // Route each received message to the component that handles it.
+        let (election_traffic, replication_traffic) =
+            traffic_batch.partition(q!(|(_, rpc)| matches!(rpc, RaftRpc::Election(_))));
+        let election_messages = election_traffic.filter_map(q!(|(sender, rpc)| match rpc {
+            RaftRpc::Election(rpc) => Some((sender, rpc)),
+            RaftRpc::Replication(_) => None,
+        }));
+        let replication_messages = replication_traffic.filter_map(q!(|(sender, rpc)| match rpc {
+            RaftRpc::Replication(rpc) => Some((sender, rpc)),
+            RaftRpc::Election(_) => None,
+        }));
 
-        let committed: Stream<LogEntry<T>, _, Bounded> = tick.source_iter(q!(Vec::new()));
-        let committed_ref = committed.by_mut();
-        let redirected: Stream<(T, Option<MemberId<ClusterTag>>), _, Bounded> =
-            tick.source_iter(q!(Vec::new()));
-        let redirected_ref = redirected.by_mut();
-        let view_transitions: Stream<LeaderView<ClusterTag>, _, Bounded> =
-            tick.source_iter(q!(Vec::new()));
-        let view_transitions_ref = view_transitions.by_mut();
-
-        // The entire protocol step: hand this tick's aggregates to the pure
-        // sequential state machine and distribute its outputs.
-        let outbound = tick
+        // Start-of-tick reads. Reference handle accesses run in code order, so these
+        // read the state before either component advances it.
+        let election_start = election_state.by_ref();
+        let replication_start = replication_state.by_ref();
+        let view_before = tick
             .singleton(q!(()))
             .into_stream()
-            .flat_map_ordered(q!(move |_| {
-                let output = crate::cluster::raft::raft_step(
-                    &mut *state_ref,
-                    RaftStepInput {
-                        me: CLUSTER_SELF_ID.clone(),
-                        other_members: other_members_ref.clone(),
-                        // Written without field shorthand: stageleft renames captured
-                        // free variables, and shorthand hides the use site from it.
-                        cluster_size: { cluster_size },
-                        election_timer_fired: *election_fired_ref,
-                        heartbeat_timer_fired: *heartbeat_fired_ref,
-                        requests: request_vec_ref.clone(),
-                        messages: message_vec_ref.clone(),
-                    },
-                );
-                for entry in output.committed {
-                    committed_ref.push(entry);
-                }
-                for redirect in output.redirected {
-                    redirected_ref.push(redirect);
-                }
-                if let Some(view) = output.view_transition {
-                    view_transitions_ref.push(view);
-                }
-                output.outbound
-            }));
+            .map(q!(move |_| election_start.view(CLUSTER_SELF_ID.clone())));
+        // A one-element stream, so `first` always holds its value.
+        let last_log_position = tick
+            .singleton(q!(()))
+            .into_stream()
+            .map(q!(move |_| replication_start.last_log_position()))
+            .first()
+            .unwrap_or_default();
 
-        (outbound, committed, redirected, view_transitions)
+        let (elected_state, election_outbound) = leader_election(
+            election_state,
+            election_messages,
+            election_fired,
+            last_log_position,
+            other_members.clone(),
+            config,
+        );
+        let replication = log_replication(
+            elected_state,
+            replication_state,
+            replication_messages,
+            request_batch,
+            heartbeat_fired,
+            other_members,
+            config,
+        );
+        election_state = replication.election_state;
+        replication_state = replication.state;
+
+        // Report a view transition iff the view changed this tick.
+        let election_end = election_state.by_ref();
+        let view_transitions = view_before.filter_map(q!(move |before| {
+            let after = election_end.view(CLUSTER_SELF_ID.clone());
+            (after != before).then_some(after)
+        }));
+
+        let outbound = election_outbound
+            .map(q!(|(target, rpc)| (target, RaftRpc::Election(rpc))))
+            .chain(
+                replication
+                    .outbound
+                    .map(q!(|(target, rpc)| (target, RaftRpc::Replication(rpc)))),
+            );
+
+        (outbound, replication.committed, replication.redirected, view_transitions)
     };
 
     traffic_handle.complete(
@@ -1049,18 +1287,26 @@ where
 /// consumers deduplicate across leader changes. It is `Atomic` so that user actions
 /// taken on the commit path complete before the protocol treats entries as committed.
 ///
-/// # Design: one state machine, one tick
+/// # Design: two components, one tick
 ///
-/// Each member runs a single sequential state machine ([`raft_step`]) over the
-/// complete RAFT state ([`RaftServerState`]) inside one tick, fed by one intra-cluster
-/// channel. This is a deliberate safety property, not a stylistic choice: RAFT's
-/// proofs interlock vote decisions and log/ack decisions through shared state
-/// (`currentTerm`, `votedFor`, the log), and any design that splits that state across
-/// asynchronously-connected components re-introduces windows where one half acts on a
-/// stale view of the other. (An earlier two-component design here did exactly that,
-/// and the simulator reliably reproduced committed-entry truncation; see the
+/// RAFT's safety proofs interlock vote decisions and log/ack decisions through shared
+/// state (`currentTerm`, `votedFor`, the log): a voter must compare candidates against
+/// a log that includes every entry it acknowledged (§5.4.1), and a member that voted
+/// in a term must reject `AppendEntries` from older terms (§5.1). Each member
+/// therefore runs [`leader_election`] and then [`log_replication`] on the same tick's
+/// batch, threading the state through both:
+///
+/// * [`leader_election`] reads the log position the previous tick's replication left;
+/// * [`log_replication`] runs under the term [`leader_election`] just adopted;
+/// * the election state [`log_replication`] returns starts the next tick's
+///   [`leader_election`].
+///
+/// Every member's state transitions thus happen in one sequential order. Running the
+/// components in separate ticks connected by deferred feedback breaks the interlock:
+/// each component then acts on a stale view of the other, and an entry can commit
+/// through acks from members that simultaneously elect a leader missing it. The
 /// regression tests `concurrent_elections_never_fork_the_committed_log` and
-/// `fully_concurrent_run_never_forks_the_committed_log`.)
+/// `fully_concurrent_run_never_forks_the_committed_log` explore those schedules.
 ///
 /// # Timers
 ///
@@ -1135,9 +1381,94 @@ mod tests {
     use hydro_lang::prelude::*;
 
     use super::{
-        AppendEntriesRequest, LeaderView, LogEntry, RaftConfig, RaftRpc, RaftServerState,
-        RaftState, RaftStepInput, Replica, RequestVoteDto, raft, raft_server, raft_step,
+        AppendEntriesReply, AppendEntriesRequest, ElectionRpc, ElectionState, ElectionStepInput,
+        LeaderView, LogEntry, RaftConfig, RaftRpc, RaftState, Replica, ReplicationRpc,
+        ReplicationState, ReplicationStepInput, RequestVoteDto, election_step, raft, raft_server,
+        replication_step,
     };
+
+    /// One member's complete protocol state, as `raft_server` persists it across ticks.
+    struct MemberState {
+        election: ElectionState<Replica>,
+        replication: ReplicationState<String, Replica>,
+    }
+
+    impl MemberState {
+        fn new() -> Self {
+            MemberState {
+                election: ElectionState::new(),
+                replication: ReplicationState::new(),
+            }
+        }
+    }
+
+    /// One tick's worth of inputs to [`raft_step`].
+    struct StepInput {
+        me: MemberId<Replica>,
+        other_members: Vec<MemberId<Replica>>,
+        cluster_size: usize,
+        election_timer_fired: bool,
+        heartbeat_timer_fired: bool,
+        requests: Vec<String>,
+        messages: Vec<(MemberId<Replica>, RaftRpc<String>)>,
+    }
+
+    /// One tick's worth of outputs from [`raft_step`].
+    struct StepOutput {
+        outbound: Vec<(MemberId<Replica>, RaftRpc<String>)>,
+        committed: Vec<LogEntry<String>>,
+        redirected: Vec<(String, Option<MemberId<Replica>>)>,
+    }
+
+    /// Advances one member by one tick the way `raft_server` composes the components:
+    /// [`election_step`] against the start-of-tick log position, then
+    /// [`replication_step`] against the election state it produced.
+    fn raft_step(state: &mut MemberState, input: StepInput) -> StepOutput {
+        let mut election_messages = Vec::new();
+        let mut replication_messages = Vec::new();
+        for (sender, rpc) in input.messages {
+            match rpc {
+                RaftRpc::Election(rpc) => election_messages.push((sender, rpc)),
+                RaftRpc::Replication(rpc) => replication_messages.push((sender, rpc)),
+            }
+        }
+        let election_outbound = election_step(
+            &mut state.election,
+            ElectionStepInput {
+                me: input.me,
+                other_members: &input.other_members,
+                cluster_size: input.cluster_size,
+                election_timer_fired: input.election_timer_fired,
+                last_log_position: state.replication.last_log_position(),
+                messages: election_messages,
+            },
+        );
+        let replication = replication_step(
+            &mut state.election,
+            &mut state.replication,
+            ReplicationStepInput {
+                other_members: &input.other_members,
+                cluster_size: input.cluster_size,
+                heartbeat_timer_fired: input.heartbeat_timer_fired,
+                requests: input.requests,
+                messages: replication_messages,
+            },
+        );
+        StepOutput {
+            outbound: election_outbound
+                .into_iter()
+                .map(|(target, rpc)| (target, RaftRpc::Election(rpc)))
+                .chain(
+                    replication
+                        .outbound
+                        .into_iter()
+                        .map(|(target, rpc)| (target, RaftRpc::Replication(rpc))),
+                )
+                .collect(),
+            committed: replication.committed,
+            redirected: replication.redirected,
+        }
+    }
 
     const CLUSTER_SIZE: usize = 4;
 
@@ -1447,7 +1778,7 @@ mod tests {
             });
     }
 
-    /// Drives N deterministic [`RaftServerState`] machines connected by an in-memory
+    /// Drives N deterministic [`MemberState`] machines connected by an in-memory
     /// "network" of per-member inboxes, calling [`raft_step`] directly. Protocol-rule
     /// tests run on this instead of the simulator: they need precise, deterministic
     /// control over delivery and timers (e.g. "this entry is never replicated"),
@@ -1457,7 +1788,7 @@ mod tests {
     /// protocol configuration (majorities count them) but never take a step, so
     /// messages to them pile up unanswered.
     struct StepCluster {
-        states: Vec<RaftServerState<String, Replica>>,
+        states: Vec<MemberState>,
         inboxes: Vec<Vec<(MemberId<Replica>, RaftRpc<String>)>>,
         committed: Vec<Vec<LogEntry<String>>>,
         redirected: Vec<Vec<(String, Option<MemberId<Replica>>)>>,
@@ -1468,7 +1799,7 @@ mod tests {
     impl StepCluster {
         fn new(deployed: usize, cluster_size: usize) -> Self {
             StepCluster {
-                states: (0..cluster_size).map(|_| RaftServerState::new()).collect(),
+                states: (0..cluster_size).map(|_| MemberState::new()).collect(),
                 inboxes: vec![Vec::new(); cluster_size],
                 committed: vec![Vec::new(); cluster_size],
                 redirected: vec![Vec::new(); cluster_size],
@@ -1487,7 +1818,7 @@ mod tests {
             let messages = std::mem::take(&mut self.inboxes[member]);
             let output = raft_step(
                 &mut self.states[member],
-                RaftStepInput {
+                StepInput {
                     me: Self::id(member),
                     other_members: (0..self.cluster_size)
                         .filter(|target| *target != member)
@@ -1534,7 +1865,7 @@ mod tests {
             // At most 2 interrupts: the first may be consumed by heartbeat
             // suppression; the second must start a candidacy.
             let mut attempts = 0;
-            while self.states[member].role == RaftState::Follower {
+            while self.states[member].election.role == RaftState::Follower {
                 assert!(
                     attempts < 2,
                     "member {}'s election timer never started a candidacy \
@@ -1547,37 +1878,28 @@ mod tests {
             }
             self.deliver_until_quiet();
             assert!(
-                self.states[member].role == RaftState::Leader,
+                self.states[member].election.role == RaftState::Leader,
                 "member {} failed to win its election (role {:?}, term {})",
                 member,
-                self.states[member].role,
-                self.states[member].term
+                self.states[member].election.role,
+                self.states[member].election.term
             );
-            self.states[member].term
+            self.states[member].election.term
         }
 
         /// Installs `member` as the leader of `term` directly, modeling figure 8's
         /// crash-and-reelect histories without simulating the message loss that
-        /// produces them (exactly what the pre-unification sim tests did by
-        /// injecting `LeaderView`s). The state produced is a protocol-reachable
-        /// leadership: term advanced, vote self-recorded, follower bookkeeping reset.
+        /// produces them. The state produced is a protocol-reachable leadership: term
+        /// advanced, vote self-recorded; the member's next step resets its follower
+        /// bookkeeping, as for any new leadership.
         fn crown(&mut self, member: usize, term: usize) {
-            assert!(term > self.states[member].term, "terms only move forward");
-            let log_len = self.states[member].log.len();
-            let state = &mut self.states[member];
+            let state = &mut self.states[member].election;
+            assert!(term > state.term, "terms only move forward");
             state.term = term;
             state.role = RaftState::Leader;
             state.voted_for = Some(Self::id(member));
             state.votes.clear();
             state.known_leader = None;
-            state.next_index.clear();
-            state.match_index.clear();
-            for target in 0..self.cluster_size {
-                if target != member {
-                    state.next_index.insert(Self::id(target), log_len + 1);
-                    state.match_index.insert(Self::id(target), 0);
-                }
-            }
         }
 
         /// Sends `payload` to `member` and asserts it was appended as leader rather
@@ -1632,11 +1954,10 @@ mod tests {
         }
     }
 
-    /// The interlock that motivated unifying the protocol state into one step (the
-    /// cross-tick race fixed by this design; see [`raft`]'s docs): a member's vote
-    /// decisions and its log/ack decisions must be read-modify-writes against the
-    /// same state, in both directions, even when the triggering messages arrive in
-    /// the same batch.
+    /// The interlock that requires both components to run in one tick (see [`raft`]'s
+    /// design notes): a member's vote decisions and its log/ack decisions must be
+    /// read-modify-writes against the same state, in both directions, even when the
+    /// triggering messages arrive in the same batch.
     ///
     /// * **Ack-then-vote**: a member that has acknowledged an entry compares later
     ///   vote requests against the log *including* that entry, so a candidate
@@ -1654,25 +1975,25 @@ mod tests {
             index,
         };
         let append = |entries: Vec<LogEntry<String>>, prev: usize| {
-            RaftRpc::AppendEntries(AppendEntriesRequest {
+            RaftRpc::Replication(ReplicationRpc::AppendEntries(AppendEntriesRequest {
                 term: 1,
                 prev_log_index: prev,
                 prev_log_term: usize::from(prev != 0),
                 entries,
                 leader_commit: 0,
-            })
+            }))
         };
 
         // Ack-then-vote: member 1 acknowledges entry 1 from the term-1 leader, and
         // *in the same batch* receives a term-2 vote request from a candidate whose
         // log is empty. Whatever the processing order, the two decisions must never
         // combine into "acked the entry AND endorsed a candidate missing it": the
-        // canonical order processes the vote first (empty-vs-empty log: granted,
-        // term becomes 2), which forces the term-1 append to be rejected.
-        let mut state: RaftServerState<String, Replica> = RaftServerState::new();
+        // election step runs first (empty-vs-empty log: granted, term becomes 2), which
+        // forces the replication step to reject the term-1 append.
+        let mut state = MemberState::new();
         let output = raft_step(
             &mut state,
-            RaftStepInput {
+            StepInput {
                 me: StepCluster::id(1),
                 other_members: vec![StepCluster::id(0), StepCluster::id(2)],
                 cluster_size: 3,
@@ -1683,29 +2004,32 @@ mod tests {
                     (leader_0.clone(), append(vec![entry(1)], 0)),
                     (
                         candidate_2.clone(),
-                        RaftRpc::RequestVote(RequestVoteDto {
+                        RaftRpc::Election(ElectionRpc::RequestVote(RequestVoteDto {
                             term: 2,
                             last_log_index: 0,
                             last_log_term: 0,
-                        }),
+                        })),
                     ),
                 ],
             },
         );
-        assert_eq!(state.term, 2, "the vote request's term must be adopted");
         assert_eq!(
-            state.voted_for,
+            state.election.term, 2,
+            "the vote request's term must be adopted"
+        );
+        assert_eq!(
+            state.election.voted_for,
             Some(candidate_2.clone()),
             "the empty-log candidate is legitimately granted against an empty log"
         );
         assert!(
-            state.log.is_empty(),
+            state.replication.log.is_empty(),
             "having endorsed a term-2 candidate, the term-1 append must be rejected"
         );
         let acked = output.outbound.iter().any(|(_, message)| {
             matches!(
                 message,
-                RaftRpc::AppendEntriesReply(reply) if reply.success
+                RaftRpc::Replication(ReplicationRpc::AppendEntriesReply(reply)) if reply.success
             )
         });
         assert!(
@@ -1719,7 +2043,7 @@ mod tests {
         // the grant — there is no window where the log half still believes term 1).
         let output = raft_step(
             &mut state,
-            RaftStepInput {
+            StepInput {
                 me: StepCluster::id(1),
                 other_members: vec![StepCluster::id(0), StepCluster::id(2)],
                 cluster_size: 3,
@@ -1730,21 +2054,21 @@ mod tests {
             },
         );
         assert!(
-            state.log.is_empty(),
+            state.replication.log.is_empty(),
             "a stale-term append must stay rejected"
         );
         assert!(matches!(
             &output.outbound[..],
-            [(target, RaftRpc::AppendEntriesReply(reply))]
+            [(target, RaftRpc::Replication(ReplicationRpc::AppendEntriesReply(reply)))]
                 if *target == leader_0 && !reply.success && reply.term == 2
         ));
 
         // Ack-then-vote, later ticks: a member whose log holds an acknowledged entry
         // refuses a later candidate that lacks it (§5.4.1 against the live log).
-        let mut state: RaftServerState<String, Replica> = RaftServerState::new();
+        let mut state = MemberState::new();
         raft_step(
             &mut state,
-            RaftStepInput {
+            StepInput {
                 me: StepCluster::id(1),
                 other_members: vec![StepCluster::id(0), StepCluster::id(2)],
                 cluster_size: 3,
@@ -1755,13 +2079,13 @@ mod tests {
             },
         );
         assert_eq!(
-            state.log.len(),
+            state.replication.log.len(),
             1,
             "the term-1 append is accepted this time"
         );
         raft_step(
             &mut state,
-            RaftStepInput {
+            StepInput {
                 me: StepCluster::id(1),
                 other_members: vec![StepCluster::id(0), StepCluster::id(2)],
                 cluster_size: 3,
@@ -1770,20 +2094,20 @@ mod tests {
                 requests: vec![],
                 messages: vec![(
                     candidate_2,
-                    RaftRpc::RequestVote(RequestVoteDto {
+                    RaftRpc::Election(ElectionRpc::RequestVote(RequestVoteDto {
                         term: 2,
                         last_log_index: 0,
                         last_log_term: 0,
-                    }),
+                    })),
                 )],
             },
         );
         assert_eq!(
-            state.term, 2,
+            state.election.term, 2,
             "the higher term is adopted even when refusing"
         );
         assert_eq!(
-            state.voted_for, None,
+            state.election.voted_for, None,
             "a candidate whose log lacks the acknowledged entry must be refused"
         );
     }
@@ -1795,17 +2119,15 @@ mod tests {
     /// exercised by `vote_and_ack_decisions_interlock`).
     #[test]
     fn leader_steps_down_on_higher_term_reply() {
-        let mut state: RaftServerState<String, Replica> = RaftServerState::new();
+        let mut state = MemberState::new();
         // Install member 0 as leader of term 1.
-        state.term = 1;
-        state.role = RaftState::Leader;
-        state.voted_for = Some(StepCluster::id(0));
-        state.next_index.insert(StepCluster::id(1), 1);
-        state.match_index.insert(StepCluster::id(1), 0);
+        state.election.term = 1;
+        state.election.role = RaftState::Leader;
+        state.election.voted_for = Some(StepCluster::id(0));
 
         let output = raft_step(
             &mut state,
-            RaftStepInput {
+            StepInput {
                 me: StepCluster::id(0),
                 other_members: vec![StepCluster::id(1), StepCluster::id(2)],
                 cluster_size: 3,
@@ -1814,26 +2136,29 @@ mod tests {
                 requests: vec![],
                 messages: vec![(
                     StepCluster::id(1),
-                    RaftRpc::AppendEntriesReply(super::AppendEntriesReply {
+                    RaftRpc::Replication(ReplicationRpc::AppendEntriesReply(AppendEntriesReply {
                         term: 3,
                         success: false,
                         match_index: 0,
-                    }),
+                    })),
                 )],
             },
         );
-        assert_eq!(state.term, 3, "the leader must adopt the higher term");
         assert_eq!(
-            state.role,
+            state.election.term, 3,
+            "the leader must adopt the higher term"
+        );
+        assert_eq!(
+            state.election.role,
             RaftState::Follower,
             "the leader must step down to follower on a higher-term reply"
         );
         assert_eq!(
-            state.voted_for, None,
+            state.election.voted_for, None,
             "voted_for must be cleared when stepping down"
         );
         assert!(
-            state.votes.is_empty(),
+            state.election.votes.is_empty(),
             "votes must be cleared when stepping down"
         );
         // No outbound messages expected (a deposed leader just stops leading).
@@ -1860,8 +2185,8 @@ mod tests {
     #[test]
     fn stale_log_candidate_is_refused() {
         let mut cluster = StepCluster::new(2, 2);
-        cluster.states[0].term = 1;
-        cluster.states[0].log = (1..=3)
+        cluster.states[0].election.term = 1;
+        cluster.states[0].replication.log = (1..=3)
             .map(|index| LogEntry {
                 message: format!("entry-{}", index),
                 term_received: 1,
@@ -1873,12 +2198,12 @@ mod tests {
         cluster.step(1, true, false, &[]);
         cluster.deliver_until_quiet();
         assert!(
-            cluster.states[1].role == RaftState::Candidate,
+            cluster.states[1].election.role == RaftState::Candidate,
             "the stale-logged member 1 must stall as a candidate, got {:?}",
-            cluster.states[1].role
+            cluster.states[1].election.role
         );
         assert_eq!(
-            cluster.states[0].voted_for, None,
+            cluster.states[0].election.voted_for, None,
             "member 0 must not vote for a candidate whose log is behind its own"
         );
 
@@ -1886,11 +2211,11 @@ mod tests {
         // term already advanced past member 1's candidacy via the vote request.)
         let term = cluster.elect(0);
         assert!(
-            term > cluster.states[1].term || cluster.states[1].term == term,
+            term > cluster.states[1].election.term || cluster.states[1].election.term == term,
             "the election settles a single term"
         );
         assert_eq!(
-            cluster.states[1].voted_for,
+            cluster.states[1].election.voted_for,
             Some(StepCluster::id(0)),
             "member 1 must grant the up-to-date candidate"
         );
@@ -1954,9 +2279,8 @@ mod tests {
     /// deployed — the two "crashed" followers can never acknowledge, so no entry may
     /// ever commit (majority is 2, and the leader's own vote is only 1). This is the
     /// test that catches an off-by-one quorum of `n / 2`, which would let the leader
-    /// commit entirely on its own. (Leadership is installed via `crown`, exactly as
-    /// the pre-unification test installed it via an injected view: a 1-of-3 member
-    /// cannot win a real election, which is the point.)
+    /// commit entirely on its own. (Leadership is installed via `crown`: a 1-of-3
+    /// member cannot win a real election, which is the point.)
     #[test]
     fn leader_without_quorum_commits_nothing() {
         let mut cluster = StepCluster::new(1, 3);
@@ -2000,7 +2324,7 @@ mod tests {
         // and 2 form the majority) and replicates "y" over "z".
         assert_eq!(cluster.elect(1), 2);
         assert_eq!(
-            cluster.states[0].voted_for, None,
+            cluster.states[0].election.voted_for, None,
             "member 0 must refuse the candidate whose log lacks its extra entry"
         );
         cluster.submit(1, "y");
@@ -2027,8 +2351,7 @@ mod tests {
     /// leader's own term.
     ///
     /// The figure-8 histories arise from crashes and message loss, so leaderships are
-    /// installed with `crown` (as the pre-unification test did with injected views)
-    /// while replication runs the real protocol:
+    /// installed with `crown` while replication runs the real protocol:
     /// * Term 1: member 0 appends "old" but never heartbeats it (figure 8(a)).
     /// * Term 2: member 0, re-crowned, replicates "old" everywhere — `match_index`
     ///   reaches 1 on every member, beyond a majority, yet nothing may commit:
@@ -2060,11 +2383,13 @@ mod tests {
         cluster.heartbeat_round(0);
         cluster.heartbeat_round(0);
         assert!(
-            (1..3).all(|member| cluster.states[member].log.len() == 1),
+            (1..3).all(|member| cluster.states[member].replication.log.len() == 1),
             "\"old\" must be replicated to every member"
         );
         assert!(
-            (1..3).all(|member| { cluster.states[0].match_index[&StepCluster::id(member)] == 1 }),
+            (1..3).all(|member| {
+                cluster.states[0].replication.match_index[&StepCluster::id(member)] == 1
+            }),
             "every member's acknowledgement of \"old\" must have been processed"
         );
 
@@ -2148,8 +2473,8 @@ mod tests {
         let committed_recv = committed.end_atomic().sim_cluster_output();
         let redirected_recv = redirected.sim_cluster_output();
 
-        // The committed stream carries a consistency assertion (see log_replication);
-        // the simulator cannot validate those yet and asks tests to skip them.
+        // The committed stream carries a consistency assertion (see raft_server); the
+        // simulator cannot validate those yet and asks tests to skip them.
         flow.sim()
             .skip_consistency_assertions()
             .with_cluster_size(&cluster, N)
@@ -2268,31 +2593,28 @@ mod tests {
             });
     }
 
-    /// **Regression net for a fixed cross-tick race.** Before the protocol state was
-    /// unified into one tick, this test reliably reproduced a real safety bug (6/6
-    /// fuzz runs, usually within the first few iterations): `leader_election` and
-    /// `log_replication` kept their halves of the state (`term`/`voted_for` vs.
-    /// `log`/acks) in separate ticks connected by deferred feedback streams, so a
-    /// voter could grant a vote using a log summary lagging its just-acked entries,
-    /// or ack an old-term leader after voting in a newer term. Either window let an
-    /// entry commit via acks from members that simultaneously helped elect a leader
-    /// missing that entry — the new leader then truncated a committed entry
-    /// (surfacing as the truncation-guard panic, `protocol violation: asked to
-    /// truncate committed entry`). Notably no message loss was needed: plain
-    /// `fail_stop` channels and interleaving alone sufficed.
+    /// **Regression net for the cross-tick vote/ack race.** When `leader_election` and
+    /// `log_replication` run in separate ticks connected by deferred feedback streams,
+    /// this test reliably reproduces a real safety bug (6/6 fuzz runs, usually within
+    /// the first few iterations): a voter can grant a vote using a log summary lagging
+    /// its just-acked entries, or ack an old-term leader after voting in a newer term.
+    /// Either window lets an entry commit via acks from members that simultaneously
+    /// help elect a leader missing that entry — the new leader then truncates a
+    /// committed entry (surfacing as the truncation-guard panic, `protocol violation:
+    /// asked to truncate committed entry`). No message loss is needed: plain
+    /// `fail_stop` channels and interleaving alone suffice.
     ///
-    /// The fix makes the vote/ack interlock atomic by construction: one state
-    /// machine ([`raft_step`]) over one [`RaftServerState`] in one tick (see
-    /// [`raft`]'s design notes). This test keeps exploring the schedules that used
-    /// to break it.
+    /// Running both components in one tick, with the state threaded through them,
+    /// closes both windows (see [`raft`]'s design notes). This test keeps exploring
+    /// the schedules that open them.
     ///
     /// Detection is safety-only, in two layers:
     ///
     /// 1. Every member's committed history must stay pairwise prefix-consistent —
     ///    members may lag, but may never emit a *different* entry at the same
     ///    position.
-    /// 2. [`raft_step`] asserts a member is never asked to truncate at or below
-    ///    its own commit index; the simulator surfaces that panic as a failure.
+    /// 2. [`replication_step`] asserts a member is never asked to truncate at or
+    ///    below its own commit index; the simulator surfaces that panic as a failure.
     ///
     /// The choreography deliberately overlaps replication and elections without
     /// intermediate quiescence: each round primes a challenger's heartbeat-
@@ -2346,8 +2668,8 @@ mod tests {
         let committed_recv = committed.end_atomic().sim_cluster_output();
         let redirected_recv = redirected.sim_cluster_output();
 
-        // The committed stream carries a consistency assertion (see log_replication);
-        // the simulator cannot validate those yet and asks tests to skip them.
+        // The committed stream carries a consistency assertion (see raft_server); the
+        // simulator cannot validate those yet and asks tests to skip them.
         flow.sim()
             .skip_consistency_assertions()
             .with_cluster_size(&cluster, N)
@@ -2429,9 +2751,9 @@ mod tests {
             });
     }
 
-    /// **Regression net for the fixed cross-tick race** (same underlying bug as
-    /// [`concurrent_elections_never_fork_the_committed_log`], where the history is
-    /// documented; before the fix this reproduced it in 2 of 3 runs).
+    /// **Regression net for the cross-tick vote/ack race** (the bug documented on
+    /// [`concurrent_elections_never_fork_the_committed_log`]; with the components in
+    /// separate ticks this test reproduces it in 2 of 3 runs).
     ///
     /// The maximal version of the no-quiescence idea: *every* input for the entire
     /// run — election timer interrupts, client requests, and heartbeat pumps, for
@@ -2454,7 +2776,7 @@ mod tests {
     ///    position emitted exactly once, in order);
     /// 2. all members' committed histories are pairwise prefix-consistent (lagging
     ///    is fine, forking is not);
-    /// 3. [`raft_step`]'s truncation guard never fires (surfaces as a panic /
+    /// 3. [`replication_step`]'s truncation guard never fires (surfaces as a panic /
     ///    SIGABRT if a committed entry is overwritten).
     ///
     /// Compared to the targeted test above, this explores a much larger schedule
@@ -2489,8 +2811,8 @@ mod tests {
         let committed_recv = committed.end_atomic().sim_cluster_output();
         let redirected_recv = redirected.sim_cluster_output();
 
-        // The committed stream carries a consistency assertion (see log_replication);
-        // the simulator cannot validate those yet and asks tests to skip them.
+        // The committed stream carries a consistency assertion (see raft_server); the
+        // simulator cannot validate those yet and asks tests to skip them.
         flow.sim()
             .skip_consistency_assertions()
             .with_cluster_size(&cluster, N)

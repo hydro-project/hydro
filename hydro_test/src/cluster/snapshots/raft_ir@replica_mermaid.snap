@@ -10,122 +10,180 @@ classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
 1v1["<div style=text-align:center>(1v1)</div> <code><br>source_iter([<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [CLUSTER_SELF_ID__free = hydro_lang::__staged::location::MemberId:: &lt;<br>            hydro_test::__staged::cluster::raft::Replica, _ &gt;<br>            ::from_tagless((__hydro_lang_cluster_self_id_loc1v1).clone()),<br>            cluster_members__free = __hydro_lang_cluster_ids_loc1v1,]<br>            [cluster_members__free.iter().map(| id | MemberId::from_tagless(id<br>            .clone())).filter(| member | * member != CLUSTER_SELF_ID__free).collect::<br>            &lt; Vec &lt; _ &gt; &gt; ()]<br>        )<br>    },<br>])</code>"]:::otherClass
 2v1["<div style=text-align:center>(2v1)</div> <code><br>snapshot()</code>"]:::otherClass
-4v1["<div style=text-align:center>(4v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
-5v1["<div style=text-align:center>(5v1)</div> <code><br>batch_eager()</code>"]:::otherClass
-6v1["<div style=text-align:center>(6v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [| | Vec::new()]<br>        )<br>    },<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [| messages, message | { messages.push(message); }]<br>        )<br>    },<br>)</code>"]:::otherClass
-8v1["<div style=text-align:center>(8v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
-9v1["<div style=text-align:center>(9v1)</div> <code><br>source_stream({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_LINE_COL!(<br>        [interval__free = { use crate ::__staged::__deps:: *; use crate<br>        ::__staged::cluster::raft::tests:: *; { std::time::Duration::from_secs(1) }<br>        },]<br>        [tokio_stream::StreamExt::map(tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(interval__free)),<br>        | _ | ())]<br>    )<br>})</code>"]:::otherClass
-10v1["<div style=text-align:center>(10v1)</div> <code><br>map({<br>    {<br>        let CLUSTER_SELF_ID__free = hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::raft::Replica,<br>            _,<br>        &gt;::from_tagless((__hydro_lang_cluster_self_id_loc1v1).clone());<br>        move |_| {<br>            format!(<br>                &quot;hello from member {}&quot;,<br>                CLUSTER_SELF_ID__free.clone().into_tagless(),<br>            )<br>        }<br>    }<br>})</code>"]:::otherClass
-11v1["<div style=text-align:center>(11v1)</div> <code><br>batch_eager()</code>"]:::otherClass
-12v1["<div style=text-align:center>(12v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [| | Vec::new()]<br>        )<br>    },<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [| requests, request | { requests.push(request); }]<br>        )<br>    },<br>)</code>"]:::otherClass
-14v1["<div style=text-align:center>(14v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
-15v1["<div style=text-align:center>(15v1)</div> <code><br>source_stream({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_LINE_COL!(<br>        [interval__free = { use crate ::__staged::__deps:: *; use crate<br>        ::__staged::cluster::raft::tests:: *; { std::time::Duration::from_millis(100)<br>        } },]<br>        [tokio_stream::StreamExt::map(tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(interval__free)),<br>        | _ | ())]<br>    )<br>})</code>"]:::otherClass
-16v1["<div style=text-align:center>(16v1)</div> <code><br>batch_eager()</code>"]:::otherClass
-17v1["<div style=text-align:center>(17v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>            [] [| | 0usize]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>            [] [| count, _ | * count += 1]<br>        )<br>    },<br>)</code>"]:::otherClass
-18v1["<div style=text-align:center>(18v1)</div> <code><br>map({<br>    crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!([] [| n | n &gt; 0])<br>})</code>"]:::otherClass
-20v1["<div style=text-align:center>(20v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
-21v1["<div style=text-align:center>(21v1)</div> <code><br>source_stream({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_LINE_COL!(<br>        [interval__free = { use crate ::__staged::__deps:: *; use crate<br>        ::__staged::cluster::raft::tests:: *; { let CLUSTER_SELF_ID__free =<br>        hydro_lang::__staged::location::MemberId:: &lt;<br>        hydro_test::__staged::cluster::raft::Replica, _ &gt;<br>        ::from_tagless((__hydro_lang_cluster_self_id_loc1v1).clone());<br>        std::time::Duration::from_millis(500 + u64::from(CLUSTER_SELF_ID__free<br>        .get_raw_id()) * 130) } },]<br>        [tokio_stream::StreamExt::map(tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(interval__free)),<br>        | _ | ())]<br>    )<br>})</code>"]:::otherClass
-22v1["<div style=text-align:center>(22v1)</div> <code><br>batch_eager()</code>"]:::otherClass
-23v1["<div style=text-align:center>(23v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>            [] [| | 0usize]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>            [] [| count, _ | * count += 1]<br>        )<br>    },<br>)</code>"]:::otherClass
-24v1["<div style=text-align:center>(24v1)</div> <code><br>map({<br>    crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!([] [| n | n &gt; 0])<br>})</code>"]:::otherClass
-26v1["<div style=text-align:center>(26v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
-27v1["<div style=text-align:center>(27v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
-28v1["<div style=text-align:center>(28v1)</div> <code><br>source_iter([<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [RaftServerState::new()]<br>        )<br>    },<br>])</code>"]:::otherClass
-29v1["<div style=text-align:center>(29v1)</div> <code><br>snapshot()</code>"]:::otherClass
-30v1["<div style=text-align:center>(30v1)</div> <code><br>chain_first_n(1)</code>"]:::otherClass
-32v1["<div style=text-align:center>(32v1)</div> <code><br>identity::&lt;<br>    hydro_test::__staged::cluster::raft::RaftServerState&lt;<br>        std::string::String,<br>        hydro_test::__staged::cluster::raft::Replica,<br>    &gt;,<br>&gt;()</code>"]:::otherClass
-33v1["<div style=text-align:center>(33v1)</div> <code><br>source_iter(<br>    stageleft::runtime_support::type_hint::&lt;<br>        std::vec::Vec&lt;<br>            hydro_test::__staged::cluster::raft::LogEntry&lt;std::string::String&gt;,<br>        &gt;,<br>    &gt;({<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [Vec::new()]<br>        )<br>    }),<br>)</code>"]:::otherClass
-34v1["<div style=text-align:center>(34v1)</div> <code><br>snapshot_prefix()</code>"]:::otherClass
-36v1["<div style=text-align:center>(36v1)</div> <code><br>source_iter(<br>    stageleft::runtime_support::type_hint::&lt;<br>        std::vec::Vec&lt;<br>            (<br>                std::string::String,<br>                core::option::Option&lt;<br>                    hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                        hydro_test::__staged::cluster::raft::Replica,<br>                    &gt;,<br>                &gt;,<br>            ),<br>        &gt;,<br>    &gt;({<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [Vec::new()]<br>        )<br>    }),<br>)</code>"]:::otherClass
-37v1["<div style=text-align:center>(37v1)</div> <code><br>snapshot_prefix()</code>"]:::otherClass
-39v1["<div style=text-align:center>(39v1)</div> <code><br>source_iter(<br>    stageleft::runtime_support::type_hint::&lt;<br>        std::vec::Vec&lt;<br>            hydro_test::__staged::cluster::raft::LeaderView&lt;<br>                hydro_test::__staged::cluster::raft::Replica,<br>            &gt;,<br>        &gt;,<br>    &gt;({<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [Vec::new()]<br>        )<br>    }),<br>)</code>"]:::otherClass
-40v1["<div style=text-align:center>(40v1)</div> <code><br>snapshot_prefix()</code>"]:::otherClass
-42v1["<div style=text-align:center>(42v1)</div> <code><br>source_iter([<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!([] [()])<br>    },<br>])</code>"]:::otherClass
-43v1["<div style=text-align:center>(43v1)</div> <code><br>snapshot()</code>"]:::otherClass
-44v1["<div style=text-align:center>(44v1)</div> <code><br>flat_map({<br>    let __hydro_singleton_ref_0 = stream_40;<br>    let __hydro_singleton_ref_1 = stream_30;<br>    let __hydro_singleton_ref_2 = stream_22;<br>    let __hydro_singleton_ref_3 = stream_6;<br>    let __hydro_singleton_ref_4 = stream_1;<br>    let __hydro_singleton_ref_5 = stream_46;<br>    let __hydro_singleton_ref_6 = stream_14;<br>    let __hydro_singleton_ref_7 = stream_38;<br>    let __hydro_singleton_ref_8 = stream_50;<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [__sl_p0 = crate ::__staged, CLUSTER_SELF_ID__free =<br>            hydro_lang::__staged::location::MemberId:: &lt;<br>            hydro_test::__staged::cluster::raft::Replica, _ &gt;<br>            ::from_tagless((__hydro_lang_cluster_self_id_loc1v1).clone()),<br>            cluster_size__free = 3usize, committed_ref__free =<br>            __hydro_singleton_ref_0, election_fired_ref__free =<br>            __hydro_singleton_ref_1, heartbeat_fired_ref__free =<br>            __hydro_singleton_ref_2, message_vec_ref__free = __hydro_singleton_ref_3,<br>            other_members_ref__free = __hydro_singleton_ref_4, redirected_ref__free =<br>            __hydro_singleton_ref_5, request_vec_ref__free = __hydro_singleton_ref_6,<br>            state_ref__free = __hydro_singleton_ref_7, view_transitions_ref__free =<br>            __hydro_singleton_ref_8,] [move | _ | { let output =<br>            __sl_p0::cluster::raft::raft_step(&amp; mut * state_ref__free, RaftStepInput<br>            { me : CLUSTER_SELF_ID__free.clone(), other_members :<br>            other_members_ref__free.clone(), cluster_size : { cluster_size__free },<br>            election_timer_fired : * election_fired_ref__free, heartbeat_timer_fired<br>            : * heartbeat_fired_ref__free, requests : request_vec_ref__free.clone(),<br>            messages : message_vec_ref__free.clone(), },); for entry in output<br>            .committed { committed_ref__free.push(entry); } for redirect in output<br>            .redirected { redirected_ref__free.push(redirect); } if let Some(view) =<br>            output.view_transition { view_transitions_ref__free.push(view); } output<br>            .outbound }]<br>        )<br>    }<br>})</code>"]:::otherClass
-45v1["<div style=text-align:center>(45v1)</div> <code><br>all_iterations()</code>"]:::otherClass
-46v1["<div style=text-align:center>(46v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
-47v1["<div style=text-align:center>(47v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
-48v1["<div style=text-align:center>(48v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
-49v1["<div style=text-align:center>(49v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::raft::Replica,<br>            _,<br>        &gt;::from_tagless(id),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            hydro_test::__staged::cluster::raft::RaftRpc&lt;std::string::String&gt;,<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
-50v1["<div style=text-align:center>(50v1)</div> <code><br>identity::&lt;<br>    (<br>        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::raft::Replica,<br>        &gt;,<br>        hydro_test::__staged::cluster::raft::RaftRpc&lt;std::string::String&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
-51v1["<div style=text-align:center>(51v1)</div> <code><br>all_iterations()</code>"]:::otherClass
-52v1["<div style=text-align:center>(52v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
-53v1["<div style=text-align:center>(53v1)</div> <code><br>all_iterations()</code>"]:::otherClass
-54v1["<div style=text-align:center>(54v1)</div> <code><br>batch_eager()</code>"]:::otherClass
-55v1["<div style=text-align:center>(55v1)</div> <code><br>all_iterations()</code>"]:::otherClass
-56v1["<div style=text-align:center>(56v1)</div> <code><br>for_each({<br>    {<br>        |entry| {<br>            println!(<br>                &quot;committed [term {}, index {}]: {}&quot;,<br>                entry.term_received,<br>                entry.index,<br>                entry.message,<br>            )<br>        }<br>    }<br>})</code>"]:::otherClass
-57v1["<div style=text-align:center>(57v1)</div> <code><br>all_iterations()</code>"]:::otherClass
-58v1["<div style=text-align:center>(58v1)</div> <code><br>for_each({<br>    {<br>        |(request, leader_hint)| {<br>            println!(&quot;redirected: {request:?} (leader hint: {leader_hint:?})&quot;)<br>        }<br>    }<br>})</code>"]:::otherClass
+3v1["<div style=text-align:center>(3v1)</div> <code><br>tee()</code>"]:::otherClass
+5v1["<div style=text-align:center>(5v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
+6v1["<div style=text-align:center>(6v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+7v1["<div style=text-align:center>(7v1)</div> <code><br>source_iter([<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [ReplicationState::new()]<br>        )<br>    },<br>])</code>"]:::otherClass
+8v1["<div style=text-align:center>(8v1)</div> <code><br>snapshot()</code>"]:::otherClass
+9v1["<div style=text-align:center>(9v1)</div> <code><br>chain_first_n(1)</code>"]:::otherClass
+11v1["<div style=text-align:center>(11v1)</div> <code><br>source_iter([<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!([] [()])<br>    },<br>])</code>"]:::otherClass
+12v1["<div style=text-align:center>(12v1)</div> <code><br>snapshot()</code>"]:::otherClass
+13v1["<div style=text-align:center>(13v1)</div> <code><br>map({<br>    let __hydro_singleton_ref_0 = stream_10;<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [replication_start__free = __hydro_singleton_ref_0,] [move | _ |<br>            replication_start__free.last_log_position()]<br>        )<br>    }<br>})</code>"]:::otherClass
+14v1["<div style=text-align:center>(14v1)</div> <code><br>scan::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>            [] [| | None]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>            [f__free = stageleft::runtime_support::fn2_borrow_mut_type_hint:: &lt; (),<br>            (usize, usize),<br>            hydro_test::__staged::__deps::hydro_lang::live_collections::keyed_stream::Generate<br>            &lt; (usize, usize) &gt; &gt; ({ use hydro_lang::__staged::__deps:: *; use<br>            hydro_lang::__staged::live_collections::stream:: *;<br>            hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!([]<br>            [| _, item | Generate::Return(item)]) }), init__free =<br>            stageleft::runtime_support::fn0_type_hint:: &lt; () &gt; ({ use<br>            hydro_lang::__staged::__deps:: *; use<br>            hydro_lang::__staged::live_collections::stream:: *;<br>            hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!([]<br>            [| | ()]) }),] [move | state : &amp; mut Option &lt; Option &lt; _ &gt; &gt;, v | { if<br>            state.is_none() { * state = Some(Some(init__free())); } match state {<br>            Some(Some(state_value)) =&gt; match f__free(state_value, v) {<br>            Generate::Yield(out) =&gt; Some(Some(out)), Generate::Return(out) =&gt; { *<br>            state = Some(None); Some(Some(out)) } Generate::Break =&gt; None,<br>            Generate::Continue =&gt; Some(None), }, _ =&gt; None, } }]<br>        )<br>    },<br>)</code>"]:::otherClass
+15v1["<div style=text-align:center>(15v1)</div> <code><br>flat_map({<br>    hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>        [] [| d | d]<br>    )<br>})</code>"]:::otherClass
+16v1["<div style=text-align:center>(16v1)</div> <code><br>reduce::&lt;<br>    'tick,<br>&gt;({<br>    hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>        [] [| _, _ | {}]<br>    )<br>})</code>"]:::otherClass
+17v1["<div style=text-align:center>(17v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_optional_rs_LINE_COL!(<br>        [] [| v | Some(v)]<br>    )<br>})</code>"]:::otherClass
+18v1["<div style=text-align:center>(18v1)</div> <code><br>source_iter([::std::option::Option::None])</code>"]:::otherClass
+19v1["<div style=text-align:center>(19v1)</div> <code><br>snapshot()</code>"]:::otherClass
+20v1["<div style=text-align:center>(20v1)</div> <code><br>chain_first_n(1)</code>"]:::otherClass
+21v1["<div style=text-align:center>(21v1)</div> <code><br>map({<br>    hydro_lang::__stageleft_quote_src_live_collections_optional_rs_LINE_COL!(<br>        [] [| v | v.unwrap_or_default()]<br>    )<br>})</code>"]:::otherClass
+23v1["<div style=text-align:center>(23v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
+24v1["<div style=text-align:center>(24v1)</div> <code><br>source_stream({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_LINE_COL!(<br>        [interval__free = { use crate ::__staged::__deps:: *; use crate<br>        ::__staged::cluster::raft::tests:: *; { let CLUSTER_SELF_ID__free =<br>        hydro_lang::__staged::location::MemberId:: &lt;<br>        hydro_test::__staged::cluster::raft::Replica, _ &gt;<br>        ::from_tagless((__hydro_lang_cluster_self_id_loc1v1).clone());<br>        std::time::Duration::from_millis(500 + u64::from(CLUSTER_SELF_ID__free<br>        .get_raw_id()) * 130) } },]<br>        [tokio_stream::StreamExt::map(tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(interval__free)),<br>        | _ | ())]<br>    )<br>})</code>"]:::otherClass
+25v1["<div style=text-align:center>(25v1)</div> <code><br>batch_eager()</code>"]:::otherClass
+26v1["<div style=text-align:center>(26v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>            [] [| | 0usize]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>            [] [| count, _ | * count += 1]<br>        )<br>    },<br>)</code>"]:::otherClass
+27v1["<div style=text-align:center>(27v1)</div> <code><br>map({<br>    crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!([] [| n | n &gt; 0])<br>})</code>"]:::otherClass
+29v1["<div style=text-align:center>(29v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
+31v1["<div style=text-align:center>(31v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
+32v1["<div style=text-align:center>(32v1)</div> <code><br>source_stream({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_LINE_COL!(<br>        [interval__free = { use crate ::__staged::__deps:: *; use crate<br>        ::__staged::cluster::raft::tests:: *; { std::time::Duration::from_millis(100)<br>        } },]<br>        [tokio_stream::StreamExt::map(tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(interval__free)),<br>        | _ | ())]<br>    )<br>})</code>"]:::otherClass
+33v1["<div style=text-align:center>(33v1)</div> <code><br>batch_eager()</code>"]:::otherClass
+34v1["<div style=text-align:center>(34v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>            [] [| | 0usize]<br>        )<br>    },<br>    {<br>        hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_LINE_COL!(<br>            [] [| count, _ | * count += 1]<br>        )<br>    },<br>)</code>"]:::otherClass
+35v1["<div style=text-align:center>(35v1)</div> <code><br>map({<br>    crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!([] [| n | n &gt; 0])<br>})</code>"]:::otherClass
+37v1["<div style=text-align:center>(37v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
+38v1["<div style=text-align:center>(38v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+39v1["<div style=text-align:center>(39v1)</div> <code><br>source_iter([<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [ElectionState::new()]<br>        )<br>    },<br>])</code>"]:::otherClass
+40v1["<div style=text-align:center>(40v1)</div> <code><br>snapshot()</code>"]:::otherClass
+41v1["<div style=text-align:center>(41v1)</div> <code><br>chain_first_n(1)</code>"]:::otherClass
+43v1["<div style=text-align:center>(43v1)</div> <code><br>identity::&lt;<br>    hydro_test::__staged::cluster::raft::ElectionState&lt;<br>        hydro_test::__staged::cluster::raft::Replica,<br>    &gt;,<br>&gt;()</code>"]:::otherClass
+44v1["<div style=text-align:center>(44v1)</div> <code><br>identity::&lt;<br>    hydro_test::__staged::cluster::raft::ReplicationState&lt;<br>        std::string::String,<br>        hydro_test::__staged::cluster::raft::Replica,<br>    &gt;,<br>&gt;()</code>"]:::otherClass
+45v1["<div style=text-align:center>(45v1)</div> <code><br>batch_eager()</code>"]:::otherClass
+46v1["<div style=text-align:center>(46v1)</div> <code><br>partition(|__item, __num_outputs| {<br>    if ({<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [| (_, rpc) | matches!(rpc, RaftRpc::Election(_))]<br>        )<br>    })(__item) {<br>        0_usize<br>    } else {<br>        1_usize<br>    }<br>})</code>"]:::otherClass
+47v1["<div style=text-align:center>(47v1)</div> <code><br>filter_map({<br>    crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>        [] [| (sender, rpc) | match rpc { RaftRpc::Election(rpc) =&gt; Some((sender,<br>        rpc)), RaftRpc::Replication(_) =&gt; None, }]<br>    )<br>})</code>"]:::otherClass
+48v1["<div style=text-align:center>(48v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [| | Vec::new()]<br>        )<br>    },<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [| messages, message | { messages.push(message); }]<br>        )<br>    },<br>)</code>"]:::otherClass
+49v1["<div style=text-align:center>(49v1)</div> <code><br>flat_map({<br>    let __hydro_singleton_ref_0 = stream_31;<br>    let __hydro_singleton_ref_1 = stream_2;<br>    let __hydro_singleton_ref_2 = stream_23;<br>    let __hydro_singleton_ref_3 = stream_50;<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [__sl_p0 = crate ::__staged, CLUSTER_SELF_ID__free =<br>            hydro_lang::__staged::location::MemberId:: &lt;<br>            hydro_test::__staged::cluster::raft::Replica, _ &gt;<br>            ::from_tagless((__hydro_lang_cluster_self_id_loc1v1).clone()),<br>            cluster_size__free = 3usize, fired_ref__free = __hydro_singleton_ref_0,<br>            members_ref__free = __hydro_singleton_ref_1, position_ref__free =<br>            __hydro_singleton_ref_2, state_mut__free = __hydro_singleton_ref_3,]<br>            [move | messages | { __sl_p0::cluster::raft::election_step(&amp; mut *<br>            state_mut__free, ElectionStepInput { me : CLUSTER_SELF_ID__free.clone(),<br>            other_members : members_ref__free, cluster_size : { cluster_size__free },<br>            election_timer_fired : * fired_ref__free, last_log_position : *<br>            position_ref__free, messages, },) }]<br>        )<br>    }<br>})</code>"]:::otherClass
+50v1["<div style=text-align:center>(50v1)</div> <code><br>map({<br>    crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>        [] [| (target, rpc) | (target, RaftRpc::Election(rpc))]<br>    )<br>})</code>"]:::otherClass
+51v1["<div style=text-align:center>(51v1)</div> <code><br>source_iter(<br>    stageleft::runtime_support::type_hint::&lt;<br>        std::vec::Vec&lt;<br>            hydro_test::__staged::cluster::raft::LogEntry&lt;std::string::String&gt;,<br>        &gt;,<br>    &gt;({<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [Vec::new()]<br>        )<br>    }),<br>)</code>"]:::otherClass
+52v1["<div style=text-align:center>(52v1)</div> <code><br>snapshot_prefix()</code>"]:::otherClass
+54v1["<div style=text-align:center>(54v1)</div> <code><br>source_iter(<br>    stageleft::runtime_support::type_hint::&lt;<br>        std::vec::Vec&lt;<br>            (<br>                std::string::String,<br>                core::option::Option&lt;<br>                    hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                        hydro_test::__staged::cluster::raft::Replica,<br>                    &gt;,<br>                &gt;,<br>            ),<br>        &gt;,<br>    &gt;({<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [Vec::new()]<br>        )<br>    }),<br>)</code>"]:::otherClass
+55v1["<div style=text-align:center>(55v1)</div> <code><br>snapshot_prefix()</code>"]:::otherClass
+57v1["<div style=text-align:center>(57v1)</div> <code><br>filter_map({<br>    crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>        [] [| (sender, rpc) | match rpc { RaftRpc::Replication(rpc) =&gt; Some((sender,<br>        rpc)), RaftRpc::Election(_) =&gt; None, }]<br>    )<br>})</code>"]:::otherClass
+58v1["<div style=text-align:center>(58v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [| | Vec::new()]<br>        )<br>    },<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [| messages, message | { messages.push(message); }]<br>        )<br>    },<br>)</code>"]:::otherClass
+59v1["<div style=text-align:center>(59v1)</div> <code><br>source_stream({<br>    hydro_lang::__stageleft_quote_src_location_mod_rs_LINE_COL!(<br>        [interval__free = { use crate ::__staged::__deps:: *; use crate<br>        ::__staged::cluster::raft::tests:: *; { std::time::Duration::from_secs(1) }<br>        },]<br>        [tokio_stream::StreamExt::map(tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(interval__free)),<br>        | _ | ())]<br>    )<br>})</code>"]:::otherClass
+60v1["<div style=text-align:center>(60v1)</div> <code><br>map({<br>    {<br>        let CLUSTER_SELF_ID__free = hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::raft::Replica,<br>            _,<br>        &gt;::from_tagless((__hydro_lang_cluster_self_id_loc1v1).clone());<br>        move |_| {<br>            format!(<br>                &quot;hello from member {}&quot;,<br>                CLUSTER_SELF_ID__free.clone().into_tagless(),<br>            )<br>        }<br>    }<br>})</code>"]:::otherClass
+61v1["<div style=text-align:center>(61v1)</div> <code><br>batch_eager()</code>"]:::otherClass
+62v1["<div style=text-align:center>(62v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [| | Vec::new()]<br>        )<br>    },<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [] [| requests, request | { requests.push(request); }]<br>        )<br>    },<br>)</code>"]:::otherClass
+63v1["<div style=text-align:center>(63v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+64v1["<div style=text-align:center>(64v1)</div> <code><br>flat_map({<br>    let __hydro_singleton_ref_0 = stream_68;<br>    let __hydro_singleton_ref_1 = stream_50;<br>    let __hydro_singleton_ref_2 = stream_42;<br>    let __hydro_singleton_ref_3 = stream_34;<br>    let __hydro_singleton_ref_4 = stream_73;<br>    let __hydro_singleton_ref_5 = stream_10;<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [__sl_p0 = crate ::__staged, cluster_size__free = 3usize,<br>            committed_mut__free = __hydro_singleton_ref_0, election_mut__free =<br>            __hydro_singleton_ref_1, fired_ref__free = __hydro_singleton_ref_2,<br>            members_ref__free = __hydro_singleton_ref_3, redirected_mut__free =<br>            __hydro_singleton_ref_4, state_mut__free = __hydro_singleton_ref_5,]<br>            [move | (messages, requests) | { let output =<br>            __sl_p0::cluster::raft::replication_step(&amp; mut * election_mut__free, &amp;<br>            mut * state_mut__free, ReplicationStepInput { other_members :<br>            members_ref__free, cluster_size : { cluster_size__free },<br>            heartbeat_timer_fired : * fired_ref__free, requests, messages, },);<br>            committed_mut__free.extend(output.committed); redirected_mut__free<br>            .extend(output.redirected); output.outbound }]<br>        )<br>    }<br>})</code>"]:::otherClass
+65v1["<div style=text-align:center>(65v1)</div> <code><br>map({<br>    crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>        [] [| (target, rpc) | (target, RaftRpc::Replication(rpc))]<br>    )<br>})</code>"]:::otherClass
+66v1["<div style=text-align:center>(66v1)</div> <code><br>chain()</code>"]:::otherClass
+67v1["<div style=text-align:center>(67v1)</div> <code><br>all_iterations()</code>"]:::otherClass
+68v1["<div style=text-align:center>(68v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
+69v1["<div style=text-align:center>(69v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
+70v1["<div style=text-align:center>(70v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
+71v1["<div style=text-align:center>(71v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::raft::Replica,<br>            _,<br>        &gt;::from_tagless(id),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            hydro_test::__staged::cluster::raft::RaftRpc&lt;std::string::String&gt;,<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
+72v1["<div style=text-align:center>(72v1)</div> <code><br>identity::&lt;<br>    (<br>        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::raft::Replica,<br>        &gt;,<br>        hydro_test::__staged::cluster::raft::RaftRpc&lt;std::string::String&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
+73v1["<div style=text-align:center>(73v1)</div> <code><br>source_iter([<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!([] [()])<br>    },<br>])</code>"]:::otherClass
+74v1["<div style=text-align:center>(74v1)</div> <code><br>snapshot()</code>"]:::otherClass
+75v1["<div style=text-align:center>(75v1)</div> <code><br>map({<br>    let __hydro_singleton_ref_0 = stream_50;<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [CLUSTER_SELF_ID__free = hydro_lang::__staged::location::MemberId:: &lt;<br>            hydro_test::__staged::cluster::raft::Replica, _ &gt;<br>            ::from_tagless((__hydro_lang_cluster_self_id_loc1v1).clone()),<br>            election_start__free = __hydro_singleton_ref_0,] [move | _ |<br>            election_start__free.view(CLUSTER_SELF_ID__free.clone())]<br>        )<br>    }<br>})</code>"]:::otherClass
+76v1["<div style=text-align:center>(76v1)</div> <code><br>filter_map({<br>    let __hydro_singleton_ref_0 = stream_50;<br>    {<br>        crate::__staged::__stageleft_quote_src_cluster_raft_rs_LINE_COL!(<br>            [CLUSTER_SELF_ID__free = hydro_lang::__staged::location::MemberId:: &lt;<br>            hydro_test::__staged::cluster::raft::Replica, _ &gt;<br>            ::from_tagless((__hydro_lang_cluster_self_id_loc1v1).clone()),<br>            election_end__free = __hydro_singleton_ref_0,] [move | before | { let<br>            after = election_end__free.view(CLUSTER_SELF_ID__free.clone()); (after !=<br>            before).then_some(after) }]<br>        )<br>    }<br>})</code>"]:::otherClass
+77v1["<div style=text-align:center>(77v1)</div> <code><br>all_iterations()</code>"]:::otherClass
+78v1["<div style=text-align:center>(78v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
+79v1["<div style=text-align:center>(79v1)</div> <code><br>all_iterations()</code>"]:::otherClass
+80v1["<div style=text-align:center>(80v1)</div> <code><br>batch_eager()</code>"]:::otherClass
+81v1["<div style=text-align:center>(81v1)</div> <code><br>all_iterations()</code>"]:::otherClass
+82v1["<div style=text-align:center>(82v1)</div> <code><br>for_each({<br>    {<br>        |entry| {<br>            println!(<br>                &quot;committed [term {}, index {}]: {}&quot;,<br>                entry.term_received,<br>                entry.index,<br>                entry.message,<br>            )<br>        }<br>    }<br>})</code>"]:::otherClass
+83v1["<div style=text-align:center>(83v1)</div> <code><br>all_iterations()</code>"]:::otherClass
+84v1["<div style=text-align:center>(84v1)</div> <code><br>for_each({<br>    {<br>        |(request, leader_hint)| {<br>            println!(&quot;redirected: {request:?} (leader hint: {leader_hint:?})&quot;)<br>        }<br>    }<br>})</code>"]:::otherClass
 1v1-->2v1
-2v1-->4v1
-50v1-->5v1
-5v1-->6v1
-6v1-->8v1
-9v1-->10v1
-10v1-->11v1
+2v1-->3v1
+3v1-->5v1
+44v1--o6v1; linkStyle 3 stroke:red
+7v1-->8v1
+6v1-->|0|9v1
+8v1-->|1|9v1
+9v1-->44v1
 11v1-->12v1
-12v1-->14v1
+12v1-->13v1
+13v1-->14v1
+14v1-->15v1
 15v1-->16v1
 16v1-->17v1
-17v1-->18v1
-18v1-->20v1
-21v1-->22v1
-22v1-->23v1
-23v1-->24v1
-24v1-->26v1
-32v1--o27v1; linkStyle 17 stroke:red
-28v1-->29v1
-27v1-->|0|30v1
-29v1-->|1|30v1
-30v1-->32v1
+18v1-->19v1
+17v1-->|0|20v1
+19v1-->|1|20v1
+20v1-->21v1
+21v1-->23v1
+24v1-->25v1
+25v1-->26v1
+26v1-->27v1
+27v1-->29v1
+3v1-->31v1
+32v1-->33v1
 33v1-->34v1
-34v1-->53v1
-36v1-->37v1
-37v1-->57v1
+34v1-->35v1
+35v1-->37v1
+43v1--o38v1; linkStyle 28 stroke:red
 39v1-->40v1
-40v1-->51v1
-42v1-->43v1
-43v1-->44v1
-44v1-->45v1
-46v1-->47v1
+38v1-->|0|41v1
+40v1-->|1|41v1
+41v1-->43v1
+72v1-->45v1
 45v1-->46v1
+46v1-->|0|47v1
+47v1-->48v1
 48v1-->49v1
 49v1-->50v1
 51v1-->52v1
-53v1-->54v1
+52v1-->79v1
 54v1-->55v1
-55v1-->56v1
+55v1-->83v1
+46v1-->|1|57v1
 57v1-->58v1
-34v1-->44v1
-24v1-->44v1
-18v1-->44v1
-6v1-->44v1
-2v1-->44v1
-37v1-->44v1
-12v1-->44v1
-30v1-->44v1
-40v1-->44v1
-46v1
-47v1
-52v1
-56v1
-58v1
+59v1-->60v1
+60v1-->61v1
+61v1-->62v1
+58v1-->|input|63v1
+62v1-->|single|63v1
+63v1-->64v1
+64v1-->65v1
+50v1-->|0|66v1
+65v1-->|1|66v1
+66v1-->67v1
+68v1-->69v1
+67v1-->68v1
+70v1-->71v1
+71v1-->72v1
+73v1-->74v1
+74v1-->75v1
+75v1-->76v1
+76v1-->77v1
+77v1-->78v1
+79v1-->80v1
+80v1-->81v1
+81v1-->82v1
+83v1-->84v1
+9v1-->13v1
+27v1-->49v1
+3v1-->49v1
+21v1-->49v1
+41v1-->49v1
+52v1-->64v1
+41v1-->64v1
+35v1-->64v1
+3v1-->64v1
+55v1-->64v1
+9v1-->64v1
+41v1-->75v1
+41v1-->76v1
+68v1
+69v1
+78v1
+82v1
+84v1
 subgraph var___loop_boundary_0 ["var <tt>__loop_boundary_0</tt>"]
     style var___loop_boundary_0 fill:transparent
     1v1
 end
 subgraph var___loop_boundary_1 ["var <tt>__loop_boundary_1</tt>"]
     style var___loop_boundary_1 fill:transparent
-    28v1
+    7v1
 end
 subgraph var___loop_boundary_2 ["var <tt>__loop_boundary_2</tt>"]
     style var___loop_boundary_2 fill:transparent
-    33v1
+    11v1
 end
 subgraph var___loop_boundary_3 ["var <tt>__loop_boundary_3</tt>"]
     style var___loop_boundary_3 fill:transparent
-    36v1
+    18v1
 end
 subgraph var___loop_boundary_4 ["var <tt>__loop_boundary_4</tt>"]
     style var___loop_boundary_4 fill:transparent
@@ -133,143 +191,247 @@ subgraph var___loop_boundary_4 ["var <tt>__loop_boundary_4</tt>"]
 end
 subgraph var___loop_boundary_5 ["var <tt>__loop_boundary_5</tt>"]
     style var___loop_boundary_5 fill:transparent
-    42v1
+    51v1
+end
+subgraph var___loop_boundary_6 ["var <tt>__loop_boundary_6</tt>"]
+    style var___loop_boundary_6 fill:transparent
+    54v1
+end
+subgraph var___loop_boundary_7 ["var <tt>__loop_boundary_7</tt>"]
+    style var___loop_boundary_7 fill:transparent
+    73v1
 end
 subgraph var_cycle_0 ["var <tt>cycle_0</tt>"]
     style var_cycle_0 fill:transparent
-    50v1
+    72v1
 end
-subgraph var_stream_10 ["var <tt>stream_10</tt>"]
-    style var_stream_10 fill:transparent
-    10v1
+subgraph var_stream_102 ["var <tt>stream_102</tt>"]
+    style var_stream_102 fill:transparent
+    77v1
 end
-subgraph var_stream_16 ["var <tt>stream_16</tt>"]
-    style var_stream_16 fill:transparent
-    15v1
+subgraph var_stream_105 ["var <tt>stream_105</tt>"]
+    style var_stream_105 fill:transparent
+    79v1
 end
-subgraph var_stream_24 ["var <tt>stream_24</tt>"]
-    style var_stream_24 fill:transparent
-    21v1
+subgraph var_stream_108 ["var <tt>stream_108</tt>"]
+    style var_stream_108 fill:transparent
+    81v1
 end
-subgraph var_stream_54 ["var <tt>stream_54</tt>"]
-    style var_stream_54 fill:transparent
-    45v1
+subgraph var_stream_112 ["var <tt>stream_112</tt>"]
+    style var_stream_112 fill:transparent
+    83v1
 end
-subgraph var_stream_56 ["var <tt>stream_56</tt>"]
-    style var_stream_56 fill:transparent
-    48v1
-    49v1
+subgraph var_stream_25 ["var <tt>stream_25</tt>"]
+    style var_stream_25 fill:transparent
+    24v1
 end
-subgraph var_stream_59 ["var <tt>stream_59</tt>"]
-    style var_stream_59 fill:transparent
-    51v1
+subgraph var_stream_36 ["var <tt>stream_36</tt>"]
+    style var_stream_36 fill:transparent
+    32v1
 end
-subgraph var_stream_62 ["var <tt>stream_62</tt>"]
-    style var_stream_62 fill:transparent
-    53v1
+subgraph var_stream_79 ["var <tt>stream_79</tt>"]
+    style var_stream_79 fill:transparent
+    59v1
 end
-subgraph var_stream_65 ["var <tt>stream_65</tt>"]
-    style var_stream_65 fill:transparent
-    55v1
+subgraph var_stream_81 ["var <tt>stream_81</tt>"]
+    style var_stream_81 fill:transparent
+    60v1
 end
-subgraph var_stream_69 ["var <tt>stream_69</tt>"]
-    style var_stream_69 fill:transparent
-    57v1
+subgraph var_stream_92 ["var <tt>stream_92</tt>"]
+    style var_stream_92 fill:transparent
+    67v1
 end
-subgraph var_stream_8 ["var <tt>stream_8</tt>"]
-    style var_stream_8 fill:transparent
-    9v1
+subgraph var_stream_94 ["var <tt>stream_94</tt>"]
+    style var_stream_94 fill:transparent
+    70v1
+    71v1
 end
 subgraph loop_1v1 ["loop_1v1"]
-    4v1
-    8v1
-    14v1
-    20v1
-    26v1
+    5v1
+    23v1
+    29v1
+    31v1
+    37v1
     subgraph var_cycle_1 ["var <tt>cycle_1</tt>"]
         style var_cycle_1 fill:transparent
-        32v1
+        43v1
+    end
+    subgraph var_cycle_2 ["var <tt>cycle_2</tt>"]
+        style var_cycle_2 fill:transparent
+        44v1
     end
     subgraph var_stream_0 ["var <tt>stream_0</tt>"]
         style var_stream_0 fill:transparent
         2v1
     end
-    subgraph var_stream_12 ["var <tt>stream_12</tt>"]
-        style var_stream_12 fill:transparent
-        11v1
+    subgraph var_stream_1 ["var <tt>stream_1</tt>"]
+        style var_stream_1 fill:transparent
+        3v1
+    end
+    subgraph var_stream_100 ["var <tt>stream_100</tt>"]
+        style var_stream_100 fill:transparent
+        75v1
+    end
+    subgraph var_stream_101 ["var <tt>stream_101</tt>"]
+        style var_stream_101 fill:transparent
+        76v1
+    end
+    subgraph var_stream_11 ["var <tt>stream_11</tt>"]
+        style var_stream_11 fill:transparent
+        12v1
     end
     subgraph var_stream_13 ["var <tt>stream_13</tt>"]
         style var_stream_13 fill:transparent
-        12v1
+        13v1
     end
-    subgraph var_stream_19 ["var <tt>stream_19</tt>"]
-        style var_stream_19 fill:transparent
+    subgraph var_stream_14 ["var <tt>stream_14</tt>"]
+        style var_stream_14 fill:transparent
+        14v1
+    end
+    subgraph var_stream_15 ["var <tt>stream_15</tt>"]
+        style var_stream_15 fill:transparent
+        15v1
+    end
+    subgraph var_stream_16 ["var <tt>stream_16</tt>"]
+        style var_stream_16 fill:transparent
         16v1
+    end
+    subgraph var_stream_17 ["var <tt>stream_17</tt>"]
+        style var_stream_17 fill:transparent
+        17v1
+    end
+    subgraph var_stream_18 ["var <tt>stream_18</tt>"]
+        style var_stream_18 fill:transparent
+        19v1
     end
     subgraph var_stream_20 ["var <tt>stream_20</tt>"]
         style var_stream_20 fill:transparent
-        17v1
+        20v1
     end
-    subgraph var_stream_21 ["var <tt>stream_21</tt>"]
-        style var_stream_21 fill:transparent
-        18v1
-    end
-    subgraph var_stream_27 ["var <tt>stream_27</tt>"]
-        style var_stream_27 fill:transparent
-        22v1
+    subgraph var_stream_22 ["var <tt>stream_22</tt>"]
+        style var_stream_22 fill:transparent
+        21v1
     end
     subgraph var_stream_28 ["var <tt>stream_28</tt>"]
         style var_stream_28 fill:transparent
-        23v1
+        25v1
     end
     subgraph var_stream_29 ["var <tt>stream_29</tt>"]
         style var_stream_29 fill:transparent
-        24v1
+        26v1
     end
-    subgraph var_stream_33 ["var <tt>stream_33</tt>"]
-        style var_stream_33 fill:transparent
+    subgraph var_stream_30 ["var <tt>stream_30</tt>"]
+        style var_stream_30 fill:transparent
         27v1
-    end
-    subgraph var_stream_34 ["var <tt>stream_34</tt>"]
-        style var_stream_34 fill:transparent
-        29v1
-    end
-    subgraph var_stream_36 ["var <tt>stream_36</tt>"]
-        style var_stream_36 fill:transparent
-        30v1
     end
     subgraph var_stream_39 ["var <tt>stream_39</tt>"]
         style var_stream_39 fill:transparent
+        33v1
+    end
+    subgraph var_stream_40 ["var <tt>stream_40</tt>"]
+        style var_stream_40 fill:transparent
         34v1
     end
-    subgraph var_stream_4 ["var <tt>stream_4</tt>"]
-        style var_stream_4 fill:transparent
-        5v1
+    subgraph var_stream_41 ["var <tt>stream_41</tt>"]
+        style var_stream_41 fill:transparent
+        35v1
     end
     subgraph var_stream_45 ["var <tt>stream_45</tt>"]
         style var_stream_45 fill:transparent
-        37v1
+        38v1
     end
-    subgraph var_stream_49 ["var <tt>stream_49</tt>"]
-        style var_stream_49 fill:transparent
+    subgraph var_stream_46 ["var <tt>stream_46</tt>"]
+        style var_stream_46 fill:transparent
         40v1
+    end
+    subgraph var_stream_48 ["var <tt>stream_48</tt>"]
+        style var_stream_48 fill:transparent
+        41v1
     end
     subgraph var_stream_5 ["var <tt>stream_5</tt>"]
         style var_stream_5 fill:transparent
         6v1
     end
-    subgraph var_stream_51 ["var <tt>stream_51</tt>"]
-        style var_stream_51 fill:transparent
-        43v1
+    subgraph var_stream_57 ["var <tt>stream_57</tt>"]
+        style var_stream_57 fill:transparent
+        45v1
     end
-    subgraph var_stream_53 ["var <tt>stream_53</tt>"]
-        style var_stream_53 fill:transparent
-        44v1
+    subgraph var_stream_58_partition ["var <tt>stream_58_partition</tt>"]
+        style var_stream_58_partition fill:transparent
+        46v1
+    end
+    subgraph var_stream_6 ["var <tt>stream_6</tt>"]
+        style var_stream_6 fill:transparent
+        8v1
+    end
+    subgraph var_stream_62 ["var <tt>stream_62</tt>"]
+        style var_stream_62 fill:transparent
+        47v1
+    end
+    subgraph var_stream_63 ["var <tt>stream_63</tt>"]
+        style var_stream_63 fill:transparent
+        48v1
+    end
+    subgraph var_stream_65 ["var <tt>stream_65</tt>"]
+        style var_stream_65 fill:transparent
+        49v1
+    end
+    subgraph var_stream_66 ["var <tt>stream_66</tt>"]
+        style var_stream_66 fill:transparent
+        50v1
+    end
+    subgraph var_stream_67 ["var <tt>stream_67</tt>"]
+        style var_stream_67 fill:transparent
+        52v1
+    end
+    subgraph var_stream_72 ["var <tt>stream_72</tt>"]
+        style var_stream_72 fill:transparent
+        55v1
+    end
+    subgraph var_stream_76 ["var <tt>stream_76</tt>"]
+        style var_stream_76 fill:transparent
+        57v1
+    end
+    subgraph var_stream_77 ["var <tt>stream_77</tt>"]
+        style var_stream_77 fill:transparent
+        58v1
+    end
+    subgraph var_stream_8 ["var <tt>stream_8</tt>"]
+        style var_stream_8 fill:transparent
+        9v1
+    end
+    subgraph var_stream_83 ["var <tt>stream_83</tt>"]
+        style var_stream_83 fill:transparent
+        61v1
+    end
+    subgraph var_stream_84 ["var <tt>stream_84</tt>"]
+        style var_stream_84 fill:transparent
+        62v1
+    end
+    subgraph var_stream_86 ["var <tt>stream_86</tt>"]
+        style var_stream_86 fill:transparent
+        63v1
+    end
+    subgraph var_stream_89 ["var <tt>stream_89</tt>"]
+        style var_stream_89 fill:transparent
+        64v1
+    end
+    subgraph var_stream_90 ["var <tt>stream_90</tt>"]
+        style var_stream_90 fill:transparent
+        65v1
+    end
+    subgraph var_stream_91 ["var <tt>stream_91</tt>"]
+        style var_stream_91 fill:transparent
+        66v1
+    end
+    subgraph var_stream_98 ["var <tt>stream_98</tt>"]
+        style var_stream_98 fill:transparent
+        74v1
     end
 end
 subgraph loop_2v1 ["loop_2v1"]
-    subgraph var_stream_64 ["var <tt>stream_64</tt>"]
-        style var_stream_64 fill:transparent
-        54v1
+    subgraph var_stream_107 ["var <tt>stream_107</tt>"]
+        style var_stream_107 fill:transparent
+        80v1
     end
 end
