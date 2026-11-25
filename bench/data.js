@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1795613741245,
+  "lastUpdate": 1795638590281,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -326390,6 +326390,216 @@ window.BENCHMARK_DATA =
             "name": "paxos_bench",
             "value": 403520,
             "range": "± 6715.77",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "aakainth@amazon.com",
+            "name": "Aanand Kainth",
+            "username": "akainth015"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2a6a4e75a598536dfff129e4df63236b3b2386b4",
+          "message": "feat(hydro_test): add `raft_bench`, a closed-loop Raft benchmark (#3391)\n\n`raft_bench` drives `raft_server` with closed-loop `bench_client`s, the\nsame setup `paxos_bench` uses for Paxos, and reports throughput through\n`aggregate_bench_results`. The `hydro_test/benches/raft_bench.rs` driver\nprints the `test raft_bench ... bench: X ops/s` line that\n`benchmark.yml` already collects from `cargo bench -p hydro_test`.\n`raft_some_throughput` is a smoke test, the same as\n`paxos_some_throughput`.\n\n## Design\n\n- **Routing:** clients send each request to the leader that a majority\nof replicas name in their *latest* leader views, and hold requests while\nthere is none. Each client keeps one view per replica, the maximum by\n`(term, leader)`, which is the replica's latest view regardless of\narrival order. All election timers fire at startup, so a member can win\nan early term that the other members skip, and a deposed leader can\nstill be named by some replicas. Requests sent to either are lost, and\n`bench_client` never retries, so their virtual clients would stall for\nthe rest of the run.\n- **Redirects:** a replica that receives a request while not leading\nforwards it to its leader hint.\n- **Completion:** a request completes when the first replica commits it,\nwhich is the leader.\n\n## Configuration\n\n20k virtual clients, a 10 ms heartbeat and a 60 s window. The tail of 5\none-second samples is reported.\n\n- The leader only sends `AppendEntries` on a heartbeat. Each request\ntherefore waits at least one heartbeat, and throughput is at most\nclients / heartbeat. Below about 10k clients the benchmark measures the\ntimer: 100 clients always gives about 9,900 ops/s.\n- `bench_client` starts virtual clients gradually. With 20k clients,\nthroughput is still rising 15 s after the first sample, and it levels\noff after about 20 s.\n\nLocally, on 3 replicas, 1 client machine and 1 aggregator on localhost,\nthis gives about 1.30–1.34M ops/s (e.g. 1,302,963 ± 12,425).\n\n[ci-bench]",
+          "timestamp": "2026-11-25T19:17:29Z",
+          "tree_id": "a3baeac0720ded1c3bba9c69cd0c176d5efd95f0",
+          "url": "https://github.com/hydro-project/hydro/commit/2a6a4e75a598536dfff129e4df63236b3b2386b4"
+        },
+        "date": 1795638590207,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 310942,
+            "range": "± 8891",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 6526753,
+            "range": "± 61407",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 6841763,
+            "range": "± 10345",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 11553,
+            "range": "± 72",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 8449238,
+            "range": "± 28200",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 950145,
+            "range": "± 7757",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 1021889,
+            "range": "± 27099",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 46532276,
+            "range": "± 1463987",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 6541320,
+            "range": "± 161584",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 44651501,
+            "range": "± 627613",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 6532255,
+            "range": "± 102559",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 6843743,
+            "range": "± 48476",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 39163350,
+            "range": "± 168321",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 3938,
+            "range": "± 61",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 22199,
+            "range": "± 216",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 3903,
+            "range": "± 44",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 6620,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 527938,
+            "range": "± 8287",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 54507,
+            "range": "± 994",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 41201,
+            "range": "± 267",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 16995,
+            "range": "± 220",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 6933,
+            "range": "± 57",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1116,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 73423,
+            "range": "± 464",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 75637,
+            "range": "± 7484",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 6926,
+            "range": "± 66",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 15771,
+            "range": "± 133",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 27749,
+            "range": "± 547",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 6863,
+            "range": "± 273",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 222340,
+            "range": "± 1711.84",
+            "unit": "ops/s"
+          },
+          {
+            "name": "raft_bench",
+            "value": 1179276.8,
+            "range": "± 63140.57",
             "unit": "ops/s"
           }
         ]
