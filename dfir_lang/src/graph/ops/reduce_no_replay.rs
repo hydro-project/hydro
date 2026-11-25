@@ -100,7 +100,7 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
                 let #ident = if __was_updated || #context.current_tick().0 == 0 {
                     #work_fn(
                         || #root::dfir_pipes::pull::iter(
-                            ::std::clone::Clone::clone(&*#accumulator_ident)
+                            #root::util::clone_generic(&*#accumulator_ident)
                         )
                     )
                 } else {
@@ -137,7 +137,7 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
                             move |_| __was_updated.get() || __context.current_tick().0 == 0
                         },
                         #root::dfir_pipes::push::map(
-                            |__val: &mut _| ::std::clone::Clone::clone(&*__val),
+                            |__val: &mut _| #root::util::clone_generic(&*__val),
                             #output,
                         ),
                     ),

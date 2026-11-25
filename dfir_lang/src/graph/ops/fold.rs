@@ -142,7 +142,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                         ).await;
                         #root::dfir_pipes::pull::Pull::map(
                             __accumulated,
-                            |__val: &mut _| ::std::clone::Clone::clone(&*__val),
+                            |__val: &mut _| #root::util::clone_generic(&*__val),
                         )
                     };
                 },
@@ -212,7 +212,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                         &mut #singleton_output_ident,
                         #func,
                         #root::dfir_pipes::push::map(
-                            |__val: &mut _| ::std::clone::Clone::clone(&*__val),
+                            |__val: &mut _| #root::util::clone_generic(&*__val),
                             #output,
                         ),
                     )

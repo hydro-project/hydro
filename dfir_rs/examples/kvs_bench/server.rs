@@ -26,6 +26,10 @@ use crate::protocol::{
     NodeId,
 };
 
+#[expect(
+    unreachable_code,
+    reason = "`futures::join!` awaits `df.run()`, which never returns"
+)]
 pub fn run_server<RX>(
     server_id: usize,
     topology: Topology<RX>,

@@ -82,7 +82,7 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                     .flat_map(|lhs| {
                 #rhs_state
                     .iter()
-                    .map(move |rhs| (::std::clone::Clone::clone(lhs), ::std::clone::Clone::clone(rhs)))
+                    .map(move |rhs| (#root::util::clone_generic(lhs), #root::util::clone_generic(rhs)))
                     })
             );
         };

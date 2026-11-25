@@ -87,7 +87,7 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
             |item| {
                 if !#uniquedata_ident.contains(item) {
                     // `insert` reports whether the value was new; `contains` already decided that.
-                    let _ = #uniquedata_ident.insert(::std::clone::Clone::clone(item));
+                    let _ = #uniquedata_ident.insert(#root::util::clone_generic(item));
                     true
                 } else {
                     false

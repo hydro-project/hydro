@@ -6156,9 +6156,8 @@ impl HydroNode {
                                 && input.metadata().collection_kind.is_bounded()
                             {
                                 todo!("Fold keyed on a top-level bounded collection is not yet supported")
-                            } else {
-                                parse_quote!(fold_keyed)
                             }
+                            parse_quote!(fold_keyed)
                         } else {
                             unreachable!()
                         };
@@ -6391,9 +6390,8 @@ impl HydroNode {
                                 todo!(
                                     "Calling keyed reduce on a top-level bounded collection is not supported"
                                 )
-                            } else {
-                                parse_quote!(reduce_keyed)
                             }
+                            parse_quote!(reduce_keyed)
                         } else {
                             unreachable!()
                         };
@@ -6434,7 +6432,9 @@ impl HydroNode {
                                     todo!(
                                         "Reduce with optional intermediates is not yet supported in simulator"
                                     );
-                                } else if matches!(node, HydroNode::ReduceKeyed { .. })
+                                }
+
+                                if matches!(node, HydroNode::ReduceKeyed { .. })
                                     && node.metadata().location_id.is_root()
                                     && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
@@ -6442,61 +6442,61 @@ impl HydroNode {
                                     todo!(
                                         "Reduce keyed with optional intermediates is not yet supported in simulator"
                                     );
+                                }
+
+                                // A root unbounded keyed singleton is a tombstoned
+                                // `(K, Option<V>)` update feed: wrap each emitted entry as
+                                // an upsert. (`reduce_keyed` never removes keys, so no
+                                // tombstones are needed.)
+                                let wrap_op: TokenStream = if matches!(
+                                    node.metadata().collection_kind,
+                                    CollectionKind::KeyedSingleton { .. }
+                                ) && update_feed_repr(node.metadata())
+                                    == UpdateFeedRepr::Tombstoned
+                                {
+                                    quote! { -> map(|(__hydro_key, __hydro_value)| (__hydro_key, ::std::option::Option::Some(__hydro_value))) }
                                 } else {
-                                    // A root unbounded keyed singleton is a tombstoned
-                                    // `(K, Option<V>)` update feed: wrap each emitted entry as
-                                    // an upsert. (`reduce_keyed` never removes keys, so no
-                                    // tombstones are needed.)
-                                    let wrap_op: TokenStream = if matches!(
-                                        node.metadata().collection_kind,
-                                        CollectionKind::KeyedSingleton { .. }
-                                    ) && update_feed_repr(node.metadata())
-                                        == UpdateFeedRepr::Tombstoned
-                                    {
-                                        quote! { -> map(|(__hydro_key, __hydro_value)| (__hydro_key, ::std::option::Option::Some(__hydro_value))) }
-                                    } else {
-                                        quote! {}
-                                    };
-                                    if matches!(node, HydroNode::ReduceKeyed { .. })
-                                        && node.metadata().location_id.is_root()
-                                        && !node.metadata().collection_kind.is_bounded()
-                                    {
-                                        let root = crate::staging_util::get_this_crate();
-                                        // At the root, the keyed singleton is an update feed:
-                                        // emit only the entry each input updates (consumers hold
-                                        // the latest value per key), not every entry every tick.
-                                        graph_builders.add_dfir_at(
-                                            &out_location,
-                                            parse_quote! {
-                                                #reduce_ident = #input_ident -> scan::<#lifetime>(
-                                                    || #root::runtime_support::dfir_rs::rustc_hash::FxHashMap::default(),
-                                                    {
-                                                        let __reduce_keyed_fn = #f_tokens;
-                                                        move |__state, (__key, __value)| {
-                                                            let __acc = match __state.entry(::std::clone::Clone::clone(&__key)) {
-                                                                ::std::collections::hash_map::Entry::Occupied(e) => {
-                                                                    let __acc = e.into_mut();
-                                                                    __reduce_keyed_fn(__acc, __value);
-                                                                    __acc
-                                                                }
-                                                                ::std::collections::hash_map::Entry::Vacant(e) => e.insert(__value),
-                                                            };
-                                                            Some((__key, ::std::clone::Clone::clone(&*__acc)))
-                                                        }
-                                                    },
-                                                ) #wrap_op;
-                                            },
-                                            Some(&stmt_id.to_string()),
-                                        );
-                                    } else {
-                                        graph_builders.add_dfir_at(
-                                            &out_location,
-                                            parse_quote! {
-                                                #reduce_ident = #input_ident -> #operator::<#lifetime>(#f_tokens) #wrap_op;
-                                            },
-                                            Some(&stmt_id.to_string()),
-                                        );
-                                    }
+                                    quote! {}
+                                };
+                                if matches!(node, HydroNode::ReduceKeyed { .. })
+                                    && node.metadata().location_id.is_root()
+                                    && !node.metadata().collection_kind.is_bounded()
+                                {
+                                    let root = crate::staging_util::get_this_crate();
+                                    // At the root, the keyed singleton is an update feed:
+                                    // emit only the entry each input updates (consumers hold
+                                    // the latest value per key), not every entry every tick.
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
+                                        parse_quote! {
+                                            #reduce_ident = #input_ident -> scan::<#lifetime>(
+                                                || #root::runtime_support::dfir_rs::rustc_hash::FxHashMap::default(),
+                                                {
+                                                    let __reduce_keyed_fn = #f_tokens;
+                                                    move |__state, (__key, __value)| {
+                                                        let __acc = match __state.entry(::std::clone::Clone::clone(&__key)) {
+                                                            ::std::collections::hash_map::Entry::Occupied(e) => {
+                                                                let __acc = e.into_mut();
+                                                                __reduce_keyed_fn(__acc, __value);
+                                                                __acc
+                                                            }
+                                                            ::std::collections::hash_map::Entry::Vacant(e) => e.insert(__value),
+                                                        };
+                                                        Some((__key, ::std::clone::Clone::clone(&*__acc)))
+                                                    }
+                                                },
+                                            ) #wrap_op;
+                                        },
+                                        Some(&stmt_id.to_string()),
+                                    );
+                                } else {
+                                    graph_builders.add_dfir_at(
+                                        &out_location,
+                                        parse_quote! {
+                                            #reduce_ident = #input_ident -> #operator::<#lifetime>(#f_tokens) #wrap_op;
+                                        },
+                                        Some(&stmt_id.to_string()),
+                                    );
                                 }
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {

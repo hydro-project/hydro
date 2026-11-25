@@ -7,8 +7,8 @@ error[E0308]: mismatched types
    |                           expected `hydro_lang::prelude::Bounded`, found `hydro_lang::prelude::Unbounded`
    |                           arguments to this function are incorrect
    |
-   = note: expected reference `&OperatorContext<hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Bounded>`
-              found reference `&OperatorContext<hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Unbounded>`
+   = note: expected reference `&OperatorContext<Process<'a, P1>, hydro_lang::prelude::Bounded>`
+              found reference `&OperatorContext<Process<'a, P1>, hydro_lang::prelude::Unbounded>`
 note: method defined here
   --> $CARGO/stageleft-$VERSION/src/runtime_support.rs
    |
@@ -25,8 +25,8 @@ error[E0308]: mismatched types
    |                           expected `hydro_lang::prelude::Bounded`, found `hydro_lang::prelude::Unbounded`
    |                           arguments to this function are incorrect
    |
-   = note: expected reference `&OperatorContext<hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Bounded>`
-              found reference `&OperatorContext<hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Unbounded>`
+   = note: expected reference `&OperatorContext<Process<'a, P1>, hydro_lang::prelude::Bounded>`
+              found reference `&OperatorContext<Process<'a, P1>, hydro_lang::prelude::Unbounded>`
 note: method defined here
   --> $CARGO/stageleft-$VERSION/src/runtime_support.rs
    |

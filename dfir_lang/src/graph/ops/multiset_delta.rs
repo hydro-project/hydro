@@ -88,7 +88,7 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
                     #curr_data.borrow_mut(),
                 );
 
-                *curr_map.entry(#[allow(clippy::clone_on_copy)] item.clone()).or_insert(0_usize) += 1;
+                *curr_map.entry(#root::util::clone_generic(item)).or_insert(0_usize) += 1;
                 if let Some(old_count) = prev_map.get_mut(item) {
                     #[allow(clippy::absurd_extreme_comparisons)] // Usize cannot be less than zero.
                     if *old_count <= 0 {
