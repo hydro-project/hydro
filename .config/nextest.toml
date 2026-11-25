@@ -18,10 +18,13 @@ filter = 'binary(compile_fail) | binary(surface_compile_fail) | binary(embedded_
 test-group = 'serial-cargo'
 slow-timeout = { period = "60s", terminate-after = 20 }
 
+# The first `sim_fuzzer` test to run pays for the cold `cargo sim` build (the libFuzzer search
+# itself takes seconds, and the second test reuses the build). On macOS CI runners it passed in
+# 5 to 19.5 minutes and hit a 20 minute limit in 3 of 18 runs (2026-11-19 to 2026-11-24).
 [[profile.default.overrides]]
 filter = 'binary(sim_fuzzer)'
 test-group = 'serial-sim-fuzzer'
-slow-timeout = { period = "60s", terminate-after = 20 }
+slow-timeout = { period = "60s", terminate-after = 30 }
 
 # TODO(inline): deadlock_detector disabled (intra-tick cycles)
 # [[profile.default.overrides]]
