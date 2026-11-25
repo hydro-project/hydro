@@ -95,7 +95,7 @@ To process incoming requests, you use the APIs available on live collections. Th
 
 :::caution
 
-Quoting relies on advanced features of Rust, and can sometimes emit strange type errors. The [Quoting Errors](../../reference/stageleft/errors.mdx) page covers the limitations of `q!`. For example, to invoke a local function `foo` you must use `self::foo`.
+Quoting relies on advanced features of Rust, and can sometimes emit strange type errors. The [Quoting Limitations](../../reference/stageleft/errors.mdx) page covers the limitations of `q!`. For example, to invoke a local function `foo` you must use `self::foo`.
 
 If you forget to wrap an expression in `q!` when that is required, you'll see an error like:
 ```text

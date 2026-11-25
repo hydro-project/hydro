@@ -1,0 +1,170 @@
+---
+sidebar_position: 1
+---
+
+# Quoting Code
+Hydro programs are executed in **two stages**. First, your Rust code runs like a normal program to *build* the dataflow graph: every call to an operator like `map` or `fold` adds a node to the graph, but does not process any data. Then, Hydro compiles that graph into binaries which are deployed to your machines; only then does data start flowing.
+
+The `q!` macro (for **q**uote) is the bridge between these stages. Code wrapped in `q!(...)` is not executed while the graph is being built. Instead, it is captured and compiled into the deployed binaries, where it runs every time an element flows through the operator:
+
+```rust
+# use hydro_lang::prelude::*;
+# use futures::StreamExt;
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+process
+    .source_iter(q!(vec![1, 2, 3]))
+    .map(q!(|x| x * 2))
+# }, |mut stream| async move {
+# assert_eq!(stream.next().await.unwrap(), 2);
+# assert_eq!(stream.next().await.unwrap(), 4);
+# assert_eq!(stream.next().await.unwrap(), 6);
+# }));
+```
+
+In this example, `vec![1, 2, 3]` and `|x| x * 2` run **at runtime** on the deployed machine, while the calls to `source_iter` and `map` run **ahead of time** to construct the graph.
+
+Even though quoted code does not run immediately, it is **fully typechecked** where you write it. You get normal compiler errors, type inference, and IDE support (autocomplete, go-to-definition) inside `q!` blocks, just like regular Rust.
+
+## What Runs When
+A helpful rule of thumb: everything *outside* `q!` runs **once**, on your development machine (or CI), when the graph is constructed. Everything *inside* `q!` runs **on the deployed machines**, potentially many times.
+
+This distinction matters for code with side effects. For example, reading a timestamp outside `q!` captures the time when the graph was built, not when a message is processed:
+
+```rust,ignore
+// runs once, when the graph is built (probably not what you want)
+let start = std::time::SystemTime::now();
+
+// runs on the deployed machine, once per element
+requests.map(q!(|req| (std::time::SystemTime::now(), req)))
+```
+
+## Capturing Variables
+Quoted code can refer to variables defined outside the `q!` block. These are called **free variables**. Because the quoted code will run later, on a different machine, capturing a variable works differently than in a regular Rust closure: the *value* of the variable is embedded into the compiled program as a constant.
+
+This is useful for configuration values that are known when the graph is built, such as batch sizes or replication factors:
+
+```rust
+# use hydro_lang::prelude::*;
+# use futures::StreamExt;
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+let multiplier = 10; // computed while building the graph
+process
+    .source_iter(q!(vec![1, 2, 3]))
+    .map(q!(move |x| x * multiplier)) // multiplier is baked into the binary
+# }, |mut stream| async move {
+# assert_eq!(stream.next().await.unwrap(), 10);
+# assert_eq!(stream.next().await.unwrap(), 20);
+# assert_eq!(stream.next().await.unwrap(), 30);
+# }));
+```
+
+Note the `move` keyword on the closure; capturing variables inside a closure generally requires `move` (see the [limitations page](./errors.mdx) for details).
+
+Because the captured value is a snapshot taken at graph-construction time, changing the original variable afterwards has no effect on the deployed program. And when quoted code runs on a [cluster](../locations/clusters.md), every member sees the same captured value.
+
+### Supported Types
+Only certain types of values can be captured, because Hydro must be able to embed them into the generated program:
+
+| Type | Notes |
+|---|---|
+| Integers (`i8`–`i128`, `u8`–`u128`, `isize`, `usize`) | Embedded as literal values |
+| `&str` and `String` | Both appear as `&'static str` inside the quote |
+| Hydro handles | See [special free variables](#hydros-special-free-variables) below |
+
+Capturing any other type (including `bool`, floats, `Vec`, or your own structs) is a compile-time error mentioning an unsatisfied `FreeVariable...` trait bound:
+
+```rust,ignore
+let thresholds = vec![10, 20, 30];
+// error[E0277]: the trait bound `Vec<i32>: FreeVariableWithContextWithProps<_, ()>`
+// is not satisfied
+requests.map(q!(move |x| thresholds.contains(&x)))
+```
+
+The usual workarounds are to construct the value *inside* the quote, or to capture the primitive components it is built from:
+
+```rust
+# use hydro_lang::prelude::*;
+# use futures::StreamExt;
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+let limit = 20; // capture the primitive instead
+process
+    .source_iter(q!(vec![10, 20, 30]))
+    .filter(q!(move |x| {
+        let thresholds = vec![10, 20, 30]; // constructed at runtime
+        thresholds.contains(x) && *x <= limit
+    }))
+# }, |mut stream| async move {
+# assert_eq!(stream.next().await.unwrap(), 10);
+# assert_eq!(stream.next().await.unwrap(), 20);
+# }));
+```
+
+## Hydro's Special Free Variables
+Some Hydro APIs provide special values that can be captured inside `q!`. Unlike literal captures, these are **not** baked in as constants; instead, they are placeholders that resolve to a live value on the machine where the code runs.
+
+### Cluster Member Identity
+[`CLUSTER_SELF_ID`](../locations/clusters.md#self-identification) can be captured by quoted code that runs on a `Cluster`, and resolves to the ID of the specific cluster member executing the code — so each member sees a *different* value:
+
+```rust
+# use hydro_lang::prelude::*;
+# use futures::StreamExt;
+# tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
+use hydro_lang::location::cluster::CLUSTER_SELF_ID;
+
+let workers: Cluster<()> = flow.cluster::<()>();
+workers
+    .source_iter(q!(vec![123]))
+    .map(q!(move |x| format!("{} on {}", x, CLUSTER_SELF_ID)))
+    .send(&process, TCP.fail_stop().bincode())
+    .values()
+# }, |mut stream| async move {
+# let mut results = Vec::new();
+# for _ in 0..4 { results.push(stream.next().await.unwrap()); }
+# results.sort();
+# assert_eq!(results, vec!["123 on MemberId::<()>(0)", "123 on MemberId::<()>(1)", "123 on MemberId::<()>(2)", "123 on MemberId::<()>(3)"]);
+# }));
+```
+
+Because `CLUSTER_SELF_ID` only makes sense on a cluster, capturing it in code that runs on a `Process` is a compile-time error. This is a general property of Hydro's special free variables: they are typechecked against the **location** where the quoted code will run.
+
+### State References
+Reference handles created with [`.by_ref()` and `.by_mut()`](../state-management/references-mutations.md) are also free variables. When captured by a `q!` closure, they resolve at runtime to a reference to the live contents of another collection at the same location:
+
+```rust
+# use hydro_lang::prelude::*;
+# use futures::StreamExt;
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+let total: Singleton<i32, _, Bounded> = process
+    .source_iter(q!(0..5i32))
+    .fold(q!(|| 0), q!(|acc, x| *acc += x)); // 10
+let total_ref = total.by_ref(); // a handle that can be captured in q!
+
+process
+    .source_iter(q!(vec![1, 2, 3]))
+    .map(q!(|x| x + *total_ref)) // resolves to &i32 at runtime
+# }, |mut stream| async move {
+# let mut results = vec![];
+# for _ in 0..3 { results.push(stream.next().await.unwrap()); }
+# results.sort();
+# assert_eq!(results, vec![11, 12, 13]);
+# }));
+```
+
+See [References and Mutations](../state-management/references-mutations.md) for the full documentation of reference handles.
+
+## Referencing Functions and Types
+Quoted code can freely use functions, types, and constants defined at the module level of your crate, as well as items from your dependencies. This lets you factor runtime logic into ordinary Rust functions:
+
+```rust,ignore
+pub fn sanitize(input: &str) -> String {
+    input.trim().to_lowercase()
+}
+
+pub fn sanitized_requests<'a>(
+    requests: Stream<String, Process<'a, MyServer>>,
+) -> Stream<String, Process<'a, MyServer>> {
+    requests.map(q!(|s| self::sanitize(&s)))
+}
+```
+
+Keep in mind that the quoted code will ultimately be compiled as part of a *generated* crate, not the crate where you wrote it. Hydro takes care of resolving paths for you, but this is the source of a few limitations — for example, local functions must be referenced with a `self::` prefix (as shown above), imports must be at the module level, `pub` types must be used through their public API, and types that cross the quote boundary must be nameable through public paths. These edge cases are covered on the [Quoting Limitations](./errors.mdx) page.
