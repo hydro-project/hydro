@@ -874,7 +874,15 @@ impl DfirBuilder for SimBuilder {
         let root = get_this_crate();
 
         match in_kind {
-            CollectionKind::Singleton { element_type, .. } => {
+            // A bounded optional has a single value (or none), exactly like a bounded
+            // singleton that may not have a version yet: production lowers both to the same
+            // `snapshot()`, and `SingletonHook` releases an empty snapshot until a value exists.
+            CollectionKind::Singleton { element_type, .. }
+            | CollectionKind::Optional {
+                bound: OptionalBoundKind::Bounded,
+                element_type,
+                ..
+            } => {
                 debug_assert!(in_location.is_top_level());
                 let plumbing = self.tick_input_plumbing(in_location, TickInputBuffer::Queue);
                 let TickInputPlumbing {
@@ -1021,7 +1029,7 @@ impl DfirBuilder for SimBuilder {
                 );
             }
             CollectionKind::Optional {
-                bound: OptionalBoundKind::Unbounded | OptionalBoundKind::Bounded,
+                bound: OptionalBoundKind::Unbounded,
                 ..
             } => {
                 eprintln!("{:?}", op_meta.backtrace.elements().collect::<Vec<_>>());
