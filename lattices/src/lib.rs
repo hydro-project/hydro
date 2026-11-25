@@ -229,6 +229,10 @@ pub trait LatticeMorphism<LatIn> {
 
 /// Semilattice bimorphism. Lattice merge must distribute over this binary function, in both arguments.
 ///
+/// [`Self::call`] takes ownership of both inputs. [`Self::call_ref`] borrows them instead so
+/// callers do not have to clone; the default clones and forwards to `call`. Override `call_ref`
+/// when the output can be built without cloning the inputs.
+///
 /// Use [`crate::test::check_lattice_bimorphism`] to spot-test an implementation.
 ///
 /// See the [lattice math doc's lattice bimorphism section](https://hydro.run/docs/dfir/lattices_crate/lattice_math/#lattice-bimorphism).
@@ -237,6 +241,17 @@ pub trait LatticeBimorphism<LatA, LatB> {
     type Output;
     /// Executes the function.
     fn call(&mut self, lat_a: LatA, lat_b: LatB) -> Self::Output;
+
+    /// Executes the function on borrowed inputs.
+    ///
+    /// The default clones both inputs. Override this to avoid those clones.
+    fn call_ref(&mut self, lat_a: &LatA, lat_b: &LatB) -> Self::Output
+    where
+        LatA: Clone,
+        LatB: Clone,
+    {
+        self.call(lat_a.clone(), lat_b.clone())
+    }
 }
 
 /// Converts a closure to a morphism. Does not check for correctness.
