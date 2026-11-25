@@ -78,6 +78,11 @@ name = "paxos_bench"
 required-features = ["tokio"]
 harness = false
 
+[[bench]]
+name = "raft_bench"
+required-features = ["tokio"]
+harness = false
+
 [[example]]
 name = "paxos"
 required-features = ["tokio"]
