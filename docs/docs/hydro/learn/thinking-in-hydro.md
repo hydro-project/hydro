@@ -28,3 +28,8 @@ Here are some tips for getting started working with Hydro. At the very highest l
 5. When using a clock in Hydro, prefer to model it as a `Stream<Timestamp, _>` (use `NoOrder` if a monotonic clock is not available, so that downstream logic cannot assume a later reading is a later time). It should be delivered as an argument from the [embedding code](../reference/deploy/embedded.mdx) outside your dataflow.
 
    Timers should be derived from this single source of time, as it allows for more effective simulation testing. Avoid the use of `source_interval` when you have multiple colocated timers because the simulator will not know that they are correlated. The timestamp at which the timer last fired would be stored as [`sliced!` state](../reference/state-management/slices.mdx#state-hooks).
+6. Model any component that can fail as a [`Cluster`](../reference/locations/clusters.md), not a [`Process`](../reference/locations/processes.md). In practice, most production-grade systems will use only `Cluster`.
+
+   For example, in Raft or Kafka, *any* broker can become a leader or a follower. To model that accurately, use `Cluster<Broker>`, not `Process<LeaderBroker>`. Roles like leader are dynamic state within the cluster, not fixed locations.
+
+   `Process` is a good fit for single, non-fallible locations, such as prototypes, clients, and tests.
