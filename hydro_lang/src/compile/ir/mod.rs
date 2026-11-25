@@ -6231,7 +6231,10 @@ impl HydroNode {
                                     let (effective_input, wrapped_acc) = if let Some(ref hooked) = hooked_input_ident {
                                         let acc: syn::Expr = parse_quote!({
                                             let mut __inner = #acc_tokens;
-                                            move |__state, __batch: Vec<_>| {
+                                            move |__state, __batch: Option<Vec<_>>| {
+                                                let Some(__batch) = __batch else {
+                                                    return Some(__state.clone());
+                                                };
                                                 if __batch.is_empty() {
                                                     return None;
                                                 }
@@ -6245,8 +6248,10 @@ impl HydroNode {
                                     } else {
                                         let acc: syn::Expr = parse_quote!({
                                             let mut __inner = #acc_tokens;
-                                            move |__state, __value| {
-                                                __inner(__state, __value);
+                                            move |__state, __value: Option<_>| {
+                                                if let Some(__value) = __value {
+                                                    __inner(__state, __value);
+                                                }
                                                 Some(__state.clone())
                                             }
                                         });
@@ -6256,9 +6261,9 @@ impl HydroNode {
                                     graph_builders.add_dfir_at(
                                         &out_location,
                                         parse_quote! {
-                                            source_iter([(#init_tokens)()]) -> [0]#fold_ident;
-                                            #effective_input -> scan::<#lifetime>(#init_tokens, #wrapped_acc) -> [1]#fold_ident;
-                                            #fold_ident = chain();
+                                            source_iter([None]) -> [0]#fold_ident;
+                                            #effective_input -> map(Some) -> [1]#fold_ident;
+                                            #fold_ident = chain() -> scan::<#lifetime>(#init_tokens, #wrapped_acc);
                                         },
                                         Some(&stmt_id.to_string()),
                                     );
