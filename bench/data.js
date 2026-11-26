@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = 
 {
-  "lastUpdate": 1795638590281,
+  "lastUpdate": 1795698961986,
   "repoUrl": "https://github.com/hydro-project/hydro",
   "entries": {
     "Benchmark": [
@@ -326600,6 +326600,208 @@ window.BENCHMARK_DATA =
             "name": "raft_bench",
             "value": 1179276.8,
             "range": "± 63140.57",
+            "unit": "ops/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Aanand Kainth",
+            "username": "akainth015",
+            "email": "aakainth@amazon.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "a2dba3a49e4ed2c90655634286a5109455684e3e",
+          "message": "ci(nextest): allow 30 minutes for the `sim_fuzzer` tests (#3393)\n\nRaises the nextest limit for the `hydro_lang::sim_fuzzer` tests from 20\nto 30 minutes (`terminate-after = 20` → `30`, `period = \"60s\"`).\n`fuzz_with_cargo_sim` kept hitting the 1200s limit on macOS CI. Together\nwith the `test_chat_app_no_replay` hang (separate PR), it knocked #3268\nand #3391 out of the merge queue.\n\n## Root cause\n\nWhichever `sim_fuzzer` test runs first pays for the cold `cargo sim`\nbuild in `target/sim`. That build compiles `hydro_lang` and its\ndependencies with sancov instrumentation at `opt-level=3`, while the\nrest of the suite runs on the same 3-core runner. The libFuzzer search\nitself is not the bottleneck:\n- In all 3 CI timeouts the build had finished: the captured output ends\nwith `test sim::tests::sim_crash_with_fuzzed_batching - should panic\n...`, so the kill landed during the search.\n- The search is quick. Locally it found the bug in **4–12s in all 7\nunseeded runs** (80–2,155 execs). On CI, the sibling\n`fuzz_with_cargo_sim_continue_if` reuses the build and passed in 6.6s\nright after the timeout in run 45502574112.\n- With the build warm, both tests together take 12s locally.\n\nSo the variable part is the nested build: passing runs took 309–1165s,\nagainst a 1200s limit.\n\n## Why a longer limit and not something else\n\n- **Seeding libFuzzer's corpus with the checked-in reproducer:** I tried\nit. It works, but it only saves the few-second search, not the build.\n- **Prebuilding `target/sim` as its own CI step:** this would move the\nbuild out of the test's limit and make its time visible. But it would\nrun serially before nextest instead of overlapping with it, so the job\nlikely gets longer. It's worth a follow-up, together with checking\nwhether sccache hits for `target/sim`; cache hits and misses may explain\nthe 309s vs 1165s spread.\n- **Cheaper `cargo sim` flags for CI:** this would change what the\nharness test checks (the real instrumented build), so it's out of scope\nhere.\n\nThe cost of the longer limit: a real hang in these two tests now takes\n30 minutes to surface instead of 20. Fast runs are unaffected.\n\n## Evidence: macOS `All tests` job, 18 runs, 2026-11-19 to 2026-11-24\n\n`fuzz_with_cargo_sim` passed in 308.9–1164.7s and hit the 1200s limit in\n**3 of 18** runs.\n\n| Job start (UTC) | Run | Event | SHA | fuzz_with_cargo_sim |\n|---|---|---|---|---|\n| 11-19 16:51 | 44560926263 | merge_group | 66ea15f431 | PASS 1164.7s |\n| 11-19 17:46 | 44580740490 | merge_group | 735c25e3d4 | PASS 714.1s |\n| 11-19 18:31 | 44582942206 | push | 854c543d20 | PASS 626.2s |\n| 11-19 19:24 | 44590242040 | push | 735c25e3d4 | PASS 367.1s |\n| 11-19 19:36 | 44600008399 | merge_group | a0b0f8f827 | PASS 1097.5s |\n| 11-19 20:16 | 44606990601 | merge_group | 6052e766bf | **TIMEOUT\n1200s** |\n| 11-19 21:47 | 44622245704 | merge_group | 2f96867f40 | PASS 1065.0s |\n| 11-19 22:15 | 44626810466 | merge_group | 2c29a11ba2 | PASS 844.6s |\n| 11-19 22:40 | 44630804676 | push | 2f96867f40 | PASS 986.5s |\n| 11-19 23:24 | 44637410628 | merge_group | ae00597a59 | PASS 1090.0s |\n| 11-20 00:14 | 44644217268 | push | ae00597a59 | PASS 902.8s |\n| 11-20 00:25 | 44645675331 | merge_group | 6cae183de5 | PASS 1102.0s |\n| 11-20 01:14 | 44652136101 | push | 6cae183de5 | PASS 308.9s |\n| 11-20 04:11 | 44672704433 | push | b2c65c8f4a | PASS 765.7s |\n| 11-23 20:06 | 45255689992 | merge_group | 7a7df06cee | PASS 953.9s |\n| 11-23 21:09 | 45265878081 | push | 7a7df06cee | PASS 388.2s |\n| 11-24 14:53 | 45418220539 | merge_group | df939de8f0 | **TIMEOUT\n1200s** |\n| 11-24 22:37 | 45502574112 | merge_group | b3c2a9f5ec | **TIMEOUT\n1200s** |\n\n## Test plan\n\nRun locally on macOS (aarch64, rust-lld, pinned 1.98.1):\n\n- [x] `cargo nextest show-config test-groups -p hydro_lang --features\nsim`: the override parses and applies to both `sim_fuzzer` tests.\n- [x] `cargo nextest run -p hydro_lang --features sim --test\nsim_fuzzer`, mostly cold nested build: passed (139.5s + 4.4s).\n- [x] Same with the build warm: passed (8.2s + 3.7s).\n- [x] Unseeded `cargo sim … sim::tests::sim_crash_with_fuzzed_batching`,\n7 runs on a warm build: all found the crash in 4–12s.\n- [ ] CI: macOS `All tests` passes within the new limit.",
+          "timestamp": "2026-11-25T23:20:41Z",
+          "url": "https://github.com/hydro-project/hydro/commit/a2dba3a49e4ed2c90655634286a5109455684e3e"
+        },
+        "date": 1795698961945,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "arithmetic/dfir_rs/compiled",
+            "value": 154357,
+            "range": "± 7664",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/compiled_no_cheating",
+            "value": 2494282,
+            "range": "± 136702",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "arithmetic/dfir_rs/surface",
+            "value": 2610241,
+            "range": "± 208794",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/100/100/dfir",
+            "value": 5695,
+            "range": "± 123",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/3000/3000/dfir",
+            "value": 3855361,
+            "range": "± 178870",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30/30000/dfir",
+            "value": 437080,
+            "range": "± 44069",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cross_join_multiset/30000/30/dfir",
+            "value": 458278,
+            "range": "± 22332",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_in/dfir_rs/surface",
+            "value": 23222636,
+            "range": "± 1493355",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fan_out/dfir_rs/surface",
+            "value": 2506841,
+            "range": "± 115186",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fork_join/dfir_rs/surface",
+            "value": 32517042,
+            "range": "± 3466816",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/compiled",
+            "value": 2505490,
+            "range": "± 26761",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "identity/dfir_rs/surface",
+            "value": 2614720,
+            "range": "± 148687",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dfir_rs_diamond",
+            "value": 23506304,
+            "range": "± 1111111",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/identity",
+            "value": 2535,
+            "range": "± 120",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/unique",
+            "value": 13667,
+            "range": "± 578",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/map",
+            "value": 2676,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map",
+            "value": 2657,
+            "range": "± 192",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/flat_map2",
+            "value": 296895,
+            "range": "± 15745",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/join",
+            "value": 34941,
+            "range": "± 402",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/difference",
+            "value": 27316,
+            "range": "± 1484",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/union",
+            "value": 8942,
+            "range": "± 388",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/tee",
+            "value": 3188,
+            "range": "± 168",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/fold",
+            "value": 1289,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/sort",
+            "value": 42496,
+            "range": "± 4136",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/crossjoin",
+            "value": 49644,
+            "range": "± 3466",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/anti_join",
+            "value": 4463,
+            "range": "± 185",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/small",
+            "value": 7542,
+            "range": "± 103",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/next_tick/big",
+            "value": 21023,
+            "range": "± 301",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "micro/ops/group_by",
+            "value": 3707,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "paxos_bench",
+            "value": 386160,
+            "range": "± 3562.36",
             "unit": "ops/s"
           }
         ]
